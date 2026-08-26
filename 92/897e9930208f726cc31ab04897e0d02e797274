@@ -1,0 +1,24 @@
+crates/cli/src/doctor.rs
+  h_9e71e8b09f7cf2 253,274-276,293-298,330-478
+crates/cli/src/lib.rs
+  h_9e71e8b09f7cf2 13,19
+crates/cli/src/main.rs
+  h_9e71e8b09f7cf2 168-175,265-275,318-323,330-333
+crates/cli/src/upgrade.rs
+  h_9e71e8b09f7cf2 1-149
+crates/core/src/catalog.rs
+  h_9e71e8b09f7cf2 54-55,71,87,378-397,440-441
+docs/reference/error-codes.md
+  h_9e71e8b09f7cf2 200-220
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "92897e9930208f726cc31ab04897e0d02e797274",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
