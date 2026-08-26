@@ -1,0 +1,28 @@
+# release-please (PRD req 47). Maintains a rolling release PR built from
+# conventional commits; Jordan merges it on his word, which tags the semver
+# version and publishes the GitHub Release. Conventional commit subjects are
+# BINDING on main from here on: `feat:`, `fix:`, `perf:` bump versions;
+# everything else is a chore.
+#
+# The tag push triggers .github/workflows/release.yml, which attaches the
+# cross-platform binaries to the freshly published Release.
+
+name: release-please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

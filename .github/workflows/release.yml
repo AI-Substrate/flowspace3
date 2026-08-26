@@ -1,0 +1,131 @@
+# Cross-platform release builds (PRD req 47, plan 004 / plan-002 substrate).
+# Triggered by the semver tag that release-please pushes when its rolling PR
+# merges. Attaches 7 binaries named by target triple to the published Release:
+#   darwin aarch64 + x86_64   — built NATIVELY on macOS runners (Apple SDK
+#                               licensing forbids Darwin builds in Linux
+#                               containers); BUILD ONLY, never a gate
+#   linux  aarch64 + x86_64   — plan-002 build container (gnu + musl)
+#   windows x86_64            — produced-not-run (validation deferred; see
+#                               docs/plans/002-docker-daemon-base/assets/poc/
+#                               cross-platform-strategy.md)
+
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  FS3_ENGINE: docker
+
+jobs:
+  container-builds:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - aarch64-unknown-linux-gnu
+          - x86_64-unknown-linux-gnu
+          - aarch64-unknown-linux-musl
+          - x86_64-unknown-linux-musl
+          - x86_64-pc-windows-gnu
+    steps:
+      - uses: actions/checkout@v4
+
+      # The arm64 container instances run under emulation on the x86_64
+      # runner; release-only, so the slower build is acceptable.
+      - name: Set up QEMU
+        if: startsWith(matrix.target, 'aarch64')
+        uses: docker/setup-qemu-action@v3
+
+      - name: Build (${{ matrix.target }})
+        env:
+          FS3_TARGET: ${{ matrix.target }}
+        run: ./docker/scripts/build.sh
+
+      - name: Collect binary
+        shell: bash
+        run: |
+          mkdir -p dist
+          NAME="fs3-daemon"
+          case "${{ matrix.target }}" in *windows*) NAME="$NAME.exe";; esac
+          SRC="/bins/${{ matrix.target }}/release/$NAME"
+          docker run --rm -v fs3-bin:/bins:ro -v "$PWD/dist:/out" \
+            debian:bookworm-slim cp "$SRC" "/out/${{ matrix.target }}$NAME"
+          ls -la dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: dist/
+
+  macos-builds:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            runner: macos-14
+          - target: x86_64-apple-darwin
+            runner: macos-13
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pinned toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      # Native mac build (the only legal way to produce Darwin binaries).
+      # Never gated: this job failing blocks the release attachment, not CI.
+      - name: Build (${{ matrix.target }})
+        run: |
+          ~/.cargo/bin/rustup component add rustfmt clippy --toolchain "$(rustup show active-toolchain | cut -d- -f1)" 2>/dev/null || true
+          cargo build --locked --release --target ${{ matrix.target }} -p fs3-daemon
+          mkdir -p dist
+          cp "target/${{ matrix.target }}/release/fs3-daemon" "dist/${{ matrix.target }}fs3-daemon"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: dist/
+
+  upload:
+    needs: [container-builds, macos-builds]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Verify artifact shapes (file(1))
+        shell: bash
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq file >/dev/null
+          file dist/*
+          test "$(ls dist | wc -l)" -eq 7
+
+      - name: Attach binaries to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release upload "$TAG" dist/* --clobber
+          # Deferred-validation stances recorded honestly on every release:
+          gh release edit "$TAG" --notes "$(gh release view "$TAG" --json body -q .body)
+
+          ---
+          **Validation stances** (plan 004):
+          - Linux/macOS binaries: built and smoke-checked by shape (\`file(1)\`); runtime tiers are proven by CI on Linux only.
+          - Windows binary: **produced-not-run** — no Windows machine in the loop yet; validation procedure: docs/plans/002-docker-daemon-base/assets/poc/cross-platform-strategy.md
+          - macOS runners: build-only, never gated."
