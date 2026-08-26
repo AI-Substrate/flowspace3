@@ -1,0 +1,38 @@
+.harness/government/briefs/s002-docker-daemon-brief.md
+  s_15d888f4b629c1::t_5d5dfa69cedefb 1-45
+.harness/government/reviews/2026-08-26-oprime-review-s001.md
+  s_15d888f4b629c1::t_98acda49a83cd7 1-20
+.harness/government/briefs/w-scanner-v1.md
+  s_15d888f4b629c1::t_5b8eb0a18d1851 1-33
+.harness/government/rulings/2026-08-26-crates-dir-layout.md
+  s_15d888f4b629c1::t_adb69429efefc8 1-9
+.harness/government/briefs/w-azure-openai-kazimir.md
+  s_15d888f4b629c1::t_dfd397c5df22fc 1-24
+.harness/government/canaries/s002-impressive-ox.md
+  s_15d888f4b629c1::t_11987fc82683bc 1-11
+.harness/government/briefs/w-migrations-cicada.md
+  s_15d888f4b629c1::t_3b137a015d90ca 1-23
+.harness/government/rulings/2026-08-26-commit-push-as-you-go.md
+  s_15d888f4b629c1::t_dbe4f3416afcb1 1-9,11-12
+  s_15d888f4b629c1::t_c359c4d62713a3 10
+.harness/government/briefs/w-config-egret.md
+  s_15d888f4b629c1::t_b8e82bd52e7fad 1-39
+.harness/government/worker-roster.md
+  s_15d888f4b629c1::t_465adedafde375 1-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0782171295d834d31aae5076d4da19ec8c82d213",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
