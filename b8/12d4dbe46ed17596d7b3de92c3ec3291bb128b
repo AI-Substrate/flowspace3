@@ -1,0 +1,41 @@
+.harness/extensions/boot/extension.ts
+  s_15d888f4b629c1::t_1bab86c6e9a859 6-7,10-12,60-81
+parsers/fixtures/sample.md
+  s_b7bb8433dbdd84::t_548864d84e5f12 1-20
+parsers/fixtures/sample.rs
+  s_b7bb8433dbdd84::t_f7c7fa6eb67a8a 1-36
+providers/Cargo.toml
+  s_b7bb8433dbdd84::t_48cd5d992e4c76 1-18
+providers/src/lib.rs
+  s_b7bb8433dbdd84::t_7d4fc8d0007324 1-17
+providers/tests/openai_contract.rs
+  s_b7bb8433dbdd84::t_75deca31b222bc 1-33
+testkit/fixtures/arch/clean-metadata.json
+  s_b7bb8433dbdd84::t_b3ea73f51f4120 1-130
+testkit/fixtures/arch/drifted-metadata.json
+  s_b7bb8433dbdd84::t_6dc49f07428779 1-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b812d4dbe46ed17596d7b3de92c3ec3291bb128b",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_b7bb8433dbdd84": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "222c2c9d-5798-48cf-9dbd-cd4a52324c53",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
