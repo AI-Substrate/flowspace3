@@ -666,6 +666,8 @@ fn unknown_instance(
 /// summary_min_lines = 10
 /// debounce_seconds = 10
 /// worker_concurrency = 4
+/// summarize_lane = 32
+/// embed_lane = 10
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -703,6 +705,35 @@ pub struct IndexingConfig {
     /// it is wrong for one of them whichever way it is read. That knob belongs
     /// beside the provider, not here.
     pub worker_concurrency: usize,
+
+    /// How many `summarize` jobs may be in flight at once.
+    ///
+    /// Its own number because the stages are not alike: a summarize is one
+    /// chat call per element and the useful width is "requests a hosted model
+    /// will accept concurrently" — 32 is the fs2-proven starting point for
+    /// Azure. Sharing one pool with `embed` meant the slower stage throttled
+    /// the faster one for no reason.
+    ///
+    /// Clamped at runtime by the summarizer's own
+    /// [`Summarizer::concurrency_ceiling`], PER INSTANCE, because a repo
+    /// pointed at a single-GPU box has a different budget from one pointed at
+    /// Azure and the lane must not average them.
+    ///
+    /// [`Summarizer::concurrency_ceiling`]: crate::ports::Summarizer::concurrency_ceiling
+    pub summarize_lane: usize,
+
+    /// How many merged `embed` BATCHES may be in flight at once.
+    ///
+    /// Batches, not items — one batch already carries up to a token budget of
+    /// texts, so this multiplies an already-wide call. Ten is the fs2-proven
+    /// starting point.
+    ///
+    /// Clamped the same way, by [`Embedder::concurrency_ceiling`] per
+    /// instance: the local ONNX embedder's session sits behind a Mutex, so
+    /// concurrency there is a lie and it declares 1.
+    ///
+    /// [`Embedder::concurrency_ceiling`]: crate::ports::Embedder::concurrency_ceiling
+    pub embed_lane: usize,
 }
 
 impl IndexingConfig {
@@ -721,6 +752,20 @@ impl IndexingConfig {
                 "worker_concurrency = 4",
             ));
         }
+        if self.summarize_lane == 0 {
+            problems.push(Problem::file(
+                "indexing.summarize_lane",
+                "must be at least 1 — a lane of zero would leave every summary pending forever",
+                "summarize_lane = 32",
+            ));
+        }
+        if self.embed_lane == 0 {
+            problems.push(Problem::file(
+                "indexing.embed_lane",
+                "must be at least 1 — a lane of zero would leave every vector pending forever",
+                "embed_lane = 10",
+            ));
+        }
     }
 }
 
@@ -730,6 +775,8 @@ impl Default for IndexingConfig {
             summary_min_lines: 10,
             debounce_seconds: 10,
             worker_concurrency: 4,
+            summarize_lane: 32,
+            embed_lane: 10,
         }
     }
 }

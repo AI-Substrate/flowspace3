@@ -33,6 +33,7 @@ use fs3_core::envelope::Failure;
 use fs3_store::{Job, PgPool};
 use std::collections::BTreeMap;
 
+use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 
 use crate::answer::IntoFailure;
@@ -49,9 +50,14 @@ pub const KINDS: &[&str] = &[SCAN_FILE, SUMMARIZE, EMBED];
 
 /// The kinds claimed ONE AT A TIME, because their work cannot merge.
 ///
-/// A `scan_file` reads one path and a `summarize` is one call per element.
-/// Only `embed` batches, and it is drained separately — claiming it here too
-/// would have the two paths racing for the same rows.
+/// `scan_file` reads one path; `summarize` is one call per element. Only
+/// `embed` batches, and it is drained separately — claiming it here too would
+/// have the two paths racing for the same rows.
+///
+/// The two share this pool but NOT a width: `summarize` is provider-bound and
+/// takes its own lane below, while `scan_file` is local I/O and stays on
+/// `worker_concurrency`. Sharing one number meant a slow hosted model
+/// throttled local file reads for no reason.
 pub const SERIAL_KINDS: &[&str] = &[SCAN_FILE, SUMMARIZE];
 
 /// How many embed jobs one batched claim takes.
@@ -176,6 +182,7 @@ pub async fn drain(state: &AppState, workers: usize) -> Drained {
     // reporting between drains meant that during a long index run, the one
     // case the summary exists for, it never printed at all.
     let mut last_report: Option<std::time::Instant> = None;
+    let mut summarize_lanes: BTreeMap<usize, Arc<Semaphore>> = BTreeMap::new();
 
     loop {
         // Embed first, and batched: it is the only kind whose work merges, and
@@ -188,7 +195,33 @@ pub async fn drain(state: &AppState, workers: usize) -> Drained {
             match fs3_store::claim_job(&state.db, SERIAL_KINDS).await {
                 Ok(Some(job)) => {
                     let state = state.clone();
-                    tasks.spawn(async move { settle(&state, job).await });
+                    // The SUMMARIZE lane. Held for the whole call so the count
+                    // is requests in flight, and clamped per identity by the
+                    // summarizer's own ceiling — a repo on a single-GPU box
+                    // must not be given Azure's width, and Azure must not be
+                    // dropped to that box's because another repo uses it.
+                    let lane = (job.kind == SUMMARIZE).then(|| {
+                        let summarizer = state.summarizer_for(&summarize_identity(&job.payload));
+                        // Keyed by INSTANCE, not repo — see the embed lane.
+                        let instance = Arc::as_ptr(summarizer).cast::<()>() as usize;
+                        let width = state
+                            .config
+                            .indexing
+                            .summarize_lane
+                            .min(summarizer.concurrency_ceiling())
+                            .max(1);
+                        summarize_lanes
+                            .entry(instance)
+                            .or_insert_with(|| Arc::new(Semaphore::new(width)))
+                            .clone()
+                    });
+                    tasks.spawn(async move {
+                        let _permit = match &lane {
+                            Some(lane) => lane.acquire().await.ok(),
+                            None => None,
+                        };
+                        settle(&state, job).await
+                    });
                 }
                 Ok(None) => break,
                 Err(error) => {
@@ -292,33 +325,82 @@ async fn drain_embed(state: &AppState) -> Drained {
     let mut broken: BTreeMap<i64, Failure> = BTreeMap::new();
     let mut touched: Vec<i64> = Vec::new();
 
-    for one in batches {
-        let started = std::time::Instant::now();
-        let kind = enrich::source_kind_of(&one.source);
-        let outcome = match kind {
-            Ok(kind) => enrich::embed_items(state, &one.identity, kind, &one.items).await,
-            Err(failure) => Err(failure),
-        };
+    // THE EMBED LANE. Batches run concurrently, and the width is clamped per
+    // PROVIDER INSTANCE — not globally, and not per repo.
+    //
+    // Not globally: one repo on a single-GPU box declares a ceiling of 1, and
+    // taking the minimum across every instance would drop the whole lane to 1
+    // because of that one repo.
+    //
+    // Not per repo either, which is the mistake this comment exists to stop
+    // being made again: a ceiling is the PROVIDER's budget, and N repos
+    // pointed at the same instance share it. Keying by repo gave five repos on
+    // one embedder five concurrent permits against a ceiling of one.
+    //
+    // The key is therefore the Arc's identity: `wiring` builds one Arc per
+    // configured instance and clones it to every repo that selects it, so
+    // pointer equality IS instance equality, which is exactly the budget
+    // boundary.
+    let mut lanes: BTreeMap<usize, Arc<Semaphore>> = BTreeMap::new();
+    let mut running = JoinSet::new();
 
+    for one in batches {
         for id in &one.job_ids {
             if !touched.contains(id) {
                 touched.push(*id);
             }
         }
 
-        match outcome {
-            Ok(()) => tracing::info!(
-                kind = EMBED,
-                subject = %format!("{} x {}", one.items.len(), one.source),
-                jobs = one.job_ids.len(),
-                ms = started.elapsed().as_millis() as u64,
-                "batch"
-            ),
-            Err(failure) => {
-                for id in one.job_ids {
+        let embedder = state.embedder_for(&one.identity);
+        let instance = Arc::as_ptr(embedder).cast::<()>() as usize;
+        let width = state
+            .config
+            .indexing
+            .embed_lane
+            .min(embedder.concurrency_ceiling())
+            .max(1);
+        let permits = lanes
+            .entry(instance)
+            .or_insert_with(|| Arc::new(Semaphore::new(width)))
+            .clone();
+
+        let state = state.clone();
+        running.spawn(async move {
+            // Held for the whole call, so the count is requests IN FLIGHT
+            // rather than requests started.
+            let _permit = permits.acquire().await;
+            let started = std::time::Instant::now();
+            let outcome = match enrich::source_kind_of(&one.source) {
+                Ok(kind) => enrich::embed_items(&state, &one.identity, kind, &one.items).await,
+                Err(failure) => Err(failure),
+            };
+            match outcome {
+                Ok(()) => {
+                    tracing::info!(
+                        kind = EMBED,
+                        subject = %format!("{} x {}", one.items.len(), one.source),
+                        jobs = one.job_ids.len(),
+                        ms = started.elapsed().as_millis() as u64,
+                        "batch"
+                    );
+                    (one.job_ids, None)
+                }
+                Err(failure) => (one.job_ids, Some(failure)),
+            }
+        });
+    }
+
+    while let Some(finished) = running.join_next().await {
+        match finished {
+            Ok((job_ids, Some(failure))) => {
+                for id in job_ids {
                     broken.entry(id).or_insert_with(|| failure.clone());
                 }
             }
+            Ok((_, None)) => {}
+            // A panicking batch leaves its rows `running` for the reconciler
+            // sweep, exactly as the serial path does.
+            Err(error) => tracing::error!(%error, "an embed batch panicked"),
         }
     }
 
@@ -373,6 +455,19 @@ async fn drain_embed(state: &AppState) -> Drained {
     }
 
     total
+}
+
+/// The repo a summarize job belongs to, for lane accounting.
+///
+/// Falls back to a shared bucket when the payload does not name one: an
+/// unattributable job still has to be limited by SOMETHING, and grouping the
+/// stragglers together is safer than giving each its own unbounded lane.
+fn summarize_identity(payload: &serde_json::Value) -> String {
+    payload
+        .get("identity")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("")
+        .to_string()
 }
 
 /// One line saying where the whole index run is up to.
