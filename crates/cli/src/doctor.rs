@@ -250,7 +250,7 @@ pub async fn run(config: &Config) -> Envelope<DoctorReport> {
     let mut steps = Vec::new();
 
     match walk(config, &mut steps).await {
-        Ok(()) => {
+        Ok(messages) => {
             // `warn` counts as degraded: a stack running entirely on the
             // offline fake is working, and is almost never what the operator
             // believes they configured. Reporting a plain "ok" there is the
@@ -271,6 +271,9 @@ pub async fn run(config: &Config) -> Envelope<DoctorReport> {
                 },
             )
             .with_next_action(steer)
+            // Doctor is the one local verb that holds a pool, so it is the one
+            // that can carry the queue without a daemon answering (req-0059).
+            .with_messages(messages)
         }
         Err(failure) => {
             let mut envelope = Envelope::failed("doctor", failure);
@@ -287,7 +290,12 @@ pub async fn run(config: &Config) -> Envelope<DoctorReport> {
     }
 }
 
-async fn walk(config: &Config, steps: &mut Vec<Step>) -> Result<(), Failure> {
+/// Returns the live user messages the walk observed, so doctor's own envelope
+/// carries them like every other command's does (req-0059).
+async fn walk(
+    config: &Config,
+    steps: &mut Vec<Step>,
+) -> Result<Vec<fs3_core::UserMessage>, Failure> {
     let database_url = config.database.url.as_str();
     let daemon_url = config.daemon.url.as_str();
 
@@ -315,11 +323,161 @@ async fn walk(config: &Config, steps: &mut Vec<Step>) -> Result<(), Failure> {
     // daemon needs in order to start at all.
     steps.push(check_daemon(daemon_url).await);
     steps.push(check_providers(config));
-    // req-0053: the skills row walks last, after providers — informational,
-    // never degrading, and the one row reporting state doctor will never
-    // itself change.
+    // req-0054 / req-0059. Both read the store, so they walk after the schema
+    // row that guarantees the tables exist, and after `daemon` and `providers`
+    // so the steer order stays right: a reader with no daemon running is told
+    // to start one before being told to restart it for a new binary.
+    //
+    // Neither ever repairs. Doctor does not update binaries behind your back —
+    // `flowspace3 doctor upgrade` is the verb that does, and the row names it.
+    steps.push(check_update(database_url, config).await);
+    let (messages_row, messages) = check_messages(database_url).await;
+    steps.push(messages_row);
+    // req-0053: the skills row walks LAST — informational, never degrading, and
+    // the one row reporting state doctor will never itself change.
     steps.push(check_skills());
-    Ok(())
+    Ok(messages)
+}
+
+/// Step 7: what does the auto-updater think the situation is (req-0054)?
+///
+/// Three states worth telling apart, because the reader's next move differs in
+/// each: current (nothing to do), a newer binary already downloaded and waiting
+/// on a restart, and notify-only — something newer exists that this machine
+/// could not install, with the reason.
+async fn check_update(database_url: &str, config: &Config) -> Step {
+    let started = Instant::now();
+    let running = env!("CARGO_PKG_VERSION");
+
+    let Ok(pool) = fs3_store::connect(database_url).await else {
+        return Step::info(
+            "update",
+            "cannot read the update state — the store is not answering",
+            "the rows above say why",
+            started,
+        );
+    };
+    let state = fs3_store::update_state(&pool).await;
+    pool.close().await;
+
+    let Ok(state) = state else {
+        return Step::info(
+            "update",
+            "the update state could not be read",
+            "run `flowspace3 doctor` again once the schema row is green",
+            started,
+        );
+    };
+
+    let cadence = if config.update.auto {
+        format!(
+            "auto-update on, every {}h",
+            config.update.check_interval_hours
+        )
+    } else {
+        "auto-update off".to_string()
+    };
+    let checked = state
+        .last_checked
+        .as_deref()
+        .map_or_else(|| "never checked".to_string(), |at| format!("checked {at}"));
+
+    // Something is waiting on a restart. `warn`, not `info`: the user asked
+    // for auto-update and is running something other than what they now have.
+    if let Some(installed) = state
+        .installed_version
+        .as_deref()
+        .filter(|installed| *installed != running)
+    {
+        let path = state.install_path.as_deref().unwrap_or("the install path");
+        return Step::warn(
+            "update",
+            format!("{installed} is installed at {path}; this CLI is {running} ({cadence})"),
+            "restart the fs3 daemon to run the new binary",
+            started,
+        )
+        .with_steer("restart the fs3 daemon — a newer flowspace3 is already installed");
+    }
+
+    // Something newer exists and this machine could not take it.
+    if let Some(reason) = state.blocked_reason.as_deref() {
+        let path = state.install_path.as_deref().unwrap_or("the install path");
+        let latest = state
+            .latest_seen
+            .as_deref()
+            .map_or(String::new(), |latest| format!(" ({latest} is published)"));
+        return Step::warn(
+            "update",
+            format!("cannot update {path}: {reason}{latest}"),
+            format!(
+                "run `flowspace3 doctor upgrade` from a shell that can write it, or reinstall: \
+                 `{}`",
+                fs3_core::update::REINSTALL_COMMAND
+            ),
+            started,
+        )
+        .with_steer(
+            "run `flowspace3 doctor upgrade` — an update is available but could not install",
+        );
+    }
+
+    Step::ok(
+        "update",
+        format!("running {running} ({cadence}, {checked})"),
+        started,
+    )
+}
+
+/// Step 8: what is the daemon currently telling the user (req-0059)?
+///
+/// The queue is normally empty, and an empty queue is the healthy row. This
+/// exists so that "why does every command keep telling me to restart" has a
+/// place to be answered, and so a message with no live producer is visible
+/// rather than mysterious.
+/// Returns the live queue as well as the row, so [`run`] can put the same
+/// messages on doctor's own envelope without asking the store twice.
+async fn check_messages(database_url: &str) -> (Step, Vec<fs3_core::UserMessage>) {
+    let started = Instant::now();
+
+    let unreadable = |found: &str| {
+        (
+            Step::info(
+                "messages",
+                found.to_string(),
+                "the rows above say why",
+                started,
+            ),
+            Vec::new(),
+        )
+    };
+
+    let Ok(pool) = fs3_store::connect(database_url).await else {
+        return unreadable("cannot read the user messages queue — the store is not answering");
+    };
+    let messages = fs3_store::live_messages(&pool).await;
+    pool.close().await;
+
+    let Ok(messages) = messages else {
+        return unreadable("the user messages queue could not be read");
+    };
+
+    if messages.is_empty() {
+        return (
+            Step::ok("messages", "no standing messages", started),
+            messages,
+        );
+    }
+
+    let found = messages
+        .iter()
+        .map(fs3_core::UserMessage::render)
+        .collect::<Vec<_>>()
+        .join(" · ");
+    let action = format!(
+        "{} message(s) ride on every command's envelope until their cause clears",
+        messages.len()
+    );
+    (Step::info("messages", found, action, started), messages)
 }
 
 /// What to do next, from the FIRST unmet step rather than a generic line.

@@ -128,9 +128,34 @@ async fn serve(configuration: Config, address: String) -> Result<()> {
         debounce_seconds = state.config.indexing.debounce_seconds,
         "starting the reconcile runner"
     );
-    let reconcilers: Vec<Box<dyn crate::reconcile::Reconcile>> = vec![Box::new(
+    let mut reconcilers: Vec<Box<dyn crate::reconcile::Reconcile>> = vec![Box::new(
         crate::watch::WatcherSupervisor::new(state.clone()),
     )];
+
+    // The second implementor joins the roster as one more `Box`, exactly as
+    // the doctrine predicted — no change to the runner and none to the trait.
+    // It runs on the shared cadence and rate-limits itself against
+    // `update_state.last_checked_at`, so "check once a day" survives a daemon
+    // that is restarted every ten minutes (PRD req 54).
+    //
+    // A supervisor that cannot be built is not a reason to refuse to serve:
+    // the only failure here is "this process cannot resolve its own path",
+    // which breaks updating and nothing else.
+    match crate::update::UpdateSupervisor::new(
+        state.db.clone(),
+        &state.config.update,
+        env!("CARGO_PKG_VERSION"),
+    ) {
+        Ok(supervisor) => {
+            tracing::info!(
+                auto = state.config.update.auto,
+                every_hours = state.config.update.check_interval_hours,
+                "starting the update supervisor"
+            );
+            reconcilers.push(Box::new(supervisor));
+        }
+        Err(error) => tracing::warn!(%error, "auto-update is unavailable in this process"),
+    }
     tokio::spawn(crate::reconcile::run_forever(reconcilers, cadence));
 
     http::serve(state, &address).await

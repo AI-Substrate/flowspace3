@@ -21,6 +21,8 @@ use fs3_core::envelope::{Envelope, Failure};
 use fs3_store::StoreError;
 use serde::Serialize;
 
+use crate::wiring::AppState;
+
 /// An envelope on its way out of an axum handler.
 ///
 /// Wrapping rather than implementing [`IntoResponse`] on [`Envelope`] directly:
@@ -42,14 +44,29 @@ impl<T> From<Envelope<T>> for Answer<T> {
     }
 }
 
-/// Build a success answer.
-pub fn ok<T>(command: &str, data: T) -> Answer<T> {
-    Answer(Envelope::ok(command, data))
+/// Build a success answer carrying the daemon's live user messages.
+///
+/// Takes `&AppState` rather than being a free function, and that is the whole
+/// enforcement mechanism for PRD req 59: an endpoint physically cannot build
+/// an envelope without the thing that fetches the queue, so "every command
+/// carries the messages" is a compile error rather than a review comment.
+///
+/// The alternative considered and refused was a response middleware. It is the
+/// only shape that needs no call sites at all, but it works on serialised
+/// BYTES — it would have to re-parse every response body to insert a field,
+/// and it would have to sniff whether a body is an envelope at all (`/health`
+/// is not), which is exactly the shape-sniffing workshop 004 D1 forbids.
+pub async fn ok<T>(state: &AppState, command: &str, data: T) -> Answer<T> {
+    Answer(Envelope::ok(command, data).with_messages(state.messages().await))
 }
 
-/// Build a failure answer.
-pub fn failed<T>(command: &str, failure: Failure) -> Answer<T> {
-    Answer(Envelope::failed(command, failure))
+/// Build a failure answer carrying the daemon's live user messages.
+///
+/// A failure carries them too, deliberately. "Your search found nothing" plus
+/// "a newer binary is waiting for a restart" is very often cause and effect,
+/// and a user who only sees the first one debugs the wrong thing.
+pub async fn failed<T>(state: &AppState, command: &str, failure: Failure) -> Answer<T> {
+    Answer(Envelope::failed(command, failure).with_messages(state.messages().await))
 }
 
 /// Map an adapter's error onto the catalog, once, in one place.

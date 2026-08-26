@@ -74,14 +74,18 @@ async fn add_root(
 ) -> Answer<RootReport> {
     const COMMAND: &str = "add";
     if let Err(failure) = crate::schema::guard(&state.db).await {
-        return failed(COMMAND, failure);
+        return failed(&state, COMMAND, failure).await;
     }
     match crate::roots::add_root(&state, std::path::Path::new(&request.path)).await {
         Ok(report) => {
             let next = next_after_scan(&report);
-            ok(COMMAND, report).0.with_next_action(next).into()
+            ok(&state, COMMAND, report)
+                .await
+                .0
+                .with_next_action(next)
+                .into()
         }
-        Err(error) => failed(COMMAND, error.into_failure()),
+        Err(error) => failed(&state, COMMAND, error.into_failure()).await,
     }
 }
 
@@ -91,21 +95,25 @@ async fn scan(
 ) -> Answer<RootReport> {
     const COMMAND: &str = "scan";
     if let Err(failure) = crate::schema::guard(&state.db).await {
-        return failed(COMMAND, failure);
+        return failed(&state, COMMAND, failure).await;
     }
     match crate::roots::rescan_root(&state, std::path::Path::new(&request.path)).await {
         Ok(report) => {
             let next = next_after_scan(&report);
-            ok(COMMAND, report).0.with_next_action(next).into()
+            ok(&state, COMMAND, report)
+                .await
+                .0
+                .with_next_action(next)
+                .into()
         }
-        Err(error) => failed(COMMAND, error.into_failure()),
+        Err(error) => failed(&state, COMMAND, error.into_failure()).await,
     }
 }
 
 async fn status(State(state): State<AppState>) -> Answer<StatusReport> {
     const COMMAND: &str = "status";
     if let Err(failure) = crate::schema::guard(&state.db).await {
-        return failed(COMMAND, failure);
+        return failed(&state, COMMAND, failure).await;
     }
     match crate::status::report(&state).await {
         Ok(report) => {
@@ -114,9 +122,13 @@ async fn status(State(state): State<AppState>) -> Answer<StatusReport> {
             } else {
                 "the queue is empty — `flowspace3 search \"<question>\"` will answer from the index"
             };
-            ok(COMMAND, report).0.with_next_action(next).into()
+            ok(&state, COMMAND, report)
+                .await
+                .0
+                .with_next_action(next)
+                .into()
         }
-        Err(failure) => failed(COMMAND, failure),
+        Err(failure) => failed(&state, COMMAND, failure).await,
     }
 }
 
@@ -126,7 +138,7 @@ async fn search(
 ) -> Answer<SearchResults> {
     const COMMAND: &str = "search";
     if let Err(failure) = crate::schema::guard(&state.db).await {
-        return failed(COMMAND, failure);
+        return failed(&state, COMMAND, failure).await;
     }
     match crate::search::search(&state, &request).await {
         Ok(results) => {
@@ -143,9 +155,13 @@ async fn search(
             } else {
                 "open a hit at its path and span, or narrow with --path/--repo"
             };
-            ok(COMMAND, results).0.with_next_action(next).into()
+            ok(&state, COMMAND, results)
+                .await
+                .0
+                .with_next_action(next)
+                .into()
         }
-        Err(failure) => failed(COMMAND, failure),
+        Err(failure) => failed(&state, COMMAND, failure).await,
     }
 }
 

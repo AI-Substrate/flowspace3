@@ -169,13 +169,23 @@ external = [
   # `worktrees` table and enqueues jobs, both of which only the composition
   # root may see.
   "notify",
-  "reqwest@dev",
+  # SHIPPED since PRD req 54: the auto-updater probes `releases/latest` for the
+  # redirect that names the newest tag (no GitHub API quota) and downloads the
+  # asset. Updating is something the daemon DOES now, not something a test drove.
+  "reqwest",
   # DEV only: the e2e asserts ROW COUNTS the typed API has no verb for
   # ("how many smart vectors exist"), which is a question about the schema
   # rather than about a flow. Shipping sqlx in the daemon stays refused.
   "sqlx@dev",
   "serde",
   "serde_json",
+  # The auto-updater verifies the downloaded asset against the release's own
+  # SHA256SUMS before the swap. TLS plus GitHub is not verification.
+  "sha2",
+  # Stages the new binary IN the install directory so the swap is a
+  # same-filesystem rename (cross-filesystem is EXDEV), and so an abandoned
+  # download cleans itself up rather than littering beside the binary.
+  "tempfile",
   "thiserror",
   "tokio",
   "toml",

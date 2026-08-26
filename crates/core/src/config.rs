@@ -97,6 +97,10 @@ pub const REDACTED: &str = "<redacted>";
 ///
 /// [scan]
 /// max_file_bytes = 2000000
+///
+/// [update]
+/// auto = true
+/// check_interval_hours = 24
 /// ```
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -121,6 +125,8 @@ pub struct Config {
     pub indexing: IndexingConfig,
     /// Knobs the filesystem scanner reads.
     pub scan: ScanConfig,
+    /// Whether — and how often — the daemon updates the installed binary.
+    pub update: UpdateConfig,
 }
 
 impl Default for Config {
@@ -135,6 +141,7 @@ impl Default for Config {
             repos: BTreeMap::new(),
             indexing: IndexingConfig::default(),
             scan: ScanConfig::default(),
+            update: UpdateConfig::default(),
         }
     }
 }
@@ -153,6 +160,7 @@ pub const SECTIONS: &[&str] = &[
     "repos",
     "indexing",
     "scan",
+    "update",
 ];
 
 impl Config {
@@ -265,6 +273,7 @@ impl Config {
 
         self.indexing.collect(&mut problems);
         self.scan.collect(&mut problems);
+        self.update.collect(&mut problems);
         problems
     }
 
@@ -843,6 +852,61 @@ impl Default for ScanConfig {
             include_hidden: false,
             follow_symlinks: false,
             standard_ignores: true,
+        }
+    }
+}
+
+/// Whether the daemon keeps the installed binary current, and how often it
+/// looks (PRD req 54).
+///
+/// Auto-update is **on by default** (Jordan, 2026-08-27): the daemon checks
+/// GitHub Releases, and when a newer published build exists it downloads,
+/// verifies and atomically replaces the installed binary itself. Turning it
+/// off leaves the check running only when a human asks for it with
+/// `flowspace3 doctor upgrade`.
+///
+/// ```toml
+/// [update]
+/// auto = true
+/// check_interval_hours = 24
+/// ```
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct UpdateConfig {
+    /// Check for, download and install newer releases without being asked.
+    ///
+    /// Off means the daemon never reaches the network for a release and never
+    /// swaps a binary; `doctor upgrade` still works, because a human asking
+    /// for an update is not the same thing as one happening unattended.
+    pub auto: bool,
+    /// How long the daemon waits between release checks.
+    ///
+    /// The interval is honoured against a timestamp in Postgres rather than a
+    /// timer, so a daemon restarted every ten minutes still checks once a day
+    /// instead of once per boot. GitHub's release endpoints are a shared,
+    /// rate-limited resource (fleet retro DL-018) and a fleet of daemons on a
+    /// short interval is exactly how a project gets throttled.
+    pub check_interval_hours: u64,
+}
+
+impl UpdateConfig {
+    fn collect(&self, problems: &mut Vec<Problem>) {
+        if self.auto && self.check_interval_hours == 0 {
+            problems.push(Problem::file(
+                "update.check_interval_hours",
+                "must be at least 1 — a zero interval would check on every reconcile pass \
+                 and get the project rate-limited",
+                "check_interval_hours = 24",
+            ));
+        }
+    }
+}
+
+impl Default for UpdateConfig {
+    fn default() -> Self {
+        Self {
+            auto: true,
+            check_interval_hours: 24,
         }
     }
 }

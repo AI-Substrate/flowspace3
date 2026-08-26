@@ -26,8 +26,10 @@ pub mod admin;
 pub mod elements;
 pub mod embeddings;
 pub mod jobs;
+pub mod messages;
 pub mod refs;
 pub mod smart;
+pub mod updates;
 
 pub use admin::{
     SchemaStatus, create_database, database_exists, is_missing_database, maintenance_url,
@@ -42,11 +44,15 @@ pub use jobs::{
     Job, QueueDepth, claim_job, claim_jobs, complete_job, enqueue_job, fail_job, jobs_remaining,
     last_failure, park_job, queue_depth, requeue_running, retry_job,
 };
+pub use messages::{ack_message, live_messages, sync_messages};
 pub use refs::{
     RegisteredWorktree, WorktreePath, find_worktree, list_worktrees, register_worktree,
     sync_worktree_files, worktree_file_map, worktree_paths_for_blob,
 };
 pub use smart::{MissingEnrichment, get_smart_content, missing_enrichment, put_smart_content};
+pub use updates::{
+    claim_check, record_blocked, record_clear, record_installed, record_seen, update_state,
+};
 
 // The store owns the sqlx edge, so every other crate speaks to Postgres through
 // this re-export rather than depending on sqlx itself.

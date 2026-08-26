@@ -34,6 +34,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::catalog::Code;
+use crate::messages::UserMessage;
 
 /// The envelope version. Bumps only on a breaking envelope change (D1).
 pub const ENVELOPE_VERSION: u32 = 1;
@@ -62,6 +63,19 @@ pub struct Envelope<T = Value> {
     /// What a consumer typically does next (PRD req 44).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_action: Option<String>,
+    /// The daemon's live user messages (PRD req 59) — news that is about the
+    /// SYSTEM rather than about this command's answer.
+    ///
+    /// Every envelope the daemon serves carries the same list, attached in one
+    /// place, so a feature with something to say never has to add a field to a
+    /// verb nobody would think to run. Empty is the healthy case and is
+    /// omitted from the wire entirely; a consumer that ignores the field still
+    /// works, exactly like `meta`.
+    ///
+    /// It is NOT `meta`: `meta` is out-of-band facts about *this answer*, and
+    /// these are standing conditions of the installation.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub messages: Vec<UserMessage>,
     /// The failure, when `ok` is false.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<Failure>,
@@ -77,6 +91,7 @@ impl<T> Envelope<T> {
             data: Some(data),
             meta: None,
             next_action: None,
+            messages: Vec::new(),
             error: None,
         }
     }
@@ -100,6 +115,20 @@ impl<T> Envelope<T> {
         self
     }
 
+    /// Attach the daemon's live user messages (PRD req 59).
+    ///
+    /// Called in ONE place per surface — the daemon's [`Answer`] on its way
+    /// out, and the CLI's local verbs that hold a pool — so that "which
+    /// commands carry messages" is a property of the surface rather than a
+    /// decision each endpoint author gets to make differently.
+    ///
+    /// [`Answer`]: https://docs.rs/fs3-daemon
+    #[must_use]
+    pub fn with_messages(mut self, messages: Vec<UserMessage>) -> Self {
+        self.messages = messages;
+        self
+    }
+
     /// A failed answer to `command`.
     pub fn failed(command: impl Into<String>, error: Failure) -> Self {
         Envelope {
@@ -109,6 +138,7 @@ impl<T> Envelope<T> {
             data: None,
             meta: None,
             next_action: None,
+            messages: Vec::new(),
             error: Some(error),
         }
     }

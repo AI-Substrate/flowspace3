@@ -1,7 +1,10 @@
 # Brief: w-auto-update — daemon self-update + envelope steering (req-0054) + config reference (req-0058)
 
-**Seat**: pij-surprising-sailfish (revived — you own the reconcile substrate; the update
-checker is a reconcile loop). **First PR-era packet** — read AGENTS.md § Working model
+**Seat**: pij-strange-edeard (fresh seat; the "pij-surprising-sailfish (revived)" in the
+drafted brief was written pre-spawn-decision and corrected by o-prime on dispatch,
+2026-08-27 — the reconcile substrate is read-not-lived here, so the update checker
+joins the existing roster rather than changing the trait).
+**First PR-era packet** — read AGENTS.md § Working model
 before anything: main is BRANCH-PROTECTED, you work in your OWN worktree on a branch,
 CI runs on your PR, o-prime merges.
 
