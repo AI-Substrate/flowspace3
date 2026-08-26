@@ -16,3 +16,20 @@ Jordan: summaries need a real prompt + a constrained return format ("they're goi
 
 ## Rules
 Architecture binds (no new ports — `key()` is evolution of the existing two, sanctioned here); no mocks; gates `harness checks` + `cargo test -p fs3-providers -p fs3-core` green; ddocs untouched (no plan rows — this is a roster-level feature). Report: claim · commits · keyed-run output · observations. Deviations = stop-and-ask.
+
+---
+
+## UNIT 2 (added 2026-08-26, Jordan) — OpenAI-compatible generic adapter (the roster row), Summarizer-first
+
+A live LAN endpoint exists NOW for real validation. Jordan's connection block, verbatim:
+
+- Base URL `http://192.168.1.134:8080/v1` · API key not required (send any placeholder) · model id ignored ("local") · context 131,072 · currently serving a Q5_K_M quant.
+- **Reasoning model**: `max_tokens` 2000+ mandatory — thinking goes to `reasoning_content`, the answer to `content`, both share the budget; too low ⇒ EMPTY content with NO error. The adapter must treat empty-content-without-error as a NAMED failure (fix: raise max_tokens), never as an empty summary.
+- Only `POST /v1/chat/completions` + `GET /v1/models` exist — `/v1/embeddings` 404s ⇒ this adapter is **Summarizer only**; an embedder config pointing at it gets an actionable refusal. `GET /health` 200s only once the model is loaded — poll, never sleep.
+- Tool calling exists but is irrelevant to summarize. Streaming irrelevant (we don't stream).
+
+Shape: `OpenAiCompatSummarizer` (new module) — `base_url` + optional `api_key_env` (placeholder default) + `max_tokens` (default 4000) + your PROMPT_VERSION machinery; structured outputs attempted, your unit-1 fallback path when the server rejects `response_format`; `key()` = served model id from `/v1/models` if stable, else configured instance name @ prompt_version — your call, justify. Config kind: `openai-compat`.
+
+Caveats to carry in docs/services (not code): LAN-only/no-auth — usable only on-network; the box serves ONE model at a time, so a mid-run mode switch silently changes quants (note under gotchas; `key()` can't fully defend this — say so honestly).
+
+Validation: stub tests as usual PLUS a live `#[ignore]`d leg against the LAN endpoint — run it while on-network and report actual output (a real summary of a real element, with the reasoning-budget behaviour observed). Roster row flips on landing.
