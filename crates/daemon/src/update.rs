@@ -168,14 +168,26 @@ impl Updater {
         }
 
         let asset = format!("flowspace3-{target}");
-        let expected = self.expected_digest(latest, &asset).await?;
-        let bytes = self.download(latest, &asset).await?;
+
+        // Checksums FIRST, so a release that cannot be verified costs no
+        // download at all.
+        let expected = match self.expected_digest(latest, &asset).await? {
+            Ok(expected) => expected,
+            Err(reason) => return Ok(Outcome::Blocked { latest, reason }),
+        };
+
+        let Some(bytes) = self.fetch(latest, &asset).await? else {
+            return Ok(Outcome::Blocked {
+                latest,
+                reason: format!("release v{latest} publishes no {asset} for this platform"),
+            });
+        };
 
         let actual = digest(&bytes);
         if actual != expected {
-            // Not an error: a mismatched asset is a fact about the release,
-            // and the user is the one who needs to hear it. Erroring would put
-            // it in a log nobody reads and retry it every interval forever.
+            // Not an error: a mismatched asset is a fact about the release, and
+            // the user is the one who needs to hear it. Erroring would put it in
+            // a log nobody reads and retry it every interval forever.
             return Ok(Outcome::Blocked {
                 latest,
                 reason: format!(
@@ -239,22 +251,40 @@ impl Updater {
         Version::parse(tag).ok_or_else(|| anyhow!("{tag:?} is not a vX.Y.Z release tag"))
     }
 
-    /// The sha256 the release itself publishes for `asset`.
-    async fn expected_digest(&self, version: Version, asset: &str) -> Result<String> {
-        let sums = self.fetch(version, CHECKSUMS_ASSET).await?;
-        let sums = String::from_utf8(sums).context("SHA256SUMS is not text")?;
-        checksum_for(&sums, asset).ok_or_else(|| {
-            anyhow!("v{version}'s {CHECKSUMS_ASSET} has no line for {asset} — refusing to install")
-        })
+    /// The sha256 the release itself publishes for `asset`, or the reason
+    /// there is not one.
+    ///
+    /// A release with no `SHA256SUMS` is NOT an error, and getting that wrong
+    /// matters more than it looks: every release published before this feature
+    /// existed is exactly that release. Reporting it as a failed probe would
+    /// tell every existing installation "the release could not be read,
+    /// retryable" forever, instead of the truth — there is a newer version and
+    /// this updater cannot verify it, so install it yourself.
+    async fn expected_digest(
+        &self,
+        version: Version,
+        asset: &str,
+    ) -> Result<std::result::Result<String, String>> {
+        let Some(sums) = self.fetch(version, CHECKSUMS_ASSET).await? else {
+            return Ok(Err(format!(
+                "release v{version} publishes no {CHECKSUMS_ASSET}, so the download cannot be \
+                 verified — refusing to install it unverified"
+            )));
+        };
+
+        let Ok(sums) = String::from_utf8(sums) else {
+            return Ok(Err(format!(
+                "release v{version}'s {CHECKSUMS_ASSET} is not text"
+            )));
+        };
+
+        Ok(checksum_for(&sums, asset)
+            .ok_or_else(|| format!("v{version}'s {CHECKSUMS_ASSET} has no line for {asset}")))
     }
 
-    async fn download(&self, version: Version, asset: &str) -> Result<Vec<u8>> {
-        self.fetch(version, asset).await
-    }
-
-    /// Fetch one release asset, following the redirects GitHub uses to hand
-    /// off to object storage.
-    async fn fetch(&self, version: Version, asset: &str) -> Result<Vec<u8>> {
+    /// Fetch one release asset, following the redirects GitHub uses to hand off
+    /// to object storage. `None` means the release does not publish it.
+    async fn fetch(&self, version: Version, asset: &str) -> Result<Option<Vec<u8>>> {
         let url = format!("{}/releases/download/v{version}/{asset}", self.base);
         // A fresh client, because the probe's client deliberately refuses to
         // follow redirects and an asset download is nothing BUT redirects.
@@ -267,15 +297,20 @@ impl Updater {
             .await
             .with_context(|| format!("downloading {url}"))?;
 
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(None);
+        }
         if !response.status().is_success() {
             bail!("{url} answered {}", response.status());
         }
 
-        Ok(response
-            .bytes()
-            .await
-            .with_context(|| format!("reading {url}"))?
-            .to_vec())
+        Ok(Some(
+            response
+                .bytes()
+                .await
+                .with_context(|| format!("reading {url}"))?
+                .to_vec(),
+        ))
     }
 }
 
@@ -529,7 +564,10 @@ impl UpdateSupervisor {
 
     /// Point the supervisor at a stub release server and a throwaway binary,
     /// so the e2e can prove the whole loop without the internet.
-    #[must_use]
+    ///
+    /// # Errors
+    /// When the stub's base URL cannot build an HTTP client, or this process
+    /// cannot resolve its own executable path.
     pub fn against(mut self, base: &str, install_path: PathBuf) -> Result<Self> {
         self.updater = Updater::against(base, &self.running)?.at_path(install_path);
         Ok(self)

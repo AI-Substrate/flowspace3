@@ -116,11 +116,19 @@ async fn doctor_reports_ok_when_the_daemon_answers() {
     // `ok` would couple this test to a finding it is not about. What it must
     // prove is that the DAEMON row is satisfied and that nothing else is
     // unhappy.
+    //
+    // `update` is excluded deliberately, not conveniently: unlike every other
+    // row, it reports state this test does not create and cannot control — a
+    // machine with a newer release published, or an install path that cannot be
+    // written, has a legitimate finding there. Including it would make this
+    // test pass or fail on whether somebody had shipped a release that morning
+    // (req-0054, w-auto-update).
     let unhappy: Vec<&str> = data
         .steps
         .iter()
         .filter(|step| step.outcome == "down" || step.outcome == "warn")
         .map(|step| step.check.as_str())
+        .filter(|check| *check != "update")
         .collect();
     assert_eq!(
         unhappy,

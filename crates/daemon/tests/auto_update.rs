@@ -203,10 +203,14 @@ async fn an_asset_that_does_not_match_the_published_checksum_is_refused() {
     );
 }
 
-/// A release with no checksums file at all is refused for the same reason: the
-/// updater has no way to know what it just downloaded.
+/// A release with no checksums file is refused — and refused as NEWS, not as an
+/// error. This is not a hypothetical: every release published before this
+/// feature existed has no `SHA256SUMS`, so an installation looking at one must
+/// be told "there is a newer version and I cannot verify it, install it
+/// yourself" rather than "the release could not be read, retryable" once a day
+/// forever.
 #[tokio::test]
-async fn a_release_with_no_checksums_asset_is_not_installed() {
+async fn a_release_with_no_checksums_asset_is_reported_rather_than_erroring() {
     let assets: Vec<(String, Vec<u8>)> = published(b"the new binary")
         .into_iter()
         .filter(|(name, _)| name != "SHA256SUMS")
@@ -214,13 +218,55 @@ async fn a_release_with_no_checksums_asset_is_not_installed() {
     let base = spawn_release_server("v9.9.9", assets).await;
     let (_directory, installed) = throwaway_binary("update-nosums", b"the old binary");
 
-    let failure = Updater::against(&base, "0.1.0")
+    let outcome = Updater::against(&base, "0.1.0")
         .expect("building the updater")
         .at_path(installed.clone())
         .run_once()
-        .await;
+        .await
+        .expect("an unverifiable release is an outcome, not a failure");
 
-    assert!(failure.is_err(), "a missing SHA256SUMS must stop the pass");
+    match outcome {
+        Outcome::Blocked { latest, reason } => {
+            assert_eq!(latest.to_string(), "9.9.9");
+            assert!(
+                reason.contains("publishes no SHA256SUMS"),
+                "unexpected reason: {reason}"
+            );
+            assert!(reason.contains("refusing to install it unverified"));
+        }
+        other => panic!("expected notify-only, got {other:?}"),
+    }
+    assert_eq!(
+        std::fs::read(&installed).expect("reading back"),
+        b"the old binary"
+    );
+}
+
+/// A release that publishes checksums but no binary for THIS platform is the
+/// same shape of news — the triple exists, the asset does not.
+#[tokio::test]
+async fn a_release_missing_this_platforms_asset_is_reported_rather_than_erroring() {
+    let assets: Vec<(String, Vec<u8>)> = published(b"the new binary")
+        .into_iter()
+        .filter(|(name, _)| !name.starts_with("flowspace3-"))
+        .collect();
+    let base = spawn_release_server("v9.9.9", assets).await;
+    let (_directory, installed) = throwaway_binary("update-noasset", b"the old binary");
+
+    let outcome = Updater::against(&base, "0.1.0")
+        .expect("building the updater")
+        .at_path(installed.clone())
+        .run_once()
+        .await
+        .expect("a missing asset is an outcome, not a failure");
+
+    assert!(
+        matches!(
+            &outcome,
+            Outcome::Blocked { reason, .. } if reason.contains("publishes no flowspace3-")
+        ),
+        "expected the missing asset to be named, got {outcome:?}"
+    );
     assert_eq!(
         std::fs::read(&installed).expect("reading back"),
         b"the old binary"

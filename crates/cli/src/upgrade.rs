@@ -124,25 +124,48 @@ pub async fn upgrade(config: &Config) -> Envelope<UpgradeReport> {
     }
 }
 
-/// Write the outcome into the shared update state, so the daemon's queue agrees
-/// with what just happened.
+/// Write the outcome into the shared update state AND re-declare the update
+/// source's messages from it.
+///
+/// Both halves, not just the first. The daemon's loop does the same two things
+/// in one pass, but `doctor upgrade` is precisely the verb you reach for when
+/// the daemon is DOWN — leaving the queue to be reconciled later would mean a
+/// manual upgrade recorded a blocked install that nothing told the user about
+/// until a daemon came back and its interval came round.
+///
+/// It re-declares rather than pushes, using the same
+/// [`UpdateState::desired_messages`] the loop uses, so the two writers cannot
+/// disagree and a manual upgrade that SUCCEEDS clears the message a previous
+/// failure left behind.
+///
+/// [`UpdateState::desired_messages`]: fs3_core::update::UpdateState::desired_messages
 async fn record(config: &Config, outcome: &Outcome, install_path: &str) -> Result<(), String> {
+    let running = env!("CARGO_PKG_VERSION");
     let pool = fs3_store::connect(&config.database.url)
         .await
         .map_err(|error| error.to_string())?;
 
-    let written = match outcome {
-        Outcome::Current => fs3_store::record_clear(&pool).await,
-        Outcome::Installed(version) => {
-            fs3_store::record_installed(&pool, &version.to_string(), install_path).await
-        }
-        Outcome::Blocked { latest, reason } => {
-            match fs3_store::record_seen(&pool, &latest.to_string()).await {
-                Ok(()) => fs3_store::record_blocked(&pool, reason, install_path).await,
-                Err(error) => Err(error),
+    let written = async {
+        match outcome {
+            Outcome::Current => fs3_store::record_clear(&pool).await?,
+            Outcome::Installed(version) => {
+                fs3_store::record_installed(&pool, &version.to_string(), install_path).await?;
+            }
+            Outcome::Blocked { latest, reason } => {
+                fs3_store::record_seen(&pool, &latest.to_string()).await?;
+                fs3_store::record_blocked(&pool, reason, install_path).await?;
             }
         }
-    };
+
+        let state = fs3_store::update_state(&pool).await?;
+        fs3_store::sync_messages(
+            &pool,
+            fs3_core::UPDATE_SOURCE,
+            &state.desired_messages(running),
+        )
+        .await
+    }
+    .await;
 
     pool.close().await;
     written.map_err(|error| error.to_string())
