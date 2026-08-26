@@ -1,0 +1,23 @@
+docs/plans/prd/base-prd.dd.json
+  s_15d888f4b629c1::t_c33674fc463b1d 23-24,31-32,47-48,64-65,89-90,97-98,106,113-114,130-131,138-139,146-147,154-155,191-192,235-236,244,285-286,310-311,318-319,326-327,367-368,375-376,384,392,399-400,407-408,416,423-424,432
+  s_15d888f4b629c1::t_c95c67374c8e24 440
+docs/plans/prd/base-prd.dd.md
+  s_15d888f4b629c1::t_c33674fc463b1d 23-24,26,28,31-34,36-39,44,50-51,56,59-61,66-73
+  s_15d888f4b629c1::t_224fd43e673139 74-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f5e1de660c5864cee0f2618f87475bb343cd2b69",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
