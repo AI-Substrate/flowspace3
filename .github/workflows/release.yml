@@ -111,16 +111,14 @@ jobs:
           "$BIN" --version
           "$BIN" daemon --help >/dev/null
           "$BIN" doctor --help   >/dev/null
-
-      # Ruling 2026-08-26 (mac tier scope, Jordan binding): the mac tier
-      # proves the BINARY on real hardware — build, smoke, engine-independent
-      # logic tests. NO docker/compose installs and NO live-engine assertions:
-      # mac runners have no engine and no nested virt. crates/cli's
-      # doctor_daemon.rs asserts engine-present semantics (its findings need a
-      # docker binary plus `compose up`), so those tests are skipped on this
-      # tier only; they stay green in the Linux CI gate where an engine exists.
+      # Ruling 2026-08-26 (mac tier scope, Jordan binding): the mac tier proves
+      # the BINARY on real hardware — build, smoke, engine-independent tests.
+      # doctor_daemon.rs asserts engine-present semantics (findings need a
+      # docker binary plus `compose up`), unproducible on macOS runners, so it
+      # is skipped on this tier only; stays green in the Linux CI gate.
+      # NOTE: --skip is a SUBSTRING match, not regex — no caret.
       - name: Fast test tier (${{ matrix.target }})
-        run: cargo test --workspace --exclude fs3-store -- --skip '^doctor_'
+        run: cargo test --workspace --exclude fs3-store -- --skip doctor_
 
       - uses: actions/upload-artifact@v4
         with:
