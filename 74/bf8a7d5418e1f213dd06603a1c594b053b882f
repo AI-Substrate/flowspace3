@@ -1,0 +1,16 @@
+crates/daemon/src/runner.rs
+  h_9e71e8b09f7cf2 67-73,150-154,157,159-163,165-171,176-215,222-227,234-243,278-305
+docs/services/first-light.md
+  h_9e71e8b09f7cf2 168-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "74bf8a7d5418e1f213dd06603a1c594b053b882f",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
