@@ -1,0 +1,34 @@
+.harness/government/canaries/pa-bitter-swan-2026-08-26.md
+  s_15d888f4b629c1::t_fc8c096a59c348 15-22
+  s_15d888f4b629c1::t_e9a19528f8c4da 1-14
+.harness/government/canaries/s001-bitter-gibbon.md
+  s_15d888f4b629c1::t_345c98fe43a4e3 8
+  s_15d888f4b629c1::t_742d18acbfe9f2 1-7,9-12
+.harness/government/orient-local.md
+  s_15d888f4b629c1::t_7fb3b00c605c6f 9,12-21
+  s_15d888f4b629c1::t_10c4f7c9afa40b 22,39-40,44-47,53-54
+.harness/government/briefs/s001-fs3-foundations-brief.md
+  s_15d888f4b629c1::t_375f5b12ace39c 21,25,72
+  s_15d888f4b629c1::t_fa747bcbfe4801 1-20,22-24,26-71,73-77
+.harness/government/briefs/pa-bitter-swan-2026-08-26.md
+  s_15d888f4b629c1::t_52e7404662fbec 94-98
+  s_15d888f4b629c1::t_cec7e7b98fc8df 1-93,99-101
+docs/plans/001-fs3-foundations/assets/reports/s001-preamble-checkpoint.md
+  s_15d888f4b629c1::t_b89cfa87340dce 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "bd9048bf9ff940192822a71a903545a022f75b5a",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
