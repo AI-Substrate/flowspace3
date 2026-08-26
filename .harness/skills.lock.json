@@ -1,0 +1,12 @@
+{
+  "lockfile_version": 1,
+  "installs": [
+    {
+      "scope": "project",
+      "source": "packaged",
+      "targets": [
+        "claude-code"
+      ]
+    }
+  ]
+}

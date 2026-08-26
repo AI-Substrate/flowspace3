@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "skills": {
+    "builder": {
+      "source": "../../../../../var/folders/mv/9mcvlzg504b158ctlswmgwph0000gn/T/harness-skills-KNa2Cl",
+      "sourceType": "local",
+      "computedHash": "9574d597ce8615a27cd06faf2927201f2ebf5d68e92d99239387e81bd2c060f2"
+    },
+    "eng-harness-0-harnessability-assessment": {
+      "source": "../../../../../var/folders/mv/9mcvlzg504b158ctlswmgwph0000gn/T/harness-skills-KNa2Cl",
+      "sourceType": "local",
+      "computedHash": "ef0bec44e4cd3186675db668dd294b7b50d890000b297d92f6f1c48f47ad5c6d"
+    },
+    "eng-harness-flow": {
+      "source": "../../../../../var/folders/mv/9mcvlzg504b158ctlswmgwph0000gn/T/harness-skills-KNa2Cl",
+      "sourceType": "local",
+      "computedHash": "a33bcf5f3d640820646128879a26eec85db8d35d883b89041f4d4d8a381927ea"
+    },
+    "eng-harness-in-a-box": {
+      "source": "../../../../../var/folders/mv/9mcvlzg504b158ctlswmgwph0000gn/T/harness-skills-KNa2Cl",
+      "sourceType": "local",
+      "computedHash": "3eb0d8c56a2fbfd1aa6191a5b1147638c380b7581c7c8bda1f33213a95724564"
+    },
+    "grill-agent-done": {
+      "source": "../../../../../var/folders/mv/9mcvlzg504b158ctlswmgwph0000gn/T/harness-skills-KNa2Cl",
+      "sourceType": "local",
+      "computedHash": "51626128155c77ddac5a55d50053912a4a94a6cf29b4e552d78f832904864fa5"
+    },
+    "plan-0-v2-constitution": {
+      "source": "../../../../../var/folders/mv/9mcvlzg504b158ctlswmgwph0000gn/T/harness-skills-KNa2Cl",
+      "sourceType": "local",
+      "computedHash": "5c1b6ece0fe5ed5cff9251be5f5ce19cf85c18b7ad44e68252260ea227b5a785"
+    },
+    "plan-v2-extract-domain": {
+      "source": "../../../../../var/folders/mv/9mcvlzg504b158ctlswmgwph0000gn/T/harness-skills-KNa2Cl",
+      "sourceType": "local",
+      "computedHash": "47a57a814875640aa2ab00dd10601dbf823c13ce4e8dd652a06d903265f52c24"
+    },
+    "the-flow": {
+      "source": "../../../../../var/folders/mv/9mcvlzg504b158ctlswmgwph0000gn/T/harness-skills-KNa2Cl",
+      "sourceType": "local",
+      "computedHash": "779577e0edc49b1f25281f977fd28a5ce6b6b6725d60568ec826e5664fc7fcff"
+    },
+    "validate-v2": {
+      "source": "../../../../../var/folders/mv/9mcvlzg504b158ctlswmgwph0000gn/T/harness-skills-KNa2Cl",
+      "sourceType": "local",
+      "computedHash": "2d2242fbbc0e480a9ffb15ca384d37f24462b928000fc1f2c35f0325b63819e7"
+    }
+  }
+}
