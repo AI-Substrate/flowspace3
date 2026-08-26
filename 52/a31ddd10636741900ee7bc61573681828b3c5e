@@ -1,0 +1,16 @@
+docs/plans/004-ship-it/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 25,38-39,62,71,87,96-97,105-106,114-115,122,130
+docs/plans/004-ship-it/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 38-39,42-43,53,57-59,63-65,69-71,77,83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "52a31ddd10636741900ee7bc61573681828b3c5e",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
