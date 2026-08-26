@@ -1,0 +1,26 @@
+docs/plans/prd/base-prd.dd.md
+  s_15d888f4b629c1::t_cf7746aab40a80 81
+  s_15d888f4b629c1::t_c102e17409981c 76,80
+.harness/government/briefs/w-auto-update.md
+  s_15d888f4b629c1::t_a1a28d3a9ee2da 1-70,83-101
+  s_15d888f4b629c1::t_82c57c7067ac7d 71-82
+docs/plans/prd/base-prd.dd.json
+  s_15d888f4b629c1::t_cf7746aab40a80 481-488
+  s_15d888f4b629c1::t_c102e17409981c 9-10,22,38,46,57,63,73,82,90,106,112,147,152-153,161,177,183,190,192,206,213,220,227,234,244,250,253,259,261,269,284,286,292,300,303,309,325,341,350,358,366,374,432,445-446,448,454,473-480,493
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7520225e623167a5956f555ac10f4ddd637d557e",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
