@@ -1,0 +1,1 @@
+Prose with no grammar still indexes as a file element.

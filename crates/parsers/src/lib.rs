@@ -13,6 +13,9 @@
 //! `unknown`. A missing grammar is an observable outcome (PRD req 43), never an
 //! error and never a silent skip.
 
+/// Which files fs3 scans at all — the ignore-aware walk (PRD reqs 41, 43).
+pub mod discovery;
+
 mod markdown;
 mod source;
 

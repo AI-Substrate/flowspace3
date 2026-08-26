@@ -48,9 +48,16 @@ banned_everywhere = [
 internal = []
 external = ["async-trait", "serde", "sha2", "thiserror", "toml"]
 
+# `ignore` is ripgrep's walker, and it is the ONE piece of IO this crate does
+# (`discovery::discover`). It is here rather than in core because core performs
+# no IO at all (rule 2), and it is a dependency rather than hand-rolled code
+# because gitignore semantics — nested ignore files, negations, parent rules,
+# force-include precedence — are a decade of edge cases fs3 has no reason to
+# re-derive (PRD req 41).
 [crates.fs3-parsers]
 internal = ["fs3-core"]
 external = [
+  "ignore",
   "thiserror",
   "tree-sitter",
   "tree-sitter-md",

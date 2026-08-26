@@ -1,0 +1,2 @@
+# A nested ignore file: vendored python is noise, vendored rust is not.
+*.py

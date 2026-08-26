@@ -1,0 +1,9 @@
+// A stand-in for a generated bundle: big enough to trip a low ceiling.
+pub const TABLE: [u8; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
+pub const TABLE: [u8; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
+pub const TABLE: [u8; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
+pub const TABLE: [u8; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
+pub const TABLE: [u8; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
+pub const TABLE: [u8; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
+pub const TABLE: [u8; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
+pub const TABLE: [u8; 8] = [0, 1, 2, 3, 4, 5, 6, 7];

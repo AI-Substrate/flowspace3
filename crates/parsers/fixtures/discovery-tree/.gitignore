@@ -1,0 +1,4 @@
+# The tree under test brings its own rules — that is the point.
+build-output/
+*.log
+secret-notes.md

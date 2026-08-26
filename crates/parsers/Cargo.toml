@@ -11,6 +11,9 @@ description = "tree-sitter grammars turned into fs3 core elements."
 # extraction code (PRD req 21).
 [dependencies]
 fs3-core.workspace = true
+# `discovery` walks a real directory (the one IO in this crate, behind
+# `discover(&Path, …)`); everything else here stays pure bytes-in/tree-out.
+ignore.workspace = true
 thiserror.workspace = true
 tree-sitter.workspace = true
 tree-sitter-md.workspace = true
