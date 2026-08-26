@@ -1,0 +1,22 @@
+crates/daemon/src/roots.rs
+  h_9e71e8b09f7cf2 62-68,88-107,219,275-293
+crates/daemon/tests/first_light.rs
+  h_9e71e8b09f7cf2 121-128,320-349
+crates/parsers/src/discovery.rs
+  h_9e71e8b09f7cf2 51,55,348-388,395-399,447-461,471-484,487-488,496-502,626-627,632,644-648,678-680,690,693-704
+crates/parsers/tests/discovery_standard_ignores.rs
+  h_9e71e8b09f7cf2 342-422
+docs/services/discovery.md
+  h_9e71e8b09f7cf2 42,65-68,134-146,149-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "84b7db89643841d499bc42565d3ec1896cbd7320",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
