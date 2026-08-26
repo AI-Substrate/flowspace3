@@ -40,7 +40,7 @@ jobs:
       # runner; release-only, so the slower build is acceptable.
       - name: Set up QEMU
         if: startsWith(matrix.target, 'aarch64')
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Build (${{ matrix.target }})
         env:
