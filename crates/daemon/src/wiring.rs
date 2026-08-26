@@ -181,6 +181,28 @@ impl AppState {
             .provider(self.config.selected(port, None))
             .map_or("unknown", ProviderInstance::kind)
     }
+
+    /// The live user messages every envelope carries (PRD req 59).
+    ///
+    /// Best-effort by design: a store that cannot answer this must not turn a
+    /// working command into a failing one, and the failure the user actually
+    /// needs to see in that situation is the one their own verb produces. So a
+    /// broken read logs and yields nothing rather than propagating.
+    ///
+    /// Read fresh per response rather than cached. It is one partial-index
+    /// scan of a table that holds single-digit rows, against a pool the
+    /// handler is already using — measurably nothing next to the query or the
+    /// embedding call beside it — and a cache would buy staleness plus an
+    /// invalidation rule for no gain.
+    pub async fn messages(&self) -> Vec<fs3_core::messages::UserMessage> {
+        match fs3_store::live_messages(&self.db).await {
+            Ok(messages) => messages,
+            Err(error) => {
+                tracing::debug!(%error, "could not read the user messages queue");
+                Vec::new()
+            }
+        }
+    }
 }
 
 fn build_store(database: &DatabaseConfig) -> Result<PgPool> {
