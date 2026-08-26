@@ -1,7 +1,34 @@
 # flowspace3 — agent guide
 
-A Rust workspace. The crate does not exist yet; the engineering harness was
-stood up first, so the proof surface is ready before there is code to prove.
+A Rust workspace building **flowspace3**: semantic code search you run locally
+(daemon + CLI, Postgres/pgvector, agent-first JSON envelopes).
+
+## Dogfood the product — this is NOT optional
+
+If you are an agent working in this codebase, you **MUST use flowspace3 itself**
+while you work. We build a tool for agents; an agent that greps its way around
+this repo without ever running the product is skipping the most valuable test
+we have.
+
+- **Search with it first.** For any meaning-shaped question ("where is retry
+  handled", "what owns the watcher debounce"), run `flowspace3 search "<question>"`
+  before reaching for grep. Exact-identifier lookups may still use grep — that
+  is the tool's own guidance.
+- **Orient with it.** `flowspace3 agents-start-here` and `flowspace3 docs list`
+  are the front door; use them the way a fresh outside agent would.
+- **Exercise the loop.** Add/status/doctor as your work touches them. If the
+  daemon is running, your edits are being indexed live — check that what you
+  just wrote is findable.
+- **Report EVERY problem to the current prime.** Anything confusing, wrong,
+  slow, or silently surprising — a bad `next_action`, a search that missed
+  obvious code, a doctor row that lied, an envelope that made you guess —
+  gets TWO actions, immediately, not at session end:
+  1. `harness observe "<what happened>" --kind difficulty|confusion` (the durable record), and
+  2. a short pij message to the current o-prime seat (see
+     `.harness/government/worker-roster.md` for who that is) so it can be
+     acted on while you are still in context.
+  A friction you route around silently is a bug you shipped to every future
+  user. Day-one feedback from agents IS the product's test suite.
 
 ## Engineering harness
 
