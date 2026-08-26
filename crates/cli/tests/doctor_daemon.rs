@@ -279,3 +279,31 @@ fn an_informational_row_reports_without_degrading_the_verdict() {
         );
     }
 }
+
+/// req-0053: the skills row walks LAST (after providers) and reports
+/// informationally — a stale or missing skill never degrades the verdict.
+#[tokio::test]
+async fn doctor_walks_the_skills_row_last_and_informationally() {
+    let report = doctor::run(&config_for(NOTHING_LISTENING)).await;
+    assert!(report.ok, "doctor failed: {:?}", report.error);
+    let data = report.data.expect("doctor reports its steps");
+
+    let row = data
+        .steps
+        .iter()
+        .find(|step| step.check == "skills")
+        .expect("doctor must walk the skills row");
+    assert_eq!(
+        row.outcome, "info",
+        "the skills row reports; it never degrades"
+    );
+    assert!(
+        !row.degrades(),
+        "a stale or missing skill must not make the stack read degraded"
+    );
+    assert_eq!(
+        data.steps.last().map(|step| step.check.as_str()),
+        Some("skills"),
+        "the skills row walks last, after providers"
+    );
+}

@@ -69,3 +69,7 @@ along in `meta`, so a failed run still tells you how far it got.
 `flowspace3 doctor install-skill` installs or updates the bundled agent skill
 into `~/.agents/skills` and `~/.claude/skills`, explicitly: the walk never
 installs, and nothing writes those files silently or by force.
+
+The walk's last row (`skills`) reports where installed copies stand — current,
+stale, or missing — naming the install command when they do not. It is an
+`info` row: it asks without degrading the verdict, and doctor never installs.

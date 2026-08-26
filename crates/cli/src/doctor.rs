@@ -315,6 +315,10 @@ async fn walk(config: &Config, steps: &mut Vec<Step>) -> Result<(), Failure> {
     // daemon needs in order to start at all.
     steps.push(check_daemon(daemon_url).await);
     steps.push(check_providers(config));
+    // req-0053: the skills row walks last, after providers — informational,
+    // never degrading, and the one row reporting state doctor will never
+    // itself change.
+    steps.push(check_skills());
     Ok(())
 }
 
@@ -656,6 +660,71 @@ fn check_providers(config: &Config) -> Step {
     Step::ok("providers", described.join(", "), started)
 }
 
+/// The spec-verbatim asks of the skills row (req-0053).
+const SKILL_MISSING_STEER: &str =
+    "Did you know you can install the agent skill? Run: `flowspace3 doctor install-skill`";
+
+const SKILL_STALE_STEER: &str = "Your skill is out of date; run the same command.";
+
+/// Shape the skills row from audit states.
+///
+/// Pure: states in, row out — the spec-verbatim strings live here and only
+/// here, where tests can reach them. Mixed states take the stronger ask: a
+/// missing copy is the bigger gap, and its ask names the command outright.
+fn skills_row(states: &[crate::skill::RootState], started: Instant) -> Step {
+    let (missing, stale) = states
+        .iter()
+        .fold((0usize, 0usize), |(missing, stale), state| match state {
+            crate::skill::RootState::Missing => (missing + 1, stale),
+            crate::skill::RootState::Stale => (missing, stale + 1),
+            crate::skill::RootState::Current => (missing, stale),
+        });
+    let asks = match (missing, stale) {
+        (0, 0) => None,
+        (_, 0) => Some(SKILL_MISSING_STEER),
+        (0, _) => Some(SKILL_STALE_STEER),
+        (_, _) => Some(SKILL_MISSING_STEER),
+    };
+    let found = match (missing, stale) {
+        (0, 0) => "the agent skill is installed and current in both skills roots".to_string(),
+        (missing, 0) => format!("the agent skill is missing from {missing} of 2 skills roots"),
+        (0, stale) => format!("the installed agent skill is out of date in {stale} of 2 skills roots"),
+        (missing, stale) => format!(
+            "the agent skill is missing from {missing} and out of date in {stale} of 2 skills roots"
+        ),
+    };
+    let step = Step::info(
+        "skills",
+        found,
+        asks.map_or_else(|| "nothing to do".to_string(), ToOwned::to_owned),
+        started,
+    );
+    match asks {
+        Some(steer) => step.with_steer(steer),
+        None => step,
+    }
+}
+
+/// The skill-distribution row: informational, walked last, never degrading.
+///
+/// Doctor never installs (req-0053). This reports where installed copies of
+/// the bundled skill stand under the skills roots and names the explicit
+/// command when they do not. `$HOME` resolution is the only impure step; the
+/// shaping is `skills_row`, pure and tested.
+fn check_skills() -> Step {
+    let started = Instant::now();
+    match std::env::var_os("HOME") {
+        Some(home) => skills_row(&crate::skill::audit(std::path::Path::new(&home)), started),
+        None => Step::info(
+            "skills",
+            "no skills roots locatable: HOME is not set",
+            SKILL_MISSING_STEER,
+            started,
+        )
+        .with_steer(SKILL_MISSING_STEER),
+    }
+}
+
 /// The engine to drive.
 fn engine() -> String {
     std::env::var(ENGINE_ENV)
@@ -717,6 +786,59 @@ mod tests {
         assert!(
             fine.action.is_none(),
             "nothing was done, so nothing is claimed"
+        );
+    }
+
+    /// req-0053: the skills row's asks are spec-verbatim; mixed states take the
+    /// stronger ask. Pure: fabricated states in, row out.
+    #[test]
+    fn the_skills_row_shapes_its_states_verbatim() {
+        let started = Instant::now();
+
+        let clean = skills_row(
+            &[
+                crate::skill::RootState::Current,
+                crate::skill::RootState::Current,
+            ],
+            started,
+        );
+        assert_eq!(clean.outcome, "info");
+        assert!(
+            clean.steer.is_none(),
+            "nothing to ask, nothing to steer"
+        );
+
+        let missing = skills_row(
+            &[
+                crate::skill::RootState::Missing,
+                crate::skill::RootState::Missing,
+            ],
+            started,
+        );
+        assert_eq!(missing.action.as_deref(), Some(SKILL_MISSING_STEER));
+        assert_eq!(missing.steer.as_deref(), Some(SKILL_MISSING_STEER));
+
+        let stale = skills_row(
+            &[
+                crate::skill::RootState::Stale,
+                crate::skill::RootState::Stale,
+            ],
+            started,
+        );
+        assert_eq!(stale.action.as_deref(), Some(SKILL_STALE_STEER));
+        assert_eq!(stale.steer.as_deref(), Some(SKILL_STALE_STEER));
+
+        let mixed = skills_row(
+            &[
+                crate::skill::RootState::Missing,
+                crate::skill::RootState::Stale,
+            ],
+            started,
+        );
+        assert_eq!(
+            mixed.action.as_deref(),
+            Some(SKILL_MISSING_STEER),
+            "mixed states take the stronger ask"
         );
     }
 }

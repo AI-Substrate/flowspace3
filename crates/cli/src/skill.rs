@@ -63,6 +63,38 @@ pub struct InstallReport {
     pub targets: Vec<TargetOutcome>,
 }
 
+/// The state of one skills root, as read without writing (req-0053's doctor row).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RootState {
+    /// Present and matching the bundled hash.
+    Current,
+    /// Present under another hash.
+    Stale,
+    /// Absent.
+    Missing,
+}
+
+/// Read-only audit of the skills roots beneath a home directory.
+///
+/// Pure: explicit paths, no env, no writes — doctor's row reports from this
+/// without ever installing, and tests run it against temp dirs. Fixed order:
+/// one state per root, in `SKILL_ROOTS` order.
+pub fn audit(home: &Path) -> Vec<RootState> {
+    let hash = sha256_hex(SKILL.as_bytes());
+    SKILL_ROOTS
+        .map(|root| audit_root(&home.join(root), &hash))
+        .to_vec()
+}
+
+fn audit_root(root: &Path, bundled_hash: &str) -> RootState {
+    match fs::read(root.join(SKILL_DIR).join(SKILL_FILE)) {
+        Ok(existing) if sha256_hex(&existing) == bundled_hash => RootState::Current,
+        Ok(_) => RootState::Stale,
+        Err(_) => RootState::Missing,
+    }
+}
+
 /// Install or update the bundled skill into every skills root.
 ///
 /// Fails (anyhow, exit-1) when `$HOME` cannot be located or a write fails — the
@@ -167,5 +199,40 @@ mod tests {
         assert_eq!(fourth.state, TargetState::Current);
 
         fs::remove_dir_all(&root).unwrap();
+    }
+
+    /// req-0053: the audit reads what install would write — and writes nothing.
+    #[test]
+    fn audit_reports_the_roots_without_touching_them() {
+        let home = temp_root("audit");
+
+        assert_eq!(
+            audit(&home),
+            vec![RootState::Missing, RootState::Missing],
+            "an untouched home has no installed copies"
+        );
+
+        for root in SKILL_ROOTS {
+            let dir = home.join(root).join(SKILL_DIR);
+            fs::create_dir_all(&dir).unwrap();
+            fs::write(dir.join(SKILL_FILE), SKILL).unwrap();
+        }
+        assert_eq!(
+            audit(&home),
+            vec![RootState::Current, RootState::Current],
+            "the bundled bytes are current by definition"
+        );
+
+        fs::write(
+            home.join(SKILL_ROOTS[0]).join(SKILL_DIR).join(SKILL_FILE),
+            "not the bundled bytes",
+        )
+        .unwrap();
+        assert_eq!(
+            audit(&home),
+            vec![RootState::Stale, RootState::Current]
+        );
+
+        fs::remove_dir_all(&home).unwrap();
     }
 }
