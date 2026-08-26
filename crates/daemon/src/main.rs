@@ -1,6 +1,7 @@
 //! `fs3-daemon` — the fs3 background service.
 //!
-//! Reads configuration, wires the composition root, serves HTTP on localhost.
+//! Reads configuration, wires the composition root, migrates the store, serves
+//! HTTP on localhost.
 
 use anyhow::{Context, Result, ensure};
 use fs3_daemon::{AppState, config, http, wiring};
@@ -27,6 +28,20 @@ async fn main() -> Result<()> {
     );
 
     let state = AppState::from_config(configuration).context("wiring the composition root")?;
+
+    // The daemon is the single writer, so startup is the only migration point.
+    // It is also the only moment where refusing to run is cheaper than running:
+    // a writer that cannot reach its own schema has nothing useful to serve, so
+    // this fails loud rather than starting into a guaranteed error per request.
+    fs3_store::migrate(&state.db).await.with_context(|| {
+        format!(
+            "applying store migrations to {} — if the store is not running: {}",
+            state.config.database.url,
+            fs3_store::COMPOSE_UP
+        )
+    })?;
+    tracing::info!(database = %state.config.database.url, "store schema is current");
+
     http::serve(state, &address).await
 }
 

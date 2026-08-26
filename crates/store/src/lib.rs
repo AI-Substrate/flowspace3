@@ -74,12 +74,19 @@ pub async fn connect(url: &str) -> Result<PgPool, StoreError> {
 
 /// Build a pool without touching the network.
 ///
-/// The daemon uses this so that starting up, and answering `GET /health`, does
-/// not require the database to be reachable yet — connections are established
-/// on first use.
+/// The daemon uses this so that wiring, and answering `GET /health`, do not
+/// require the database to be reachable — connections are established on first
+/// use.
+///
+/// The acquire timeout matches [`connect`] deliberately: the two constructors
+/// must not disagree about how long "unreachable" takes. Without it the first
+/// use of an absent store waits sqlx's thirty-second default before saying so,
+/// which is the silence [`CONNECT_TIMEOUT`] exists to refuse — and the daemon's
+/// boot migration is exactly such a first use.
 pub fn connect_lazy(url: &str) -> Result<PgPool, StoreError> {
     PgPoolOptions::new()
         .max_connections(8)
+        .acquire_timeout(CONNECT_TIMEOUT)
         .connect_lazy(url)
         .map_err(|source| StoreError::Unreachable {
             url: url.to_string(),

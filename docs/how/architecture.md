@@ -101,9 +101,13 @@ There is no container framework, no registry, no service locator. When you want
 one, add an arm.
 
 `AppState` holds the two ports, a lazily-built `PgPool`, and the `Config` they
-were wired from. The pool is lazy on purpose: the daemon starts and answers
-`GET /health` without Postgres being up, so `flowspace3 ping` can distinguish
-"daemon down" from "database down".
+were wired from. The pool is lazy so that wiring never blocks on a connection —
+but boot is not blind: the daemon applies the store's migrations once at
+startup and exits nonzero, naming `database.url` and `docker compose up -d`, if
+that fails. It is the single writer, so it proves its schema before serving.
+After boot the laziness is what matters: `GET /health` keeps answering through a
+database outage, so `flowspace3 ping` still distinguishes "daemon down" from
+"database down" at runtime.
 
 ### Configuration
 

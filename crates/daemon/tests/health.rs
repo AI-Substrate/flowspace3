@@ -2,8 +2,8 @@
 //!
 //! Boots the real router over a real socket with `provider = "fake"` — the
 //! offline configuration a fresh machine gets — and asks it the question the
-//! CLI asks. No database is required, which is the point of wiring the pool
-//! lazily.
+//! CLI asks. The router needs no database, which is the point of wiring the
+//! pool lazily.
 
 use fs3_core::Config;
 use fs3_daemon::{AppState, http};
@@ -42,11 +42,15 @@ async fn health_returns_200_and_status_ok_under_the_fake_provider() {
     assert_eq!(body["version"], env!("CARGO_PKG_VERSION"));
 }
 
-/// The daemon must start and report health with no database reachable — the
-/// pool is lazy on purpose, so `flowspace3 ping` can tell "daemon down" from
-/// "Postgres down" instead of conflating them.
+/// The router must keep reporting health with no database reachable — the pool
+/// is lazy on purpose, so a database outage does not take the HTTP surface with
+/// it and `flowspace3 ping` can tell "daemon down" from "Postgres down".
+///
+/// This is the *runtime* property. Boot is stricter: `main` migrates the store
+/// once and exits nonzero if it cannot, because the daemon is the single writer
+/// (see `docs/how/database.md`).
 #[tokio::test]
-async fn the_daemon_serves_health_without_a_reachable_database() {
+async fn the_router_serves_health_without_a_reachable_database() {
     let config = Config::from_toml_str(
         r#"
         [database]
