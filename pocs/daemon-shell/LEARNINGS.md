@@ -52,13 +52,16 @@ Consequences for the real daemon, in order of importance:
 | recursion | native, one stream per root | **emulated**: one watch descriptor per directory | native, one call per root |
 | new-subdir race | none observed | **loses per-file events** (§1) | not tested — same native-recursion shape as macOS *(inference)* |
 | cost of a root | one stream | O(directories) kernel watches, against `fs.inotify.max_user_watches` | one handle |
-| verified here | full suite, plus hand-driven 10s-debounce session | full suite in `rust:1-bookworm` | compiles (`cargo check --lib --bins --target x86_64-pc-windows-msvc`); **not run** |
+| verified here | full suite, plus hand-driven 10s-debounce session | full suite in `rust:1-bookworm` | compiles, `--all-targets` (`cargo check --target x86_64-pc-windows-msvc`); **not run** |
 
-Windows honesty: this host has no Windows to run on, and the test binary could
-not even be compiled for it — a dev-dependency chain (`reqwest → url → idna →
-icu_*`) needs rustc ≥ 1.88 while the only rustup toolchain here is 1.85. The
-library and binary compile clean for `x86_64-pc-windows-msvc`. Anything about
-Windows *behaviour* in this document is inference and is marked as such.
+Windows honesty: this host has no Windows to run on. Everything — library,
+binary and the whole test suite — compiles clean for `x86_64-pc-windows-msvc`,
+so the code is portable in the sense a compiler can prove and in no other
+sense. Anything about Windows *behaviour* in this document is inference and is
+marked as such. Running the suite on Windows is the obvious next experiment,
+and §1 is the reason it matters: `ReadDirectoryChangesW` is natively recursive
+like FSEvents, so the prediction is "no new-subdir race" — a prediction, not a
+result.
 
 ### Event counts are not edit counts
 
@@ -296,15 +299,15 @@ on unix. The rules that got us there:
 ## Appendix — how it was proved
 
 ```
-macOS (host)     cargo test              25 passed  (16 core + 9 → 10 e2e)
-                 cargo-clippy --all-targets -- -D warnings    clean
-                 cargo-fmt --all -- --check                   clean
+macOS (host)     cargo test              26 passed  (16 core + 10 e2e)
+                 cargo clippy --all-targets -- -D warnings    clean
+                 cargo fmt --all -- --check                   clean
                  hand-driven session, release binary, --debounce-ms 10000,
                  transcripts quoted throughout §3 and §4
 Linux (docker)   rust:1-bookworm, aarch64, inotify
-                 cargo test              25 passed
-Windows          cargo check --lib --bins --target x86_64-pc-windows-msvc  clean
-                 (tests not compiled: dev-dep MSRV 1.88 > available rustup 1.85)
+                 cargo test              26 passed
+Windows          cargo check --all-targets --target x86_64-pc-windows-msvc  clean
+                 (lib, binary AND tests compile; nothing was RUN — no Windows host)
 workspace        cargo run -p fs3-testkit --bin fs3-arch-check
                  → "ok - 8 crates, 63 direct edges, 0 violations"
                  (8 because a sibling added crates/git; this prototype is NOT a
@@ -313,6 +316,7 @@ workspace        cargo run -p fs3-testkit --bin fs3-arch-check
 
 Two pieces of environment friction were recorded as harness observations rather
 than worked around silently: `DL-006` (plain `cargo clippy`/`cargo fmt` resolve
-to rustup shims for a toolchain without those components) and `DL-007`
-(cross-compiling with a second toolchain into the same `target/` corrupts host
-artifacts and produces nonsense errors in your own source).
+to rustup shims for a toolchain without those components — since fixed at the
+repo root by a `rust-toolchain.toml` pinning `stable` with both components) and
+`DL-007` (cross-compiling with a second toolchain into the same `target/`
+corrupts host artifacts and produces nonsense errors in your own source).

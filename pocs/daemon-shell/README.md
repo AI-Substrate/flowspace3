@@ -66,14 +66,15 @@ OS and the core.
 ## Proving it
 
 ```bash
-cargo test                                    # 25 tests, ~5s
-/opt/homebrew/bin/cargo-clippy --all-targets -- -D warnings
-/opt/homebrew/bin/cargo-fmt --all -- --check
+cargo test                                    # 26 tests, ~5s
+cargo clippy --all-targets -- -D warnings
+cargo fmt --all -- --check
 ```
 
-> On this machine plain `cargo clippy` / `cargo fmt` resolve to rustup shims in
-> `~/.cargo/bin` for a toolchain that has neither component installed. Call the
-> Homebrew binaries directly. (Recorded as harness observations DL-006/DL-007.)
+> These need the repo-root `rust-toolchain.toml` pin (`stable`, with `rustfmt`
+> and `clippy`). Without it, `cargo` resolves subcommands from `$CARGO_HOME/bin`
+> first and lands on rustup shims for a toolchain that has neither component —
+> the failure recorded as harness observation `DL-006`.
 
 Cross-platform, as actually run:
 
@@ -82,7 +83,9 @@ Cross-platform, as actually run:
 docker run --rm -v "$PWD:/src:ro" -w /work rust:1-bookworm \
   bash -c 'cp -r /src/. /work/ && rm -rf /work/target && cargo test'
 
-# Windows — compile only, and in its OWN target dir so host artifacts survive
-RUSTUP_TOOLCHAIN=1.85.0 CARGO_TARGET_DIR="$PWD/target/cross" \
-  ~/.cargo/bin/cargo check --lib --bins --target x86_64-pc-windows-msvc
+# Windows — compile only (nothing runs), and in its OWN target dir: a second
+# toolchain sharing target/ silently corrupts host proc-macro artifacts (DL-007).
+rustup target add x86_64-pc-windows-msvc
+CARGO_TARGET_DIR="$PWD/target/cross" \
+  cargo check --all-targets --target x86_64-pc-windows-msvc
 ```
