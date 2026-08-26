@@ -1,0 +1,28 @@
+crates/daemon/src/enrich.rs
+  h_9e71e8b09f7cf2 94,96-106,109-112,210-219,223-230,407-460
+crates/daemon/src/main.rs
+  h_9e71e8b09f7cf2 76-93
+crates/daemon/src/scan.rs
+  h_9e71e8b09f7cf2 88-111
+crates/daemon/tests/first_light.rs
+  h_9e71e8b09f7cf2 831-1006,1008-1053,1055-1062,1065-1151,1154-1158
+crates/store/src/jobs.rs
+  h_9e71e8b09f7cf2 204-243
+crates/store/src/lib.rs
+  h_9e71e8b09f7cf2 43
+crates/store/tests/pg_first_light.rs
+  h_9e71e8b09f7cf2 397-453
+docs/services/store-schema.md
+  h_9e71e8b09f7cf2 150-166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9ce9fae971d563dd76cae28e0e68c64ff9c76f3b",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
