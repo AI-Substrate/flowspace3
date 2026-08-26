@@ -1,0 +1,19 @@
+.harness/government/reviews/2026-08-26-oprime-review-first-light.md
+  s_15d888f4b629c1::t_f09e4544a91fec 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "09337923090d0b6e0f2d9cd58e430cdaf8ef011a",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
