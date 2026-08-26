@@ -1,0 +1,21 @@
+docs/plans/002-docker-daemon-base/assets/poc/docker/Dockerfile.build
+  s_15d888f4b629c1::t_7af94791227938 5-15,17-31
+docs/plans/002-docker-daemon-base/assets/poc/docker/build.sh
+  s_15d888f4b629c1::t_1b026ace194c60 2-9,18-22,31,35-45,55-57,59,67-71,73-75,81,84-86,90,92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "66bdefb18fbcde6442eb06429eec9c63d73e7ebd",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
