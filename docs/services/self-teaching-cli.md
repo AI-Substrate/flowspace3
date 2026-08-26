@@ -83,6 +83,23 @@ printable beats meeting it as a boot failure), and when a real provider's key
 variable is unset (which otherwise fails at the first call, deep inside a job,
 hours into an index).
 
+### The outcome vocabulary
+
+`ok` · `repaired` · `info` · `warn` · `down`. Closed, and each word is a
+promise about what the reader should do. `warn` and `down` degrade the verdict;
+`ok`, `repaired` and `info` do not.
+
+`info` exists because a purely informational row had no honest outcome: `warn`
+was the only way to surface a finding, and a healthy stack reading as
+`degraded` because something optional is not installed is its own kind of
+misleading. Added for req-0053's skill-distribution row.
+
+`next_action` is carried by the ROW (`Step::with_steer`) rather than computed
+from a chain of check names, so a new row supplies its own steer and is picked
+up without editing the steering logic — and the steer cannot drift from the
+finding that produced it. The first row that asks something and carries a steer
+wins, in walk order, which is dependency order.
+
 `warn` degrades the verdict but never fails the command: a fake-only stack
 works, and doctor does not know whether that was chosen. Choosing a model and
 supplying credentials is a decision, and a diagnostic command must not make it

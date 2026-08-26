@@ -241,3 +241,41 @@ async fn doctor_warns_when_an_active_names_no_configured_instance() {
         row.found
     );
 }
+
+/// `info` is the outcome a purely informational row uses: reported for
+/// awareness, nothing wrong, verdict untouched. Added for req-0053's
+/// skill-distribution row (pij-excellent-dingo) so it does not have to reach
+/// for `warn` and make a healthy stack read as degraded.
+#[test]
+fn an_informational_row_reports_without_degrading_the_verdict() {
+    let started = std::time::Instant::now();
+    let note = doctor::Step::info("skills", "0 skills installed", "run `x`", started);
+
+    assert_eq!(note.outcome, "info");
+    assert!(
+        !note.degrades(),
+        "an informational row must not claim the stack is unhealthy"
+    );
+    assert!(
+        note.asks_something(),
+        "but it IS something the reader may act on, so it can steer"
+    );
+
+    for degrading in [
+        doctor::Step::warn("x", "f", "a", started),
+        doctor::Step::down("x", "f", started),
+    ] {
+        assert!(degrading.degrades(), "{} must degrade", degrading.outcome);
+    }
+    for settled in [
+        doctor::Step::ok("x", "f", started),
+        doctor::Step::repaired("x", "f", "a", started),
+    ] {
+        assert!(!settled.degrades());
+        assert!(
+            !settled.asks_something(),
+            "{} asks nothing of the reader, so it must never steer",
+            settled.outcome
+        );
+    }
+}

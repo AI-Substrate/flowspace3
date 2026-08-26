@@ -59,28 +59,57 @@ const DAEMON_PROBE_TIMEOUT: Duration = Duration::from_secs(2);
 /// One step of the walk.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Step {
-    /// `engine`, `stack`, `database`, `schema`.
+    /// `engine`, `stack`, `database`, `schema`, `daemon`, `providers`, …
     pub check: String,
-    /// `ok` when it was already fine, `repaired` when doctor fixed it, `failed`
-    /// when it could not.
+    /// What the reader should DO about this row. The vocabulary is closed, and
+    /// each word is a promise:
+    ///
+    /// | outcome | meaning | degrades the verdict? |
+    /// |---|---|---|
+    /// | `ok` | already fine | no |
+    /// | `repaired` | was broken; doctor fixed it | no |
+    /// | `info` | reported for awareness; nothing is wrong | **no** |
+    /// | `warn` | working, but not as it should be; decide something | yes |
+    /// | `down` | not running; start something | yes |
+    ///
+    /// `info` exists so a row can be *reported* without claiming the stack is
+    /// unhealthy. Without it the only way to surface a finding was `warn`,
+    /// which degrades — and a purely informational row degrading the whole
+    /// verdict is louder than it means to be, which is its own kind of
+    /// misleading.
     pub outcome: String,
     /// What doctor found.
     pub found: String,
-    /// What doctor did about it — absent when there was nothing to do.
+    /// What doctor did about it, or what you should do — absent when there was
+    /// nothing to do.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub action: Option<String>,
+    /// This row's contribution to the envelope's `next_action`, when it is the
+    /// most important unmet thing.
+    ///
+    /// Carried by the ROW rather than computed from a chain of check names, so
+    /// a new row supplies its own steer without editing the steering logic —
+    /// and so the steer can never drift from the finding that produced it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub steer: Option<String>,
     /// How long the step took.
     pub elapsed_ms: u128,
 }
 
 impl Step {
+    // The constructors are public because `Step` is a public struct with
+    // public fields — anyone can build one with a literal, so a private
+    // constructor bought nothing and only made another module reach for the
+    // literal and miss a field default.
+
     /// Already fine.
-    fn ok(check: &str, found: impl Into<String>, started: Instant) -> Self {
+    pub fn ok(check: &str, found: impl Into<String>, started: Instant) -> Self {
         Step {
             check: check.to_string(),
             outcome: "ok".to_string(),
             found: found.into(),
             action: None,
+            steer: None,
             elapsed_ms: started.elapsed().as_millis(),
         }
     }
@@ -90,7 +119,7 @@ impl Step {
     /// Distinct from `down` because the subject is not absent, it is
     /// misconfigured or running on a stand-in, and the reader's next move is
     /// different: `down` means start something, `warn` means decide something.
-    fn warn(
+    pub fn warn(
         check: &str,
         found: impl Into<String>,
         action: impl Into<String>,
@@ -101,23 +130,71 @@ impl Step {
             outcome: "warn".to_string(),
             found: found.into(),
             action: Some(action.into()),
+            steer: None,
             elapsed_ms: started.elapsed().as_millis(),
         }
     }
 
+    /// Reported for awareness. Nothing is wrong and the verdict is untouched.
+    ///
+    /// For rows that inform rather than diagnose — a thing the reader may want
+    /// to act on, where not having acted is not a fault. Use `warn` when
+    /// something is genuinely not as it should be.
+    pub fn info(
+        check: &str,
+        found: impl Into<String>,
+        action: impl Into<String>,
+        started: Instant,
+    ) -> Self {
+        Step {
+            check: check.to_string(),
+            outcome: "info".to_string(),
+            found: found.into(),
+            action: Some(action.into()),
+            steer: None,
+            elapsed_ms: started.elapsed().as_millis(),
+        }
+    }
+
+    /// Attach this row's contribution to the envelope's `next_action`.
+    #[must_use]
+    pub fn with_steer(mut self, steer: impl Into<String>) -> Self {
+        self.steer = Some(steer.into());
+        self
+    }
+
+    /// Whether this row asks anything of the reader.
+    ///
+    /// `ok` and `repaired` do not: one was already fine and the other doctor
+    /// handled. Everything else is a row the reader may need to act on, which
+    /// is what makes it eligible to steer.
+    #[must_use]
+    pub fn asks_something(&self) -> bool {
+        !matches!(self.outcome.as_str(), "ok" | "repaired")
+    }
+
+    /// Whether this row means the stack is not fully up.
+    ///
+    /// `info` deliberately does not: it reports, it does not diagnose.
+    #[must_use]
+    pub fn degrades(&self) -> bool {
+        matches!(self.outcome.as_str(), "warn" | "down")
+    }
+
     /// Found not running, and deliberately not started.
-    fn down(check: &str, found: impl Into<String>, started: Instant) -> Self {
+    pub fn down(check: &str, found: impl Into<String>, started: Instant) -> Self {
         Step {
             check: check.to_string(),
             outcome: "down".to_string(),
             found: found.into(),
             action: Some("not started — run `flowspace3 daemon &`".to_string()),
+            steer: None,
             elapsed_ms: started.elapsed().as_millis(),
         }
     }
 
     /// Found broken, and fixed.
-    fn repaired(
+    pub fn repaired(
         check: &str,
         found: impl Into<String>,
         action: impl Into<String>,
@@ -128,6 +205,7 @@ impl Step {
             outcome: "repaired".to_string(),
             found: found.into(),
             action: Some(action.into()),
+            steer: None,
             elapsed_ms: started.elapsed().as_millis(),
         }
     }
@@ -177,9 +255,7 @@ pub async fn run(config: &Config) -> Envelope<DoctorReport> {
             // offline fake is working, and is almost never what the operator
             // believes they configured. Reporting a plain "ok" there is the
             // same class of silence as reporting ok with no daemon.
-            let degraded = steps
-                .iter()
-                .any(|step| step.outcome == "down" || step.outcome == "warn");
+            let degraded = steps.iter().any(Step::degrades);
             let verdict = if degraded {
                 DoctorReport::DEGRADED
             } else {
@@ -248,25 +324,22 @@ async fn walk(config: &Config, steps: &mut Vec<Step>) -> Result<(), Failure> {
 /// to start the daemon first, because that is the step that blocks the other
 /// from being observable.
 fn next_action(steps: &[Step]) -> String {
-    let unmet = |check: &str| {
-        steps
-            .iter()
-            .find(|step| step.check == check)
-            .is_some_and(|step| step.outcome == "down" || step.outcome == "warn")
-    };
-
-    if unmet("daemon") {
-        "the store is ready but the daemon is not running — start it with `flowspace3 daemon &`, \
-         then `flowspace3 add <path>`"
-            .to_string()
-    } else if unmet("providers") {
-        "everything is up, but indexing would use the offline fake — `flowspace3 docs get \
-         providers` explains how to register a real one, or carry on if offline is what you \
-         wanted"
-            .to_string()
-    } else {
-        "everything is up — `flowspace3 add <path>` to index, then `flowspace3 search`".to_string()
-    }
+    // The FIRST row that asks something and carries a steer wins, in walk
+    // order — which is dependency order, so a reader with no daemon AND no real
+    // provider is told to start the daemon first, because that is the step
+    // blocking the other from being observable.
+    //
+    // Data-driven rather than a chain of check names: a new row supplies its
+    // own steer and is picked up here without touching this function, and its
+    // steer cannot drift from the finding that produced it.
+    steps
+        .iter()
+        .filter(|step| step.asks_something())
+        .find_map(|step| step.steer.clone())
+        .unwrap_or_else(|| {
+            "everything is up — `flowspace3 add <path>` to index, then `flowspace3 search`"
+                .to_string()
+        })
 }
 
 /// Step 0: is there an engine at all?
@@ -484,6 +557,10 @@ async fn check_daemon(daemon_url: &str) -> Step {
             "daemon",
             format!("nothing is listening on {daemon_url}"),
             started,
+        )
+        .with_steer(
+            "the store is ready but the daemon is not running — start it with `flowspace3 \
+             daemon &`, then `flowspace3 add <path>`",
         ),
     }
 }
@@ -543,6 +620,10 @@ fn check_providers(config: &Config) -> Step {
             "run `flowspace3 docs get providers` — it covers the registry, both Azure auth \
              modes, and setting actives",
             started,
+        )
+        .with_steer(
+            "a provider selection is unusable — `flowspace3 docs get providers` explains the \
+             registry and how to set the actives",
         );
     }
 
@@ -554,6 +635,11 @@ fn check_providers(config: &Config) -> Step {
             "if that is deliberate, nothing to do. Otherwise run `flowspace3 docs get \
              providers` to register one",
             started,
+        )
+        .with_steer(
+            "everything is up, but indexing would use the offline fake — `flowspace3 docs get \
+             providers` explains how to register a real one, or carry on if offline is what you \
+             wanted",
         );
     }
 

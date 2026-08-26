@@ -20,6 +20,19 @@ flowspace3 doctor
 Every row reports `found` (what it saw) and, when it acted, `action` (what it
 did). A row that only says "ok" would be a row you cannot verify.
 
+## The outcome words
+
+| outcome | meaning | degrades the verdict? |
+|---|---|---|
+| `ok` | already fine | no |
+| `repaired` | was broken; doctor fixed it | no |
+| `info` | reported for awareness; nothing is wrong | no |
+| `warn` | working, but not as it should be — decide something | yes |
+| `down` | not running — start something | yes |
+
+The vocabulary is closed, and each word is a promise about what you should do.
+`info` exists so a row can be reported without claiming the stack is unhealthy.
+
 ## Two fields, two questions
 
 - `data.healthy` — is the STORE usable?
