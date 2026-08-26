@@ -15,3 +15,6 @@
 | Concurrency combinator | wraps any | wanted | `Batched`/`Throttled`/`Retry` over `Arc<dyn>`; the parallel-execution layer, written once for all adapters |
 
 Adoption order beyond Azure is unset — Jordan names the next pick. Update this table when an adapter lands or a decision changes it.
+
+## Deployment policy (Jordan, 2026-08-26)
+Machine-wide default = **Azure** (summarizer azure chat deployment, embedder text-embedding-3-small@1024). Per-repo registry overrides route PRIVATE repos fully on-network: local ONNX embeddings (bge-small@384) + the LAN openai-compat LLM. Mixed dims are safe by construction (per-dim tables, model_key-scoped rows); a repo queries with the same embedder it indexed with via the per-repo lookup, and switching an override re-enriches via the reconciler (new key = missing rows), old rows kept for rollback.
