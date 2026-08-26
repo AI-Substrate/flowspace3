@@ -8,7 +8,10 @@ files=$(git diff --name-only "$range"...HEAD 2>/dev/null | grep '\.rs$')
 fail=0
 for f in $files; do
   [ -f "$f" ] || continue
-  rustfmt --edition 2024 --check "$f" >/dev/null 2>&1 || { echo "fmt: $f needs cargo fmt"; fail=1; }
+  # skip_children: rustfmt recurses into mod children by default, so a pushed
+  # lib.rs would be rejected for a SIBLING's unformatted in-flight file — the
+  # exact cross-seat block this hook exists to avoid (sailfish, 2026-08-26).
+  rustfmt --edition 2024 --config skip_children=true --check "$f" >/dev/null 2>&1 || { echo "fmt: $f needs cargo fmt"; fail=1; }
 done
 [ "$fail" = 1 ] && echo "pre-push: run cargo fmt on the files above, amend, re-push" && exit 1
 exit 0
