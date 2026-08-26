@@ -71,6 +71,11 @@ on each Release, a curl installer, Dependabot.
   publishes** until GitHub's latest-pointer propagates — an installer run in
   the same minute as the release can fail spuriously. Retry before believing
   it; the tagged URL (`/releases/download/<tag>/<asset>`) works immediately.
+- **Cycling a tag flips the published release back to DRAFT** (different bug
+  from the propagation delay above, and it looks identical from the outside:
+  a 404). After ANY tag cycle, verify before calling it shipped:
+  `gh release view <tag> --json isDraft,assets`; re-publish with
+  `gh release edit <tag> --draft=false --latest`.
 
 ## Release runbook — NO TAG CYCLE WITHOUT PREFLIGHT GREEN
 
@@ -92,10 +97,15 @@ It replicates, verbatim and mapped 1:1 onto the release job names:
 | C2 | mac fast tier, **runner simulation** (docker masked out of PATH, db pointed at a dead port) | v2–v4 docker-absence, v6 skip-filter (`--skip` is substring, not regex), v7 live-Postgres integration tests |
 | D | linux x86_64 via the plan-002 build container + smoke | container-leg breakage; wrong-loader mistakes |
 
-Only when it prints **GREEN** do you cycle the tag:
+Only when it prints **GREEN** do you cycle the tag — and always re-check the
+release state afterwards, because a cycle re-drafts the release:
 
 ```bash
 git push origin :refs/tags/vX.Y.Z && git tag -f vX.Y.Z <sha> && git push origin vX.Y.Z
+
+# after the release run attaches assets:
+gh release view vX.Y.Z --json isDraft,assets -q '{draft: .isDraft, assets: [.assets[].name]}'
+gh release edit vX.Y.Z --draft=false --latest    # if draft came back true
 ```
 
 Single-watcher rule (shared gh auth): ONE `gh run watch -i 60` per run,
