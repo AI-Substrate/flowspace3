@@ -2,4 +2,30 @@
 # are reproducible; the same image later serves the CI cross-platform matrix.
 # Runtime base for the daemon container matches this Debian release so the
 # produced glibc-linked binary runs there unmodified.
+#
+# Cross-platform matrix (see assets/poc/cross-platform-strategy.md):
+#   - aarch64-unknown-linux-{gnu,musl}  when run on linux/arm64 (native gnu;
+#     musl via musl-tools' host-arch musl-gcc)
+#   - x86_64-unknown-linux-{gnu,musl}   when run on linux/amd64 (--platform
+#     linux/amd64; OrbStack runs it via Rosetta — same Dockerfile, no cross
+#     linker needed)
+#   - x86_64-pc-windows-gnu             cross from either platform via
+#     mingw-w64 (pure-FOSS toolchain, no Microsoft SDK EULA surface)
+# Rust std for every target is pre-installed in the image so builds never
+# redownload toolchain bits at dev-loop time.
 FROM rust:1.85.0-slim-bookworm
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends musl-tools mingw-w64 file \
+ && rm -rf /var/lib/apt/lists/* \
+ && rustup target add \
+      aarch64-unknown-linux-musl \
+      x86_64-unknown-linux-gnu \
+      x86_64-unknown-linux-musl \
+      x86_64-pc-windows-gnu
+
+# musl targets need the explicit static-capable linker; gnu/windows resolve
+# through cargo's default cc probing of the installed cross toolchains.
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-musl-gcc \
+    CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=x86_64-linux-musl-gcc \
+    CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc
