@@ -1,0 +1,20 @@
+crates/parsers/fixtures/discovery-bare/node_modules/pkg/dist/inner.js
+  h_9e71e8b09f7cf2 1-2
+crates/parsers/tests/discovery_standard_ignores.rs
+  h_9e71e8b09f7cf2 136,233-253,267-292
+docs/services/discovery.md
+  h_9e71e8b09f7cf2 159-162,164-192
+docs/services/watcher.md
+  h_9e71e8b09f7cf2 95-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "515155ebe51923433e636074c524805ed234988d",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
