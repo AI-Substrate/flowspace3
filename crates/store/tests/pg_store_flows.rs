@@ -11,6 +11,7 @@
 
 mod support;
 
+use std::collections::BTreeMap;
 use std::time::Duration;
 
 use fs3_core::{Element, ElementKind, Embedder, Span, Summarizer, Summary, content_hash};
@@ -151,12 +152,19 @@ async fn one_body_in_two_blobs_is_one_smart_row_and_one_piece_of_work() {
             .is_empty(),
         "a stored summary is what makes an element clean — there is no flag to set"
     );
+    assert!(
+        !summary.extras.is_empty(),
+        "this assertion is only worth making while the fake returns a field \
+         outside the typed contract — it is what proves extras are persisted"
+    );
     assert_eq!(
         get_smart_content(&pool, beta.children[0].raw_hash(), SUMMARIZER)
             .await
             .expect("read"),
         Some(summary),
-        "beta never had its own summary written, and does not need one"
+        "beta never had its own summary written, and does not need one — and the \
+         summary must come back WHOLE, extras included, or the store is dropping \
+         the fields the type promises to keep"
     );
     assert_eq!(
         count(&pool, "SELECT count(*) FROM smart_content").await,
@@ -204,6 +212,87 @@ async fn the_schema_refuses_a_summary_with_too_many_tags() {
         database_error.constraint(),
         Some("smart_content_tag_band"),
         "the tag band must be the constraint that bit: {error}"
+    );
+
+    database.destroy(pool).await;
+}
+
+/// A provider field outside the typed contract survives PERSISTENCE, not just
+/// deserialisation.
+///
+/// `Summary::extras` exists so that a JSON member the type has never heard of
+/// is captured rather than dropped. A store with nowhere to put it moved the
+/// drop one layer down — from the wire to the database — where nothing
+/// complains and the type's own doc comment is quietly untrue. Found by
+/// pij-broad-sawfish integrating plan 003.
+#[tokio::test]
+async fn a_provider_field_outside_the_typed_contract_survives_the_store() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    // The shapes a real provider actually returns: a number, a string, a bool,
+    // a nested object, an array — and a null, which must survive as a stored
+    // null rather than becoming an absent key.
+    let rich = Summary {
+        text: "summarises a parser".into(),
+        tags: vec!["parser".into()],
+        extras: BTreeMap::from([
+            ("complexity".to_string(), serde_json::json!(7)),
+            ("risk".to_string(), serde_json::json!("low")),
+            ("deprecated".to_string(), serde_json::json!(false)),
+            ("cost".to_string(), serde_json::json!({ "tokens": 812 })),
+            ("callers".to_string(), serde_json::json!(["a", "b"])),
+            ("owner".to_string(), serde_json::Value::Null),
+        ]),
+    };
+    let raw_hash = content_hash(b"fn parse() {}");
+
+    put_smart_content(&pool, &raw_hash, SUMMARIZER, &rich)
+        .await
+        .expect("write");
+    assert_eq!(
+        get_smart_content(&pool, &raw_hash, SUMMARIZER)
+            .await
+            .expect("read"),
+        Some(rich.clone()),
+        "every extra must come back exactly as it went in"
+    );
+
+    // Re-summarising overwrites extras rather than merging them: a field the
+    // new prompt stopped returning must not linger as a ghost of the old one.
+    let leaner = Summary {
+        text: rich.text.clone(),
+        tags: rich.tags.clone(),
+        extras: BTreeMap::from([("complexity".to_string(), serde_json::json!(2))]),
+    };
+    put_smart_content(&pool, &raw_hash, SUMMARIZER, &leaner)
+        .await
+        .expect("rewrite");
+    assert_eq!(
+        get_smart_content(&pool, &raw_hash, SUMMARIZER)
+            .await
+            .expect("read"),
+        Some(leaner),
+        "the upsert must replace extras, not accumulate them"
+    );
+
+    // The fork, asserted rather than left implicit: `text_hash` addresses the
+    // TEXT. Extras are not folded into it, so adding a provider field does not
+    // re-key the summary — and therefore does not orphan the vector that
+    // resolves through it, or buy a re-embed for a change to something that
+    // was never embedded.
+    let hashes: Vec<String> = sqlx::query_scalar(
+        "SELECT text_hash FROM smart_content WHERE raw_hash = $1 OR raw_hash = $2",
+    )
+    .bind(&raw_hash)
+    .bind(content_hash(b"a different body"))
+    .fetch_all(&pool)
+    .await
+    .expect("read the digests");
+    assert_eq!(
+        hashes,
+        vec![content_hash(rich.text.as_bytes())],
+        "text_hash is sha256 of the summary text and nothing else"
     );
 
     database.destroy(pool).await;
@@ -559,7 +648,13 @@ async fn similarity_ranks_nearest_first_and_resolves_back_to_elements() {
         hits[0].element.address, third.address,
         "a summary vector must resolve to the element it describes"
     );
-    assert_eq!(hits[0].smart, Some(summary), "and carry the summary itself");
+    assert_eq!(
+        hits[0].smart,
+        Some(summary),
+        "and carry the summary itself — WHOLE. The search path builds its own \
+         Summary from a joined row, so it is the second place extras can be \
+         dropped, and the one where nobody would notice"
+    );
     assert_eq!(hits[0].parser_version, PARSER_VERSION);
 
     database.destroy(pool).await;

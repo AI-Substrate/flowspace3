@@ -10,8 +10,11 @@
 //! what [`missing_enrichment`] asks for — and why the reconciler in decision D6
 //! is self-healing across crashes, model changes and policy changes alike.
 
+use std::collections::BTreeMap;
+
 use fs3_core::{Summary, content_hash};
 use sqlx::Row;
+use sqlx::types::Json;
 
 use crate::{PgPool, StoreError};
 
@@ -23,6 +26,16 @@ use crate::{PgPool, StoreError};
 /// [`crate::query_embeddings`] follows to get from a summary vector back to the
 /// element the summary is about.
 ///
+/// [`Summary::extras`] is stored whole, in JSONB. The type's promise is that a
+/// provider field outside the typed contract is captured rather than dropped,
+/// and a store with nowhere to put it would have made that promise false one
+/// layer further down — silently, which is the worst way for it to be false.
+///
+/// Extras are NOT folded into `text_hash`: that digest addresses the embedded
+/// TEXT, so mixing extras into it would re-key every existing summary vector
+/// the first time a provider added a field, and buy a full re-embed for a
+/// change that altered nothing that was embedded.
+///
 /// # Errors
 /// [`StoreError::Query`], including the `smart_content_tag_band` check when the
 /// summary carries no tags or more than five (PRD req 36).
@@ -33,18 +46,22 @@ pub async fn put_smart_content(
     summary: &Summary,
 ) -> Result<(), StoreError> {
     sqlx::query(
-        "INSERT INTO smart_content (raw_hash, model_key, text, text_hash, tags)
-         VALUES ($1, $2, $3, $4, $5)
+        "INSERT INTO smart_content (raw_hash, model_key, text, text_hash, tags, extras)
+         VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (raw_hash, model_key) DO UPDATE SET
            text      = EXCLUDED.text,
            text_hash = EXCLUDED.text_hash,
-           tags      = EXCLUDED.tags",
+           tags      = EXCLUDED.tags,
+           extras    = EXCLUDED.extras",
     )
     .bind(raw_hash)
     .bind(model_key)
     .bind(&summary.text)
     .bind(content_hash(summary.text.as_bytes()))
     .bind(&summary.tags)
+    // `Json` borrows and serialises in place — building a `serde_json::Value`
+    // first would allocate a second copy of the map to throw away.
+    .bind(Json(&summary.extras))
     .execute(pool)
     .await?;
     Ok(())
@@ -59,21 +76,28 @@ pub async fn get_smart_content(
     raw_hash: &str,
     model_key: &str,
 ) -> Result<Option<Summary>, StoreError> {
-    let row =
-        sqlx::query("SELECT text, tags FROM smart_content WHERE raw_hash = $1 AND model_key = $2")
-            .bind(raw_hash)
-            .bind(model_key)
-            .fetch_optional(pool)
-            .await?;
+    let row = sqlx::query(
+        "SELECT text, tags, extras FROM smart_content WHERE raw_hash = $1 AND model_key = $2",
+    )
+    .bind(raw_hash)
+    .bind(model_key)
+    .fetch_optional(pool)
+    .await?;
 
-    row.map(|row| {
-        Ok(Summary {
-            text: row.try_get("text")?,
-            tags: row.try_get("tags")?,
-            ..Summary::default()
-        })
+    row.map(|row| summary_from_row(&row)).transpose()
+}
+
+/// Rebuild a summary from a row that carries `text`, `tags` and `extras`.
+///
+/// Shared with the search path so a summary reached through a vector and one
+/// fetched by key cannot disagree about what a summary is.
+pub(crate) fn summary_from_row(row: &sqlx::postgres::PgRow) -> Result<Summary, StoreError> {
+    let Json(extras) = row.try_get::<Json<BTreeMap<String, serde_json::Value>>, _>("extras")?;
+    Ok(Summary {
+        text: row.try_get("text")?,
+        tags: row.try_get("tags")?,
+        extras,
     })
-    .transpose()
 }
 
 /// One piece of work the reconciler found missing.

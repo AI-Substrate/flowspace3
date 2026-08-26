@@ -175,12 +175,12 @@ pub async fn query_embeddings(
               LIMIT $3
          )
          SELECT n.source_kind, n.distance,
-                s.text AS smart_text, s.tags AS smart_tags,
+                s.text, s.tags, s.extras,
                 e.blob_sha, e.parser_version, e.kind, e.subkind, e.name,
                 e.address, e.span_start, e.span_end, e.sibling_order, e.raw_text
            FROM nearest n
            LEFT JOIN LATERAL (
-                SELECT sc.raw_hash, sc.text, sc.tags
+                SELECT sc.raw_hash, sc.text, sc.tags, sc.extras
                   FROM smart_content sc
                  WHERE n.source_kind = 'smart' AND sc.text_hash = n.source_hash
                  ORDER BY sc.created_at, sc.model_key
@@ -314,13 +314,13 @@ pub async fn search_elements(
               LIMIT $3
          )
          SELECT n.source_kind, n.distance,
-                s.text AS smart_text, s.tags AS smart_tags,
+                s.text, s.tags, s.extras,
                 e.blob_sha, e.parser_version, e.kind, e.subkind, e.name,
                 e.address, e.span_start, e.span_end, e.sibling_order, e.raw_text,
                 live.identity, live.path
            FROM nearest n
            LEFT JOIN LATERAL (
-                SELECT sc.raw_hash, sc.text, sc.tags
+                SELECT sc.raw_hash, sc.text, sc.tags, sc.extras
                   FROM smart_content sc
                  WHERE n.source_kind = 'smart' AND sc.text_hash = n.source_hash
                  ORDER BY sc.created_at, sc.model_key
@@ -384,13 +384,14 @@ fn similar_from_row(row: &sqlx::postgres::PgRow) -> Result<SimilarElement, Store
     )
     .with_sibling_order(row.try_get::<i32, _>("sibling_order")? as u32);
 
-    let smart_text: Option<String> = row.try_get("smart_text")?;
-    let smart = match smart_text {
-        Some(text) => Some(fs3_core::Summary {
-            text,
-            tags: row.try_get("smart_tags")?,
-            ..fs3_core::Summary::default()
-        }),
+    // Decoded by the same function `get_smart_content` uses. Two decoders is
+    // how `extras` came to be dropped on one path and kept on the other, and
+    // the next field would have gone the same way.
+    //
+    // Borrowed rather than owned: this only asks whether the LEFT JOIN matched,
+    // and allocating the text to answer that would throw it away immediately.
+    let smart = match row.try_get::<Option<&str>, _>("text")? {
+        Some(_) => Some(crate::smart::summary_from_row(row)?),
         None => None,
     };
 

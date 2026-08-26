@@ -1,0 +1,33 @@
+-- Migration 0006 - keep the fields the summary type promises to keep.
+--
+-- `fs3_core::Summary` grew `extras` in kazimir's c971902: a `#[serde(flatten)]`
+-- map whose stated purpose is that any JSON member a provider returns which is
+-- not `text` or `tags` lands there INSTEAD OF BEING DROPPED. `smart_content`
+-- had no column for it, so the field was dropped one layer later than before -
+-- persistence, silently, with nothing to complain. A type that advertises
+-- "nothing is discarded" and a store that discards it is worse than never
+-- having made the promise.
+--
+-- JSONB rather than a typed column, because that is what extras IS: the
+-- staging area for fields that have not earned a column yet. A field that
+-- appears here consistently is the candidate for promotion tomorrow - and a
+-- field nobody stored cannot be promoted, because there is no data to migrate.
+--
+-- The default makes this free for every existing row and needs no rewrite:
+-- Postgres 11+ stores a non-volatile column default as table metadata rather
+-- than writing it into every tuple.
+ALTER TABLE smart_content
+    ADD COLUMN extras JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+-- DELIBERATELY NOT part of `text_hash`, and this is the fork worth naming.
+--
+-- `text_hash` is sha-256 of the summary TEXT and nothing else. It is what a
+-- smart embedding's `source_hash` resolves through, so folding extras into it
+-- would re-key every existing summary vector the first time a provider added a
+-- field - a whole re-embed paid for a change that did not alter one word of
+-- what was embedded. Decision D2 exists to stop exactly that kind of churn.
+--
+-- The consequence, stated rather than left implicit: two summaries with
+-- identical text and different extras share a `text_hash`. That is correct for
+-- the thing the hash is for (it addresses the embedded text) and is why the
+-- column is `text_hash` rather than the ambiguous "the digest of this summary".

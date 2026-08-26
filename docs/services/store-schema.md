@@ -16,7 +16,7 @@ REF LAYER (cheap pointers, per checkout)
 CONTENT LAYER (shared by every branch and repo that holds the bytes)
   elements  (blob_sha, parser_version, address, span_start)  ──┘
       │ raw_hash = sha256(raw_text)          the dirtiness key
-      ├──> smart_content (raw_hash, model_key) → text, text_hash, tags
+      ├──> smart_content (raw_hash, model_key) → text, text_hash, tags, extras
       │                                            │
       └──> embeddings_1024 (source_hash, source_kind, model_key) → vector(1024)
              source_kind='raw'   → source_hash = elements.raw_hash
@@ -53,6 +53,16 @@ parse and one summary.
   nothing recorded that digest, so a nearest-neighbour hit on a summary had no
   path back to its element. It is computed in Rust by `fs3_core::content_hash`,
   not by a Postgres expression: one hash function in the system, not two.
+- **`Summary::extras` is persisted, in JSONB, and is NOT part of `text_hash`.**
+  The type's promise is that a provider field outside `text`/`tags` is captured
+  rather than dropped; a store with nowhere to put it moved the drop one layer
+  down, from the wire to the database, where nothing complains. `text_hash`
+  stays sha-256 of the summary TEXT alone: it is what a smart vector resolves
+  through, so folding extras in would re-key every existing vector the first
+  time a provider added a field — a full re-embed bought for a change to
+  something that was never embedded. The consequence, stated rather than
+  implied: two summaries with identical text and different extras share a
+  `text_hash`, which is correct for what the digest addresses.
 - **One table per vector width** (workshop D3). HNSW needs a typed dimension; an
   untyped `vector` column cannot be indexed, which would make every search a
   sequential scan. A 1536-wide model arrives as `embeddings_1536` in a new
@@ -219,12 +229,23 @@ interpolated identifier.
 - **`raw_hash` is stored but never read back.** `Element::new` re-derives it from
   `raw_text`, which is what makes "the hash changed" mean "the text changed";
   trusting the stored copy would let a wrong row pass itself off as right.
+- **A field added to a `fs3_core` type does not persist itself.** `Summary`
+  grew `extras` with `#[serde(flatten)]`, so it deserialised correctly and
+  compiled everywhere — and the store, having no column, dropped it on write
+  with nothing to complain. The type's guarantee ("never dropped") had become
+  false at exactly the layer that decides what survives a restart. Adding a
+  field to a stored type is a migration, and the tell is a round-trip test that
+  compares the WHOLE value rather than the fields you were thinking about.
+- **Two decoders for one type is how a field goes missing on one path.**
+  `get_smart_content` and the search join both build a `Summary`; they now share
+  `summary_from_row`, because the version that did not is precisely how `extras`
+  could have been fixed on the key path and stayed broken on the search path.
 
 ## Verify
 
 ```bash
 docker compose up -d                     # pgvector/pgvector:pg16 on 127.0.0.1:5433
-cargo test -p fs3-store                  # 24 tests: unit, migrations, round-trip, flows
+cargo test -p fs3-store                  # 46 tests: unit, admin, migrations, round-trip, flows
 harness checks                           # fmt, clippy, arch (sqlx + pgvector stay in fs3-store)
 ```
 
@@ -236,14 +257,12 @@ docker exec flowspace3-db psql -U flowspace3 -tAc \
   "SELECT datname FROM pg_database WHERE datname LIKE 'fs3_migrations_%'"   # expect empty
 ```
 
-As of `2dd5a25`: `cargo test -p fs3-store` 24 passed / 0 failed, `cargo fmt -p
-fs3-store --check` clean, clippy `-D warnings` clean for `fs3-store`,
-`fs3-arch-check` ok (8 crates, 63 direct edges, 0 violations), no leaked
-databases. Workspace-wide `harness checks` could not be run green at that commit
-for reasons outside this crate: `crates/cli/src/show.rs` was mid-cutover against
-a renamed `fs3_core` config type, and `cargo clippy` was resolving a rustup shim
-reporting rustc 1.85 while the toolchain is 1.95 — both were other workers'
-in-flight changes, both reported to o-prime.
+As of `0006`'s landing: `cargo test -p fs3-store` 46 passed / 0 failed, `cargo
+fmt -p fs3-store --check` clean, clippy `-D warnings` clean for `fs3-store`,
+`fs3-arch-check` ok (8 crates, 70 direct edges, 0 violations), no leaked
+databases. Workspace-wide `harness checks` was red at that moment for one
+reason outside this crate — `cargo fmt --all --check` against
+`crates/providers/examples/embed_files.rs`, another worker's in-flight file.
 
 ## What is deliberately not here
 
