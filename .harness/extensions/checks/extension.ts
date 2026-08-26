@@ -1,5 +1,5 @@
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { defineExtension } from '@ai-substrate/engineering-harness/contract';
 
 /** The quality gate: every command an agent must see green before calling work done. */
@@ -13,14 +13,90 @@ const GATES: { name: string; cmd: string; args: string[] }[] = [
   { name: 'arch', cmd: 'cargo', args: ['run', '--quiet', '-p', 'fs3-testkit', '--bin', 'fs3-arch-check'] },
 ];
 
+/** Where prose lives. Every markdown link in these files has to resolve. */
+const DOCS_ROOT = 'docs/how';
+
+/**
+ * Signposts that must stay real (bp-0008 / ac-0008). The pair is asserted
+ * explicitly rather than left to the generic link sweep, because the failure
+ * mode is deletion: with the guide gone there is no link left to be broken.
+ */
+const REQUIRED_SIGNPOSTS: { file: string; links: string }[] = [
+  { file: 'README.md', links: 'docs/how/architecture.md' },
+];
+
+/** `](target)`, with an optional title. */
+const MARKDOWN_LINK = /\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+
+/** Fenced blocks are samples, not links — a broken path in an example is fine. */
+const FENCED_BLOCK = /```[\s\S]*?```/g;
+
+function markdownFiles(cwd: string): string[] {
+  // Signpost sources first; they live at the root, so they never collide with
+  // the DOCS_ROOT sweep below.
+  const files = REQUIRED_SIGNPOSTS.map((signpost) => signpost.file);
+  const root = join(cwd, DOCS_ROOT);
+  if (existsSync(root)) {
+    for (const entry of readdirSync(root)) {
+      if (entry.endsWith('.md')) files.push(join(DOCS_ROOT, entry));
+    }
+  }
+  return files;
+}
+
+/**
+ * The docs-link gate bp-0008 asks for.
+ *
+ * The cargo gates have no opinion about prose: deleting docs/how/architecture.md
+ * or breaking the README's link to it left `harness checks` green, so the
+ * signpost every agent is told to read first was unprotected. This makes the
+ * documentation a checked artifact rather than an aspiration.
+ */
+function docsGate(cwd: string): { ok: boolean; checked: number; problems: string[] } {
+  const problems: string[] = [];
+  let checked = 0;
+
+  for (const { file, links } of REQUIRED_SIGNPOSTS) {
+    const from = join(cwd, file);
+    if (!existsSync(from)) {
+      problems.push(`${file} is missing`);
+      continue;
+    }
+    if (!existsSync(join(cwd, links))) {
+      problems.push(`${links} is missing — ${file} signposts it`);
+    }
+    if (!readFileSync(from, 'utf8').includes(links)) {
+      problems.push(`${file} no longer links ${links}`);
+    }
+  }
+
+  for (const file of markdownFiles(cwd)) {
+    const absolute = join(cwd, file);
+    if (!existsSync(absolute)) continue;
+    const prose = readFileSync(absolute, 'utf8').replace(FENCED_BLOCK, '');
+    for (const match of prose.matchAll(MARKDOWN_LINK)) {
+      const target = match[1];
+      if (/^(?:[a-z][a-z0-9+.-]*:|#|\/\/)/i.test(target)) continue;
+      const [path] = target.split('#');
+      if (!path) continue;
+      checked += 1;
+      if (!existsSync(resolve(dirname(absolute), path))) {
+        problems.push(`${file} links ${target}, which does not exist`);
+      }
+    }
+  }
+
+  return { ok: problems.length === 0, checked, problems };
+}
+
 const tail = (s: string, n = 20) => s.trimEnd().split('\n').slice(-n).join('\n');
 
 export default defineExtension({
   name: 'checks',
-  summary: 'The mandated quality gate — cargo fmt, clippy, and tests.',
+  summary: 'The mandated quality gate — docs links, cargo fmt, clippy, tests, and architecture drift.',
   verbs: {
     checks: {
-      summary: 'Run the quality gate (cargo fmt --check, clippy -D warnings, cargo test).',
+      summary: 'Run the quality gate (docs links, cargo fmt --check, clippy -D warnings, cargo test, arch drift).',
       async run(ctx) {
         if (!existsSync(join(ctx.cwd, 'Cargo.toml'))) {
           return ctx.degraded(
@@ -30,6 +106,23 @@ export default defineExtension({
         }
 
         const results: { gate: string; command: string; ok: boolean; code: number }[] = [];
+
+        // First, because it is instant and needs no compiler.
+        const docs = docsGate(ctx.cwd);
+        results.push({
+          gate: 'docs',
+          command: `docs-link: README.md + ${DOCS_ROOT}/*.md`,
+          ok: docs.ok,
+          code: docs.ok ? 0 : 1,
+        });
+        if (!docs.ok) {
+          return ctx.error('E_CHECKS_FAILED', `docs-link found ${docs.problems.length} broken signpost(s)`, {
+            details: docs.problems.join('\n'),
+            data: { gate: 'docs', results, problems: docs.problems },
+            next_action: 'Restore the missing file or fix the link, then re-run `harness checks`.',
+          });
+        }
+
         for (const gate of GATES) {
           const r = await ctx.exec(gate.cmd, gate.args, { timeoutMs: 600_000 });
           const command = `${gate.cmd} ${gate.args.join(' ')}`;
@@ -42,7 +135,7 @@ export default defineExtension({
             });
           }
         }
-        return ctx.ok({ gates: results, passed: results.length });
+        return ctx.ok({ gates: results, passed: results.length, doc_links_checked: docs.checked });
       },
     },
   },

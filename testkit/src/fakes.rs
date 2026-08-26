@@ -5,37 +5,65 @@ use std::sync::Mutex;
 use async_trait::async_trait;
 use fs3_core::{Element, Embedder, Error, Result, Summarizer, Summary};
 
-/// Vector width the fakes produce. Small enough to eyeball in a failing
-/// assertion, wide enough for cosine similarity to mean something.
-pub const FAKE_DIMENSIONS: usize = 8;
+/// Vector width the fakes produce. Wide enough that unrelated texts do not
+/// collide in every bucket, narrow enough to eyeball in a failing assertion.
+pub const FAKE_DIMENSIONS: usize = 32;
 
-/// Hash text into a unit vector.
+/// Hash text into a unit vector whose direction is carried by its *tokens*.
 ///
-/// FNV-1a over the bytes, re-hashed per dimension, then L2-normalised. The
-/// point is not cryptographic quality — it is that *the same text always
-/// yields the same vector*, so similarity search behaves meaningfully in tests
-/// and near-identical inputs do not collide.
+/// This is signed feature hashing (the "hashing trick"): every token is hashed
+/// to one bucket and a sign, and buckets accumulate. Texts that share tokens
+/// therefore share components, so cosine similarity ranks related text above
+/// unrelated text — which is the only reason a fake embedder is worth having
+/// at all (workshop 001: the fakes must make similarity search meaningful).
+///
+/// The previous version hashed the *whole string* independently per dimension.
+/// That was deterministic, but it carried no shared signal whatsoever: two
+/// snippets differing by one token were as far apart as either was from
+/// unrelated prose, so any similarity assertion built on it was vacuous.
 fn hash_vector(text: &str, dimensions: usize) -> Vec<f32> {
-    const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
-    const PRIME: u64 = 0x0000_0100_0000_01b3;
+    let mut raw = vec![0.0f32; dimensions];
 
-    let mut raw = Vec::with_capacity(dimensions);
-    for dimension in 0..dimensions {
-        let mut hash = OFFSET ^ (dimension as u64).wrapping_mul(PRIME);
-        for byte in text.as_bytes() {
-            hash ^= u64::from(*byte);
-            hash = hash.wrapping_mul(PRIME);
-        }
-        // Map to [-1, 1] without going through a float cast of the full u64.
-        let scaled = ((hash >> 11) as f64) / ((1u64 << 53) as f64);
-        raw.push((scaled * 2.0 - 1.0) as f32);
+    for token in tokens(text) {
+        let hash = fnv1a(token.as_bytes());
+        let bucket = (hash % dimensions as u64) as usize;
+        // The sign comes from an independent bit, so unrelated tokens landing
+        // in one bucket cancel on average instead of always reinforcing.
+        let sign = if hash & (1 << 63) == 0 { 1.0 } else { -1.0 };
+        raw[bucket] += sign;
+    }
+
+    // Punctuation-only input, or a full cancellation, would leave an all-zero
+    // vector — which the port contract forbids. Fall back to the whole string.
+    if raw.iter().all(|value| *value == 0.0) {
+        let hash = fnv1a(text.as_bytes());
+        raw[(hash % dimensions as u64) as usize] = 1.0;
     }
 
     let norm = raw.iter().map(|v| v * v).sum::<f32>().sqrt();
-    if norm == 0.0 {
-        return raw;
-    }
     raw.into_iter().map(|v| v / norm).collect()
+}
+
+/// Split into lowercase alphanumeric-or-underscore tokens: the identifier-ish
+/// and word-ish units that two related snippets actually have in common.
+fn tokens(text: &str) -> impl Iterator<Item = String> + '_ {
+    text.split(|c: char| !c.is_alphanumeric() && c != '_')
+        .filter(|token| !token.is_empty())
+        .map(str::to_lowercase)
+}
+
+/// FNV-1a. Not cryptographic — just stable across runs and platforms, which is
+/// all that determinism needs.
+fn fnv1a(bytes: &[u8]) -> u64 {
+    const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
+    const PRIME: u64 = 0x0000_0100_0000_01b3;
+
+    let mut hash = OFFSET;
+    for byte in bytes {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(PRIME);
+    }
+    hash
 }
 
 /// An [`Embedder`] that needs no network, no keys, and no model.
@@ -190,5 +218,65 @@ mod tests {
             hash_vector("alpha", FAKE_DIMENSIONS),
             hash_vector("beta", FAKE_DIMENSIONS)
         );
+    }
+
+    fn cosine(a: &[f32], b: &[f32]) -> f32 {
+        a.iter().zip(b).map(|(x, y)| x * y).sum()
+    }
+
+    /// The property that makes the fake worth using: *related* text must rank
+    /// above unrelated text. Proving only that different text differs is
+    /// vacuous — a counter would pass it — and the whole-string hash this
+    /// replaced passed it while ranking related and unrelated text identically.
+    #[test]
+    fn related_text_ranks_above_unrelated_text() {
+        let query = hash_vector(
+            "fn parse_markdown(path: &str) -> Vec<Element>",
+            FAKE_DIMENSIONS,
+        );
+        let related = hash_vector(
+            "fn parse_markdown(path: &str) -> Vec<Section>",
+            FAKE_DIMENSIONS,
+        );
+        let unrelated = hash_vector(
+            "SELECT id FROM users WHERE created_at > now()",
+            FAKE_DIMENSIONS,
+        );
+
+        let near = cosine(&query, &related);
+        let far = cosine(&query, &unrelated);
+        assert!(
+            near > far,
+            "shared tokens must produce shared signal: related {near}, unrelated {far}"
+        );
+        assert!(
+            near > 0.5,
+            "text differing by one token should stay close, got {near}"
+        );
+    }
+
+    /// Shared *tokens* are the signal, not shared byte prefixes.
+    #[test]
+    fn a_shared_token_is_the_unit_of_similarity() {
+        let a = hash_vector("classify element kind", FAKE_DIMENSIONS);
+        let shared = hash_vector("kind of element to classify", FAKE_DIMENSIONS);
+        let disjoint = hash_vector("network socket timeout", FAKE_DIMENSIONS);
+        assert!(
+            cosine(&a, &shared) > cosine(&a, &disjoint),
+            "word order must not destroy similarity"
+        );
+    }
+
+    /// The contract forbids all-zero vectors; punctuation has no tokens.
+    #[test]
+    fn tokenless_input_still_yields_a_unit_vector() {
+        for text in ["", "   ", "{}();"] {
+            let vector = hash_vector(text, FAKE_DIMENSIONS);
+            let norm = vector.iter().map(|v| v * v).sum::<f32>().sqrt();
+            assert!(
+                (norm - 1.0).abs() < 1e-5,
+                "expected a unit vector for {text:?}, got {norm}"
+            );
+        }
     }
 }

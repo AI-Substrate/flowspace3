@@ -18,9 +18,10 @@ use fs3_core::{Element, Embedder, Summarizer};
 
 /// Assert the [`Embedder`] contract over any implementation.
 ///
-/// Proves: batch shape (one vector per input, in input order), fixed
-/// dimensionality across calls, non-degenerate vectors, and **determinism** —
-/// the same text embedded twice yields the same vector.
+/// Proves: batch shape (one vector per input), **input order — every slot, not
+/// just the first** — checked against an independently obtained vector for that
+/// text, fixed dimensionality across calls, non-degenerate vectors, and
+/// **determinism**: the same text embedded twice yields the same vector.
 ///
 /// # Panics
 /// On any contract violation, naming the property that broke.
@@ -60,27 +61,46 @@ pub async fn embedder_contract<E: Embedder + ?Sized>(embedder: &E) {
         );
     }
 
-    // Determinism: the same text, embedded again, is the same vector.
-    let repeat = embedder
-        .embed(&texts[..1])
-        .await
-        .expect("embedder should embed a single-item batch");
-    assert_eq!(
-        repeat.len(),
-        1,
-        "contract: single-item batch returns one vector"
-    );
-    assert_eq!(
-        repeat[0], vectors[0],
-        "contract: embedding is deterministic — same text, same vector"
-    );
+    // Input order, slot by slot. Embedding each text on its own yields an
+    // independently obtained vector for that text, so the batch is correct only
+    // if every slot equals its own. Checking slot 0 alone — as this once did —
+    // is passed by an implementation that swaps slots 1 and 2.
+    for (index, text) in texts.iter().enumerate() {
+        let alone = embedder
+            .embed(std::slice::from_ref(text))
+            .await
+            .expect("embedder should embed a single-item batch");
+        assert_eq!(
+            alone.len(),
+            1,
+            "contract: a single-item batch returns one vector (index {index})"
+        );
+        assert_eq!(
+            alone[0], vectors[index],
+            "contract: batch slot {index} must hold the embedding of input \
+             {index} — same text, same vector, in input order"
+        );
+        assert_eq!(
+            alone[0].len(),
+            dimensions,
+            "contract: dimensionality is stable across calls (index {index})"
+        );
+    }
 
-    // Dimensionality is a property of the embedder, not of the batch.
-    assert_eq!(
-        repeat[0].len(),
-        dimensions,
-        "contract: dimensionality is stable across calls"
-    );
+    // Order is a property of the request, not of the text: the same texts sent
+    // in a different order must come back in that different order.
+    let reversed: Vec<String> = texts.iter().rev().cloned().collect();
+    let reversed_vectors = embedder
+        .embed(&reversed)
+        .await
+        .expect("embedder should embed a reordered batch");
+    for (index, vector) in reversed_vectors.iter().enumerate() {
+        assert_eq!(
+            *vector,
+            vectors[texts.len() - 1 - index],
+            "contract: reordering the inputs reorders the outputs (index {index})"
+        );
+    }
 
     // An empty batch is legal and costs nothing.
     let empty = embedder

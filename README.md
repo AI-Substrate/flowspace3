@@ -16,8 +16,10 @@ and the `flowspace3` CLI.
 Prerequisites: a Rust toolchain (1.95+, edition 2024) and Docker.
 
 ```bash
-# 1. Bring up Postgres + pgvector (host port 5433, deliberately off 5432)
-docker compose up -d
+# 1. Bring up Postgres + pgvector (host port 5433, deliberately off 5432).
+#    --wait blocks until the container's healthcheck passes, so step 2 cannot
+#    race a database that is running but not yet accepting connections.
+docker compose up -d --wait
 
 # 2. Build and prove the workspace
 cargo build --workspace

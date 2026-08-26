@@ -6,12 +6,33 @@ use serde::{Deserialize, Serialize};
 
 use crate::DEFAULT_API_BASE;
 
+/// An API key that never appears in `Debug` output.
+///
+/// The redaction lives in the type, not in each struct that happens to hold a
+/// key: any struct can keep `#[derive(Debug)]` and stay safe, and a field added
+/// later cannot re-open the leak by forgetting a hand-written `Debug`.
+#[derive(Clone)]
+struct Secret(String);
+
+impl Secret {
+    /// The only way to read the key. Named so that leaks are greppable.
+    fn expose(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Debug for Secret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Secret(<redacted>)")
+    }
+}
+
 /// Shared HTTP plumbing: one client, one base, one key.
 #[derive(Debug, Clone)]
 struct OpenAiClient {
     http: reqwest::Client,
     api_base: String,
-    api_key: String,
+    api_key: Secret,
 }
 
 impl OpenAiClient {
@@ -19,7 +40,7 @@ impl OpenAiClient {
         Self {
             http: reqwest::Client::new(),
             api_base: api_base.unwrap_or_else(|| DEFAULT_API_BASE.to_string()),
-            api_key,
+            api_key: Secret(api_key),
         }
     }
 
@@ -32,7 +53,7 @@ impl OpenAiClient {
         let response = self
             .http
             .post(&url)
-            .bearer_auth(&self.api_key)
+            .bearer_auth(self.api_key.expose())
             .json(body)
             .send()
             .await
@@ -113,25 +134,53 @@ impl Embedder for OpenAiEmbedder {
             )
             .await?;
 
-        if response.data.len() != texts.len() {
+        order_embeddings(response.data, texts.len())
+    }
+}
+
+/// Place each returned vector at the index the API claims for it.
+///
+/// The response is a *mapping*, not a list — the API documents `index` rather
+/// than guaranteeing order — and a mapping can be wrong in ways a length check
+/// cannot see. A duplicated index used to overwrite one slot and leave another
+/// as an empty vector, which was then returned as if it were an embedding.
+fn order_embeddings(data: Vec<EmbeddingDatum>, expected: usize) -> Result<Vec<Vec<f32>>> {
+    if data.len() != expected {
+        return Err(Error::Provider(format!(
+            "embeddings: asked for {expected} vectors, got {}",
+            data.len()
+        )));
+    }
+
+    let mut slots: Vec<Option<Vec<f32>>> = vec![None; expected];
+    for datum in data {
+        let slot = slots.get_mut(datum.index).ok_or_else(|| {
+            Error::Provider(format!(
+                "embeddings: index {} out of range for a batch of {expected}",
+                datum.index
+            ))
+        })?;
+        if slot.is_some() {
             return Err(Error::Provider(format!(
-                "embeddings: asked for {} vectors, got {}",
-                texts.len(),
-                response.data.len()
+                "embeddings: index {} returned twice",
+                datum.index
             )));
         }
-
-        // The API documents `index` rather than guaranteeing order; honour it,
-        // because the contract test asserts input order.
-        let mut ordered = vec![Vec::new(); texts.len()];
-        for datum in response.data {
-            let slot = ordered.get_mut(datum.index).ok_or_else(|| {
-                Error::Provider(format!("embeddings: index {} out of range", datum.index))
-            })?;
-            *slot = datum.embedding;
-        }
-        Ok(ordered)
+        *slot = Some(datum.embedding);
     }
+
+    // An unfilled slot is an error, never an empty vector. (With the length and
+    // uniqueness checks above this fold cannot fail, which is exactly why it is
+    // written as a fold and not an `expect`.)
+    slots
+        .into_iter()
+        .enumerate()
+        .map(|(index, slot)| {
+            slot.ok_or_else(|| {
+                Error::Provider(format!("embeddings: no vector returned for index {index}"))
+            })
+        })
+        .collect()
 }
 
 /// [`Summarizer`] backed by an OpenAI-compatible `/chat/completions` endpoint.
@@ -245,19 +294,47 @@ impl Summarizer for OpenAiSummarizer {
             .map(|choice| choice.message.content.as_str())
             .ok_or_else(|| Error::Provider("chat/completions: no choices returned".into()))?;
 
-        let mut summary: Summary = serde_json::from_str(content).map_err(|e| {
-            Error::Provider(format!(
-                "chat/completions: summary was not the requested JSON: {e}"
-            ))
-        })?;
-
-        // Enforce the band rather than trusting it (PRD req 36).
-        summary.tags.truncate(*Summary::TAG_RANGE.end());
-        if summary.tags.is_empty() {
-            summary.tags.push(element.kind.as_str().to_string());
-        }
-        Ok(summary)
+        parse_summary(content, element.kind.as_str())
     }
+}
+
+/// Turn the model's JSON into a [`Summary`] that satisfies the port contract.
+///
+/// Normalise what can be normalised — trim, drop blank tags, enforce PRD req
+/// 36's band — and reject what cannot. Returning `Ok` with blank text or a
+/// blank tag would hand the caller a value that the shared contract harness
+/// rejects; the provider boundary is where that has to stop.
+fn parse_summary(content: &str, fallback_tag: &str) -> Result<Summary> {
+    let mut summary: Summary = serde_json::from_str(content).map_err(|e| {
+        Error::Provider(format!(
+            "chat/completions: summary was not the requested JSON: {e}"
+        ))
+    })?;
+
+    summary.text = summary.text.trim().to_string();
+    if summary.text.is_empty() {
+        return Err(Error::Provider(
+            "chat/completions: summary text was blank".into(),
+        ));
+    }
+
+    summary.tags = std::mem::take(&mut summary.tags)
+        .into_iter()
+        .map(|tag| tag.trim().to_string())
+        .filter(|tag| !tag.is_empty())
+        .take(*Summary::TAG_RANGE.end())
+        .collect();
+    if summary.tags.is_empty() {
+        summary.tags.push(fallback_tag.trim().to_string());
+    }
+
+    if !summary.has_valid_tags() || summary.tags.iter().any(|tag| tag.is_empty()) {
+        return Err(Error::Provider(format!(
+            "chat/completions: tags violate PRD req 36's 1-5 non-blank band: {:?}",
+            summary.tags
+        )));
+    }
+    Ok(summary)
 }
 
 #[cfg(test)]
@@ -297,5 +374,127 @@ mod tests {
     async fn an_empty_batch_costs_no_request() {
         let embedder = OpenAiEmbedder::new("text-embedding-3-small", None, "not-a-real-key");
         assert_eq!(embedder.embed(&[]).await.unwrap(), Vec::<Vec<f32>>::new());
+    }
+
+    /// The key must not survive a `Debug` render — of the client, or of either
+    /// public provider that holds one. `{:#?}` too: pretty-printing walks the
+    /// same fields by a different path.
+    #[test]
+    fn debug_never_prints_the_api_key() {
+        const KEY: &str = "sk-live-DO-NOT-LEAK-0123456789";
+        let embedder = OpenAiEmbedder::new("text-embedding-3-small", None, KEY);
+        let summarizer = OpenAiSummarizer::new("gpt-4o-mini", None, KEY);
+
+        for rendered in [
+            format!("{embedder:?}"),
+            format!("{embedder:#?}"),
+            format!("{summarizer:?}"),
+            format!("{summarizer:#?}"),
+            format!("{:?}", OpenAiClient::new(None, KEY.to_string())),
+        ] {
+            assert!(
+                !rendered.contains(KEY),
+                "Debug leaked the API key: {rendered}"
+            );
+            assert!(
+                rendered.contains("redacted"),
+                "Debug should say the key was withheld: {rendered}"
+            );
+        }
+    }
+
+    fn datum(index: usize, value: f32) -> EmbeddingDatum {
+        EmbeddingDatum {
+            index,
+            embedding: vec![value],
+        }
+    }
+
+    #[test]
+    fn embeddings_are_placed_at_the_index_the_api_claims() {
+        let ordered = order_embeddings(vec![datum(2, 3.0), datum(0, 1.0), datum(1, 2.0)], 3)
+            .expect("a complete, unique mapping is valid");
+        assert_eq!(ordered, vec![vec![1.0], vec![2.0], vec![3.0]]);
+    }
+
+    /// The bug this guards: a duplicated index overwrote one slot and left
+    /// another as an empty vector, returned as `Ok`.
+    #[test]
+    fn a_duplicated_index_is_rejected_rather_than_leaving_an_empty_slot() {
+        let error = order_embeddings(vec![datum(1, 1.0), datum(1, 2.0)], 2)
+            .expect_err("index 1 was returned twice");
+        assert!(
+            error.to_string().contains("index 1 returned twice"),
+            "the error must name the duplicate: {error}"
+        );
+    }
+
+    #[test]
+    fn an_out_of_range_index_is_rejected() {
+        let error = order_embeddings(vec![datum(0, 1.0), datum(9, 2.0)], 2)
+            .expect_err("index 9 is out of range for a batch of 2");
+        assert!(error.to_string().contains("out of range"), "{error}");
+    }
+
+    #[test]
+    fn a_short_response_is_rejected() {
+        let error = order_embeddings(vec![datum(0, 1.0)], 2).expect_err("one vector for two texts");
+        assert!(error.to_string().contains("asked for 2"), "{error}");
+    }
+
+    #[test]
+    fn a_well_formed_summary_survives_the_boundary() {
+        let summary = parse_summary(
+            r#"{"text":"Classifies a node.","tags":["classification"]}"#,
+            "callable",
+        )
+        .expect("valid JSON, valid summary");
+        assert_eq!(summary.text, "Classifies a node.");
+        assert_eq!(summary.tags, vec!["classification".to_string()]);
+    }
+
+    /// Blank text cannot be repaired, so it must not be returned as `Ok`.
+    #[test]
+    fn blank_summary_text_is_rejected_not_returned() {
+        let error = parse_summary(r#"{"text":"   ","tags":["a"]}"#, "callable")
+            .expect_err("blank text violates the shared contract");
+        assert!(error.to_string().contains("blank"), "{error}");
+    }
+
+    #[test]
+    fn blank_tags_are_dropped_and_the_band_is_restored() {
+        let summary = parse_summary(r#"{"text":"A summary.","tags":["  ",""]}"#, "callable")
+            .expect("blank tags are repairable");
+        assert_eq!(summary.tags, vec!["callable".to_string()]);
+    }
+
+    #[test]
+    fn more_than_five_tags_are_cut_to_the_band() {
+        let summary = parse_summary(
+            r#"{"text":"A summary.","tags":["a","b","c","d","e","f","g"]}"#,
+            "callable",
+        )
+        .expect("too many tags are repairable");
+        assert_eq!(summary.tags.len(), *Summary::TAG_RANGE.end());
+        assert!(summary.has_valid_tags());
+    }
+
+    /// Whatever leaves the boundary must satisfy the same properties the shared
+    /// contract harness asserts over the fakes.
+    #[test]
+    fn a_repaired_summary_satisfies_the_shared_contract() {
+        for content in [
+            r#"{"text":"A summary.","tags":[]}"#,
+            r#"{"text":" A summary. ","tags":["one","","three"]}"#,
+            r#"{"text":"A summary.","tags":["a","b","c","d","e","f"]}"#,
+        ] {
+            let summary = parse_summary(content, "callable").expect("repairable");
+            assert!(summary.has_valid_tags(), "{summary:?}");
+            assert!(!summary.text.trim().is_empty(), "{summary:?}");
+            assert!(
+                summary.tags.iter().all(|tag| !tag.trim().is_empty()),
+                "{summary:?}"
+            );
+        }
     }
 }

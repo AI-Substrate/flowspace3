@@ -120,21 +120,119 @@ fn heading_from(node: Node<'_>, raw: &str, source: &str) -> Option<Heading> {
         first_line.chars().take_while(|c| *c == '#').count().max(1)
     };
 
-    let title = first_line
-        .trim_start_matches('#')
-        .trim()
-        .trim_end_matches('#')
-        .trim()
-        .to_string();
+    let title = heading_title(node, source)?;
     if title.is_empty() {
         return None;
     }
 
-    let _ = source;
     Some(Heading {
         level,
         title,
         row: node.start_position().row,
         ts_kind: node.kind().to_string(),
     })
+}
+
+/// The heading's content, taken from the grammar rather than from the raw line.
+///
+/// tree-sitter-md exposes the content as an `inline` node, so the level markers
+/// are the grammar's business, not ours to guess at. The old code stripped `#`
+/// off both ends of the raw line unconditionally, which quietly turned the
+/// setext heading `C#` into `C`.
+fn heading_title(node: Node<'_>, source: &str) -> Option<String> {
+    let inline = first_inline(node)?;
+    let content = source.get(inline.byte_range())?.trim();
+    let content = if node.kind() == "atx_heading" {
+        strip_closing_sequence(content)
+    } else {
+        content
+    };
+    Some(content.trim().to_string())
+}
+
+/// The first `inline` descendant — the heading's text, marker excluded. ATX
+/// hangs it directly off the heading; setext wraps it in a `paragraph`.
+fn first_inline<'tree>(node: Node<'tree>) -> Option<Node<'tree>> {
+    if node.kind() == "inline" {
+        return Some(node);
+    }
+    let mut cursor = node.walk();
+    node.children(&mut cursor).find_map(first_inline)
+}
+
+/// Remove an ATX *closing sequence*, and only that.
+///
+/// CommonMark defines one as a run of `#` at the end of the line that is
+/// preceded by a space or forms the entire content. So `# C#` keeps its hash
+/// and `## Title ##` loses one — a distinction `trim_end_matches('#')` cannot
+/// make. Setext headings have no closing sequence at all, so they never reach
+/// this function.
+fn strip_closing_sequence(content: &str) -> &str {
+    let trimmed = content.trim_end();
+    let without = trimmed.trim_end_matches('#');
+    if without.len() == trimmed.len() {
+        return trimmed;
+    }
+    if without.is_empty() {
+        return "";
+    }
+    if without.ends_with([' ', '\t']) {
+        without.trim_end()
+    } else {
+        trimmed
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn titles(source: &str) -> Vec<String> {
+        let blob = BlobRef::new("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+            .expect("literal is a valid digest");
+        parse_markdown("docs/probe.md", &blob, source)
+            .expect("markdown always parses")
+            .into_iter()
+            .map(|element| element.qualified_name)
+            .collect()
+    }
+
+    /// The finding this kills: an unconditional `trim_end_matches('#')` turned
+    /// the setext heading `C#` into `C`.
+    #[test]
+    fn a_setext_heading_keeps_a_trailing_hash() {
+        assert_eq!(titles("C#\n===\n\nText.\n"), vec!["C#".to_string()]);
+        assert_eq!(titles("F#\n---\n\nText.\n"), vec!["F#".to_string()]);
+    }
+
+    #[test]
+    fn an_atx_heading_keeps_a_hash_that_belongs_to_the_word() {
+        assert_eq!(titles("# C#\n\nText.\n"), vec!["C#".to_string()]);
+    }
+
+    #[test]
+    fn an_atx_closing_sequence_is_removed() {
+        assert_eq!(titles("## Title ##\n\nText.\n"), vec!["Title".to_string()]);
+        assert_eq!(
+            titles("## Title   ####  \n\nText.\n"),
+            vec!["Title".to_string()]
+        );
+    }
+
+    #[test]
+    fn setext_headings_still_carry_their_level() {
+        assert_eq!(
+            titles("Parent\n======\n\nChild\n------\n\nText.\n"),
+            vec!["Parent".to_string(), "Parent > Child".to_string()]
+        );
+    }
+
+    /// L9 again: a heading-shaped line inside a fenced block is not a heading.
+    #[test]
+    fn a_hash_inside_a_fenced_block_is_not_a_heading() {
+        assert_eq!(
+            titles("# Real\n\n```sh\n# not a heading\n```\n"),
+            vec!["Real".to_string()]
+        );
+    }
 }
