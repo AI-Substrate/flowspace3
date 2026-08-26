@@ -11,9 +11,15 @@ description = "The central Postgres + pgvector store: migrations and repositorie
 # step - the integration tests run against a real dockerized PG.
 [dependencies]
 fs3-core.workspace = true
+pgvector.workspace = true
+serde_json.workspace = true
 sqlx.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
 anyhow.workspace = true
+# The deterministic fake embedder. Similarity assertions need vectors whose
+# cosine ordering means something, and inventing a second hashing scheme here
+# would be exactly the per-test double workshop 001 rule 5 refuses.
+fs3-testkit.workspace = true
 tokio.workspace = true

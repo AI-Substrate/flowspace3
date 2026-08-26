@@ -7,99 +7,13 @@
 //! purpose. Like every store test, they need the dockerized Postgres and fail
 //! naming the command rather than skipping.
 
-use std::str::FromStr;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{SystemTime, UNIX_EPOCH};
+mod support;
 
 use fs3_store::{MIGRATOR, PgPool, migrate};
-use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
-
-/// Override with `FS3_TEST_DATABASE_URL` to point at another instance.
-fn database_url() -> String {
-    std::env::var("FS3_TEST_DATABASE_URL")
-        .unwrap_or_else(|_| fs3_core::DatabaseConfig::DEFAULT_URL.to_string())
-}
-
-/// A throwaway database, created empty and dropped again.
-///
-/// The name is seeded from the clock, the pid and a per-process counter for the
-/// same reason `pg_round_trip` seeds its blob keys that way: these tests DROP
-/// what they name, and concurrent runs share one 5433 stack. A collision would
-/// have to happen in the same process in the same nanosecond.
-struct FreshDatabase {
-    name: String,
-    admin: PgPool,
-}
-
-impl FreshDatabase {
-    async fn create() -> Self {
-        let url = database_url();
-        let admin = PgPoolOptions::new()
-            .max_connections(1)
-            .acquire_timeout(fs3_store::CONNECT_TIMEOUT)
-            .connect(&url)
-            .await
-            .unwrap_or_else(|error| {
-                panic!(
-                    "store migration tests need Postgres at {url}: {error}\nStart it with:\n    \
-                     {}\nThen re-run:\n    cargo test -p fs3-store\nPoint at another instance \
-                     with FS3_TEST_DATABASE_URL.",
-                    fs3_store::COMPOSE_UP
-                )
-            });
-
-        static SEQUENCE: AtomicU64 = AtomicU64::new(0);
-        let nanos = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("the clock is after 1970")
-            .as_nanos();
-        let seed = nanos
-            ^ (u128::from(std::process::id()) << 64)
-            ^ (u128::from(SEQUENCE.fetch_add(1, Ordering::Relaxed)) << 96);
-        // Hex from a u128, so the identifier is `fs3_migrations_` + 32 safe
-        // characters — well inside Postgres' 63-byte limit, and nothing here can
-        // be quoted out of. `CREATE DATABASE` takes no bind parameters.
-        let name = format!("fs3_migrations_{seed:032x}");
-
-        sqlx::query(&format!("CREATE DATABASE {name}"))
-            .execute(&admin)
-            .await
-            .unwrap_or_else(|error| panic!("creating the throwaway database {name}: {error}"));
-
-        Self { name, admin }
-    }
-
-    /// A pool onto the throwaway database.
-    async fn pool(&self) -> PgPool {
-        let options = PgConnectOptions::from_str(&database_url())
-            .expect("the configured database URL should parse")
-            .database(&self.name);
-        PgPoolOptions::new()
-            .max_connections(2)
-            .acquire_timeout(fs3_store::CONNECT_TIMEOUT)
-            .connect_with(options)
-            .await
-            .unwrap_or_else(|error| panic!("connecting to {}: {error}", self.name))
-    }
-
-    /// Explicit, because `Drop` cannot await. A test that panics before this
-    /// leaves one empty `fs3_migrations_*` database behind — visible, harmless,
-    /// and a truthful record that the run failed.
-    async fn destroy(self, pool: PgPool) {
-        pool.close().await;
-        sqlx::query(&format!(
-            "DROP DATABASE IF EXISTS {} WITH (FORCE)",
-            self.name
-        ))
-        .execute(&self.admin)
-        .await
-        .unwrap_or_else(|error| panic!("dropping {}: {error}", self.name));
-        self.admin.close().await;
-    }
-}
+use support::FreshDatabase;
 
 /// Every version the binary carries, in order. Asserting against the embedded
-/// set rather than a hardcoded `[1]` keeps this test honest when `0002` lands.
+/// set rather than a hardcoded `[1]` keeps this test honest when `0006` lands.
 fn embedded_versions() -> Vec<i64> {
     MIGRATOR.iter().map(|migration| migration.version).collect()
 }
@@ -111,6 +25,15 @@ async fn applied_rows(pool: &PgPool) -> Vec<(i64, String, Vec<u8>, bool)> {
         .fetch_all(pool)
         .await
         .expect("the migration tracking table should be readable")
+}
+
+/// Does the named relation exist?
+async fn relation(pool: &PgPool, name: &str) -> Option<String> {
+    sqlx::query_scalar("SELECT to_regclass($1)::text")
+        .bind(format!("public.{name}"))
+        .fetch_one(pool)
+        .await
+        .expect("asking for the relation should succeed")
 }
 
 /// A database with nothing in it becomes a usable store.
@@ -134,16 +57,35 @@ async fn migrating_an_empty_database_bootstraps_the_whole_schema() {
         "every embedded migration should be recorded as applied"
     );
 
-    let elements: Option<String> =
-        sqlx::query_scalar("SELECT to_regclass('public.elements')::text")
-            .fetch_one(&pool)
-            .await
-            .expect("asking for the table should succeed");
-    assert_eq!(
-        elements.as_deref(),
-        Some("elements"),
-        "0001 should have created the elements table"
-    );
+    // Workshop 002's three layers, named one by one. A migration that silently
+    // half-applied would still record its version, so the version set alone is
+    // not evidence that the schema is there.
+    for table in [
+        "repos",
+        "worktrees",
+        "worktree_files",
+        "elements",
+        "smart_content",
+        "embeddings_1024",
+        "jobs",
+    ] {
+        assert_eq!(
+            relation(&pool, table).await.as_deref(),
+            Some(table),
+            "the workshop 002 schema is incomplete without {table}"
+        );
+    }
+
+    // The two indexes that are load-bearing rather than merely helpful: without
+    // the HNSW index every similarity query is a sequential scan, and without
+    // the partial unique index the debounce upsert has nothing to conflict on.
+    for index in ["embeddings_1024_vector_idx", "jobs_live_dedupe_idx"] {
+        assert_eq!(
+            relation(&pool, index).await.as_deref(),
+            Some(index),
+            "{index} carries a decision, not a micro-optimisation"
+        );
+    }
 
     // PRD req 4: the store is Postgres *with pgvector*, and the migration is
     // where a stack missing it is supposed to fail.
@@ -153,6 +95,49 @@ async fn migrating_an_empty_database_bootstraps_the_whole_schema() {
             .await
             .expect("asking for the extension should succeed");
     assert_eq!(vector, 1, "0001 should have created the vector extension");
+
+    database.destroy(pool).await;
+}
+
+/// 0004 replaces 0001's `elements`, so the columns the tree model needs have to
+/// actually be there — and 0001's flat-table columns have to actually be gone.
+///
+/// A DROP-and-recreate that silently kept the old table (because the DROP was
+/// conditional on something untrue, say) would pass every version assertion
+/// above and fail on the first write.
+#[tokio::test]
+async fn the_elements_table_is_the_tree_shape_not_the_flat_one() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let columns: Vec<String> = sqlx::query_scalar(
+        "SELECT column_name::text FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'elements'
+          ORDER BY column_name",
+    )
+    .fetch_all(&pool)
+    .await
+    .expect("the column list should be readable");
+
+    for column in [
+        "blob_sha",
+        "parser_version",
+        "parent_id",
+        "sibling_order",
+        "raw_hash",
+        "enrich",
+    ] {
+        assert!(
+            columns.iter().any(|found| found == column),
+            "0004 must add {column}; got {columns:?}"
+        );
+    }
+    for gone in ["blob", "qualified_name", "ts_kind", "body", "has_error"] {
+        assert!(
+            !columns.iter().any(|found| found == gone),
+            "{gone} belonged to 0001's flat table and must not survive 0004: {columns:?}"
+        );
+    }
 
     database.destroy(pool).await;
 }

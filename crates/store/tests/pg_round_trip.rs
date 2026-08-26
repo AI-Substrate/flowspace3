@@ -1,173 +1,257 @@
-//! Exemplar: the integration tier.
+//! Exemplar: the integration tier — the element tree, against a real Postgres.
 //!
-//! Runs against the real dockerized Postgres from `docker-compose.yml` — there
-//! is no in-memory store to run against instead, and that is deliberate
-//! (workshop 001 refuses a repository trait over sqlx).
+//! Runs against the dockerized Postgres from `compose.yaml` — there is no
+//! in-memory store to run against instead, and that is deliberate (workshop 001
+//! refuses a repository trait over sqlx).
 //!
-//! If docker is not running this test FAILS rather than skipping, and names the
+//! Every test here takes a THROWAWAY database, migrates it, and drops it. It
+//! used to work in the long-lived `flowspace3` database with a unique blob key
+//! per test, which was adequate isolation and a genuine hazard: running the
+//! suite applied whatever migrations were in the working tree to the database
+//! every other worker shares, so an unpushed `0003` left every sibling's
+//! `cargo test` failing with `VersionMissing(3)` against a tree that does not
+//! contain it. Migrations under development belong in a database that is
+//! deleted thirty milliseconds later.
+//!
+//! If docker is not running these tests FAIL rather than skipping, and name the
 //! exact command. A silently-skipped integration test is how a store regression
 //! reaches main.
 
+mod support;
+
 use std::collections::BTreeSet;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{SystemTime, UNIX_EPOCH};
 
-use fs3_core::{BlobRef, Element, ElementKind, ElementTree, Span};
-use fs3_store::{StoreError, connect, elements_for_blob, migrate, upsert_element};
-use sqlx::PgPool;
+use fs3_core::{Element, ElementKind, Span};
+use fs3_store::{StoreError, get_elements, upsert_element_tree};
+use support::{FreshDatabase, PARSER_VERSION, unique_blob};
 
-/// Override with `FS3_TEST_DATABASE_URL` to point at another instance.
-fn database_url() -> String {
-    std::env::var("FS3_TEST_DATABASE_URL")
-        .unwrap_or_else(|_| fs3_core::DatabaseConfig::DEFAULT_URL.to_string())
-}
-
-/// A blob key nobody else is using.
-///
-/// Keying on `process::id()` alone was not isolation. These tests DELETE by
-/// blob, so a collision against the shared 5433 stack does not merely
-/// interfere — it cross-deletes another run's rows, and pids are recycled
-/// freely across concurrent runs and separate checkouts. Seeding from the
-/// clock, the pid and a per-process counter makes a collision require the same
-/// process id in the same nanosecond.
-fn unique_blob() -> BlobRef {
-    static SEQUENCE: AtomicU64 = AtomicU64::new(0);
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("the clock is after 1970")
-        .as_nanos();
-    let seed = nanos
-        ^ (u128::from(std::process::id()) << 64)
-        ^ (u128::from(SEQUENCE.fetch_add(1, Ordering::Relaxed)) << 96);
-    // A u128 is at most 32 hex digits, so this is always a 40-char digest.
-    BlobRef::new(format!("{seed:040x}")).expect("40 hex digits is a valid digest")
-}
-
-async fn ready_pool() -> PgPool {
-    let url = database_url();
-    // The error already names `docker compose up -d`; this adds only what the
-    // error cannot know — which test to re-run, and the escape hatch.
-    let pool = connect(&url).await.unwrap_or_else(|error| {
-        panic!(
-            "store integration test needs Postgres.\n{error}\nThen re-run:\n    \
-             cargo test -p fs3-store\nPoint at another instance with \
-             FS3_TEST_DATABASE_URL."
-        )
-    });
-    migrate(&pool).await.expect("migration 0001 should apply");
-    pool
-}
-
-/// A one-file tree with one function in it — the smallest thing the flat table
-/// has to hold.
-fn tree(blob: &BlobRef, qualified: &str, start: u32, end: u32) -> ElementTree {
-    let path = "parsers/fixtures/sample.rs";
-    // An element's `name` is its own short name; the address carries the scope.
-    let name = qualified.rsplit("::").next().unwrap_or(qualified);
-    let body = format!("pub fn {name}() {{}}");
-    let child = Element::new(
+/// A file with a container that has two functions in it — the smallest tree
+/// with a grandchild, which is the shape a flat table could not hold.
+fn tree(path: &str) -> Element {
+    let first = Element::new(
         ElementKind::Function,
         "function_item",
-        name,
-        format!("{path}::{qualified}"),
-        Span::new(start, end),
-        &body,
-    );
-    ElementTree {
-        path: path.to_string(),
-        blob: blob.clone(),
-        has_error: false,
-        root: Element::new(
-            ElementKind::File,
-            "rust",
-            "sample.rs",
-            path,
-            Span::new(1, end),
-            format!("{body}\n"),
-        )
-        .with_children(vec![child]),
-    }
+        "new",
+        format!("{path}::Rect::new"),
+        Span::new(4, 6),
+        "pub fn new() -> Self { Self }",
+    )
+    .with_sibling_order(0);
+    let second = Element::new(
+        ElementKind::Function,
+        "function_item",
+        "area",
+        format!("{path}::Rect::area"),
+        Span::new(8, 10),
+        "pub fn area(&self) -> u32 { 0 }",
+    )
+    .with_sibling_order(1);
+    let container = Element::new(
+        ElementKind::Container,
+        "impl_item",
+        "Rect",
+        format!("{path}::Rect"),
+        Span::new(3, 11),
+        "impl Rect { /* .. */ }",
+    )
+    .with_children(vec![first, second]);
+
+    Element::new(
+        ElementKind::File,
+        "rust",
+        "sample.rs",
+        path,
+        Span::new(1, 12),
+        "// sample.rs\n",
+    )
+    .with_children(vec![container])
 }
 
-/// The element the row-per-element write is about.
-fn only_child(tree: &ElementTree) -> &Element {
-    &tree.root.children[0]
-}
-
-/// Connect, migrate, round-trip. The whole exemplar in one test.
+/// Connect, migrate, round-trip a whole tree. The exemplar in one test.
 #[tokio::test]
-async fn migration_applies_and_an_element_round_trips() {
-    let pool = ready_pool().await;
-
-    // A unique blob per run keeps repeated and CONCURRENT runs independent
-    // without truncating a table another run may be using.
-    let blob = unique_blob();
-    sqlx::query("DELETE FROM elements WHERE blob = $1")
-        .bind(blob.as_str())
-        .execute(&pool)
-        .await
-        .expect("cleanup should succeed");
-
-    let tree = tree(&blob, "geometry::Rect::new", 11, 16);
-    let written = only_child(&tree);
-    upsert_element(&pool, &tree, written).await.expect("insert");
-
-    let read_back = elements_for_blob(&pool, &blob).await.expect("select");
-    assert_eq!(
-        read_back,
-        vec![written.clone()],
-        "the row must survive the trip"
-    );
-    assert_eq!(
-        read_back[0].raw_hash(),
-        written.raw_hash(),
-        "the dirtiness key is derived from the body, so it survives a trip \
-         through a table that has no column for it"
-    );
-
-    // Upsert is keyed by the content address, so re-indexing is idempotent.
-    upsert_element(&pool, &tree, written)
-        .await
-        .expect("re-insert");
-    assert_eq!(elements_for_blob(&pool, &blob).await.unwrap().len(), 1);
-
-    sqlx::query("DELETE FROM elements WHERE blob = $1")
-        .bind(blob.as_str())
-        .execute(&pool)
-        .await
-        .expect("cleanup should succeed");
-}
-
-/// What migration 0002 is for. Under 0001's CHECK the tree model's spellings
-/// were all illegal — `file` most of all, since 0001 predates the file element
-/// existing. A green `cargo test` with an unmigrated database would otherwise
-/// be the first place this is noticed.
-#[tokio::test]
-async fn every_tree_model_kind_is_a_legal_row() {
-    let pool = ready_pool().await;
+async fn migration_applies_and_an_element_tree_round_trips() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
     let blob = unique_blob();
 
-    let tree = tree(&blob, "geometry::Rect::new", 11, 16);
-    for (line, kind) in [
-        (1, ElementKind::File),
-        (2, ElementKind::Container),
-        (3, ElementKind::Function),
-        (4, ElementKind::Section),
-    ] {
-        let mut element = only_child(&tree).clone();
-        element.kind = kind;
-        element.address = format!("kind-probe::{kind}");
-        element.span = Span::new(line, line);
-        upsert_element(&pool, &tree, &element)
-            .await
-            .unwrap_or_else(|error| {
-                panic!("{kind} must be a legal element kind after 0002: {error}")
-            });
-    }
+    let written = tree("src/geometry.rs");
+    upsert_element_tree(&pool, &blob, PARSER_VERSION, &written, |_| true)
+        .await
+        .expect("insert");
 
-    let kinds: Vec<ElementKind> = elements_for_blob(&pool, &blob)
+    let read_back = get_elements(&pool, &blob, PARSER_VERSION)
         .await
         .expect("select")
+        .expect("the blob was just written, so it has been parsed");
+    assert_eq!(
+        read_back, written,
+        "the tree must survive the trip — nesting, sibling order and all"
+    );
+    assert_eq!(
+        read_back.children[0].children[1].raw_hash(),
+        written.children[0].children[1].raw_hash(),
+        "the dirtiness key is derived from the text, so it survives a trip \
+         through a table whose copy of it is never read back"
+    );
+
+    // The upsert is keyed by content, so re-scanning is idempotent — and
+    // because a blob is the hash of the bytes, the key set cannot change
+    // between runs, which is why no reconciling delete is needed.
+    upsert_element_tree(&pool, &blob, PARSER_VERSION, &written, |_| true)
+        .await
+        .expect("re-insert");
+    let again = get_elements(&pool, &blob, PARSER_VERSION)
+        .await
+        .expect("select")
+        .expect("still parsed");
+    assert_eq!(again, written, "a second scan must not duplicate anything");
+
+    database.destroy(pool).await;
+}
+
+/// Two elements at one address are two rows.
+///
+/// The scanner emits `struct Rect` and `impl Rect` as separate elements sharing
+/// an address — `(address, span_start)` is what identifies a node. A unique key
+/// on address alone made the second write silently overwrite the first, which
+/// is a data-loss bug that looks exactly like a successful scan.
+#[tokio::test]
+async fn two_elements_sharing_an_address_are_two_rows() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+    let blob = unique_blob();
+
+    let declaration = Element::new(
+        ElementKind::Container,
+        "struct_item",
+        "Rect",
+        "src/geometry.rs::Rect",
+        Span::new(3, 6),
+        "pub struct Rect { w: u32, h: u32 }",
+    )
+    .with_sibling_order(0);
+    let implementation = Element::new(
+        ElementKind::Container,
+        "impl_item",
+        "Rect",
+        "src/geometry.rs::Rect",
+        Span::new(8, 12),
+        "impl Rect { /* .. */ }",
+    )
+    .with_sibling_order(1);
+    let file = Element::new(
+        ElementKind::File,
+        "rust",
+        "geometry.rs",
+        "src/geometry.rs",
+        Span::new(1, 13),
+        "// geometry.rs\n",
+    )
+    .with_children(vec![declaration, implementation]);
+
+    upsert_element_tree(&pool, &blob, PARSER_VERSION, &file, |_| true)
+        .await
+        .expect("insert");
+
+    let read_back = get_elements(&pool, &blob, PARSER_VERSION)
+        .await
+        .expect("select")
+        .expect("just written");
+    assert_eq!(
+        read_back, file,
+        "both elements at that address must survive"
+    );
+    assert_eq!(
+        read_back.children.len(),
+        2,
+        "the struct and its impl are two nodes, not one"
+    );
+    assert_eq!(
+        read_back.children[0].subkind, "struct_item",
+        "and the first one must not have been overwritten by the second"
+    );
+
+    database.destroy(pool).await;
+}
+
+/// A blob nobody has parsed reads back as `None`, not as an empty tree. That
+/// distinction IS the scan flow's skip: `Some` means the work is already done.
+#[tokio::test]
+async fn an_unparsed_blob_is_none_rather_than_empty() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+    let blob = unique_blob();
+
+    assert!(
+        get_elements(&pool, &blob, PARSER_VERSION)
+            .await
+            .expect("select")
+            .is_none()
+    );
+
+    // Same blob, different parser: also unparsed. The key is the pair, which is
+    // what lets a parser bump re-mint elements without touching enrichment.
+    upsert_element_tree(&pool, &blob, PARSER_VERSION, &tree("src/a.rs"), |_| true)
+        .await
+        .expect("insert");
+    assert!(
+        get_elements(&pool, &blob, "test-parser@2")
+            .await
+            .expect("select")
+            .is_none(),
+        "a parser_version bump must not read the previous parser's rows"
+    );
+
+    database.destroy(pool).await;
+}
+
+/// Every kind the tree model has must be a legal row. `file` most of all: 0001
+/// predated the file element existing, and 0002 is what made it legal.
+#[tokio::test]
+async fn every_tree_model_kind_is_a_legal_row() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+    let blob = unique_blob();
+
+    let children: Vec<Element> = [
+        ElementKind::Container,
+        ElementKind::Function,
+        ElementKind::Section,
+    ]
+    .into_iter()
+    .enumerate()
+    .map(|(index, kind)| {
+        let line = index as u32 + 2;
+        Element::new(
+            kind,
+            "probe",
+            kind.as_str(),
+            format!("kind-probe.rs::{kind}"),
+            Span::new(line, line),
+            "probe",
+        )
+        .with_sibling_order(index as u32)
+    })
+    .collect();
+
+    let root = Element::new(
+        ElementKind::File,
+        "rust",
+        "kind-probe.rs",
+        "kind-probe.rs",
+        Span::new(1, 5),
+        "probe file",
+    )
+    .with_children(children);
+
+    upsert_element_tree(&pool, &blob, PARSER_VERSION, &root, |_| false)
+        .await
+        .unwrap_or_else(|error| panic!("every tree-model kind must be legal: {error}"));
+
+    let kinds: Vec<ElementKind> = get_elements(&pool, &blob, PARSER_VERSION)
+        .await
+        .expect("select")
+        .expect("just written")
         .iter()
         .map(|element| element.kind)
         .collect();
@@ -181,17 +265,15 @@ async fn every_tree_model_kind_is_a_legal_row() {
         ]
     );
 
-    sqlx::query("DELETE FROM elements WHERE blob = $1")
-        .bind(blob.as_str())
-        .execute(&pool)
-        .await
-        .expect("cleanup should succeed");
+    database.destroy(pool).await;
 }
 
 /// pgvector is a requirement of the image, not an optional extra (PRD req 4).
 #[tokio::test]
 async fn the_stack_really_has_pgvector() {
-    let pool = ready_pool().await;
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
     let installed: bool =
         sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector')")
             .fetch_one(&pool)
@@ -200,20 +282,30 @@ async fn the_stack_really_has_pgvector() {
     assert!(
         installed,
         "migration 0001 creates the vector extension; the image must provide it \
-         (docker-compose.yml pins pgvector/pgvector)"
+         (compose.yaml pins pgvector/pgvector)"
     );
+
+    database.destroy(pool).await;
 }
 
 /// The CHECK constraints are part of the schema's contract, so prove they bite.
 #[tokio::test]
 async fn the_schema_refuses_an_impossible_span() {
-    let pool = ready_pool().await;
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
     let blob = unique_blob();
 
-    let backwards = tree(&blob, "backwards", 40, 10);
-    let error = upsert_element(&pool, &backwards, only_child(&backwards))
+    let backwards = Element::new(
+        ElementKind::File,
+        "rust",
+        "backwards.rs",
+        "backwards.rs",
+        Span::new(40, 10),
+        "",
+    );
+    let error = upsert_element_tree(&pool, &blob, PARSER_VERSION, &backwards, |_| false)
         .await
-        .expect_err("end_line < start_line must be refused by the database, not just by Rust");
+        .expect_err("span_end < span_start must be refused by the database, not just by Rust");
 
     // `is_err()` alone passed for ANY failure — a dropped connection, a typo in
     // the SQL, a missing table. What this test claims is that the CHECK bit, so
@@ -232,20 +324,32 @@ async fn the_schema_refuses_an_impossible_span() {
         Some("elements_span_ordered"),
         "the span CHECK must be the constraint that bit, not another one: {error}"
     );
+
+    // The transaction rolled back, so the refusal left nothing behind.
+    assert!(
+        get_elements(&pool, &blob, PARSER_VERSION)
+            .await
+            .expect("select")
+            .is_none(),
+        "a refused tree must not leave a partial write"
+    );
+
+    database.destroy(pool).await;
 }
 
-/// The isolation key has to vary WITHIN a process too: these tests run
-/// concurrently under one `cargo test` binary, against one database.
+/// The isolation seed has to vary WITHIN a process: these tests run
+/// concurrently under one `cargo test` binary, and the same seed feeds the
+/// throwaway DATABASE names — which are DROPped. A repeat there is not
+/// interference, it is one test deleting another's database mid-run.
 #[test]
-fn every_blob_key_is_unique_within_a_process() {
+fn every_isolation_key_is_unique_within_a_process() {
     let keys: BTreeSet<String> = (0..1000)
         .map(|_| unique_blob().as_str().to_string())
         .collect();
     assert_eq!(
         keys.len(),
         1000,
-        "a key derived from the pid alone repeats on every call, which is how \
-         two tests end up deleting each other's rows"
+        "a key derived from the pid alone repeats on every call"
     );
 
     let key = unique_blob();

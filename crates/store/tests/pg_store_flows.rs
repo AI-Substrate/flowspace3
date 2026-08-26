@@ -1,0 +1,603 @@
+//! The flows the store exists to perform, each on its own throwaway database.
+//!
+//! Throwaway rather than a unique key in the shared database, because two of
+//! these flows are not key-scoped at all: `claim_job` takes the best ready job
+//! in the WHOLE table, and `query_embeddings` ranks over every vector in it. A
+//! concurrent test's rows would not merely coexist — they would be candidate
+//! answers.
+//!
+//! Each test names the workshop 002 decision it is defending, because that is
+//! what a failure here actually means.
+
+mod support;
+
+use std::time::Duration;
+
+use fs3_core::{Element, ElementKind, Embedder, Span, Summarizer, Summary, content_hash};
+use fs3_store::{
+    EMBEDDING_DIMENSIONS, NewEmbedding, PgPool, SourceKind, StoreError, claim_job, complete_job,
+    enqueue_job, fail_job, get_smart_content, missing_enrichment, put_embeddings,
+    put_smart_content, query_embeddings, upsert_element_tree,
+};
+use fs3_testkit::fakes::{FakeEmbedder, FakeSummarizer};
+use support::{FreshDatabase, PARSER_VERSION, unique_blob};
+
+const SUMMARIZER: &str = "fake-summarizer@v1";
+const EMBEDDER: &str = "fake-embedder@v1";
+
+/// A file element with one child per body, addressed under `path`.
+fn file_with(path: &str, bodies: &[&str]) -> Element {
+    let children = bodies
+        .iter()
+        .enumerate()
+        .map(|(index, body)| {
+            let line = index as u32 * 4 + 3;
+            Element::new(
+                ElementKind::Function,
+                "function_item",
+                format!("f{index}"),
+                format!("{path}::f{index}"),
+                Span::new(line, line + 2),
+                *body,
+            )
+            .with_sibling_order(index as u32)
+        })
+        .collect();
+
+    Element::new(
+        ElementKind::File,
+        "rust",
+        path.rsplit('/').next().unwrap_or(path),
+        path,
+        Span::new(1, bodies.len() as u32 * 4 + 4),
+        format!("// {path}\n"),
+    )
+    .with_children(children)
+}
+
+/// Only the declarations earn enrichment — the file root is the container, not
+/// the content. This stands in for the scanner's injected policy (decision D5).
+fn declarations_only(element: &Element) -> bool {
+    element.kind != ElementKind::File
+}
+
+async fn count(pool: &PgPool, sql: &str) -> i64 {
+    sqlx::query_scalar(sql)
+        .fetch_one(pool)
+        .await
+        .expect("counting should succeed")
+}
+
+// ── Decision D2: enrichment is content-addressed ────────────────────────────
+
+/// The same function body in two different files is ONE piece of enrichment.
+///
+/// This is decision D2's entire payoff: the same method on forty branches is
+/// summarised once. If this test fails, the system is paying an LLM per copy.
+#[tokio::test]
+async fn one_body_in_two_blobs_is_one_smart_row_and_one_piece_of_work() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let shared = "pub fn area(&self) -> u32 { self.w * self.h }";
+    let alpha = file_with("src/alpha.rs", &[shared]);
+    let beta = file_with("src/beta.rs", &[shared]);
+    let raw_hash = alpha.children[0].raw_hash().to_string();
+    assert_eq!(
+        raw_hash,
+        beta.children[0].raw_hash(),
+        "identical text must hash identically, or nothing below is true"
+    );
+
+    upsert_element_tree(
+        &pool,
+        &unique_blob(),
+        PARSER_VERSION,
+        &alpha,
+        declarations_only,
+    )
+    .await
+    .expect("insert alpha");
+    upsert_element_tree(
+        &pool,
+        &unique_blob(),
+        PARSER_VERSION,
+        &beta,
+        declarations_only,
+    )
+    .await
+    .expect("insert beta");
+
+    // Two element rows for that body, in two blobs.
+    assert_eq!(
+        count(
+            &pool,
+            &format!("SELECT count(*) FROM elements WHERE raw_hash = '{raw_hash}'")
+        )
+        .await,
+        2
+    );
+
+    // ...but the reconciler sees ONE job. Deduplicating here is what stops the
+    // sweep from enqueueing the same LLM call once per branch.
+    let missing = missing_enrichment(&pool, SUMMARIZER, 10)
+        .await
+        .expect("sweep");
+    assert_eq!(
+        missing.len(),
+        1,
+        "the same body in two blobs is one piece of work, got {missing:#?}"
+    );
+    assert_eq!(missing[0].raw_hash, raw_hash);
+    assert_eq!(
+        missing[0].raw_text, shared,
+        "the sweep carries the text to summarise"
+    );
+
+    let summary = FakeSummarizer::default()
+        .summarize(&alpha.children[0])
+        .await
+        .expect("the fake summariser does not fail");
+    put_smart_content(&pool, &raw_hash, SUMMARIZER, &summary)
+        .await
+        .expect("write the summary");
+
+    // One write covered both elements: the sweep is now empty, and the summary
+    // is reachable from either copy because neither copy is the key.
+    assert!(
+        missing_enrichment(&pool, SUMMARIZER, 10)
+            .await
+            .expect("sweep")
+            .is_empty(),
+        "a stored summary is what makes an element clean — there is no flag to set"
+    );
+    assert_eq!(
+        get_smart_content(&pool, beta.children[0].raw_hash(), SUMMARIZER)
+            .await
+            .expect("read"),
+        Some(summary),
+        "beta never had its own summary written, and does not need one"
+    );
+    assert_eq!(
+        count(&pool, "SELECT count(*) FROM smart_content").await,
+        1,
+        "one body, one row — no matter how many places hold it"
+    );
+
+    // A model bump is a new key: the old row is untouched (instant rollback)
+    // and the work reappears under the new one.
+    assert_eq!(
+        missing_enrichment(&pool, "fake-summarizer@v2", 10)
+            .await
+            .expect("sweep")
+            .len(),
+        1,
+        "changing the model must resurface the work without erasing the old answer"
+    );
+
+    database.destroy(pool).await;
+}
+
+/// PRD req 36's tag band is enforced by the database too, not only by the type.
+#[tokio::test]
+async fn the_schema_refuses_a_summary_with_too_many_tags() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let error = put_smart_content(
+        &pool,
+        &content_hash(b"whatever"),
+        SUMMARIZER,
+        &Summary {
+            text: "six tags is one too many".into(),
+            tags: (0..6).map(|n| format!("tag{n}")).collect(),
+        },
+    )
+    .await
+    .expect_err("six tags must be refused");
+
+    let StoreError::Query(sqlx::Error::Database(database_error)) = &error else {
+        panic!("expected a database error carrying a SQLSTATE, got: {error}");
+    };
+    assert_eq!(
+        database_error.constraint(),
+        Some("smart_content_tag_band"),
+        "the tag band must be the constraint that bit: {error}"
+    );
+
+    database.destroy(pool).await;
+}
+
+// ── Decision D1: the queue IS the dirty-file list ───────────────────────────
+
+/// A re-fire pushes the deadline out instead of adding a row: the debounce.
+#[tokio::test]
+async fn a_re_fire_collapses_into_the_queued_job_and_pushes_its_deadline_out() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let key = "scan:wt1:src/a.rs";
+    enqueue_job(
+        &pool,
+        "scan_file",
+        key,
+        &serde_json::json!({ "path": "src/a.rs" }),
+        Duration::ZERO,
+    )
+    .await
+    .expect("first enqueue");
+
+    // The same file saved again while the first job is still waiting.
+    enqueue_job(
+        &pool,
+        "scan_file",
+        key,
+        &serde_json::json!({ "path": "src/a.rs" }),
+        Duration::from_secs(60),
+    )
+    .await
+    .expect("second enqueue");
+
+    assert_eq!(
+        count(&pool, "SELECT count(*) FROM jobs").await,
+        1,
+        "a second enqueue of a live dedupe_key must not add a row"
+    );
+    assert_eq!(
+        claim_job(&pool, &["scan_file"]).await.expect("claim"),
+        None,
+        "the re-fire pushed not_before out, so nothing is ready — that is the \
+         debounce, and it lives in the column rather than in a timer"
+    );
+
+    database.destroy(pool).await;
+}
+
+/// The full lifecycle, and the reason the unique index is partial: finishing a
+/// job releases its key so the next edit can queue again.
+#[tokio::test]
+async fn a_job_is_claimed_once_and_completing_it_frees_its_key() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let key = "scan:wt1:src/b.rs";
+    let payload = serde_json::json!({ "path": "src/b.rs", "worktree": 1 });
+    enqueue_job(&pool, "scan_file", key, &payload, Duration::ZERO)
+        .await
+        .expect("enqueue");
+
+    let job = claim_job(&pool, &["scan_file"])
+        .await
+        .expect("claim")
+        .expect("a ready job should be claimable");
+    assert_eq!(job.dedupe_key, key);
+    assert_eq!(
+        job.payload, payload,
+        "the worker gets its arguments back intact"
+    );
+    assert_eq!(job.attempts, 1);
+
+    assert_eq!(
+        claim_job(&pool, &["scan_file"]).await.expect("claim"),
+        None,
+        "a running job must not be claimable a second time"
+    );
+    assert_eq!(
+        claim_job(&pool, &["summarize", "embed"])
+            .await
+            .expect("claim"),
+        None,
+        "a worker must only take the kinds it asked for"
+    );
+
+    complete_job(&pool, job.id).await.expect("complete");
+
+    // The key is free again — the file can be edited and re-queued.
+    enqueue_job(&pool, "scan_file", key, &payload, Duration::ZERO)
+        .await
+        .expect("re-enqueue after completion");
+    assert_eq!(
+        count(&pool, "SELECT count(*) FROM jobs").await,
+        2,
+        "a finished job is history, not a block on the next edit"
+    );
+
+    database.destroy(pool).await;
+}
+
+/// A failure is recorded on the row, not swallowed.
+#[tokio::test]
+async fn failing_a_job_records_why() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    enqueue_job(
+        &pool,
+        "summarize",
+        "summarize:deadbeef",
+        &serde_json::json!({}),
+        Duration::ZERO,
+    )
+    .await
+    .expect("enqueue");
+    let job = claim_job(&pool, &["summarize"])
+        .await
+        .expect("claim")
+        .expect("ready");
+
+    fail_job(&pool, job.id, "provider returned 429")
+        .await
+        .expect("fail");
+
+    let (state, last_error): (String, Option<String>) =
+        sqlx::query_as("SELECT state, last_error FROM jobs WHERE id = $1")
+            .bind(job.id)
+            .fetch_one(&pool)
+            .await
+            .expect("read the settled row");
+    assert_eq!(state, "failed");
+    assert_eq!(last_error.as_deref(), Some("provider returned 429"));
+
+    database.destroy(pool).await;
+}
+
+// ── Decision D4: FOR UPDATE SKIP LOCKED ─────────────────────────────────────
+
+/// A row another worker holds is STEPPED OVER, not waited on.
+///
+/// Without `SKIP LOCKED` this test would deadline out rather than fail an
+/// assertion: the claim would sit behind the held lock until the transaction
+/// below released it. That is precisely the serialisation decision D4 exists to
+/// avoid, and the reason an LLM job and an embedding job can run at once.
+#[tokio::test]
+async fn a_locked_job_is_stepped_over_not_waited_on() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    for name in ["src/one.rs", "src/two.rs"] {
+        enqueue_job(
+            &pool,
+            "scan_file",
+            &format!("scan:wt1:{name}"),
+            &serde_json::json!({ "path": name }),
+            Duration::ZERO,
+        )
+        .await
+        .expect("enqueue");
+    }
+
+    // Whichever job `claim_job` would take next — asked for in its own order,
+    // so this test does not depend on insertion order happening to match.
+    let mut holder = pool.begin().await.expect("begin");
+    let held: i64 = sqlx::query_scalar(
+        "SELECT id FROM jobs
+          WHERE state = 'pending' AND not_before <= now()
+          ORDER BY priority DESC, not_before
+          FOR UPDATE
+          LIMIT 1",
+    )
+    .fetch_one(&mut *holder)
+    .await
+    .expect("lock the front of the queue");
+
+    let claimed = claim_job(&pool, &["scan_file"])
+        .await
+        .expect("claim")
+        .expect("the second job is still free");
+    assert_ne!(
+        claimed.id, held,
+        "a locked row must be skipped, never handed to a second worker"
+    );
+
+    holder.rollback().await.expect("release the lock");
+
+    // Released, the skipped-over job is claimable again — the lock deferred it,
+    // it did not consume it.
+    let after = claim_job(&pool, &["scan_file"])
+        .await
+        .expect("claim")
+        .expect("the released job is ready again");
+    assert_eq!(after.id, held);
+
+    database.destroy(pool).await;
+}
+
+/// Two workers polling at the same instant get two different jobs.
+#[tokio::test]
+async fn two_claimers_never_take_the_same_job() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    for name in ["src/one.rs", "src/two.rs"] {
+        enqueue_job(
+            &pool,
+            "scan_file",
+            &format!("scan:wt1:{name}"),
+            &serde_json::json!({ "path": name }),
+            Duration::ZERO,
+        )
+        .await
+        .expect("enqueue");
+    }
+
+    let (first, second) = tokio::join!(
+        claim_job(&pool, &["scan_file"]),
+        claim_job(&pool, &["scan_file"])
+    );
+    let first = first.expect("claim").expect("two jobs are ready");
+    let second = second.expect("claim").expect("two jobs are ready");
+
+    assert_ne!(
+        first.id, second.id,
+        "two concurrent claimers took the same job — the same file would be \
+         scanned twice and the same LLM call paid for twice"
+    );
+    assert_eq!(
+        claim_job(&pool, &["scan_file"]).await.expect("claim"),
+        None,
+        "both jobs are now running, so a third worker finds nothing"
+    );
+
+    database.destroy(pool).await;
+}
+
+// ── Search: HNSW, then the join back to the element ─────────────────────────
+
+/// Nearest first, and a summary hit resolves to the element it describes.
+#[tokio::test]
+async fn similarity_ranks_nearest_first_and_resolves_back_to_elements() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let bodies = [
+        "pub fn parse_markdown(input: &str) -> Document { markdown::parse(input) }",
+        "pub fn connect_database(url: &str) -> Pool { postgres::pool(url) }",
+        "pub fn render_template(name: &str) -> Html { templates::render(name) }",
+    ];
+    let file = file_with("src/lib.rs", &bodies);
+    upsert_element_tree(
+        &pool,
+        &unique_blob(),
+        PARSER_VERSION,
+        &file,
+        declarations_only,
+    )
+    .await
+    .expect("insert");
+
+    // The fake is the testkit's, widened to the table's dimension. Its vectors
+    // are token-hashed, so cosine ordering carries real signal — which is the
+    // only reason a similarity assertion over a fake means anything.
+    let embedder = FakeEmbedder {
+        dimensions: EMBEDDING_DIMENSIONS,
+        ..FakeEmbedder::default()
+    };
+    let texts: Vec<String> = bodies.iter().map(|body| (*body).to_string()).collect();
+    let vectors = embedder
+        .embed(&texts)
+        .await
+        .expect("the fake does not fail");
+
+    let raw: Vec<NewEmbedding<'_>> = file
+        .children
+        .iter()
+        .zip(&vectors)
+        .map(|(element, vector)| NewEmbedding {
+            source_hash: element.raw_hash(),
+            source_kind: SourceKind::Raw,
+            vector,
+        })
+        .collect();
+    put_embeddings(&pool, EMBEDDER, &raw)
+        .await
+        .expect("write vectors");
+
+    // Search for the second body's own text: it must come back first, at
+    // distance zero, because the fake is deterministic.
+    let hits = query_embeddings(&pool, EMBEDDER, &vectors[1], 3)
+        .await
+        .expect("query");
+    assert_eq!(hits.len(), 3);
+    assert_eq!(
+        hits[0].element.address,
+        file.children[1].address,
+        "the exact text must rank first; got {:#?}",
+        hits.iter()
+            .map(|hit| &hit.element.address)
+            .collect::<Vec<_>>()
+    );
+    assert!(
+        hits[0].distance < 1e-6,
+        "a vector matched against itself is distance zero, got {}",
+        hits[0].distance
+    );
+    assert!(
+        hits.windows(2)
+            .all(|pair| pair[0].distance <= pair[1].distance),
+        "results must be nearest-first: {:?}",
+        hits.iter().map(|hit| hit.distance).collect::<Vec<_>>()
+    );
+    assert_eq!(hits[0].source_kind, SourceKind::Raw);
+    assert_eq!(hits[0].smart, None, "a raw hit has no summary attached");
+    assert_eq!(hits[0].element.raw_text, bodies[1]);
+
+    // Now the smart leg. A summary is embedded under the digest of its own
+    // text, and `smart_content.text_hash` is the only way back from that vector
+    // to the element — the join this schema exists to make possible.
+    let third = &file.children[2];
+    let summary = FakeSummarizer::default()
+        .summarize(third)
+        .await
+        .expect("the fake does not fail");
+    put_smart_content(&pool, third.raw_hash(), SUMMARIZER, &summary)
+        .await
+        .expect("write the summary");
+
+    let summary_vector = embedder
+        .embed(std::slice::from_ref(&summary.text))
+        .await
+        .expect("the fake does not fail")
+        .remove(0);
+    put_embeddings(
+        &pool,
+        EMBEDDER,
+        &[NewEmbedding {
+            source_hash: &content_hash(summary.text.as_bytes()),
+            source_kind: SourceKind::Smart,
+            vector: &summary_vector,
+        }],
+    )
+    .await
+    .expect("write the summary vector");
+
+    let hits = query_embeddings(&pool, EMBEDDER, &summary_vector, 1)
+        .await
+        .expect("query");
+    assert_eq!(hits[0].source_kind, SourceKind::Smart);
+    assert_eq!(
+        hits[0].element.address, third.address,
+        "a summary vector must resolve to the element it describes"
+    );
+    assert_eq!(hits[0].smart, Some(summary), "and carry the summary itself");
+    assert_eq!(hits[0].parser_version, PARSER_VERSION);
+
+    database.destroy(pool).await;
+}
+
+/// A vector of the wrong width is refused on the caller's terms, before any
+/// round trip — the fix is another table (decision D3), not a retry.
+#[tokio::test]
+async fn a_vector_of_the_wrong_width_is_refused_by_name() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let narrow = vec![0.5f32; 32];
+    let error = put_embeddings(
+        &pool,
+        EMBEDDER,
+        &[NewEmbedding {
+            source_hash: &content_hash(b"anything"),
+            source_kind: SourceKind::Raw,
+            vector: &narrow,
+        }],
+    )
+    .await
+    .expect_err("a 32-wide vector does not belong in embeddings_1024");
+    assert!(
+        matches!(
+            error,
+            StoreError::Dimensions {
+                expected: EMBEDDING_DIMENSIONS,
+                actual: 32
+            }
+        ),
+        "{error}"
+    );
+
+    let error = query_embeddings(&pool, EMBEDDER, &narrow, 5)
+        .await
+        .expect_err("nor in a query against it");
+    assert!(matches!(error, StoreError::Dimensions { .. }), "{error}");
+
+    database.destroy(pool).await;
+}

@@ -5,13 +5,35 @@
 //! abstraction, and the refused-anti-patterns list names "repository-trait over
 //! sqlx" specifically. Tests run against a real dockerized instance.
 //!
+//! sqlx never leaves this crate: the architecture check enforces it. What
+//! callers get instead is the typed API in [`elements`], [`smart`],
+//! [`embeddings`] and [`jobs`] — one function per *flow* the daemon actually
+//! performs, not table-shaped CRUD. Every one of them takes and returns
+//! `fs3_core` domain types, because a DTO layer between crates is another
+//! refused anti-pattern.
+//!
+//! The schema those functions speak to is workshop 002
+//! (`docs/plans/prd/workshops/002-pg-schema.md`); the guided tour of it is
+//! `docs/services/store-schema.md`.
+//!
 //! Queries are runtime (`sqlx::query`) rather than the compile-time-checked
 //! macros: the macros need a live database or a checked-in `.sqlx` cache at
 //! *build* time, which would make `cargo build` depend on docker.
 
-use fs3_core::{BlobRef, Element, ElementKind, ElementTree, Span};
-use sqlx::Row;
-use sqlx::postgres::{PgPoolOptions, PgRow};
+use sqlx::postgres::PgPoolOptions;
+
+pub mod elements;
+pub mod embeddings;
+pub mod jobs;
+pub mod smart;
+
+pub use elements::{get_elements, upsert_element_tree};
+pub use embeddings::{
+    EMBEDDING_DIMENSIONS, NewEmbedding, SimilarElement, SourceKind, put_embeddings,
+    query_embeddings,
+};
+pub use jobs::{Job, claim_job, complete_job, enqueue_job, fail_job};
+pub use smart::{MissingEnrichment, get_smart_content, missing_enrichment, put_smart_content};
 
 // The store owns the sqlx edge, so every other crate speaks to Postgres through
 // this re-export rather than depending on sqlx itself.
@@ -54,6 +76,21 @@ pub enum StoreError {
     /// A row in the database does not match the domain model.
     #[error("row is not a valid element: {0}")]
     Corrupt(fs3_core::Error),
+    /// A vector was offered to a table of a different width.
+    ///
+    /// Its own variant rather than a database error because the caller can act
+    /// on it: the fix is a different embedding model or a new
+    /// `embeddings_<dim>` table (decision D3), not a retry.
+    #[error(
+        "embedding has {actual} dimensions but embeddings_{expected} holds {expected}-wide \
+         vectors — a model of another width needs its own table (workshop 002, decision D3)"
+    )]
+    Dimensions {
+        /// The width the target table holds.
+        expected: usize,
+        /// The width the caller offered.
+        actual: usize,
+    },
 }
 
 /// Connect eagerly, proving the store is reachable before anything else starts.
@@ -103,143 +140,9 @@ pub async fn migrate(pool: &PgPool) -> Result<(), StoreError> {
     Ok(())
 }
 
-/// Insert or replace one element of `tree`, keyed by its content address.
-///
-/// The element is passed separately from the tree because a tree is nested and
-/// this table is flat: a caller writes `tree.iter()`, one row per element. The
-/// tree supplies the facts that are true of the whole file — path, content key,
-/// parse health — which is why they are not repeated on every node.
-///
-/// 0001's table is the exemplar, not the schema: it has no column for
-/// `sibling_order` or for the parent link, so a round-trip returns a flat list
-/// in source order rather than the tree. Storing the tree shape is workshop
-/// material for plan 002.
-///
-/// # Errors
-/// [`StoreError::Query`] when the statement fails.
-pub async fn upsert_element(
-    pool: &PgPool,
-    tree: &ElementTree,
-    element: &Element,
-) -> Result<(), StoreError> {
-    sqlx::query(
-        "INSERT INTO elements
-           (blob, path, qualified_name, ts_kind, kind, start_line, end_line, body, has_error)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         ON CONFLICT (blob, qualified_name, start_line) DO UPDATE SET
-           path = EXCLUDED.path,
-           ts_kind = EXCLUDED.ts_kind,
-           kind = EXCLUDED.kind,
-           end_line = EXCLUDED.end_line,
-           body = EXCLUDED.body,
-           has_error = EXCLUDED.has_error",
-    )
-    .bind(tree.blob.as_str())
-    .bind(&tree.path)
-    .bind(&element.address)
-    .bind(&element.subkind)
-    .bind(element.kind.as_str())
-    .bind(element.span.start_line as i32)
-    .bind(element.span.end_line as i32)
-    .bind(&element.raw_text)
-    .bind(tree.has_error)
-    .execute(pool)
-    .await?;
-    Ok(())
-}
-
-/// Every element recorded for one blob, flat, in source order.
-///
-/// # Errors
-/// [`StoreError::Query`] on failure; [`StoreError::Corrupt`] when a stored row
-/// cannot be read back as a domain element.
-pub async fn elements_for_blob(pool: &PgPool, blob: &BlobRef) -> Result<Vec<Element>, StoreError> {
-    let rows = sqlx::query(
-        "SELECT qualified_name, ts_kind, kind, start_line, end_line, body
-           FROM elements
-          WHERE blob = $1
-          ORDER BY start_line, qualified_name",
-    )
-    .bind(blob.as_str())
-    .fetch_all(pool)
-    .await?;
-
-    rows.iter()
-        .enumerate()
-        .map(|(index, row)| element_from_row(row, index as u32))
-        .collect()
-}
-
-/// Rebuild an element from its row.
-///
-/// `raw_hash` is not a stored column and does not need to be: it is derived
-/// from the body, so reading it back and re-deriving it give the same digest by
-/// construction. `sibling_order` IS lost — the flat table cannot express it —
-/// so it is re-derived as position in source order.
-fn element_from_row(row: &PgRow, source_order: u32) -> Result<Element, StoreError> {
-    let kind: String = row.try_get("kind")?;
-    Ok(Element::new(
-        kind_from_str(&kind)?,
-        row.try_get::<String, _>("ts_kind")?,
-        // The declaration's own name is the last address segment.
-        last_segment(row.try_get::<&str, _>("qualified_name")?),
-        row.try_get::<String, _>("qualified_name")?,
-        Span::new(
-            row.try_get::<i32, _>("start_line")? as u32,
-            row.try_get::<i32, _>("end_line")? as u32,
-        ),
-        row.try_get::<String, _>("body")?,
-    )
-    .with_sibling_order(source_order))
-}
-
-/// The declaration's own name within `src/foo.rs::Indexer::scan`.
-fn last_segment(address: &str) -> &str {
-    address
-        .rsplit(fs3_core::ADDRESS_SEGMENT)
-        .next()
-        .unwrap_or(address)
-}
-
-fn kind_from_str(value: &str) -> Result<ElementKind, StoreError> {
-    match value {
-        "file" => Ok(ElementKind::File),
-        "container" => Ok(ElementKind::Container),
-        "function" => Ok(ElementKind::Function),
-        "section" => Ok(ElementKind::Section),
-        other => Err(StoreError::Corrupt(fs3_core::Error::InvalidConfig(
-            format!("unknown element kind {other:?}"),
-        ))),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn kind_round_trips_through_its_stored_spelling() {
-        for kind in [
-            ElementKind::File,
-            ElementKind::Container,
-            ElementKind::Function,
-            ElementKind::Section,
-        ] {
-            assert_eq!(kind_from_str(kind.as_str()).unwrap(), kind);
-        }
-        // The spellings 0001 used, which migration 0002 renamed. A row that
-        // still says `callable` means the migration did not run.
-        assert!(kind_from_str("callable").is_err());
-        assert!(kind_from_str("type").is_err());
-        assert!(kind_from_str("block").is_err());
-    }
-
-    #[test]
-    fn a_name_is_the_last_address_segment() {
-        assert_eq!(last_segment("src/foo.rs::Indexer::scan"), "scan");
-        // A file element's address has no segments at all.
-        assert_eq!(last_segment("src/foo.rs"), "src/foo.rs");
-    }
 
     #[test]
     fn unreachable_names_the_command_that_fixes_it() {
@@ -248,5 +151,16 @@ mod tests {
             source: sqlx::Error::PoolClosed,
         };
         assert!(error.to_string().contains("docker compose up -d"));
+    }
+
+    #[test]
+    fn a_width_mismatch_names_the_decision_that_explains_it() {
+        let error = StoreError::Dimensions {
+            expected: EMBEDDING_DIMENSIONS,
+            actual: 32,
+        };
+        let message = error.to_string();
+        assert!(message.contains("32 dimensions"), "{message}");
+        assert!(message.contains("embeddings_1024"), "{message}");
     }
 }
