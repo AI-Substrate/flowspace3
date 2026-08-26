@@ -25,6 +25,7 @@ Revive a dead seat: `pij revive <id> --print` shows the exact command (Jordan ru
 | pij-recent-cicada | sqlx migrations + db how-to (w-migrations) | %34 | 01a03c46-3fea-7000-815f-eada7d9e02da | RELEASED — landed 0a75c44. Brief `briefs/w-migrations-cicada.md`. Phantom aliases: pij-likely-mosquito, pij-aggregate-mosquito |
 | pij-plain-mollusk | scanner v1: element tree + pure scan (w-scanner-v1) | %35 · window `scanner` | 01a03c4c-cd34-7000-8879-385defbdbff2 | ACTIVE — owns 0002_element_kinds.sql too. Brief `briefs/w-scanner-v1.md` |
 | pij-technological-egret | global config system (w-config) | %36 · window `config` | 01a03c50-eecb-7000-9378-1992ecdb548c | ACTIVE. Brief `briefs/w-config-egret.md` |
+| pij-surprising-sailfish | daemon shell prototype: watcher+web (w-daemon-shell) | %38 · window `daemon-shell` | 01a03c58-e85e-7000-8a21-4e81b739b51b | ACTIVE. Brief `briefs/w-daemon-shell.md` |
 
 ## Historical / other
 
