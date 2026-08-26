@@ -1,0 +1,14 @@
+docs/services/scanner.md
+  h_9e71e8b09f7cf2 1-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f2f3cc4ee2a09883e352539693e31c07c6519c1d",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
