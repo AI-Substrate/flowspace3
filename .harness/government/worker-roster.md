@@ -26,8 +26,8 @@ Revive a dead seat: `pij revive <id> --print` shows the exact command (Jordan ru
 | pij-plain-mollusk | scanner v1: element tree + pure scan (w-scanner-v1) | %35 · window `scanner` | 01a03c4c-cd34-7000-8879-385defbdbff2 | RELEASED — landed 0962ba8+17878b6+f2f3cc4 (scanner + docs); add-language skill authored from its recipe |
 | pij-technological-egret | global config system (w-config) | %36 · window `config` | 01a03c50-eecb-7000-9378-1992ecdb548c | ACTIVE. Brief `briefs/w-config-egret.md` |
 | pij-surprising-sailfish | daemon shell prototype: watcher+web (w-daemon-shell) | %38 · window `daemon-shell` | 01a03c58-e85e-7000-8a21-4e81b739b51b | ACTIVE. Brief `briefs/w-daemon-shell.md` |
-| pij-devoted-cattle | ignore-aware file discovery (w-discovery) | %39 · window `discovery` | 01a03c5c-d775-7000-8c41-a25729de92af | ACTIVE (copilot claude-opus-5-1m/omp). Brief `briefs/w-discovery.md` |
-| pij-xenophobic-wren | git/blob layer: identity + snapshot diffing (w-git-blob) | %40 · window `git-blob` | 01a03c5c-d938-7000-bd92-9136895e64c5 | ACTIVE — ruled: new crate fs3-git (workshop amendment, 7→8 crates). Brief `briefs/w-git-blob.md` |
+| pij-devoted-cattle | ignore-aware file discovery (w-discovery) | %39 · window `discovery` | 01a03c5c-d775-7000-8c41-a25729de92af | RELEASED — landed ca27e63+f0912f9 (204x walker) |
+| pij-xenophobic-wren | git/blob layer: identity + snapshot diffing (w-git-blob) | %40 · window `git-blob` | 01a03c5c-d938-7000-bd92-9136895e64c5 | RELEASED — landed c7670cd+b9f5b47 (fs3-git crate, 8-crate amendment) |
 | pij-musical-sylac | schema v1: migrations 0003+ + typed store API (w-schema) | %41 · window `schema` | 01a03c60-310c-7000-b5fb-d6069937b73a | ACTIVE. Brief `briefs/w-schema.md` · authority: workshop 002 |
 
 ## Historical / other
