@@ -50,8 +50,8 @@ on each Release, a curl installer, Dependabot.
 ```bash
 # NEVER pin by "--limit 1": on a busy push release-please (41s) finishes
 # last and a green can be misread as the gate (fleet rule DL-012). Resolve
-# the run id for YOUR sha, then watch it, and report workflow+sha together:
-gh run watch "$(gh run list --workflow ci --commit <your-sha> --json databaseId -q '.[0].databaseId')" --exit-status
+# the run id for YOUR sha, then watch it, and report workflow+sha together.
+gh run watch "$(gh run list --workflow ci --commit "$(git rev-parse HEAD)" --json databaseId -q '.[0].databaseId')" --exit-status
 gh run view <run-id> -q '.headSha + " " + .workflowName'   # quote both with the verdict
 
 gh pr list --state open            # rolling release PR ("chore(main): release …")
