@@ -13,8 +13,9 @@ on:
     branches: [main]
 
 env:
-  FS3_TEST_DATABASE_URL: postgres://flowspace3:flowspace3@localhost:5432/flowspace3
-  CARGO_TERM_COLOR: always
+  # Shipped default database address (docker-compose.yml maps 5433:5432);
+  # tests spawn the real daemon binary against exactly this address.
+  FS3_TEST_DATABASE_URL: postgres://flowspace3:flowspace3@127.0.0.1:5433/flowspace3
 
 jobs:
   gate:
@@ -28,9 +29,8 @@ jobs:
           POSTGRES_PASSWORD: flowspace3
           POSTGRES_DB: flowspace3
         ports:
-          - 5432:5432
+          - 5433:5432
         options: >-
-          --health-cmd "pg_isready -U flowspace3 -d flowspace3"
           --health-interval 2s
           --health-timeout 3s
           --health-retries 30
