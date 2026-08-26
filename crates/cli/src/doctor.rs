@@ -32,8 +32,8 @@
 use std::process::Stdio;
 use std::time::{Duration, Instant};
 
-use fs3_core::catalog;
 use fs3_core::envelope::{Envelope, Failure};
+use fs3_core::{Config, Port, ProviderInstance, catalog};
 use serde::{Deserialize, Serialize};
 
 /// Environment variable naming the container engine.
@@ -81,6 +81,26 @@ impl Step {
             outcome: "ok".to_string(),
             found: found.into(),
             action: None,
+            elapsed_ms: started.elapsed().as_millis(),
+        }
+    }
+
+    /// Found working but not as it should be — a finding, not a failure.
+    ///
+    /// Distinct from `down` because the subject is not absent, it is
+    /// misconfigured or running on a stand-in, and the reader's next move is
+    /// different: `down` means start something, `warn` means decide something.
+    fn warn(
+        check: &str,
+        found: impl Into<String>,
+        action: impl Into<String>,
+        started: Instant,
+    ) -> Self {
+        Step {
+            check: check.to_string(),
+            outcome: "warn".to_string(),
+            found: found.into(),
+            action: Some(action.into()),
             elapsed_ms: started.elapsed().as_millis(),
         }
     }
@@ -148,17 +168,24 @@ impl DoctorReport {
 /// # Errors
 /// The failure of the step that could not be repaired, with its own catalog
 /// code and fix.
-pub async fn run(database_url: &str, daemon_url: &str) -> Envelope<DoctorReport> {
+pub async fn run(config: &Config) -> Envelope<DoctorReport> {
     let mut steps = Vec::new();
 
-    match walk(database_url, daemon_url, &mut steps).await {
+    match walk(config, &mut steps).await {
         Ok(()) => {
-            let degraded = steps.iter().any(|step| step.outcome == "down");
+            // `warn` counts as degraded: a stack running entirely on the
+            // offline fake is working, and is almost never what the operator
+            // believes they configured. Reporting a plain "ok" there is the
+            // same class of silence as reporting ok with no daemon.
+            let degraded = steps
+                .iter()
+                .any(|step| step.outcome == "down" || step.outcome == "warn");
             let verdict = if degraded {
                 DoctorReport::DEGRADED
             } else {
                 DoctorReport::OK
             };
+            let steer = next_action(&steps);
             Envelope::ok(
                 "doctor",
                 DoctorReport {
@@ -167,12 +194,7 @@ pub async fn run(database_url: &str, daemon_url: &str) -> Envelope<DoctorReport>
                     verdict: verdict.to_string(),
                 },
             )
-            .with_next_action(if degraded {
-                "the store is ready but the daemon is not running — start it with \
-                 `flowspace3 daemon &`, then `flowspace3 add <path>`"
-            } else {
-                "everything is up — `flowspace3 add <path>` to index, then `flowspace3 search`"
-            })
+            .with_next_action(steer)
         }
         Err(failure) => {
             let mut envelope = Envelope::failed("doctor", failure);
@@ -189,7 +211,10 @@ pub async fn run(database_url: &str, daemon_url: &str) -> Envelope<DoctorReport>
     }
 }
 
-async fn walk(database_url: &str, daemon_url: &str, steps: &mut Vec<Step>) -> Result<(), Failure> {
+async fn walk(config: &Config, steps: &mut Vec<Step>) -> Result<(), Failure> {
+    let database_url = config.database.url.as_str();
+    let daemon_url = config.daemon.url.as_str();
+
     steps.push(check_engine()?);
 
     let (maintenance, name) = fs3_store::maintenance_url(database_url).map_err(|error| {
@@ -213,7 +238,35 @@ async fn walk(database_url: &str, daemon_url: &str, steps: &mut Vec<Step>) -> Re
     // name the command. It runs last because everything above it is what the
     // daemon needs in order to start at all.
     steps.push(check_daemon(daemon_url).await);
+    steps.push(check_providers(config));
     Ok(())
+}
+
+/// What to do next, from the FIRST unmet step rather than a generic line.
+///
+/// Order matters: a reader with no daemon AND no real provider should be told
+/// to start the daemon first, because that is the step that blocks the other
+/// from being observable.
+fn next_action(steps: &[Step]) -> String {
+    let unmet = |check: &str| {
+        steps
+            .iter()
+            .find(|step| step.check == check)
+            .is_some_and(|step| step.outcome == "down" || step.outcome == "warn")
+    };
+
+    if unmet("daemon") {
+        "the store is ready but the daemon is not running — start it with `flowspace3 daemon &`, \
+         then `flowspace3 add <path>`"
+            .to_string()
+    } else if unmet("providers") {
+        "everything is up, but indexing would use the offline fake — `flowspace3 docs get \
+         providers` explains how to register a real one, or carry on if offline is what you \
+         wanted"
+            .to_string()
+    } else {
+        "everything is up — `flowspace3 add <path>` to index, then `flowspace3 search`".to_string()
+    }
 }
 
 /// Step 0: is there an engine at all?
@@ -433,6 +486,88 @@ async fn check_daemon(daemon_url: &str) -> Step {
             started,
         ),
     }
+}
+
+/// Step 5: is a real provider configured, or is everything the offline fake?
+///
+/// A fresh install is NOT config-less — the defaults ship `[providers.fake]`
+/// with both ports naming it, and that is deliberate: it is what makes the
+/// whole stack, search included, work before anyone has a key. So "no provider
+/// configured" would be false, and reporting it would teach the reader
+/// something untrue.
+///
+/// What IS true, and is what an operator on a fresh machine needs to hear: no
+/// REAL provider is configured, so everything indexed will be embedded and
+/// summarised by a deterministic stand-in. That is fine if it was chosen and
+/// surprising if it was not — which is exactly the shape of a warn rather than
+/// an error. Doctor does not know which, so it reports and points at the page
+/// that explains the choice.
+///
+/// Never repaired: choosing a model and supplying its credentials is a
+/// decision, and a diagnostic command must not make it for you.
+fn check_providers(config: &Config) -> Step {
+    let started = Instant::now();
+    let mut findings = Vec::new();
+    let mut fake_ports = Vec::new();
+
+    for port in Port::ALL {
+        let selected = config.selected(port, None);
+        match config.provider(selected) {
+            // An active naming an instance that is not in the registry. The
+            // daemon refuses to start on this, so catching it here — where the
+            // fix is printable — beats meeting it as a boot failure.
+            Err(_) => findings.push(format!(
+                "{port}.active names {selected:?}, which is not in [providers]"
+            )),
+            Ok(ProviderInstance::Fake) => fake_ports.push(port.to_string()),
+            Ok(instance) => {
+                // A real provider whose key variable is unset fails at the
+                // first call, deep inside a job, hours into an index. Naming it
+                // now costs one environment lookup.
+                if let Some(variable) = instance.api_key_env()
+                    && std::env::var_os(variable).is_none()
+                {
+                    findings.push(format!(
+                        "{port} uses {selected:?} ({}), whose key variable ${variable} is not set",
+                        instance.kind()
+                    ));
+                }
+            }
+        }
+    }
+
+    if !findings.is_empty() {
+        return Step::warn(
+            "providers",
+            findings.join("; "),
+            "run `flowspace3 docs get providers` — it covers the registry, both Azure auth \
+             modes, and setting actives",
+            started,
+        );
+    }
+
+    if fake_ports.len() == Port::ALL.len() {
+        return Step::warn(
+            "providers",
+            "no real provider is configured — both ports use the offline fake, so everything \
+             indexed is embedded and summarised by a deterministic stand-in",
+            "if that is deliberate, nothing to do. Otherwise run `flowspace3 docs get \
+             providers` to register one",
+            started,
+        );
+    }
+
+    let described: Vec<String> = Port::ALL
+        .iter()
+        .map(|port| {
+            let name = config.selected(*port, None);
+            let kind = config
+                .provider(name)
+                .map_or("unknown", ProviderInstance::kind);
+            format!("{port}={name} ({kind})")
+        })
+        .collect();
+    Step::ok("providers", described.join(", "), started)
 }
 
 /// The engine to drive.

@@ -98,10 +98,29 @@ enum Command {
     /// meet. It serves HTTP on `daemon.url`, migrates the store at boot, and
     /// drains the job queue until stopped.
     Daemon,
+    /// Read the documentation bundled into this binary.
+    ///
+    /// Answers offline, with no daemon and no network: an agent that has just
+    /// installed fs3 can ask fs3 how to use fs3 before the stack is up.
+    Docs {
+        #[command(subcommand)]
+        command: DocsCommand,
+    },
     /// Inspect fs3's configuration.
     Config {
         #[command(subcommand)]
         command: ConfigCommand,
+    },
+}
+
+#[derive(Subcommand)]
+enum DocsCommand {
+    /// List every bundled topic.
+    List,
+    /// Print one bundled topic.
+    Get {
+        /// The topic name, as `docs list` reports it.
+        topic: String,
     },
 }
 
@@ -208,10 +227,12 @@ async fn run(command: Command) -> Result<ExitCode> {
                 None => settings::config_dir()?,
             };
             let effective = settings::load_effective_from(&dir)?;
-            Ok(emit(
-                &doctor::run(&effective.config.database.url, &effective.config.daemon.url).await,
-            ))
+            Ok(emit(&doctor::run(&effective.config).await))
         }
+        Command::Docs { command } => Ok(match command {
+            DocsCommand::List => emit(&fs3_cli::docs::list()),
+            DocsCommand::Get { topic } => emit(&fs3_cli::docs::get(&topic)),
+        }),
         Command::Config {
             command: ConfigCommand::Show { config_dir },
         } => config_show(config_dir).map(|()| ExitCode::SUCCESS),

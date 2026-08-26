@@ -199,3 +199,12 @@ The command was called with arguments it cannot act on.
 | retryable | status |
 | --- | --- |
 | false | 400 |
+### `FS3-E-USAGE-TOPIC-NOT-FOUND`
+
+The requested documentation topic is not bundled in this binary.
+
+**Fix**: run `flowspace3 docs list` to see the topics this binary carries; the set is fixed at build time, so a topic that is not listed does not exist in this version.
+
+| retryable | status |
+| --- | --- |
+| false | 404 |

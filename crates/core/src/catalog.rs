@@ -363,6 +363,16 @@ pub const USAGE_INVALID: Code = Code::new(
     false,
 );
 
+/// `docs get` was asked for a topic that is not bundled.
+pub const USAGE_TOPIC_NOT_FOUND: Code = Code::new(
+    "FS3-E-USAGE-TOPIC-NOT-FOUND",
+    Area::Usage,
+    "The requested documentation topic is not bundled in this binary.",
+    "run `flowspace3 docs list` to see the topics this binary carries; the set is fixed at build \
+     time, so a topic that is not listed does not exist in this version.",
+    false,
+);
+
 /// Every registered code, in docs order.
 ///
 /// The generated docs page and the drift test both read this, so a code that is
@@ -386,6 +396,7 @@ pub const ALL: &[Code] = &[
     QUERY_NO_INDEX,
     DAEMON_UNAVAILABLE,
     USAGE_INVALID,
+    USAGE_TOPIC_NOT_FOUND,
 ];
 
 /// Look up a code by its wire spelling — how a CLI turns a daemon's JSON back

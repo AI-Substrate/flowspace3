@@ -131,8 +131,15 @@ async fn search(
     match crate::search::search(&state, &request).await {
         Ok(results) => {
             let next = if results.results.is_empty() {
-                "nothing matched — widen with a shorter query, drop --min-score, or check \
-                 `flowspace3 status` in case indexing has not finished"
+                // The third cause is the one nobody guesses: vectors are only
+                // read under the model_key that wrote them, so searching with
+                // a different embedder than the one that indexed returns
+                // nothing while the index looks full. Naming doctor here is
+                // what turns that from a mystery into one command.
+                "nothing matched — widen with a shorter query, drop --min-score, check \
+                 `flowspace3 status` in case indexing has not finished, or run `flowspace3 \
+                 doctor`: a search only reads vectors written by the ACTIVE embedder, so a \
+                 provider change since indexing returns nothing from a full index"
             } else {
                 "open a hit at its path and span, or narrow with --path/--repo"
             };

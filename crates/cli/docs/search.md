@@ -1,0 +1,70 @@
+# search
+
+```bash
+flowspace3 search "how does the queue avoid two workers taking the same job"
+```
+
+Semantic search: the query is embedded with the same model that embedded the
+index, and the nearest elements come back ranked.
+
+## Flags
+
+| flag | effect |
+|---|---|
+| `--repo <identity>` | one repository, e.g. `git:github.com/org/repo` |
+| `--path <glob>` | paths matching a glob (`crates/store/*`) |
+| `--limit N` | how many hits (1–100, default 10) |
+| `--min-score S` | similarity floor, 0.0–1.0 |
+| `--source raw\|smart\|all` | which vector space to search |
+
+Filters narrow candidates **in SQL**, beside the index — not after the fact. A
+filter that matches nothing returns nothing rather than a padded list.
+
+## Reading a hit
+
+```json
+{ "address": "el:git:github.com/org/repo/src/auth.rs::validate_session_token",
+  "score": 0.83, "match_field": "smart", "kind": "function",
+  "subkind": "function_item", "name": "validate_session_token",
+  "span": [42, 58], "path": "src/auth.rs", "repo": "git:github.com/org/repo",
+  "snippet": "…", "smart": "Validates a session token…", "tags": ["auth"] }
+```
+
+- `path` + `span` is what you open; `span` is inclusive, 1-based.
+- `score` is `1 - cosine distance`: 1.0 is identical, higher is better. That
+  conversion happens once, at the boundary, so `--min-score 0.7` means what it
+  looks like.
+- `match_field` is `raw` or `smart`. **A `smart` hit found the answer by
+  meaning** — the words you typed may appear nowhere in the code. This is why
+  "why is enrichment keyed by a hash" can find the right function.
+- `snippet` is the first few lines only. Search returns lean rows on purpose.
+
+## Two spaces, one table
+
+Every element gets a vector of its own text (`raw`). Elements above the summary
+line floor also get an LLM summary, and that summary gets its own vector
+(`smart`). Both compete in the same ranking and `match_field` reports which
+won.
+
+`--source smart` searches only summaries — good for conceptual questions.
+`--source raw` searches only code — good when you know roughly what the code
+says.
+
+## Things that surprise people
+
+- **A file element its children cover has no vector.** Its text is the
+  concatenation of its own functions, so it would out-rank every one of them on
+  any question about that file. Files with no parsed children (prose, unknown
+  languages) do get one.
+- **Empty results are a real answer** — but check the boring causes first.
+  Indexing may still be running (`flowspace3 status`), the query may be too
+  narrow (shorter query, drop `--min-score`), or **the active embedder may not
+  be the one that built the index**. That last one looks exactly like a broken
+  search: the index is full, the query is fine, and nothing comes back, because
+  vectors are only read under the `model_key` that wrote them. `flowspace3
+  doctor` names the active providers.
+- **Vectors are only comparable within one model.** Changing the embedding
+  model means a new `model_key`; old rows survive but are not searched by the
+  new one. Re-index to move them.
+
+Not in this version: text and regex modes, hybrid ranking, `get` and `tree`.
