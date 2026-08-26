@@ -112,7 +112,7 @@
             "assertion": "install.sh verified live on mac + linux container (binary runs --version); ps1 present with unvalidated banner",
             "state": "unchecked",
             "pressure": "../../backpressure.dd.json#rows/bp-0004",
-            "note": "IN PROGRESS: install.sh verified on mac + linux container against simulated local release layout (ps1 twin present with unvalidated banner); live verification against the published Release waits for the v0.2.0 merge"
+            "note": "IN PROGRESS -> mechanics DONE: install.sh verified live on mac + linux container (binary answers --version) and via full README walkthrough (fresh container: install | doctor ok | daemon | add | status | search all green); asset names frozen flowspace3-<triple>; linux picks gnu per matrix. Remaining for CHECKED: one run against the PUBLISHED Release after v0.2.0 merge"
           }
         ],
         "tk-0105": [

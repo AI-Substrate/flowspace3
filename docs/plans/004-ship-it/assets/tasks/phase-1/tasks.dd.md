@@ -68,7 +68,7 @@
 
 | id | assertion | state | pressure | note |
 | --- | --- | --- | --- | --- |
-| dw-0104 | install.sh verified live on mac + linux container (binary runs --version); ps1 present with unvalidated banner | [ ] unchecked | [bp-0004](../../backpressure.dd.md#rows) | IN PROGRESS: install.sh verified on mac + linux container against simulated local release layout (ps1 twin present with unvalidated banner); live verification against the published Release waits for the v0.2.0 merge |
+| dw-0104 | install.sh verified live on mac + linux container (binary runs --version); ps1 present with unvalidated banner | [ ] unchecked | [bp-0004](../../backpressure.dd.md#rows) | IN PROGRESS -&gt; mechanics DONE: install.sh verified live on mac + linux container (binary answers --version) and via full README walkthrough (fresh container: install \| doctor ok \| daemon \| add \| status \| search all green); asset names frozen flowspace3-&lt;triple&gt;; linux picks gnu per matrix. Remaining for CHECKED: one run against the PUBLISHED Release after v0.2.0 merge |
 
 ### tk-0105
 

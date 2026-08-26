@@ -41,9 +41,11 @@ edition 2024).
 
 ## First run
 
-One binary does everything: `flowspace3`. No config file, no API keys — the
-default providers are `fake`, which is a **legal offline runtime**, not a
-stub: real embeddings-shaped work, deterministic answers.
+One binary does everything: `flowspace3`. Prerequisite: **Docker** (the store
+runs there — `doctor` will start and repair everything else itself). No config
+file, no API keys — the default providers are `fake`, which is a **legal
+offline runtime**, not a stub: real embeddings-shaped work, deterministic
+answers.
 
 ```bash
 # 1. Set up the world. `doctor` walks engine -> stack -> database -> schema
