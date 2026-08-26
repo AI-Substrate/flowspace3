@@ -55,13 +55,44 @@ lock is taken *inside* the blocking closure and never held across an await.
 This makes `tokio` a shipped dependency of `fs3-providers` — the only leaf
 crate that ships it. Core stays tokio-free; the arch check enforces that.
 
-**CPU only.** `fastembed` 6.0.1 exposes no CoreML or CUDA execution-provider
-feature (its `metal`/`cuda` features only wire the candle backend for
-qwen3/nomic; `directml` is Windows-only). `with_intra_threads(n)` caps ONNX
-Runtime's thread count — the knob that matters on a laptop, where an
-all-cores batch makes everything else stutter. GPU means depending on `ort`
-directly to build an `ExecutionProviderDispatch`; that is the extension point,
-deliberately not taken.
+**CPU only — and that is a finding, not a shrug.** `fastembed` 6.0.1 exposes no
+CoreML or CUDA execution-provider feature of its own (its `metal`/`cuda`
+features only wire the candle backend for qwen3/nomic; `directml` is
+Windows-only). `with_intra_threads(n)` caps ONNX Runtime's thread count — the
+knob that matters on a laptop, where an all-cores batch makes everything else
+stutter.
+
+GPU is nonetheless *reachable*, and the recipe is worth writing down because it
+is not obvious: `fastembed` delegates provider selection to `ort`, so adding
+`ort` as a direct dependency at the **exact** version `fastembed` pins
+(`=2.0.0-rc.13`, so cargo unifies rather than duplicating) and passing an EP
+through `with_execution_providers` works without `fastembed` knowing anything
+about it. Verified present in the vendored `ort` source, not merely claimed:
+`ort/src/ep/coreml.rs` has `ComputeUnits`, `CoreML`, and
+`with_compute_units(…)`; the feature is `coreml = ["ort-sys/coreml"]`.
+
+```rust
+// ort = { version = "=2.0.0-rc.13", features = ["coreml"] }
+use ort::ep::coreml::{ComputeUnits, CoreML};
+
+TextInitOptions::new(model).with_execution_providers(vec![
+    CoreML::default()
+        .with_compute_units(ComputeUnits::CPUAndNeuralEngine)
+        .into(),
+])
+```
+
+**We are not taking it, on evidence.** For BERT-class encoders this size the
+CoreML EP is a coin flip, not a win: it partitions the graph and falls back to
+CPU for unsupported ops, pays a first-run model-compilation cost that is
+proportionally *worse* for small graphs, and is documented as regressing below
+the CPU EP outright when a model lands on the older NeuralNetwork format rather
+than MLProgram. Published embedding benchmarks put ONNX-Runtime-CPU engines
+(`fastembed` among them) at the front for `bge-small-en-v1.5`, with
+candle-backed TEI roughly an order of magnitude behind on the same model. So
+the CPU path is not the fallback here; it is the fast one. Revisit only with a
+measurement on this workload, and measure first-run and steady-state
+separately.
 
 **rustls, no image models.** `default-features = false` plus
 `hf-hub-rustls-tls` and `ort-download-binaries-rustls-tls`. The crate defaults
@@ -126,9 +157,51 @@ quantisation range per batch, so `fastembed` refuses any `batch_size` smaller
 than the input — and the same text embedded alone versus in a batch may drift
 further than the contract's `SAME_EMBEDDING` floor tolerates. Untested here.
 
-**First run needs network and ~129 MB.** A cold `cargo test --all` on a
-machine with no network fails this suite rather than skipping it. That is
-deliberate: a green test that silently did nothing is worse than a red one.
+**First run needs network and ~129 MB.** A cold
+`cargo test -p fs3-providers --test local_contract -- --ignored` on a machine
+with no network fails rather than skipping. That is deliberate: a green test
+that silently did nothing is worse than a red one.
+
+**Do not normalise again downstream.** Vectors come back L2-normalised, so
+cosine similarity is a plain dot product and re-normalising is a no-op at best.
+The trap runs the other way too: comparing these vectors against a naive
+`ort` + `tokenizers` stack that skipped normalisation looks like "the
+embeddings are wrong" when it is only a magnitude difference.
+
+## Alternatives, and why they were not chosen
+
+Checked after the fact, because the choice deserved a second opinion:
+
+- **`ort` + `tokenizers` directly** — what `fastembed` already is, minus the
+  model catalogue. It gives you raw hidden states: pooling and normalisation
+  become your code, and picking mean where the model wants CLS is *silently*
+  wrong, not an error. fs2 wrote that code and recorded getting exactly this
+  wrong. No.
+- **`candle`** (HuggingFace's pure-Rust framework) — genuinely pure Rust and
+  the only option with a real Metal story, but you assemble BERT, pooling and
+  normalisation yourself, and published benchmarks put candle-backed embedding
+  of this very model roughly an order of magnitude behind ONNX Runtime CPU.
+  Its own issue tracker carries "same embedding for every sentence" reports
+  from hand-rolled pooling. Not for a CPU encoder.
+- **`model2vec-rs`** (static distilled embeddings — no transformer at
+  inference) — the one genuinely interesting alternative: order-of-magnitude
+  faster on CPU for a few MTEB points of retrieval quality. Worth measuring if
+  bulk first-index throughput ever becomes the bottleneck, as a *second*
+  embedder rather than a replacement. The quality/speed figures available are
+  estimates, not measurements — treat them as a reason to benchmark, not a
+  reason to switch.
+- **`llama-cpp-2` / GGUF, `mistral.rs`, `burn`, `tract`** — all run *some*
+  embedding model in-process, none improve on ONNX Runtime for a 33M-parameter
+  encoder, and each adds a build story. No.
+- **HuggingFace `text-embeddings-inference`** — a server. The entire point of
+  this adapter is not being one.
+
+One correction worth recording, because a secondary source got it wrong:
+`fastembed` does **not** apply mean pooling universally. It selects pooling per
+model (`get_default_pooling_method`), defaulting to CLS — which is what makes
+it correct for BGE out of the box. Verified in the crate source, and consistent
+with the `cos(cat, kitten) = 0.876` measured above; mean-pooled BGE is the
+failure fs2 documented.
 
 ## How to verify it works
 
