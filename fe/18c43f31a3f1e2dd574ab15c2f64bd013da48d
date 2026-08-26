@@ -1,0 +1,24 @@
+crates/daemon/Cargo.toml
+  h_9e71e8b09f7cf2 28-32,35-42
+crates/daemon/src/boot.rs
+  h_9e71e8b09f7cf2 131,134-158
+crates/daemon/src/lib.rs
+  h_9e71e8b09f7cf2 20,32
+crates/daemon/src/update.rs
+  h_9e71e8b09f7cf2 1-712
+crates/daemon/tests/auto_update.rs
+  h_9e71e8b09f7cf2 1-469
+crates/testkit/arch-allowlist.toml
+  h_9e71e8b09f7cf2 172-175,182-188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "fe18c43f31a3f1e2dd574ab15c2f64bd013da48d",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
