@@ -3,8 +3,8 @@
 # macOS/Windows builds are release-only and never gated (plan 004).
 #
 # The store tier needs Postgres+pgvector; the service container below mirrors
-# docker-compose.yml (pgvector/pgvector:pg16). Tiers above store keep CI
-# endpoint-free — no API keys, no network services (GITHUB_TOKEN only).
+# docker-compose.yml (pgvector/pgvector:pg16, host port 5433). Tiers above
+# store keep CI endpoint-free — no API keys, no network services.
 
 name: ci
 
@@ -13,9 +13,10 @@ on:
     branches: [main]
 
 env:
-  # Shipped default database address (docker-compose.yml maps 5433:5432);
-  # tests spawn the real daemon binary against exactly this address.
+  # Shipped default database address; tests spawn the real daemon binary
+  # against exactly this address.
   FS3_TEST_DATABASE_URL: postgres://flowspace3:flowspace3@127.0.0.1:5433/flowspace3
+  CARGO_TERM_COLOR: always
 
 jobs:
   gate:
@@ -30,13 +31,16 @@ jobs:
           POSTGRES_DB: flowspace3
         ports:
           - 5433:5432
-        options: >-
-          --health-interval 2s
-          --health-timeout 3s
-          --health-retries 30
+        # The image defines no HEALTHCHECK, so GitHub's service health probe
+        # cannot be used; readiness is observed by the wait step below.
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Wait for postgres
+        run: |
+          timeout 60 bash -c 'until printf "" >> /dev/tcp/127.0.0.1/5433; do sleep 1; done'
+          echo "postgres accepting connections on 127.0.0.1:5433"
 
       # Installs exactly what rust-toolchain.toml pins (channel=stable,
       # rustfmt+clippy) — same toolchain the repo's own convention selects.
