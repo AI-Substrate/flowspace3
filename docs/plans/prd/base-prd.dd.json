@@ -444,8 +444,8 @@
           "num": 54,
           "title": "Auto-update: daemon self-updates, envelope steers restart",
           "requirement": "AUTO-UPDATE IS ON BY DEFAULT with a config opt-out ([update] section). The daemon periodically checks GitHub Releases (quota-free HEAD/redirect probe), downloads the matching release asset, verifies integrity, and ATOMICALLY REPLACES the installed binary itself (temp-file-beside-target + rename; notify-only fallback when the install path is not writable). It records the swap; from then EVERY command envelope carries update-installed-restart-daemon steering. doctor explains; `flowspace3 doctor upgrade` remains as the force-it-now manual path. Phase 2 (separate, after this proves out): the daemon drains to a quiet point and exec()s its own path to self-restart. (Jordan, 2026-08-26; auto-on ruling + in-place restart 2026-08-27.)",
-          "state": "unchecked",
-          "note": "first PR-era packet: sailfish (reconcile substrate is the vehicle); checksums file added to release.yml in same packet; supersedes the manual-only shape"
+          "state": "checked",
+          "note": "landed PR #13 (squash 9905ffe; packet shas fe18c43+92897e9+dcd6ac3, edeard): engine w/ quota-free probe, SHA256SUMS verify, atomic same-dir swap (swap-under-running-binary proven by test), notify-only fallback, doctor upgrade + row; phase-2 self-restart still open; NEXT release is the first updatable-to (first to publish SHA256SUMS)"
         },
         {
           "id": "req-0055",
@@ -476,16 +476,16 @@
           "num": 58,
           "title": "Complete config-option reference in docs/how",
           "requirement": "docs/how/configuration.md (or a sibling reference page it links) documents EVERY config option the binary reads: table per section ([daemon], [database], [indexing], [scan], [update], provider registry, ports) with key, type, default, effect, and env-override name; kept current as options land. (Jordan, 2026-08-27.)",
-          "state": "unchecked",
-          "note": "folded into the auto-update packet as deliverable 2; generated against fs3-core's config structs so nothing is missed"
+          "state": "checked",
+          "note": "landed PR #13 (135d5f2): docs/reference/configuration.md complete option table + drift test crates/core/tests/config_reference.rs so it cannot rot silently"
         },
         {
           "id": "req-0059",
           "num": 59,
           "title": "User messages queue: centralized daemon-to-user messaging",
           "requirement": "A centralized daemon-side USER MESSAGES QUEUE (Postgres-backed): any feature pushes a message (id, source, severity, text, next_action, clear-condition); the shared envelope builder carries the queue's live messages in EVERY CLI command's response; messages clear when their condition resolves, or by ack/expiry. No feature invents its own envelope side-channel. First producers: auto-update ('new version installed - restart the daemon'; and the locked/not-writable case: 'update not possible at <path>: <reason> - run flowspace3 doctor upgrade, or reinstall: <one-liner>'). (Jordan, 2026-08-27.)",
-          "state": "unchecked",
-          "note": "built inside the w-auto-update packet (sailfish) as the vehicle; doctor shows the queue"
+          "state": "checked",
+          "note": "landed PR #13 (83a7783): migration 0008_user_messages, store/messages.rs, envelope carries live messages on every command; auto-update is first producer incl. locked/not-writable actionable message"
         }
       ]
     }
