@@ -1,0 +1,14 @@
+.github/workflows/ci.yml
+  h_9e71e8b09f7cf2 13,18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "73b1b2c31fe3216dfc0f385c6ca696422acf2e64",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
