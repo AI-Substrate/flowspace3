@@ -6,9 +6,10 @@
 
 pub mod client;
 pub mod settings;
+pub mod show;
 
 pub use client::{DaemonClient, HealthReport};
-pub use settings::daemon_url;
+pub use settings::{config_dir, daemon_url, load_effective_from, load_secrets_from};
 
 /// The suggestion every unreachable-daemon failure ends with (PRD req 37).
 pub const DOCTOR_HINT: &str = "run `flowspace3 doctor` to diagnose and start the stack";

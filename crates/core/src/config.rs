@@ -49,12 +49,16 @@ pub const DEFAULT_CONFIG_SUBDIR: &str = "flowspace3";
 pub const ENV_PREFIX: &str = "FS3_";
 
 /// Separator for nesting inside an override name: `FS3_DATABASE__URL`.
+///
+/// An override is `FS3_` + section + `__` + key, and every configuration key
+/// lives inside a section — so an `FS3_` variable *without* [`ENV_NESTING`] is
+/// not a config override at all. That is what keeps the override namespace off
+/// the secrets namespace: `FS3_CONFIG_DIR` steers the loader and a key
+/// variable called `FS3_MY_API_KEY` is somebody's secret, neither of which
+/// should make the daemon refuse to start. A name that *does* nest must match
+/// a real key, so a typo is a startup failure rather than an override that
+/// silently does nothing.
 pub const ENV_NESTING: &str = "__";
-
-/// `FS3_*` variables that are *not* config overrides. Anything else carrying
-/// the prefix must name a real key, so a typo is a startup failure rather than
-/// an override that silently does nothing.
-pub const RESERVED_ENV_VARS: &[&str] = &[CONFIG_DIR_ENV];
 
 /// What replaces a secret when configuration is printed.
 pub const REDACTED: &str = "<redacted>";
@@ -550,12 +554,14 @@ fn render(problems: &[Problem]) -> String {
     out
 }
 
-/// Keep only the environment variables that are fs3 config overrides.
+/// Keep only the environment variables that are fs3 config overrides:
+/// [`ENV_PREFIX`] *and* [`ENV_NESTING`], e.g. `FS3_DATABASE__URL`.
 ///
-/// Reserved names ([`RESERVED_ENV_VARS`]) are dropped: they steer the loader
-/// rather than the configuration. Everything else carrying [`ENV_PREFIX`] is
-/// kept, and [`resolve`] refuses it if it does not name a real key — an
-/// override that silently does nothing is worse than a startup failure.
+/// Anything else with the prefix belongs to somebody else — `FS3_CONFIG_DIR`
+/// steers the loader, `FS3_ACME_API_KEY` is a secret — and is left alone.
+/// A name that does nest is passed on to [`resolve`], which refuses it if it
+/// matches no key: an override that silently does nothing is worse than a
+/// startup failure.
 pub fn env_overrides<I, K, V>(vars: I) -> Vec<(String, String)>
 where
     I: IntoIterator<Item = (K, V)>,
@@ -565,9 +571,7 @@ where
     let mut kept: Vec<(String, String)> = vars
         .into_iter()
         .map(|(k, v)| (k.into(), v.into()))
-        .filter(|(name, _)| {
-            name.starts_with(ENV_PREFIX) && !RESERVED_ENV_VARS.contains(&name.as_str())
-        })
+        .filter(|(name, _)| name.starts_with(ENV_PREFIX) && name.contains(ENV_NESTING))
         .collect();
     // Deterministic order so two overrides of the same key resolve the same way
     // every run, and so error lists do not shuffle between runs.
@@ -1090,10 +1094,14 @@ summary_min_lines = 0
         assert!(err.to_string().contains("2 problems"), "{err}");
     }
 
+    /// The override namespace must not eat the secrets namespace: a user is
+    /// free to call their key variable `FS3_ACME_API_KEY`, and the loader's own
+    /// `FS3_CONFIG_DIR` is not configuration either.
     #[test]
-    fn the_config_dir_variable_is_not_an_override() {
+    fn only_nested_names_are_overrides() {
         let kept = env(&[
             ("FS3_CONFIG_DIR", "/tmp/whatever"),
+            ("FS3_ACME_API_KEY", "sk-secret"),
             ("PATH", "/usr/bin"),
             ("FS3_DAEMON__URL", "http://127.0.0.1:1"),
         ]);
