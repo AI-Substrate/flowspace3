@@ -1,0 +1,21 @@
+docs/plans/prd/base-prd.dd.md
+  s_15d888f4b629c1::t_2e92152d85fc5d 77-79
+docs/plans/prd/base-prd.dd.json
+  s_15d888f4b629c1::t_ff828fd0070a24 455-470,472
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9e8fffbbd10c60893a2bbbe65713e04107e9d6fb",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
