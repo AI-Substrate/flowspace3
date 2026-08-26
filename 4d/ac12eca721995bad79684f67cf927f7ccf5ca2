@@ -1,0 +1,33 @@
+docs/plans/003-first-light/assets/backpressure.dd.json
+  s_15d888f4b629c1::t_0ecd2e5e496ecc 11
+docs/plans/003-first-light/assets/backpressure.dd.md
+  s_15d888f4b629c1::t_24ee8bee2cb7c1 14
+docs/plans/003-first-light/assets/tasks/phase-1/tasks.dd.json
+  s_15d888f4b629c1::t_60e0266b633779 70,150
+docs/plans/003-first-light/assets/tasks/phase-1/tasks.dd.md
+  s_15d888f4b629c1::t_9d8b18ea6df9a1 43,86
+docs/plans/003-first-light/plan.dd.json
+  s_15d888f4b629c1::t_f88443da88b852 60,110-114
+docs/plans/003-first-light/plan.dd.md
+  s_15d888f4b629c1::t_9f936891ac6572 59,86
+docs/plans/003-first-light/the-flow.json
+  s_15d888f4b629c1::t_8e7ae232768d43 222-262,568-593
+docs/plans/003-first-light/the-flow.md
+  s_15d888f4b629c1::t_0c8112e6f04452 4,19,58-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4dac12eca721995bad79684f67cf927f7ccf5ca2",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
