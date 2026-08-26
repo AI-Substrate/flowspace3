@@ -452,8 +452,24 @@
           "num": 55,
           "title": "agents-start-here verb",
           "requirement": "flowspace3 agents-start-here prints the bundled agents guide (setup from scratch, doctor, provider/config creation, daemon, add, search) — the same harness/ddocs convention: an agent runs one obvious verb and is oriented; effectively a front door onto docs get agents with next_action steering. (Jordan, 2026-08-26.)",
+          "state": "checked",
+          "note": "landed e4533fc in v0.2.0; verified in the from-scratch Ubuntu acceptance (agent funnel README -> agents-start-here)"
+        },
+        {
+          "id": "req-0056",
+          "num": 56,
+          "title": "Instance profiles: many daemons, isolated stacks",
+          "requirement": "fs3 supports running MULTIPLE independent daemons on one machine (main / dev / demo) without interfering: a named profile (spelling ~ `flowspace3 --profile demo` or FS3_PROFILE) selects its own config dir, database (own PG database or port), HTTP port, and container names, so demo/dev work never registers roots or jobs into the main index. Motivated 2026-08-26: the docker demo ran with host network against the default config and polluted the real database with a /demo root the daemon then warned about forever. (Jordan, 2026-08-26.)",
           "state": "unchecked",
-          "note": "RELEASE-GATING per Jordan: must be in v0.2.0 — dingo lands it with the doctor-row phase, before the merge"
+          "note": "design queued for 0.3.0 cycle; doctor must be profile-aware (provision the profile's own stack); default profile = today's behaviour unchanged"
+        },
+        {
+          "id": "req-0057",
+          "num": 57,
+          "title": "Root removal verb (remove/forget)",
+          "requirement": "A first-class verb (spelling ~ `flowspace3 remove <path>`) unregisters a root: deletes its repo/worktree/file rows and queued jobs, stops watching it, and reports what was removed; shared blob-keyed artifacts (elements/embeddings/smart_content) may remain for dedup. Motivated 2026-08-26: removing the stale /demo root required hand-written SQL inside the PG container. (Jordan, 2026-08-26.)",
+          "state": "unchecked",
+          "note": "surfaced by the /demo pollution incident; pairs with req-0056 but independently shippable"
         }
       ]
     }
