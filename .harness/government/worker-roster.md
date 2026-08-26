@@ -17,6 +17,7 @@
 |---|---|---|---|---|
 | pij-strange-edeard | w-auto-update (req-0054/0058/0059): daemon self-update, user messages queue, config reference | %60 · window `auto-update` | omp / github-copilot claude-opus-5 high (spawnId s1787782128553-97893) | COMPLETE 2026-08-27 — PR #13 merged (9905ffe): auto-update engine, user messages queue, SHA256SUMS, doctor upgrade, config reference; 23 tests; caught SHA256SUMS-absence retry-forever bug via live smoke; standing by for review fixes / next packet |
 | pij-squealing-xoxarle | telemetry survey + F1-F6 field report for plan 090 | (Jordan-run claude session) | claude | ACTIVE — ack'd handover packet `handovers/2026-08-27-telemetry-retro-xoxarle.md`; Jordan directing narrative-script work |
+| pij-religious-cheetah | STANDING Linux tester (w-linux-test, reusable — re-ping for every Linux verification; headline: auto-update proof at v0.3.0→next) | %62 · window `linux-test` | omp / github-copilot claude-opus-5 high (spawnId s1787785262734-68991) | ACTIVE 2026-08-27 — canary PASS; baseline v0.2.0 rig-proof dispatched |
 
 ## Closed workers — who did what (2026-08-27)
 
