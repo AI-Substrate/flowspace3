@@ -32,12 +32,15 @@ reconcile pass (shared 5s cadence)
 4. **Verify.** The release's own `SHA256SUMS` asset is fetched and the
    downloaded binary's sha256 is compared against the line for this triple. A
    mismatch, or a release with no `SHA256SUMS`, installs nothing.
-5. **Swap.** Stage a temp file **in the install directory**, `fsync`, `chmod
+5. **Interrogate.** The staged binary is RUN — `--version` — and the swap is
+   refused unless it reports the version being installed. See below; this is
+   what makes a self-reinstalling loop structurally impossible.
+6. **Swap.** Stage a temp file **in the install directory**, `fsync`, `chmod
    0755`, `rename()` over the target.
-6. **Say so.** The state row becomes messages, and the messages ride on every
+7. **Say so.** The state row becomes messages, and the messages ride on every
    envelope.
 
-## The four design decisions worth knowing
+## The five design decisions worth knowing
 
 ### The install path is canonicalised before anything touches it
 
@@ -75,6 +78,32 @@ reason and the queue carries a message naming the path, the reason,
 Writability is probed by trying, not by reading permission bits: with ACLs,
 read-only mounts and containers in play, the bits are only part of the answer,
 and the question is precisely "would the rename work".
+
+### The downloaded binary is asked what it is, before it is installed
+
+A binary that lies about its own version is not a cosmetic bug for an updater —
+it is a permanent loop. The comparison is `env!("CARGO_PKG_VERSION")` against
+the newest published tag, so a build whose compiled-in version is stale is
+*permanently* older than every release: download, swap, restart, still stale,
+repeat, once per check interval, forever. The restart message can never clear,
+because restarting does not change the answer.
+
+Not hypothetical. **v0.2.0 shipped reporting 0.1.0** — release-please's `simple`
+strategy bumped its own manifest and never touched `[workspace.package]
+version`. Fixed in req-0060; see `docs/services/ci-release.md` for the three
+mechanisms that now hold that shut on the release side.
+
+This is the defence on the *client* side, and it is deliberately positioned
+**before** the swap. Detecting it afterwards means the bad binary is already
+installed and the daemon has to argue with itself about what it is; refusing
+beforehand means the install never happens and the user gets one actionable
+message.
+
+Running it is not extra trust: its sha256 has already been checked against the
+release's own `SHA256SUMS`, and executing `--version` is strictly less dangerous
+than installing it. The probe also catches two classes a version comparison
+never would — an asset built for the wrong triple, and a binary that cannot
+`exec` at all.
 
 ## The user messages queue (req 59)
 
@@ -166,11 +195,12 @@ because a person typing it has already decided it is time.
 | Envelope's `messages` field | `crates/core/src/envelope.rs` |
 | Schema | `crates/store/migrations/0008_user_messages.sql`, `0009_update_state.sql` |
 | Persistence | `crates/store/src/messages.rs`, `crates/store/src/updates.rs` |
-| Probe, verify, swap, lock, supervisor | `crates/daemon/src/update.rs` |
+| Probe, verify, version guard, swap, lock, supervisor | `crates/daemon/src/update.rs` |
 | Envelope attach point | `crates/daemon/src/answer.rs` |
 | `doctor upgrade` | `crates/cli/src/upgrade.rs` |
 | doctor rows | `crates/cli/src/doctor.rs` |
 | Publishing `SHA256SUMS` | `.github/workflows/release.yml` |
+| Keeping the binary's version truthful | `Cargo.toml` annotation · `release-please-config.json` · `.github/workflows/release-please.yml` · preflight leg B2 |
 | Proof | `crates/daemon/tests/auto_update.rs` |
 
 ## Open, and named rather than hidden
