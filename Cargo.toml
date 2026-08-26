@@ -26,6 +26,18 @@ azure_core = "1"
 # to `az`; without it the developer-tools chain cannot see an `az login`.
 azure_identity = { version = "1", features = ["tokio"] }
 clap = { version = "4", features = ["derive"] }
+# Local ONNX embeddings in-process: `fastembed` owns the ORT session, the
+# tokenizer, the model-specific pooling (CLS for BGE, mean for MiniLM — getting
+# that wrong is silently wrong, not an error) and the L2 normalisation. fs2
+# hand-rolled all four in Python; this is the crate that already did it.
+# Defaults are wrong for us twice over: `image-models` is dead weight for a text
+# embedder, and native-tls contradicts the rustls choice `reqwest` makes above.
+# `ort/download-binaries` fetches ONNX Runtime at BUILD time and links it
+# statically — no runtime install, no dylib to ship.
+fastembed = { version = "6", default-features = false, features = [
+  "hf-hub-rustls-tls",
+  "ort-download-binaries-rustls-tls",
+] }
 # gitoxide: git plumbing in pure Rust — no libgit2 C dependency, so the
 # cross-platform build story stays `cargo build`. Feature set is deliberately
 # narrow: read an index, walk the worktree honouring ignore rules, hash blobs.

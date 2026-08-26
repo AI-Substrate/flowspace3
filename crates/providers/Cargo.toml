@@ -11,13 +11,16 @@ fs3-core.workspace = true
 async-trait.workspace = true
 azure_core.workspace = true
 azure_identity.workspace = true
+fastembed.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+# `spawn_blocking` only: the local ONNX session is CPU-bound and blocking, and
+# running it on an async worker thread would stall every other task there.
+tokio.workspace = true
 
 [dev-dependencies]
 fs3-testkit.workspace = true
 # The offline stub server the Azure tests answer from: a fake service, not a
 # mocking framework (workshop 001 rule 5).
 axum.workspace = true
-tokio.workspace = true

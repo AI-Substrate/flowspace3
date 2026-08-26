@@ -11,7 +11,7 @@
 | Anthropic | summarizer | wanted | native messages API |
 | Gemini | both | wanted | native API |
 | Voyage / Cohere | embedder | wanted | dedicated embedding APIs; pick one when needed |
-| fastembed/ONNX in-process | embedder | wanted | serverless local embeddings; air-gapped + test-friendly |
+| **fastembed/ONNX in-process** | **embedder** | ✅ landed (w-local-embed) | serverless local embeddings; air-gapped + test-friendly. `BAAI/bge-small-en-v1.5` by default (384-dim, CLS pooling, L2-normalised, ~129 MB) — the model fs2 settled on. ONNX Runtime is statically linked, so there is nothing to install; the only network is the first model pull. Contract leg runs LIVE and un-`#[ignore]`d (no keys to have): 18 s cold, 0.2 s warm. Config = model name + cache dir + intra-op threads. CPU only. |
 | Concurrency combinator | wraps any | wanted | `Batched`/`Throttled`/`Retry` over `Arc<dyn>`; the parallel-execution layer, written once for all adapters |
 
 Adoption order beyond Azure is unset — Jordan names the next pick. Update this table when an adapter lands or a decision changes it.
