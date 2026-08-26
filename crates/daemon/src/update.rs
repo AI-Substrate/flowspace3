@@ -212,7 +212,7 @@ impl Updater {
         // for why a binary that lies about its version is a permanent update
         // loop rather than a cosmetic bug.
         let staged = stage(&self.install_path, &bytes)?;
-        let claimed = match staged_version(staged.path()) {
+        let claimed = match staged_version(&staged) {
             Ok(claimed) => claimed,
             Err(error) => {
                 return Ok(Outcome::Blocked {
@@ -404,7 +404,7 @@ pub fn not_writable(directory: &Path) -> Option<String> {
     }
 }
 
-/// Write `bytes` into a temp file beside `target`, executable and synced.
+/// Write `bytes` into a temp file beside `target`, executable and CLOSED.
 ///
 /// In the install directory, NOT in `/tmp`: `rename` across filesystems is
 /// `EXDEV`, and `/tmp` is a different filesystem often enough that the bug
@@ -414,9 +414,23 @@ pub fn not_writable(directory: &Path) -> Option<String> {
 /// the real filesystem, executable, and is still not installed — which is the
 /// only place [`staged_version`] can ask it what it is.
 ///
+/// # Why this returns a `TempPath` rather than a `NamedTempFile`
+///
+/// Because `NamedTempFile` holds the file OPEN FOR WRITING, and on Linux
+/// `execve` refuses a file that any process has open for writing: `ETXTBSY`,
+/// "Text file busy". macOS permits it, so a probe that worked on a developer's
+/// mac failed every test on the CI runner — the guard refusing its own
+/// perfectly good download.
+///
+/// [`tempfile::TempPath`] is exactly the shape needed: the handle is closed,
+/// the path survives, deletion on drop survives, and `persist` still does the
+/// rename. Note the irony worth keeping: `ETXTBSY` is the failure mode this
+/// whole module is built to avoid on the INSTALL path, and it reappeared on the
+/// staging path the moment we started executing what we downloaded.
+///
 /// # Errors
 /// When the temp file cannot be created, written, synced, or made executable.
-pub fn stage(target: &Path, bytes: &[u8]) -> Result<tempfile::NamedTempFile> {
+pub fn stage(target: &Path, bytes: &[u8]) -> Result<tempfile::TempPath> {
     let directory = target
         .parent()
         .ok_or_else(|| anyhow!("{} has no parent directory", target.display()))?;
@@ -446,7 +460,9 @@ pub fn stage(target: &Path, bytes: &[u8]) -> Result<tempfile::NamedTempFile> {
             .context("making the new binary executable")?;
     }
 
-    Ok(staged)
+    // Closes the write handle. Everything above needed it; nothing below may
+    // have it (see the ETXTBSY note).
+    Ok(staged.into_temp_path())
 }
 
 /// Ask the staged binary what version it is, by running it.
@@ -500,7 +516,7 @@ pub fn staged_version(path: &Path) -> Result<String> {
 ///
 /// # Errors
 /// When the rename fails.
-pub fn commit(staged: tempfile::NamedTempFile, target: &Path) -> Result<()> {
+pub fn commit(staged: tempfile::TempPath, target: &Path) -> Result<()> {
     staged
         .persist(target)
         .map_err(|error| error.error)
