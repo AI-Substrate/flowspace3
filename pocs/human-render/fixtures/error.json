@@ -1,0 +1,19 @@
+{
+  "ok": false,
+  "command": "search",
+  "v": 1,
+  "error": {
+    "code": "FS3-E-STORE-UNAVAILABLE",
+    "message": "the Postgres + pgvector store at localhost:5432 refused the connection (ECONNREFUSED) after 3 attempts over 4.2s",
+    "fix": "the compose stack is not running: `docker compose -f ~/.flowspace3/compose.yaml up -d`, then re-run this search. `flowspace3 doctor` diagnoses further.",
+    "details": {
+      "host": "localhost",
+      "port": 5432,
+      "database": "flowspace3",
+      "attempts": 3,
+      "elapsed_ms": 4211,
+      "container": "fs3-postgres (exited 137)"
+    },
+    "retryable": true
+  }
+}

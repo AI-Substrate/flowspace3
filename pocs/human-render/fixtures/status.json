@@ -1,0 +1,44 @@
+{
+  "ok": true,
+  "command": "status",
+  "v": 1,
+  "data": {
+    "roots": [
+      {
+        "identity": "flowspace3",
+        "root_path": "/Users/jordan/substrate/flowspace/flowspace3",
+        "files": 214
+      },
+      {
+        "identity": "github.com/AI-Substrate/engineering-harness",
+        "root_path": "/Users/jordan/substrate/engineering-harness",
+        "files": 1187
+      },
+      {
+        "identity": "sha256:3f9c1a…",
+        "root_path": "/Users/jordan/notes/inbox",
+        "files": 62
+      }
+    ],
+    "queue": [
+      { "kind": "scan_file", "state": "done", "count": 1463, "with_error": 0 },
+      { "kind": "scan_file", "state": "pending", "count": 0, "with_error": 0 },
+      { "kind": "summarize", "state": "done", "count": 802, "with_error": 3 },
+      { "kind": "summarize", "state": "running", "count": 4, "with_error": 0 },
+      { "kind": "summarize", "state": "pending", "count": 419, "with_error": 0 },
+      { "kind": "summarize", "state": "failed", "count": 7, "with_error": 7 },
+      { "kind": "embed", "state": "done", "count": 1104, "with_error": 1 },
+      { "kind": "embed", "state": "pending", "count": 168, "with_error": 0 }
+    ],
+    "last_error": {
+      "job": "summarize:blob=9f21c0e4b1a7:model=gpt-4.1-mini",
+      "error": "FS3-E-PROVIDER-RATE-LIMITED: azure-openai returned 429 after 3 attempts (retry-after 21s)"
+    },
+    "schema_ahead": []
+  },
+  "meta": {
+    "daemon_uptime_s": 5271,
+    "workers": 4
+  },
+  "next_action": "594 jobs are still queued — leave the daemon running, or `flowspace3 status --watch`"
+}

@@ -1,0 +1,63 @@
+# human-render — a standalone PROTOTYPE, deliberately NOT a member of the
+# flowspace3 workspace.
+#
+# The empty `[workspace]` table below is load-bearing: without it, cargo walks
+# up the directory tree, finds the root `Cargo.toml`, and refuses to build
+# because this package is not in its `members` list. Adding it to `members`
+# instead would break `fs3-arch-check`, which asserts an exact workspace crate
+# count. So: own workspace, own lockfile, own target/ (see .gitignore).
+[workspace]
+
+[package]
+name = "human-render"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Prototype: the human skin over the frozen fs3 envelope — rich terminal rendering from JSON that is already the contract."
+
+[dependencies]
+# The prototype's thesis, expressed as a dependency: the renderer reads the
+# REAL `Envelope`/`Failure` from the real crate, by path, so "consumes only
+# public envelope fields" is enforced by the type system rather than asserted in
+# a README. fs3-core is the functional core — no tokio, no sqlx, no HTTP — so
+# this costs serde, serde_json, sha2, toml, thiserror and nothing else.
+fs3-core = { path = "../../crates/core" }
+
+# Tables. `default-features = false` drops `tty`: a pure renderer must not have
+# an opinion about the terminal it is not writing to — the STREAM decides (see
+# `mode.rs`), and comfy-table's own tty sniffing would be a second, invisible
+# decision-maker disagreeing with the first. `custom_styling` makes comfy-table
+# measure cell width with ANSI sequences stripped, which is what lets the colour
+# come from owo-colors instead of from comfy-table's own palette.
+comfy-table = { version = "8", default-features = false, features = ["custom_styling"] }
+
+# Colour, as extension methods on anything Display: `"ok".green().bold()`.
+# Chosen over `colored` because it is zero-alloc styling wrappers rather than a
+# String-returning API, and over raw escapes because hand-rolled ANSI is exactly
+# the class of code this prototype is meant to prove we never write.
+owo-colors = "4"
+
+# The other half of the colour story, and the more important half: `anstream`
+# owns the "should this have colour at all" decision (NO_COLOR, CLICOLOR_FORCE,
+# TERM=dumb, not-a-tty, Windows console modes) and strips sequences at WRITE
+# time. The renderer therefore always emits styled text and never branches on
+# colour.
+anstream = "1"
+
+# Wrapping of prose that came from a payload (snippets, messages, fixes) to a
+# width the renderer chose, and — in the demo BINARY only — the terminal's own
+# width via `termwidth()`. Default features drop `unicode-linebreak`: it pulls
+# the whole ICU segmenter in to hyphenate prose this renderer never hyphenates.
+textwrap = { version = "0.16", default-features = false, features = [
+  "unicode-width",
+  "smawk",
+  "terminal_size",
+] }
+
+# The renderer's input is the envelope, which is JSON by contract.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# The demo binary's flags (`--json`, `--color`, `--width`, `--surface`).
+clap = { version = "4", features = ["derive"] }

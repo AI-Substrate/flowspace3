@@ -1,0 +1,120 @@
+[90mpresentation:[39m [96mrich[39m — [90m--human was given[39m
+
+  [96m▍[39m [97m[1msearch[0m[39m  [90m143 hits · showing 1-6 · semantic/rrf · 84ms[39m
+  [90mfilters:[39m [90mlimit=6 repo=flowspace3 source=all[39m
+
+  ╭───┬───────────────┬──────────┬─────────────────────────────────────────────┬───────────────────╮
+  │ [90m#[39m[0m ┆ [90mscore[39m[0m         ┆ [90mkind[39m[0m     ┆ [90melement[39m[0m                                     ┆ [90mtags[39m[0m              │
+  ╞═══╪═══════════════╪══════════╪═════════════════════════════════════════════╪═══════════════════╡
+  │ [90m1[39m[0m ┆ [92m0.83[39m [32m███████░[39m[0m ┆ [97mfunction[39m[0m ┆ [97m[1mmigrate[0m[39m[90m  [90-97][39m[0m                            ┆ [36mmigrations[39m[0m        │
+  │   ┆               ┆ [97m[39m[90mfn[39m[0m       ┆ [39m[90m[39m[90mel:flowspace3/crates/store/src/lib.rs::migr[0m ┆ [36m[39m[36mstartup[39m[0m           │
+  │   ┆               ┆ [97m[39m[90m[39m[35msmart[39m[0m    ┆ [39m[90m[39m[90mate[39m[0m                                         ┆ [36m[39m[36m[39m[36mschema[39m[0m            │
+  │   ┆               ┆          ┆ [39m[90m[39m[90m[39m[90mRuns[0m [39m[90m[39m[90m[39m[90mthe[0m [39m[90m[39m[90m[39m[90membedded[0m [39m[90m[39m[90m[39m[90mforward-only[0m [39m[90m[39m[90m[39m[90mmigrations[0m   ┆                   │
+  │   ┆               ┆          ┆ [39m[90m[39m[90m[39m[90mat[0m [39m[90m[39m[90m[39m[90mboot,[0m [39m[90m[39m[90m[39m[90mso[0m [39m[90m[39m[90m[39m[90ma[0m [39m[90m[39m[90m[39m[90mfresh[0m [39m[90m[39m[90m[39m[90mdatabase[0m [39m[90m[39m[90m[39m[90mand[0m [39m[90m[39m[90m[39m[90man[0m         ┆                   │
+  │   ┆               ┆          ┆ [39m[90m[39m[90m[39m[90mupgraded[0m [39m[90m[39m[90m[39m[90mbinary[0m [39m[90m[39m[90m[39m[90mconverge[0m [39m[90m[39m[90m[39m[90mon[0m [39m[90m[39m[90m[39m[90mthe[0m [39m[90m[39m[90m[39m[90msame[0m [39m[90m[39m[90m[39m[90mschema[0m ┆                   │
+  │   ┆               ┆          ┆ [39m[90m[39m[90m[39m[90mwithout[0m [39m[90m[39m[90m[39m[90man[0m [39m[90m[39m[90m[39m[90moperator[0m [39m[90m[39m[90m[39m[90mstep.[39m[0m                   ┆                   │
+  │ [90m2[39m[0m ┆ [92m0.76[39m [32m██████░░[39m[0m ┆ [97mfunction[39m[0m ┆ [97m[1massert_current[0m[39m[90m  [41-63][39m[0m                     ┆ [36mschema[39m[0m            │
+  │   ┆               ┆ [97m[39m[90mfn[39m[0m       ┆ [39m[90m[39m[90mel:flowspace3/crates/daemon/src/schema.rs::[0m ┆ [36m[39m[36mgate[39m[0m              │
+  │   ┆               ┆ [97m[39m[90m[39m[35msmart[39m[0m    ┆ [39m[90m[39m[90massert_current[39m[0m                              ┆ [36m[39m[36m[39m[36mactionable-errors[39m[0m │
+  │   ┆               ┆          ┆ [39m[90m[39m[90m[39m[90mThe[0m [39m[90m[39m[90m[39m[90mschema[0m [39m[90m[39m[90m[39m[90mgate[0m [39m[90m[39m[90m[39m[90mevery[0m [39m[90m[39m[90m[39m[90mdb-touching[0m [39m[90m[39m[90m[39m[90mendpoint[0m  ┆                   │
+  │   ┆               ┆          ┆ [39m[90m[39m[90m[39m[90mruns[0m [39m[90m[39m[90m[39m[90mfirst:[0m [39m[90m[39m[90m[39m[90mturns[0m [39m[90m[39m[90m[39m[90m`column[0m [39m[90m[39m[90m[39m[90mdoes[0m [39m[90m[39m[90m[39m[90mnot[0m [39m[90m[39m[90m[39m[90mexist`[0m   ┆                   │
+  │   ┆               ┆          ┆ [39m[90m[39m[90m[39m[90minto[0m [39m[90m[39m[90m[39m[90m`the[0m [39m[90m[39m[90m[39m[90mschema[0m [39m[90m[39m[90m[39m[90mis[0m [39m[90m[39m[90m[39m[90mN[0m [39m[90m[39m[90m[39m[90mbehind;[0m [39m[90m[39m[90m[39m[90mrun[0m           ┆                   │
+  │   ┆               ┆          ┆ [39m[90m[39m[90m[39m[90mflowspace3[0m [39m[90m[39m[90m[39m[90mdoctor`.[39m[0m                         ┆                   │
+  │ [90m3[39m[0m ┆ [93m0.71[39m [33m██████░░[39m[0m ┆ [97mfile[39m[0m     ┆ [97m[1m0007_smart_content[0m[39m[90m  [1-24][39m[0m                  ┆ [90m—[39m[0m                 │
+  │   ┆               ┆ [97m[39m[90msql_file[39m[0m ┆ [39m[90m[39m[90mel:flowspace3/crates/store/migrations/0007_[0m ┆                   │
+  │   ┆               ┆ [97m[39m[90m[39m[34mraw[39m[0m      ┆ [39m[90m[39m[90msmart_content.sql::0007_smart_content[39m[0m       ┆                   │
+  │   ┆               ┆          ┆ [39m[90m[39m[90m[39m[90mCREATE TABLE smart_content ([39m[0m                ┆                   │
+  │ [90m4[39m[0m ┆ [93m0.65[39m [33m█████░░░[39m[0m ┆ [97mfunction[39m[0m ┆ [97m[1mwalk[0m[39m[90m  [109-168][39m[0m                             ┆ [36mdoctor[39m[0m            │
+  │   ┆               ┆ [97m[39m[90mfn[39m[0m       ┆ [39m[90m[39m[90mel:flowspace3/crates/cli/src/doctor.rs::wal[0m ┆ [36m[39m[36mrepair[39m[0m            │
+  │   ┆               ┆ [97m[39m[90m[39m[35msmart[39m[0m    ┆ [39m[90m[39m[90mk[39m[0m                                           ┆ [36m[39m[36m[39m[36mdiagnostics[39m[0m       │
+  │   ┆               ┆          ┆ [39m[90m[39m[90m[39m[90mWalks[0m [39m[90m[39m[90m[39m[90mengine[0m [39m[90m[39m[90m[39m[90m→[0m [39m[90m[39m[90m[39m[90mstack[0m [39m[90m[39m[90m[39m[90m→[0m [39m[90m[39m[90m[39m[90mdatabase[0m [39m[90m[39m[90m[39m[90m→[0m [39m[90m[39m[90m[39m[90mschema,[0m   ┆                   │
+  │   ┆               ┆          ┆ [39m[90m[39m[90m[39m[90mrepairing[0m [39m[90m[39m[90m[39m[90mwhat[0m [39m[90m[39m[90m[39m[90mit[0m [39m[90m[39m[90m[39m[90mcan[0m [39m[90m[39m[90m[39m[90mand[0m [39m[90m[39m[90m[39m[90mreporting[0m [39m[90m[39m[90m[39m[90meach[0m    ┆                   │
+  │   ┆               ┆          ┆ [39m[90m[39m[90m[39m[90mmove[0m [39m[90m[39m[90m[39m[90mas[0m [39m[90m[39m[90m[39m[90mone[0m [39m[90m[39m[90m[39m[90mfound/did[0m [39m[90m[39m[90m[39m[90mrow.[39m[0m                  ┆                   │
+  │ [90m5[39m[0m ┆ [93m0.59[39m [33m█████░░░[39m[0m ┆ [97mfunction[39m[0m ┆ [97m[1mworktree_files[0m[39m[90m  [212-240][39m[0m                   ┆ [36mstore[39m[0m             │
+  │   ┆               ┆ [97m[39m[90mfn[39m[0m       ┆ [39m[90m[39m[90mel:flowspace3/crates/store/src/refs.rs::wor[0m ┆ [36m[39m[36mpaths[39m[0m             │
+  │   ┆               ┆ [97m[39m[90m[39m[34mraw[39m[0m      ┆ [39m[90m[39m[90mktree_files[39m[0m                                 ┆                   │
+  │   ┆               ┆          ┆ [39m[90m[39m[90m[39m[90mpub[0m [39m[90m[39m[90m[39m[90masync[0m [39m[90m[39m[90m[39m[90mfn[0m [39m[90m[39m[90m[39m[90mworktree_files(db:[0m [39m[90m[39m[90m[39m[90m&PgPool,[0m    ┆                   │
+  │   ┆               ┆          ┆ [39m[90m[39m[90m[39m[90mworktree:[0m [39m[90m[39m[90m[39m[90mi64)[0m [39m[90m[39m[90m[39m[90m->[0m [39m[90m[39m[90m[39m[90mResult<Vec<FileRef>,[0m      ┆                   │
+  │   ┆               ┆          ┆ [39m[90m[39m[90m[39m[90mStoreError>[0m [39m[90m[39m[90m[39m[90m{[39m[0m                               ┆                   │
+  │ [90m6[39m[0m ┆ [90m0.42[39m [90m███░░░░░[39m[0m ┆ [97mmethod[39m[0m   ┆ [97m[1mclaim_batch[0m[39m[90m  [77-118][39m[0m                       ┆ [36mqueue[39m[0m             │
+  │   ┆               ┆ [97m[39m[90mfn[39m[0m       ┆ [39m[90m[39m[90mel:flowspace3/crates/daemon/src/runner.rs::[0m ┆ [36m[39m[36mconcurrency[39m[0m       │
+  │   ┆               ┆ [97m[39m[90m[39m[34mraw[39m[0m      ┆ [39m[90m[39m[90mclaim_batch[39m[0m                                 ┆                   │
+  │   ┆               ┆          ┆ [39m[90m[39m[90m[39m[90mClaims[0m [39m[90m[39m[90m[39m[90ma[0m [39m[90m[39m[90m[39m[90mbatch[0m [39m[90m[39m[90m[39m[90mof[0m [39m[90m[39m[90m[39m[90mqueued[0m [39m[90m[39m[90m[39m[90mjobs[0m [39m[90m[39m[90m[39m[90mwith[0m [39m[90m[39m[90m[39m[90mSKIP[0m     ┆                   │
+  │   ┆               ┆          ┆ [39m[90m[39m[90m[39m[90mLOCKED[0m [39m[90m[39m[90m[39m[90mso[0m [39m[90m[39m[90m[39m[90mconcurrent[0m [39m[90m[39m[90m[39m[90mworkers[0m [39m[90m[39m[90m[39m[90mnever[0m [39m[90m[39m[90m[39m[90mcollide[0m  ┆                   │
+  │   ┆               ┆          ┆ [39m[90m[39m[90m[39m[90mon[0m [39m[90m[39m[90m[39m[90mthe[0m [39m[90m[39m[90m[39m[90msame[0m [39m[90m[39m[90m[39m[90mrow.[39m[0m                            ┆                   │
+  ╰───┴───────────────┴──────────┴─────────────────────────────────────────────┴───────────────────╯
+
+
+  [90mwhere the answers live[39m
+   [97mcrates/store[39m[0m   [36m████████████[39m[90m[39m[0m  [96m3[39m[0m
+   [97mcrates/daemon[39m[0m  [36m████████[39m[90m░░░░[39m[0m  [96m2[39m[0m
+   [97mcrates/cli[39m[0m     [36m████[39m[90m░░░░░░░░[39m[0m  [96m1[39m[0m
+
+  [96m→[39m [90m[0m[36mflowspace3 get el:flowspace3/crates/store/src/lib.rs::migrate[0m[90m for the full element[0m
+
+  [96m▍[39m [97m[1mdoctor[0m[39m  [90m[32mstore healthy[39m[90m · [39m[93m3 repaired[39m[90m · [39m[91m1 failed[39m[90m · [39m[93m6.9s[39m[39m
+
+   [32m✓[39m[0m  [97mengine[39m[0m     [32mok[39m[0m        [90mdocker 27.1.1 at unix:///var/run/docker.sock[0m                        [90m61ms[39m[0m
+   [93m✚[39m[0m  [97mstack[39m[0m      [93mrepaired[39m[0m  [90mcontainer fs3-postgres existed but was exited (137)[0m                 [93m4.2s[39m[0m
+                           [93m→[39m[0m [93m[39m[97mstarted[0m [93m[39m[97mthe[0m [93m[39m[97mcompose[0m [93m[39m[97mstack[0m [93m[39m[97m([0m[96mdocker[0m [96mcompose[0m [96mup[0m [96m-d[0m[97m)[0m [97mand[0m [97mwaited[0m [97mfor[0m
+                           [97mpg_isready[0m
+   [93m✚[39m[0m  [97mdatabase[39m[0m   [93mrepaired[39m[0m  [90mrole [0m[36mflowspace[0m[90m could connect, database [0m[36mflowspace3[0m[90m did not exist[0m    [90m188ms[39m[0m
+                           [93m→[39m [97mCREATE DATABASE flowspace3 OWNER flowspace[0m
+   [93m✚[39m[0m  [97mschema[39m[0m     [93mrepaired[39m[0m  [90mdatabase at migration 0004, this binary carries 0007[0m               [90m902ms[39m[0m
+                           [93m→[39m [97mapplied 0005_worktree_files, 0006_jobs, 0007_smart_content[0m
+   [32m✓[39m[0m  [97mextension[39m[0m  [32mok[39m[0m        [90mpgvector 0.8.0 installed, vector(1024) usable[0m                       [90m24ms[39m[0m
+   [91m✗[39m[0m  [97membedder[39m[0m   [1m[91mfailed[39m[0m    [90mprovider[0m [90m[0m[36mazure-openai[0m[90m[0m [90mhas[0m [90mno[0m [90mcredential:[0m [90mAZURE_OPENAI_API_KEY[0m       [90m1.5s[39m[0m
+                           [90munset[0m [90mand[0m [90m[0m[36maz[0m [36mlogin[0m[90m[0m [90mhas[0m [90mno[0m [90mactive[0m [90maccount[0m
+
+  [91m✗[39m [1m[91membedder[39m[0m [97mcannot fix from here — a credential is a human decision[39m
+
+  [96m→[39m [90mthe store is ready — start the daemon ([0m[36mfs3-daemon[0m[90m) and [0m[36mflowspace3 add <path>[0m[90m[0m
+
+  [96m▍[39m [97m[1msearch[0m[39m  [90m[1m[91mfailed[39m[0m[39m
+
+  [90mFS3-E-STORE-UNAVAILABLE[39m  [93mretryable[39m
+  the Postgres + pgvector store at localhost:5432 refused the connection (ECONNREFUSED) after 3
+  attempts over 4.2s
+
+  ╭──────────────────────────────────────────────────────────────────────────────────────────────╮
+  │ [1m[93mfix[39m[0m                                                                                          │
+  ╞══════════════════════════════════════════════════════════════════════════════════════════════╡
+  │ [97mthe[0m [97mcompose[0m [97mstack[0m [97mis[0m [97mnot[0m [97mrunning:[0m [97m[0m[96;1mdocker[0m [96;1mcompose[0m [96;1m-f[0m [96;1m~/.flowspace3/compose.yaml[0m [96;1mup[0m [96;1m-d[0m[97m,[0m [97mthen[0m   │
+  │ [97mre-run[0m [97mthis[0m [97msearch.[0m [97m[0m[96;1mflowspace3[0m [96;1mdoctor[0m[97m[0m [97mdiagnoses[0m [97mfurther.[0m                                     │
+  ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+
+  [90mdetails[39m
+   [90mattempts[39m[0m    3
+   [90mcontainer[39m[0m   fs3-postgres (exited 137)
+   [90mdatabase[39m[0m    flowspace3
+   [90melapsed_ms[39m[0m  4211
+   [90mhost[39m[0m        localhost
+   [90mport[39m[0m        5432
+
+  [96m▍[39m [97m[1mstatus[0m[39m  [90m3 roots[90m · [39m1463 files[90m · [39m[96m591 queued[39m[90m · [39m[91m7 failed[39m[39m
+
+  ╭────────────────────────────────────────────┬───────────────────────────────────────────┬───────╮
+  │ [90mrepo[39m[0m                                       ┆ [90mroot[39m[0m                                      ┆ [90mfiles[39m[0m │
+  ╞════════════════════════════════════════════╪═══════════════════════════════════════════╪═══════╡
+  │ [97mflowspace3[39m[0m                                 ┆ [90m/Users/jordan/substrate/flowspace/flowspa[0m ┆   214 │
+  │                                            ┆ [90mce3[39m[0m                                       ┆       │
+  │ [97mgithub.com/AI-Substrate/engineering-harnes[0m ┆ [90m/Users/jordan/substrate/engineering-harne[0m ┆  1187 │
+  │ [97ms[39m[0m                                          ┆ [90mss[39m[0m                                        ┆       │
+  │ [97msha256:3f9c1a…[39m[0m                             ┆ [90m/Users/jordan/notes/inbox[39m[0m                 ┆    62 │
+  ╰────────────────────────────────────────────┴───────────────────────────────────────────┴───────╯
+
+
+  ╭───────────┬────────────────┬──────┬─────────┬─────────┬────────┬─────────────╮
+  │ [90mjob[39m[0m       ┆ [90mprogress[39m[0m       ┆ [90mdone[39m[0m ┆ [90mrunning[39m[0m ┆ [90mpending[39m[0m ┆ [90mfailed[39m[0m ┆ [90mwith errors[39m[0m │
+  ╞═══════════╪════════════════╪══════╪═════════╪═════════╪════════╪═════════════╡
+  │ [97membed[39m[0m     ┆ [36m████████████[39m[90m░░[39m[0m ┆ [32m1104[39m[0m ┆       [90m0[39m[0m ┆     [93m168[39m[0m ┆      [90m0[39m[0m ┆           [93m1[39m[0m │
+  │ [97mscan_file[39m[0m ┆ [36m██████████████[39m[90m[39m[0m ┆ [32m1463[39m[0m ┆       [90m0[39m[0m ┆       [90m0[39m[0m ┆      [90m0[39m[0m ┆           [90m0[39m[0m │
+  │ [97msummarize[39m[0m ┆ [36m█████████[39m[90m░░░░░[39m[0m ┆  [32m802[39m[0m ┆       4 ┆     [93m419[39m[0m ┆      [91m7[39m[0m ┆          [93m10[39m[0m │
+  ╰───────────┴────────────────┴──────┴─────────┴─────────┴────────┴─────────────╯
+
+
+  [90mlast error[39m [90msummarize:blob=9f21c0e4b1a7:model=gpt-4.1-mini[39m
+    [91mFS3-E-PROVIDER-RATE-LIMITED: azure-openai returned 429 after 3 attempts (retry-after 21s)[39m
+
+  [96m→[39m [90m594 jobs are still queued — leave the daemon running, or [0m[36mflowspace3 status --watch[0m[90m[0m
+

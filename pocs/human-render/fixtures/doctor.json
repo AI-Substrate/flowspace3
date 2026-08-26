@@ -1,0 +1,56 @@
+{
+  "ok": true,
+  "command": "doctor",
+  "v": 1,
+  "data": {
+    "steps": [
+      {
+        "check": "engine",
+        "outcome": "ok",
+        "found": "docker 27.1.1 at unix:///var/run/docker.sock",
+        "elapsed_ms": 61
+      },
+      {
+        "check": "stack",
+        "outcome": "repaired",
+        "found": "container fs3-postgres existed but was exited (137)",
+        "action": "started the compose stack (`docker compose up -d`) and waited for pg_isready",
+        "elapsed_ms": 4213
+      },
+      {
+        "check": "database",
+        "outcome": "repaired",
+        "found": "role `flowspace` could connect, database `flowspace3` did not exist",
+        "action": "CREATE DATABASE flowspace3 OWNER flowspace",
+        "elapsed_ms": 188
+      },
+      {
+        "check": "schema",
+        "outcome": "repaired",
+        "found": "database at migration 0004, this binary carries 0007",
+        "action": "applied 0005_worktree_files, 0006_jobs, 0007_smart_content",
+        "elapsed_ms": 902
+      },
+      {
+        "check": "extension",
+        "outcome": "ok",
+        "found": "pgvector 0.8.0 installed, vector(1024) usable",
+        "elapsed_ms": 24
+      },
+      {
+        "check": "embedder",
+        "outcome": "failed",
+        "found": "provider `azure-openai` has no credential: AZURE_OPENAI_API_KEY unset and `az login` has no active account",
+        "action": "cannot fix from here — a credential is a human decision",
+        "elapsed_ms": 1507
+      }
+    ],
+    "healthy": true
+  },
+  "meta": {
+    "repaired": 3,
+    "failed": 1,
+    "elapsed_ms": 6895
+  },
+  "next_action": "the store is ready — start the daemon (`fs3-daemon`) and `flowspace3 add <path>`"
+}

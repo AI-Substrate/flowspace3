@@ -1,0 +1,111 @@
+{
+  "ok": true,
+  "command": "search",
+  "v": 1,
+  "meta": {
+    "total": 143,
+    "showing": { "from": 0, "count": 6 },
+    "mode": "semantic",
+    "rank": "rrf",
+    "folders": {
+      "crates/store": 3,
+      "crates/daemon": 2,
+      "crates/cli": 1
+    },
+    "filters_applied": {
+      "repo": "flowspace3",
+      "source": "all",
+      "limit": 6
+    },
+    "took_ms": 84
+  },
+  "data": {
+    "results": [
+      {
+        "address": "el:flowspace3/crates/store/src/lib.rs::migrate",
+        "score": 0.8312,
+        "match_field": "smart",
+        "kind": "function",
+        "subkind": "fn",
+        "name": "migrate",
+        "span": [90, 97],
+        "snippet": "pub async fn migrate(db: &PgPool) -> Result<(), StoreError> {\n    sqlx::migrate!(\"./migrations\")\n        .run(db)\n        .await\n        .map_err(StoreError::Migrate)",
+        "smart": "Runs the embedded forward-only migrations at boot, so a fresh database and an upgraded binary converge on the same schema without an operator step.",
+        "tags": ["migrations", "startup", "schema"],
+        "repo": "flowspace3",
+        "path": "crates/store/src/lib.rs"
+      },
+      {
+        "address": "el:flowspace3/crates/daemon/src/schema.rs::assert_current",
+        "score": 0.7644,
+        "match_field": "smart",
+        "kind": "function",
+        "subkind": "fn",
+        "name": "assert_current",
+        "span": [41, 63],
+        "snippet": "pub async fn assert_current(db: &PgPool) -> Result<(), Failure> {\n    let behind = pending_migrations(db).await?;\n    if behind.is_empty() {\n        return Ok(());\n    }",
+        "smart": "The schema gate every db-touching endpoint runs first: turns `column does not exist` into `the schema is N behind; run flowspace3 doctor`.",
+        "tags": ["schema", "gate", "actionable-errors"],
+        "repo": "flowspace3",
+        "path": "crates/daemon/src/schema.rs"
+      },
+      {
+        "address": "el:flowspace3/crates/store/migrations/0007_smart_content.sql::0007_smart_content",
+        "score": 0.7108,
+        "match_field": "raw",
+        "kind": "file",
+        "subkind": "sql_file",
+        "name": "0007_smart_content",
+        "span": [1, 24],
+        "snippet": "CREATE TABLE smart_content (\n    id           bigserial PRIMARY KEY,\n    element_id   bigint NOT NULL REFERENCES elements (id) ON DELETE CASCADE,\n    model_key    text NOT NULL,",
+        "smart": null,
+        "tags": [],
+        "repo": "flowspace3",
+        "path": "crates/store/migrations/0007_smart_content.sql"
+      },
+      {
+        "address": "el:flowspace3/crates/cli/src/doctor.rs::walk",
+        "score": 0.6521,
+        "match_field": "smart",
+        "kind": "function",
+        "subkind": "fn",
+        "name": "walk",
+        "span": [109, 168],
+        "snippet": "pub async fn walk(settings: &Settings) -> Envelope<DoctorReport> {\n    let mut steps = Vec::new();\n    steps.push(engine().await);",
+        "smart": "Walks engine → stack → database → schema, repairing what it can and reporting each move as one found/did row.",
+        "tags": ["doctor", "repair", "diagnostics"],
+        "repo": "flowspace3",
+        "path": "crates/cli/src/doctor.rs"
+      },
+      {
+        "address": "el:flowspace3/crates/store/src/refs.rs::worktree_files",
+        "score": 0.5893,
+        "match_field": "raw",
+        "kind": "function",
+        "subkind": "fn",
+        "name": "worktree_files",
+        "span": [212, 240],
+        "snippet": "pub async fn worktree_files(db: &PgPool, worktree: i64) -> Result<Vec<FileRef>, StoreError> {\n    sqlx::query_as!(",
+        "smart": null,
+        "tags": ["store", "paths"],
+        "repo": "flowspace3",
+        "path": "crates/store/src/refs.rs"
+      },
+      {
+        "address": "el:flowspace3/crates/daemon/src/runner.rs::claim_batch",
+        "score": 0.4177,
+        "match_field": "raw",
+        "kind": "method",
+        "subkind": "fn",
+        "name": "claim_batch",
+        "span": [77, 118],
+        "snippet": "async fn claim_batch(&self, kind: JobKind, limit: i64) -> Result<Vec<Job>, StoreError> {\n    // SKIP LOCKED so two workers never fight over the same row.",
+        "smart": "Claims a batch of queued jobs with SKIP LOCKED so concurrent workers never collide on the same row.",
+        "tags": ["queue", "concurrency"],
+        "repo": "flowspace3",
+        "path": "crates/daemon/src/runner.rs"
+      }
+    ]
+  },
+  "next_action": "`flowspace3 get el:flowspace3/crates/store/src/lib.rs::migrate` for the full element"
+}
