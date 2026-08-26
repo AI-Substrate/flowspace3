@@ -23,7 +23,6 @@ on each Release, a curl installer, Dependabot.
   version truth lives in `.release-please-manifest.json` + git tags.
 - **Conventional commit subjects are BINDING on main** (`feat:`/`fix:`/`perf:`
   bump versions; everything else is chore). Non-conforming subjects are simply
-  ignored by release-please.
 - **Single binary per platform** (req 51): one asset per target triple;
   asset names freeze at one constant in `install.sh` / `install.ps1`.
 
@@ -49,10 +48,15 @@ on each Release, a curl installer, Dependabot.
 ## How to verify
 
 ```bash
-gh run watch $(gh run list --workflow=ci --limit 1 --json databaseId -q '.[0].databaseId') --exit-status   # gate green
+# NEVER pin by "--limit 1": on a busy push release-please (41s) finishes
+# last and a green can be misread as the gate (fleet rule DL-012). Resolve
+# the run id for YOUR sha, then watch it, and report workflow+sha together:
+gh run watch "$(gh run list --workflow ci --commit <your-sha> --json databaseId -q '.[0].databaseId')" --exit-status
+gh run view <run-id> -q '.headSha + " " + .workflowName'   # quote both with the verdict
+
 gh pr list --state open            # rolling release PR ("chore(main): release …")
 gh run list --workflow=release     # release builds after a tag lands
-gh api repos/AI-Substrate/flowspace3/releases/latest -q .assets[].name   # 7 triple-named assets
+gh api repos/AI-Substrate/flowspace3/releases/latest -q .assets[].name   # 4 triple-named assets
 curl -fsSL https://raw.githubusercontent.com/AI-Substrate/flowspace3/main/install.sh | sh
 flowspace3 --version
 ```
