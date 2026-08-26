@@ -103,7 +103,7 @@
           "title": "Search modes and envelope",
           "requirement": "`search` supports semantic, text, and regex modes and returns a structured JSON envelope with scores, snippets, pagination, and per-folder hit counts.",
           "state": "unchecked",
-          "note": "semantic+auto modes LIVE with envelopes; text/regex modes designed (workshop 003) not yet built"
+          "note": "semantic+auto LIVE; text/regex designed (workshop 003) not built — bundled docs say so honestly; skill §4/§5 + this row update together when they land"
         },
         {
           "id": "req-0012",
@@ -428,8 +428,8 @@
           "num": 52,
           "title": "Agent-facing flowspace skill (.agents/skills)",
           "requirement": "A skill in .agents/skills teaches any agent to USE flowspace: detect whether it is installed, install it briefly if not (convenience script / README), read the bundled docs (flowspace3 docs get), search with it (semantic modes, filters, el: addresses), and why semantic search beats grep for meaning-shaped questions. (Jordan, 2026-08-26.)",
-          "state": "unchecked",
-          "note": "IN FLIGHT: dingo (canary PASS) authoring skill, unit 1"
+          "state": "checked",
+          "note": "landed 55a9016: .agents/skills/flowspace/SKILL.md, every command verified against live CLI; teaches real surface (semantic + --source), routes exact-identifier lookups to grep; update §4/§5 when text/regex modes (req-0011) land"
         },
         {
           "id": "req-0053",
