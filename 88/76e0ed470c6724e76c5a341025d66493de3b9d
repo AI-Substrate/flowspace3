@@ -1,0 +1,19 @@
+.harness/government/handovers/2026-08-27-telemetry-retro-xoxarle.md
+  s_15d888f4b629c1::t_af49764acc9e45 84-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8876e0ed470c6724e76c5a341025d66493de3b9d",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
