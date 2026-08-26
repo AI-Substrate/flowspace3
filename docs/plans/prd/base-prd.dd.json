@@ -52,7 +52,7 @@
           "title": "Git-native incremental indexing",
           "requirement": "Derived data is keyed by git blob SHA: indexing any branch, commit, or worktree diffs its git tree against the store and only new blobs pay parse/summarize/embed. Creating a worktree requires no copy and no rescan.",
           "state": "unchecked",
-          "note": "fs3-git crate landed c7670cd (identity, blob snapshots, pure diff)"
+          "note": "components COMPLETE (fs3-git snapshots/diff + blob-keyed store + content-addressing); check at first-light e2e (idempotent-rescan proof)"
         },
         {
           "id": "req-0006",
@@ -73,7 +73,8 @@
           "num": 8,
           "title": "Pluggable providers, online or local",
           "requirement": "LLM summarization and embedding each work against online APIs or local models, selected by config; switching providers never corrupts existing data (derived rows are keyed by model/prompt version).",
-          "state": "unchecked"
+          "state": "unchecked",
+          "note": "providers landed: Azure (online, keyed-proven) + local ONNX (in-process, live contract) + fake; registry selects; model-keyed rows. Check when enrichment pipeline runs both paths (first light + one swap test)"
         },
         {
           "id": "req-0009",
@@ -179,7 +180,8 @@
           "num": 23,
           "title": "Non-git folders still index",
           "requirement": "Plain folders without a git repo index through the same content-hash mechanism (hash the bytes directly); git is the optimization for diffing and worktrees, never a requirement to participate.",
-          "state": "unchecked"
+          "state": "unchecked",
+          "note": "path-fallback identity + bytes-hashing landed (fs3-git); check at e2e with a non-git root"
         },
         {
           "id": "req-0024",
@@ -214,7 +216,8 @@
           "num": 28,
           "title": "Machine-wide config; the CLI is `flowspace3`",
           "requirement": "ALL configuration lives in `~/.config/flowspace3/` as files (machine-wide defaults + per-worktree override sections) — none in the DB; the DB holds data only. The CLI binary is named `flowspace3`.",
-          "state": "unchecked"
+          "state": "unchecked",
+          "note": "global config + flowspace3 CLI landed (egret a99ceed); per-ROOT override layer still pending (root>repo>global chain designed) - check then"
         },
         {
           "id": "req-0029",
@@ -267,7 +270,8 @@
           "num": 35,
           "title": "Repo identity = git remote URL, with fallback",
           "requirement": "A repo is keyed by its git remote URL when it has one (so clones and worktrees of the same repo share an identity and content); repos without a remote — or plain non-git folders — fall back to a declared name/path key.",
-          "state": "unchecked"
+          "state": "checked",
+          "completed_evidence": "fs3-git landed c7670cd: remote-URL identity canonicalised, path: fallback for remoteless + plain folders, linked-worktree identity sharing proven (13 real-git fixture tests)"
         },
         {
           "id": "req-0036",
@@ -275,7 +279,7 @@
           "title": "Summaries carry tags",
           "requirement": "Every LLM summary run also generates 1–5 tags naming the element's most important concepts, stored alongside the summary — a cheap faceting/filter axis on top of vector search.",
           "state": "unchecked",
-          "note": "tags column in smart_content (workshop 002); generation via Summarizer contract (landed)"
+          "note": "Summary carries 1-5 tags (type-enforced, live-proven); tags column landed; check when enrichment writes them e2e (first light)"
         },
         {
           "id": "req-0037",
@@ -312,8 +316,9 @@
           "num": 41,
           "title": "Filtered discovery, git-ignore-aware",
           "requirement": "By default the scanner indexes files git does not ignore (tracked + untracked-but-not-ignored, so brand-new files index immediately without `git add`), restricted by an extension allow-list and a max-file-size ceiling — all three configurable. Per-repo config can force-include folders the defaults would miss (e.g. a gitignored folder you do want indexed). POC evidence: identical elements from 11% of the bytes, 13.8× faster.",
-          "state": "unchecked",
-          "note": "discovery walker in flight (cattle); POC evidence recorded"
+          "state": "checked",
+          "note": "discovery walker in flight (cattle); POC evidence recorded",
+          "completed_evidence": "discovery walker landed ca27e63: gitignore/nested/.ignore honoured, force_include second-walk, size ceiling + binary sniff, 204x real-repo reduction; exact-set fixture tests"
         },
         {
           "id": "req-0042",
@@ -328,7 +333,8 @@
           "num": 43,
           "title": "Config formats are excluded",
           "requirement": "Data/config formats (YAML, JSON, TOML, HCL, and kin) are not indexed in v1 — they yield no code-shaped elements and carry PII/secrets risk (they'd otherwise be summarized and embedded into a central store); revisit how to handle configs later. Unsupported/no-grammar files must be an observable outcome (reported as skipped), never a silent gap.",
-          "state": "unchecked"
+          "state": "checked",
+          "completed_evidence": "discovery LanguageFamily::Config excluded by default (flag to enable) + every refusal in Discovery::skipped with SkipReason - skipped is observable, never silent (ca27e63)"
         },
         {
           "id": "req-0044",
