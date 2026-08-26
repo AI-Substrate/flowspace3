@@ -1,0 +1,19 @@
+docs/services/ci-release.md
+  s_b7bb8433dbdd84::t_fc38c4f1eb4c2b 100-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9566093a584f2ecbf66c772fff3c2ee30d67d848",
+  "prompts": {},
+  "sessions": {
+    "s_b7bb8433dbdd84": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "222c2c9d-5798-48cf-9dbd-cd4a52324c53",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
