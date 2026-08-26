@@ -1,0 +1,21 @@
+Cargo.toml
+  s_15d888f4b629c1::t_ca6984bf4f4c7d 57-62
+crates/testkit/arch-allowlist.toml
+  s_15d888f4b629c1::t_176b324906fea8 156-159,161-166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "bf28876124da95466a4f7638c85938475d4fa492",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
