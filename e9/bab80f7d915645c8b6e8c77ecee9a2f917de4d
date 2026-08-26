@@ -1,0 +1,23 @@
+.harness/government/how-we-work.md
+  s_15d888f4b629c1::t_96942ecd1c297f 126-136
+AGENTS.md
+  s_15d888f4b629c1::t_95d40392fb733c 79-95
+.harness/government/rulings/2026-08-26-pr-workflow-cutover.md
+  s_15d888f4b629c1::t_a51673be5b7800 2-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e9bab80f7d915645c8b6e8c77ecee9a2f917de4d",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
