@@ -54,6 +54,22 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      # The gate no other step provides. `release.yml` builds with `--locked`,
+      # so a Cargo.lock that does not match the manifests is a RELEASE-time
+      # failure — discovered at a tag, on a matrix of runners, by whoever is
+      # shipping. Nothing above catches it: plain `cargo test` happily updates
+      # the lock in place and goes green.
+      #
+      # It ran first for a reason: it is two seconds, it needs no compilation,
+      # and a stale lock makes every later step's result a statement about a
+      # dependency set that will not be the one released.
+      #
+      # Found the hard way — the w-auto-update packet added `sha2` and
+      # `tempfile` to fs3-daemon, went green through the whole gate, and landed
+      # on main with the lock un-updated (2026-08-27).
+      - name: lockfile is current
+        run: cargo metadata --locked --format-version 1 > /dev/null
+
       - name: fmt
         run: cargo fmt --all --check
 

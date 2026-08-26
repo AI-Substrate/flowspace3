@@ -4,6 +4,14 @@ import { defineExtension } from '@ai-substrate/engineering-harness/contract';
 
 /** The quality gate: every command an agent must see green before calling work done. */
 const GATES: { name: string; cmd: string; args: string[] }[] = [
+  // First, because it is two seconds and needs no compilation — and because a
+  // stale lock makes every gate below it a statement about a dependency set
+  // that is not the one `release.yml` will build. That workflow uses
+  // `--locked`, so lock drift is otherwise discovered at a TAG, on a matrix of
+  // runners, by whoever is shipping. Plain `cargo test` updates the lock in
+  // place and goes green, which is exactly how the w-auto-update packet added
+  // two dependencies and landed on main with the lock un-updated (2026-08-27).
+  { name: 'lock', cmd: 'cargo', args: ['metadata', '--locked', '--format-version', '1'] },
   { name: 'fmt', cmd: 'cargo', args: ['fmt', '--all', '--check'] },
   { name: 'clippy', cmd: 'cargo', args: ['clippy', '--all-targets', '--', '-D', 'warnings'] },
   { name: 'test', cmd: 'cargo', args: ['test', '--all'] },
