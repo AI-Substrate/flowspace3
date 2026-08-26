@@ -111,10 +111,15 @@ jobs:
           "$BIN" daemon --help >/dev/null
           "$BIN" doctor --help   >/dev/null
 
-      # doctor probes the container engine (`docker --version`); macOS runners
-      # ship without it, so give them the CLI — no daemon runs here.
-      - name: Install docker CLI
-        run: HOMEBREW_NO_AUTO_UPDATE=1 brew install docker
+      # doctor probes the container engine AND runs `docker compose up -d`;
+      # macOS runners ship without either. Brew's client needs the compose
+      # plugin wired into ~/.docker/cli-plugins by hand.
+      - name: Install docker CLI + compose
+        run: |
+          HOMEBREW_NO_AUTO_UPDATE=1 brew install docker docker-compose
+          mkdir -p ~/.docker/cli-plugins
+          ln -sfn "$(brew --prefix)/opt/docker-compose/bin/docker-compose" ~/.docker/cli-plugins/docker-compose
+          docker compose version
 
       - name: Fast test tier (${{ matrix.target }})
         run: cargo test --workspace --exclude fs3-store
