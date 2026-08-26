@@ -109,11 +109,20 @@ with the config and **had no reader until this landed**.
   **(b) the toggle** — `scan.standard_ignores = false` empties discovery's list;
   a `const` cannot be turned off, so the watcher would refuse to walk `build/`
   while `add` indexed it: the mismatch above, running backwards.
+  **(c) case** — this filter has always been `eq_ignore_ascii_case`, and
+  discovery's prune was case-*sensitive* until 2026-08-26; it now matches
+  ASCII-case-insensitively too, so this axis is **closed** rather than
+  outstanding. It was the cheapest of the four to fix and the easiest to have
+  missed: on a case-insensitive volume `Dist/` and `dist/` are one directory.
   The correct wiring is to the **settings value**
   (`DiscoverySettings::standard_ignores`), matched root-relatively, which makes
-  disagreement impossible on all three axes. That is a behaviour change to this
-  crate's contract — `Debouncer` threads the list, `is_ignored` takes root +
-  path — and is awaiting a ruling rather than being slipped in as a tidy-up.
+  disagreement impossible on every axis rather than only on names. That is a
+  behaviour change to this crate's contract — `Debouncer` threads the list,
+  `is_ignored` takes root + path — assigned to **sailfish** (watcher-core
+  owner) for after the v0.2.0 merge, per the o-prime ruling of 2026-08-26.
+  The test to write with it is a shared fixture of `(root, path)` cases run
+  through *both* filters asserting they agree — pinning the decision, not the
+  data — including the toggle axis, which neither side's current tests touch.
   See `docs/services/discovery.md`.
 - **Deletions are reaped only inside a re-listed directory.** A file deleted
   from a directory that then settles leaves the map at the next pass. A file in

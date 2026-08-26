@@ -19,3 +19,9 @@ tree-sitter.workspace = true
 tree-sitter-md.workspace = true
 tree-sitter-python.workspace = true
 tree-sitter-rust.workspace = true
+
+# Dev-only, and dev-only by suffix in the arch allow-list: the cross-filter
+# fixture (`discovery_filter`) is shared with fs3-daemon's watcher, so both
+# sides answer one table rather than two lookalike test suites.
+[dev-dependencies]
+fs3-testkit.workspace = true

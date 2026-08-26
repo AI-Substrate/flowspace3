@@ -76,10 +76,17 @@ const SNIFF_BYTES: usize = 8 * 1024;
 /// Matched against whole path COMPONENTS of directories, never substrings:
 /// `src/target_types.rs`, `my-vendor/`, `builder/` and `build-output/` all
 /// survive. Applied at depth > 0 only, so `flowspace3 add ./node_modules` —
-/// an explicit, deliberate root — still works.
+/// an explicit, deliberate root — still works. ASCII-case-insensitively, so
+/// `Build/` is denied too: on a case-insensitive volume it is the same
+/// directory as `build/`, and case sensitivity is a property of the volume
+/// rather than the platform.
 ///
-/// `crates/daemon`'s watcher pre-filter is a three-name subset of this list;
-/// it is `pub` so that filter can delegate here rather than drift.
+/// `pub` so callers can *see* the policy — but a second filter should take
+/// [`DiscoverySettings::standard_ignores`], the resolved value, rather than
+/// this raw list: only the settings carry the `scan.standard_ignores` toggle,
+/// and only a root-relative match agrees with what [`discover`] does. See
+/// `docs/services/discovery.md`, "Delegation is to the settings, not the
+/// const".
 pub const STANDARD_IGNORES: &[&str] = &[
     ".cache",
     ".git",
@@ -584,7 +591,14 @@ fn walk(
             let Some(name) = entry.file_name().to_str() else {
                 return true;
             };
-            if name == ".git" {
+            // ASCII-case-insensitive, matching `fs3-daemon`'s watcher filter.
+            // Case sensitivity is a property of the VOLUME, not the OS, so no
+            // `cfg!` gets it right: on a case-insensitive volume `Build/` and
+            // `build/` are one directory, and a case-sensitive check would
+            // walk what the watcher refuses. Denying both is the strictly safer
+            // half of that disagreement, and `force_include` is the way back in
+            // for a real `Dist/` of first-party code.
+            if name.eq_ignore_ascii_case(".git") {
                 return false;
             }
             if !entry.file_type().is_some_and(|kind| kind.is_dir()) {
@@ -593,7 +607,9 @@ fn walk(
             // Whole component, never substring: `src/target_types.rs` is a
             // file (already returned above), `my-vendor/` and `builder/` are
             // directories whose NAMES simply are not on the list.
-            !denied.iter().any(|denied| denied == name)
+            !denied
+                .iter()
+                .any(|denied| denied.eq_ignore_ascii_case(name))
         });
 
     for entry in builder.build() {

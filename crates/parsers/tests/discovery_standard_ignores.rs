@@ -290,3 +290,52 @@ fn the_deny_list_is_root_relative_never_absolute() {
     let discovery = discover(&bare().join("node_modules"), &ungoverned()).expect("walks");
     assert_eq!(kept(&discovery), ["pkg/index.js"]);
 }
+
+/// Build one throwaway tree and hand it to a test. A temp directory, not a
+/// fixture, whenever the tree cannot be committed — a path named `.git`, or a
+/// case variant that would collide with its own sibling on a case-insensitive
+/// volume.
+fn temp_tree(label: &str, files: &[(&str, &str)]) -> PathBuf {
+    let tree = std::env::temp_dir().join(format!(
+        "fs3-discovery-{label}-{}-{:?}",
+        std::process::id(),
+        std::thread::current().id(),
+    ));
+    let _ = fs::remove_dir_all(&tree);
+    for (path, body) in files {
+        let path = tree.join(path);
+        fs::create_dir_all(path.parent().expect("parent")).expect("temp tree");
+        fs::write(path, body).expect("temp file");
+    }
+    tree
+}
+
+/// ASCII-case-insensitive, matching `fs3-daemon`'s watcher filter
+/// (`eq_ignore_ascii_case`) — the fourth axis, closed before it could bite
+/// (sawfish, 2026-08-26).
+///
+/// Case sensitivity is a property of the volume, not the platform: on a
+/// case-insensitive volume `Dist/` *is* `dist/`, so a case-sensitive prune
+/// would index exactly what the watcher refuses to walk. `Dist/` cannot be a
+/// committed fixture beside `dist/` for that same reason, hence the temp tree.
+#[test]
+fn the_deny_list_ignores_ascii_case() {
+    let tree = temp_tree(
+        "case",
+        &[
+            ("Dist/bundle.js", "console.log('built');\n"),
+            ("NODE_MODULES/pkg/index.js", "module.exports = {};\n"),
+            ("Src/main.rs", "fn main() {}\n"),
+        ],
+    );
+
+    let discovery = discover(&tree, &ungoverned()).expect("temp tree walks");
+    let kept = kept(&discovery)
+        .into_iter()
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    fs::remove_dir_all(&tree).expect("cleanup");
+
+    // `Src/` is not on the list at any casing; the other two are.
+    assert_eq!(kept, ["Src/main.rs"]);
+}

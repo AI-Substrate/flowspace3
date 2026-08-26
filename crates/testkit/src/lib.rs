@@ -13,9 +13,14 @@
 //!
 //! [`arch`] is the odd one out: the mechanical enforcement of the crate graph
 //! itself. It lives here because this is the crate that ships proof.
+//!
+//! [`discovery_filter`] is the same idea one layer down: a table of cases two
+//! crates must answer identically, so that "these two filters agree" is a
+//! build failure when it stops being true rather than a claim in a doc.
 
 pub mod arch;
 pub mod contract;
+pub mod discovery_filter;
 pub mod fakes;
 
 pub use contract::{embedder_contract, sample_element, summarizer_contract};

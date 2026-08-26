@@ -61,8 +61,13 @@ external = ["async-trait", "serde", "serde_json", "sha2", "thiserror", "toml"]
 # because gitignore semantics — nested ignore files, negations, parent rules,
 # force-include precedence — are a decade of edge cases fs3 has no reason to
 # re-derive (PRD req 41).
+#
+# `fs3-testkit@dev` is the cross-filter fixture: the same `(root, path)` table
+# is run through discovery's prune here and through the watcher's pre-filter in
+# fs3-daemon, so the two cannot silently disagree. Dev-only by suffix — test
+# data must not ship inside the parser.
 [crates.fs3-parsers]
-internal = ["fs3-core"]
+internal = ["fs3-core", "fs3-testkit@dev"]
 external = [
   "ignore",
   "thiserror",

@@ -40,6 +40,7 @@ the scanner's budget.
 | **A standard deny list, independent of git** | `STANDARD_IGNORES` — `.cache`, `.git`, `.next`, `.venv`, `__pycache__`, `build`, `dist`, `node_modules`, `target`, `vendor`, `venv` — is refused whether or not the repo has a `.gitignore`. Git-ignore rules are the *repo's* opinion; this list is fs3's, and it has to hold when the repo has none. Found by sailfish during first-light integration: a `.gitignore`-less clone indexes `node_modules/**/*.js`, because that is real JavaScript and `js` is in the source table. |
 | **Denied directories are PRUNED, not judged per file** | The deny list is a `filter_entry` prune in the walker, so `node_modules` costs one string comparison instead of a descent. Measured below: not descending is the entire saving. |
 | **Whole path components, never substrings** | `src/target_types.rs`, `src/node_modules_helper.rs`, `my-vendor/`, `builder/` and `build-output/` all survive. The check only ever looks at *directory* components, so a file's name cannot trip it. |
+| **Denied names are ASCII-case-insensitive** | `Build/` is denied as surely as `build/`. Case sensitivity is a property of the volume, not the platform — on a case-insensitive volume they are one directory — so no `cfg!` gets it right, and denying both is the safer half of the disagreement. It also makes this prune agree with `fs3-daemon`'s watcher filter, which was already `eq_ignore_ascii_case`. |
 | **The named root always wins** | The deny list applies at depth > 0 only: `flowspace3 add ./node_modules` is a deliberate instruction, not an accident. `.git` is the single exception — never walked, at any setting, by any route. |
 | **A list, exposed as a bool** | `scan.standard_ignores` is a bool in TOML (that is the whole question a config file needs to answer); `DiscoverySettings.standard_ignores` is a `Vec<String>`, which is a superset — `false` is the empty list, `true` is the default list, and a caller with a reason can pass its own names without a config schema change. A custom list *replaces* the defaults, like `exclude` does. |
 | **Skips are a ledger, ignores are not** | A refused file (unsupported extension, config format, too large, binary, excluded) is reported — req 43 demands "never a silent gap". A git-ignored file is *out of scope*, not refused, and stays out of both lists; otherwise every `node_modules` entry would be in the report. |
@@ -184,9 +185,42 @@ names are only the first:
    index `build/` while the watcher still refused to walk it: indexed once by
    `add`, then never updated. That is the add-vs-watcher mismatch this deny
    list closed, running backwards, eleven names wide.
+4. **Case** — `debounce::is_ignored` compares with `eq_ignore_ascii_case`;
+   this prune was case-*sensitive* until sawfish named the axis, and now is
+   not. Converged rather than argued: on a case-insensitive volume `Dist/` and
+   `dist/` are one directory, so a case-sensitive prune would index precisely
+   what the watcher refuses to walk. Pinned by
+   `the_deny_list_ignores_ascii_case`. A genuine first-party `Dist/` is one
+   `force_include` line.
 
 The safe delegation is to the **settings value** —
 `DiscoverySettings::standard_ignores`, matched root-relatively — so the two
 filters cannot disagree on any axis rather than only on names. That is a change
-to the watcher's contract (`Debouncer` would thread the list, `is_ignored`
-would take root + path), owned by the daemon side and awaiting a ruling.
+to the watcher's contract (`Debouncer` threads the list, `is_ignored` takes
+root + path); it belongs to **sailfish**, who owns the watcher core, and is
+scheduled for after the v0.2.0 merge (o-prime ruling, 2026-08-26).
+
+### The cross-filter fixture (landed, one half green)
+
+`fs3_testkit::discovery_filter` holds the shared table: 12 `(root, path)`
+cases, each with the `scan.standard_ignores` setting it is asked under and the
+answer both filters must give. It pins the **decision**, not the data — a
+subset-of-consts test reads as proof of agreement while being blind to
+relativity, configurability and case (sawfish, DL-009).
+
+- Discovery's half is green now:
+  `crates/parsers/tests/cross_filter.rs`.
+- The watcher's half runs the same table through `debounce::is_ignored` and
+  lands with the delegation, post-merge, by sailfish. Until then the fixture
+  states the contract that change must satisfy.
+
+All four axes are represented, including the toggle — the one axis neither
+side's own tests touch. Everything except the deny list is neutralised in the
+run (no gitignore semantics, hidden files on, size window irrelevant), because
+the watcher has none of those knobs and a fair comparison must not invent them.
+
+One thing the fixture taught immediately: it must be built in a temp directory,
+and its mixed-case cases must not collide with their lowercase siblings.
+`Src/app.rs` beside `src/main.rs` silently becomes `src/app.rs` on a
+case-insensitive volume — the case stops testing casing and starts testing
+nothing. It is `Lib/app.rs` for that reason.
