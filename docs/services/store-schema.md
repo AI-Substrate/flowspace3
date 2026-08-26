@@ -124,7 +124,73 @@ RETURNING id, kind, dedupe_key, payload, attempts
 `SKIP LOCKED` is the whole point: a row another worker is mid-claim on is stepped
 over rather than waited on, so N workers polling together get N different jobs and
 none of them block. That is what lets an LLM job and an embedding job run at once.
-`complete_job` / `fail_job` settle it.
+`complete_job` / `fail_job` settle it, and `retry_job(id, delay, error)` puts a
+claimed row back as `pending`, due again after `delay`.
+
+`retry_job` is a **verb, not a policy**. How many attempts are worth making and
+how far apart is the worker's decision — the daemon settles it at three attempts
+with backoff — and this is the one statement that decision needs. It does not
+touch `attempts`, because `claim_job` already incremented it when the row was
+taken: a worker deciding whether to retry reads the count it was handed rather
+than one the store invented. `last_error` is recorded even though the row lives
+on, which is the difference between "this is flaky" and "this is fine". Keeping
+the schedule out of the store is what lets two workers with different appetites
+share one queue, and it is why `fail_job` stays terminal.
+
+`queue_depth()` groups by `(kind, state)` rather than totalling: "142 pending
+embed, 0 pending scan_file" says the scan finished and the enrichment is the
+thing to wait for, while "142 pending" says nothing. `last_failure()` is the
+most recent `last_error`, so a status line can say what went wrong rather than
+only that something did.
+
+**Ref layer.** `register_worktree(identity, root_path, ref_name)` is idempotent
+by `(repo_id, root_path)` — `flowspace3 add` on an existing root is a re-scan
+request, not a duplicate — and both inserts share one transaction, because a
+repo row without its worktree is a repository fs3 believes in but cannot find,
+and the next `add` would take the orphan and look like it worked.
+
+`sync_worktree_files(worktree_id, files)` replaces the whole map and returns how
+many paths vanished. The whole map rather than a delta, because the caller has
+just walked the tree and knows the complete answer; the delete is scoped by an
+exact `NOT (path = ANY($2))` rather than a `last_seen` sweep, which would race a
+concurrent scan's writes. Deleting a pointer costs nothing derived — that is D8
+working: the elements, summaries and vectors keyed by the blob survive, so
+restoring the file (a branch switch, an undo) re-registers a pointer to content
+that nobody has to pay for twice.
+
+`worktree_paths_for_blob(blob)` is the reverse lookup
+`worktree_files_blob_sha_idx` exists for, and the answer to the sentence above:
+resolving a content hit to every live path holding it. `list_worktrees()` and
+`find_worktree(root_path)` are what `status` and `scan` read; the file count is
+a correlated aggregate rather than a stored column, because a cached counter is
+one more thing that can be wrong.
+
+**Filtered search.** `search_elements(model_key, query, &SearchFilters)` is
+`query_embeddings` with `--repo` / `--path` / `--source` / `--min-score`
+applied. The shape is the whole point: the ref-layer join lives **inside** the
+neighbour CTE as an `EXISTS` predicate, so Postgres still answers
+`ORDER BY vector <=> $1 LIMIT n` from the HNSW index while excluding vectors no
+live path holds. Joining first and sorting after — the obvious way to write it —
+reads every row in the table. Filtering after the `LIMIT` would be worse than
+slow: it silently returns fewer rows than asked for.
+
+Every filter is bound with a `NULL`-means-any guard rather than concatenated
+into the statement, so there is ONE statement text whatever the caller asked
+for — one plan to reason about instead of one per flag combination.
+
+**Admin.** The control plane `flowspace3 doctor` orchestrates:
+`schema_current(pool)` compares the embedded `MIGRATOR` against
+`_sqlx_migrations`, `database_exists` / `create_database` answer and repair the
+step before it, and `maintenance_url(url)` splits a config URL into the
+`postgres`-database URL doctor connects to in order to ask about the one that is
+missing. Each is one function doing one thing; doctor implements none of them.
+
+Two decisions worth keeping: an absent `_sqlx_migrations` table is read as
+"fresh database, everything missing" rather than an error, because the first run
+of a new stack must not report a broken store; and `create_database` validates
+the name before building a statement, because `CREATE DATABASE` takes no bind
+parameters and that check is the only thing between a config URL and an
+interpolated identifier.
 
 ## Gotchas discovered
 

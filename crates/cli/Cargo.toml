@@ -8,6 +8,14 @@ description = "The flowspace3 command-line client."
 
 [dependencies]
 fs3-core.workspace = true
+# `flowspace3 doctor` ONLY. Ruled by o-prime 2026-08-26: PRD req 20's
+# single-writer rule governs the DATA plane, and doctor's writes are CONTROL
+# plane - create the database, apply migrations - bootstrap operations that
+# logically precede a daemon existing. It is also the verb you reach for when
+# the daemon is DOWN, so it cannot be a client of an endpoint that is not
+# listening. Every other verb stays a thin HTTP client and never opens a pool.
+fs3-store.workspace = true
+
 anyhow.workspace = true
 clap.workspace = true
 reqwest.workspace = true

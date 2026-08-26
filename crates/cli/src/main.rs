@@ -1,11 +1,18 @@
 //! `flowspace3` — the fs3 command-line client (PRD req 28).
+//!
+//! Every verb prints one workshop-004 envelope to stdout and exits by its
+//! shape: 0 for `ok`, 1 for an error, 2 for a usage problem. JSON only in v1
+//! (workshop 003 D5) — a human-readable layer renders from the same envelope
+//! later, and building it now would mean two output paths to keep honest
+//! instead of one.
 
 use std::path::PathBuf;
 use std::process::ExitCode;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use fs3_cli::{DaemonClient, daemon_url, settings, show};
+use fs3_cli::{DaemonClient, daemon_url, doctor, settings, show};
+use fs3_core::envelope::Envelope;
 
 #[derive(Parser)]
 #[command(
@@ -26,6 +33,63 @@ enum Command {
         /// Override the daemon URL from configuration.
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
+    },
+    /// Register a repository or folder and index it.
+    Add {
+        /// The directory to index.
+        path: PathBuf,
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
+    /// Re-scan a root that is already registered.
+    Scan {
+        /// The registered directory to re-scan.
+        path: PathBuf,
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
+    /// Report registered roots and what is left in the queue.
+    Status {
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
+    /// Ask a question of the index.
+    Search {
+        /// The question.
+        query: String,
+        /// Only this repository identity.
+        #[arg(long, value_name = "IDENTITY")]
+        repo: Option<String>,
+        /// Only paths matching this glob.
+        #[arg(long, value_name = "GLOB")]
+        path: Option<String>,
+        /// How many hits.
+        #[arg(long, value_name = "N")]
+        limit: Option<i64>,
+        /// Similarity floor, 0.0-1.0.
+        #[arg(long, value_name = "SCORE")]
+        min_score: Option<f64>,
+        /// Which vector space to search.
+        #[arg(long, value_name = "SOURCE", value_parser = ["raw", "smart", "all"])]
+        source: Option<String>,
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
+    /// Diagnose the stack and repair what can be repaired.
+    ///
+    /// Walks engine -> stack -> database -> schema, starting the compose stack,
+    /// creating the database and applying migrations as needed. This is the one
+    /// command that talks to Postgres directly: it is the verb you run when the
+    /// daemon is down, so it cannot be a client of it.
+    Doctor {
+        /// Read this directory instead of `$FS3_CONFIG_DIR` or
+        /// `~/.config/flowspace3`.
+        #[arg(long, value_name = "DIR")]
+        config_dir: Option<PathBuf>,
     },
     /// Inspect fs3's configuration.
     Config {
@@ -48,6 +112,9 @@ enum ConfigCommand {
     },
 }
 
+/// Exit codes, per workshop 004: 0 ok, 1 error, 2 usage.
+const EXIT_ERROR: u8 = 1;
+
 /// Not `#[tokio::main]`: the secrets chain writes `secrets.env` into the
 /// process environment, which is only sound while the process is
 /// single-threaded. Secrets load first, the runtime starts after.
@@ -61,12 +128,12 @@ fn main() -> ExitCode {
     });
 
     match outcome {
-        Ok(()) => ExitCode::SUCCESS,
+        Ok(code) => code,
         Err(error) => {
             // `{error:#}` prints the whole anyhow context chain on one line,
             // so the doctor suggestion is never truncated away.
             eprintln!("flowspace3: {error:#}");
-            ExitCode::FAILURE
+            ExitCode::from(EXIT_ERROR)
         }
     }
 }
@@ -81,13 +148,99 @@ fn boot() -> Result<Command> {
     Ok(command)
 }
 
-async fn run(command: Command) -> Result<()> {
+async fn run(command: Command) -> Result<ExitCode> {
     match command {
         Command::Ping { daemon_url: url } => ping(url).await,
+        Command::Add { path, daemon_url } => {
+            let client = client_for(daemon_url)?;
+            Ok(emit(&client.add(&display(&path)).await))
+        }
+        Command::Scan { path, daemon_url } => {
+            let client = client_for(daemon_url)?;
+            Ok(emit(&client.scan(&display(&path)).await))
+        }
+        Command::Status { daemon_url } => {
+            let client = client_for(daemon_url)?;
+            Ok(emit(&client.status().await))
+        }
+        Command::Search {
+            query,
+            repo,
+            path,
+            limit,
+            min_score,
+            source,
+            daemon_url,
+        } => {
+            let client = client_for(daemon_url)?;
+            let mut params = vec![("q".to_string(), query)];
+            push(&mut params, "repo", repo);
+            push(&mut params, "path", path);
+            push(&mut params, "limit", limit.map(|v| v.to_string()));
+            push(&mut params, "min_score", min_score.map(|v| v.to_string()));
+            push(&mut params, "source", source);
+            Ok(emit(&client.search(&params).await))
+        }
+        Command::Doctor { config_dir } => {
+            let dir = match config_dir {
+                Some(dir) => dir,
+                None => settings::config_dir()?,
+            };
+            let effective = settings::load_effective_from(&dir)?;
+            Ok(emit(&doctor::run(&effective.config.database.url).await))
+        }
         Command::Config {
             command: ConfigCommand::Show { config_dir },
-        } => config_show(config_dir),
+        } => config_show(config_dir).map(|()| ExitCode::SUCCESS),
     }
+}
+
+/// Print an envelope and turn its `ok` into an exit code.
+///
+/// The envelope goes to STDOUT even when it is an error: it is the command's
+/// answer, and a script piping stdout to `jq` must not have to also capture
+/// stderr to find out what happened. The human-readable rendering of the same
+/// failure goes to stderr, so a person reading a terminal sees the fix without
+/// piping anything.
+fn emit<T: serde::Serialize>(envelope: &Envelope<T>) -> ExitCode {
+    match serde_json::to_string_pretty(envelope) {
+        Ok(json) => println!("{json}"),
+        Err(error) => eprintln!("flowspace3: cannot render the response: {error}"),
+    }
+
+    match &envelope.error {
+        None => ExitCode::SUCCESS,
+        Some(failure) => {
+            eprintln!("{}", failure.render());
+            ExitCode::from(EXIT_ERROR)
+        }
+    }
+}
+
+fn push(params: &mut Vec<(String, String)>, name: &str, value: Option<String>) {
+    if let Some(value) = value {
+        params.push((name.to_string(), value));
+    }
+}
+
+/// An absolute path, so the daemon never resolves a relative one against ITS
+/// working directory.
+///
+/// This is the trap the `add` error message names, closed at the source: the
+/// CLI knows where the user is standing and the daemon does not.
+fn display(path: &PathBuf) -> String {
+    std::fs::canonicalize(path)
+        .unwrap_or_else(|_| path.clone())
+        .to_string_lossy()
+        .to_string()
+}
+
+fn client_for(override_url: Option<String>) -> Result<DaemonClient> {
+    let url = match override_url {
+        Some(url) => url,
+        None => daemon_url()?,
+    };
+    DaemonClient::new(url)
 }
 
 fn config_show(override_dir: Option<PathBuf>) -> Result<()> {
@@ -109,12 +262,8 @@ fn config_show(override_dir: Option<PathBuf>) -> Result<()> {
     Ok(())
 }
 
-async fn ping(override_url: Option<String>) -> Result<()> {
-    let url = match override_url {
-        Some(url) => url,
-        None => daemon_url()?,
-    };
-    let client = DaemonClient::new(url)?;
+async fn ping(override_url: Option<String>) -> Result<ExitCode> {
+    let client = client_for(override_url)?;
     let health = client.health().await?;
 
     if !health.is_healthy() {
@@ -132,5 +281,5 @@ async fn ping(override_url: Option<String>) -> Result<()> {
         health.embedder,
         health.summarizer
     );
-    Ok(())
+    Ok(ExitCode::SUCCESS)
 }

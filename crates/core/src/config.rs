@@ -476,6 +476,14 @@ impl RepoSelection {
 ///
 /// [providers.offline]
 /// kind = "fake"
+///
+/// [providers.azure-luna]
+/// kind = "azure_openai"
+/// endpoint = "https://luna.openai.azure.com"
+/// deployment = "text-embedding-3-large"   # the DEPLOYMENT, not the model
+/// api_version = "2024-02-01"
+/// dimensions = 1024                        # embeddings only
+/// # no api_key_env => authenticate with Entra (az login / managed identity)
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
@@ -495,6 +503,30 @@ pub enum ProviderInstance {
         #[serde(default = "ProviderInstance::default_api_key_env")]
         api_key_env: String,
     },
+    /// One Azure OpenAI DEPLOYMENT.
+    ///
+    /// One instance per port, not per resource: Azure names the model by a
+    /// deployment in the URL path, and the chat and embeddings deployments are
+    /// different names with different `api-version`s in practice.
+    #[serde(rename = "azure_openai")]
+    AzureOpenAi {
+        /// Resource root, e.g. `https://luna.openai.azure.com`.
+        endpoint: String,
+        /// The deployment name — NOT the model name. Getting this wrong is a
+        /// 404 that reads like a wrong URL.
+        deployment: String,
+        /// Azure pins behaviour to this string, and it differs per route.
+        api_version: String,
+        /// Environment variable holding the api-key. ABSENT means Entra
+        /// (managed identity, then `az login`) — which is the only way into a
+        /// resource with key auth disabled.
+        #[serde(default)]
+        api_key_env: Option<String>,
+        /// Requested embedding width, verified against the response. Embeddings
+        /// only; ignored by the summarizer.
+        #[serde(default)]
+        dimensions: Option<usize>,
+    },
 }
 
 impl ProviderInstance {
@@ -511,6 +543,10 @@ impl ProviderInstance {
         match self {
             ProviderInstance::Fake => None,
             ProviderInstance::OpenAi { api_key_env, .. } => Some(api_key_env),
+            // `None` here means Entra rather than "needs no credential", which
+            // is why the absence is reported honestly instead of as `Fake`'s
+            // keyless case: a printer says "Entra", not "no key needed".
+            ProviderInstance::AzureOpenAi { api_key_env, .. } => api_key_env.as_deref(),
         }
     }
 
@@ -520,6 +556,7 @@ impl ProviderInstance {
         match self {
             ProviderInstance::Fake => "fake",
             ProviderInstance::OpenAi { .. } => "openai",
+            ProviderInstance::AzureOpenAi { .. } => "azure_openai",
         }
     }
 
@@ -530,25 +567,61 @@ impl ProviderInstance {
     /// Problems with this instance's own shape, named by registry key so the
     /// message points at the table to edit.
     fn collect(&self, name: &str, problems: &mut Vec<Problem>) {
-        let ProviderInstance::OpenAi {
-            model, api_key_env, ..
-        } = self
-        else {
-            return;
-        };
-        if model.trim().is_empty() {
-            problems.push(Problem::file(
-                format!("providers.{name}.model"),
-                "must name a model when kind = \"openai\"",
-                "model = \"text-embedding-3-small\"",
-            ));
-        }
-        if api_key_env.trim().is_empty() {
-            problems.push(Problem::file(
-                format!("providers.{name}.api_key_env"),
-                "must name the environment variable holding the key (never the key itself)",
-                format!("api_key_env = \"{}\"", Self::DEFAULT_API_KEY_ENV),
-            ));
+        match self {
+            ProviderInstance::Fake => {}
+            ProviderInstance::OpenAi {
+                model, api_key_env, ..
+            } => {
+                if model.trim().is_empty() {
+                    problems.push(Problem::file(
+                        format!("providers.{name}.model"),
+                        "must name a model when kind = \"openai\"",
+                        "model = \"text-embedding-3-small\"",
+                    ));
+                }
+                if api_key_env.trim().is_empty() {
+                    problems.push(Problem::file(
+                        format!("providers.{name}.api_key_env"),
+                        "must name the environment variable holding the key (never the key \
+                         itself)",
+                        format!("api_key_env = \"{}\"", Self::DEFAULT_API_KEY_ENV),
+                    ));
+                }
+            }
+            ProviderInstance::AzureOpenAi {
+                endpoint,
+                deployment,
+                api_version,
+                ..
+            } => {
+                if endpoint.trim().is_empty() {
+                    problems.push(Problem::file(
+                        format!("providers.{name}.endpoint"),
+                        "must name the resource root",
+                        "endpoint = \"https://NAME.openai.azure.com\"",
+                    ));
+                }
+                // The confusable one: a 404 from Azure reads like a wrong URL,
+                // and the cause is nearly always a MODEL name written where a
+                // deployment name belongs. Saying so here costs nothing and
+                // saves the hunt.
+                if deployment.trim().is_empty() {
+                    problems.push(Problem::file(
+                        format!("providers.{name}.deployment"),
+                        "must name the DEPLOYMENT (not the model); a wrong one is a 404 that \
+                         reads like a wrong endpoint",
+                        "deployment = \"text-embedding-3-large\"",
+                    ));
+                }
+                if api_version.trim().is_empty() {
+                    problems.push(Problem::file(
+                        format!("providers.{name}.api_version"),
+                        "must pin an api-version; Azure ties behaviour to it and it differs \
+                         between the chat and embeddings routes",
+                        "api_version = \"2024-02-01\"",
+                    ));
+                }
+            }
         }
     }
 }
@@ -592,6 +665,7 @@ fn unknown_instance(
 /// [indexing]
 /// summary_min_lines = 10
 /// debounce_seconds = 10
+/// worker_concurrency = 4
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -600,6 +674,15 @@ pub struct IndexingConfig {
     pub summary_min_lines: u32,
     /// How long a dirty file must settle before processing (PRD req 29).
     pub debounce_seconds: u64,
+    /// How many jobs the runner claims at once.
+    ///
+    /// This is the ONE concurrency number in fs3, on purpose. The queue is the
+    /// semaphore — `claim_job`'s `SKIP LOCKED` hands N workers N different jobs
+    /// — so a second knob inside the provider layer could only disagree with
+    /// this one. Four is a starting point that keeps an LLM call, an embedding
+    /// batch and a scan in flight together without turning a rate limit into
+    /// the normal case.
+    pub worker_concurrency: usize,
 }
 
 impl IndexingConfig {
@@ -611,6 +694,13 @@ impl IndexingConfig {
                 "summary_min_lines = 10",
             ));
         }
+        if self.worker_concurrency == 0 {
+            problems.push(Problem::file(
+                "indexing.worker_concurrency",
+                "must be at least 1 — zero workers would leave every job pending forever",
+                "worker_concurrency = 4",
+            ));
+        }
     }
 }
 
@@ -619,6 +709,7 @@ impl Default for IndexingConfig {
         Self {
             summary_min_lines: 10,
             debounce_seconds: 10,
+            worker_concurrency: 4,
         }
     }
 }

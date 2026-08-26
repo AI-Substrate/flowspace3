@@ -158,6 +158,30 @@ pub async fn sync_worktree_files(
     Ok(removed)
 }
 
+/// This worktree's whole path→blob map.
+///
+/// The scan flow's cheap diff: comparing a fresh walk against this map decides
+/// which files changed, and therefore which scans are worth queueing. One query
+/// rather than one per path — a repository is thousands of files, and a
+/// per-path round trip would make "nothing changed" the most expensive possible
+/// answer instead of the cheapest one.
+///
+/// # Errors
+/// [`StoreError::Query`] when the read fails.
+pub async fn worktree_file_map(
+    pool: &PgPool,
+    worktree_id: i64,
+) -> Result<std::collections::HashMap<String, String>, StoreError> {
+    let rows = sqlx::query("SELECT path, blob_sha FROM worktree_files WHERE worktree_id = $1")
+        .bind(worktree_id)
+        .fetch_all(pool)
+        .await?;
+
+    rows.iter()
+        .map(|row| Ok((row.try_get("path")?, row.try_get("blob_sha")?)))
+        .collect()
+}
+
 /// Every live path currently holding `blob`, across every registered worktree.
 ///
 /// The reverse lookup `worktree_files_blob_sha_idx` exists for. This is how a

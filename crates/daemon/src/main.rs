@@ -73,6 +73,18 @@ async fn serve(configuration: Config, address: String) -> Result<()> {
     })?;
     tracing::info!(%database, "store schema is current");
 
+    // The worker loop is a background task rather than a second process: it
+    // shares the composition root's provider Arcs (and therefore their HTTP
+    // clients and Entra token cache), and the queue's own SKIP LOCKED claim is
+    // what makes concurrency safe, so nothing is gained by isolating it.
+    //
+    // It is spawned BEFORE the server starts listening, so a root added by the
+    // very first request is already being drained by the time the response is
+    // written.
+    let workers = state.config.indexing.worker_concurrency;
+    tracing::info!(workers, "starting the job runner");
+    tokio::spawn(fs3_daemon::run_forever(state.clone(), workers));
+
     http::serve(state, &address).await
 }
 

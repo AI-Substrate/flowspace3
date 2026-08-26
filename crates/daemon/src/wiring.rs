@@ -36,7 +36,10 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use fs3_core::{Config, DatabaseConfig, Embedder, Port, ProviderInstance, Summarizer};
-use fs3_providers::{OpenAiEmbedder, OpenAiSummarizer};
+use fs3_providers::{
+    AzureCredential, AzureOpenAiConfig, AzureOpenAiEmbedder, AzureOpenAiSummarizer, OpenAiEmbedder,
+    OpenAiSummarizer,
+};
 // `PgPool` reaches the daemon through `fs3-store`, which owns the sqlx edge.
 // The daemon has no direct `sqlx` dependency, and the arch-check enforces that.
 use fs3_store::{PgPool, connect_lazy};
@@ -53,8 +56,14 @@ pub struct AppState {
     repo_embedders: BTreeMap<String, Arc<dyn Embedder>>,
     /// Repos that named a different summarizer, by repo identity.
     repo_summarizers: BTreeMap<String, Arc<dyn Summarizer>>,
-    /// The central store. Lazy: the daemon starts and reports health without
-    /// requiring Postgres to be up yet.
+    /// The central store.
+    ///
+    /// The pool is lazy — connections are established on first use, so WIRING
+    /// never touches the network. That is a runtime property only, not a
+    /// startup one: since boot-migrate landed, `main` migrates immediately
+    /// after wiring and refuses to serve if it cannot, so a daemon that is
+    /// answering has already reached Postgres at least once. Laziness buys the
+    /// ordering (wire, then connect), not tolerance of an absent store.
     pub db: PgPool,
     /// The configuration these were wired from.
     pub config: Config,
@@ -142,6 +151,28 @@ impl AppState {
         self.repo_summarizers.get(repo).unwrap_or(&self.summarizer)
     }
 
+    /// The `model_key` enrichment rows for `repo` are written under.
+    ///
+    /// This namespace is what makes a model bump non-destructive: a new key
+    /// leaves every existing summary intact, so a rollback is instant
+    /// (workshop 002, decision D2). It therefore comes from the instance that
+    /// actually answers the call — `model@prompt_version` — rather than from a
+    /// config label, which could be renamed without the answers changing.
+    #[must_use]
+    pub fn summarizer_key(&self, repo: &str) -> String {
+        self.summarizer_for(repo).key()
+    }
+
+    /// The `model_key` embedding rows for `repo` are written under.
+    ///
+    /// Vectors are only comparable within one model's space, so this is also
+    /// the predicate a search runs under: the key that wrote the rows and the
+    /// key that reads them come from the same call, and cannot drift apart.
+    #[must_use]
+    pub fn embedder_key(&self, repo: &str) -> String {
+        self.embedder_for(repo).key()
+    }
+
     /// The kind of the instance a port uses by default (`fake`, `openai`), for
     /// logs and `/health`.
     #[must_use]
@@ -158,7 +189,16 @@ fn build_store(database: &DatabaseConfig) -> Result<PgPool> {
 
 fn build_embedder(name: &str, instance: &ProviderInstance) -> Result<Arc<dyn Embedder>> {
     Ok(match instance {
-        ProviderInstance::Fake => Arc::new(FakeEmbedder::default()),
+        // The fake is built at the STORE's width, not its own default. A
+        // 32-wide vector is easy to read in a failing assertion and impossible
+        // to insert into `embeddings_1024`, so an offline stack would index
+        // everything and then fail at the last step. The composition root is
+        // the only place that can see both halves, so it is where they are made
+        // to agree.
+        ProviderInstance::Fake => Arc::new(FakeEmbedder {
+            dimensions: fs3_store::EMBEDDING_DIMENSIONS,
+            ..FakeEmbedder::default()
+        }),
         ProviderInstance::OpenAi {
             model,
             api_base,
@@ -167,6 +207,22 @@ fn build_embedder(name: &str, instance: &ProviderInstance) -> Result<Arc<dyn Emb
             model,
             api_base.clone(),
             api_key(api_key_env, name)?,
+        )),
+        ProviderInstance::AzureOpenAi {
+            endpoint,
+            deployment,
+            api_version,
+            api_key_env,
+            dimensions,
+        } => Arc::new(AzureOpenAiEmbedder::new(
+            azure_config(
+                name,
+                endpoint,
+                deployment,
+                api_version,
+                api_key_env.as_deref(),
+            )?,
+            *dimensions,
         )),
     })
 }
@@ -183,7 +239,60 @@ fn build_summarizer(name: &str, instance: &ProviderInstance) -> Result<Arc<dyn S
             api_base.clone(),
             api_key(api_key_env, name)?,
         )),
+        ProviderInstance::AzureOpenAi {
+            endpoint,
+            deployment,
+            api_version,
+            api_key_env,
+            ..
+        } => Arc::new(AzureOpenAiSummarizer::new(azure_config(
+            name,
+            endpoint,
+            deployment,
+            api_version,
+            api_key_env.as_deref(),
+        )?)),
     })
+}
+
+/// Build one Azure deployment's config, choosing the door it opens.
+///
+/// `api_key_env` naming a variable takes the api-key header; absent takes
+/// Entra. Exactly one is ever sent, which is why the credential is an enum
+/// rather than two optional fields — and why this function returns the
+/// credential already chosen rather than passing both along.
+///
+/// The live resource this was proved against has key auth DISABLED (403
+/// `AuthenticationTypeDisabled`), so the Entra arm is the one that matters here
+/// and the key arm is the one that is easy to configure by accident.
+fn azure_config(
+    name: &str,
+    endpoint: &str,
+    deployment: &str,
+    api_version: &str,
+    api_key_env: Option<&str>,
+) -> Result<AzureOpenAiConfig> {
+    let credential = match api_key_env {
+        Some(variable) => AzureCredential::api_key_from_env(variable).with_context(|| {
+            format!(
+                "provider instance `{name}` names api_key_env = \"{variable}\"; export it, put it \
+                 in secrets.env, or REMOVE api_key_env to authenticate with Entra (az login)"
+            )
+        })?,
+        None => AzureCredential::from_environment().with_context(|| {
+            format!(
+                "provider instance `{name}` authenticates with Entra; run `az login` with an \
+                 identity holding the Cognitive Services OpenAI User role on {endpoint}, or set \
+                 api_key_env to use a key instead"
+            )
+        })?,
+    };
+    Ok(AzureOpenAiConfig::new(
+        endpoint,
+        deployment,
+        api_version,
+        credential,
+    ))
 }
 
 fn api_key(variable: &str, instance: &str) -> Result<String> {

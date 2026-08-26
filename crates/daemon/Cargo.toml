@@ -8,6 +8,8 @@ description = "The fs3 daemon: HTTP surface, workers, and the composition root."
 
 [dependencies]
 fs3-core.workspace = true
+fs3-git.workspace = true
+fs3-parsers.workspace = true
 fs3-providers.workspace = true
 fs3-store.workspace = true
 # Not dev-only: `provider = "fake"` is a legal runtime configuration, so the

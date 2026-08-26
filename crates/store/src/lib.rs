@@ -44,7 +44,7 @@ pub use jobs::{
 };
 pub use refs::{
     RegisteredWorktree, WorktreePath, find_worktree, list_worktrees, register_worktree,
-    sync_worktree_files, worktree_paths_for_blob,
+    sync_worktree_files, worktree_file_map, worktree_paths_for_blob,
 };
 pub use smart::{MissingEnrichment, get_smart_content, missing_enrichment, put_smart_content};
 

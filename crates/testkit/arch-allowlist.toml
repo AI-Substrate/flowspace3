@@ -132,9 +132,20 @@ external = ["gix", "tempfile@dev", "thiserror"]
 internal = ["fs3-core"]
 external = ["async-trait", "serde", "serde_json", "thiserror", "toml", "tokio@dev"]
 
-# The composition root, and the only crate allowed to see everything.
+# The composition root, and the only crate allowed to see everything. Plan 003
+# added `fs3-git` and `fs3-parsers`: the indexing pipeline is wired HERE, so the
+# daemon is the crate that asks git what the bytes are and asks the scanner what
+# is in them. Both edges were always in workshop 001's graph; nothing used them
+# until there was a pipeline to wire.
 [crates.fs3-daemon]
-internal = ["fs3-core", "fs3-parsers", "fs3-providers", "fs3-store", "fs3-testkit"]
+internal = [
+  "fs3-core",
+  "fs3-git",
+  "fs3-parsers",
+  "fs3-providers",
+  "fs3-store",
+  "fs3-testkit",
+]
 external = [
   "anyhow",
   "axum",
@@ -148,7 +159,13 @@ external = [
   "tracing-subscriber",
 ]
 
-# A thin HTTP client. It shares core's types and knows nothing else.
+# A thin HTTP client. It shares core's types and knows nothing else - with one
+# named exception: `fs3-store` is here for `flowspace3 doctor` and nothing else.
+# PRD req 20's single-writer rule governs the DATA plane; doctor's writes are
+# CONTROL plane (create the database, apply migrations), bootstrap operations
+# that logically precede a daemon existing - and doctor is precisely the verb
+# you run when the daemon is DOWN, so it cannot be a client of it. Ruled by
+# o-prime 2026-08-26. Every other verb still opens no pool.
 [crates.fs3-cli]
-internal = ["fs3-core"]
+internal = ["fs3-core", "fs3-store"]
 external = ["anyhow", "clap", "reqwest", "serde", "serde_json", "tokio", "toml"]
