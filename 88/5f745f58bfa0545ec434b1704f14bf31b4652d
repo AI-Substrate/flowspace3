@@ -1,0 +1,26 @@
+pocs/daemon-shell/src/main.rs
+  s_15d888f4b629c1::t_5474b2dd6031c8 7
+  s_15d888f4b629c1::t_1b1acd6f6976a8 4-6
+  s_15d888f4b629c1::t_fba4262b50408a 8-10
+pocs/daemon-shell/src/http.rs
+  s_15d888f4b629c1::t_d040307e94c0ae 1-230
+pocs/daemon-shell/tests/end_to_end.rs
+  s_15d888f4b629c1::t_780bcb92b5d6f2 1-415
+  s_15d888f4b629c1::t_20c719a16d99ea 416-418
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "885f745f58bfa0545ec434b1704f14bf31b4652d",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
