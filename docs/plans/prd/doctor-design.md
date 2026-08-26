@@ -19,7 +19,7 @@ Doctor is the diagnosis half of the actionable-error doctrine (workshop 004): ev
 | daemon | reachable on localhost port; /health; version match CLI↔daemon | "daemon not running → flowspace3 daemon start (or doctor --fix)" (PRD 34's suggest-then-help flow) | daemon plan |
 | watcher | roots exist, are readable, watch handles alive; per-root event counts moving | "root /x/y no longer exists → flowspace3 remove path" | daemon plan (sailfish learnings) |
 | queue | depth, oldest pending age, failed-job count with last_error sample | "14 failed embed jobs, last: provider timeout → doctor providers / re-run flowspace3 retry-failed" | schema landed (jobs table) |
-| toolchain (dev) | host rustup complete (rustfmt/clippy present) — the 2026-08-26 incident, encoded | exact `rustup component add` line | opportunistic |
+| toolchain (dev) | host rustup complete (rustfmt/clippy present); `which rustc` resolves the rust-toolchain.toml pin (PATH-order trap DL-013: ~/.cargo/bin vs Homebrew makes the same repo pass or fail on PATH alone); cargo/rustc/clippy versions agree (DL-010) | exact `rustup component add` / PATH reorder line | opportunistic |
 
 ## Sequencing
 Doctor ships with the daemon/integration plan (it needs the daemon to be worth talking to), but egret's config validation and the store's migration check are built NOW as library functions doctor will call — doctor is an assembler of checks that already exist in their owning crates, never a second implementation of them.
