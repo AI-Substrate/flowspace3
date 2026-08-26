@@ -461,7 +461,7 @@
           "title": "Instance profiles: many daemons, isolated stacks",
           "requirement": "fs3 supports running MULTIPLE independent daemons on one machine (main / dev / demo) without interfering: a named profile (spelling ~ `flowspace3 --profile demo` or FS3_PROFILE) selects its own config dir, database (own PG database or port), HTTP port, and container names, so demo/dev work never registers roots or jobs into the main index. Motivated 2026-08-26: the docker demo ran with host network against the default config and polluted the real database with a /demo root the daemon then warned about forever. (Jordan, 2026-08-26.)",
           "state": "unchecked",
-          "note": "design queued for 0.3.0 cycle; doctor must be profile-aware (provision the profile's own stack); default profile = today's behaviour unchanged"
+          "note": "ELEVATED by rulings/2026-08-27-production-database.md (second strike: local tests migrated the production DB): profiles are the first-class isolation this ruling requires; target 0.3.x"
         },
         {
           "id": "req-0057",
@@ -486,6 +486,14 @@
           "requirement": "A centralized daemon-side USER MESSAGES QUEUE (Postgres-backed): any feature pushes a message (id, source, severity, text, next_action, clear-condition); the shared envelope builder carries the queue's live messages in EVERY CLI command's response; messages clear when their condition resolves, or by ack/expiry. No feature invents its own envelope side-channel. First producers: auto-update ('new version installed - restart the daemon'; and the locked/not-writable case: 'update not possible at <path>: <reason> - run flowspace3 doctor upgrade, or reinstall: <one-liner>'). (Jordan, 2026-08-27.)",
           "state": "checked",
           "note": "landed PR #13 (83a7783): migration 0008_user_messages, store/messages.rs, envelope carries live messages on every command; auto-update is first producer incl. locked/not-writable actionable message"
+        },
+        {
+          "id": "req-0060",
+          "num": 60,
+          "title": "Version truthfulness + update-loop guard",
+          "requirement": "The shipped binary's --version equals its release tag (release-please bumps workspace Cargo.toml via the x-release-please-version annotation; lock synced on the release branch; preflight leg B2 refuses a tag whose binary disagrees with the manifest). The updater execs the STAGED binary pre-swap and refuses any install whose reported version is not the version being installed - making the false-version infinite update loop structurally impossible. (Discovered by cheetah's baseline; Jordan 2026-08-27.)",
+          "state": "checked",
+          "note": "landed PR #16 (squash f6cf582, edeard): 67248bb stitch + preflight + pre-swap probe, 24c1519 ETXTBSY staging fix; option (b) release-type rust proven unusable on virtual workspaces by source read"
         }
       ]
     }
