@@ -364,7 +364,7 @@
           "title": "CI: cross-platform build + release",
           "requirement": "CI builds all platform binaries (mac/linux/windows - the build container from plan 002) and releases via Google release-please: semantic versioning, a GitHub Release per version carrying each platform binary, and the install script (req 46) pulling from the latest release. (Jordan, 2026-08-26.)",
           "state": "unchecked",
-          "note": "build container designed for this reuse (plan 002); ox cross-platform strategy feeds it"
+          "note": "build container designed for this reuse (plan 002); ox cross-platform strategy feeds it | CI test policy (Jordan 2026-08-26): real-endpoint tests are #[ignore]d + env-var gated (missing var fails by name) - CI runs plain cargo test and never touches endpoints; the un-ignored local-model suite needs a model cache in CI or joins the ignored set."
         },
         {
           "id": "req-0048",
