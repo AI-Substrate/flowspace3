@@ -6,14 +6,17 @@
 pub mod answer;
 pub mod boot;
 pub mod config;
+pub mod debounce;
 pub mod enrich;
 pub mod http;
+pub mod reconcile;
 pub mod roots;
 pub mod runner;
 pub mod scan;
 pub mod schema;
 pub mod search;
 pub mod status;
+pub mod watch;
 pub mod wiring;
 
 pub use answer::{Answer, IntoFailure};
@@ -22,5 +25,7 @@ pub use config::{
     ConfigError, SecretsLoaded, config_dir, load_config, load_effective_from, load_secrets,
 };
 pub use http::{router, serve};
+pub use reconcile::{Pass, Reconcile};
 pub use runner::{drain, run_forever};
+pub use watch::WatcherSupervisor;
 pub use wiring::AppState;

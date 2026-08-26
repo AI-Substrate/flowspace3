@@ -14,11 +14,24 @@
 //! implementation of a rule that is easy to get subtly wrong, so [`run`]
 //! assumes the environment is already loaded and says so.
 
+use std::time::Duration;
+
 use anyhow::{Context, Result, ensure};
 use fs3_core::{Config, Port, redact_url_password};
 
 use crate::wiring::AppState;
 use crate::{config, http};
+
+/// How often the reconcile runner compares desired state against actual.
+///
+/// Five seconds, and deliberately not configurable yet. The doctrine's own
+/// note on the first implementor says why a few seconds is invisible: `add`
+/// enqueues its initial scan directly, so nothing waits on this pass to index
+/// a newly added root — the pass only has to get the WATCHER installed before
+/// the next edit, and a human cannot edit a file they have not finished adding.
+/// The `Notify` nudge handle in the doctrine lands only if that ever stops
+/// being true.
+const RECONCILE_EVERY_SECONDS: u64 = 5;
 
 /// Run the daemon until it is asked to stop.
 ///
@@ -98,6 +111,27 @@ async fn serve(configuration: Config, address: String) -> Result<()> {
     let workers = state.config.indexing.worker_concurrency;
     tracing::info!(workers, "starting the job runner");
     tokio::spawn(crate::runner::run_forever(state.clone(), workers));
+
+    // Roots become live watchers here, and by reconciling rather than by
+    // reacting: one pass compares the `worktrees` table against the watchers
+    // that exist. "Watch what was already registered at boot" and "watch what
+    // was added a moment ago" are therefore the SAME code path — the first is
+    // just the pass that runs immediately, which `tokio::interval` gives for
+    // free by firing its first tick at once.
+    //
+    // Registered by behaviour, as a roster (doctrine, 2026-08-26): the runner
+    // takes `Vec<Box<dyn Reconcile>>` even at one implementor, because that is
+    // the argument the second one joins without touching this function.
+    let cadence = Duration::from_secs(RECONCILE_EVERY_SECONDS);
+    tracing::info!(
+        cadence_seconds = RECONCILE_EVERY_SECONDS,
+        debounce_seconds = state.config.indexing.debounce_seconds,
+        "starting the reconcile runner"
+    );
+    let reconcilers: Vec<Box<dyn crate::reconcile::Reconcile>> = vec![Box::new(
+        crate::watch::WatcherSupervisor::new(state.clone()),
+    )];
+    tokio::spawn(crate::reconcile::run_forever(reconcilers, cadence));
 
     http::serve(state, &address).await
 }
