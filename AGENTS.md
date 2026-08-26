@@ -76,6 +76,23 @@ never clear. (Ruled 2026-08-26 after a worker correctly refused the clear.)
 Encode, don't document: if you had to infer something twice, that is a missing
 command, not a missing doc.
 
+## Working model: worktree-per-coder + PRs (since 2026-08-27)
+
+Main is **branch-protected** — you cannot push to it. The workflow for any
+coding packet:
+
+1. Work in **your own git worktree** on a branch named for your packet
+   (e.g. `git worktree add ../fs3-<packet> -b <packet>` from the main clone —
+   never work inside another seat's tree).
+2. Commit as you go on your branch (conventional commits are BINDING —
+   release-please reads them: `feat:`/`fix:`/`perf:` bump versions).
+3. Gate locally with `harness checks` before declaring done — in your own
+   worktree the verdict is trustworthy and entirely yours.
+4. Open a **PR into main**. CI runs on the PR (it does not run on pushes);
+   a green gate is a merge requirement. O-prime coordinates review, merge
+   order, and releases — do not merge your own PR unless told to.
+5. Tidy the worktree when the packet lands.
+
 <!-- BEGIN harness:commit-guidance -->
 ## Committing in this repo
 

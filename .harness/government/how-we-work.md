@@ -123,14 +123,17 @@ work) · stage only at the moment of commit (parked staged changes get swept int
 commits — happened twice) · `.claude/` and secrets never committed · atomic cutovers in single
 pushes. Incidents were unswept surgically and each one amended the ruling.
 
-## 9. Where this is heading (ruled, queued)
+## 9. The PR era (CUTOVER EXECUTED 2026-08-27)
 
-`rulings/2026-08-26-pr-workflow-cutover.md`: after the current work drains and v0.2.0 ships,
-main gets branch protection and the fleet moves to **worktree-per-coder + PRs** — same briefing
-discipline, but each coder works its own worktree/branch and opens a PR when ready; o-prime
-coordinates merges and releases; worktrees are tidied at packet end. CI moves to
-pull_request-only at the same moment. The swept-stage incident class disappears with the shared
-tree.
+`rulings/2026-08-26-pr-workflow-cutover.md` is now in force: main is branch-protected, CI runs
+on `pull_request` only (69d06ca), and the fleet works **worktree-per-coder + PRs** — same
+briefing discipline, but each coder gets its own worktree + branch for its packet, works there,
+gates locally (`harness checks` now gives a trustworthy verdict — the tree is all yours), and
+opens a PR when the done-bar is met. Conventional commits stay binding (release-please reads
+the merge history). O-prime coordinates review, merge order, and releases; worktrees are tidied
+at packet end. Section 8's shared-tree discipline is HISTORICAL — the swept-stage incident
+class died with the shared tree — but its non-tree rules survive (secrets/`.claude/` never
+committed, file-scoped adds remain good hygiene).
 
 ## 10. What a new agent should expect, in one paragraph
 

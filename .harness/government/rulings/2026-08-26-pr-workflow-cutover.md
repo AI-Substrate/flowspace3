@@ -1,4 +1,10 @@
 # Ruling — PR-workflow cutover (Jordan, 2026-08-26)
+
+> **EXECUTED 2026-08-27**: v0.2.0 shipped, fleet drained and closed, CI trigger
+> moved to `pull_request`-only (commit 69d06ca), Jordan protecting main. From
+> this point the operating model below is CURRENT, not queued. Coder briefs
+> must state: own worktree + branch, conventional commits, PR into main as the
+> done-bar; direct pushes to main are no longer possible.
 Once the current work drains and the v0.2.0 release is done: main gets BRANCH PROTECTION and all
 work moves to PRs from then on. At that moment (one cutover, deliberate): CI trigger moves from
 push-to-main to pull_request-only, the green check becomes a merge requirement, and the push
