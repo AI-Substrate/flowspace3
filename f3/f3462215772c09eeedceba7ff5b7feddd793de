@@ -1,0 +1,18 @@
+README.md
+  h_9e71e8b09f7cf2 44-48
+docs/plans/004-ship-it/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 115
+docs/plans/004-ship-it/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f3f3462215772c09eeedceba7ff5b7feddd793de",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
