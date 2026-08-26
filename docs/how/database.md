@@ -42,15 +42,18 @@ pub async fn migrate(pool: &PgPool) -> Result<(), StoreError> { ... }
 Embedded means the shipped binary carries its own schema history — there are no
 migration files to deploy, and no way for the binary and the files to disagree.
 
-`fs3_store::migrate` is called once, from `crates/daemon/src/main.rs`, after
-config and before serving. The daemon is the single writer, so startup is the
-only moment migrations can run without racing anyone. sqlx records what it has
-applied in a `_sqlx_migrations` table and skips those, so running it every boot
-is a no-op — proven in `crates/store/tests/pg_migrations.rs`.
+`fs3_store::migrate` is called once, from `serve()` in
+`crates/daemon/src/main.rs`, after config and before serving. The daemon is the
+single writer, so startup is the only moment migrations can run without racing
+anyone. sqlx records what it has applied in a `_sqlx_migrations` table and skips
+those, so running it every boot is a no-op — proven in
+`crates/store/tests/pg_migrations.rs`.
 
-If migration fails the daemon **exits nonzero** naming `database.url` and
-`docker compose up -d`. A writer that cannot reach its own schema has nothing
-useful to serve, so it says so once at boot rather than failing every request.
+If migration fails the daemon **exits nonzero**, naming the database it tried
+(password redacted) and `docker compose up -d`. A writer that cannot reach its
+own schema has nothing useful to serve, so it says so once at boot rather than
+failing every request. `crates/daemon/tests/boot_contract.rs` holds that
+promise: nonzero exit, the database named, the fix named, the password absent.
 
 After boot the pool is lazy again: `GET /health` keeps answering through a
 database outage, so `flowspace3 ping` still tells "daemon down" from
@@ -70,8 +73,9 @@ The whole injection story:
 pub struct AppState {
     pub embedder: Arc<dyn Embedder>,
     pub summarizer: Arc<dyn Summarizer>,
-    pub db: PgPool,
+    pub db: PgPool,          // <- the one pool
     pub config: Config,
+    // ...plus private per-repo provider overrides
 }
 
 // 2. A handler or worker takes the state and hands the pool down.

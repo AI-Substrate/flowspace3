@@ -1,10 +1,12 @@
 # Database migrations
-**Built**: 2026-08-26 (worker pij-recent-cicada, w-migrations) · **Code**: `crates/store/src/lib.rs` (`MIGRATOR`, `migrate`, `connect_lazy`), `crates/store/migrations/*.sql`, call-site `crates/daemon/src/main.rs` · **Tests**: `crates/store/tests/pg_migrations.rs`
+**Built**: 2026-08-26 (worker pij-recent-cicada, w-migrations) · **Code**: `crates/store/src/lib.rs` (`MIGRATOR`, `migrate`, `connect_lazy`), `crates/store/migrations/*.sql`, call-site `serve()` in `crates/daemon/src/main.rs` · **Tests**: `crates/store/tests/pg_migrations.rs`, `crates/daemon/tests/boot_contract.rs`
+**Updated**: 2026-08-26 — the boot contract gained an automated test and the logged URL is now redacted (config packet, `a99ceed`).
 
 Forward-only schema evolution for the Postgres+pgvector store. Plain numbered `.sql` files under `crates/store/migrations/`, embedded into the binary at compile time by `sqlx::migrate!`, applied once at daemon boot. No down migrations, no versioning tool, no wiping the database to change it. Task-oriented guide: [`docs/how/database.md`](../how/database.md).
 
 ## Key decisions
-- **Boot migrates, and boot fails loud.** The daemon is the single writer, so startup is the only moment migrations can run unraced. Failure exits nonzero naming `database.url` and `docker compose up -d`. A writer that cannot reach its own schema has nothing useful to serve — one loud refusal beats a guaranteed error per request.
+- **Boot migrates, and boot fails loud.** The daemon is the single writer, so startup is the only moment migrations can run unraced. Failure exits nonzero naming the database and `docker compose up -d`. A writer that cannot reach its own schema has nothing useful to serve — one loud refusal beats a guaranteed error per request. PRD req 37.
+- **The database is named, the password never is.** Both the boot error and the success log run the URL through `fs3_core::redact_url_password` first. A message that helps only if it identifies *which* database was tried will otherwise print the credentials sitting in that same URL.
 - **Lazy pool survives, at runtime.** `connect_lazy` stays: wiring never blocks on a connection and `GET /health` keeps answering through a database *outage*, so `flowspace3 ping` still separates "daemon down" from "database down". Boot strict, runtime forgiving — the split is deliberate and is why `docs/how/architecture.md:103-110` was rewritten rather than contradicted.
 - **`connect_lazy` shares `connect`'s acquire timeout.** The two constructors must not disagree about how long "unreachable" takes. See gotchas — this was a real 30s hole.
 - **Embedded, not deployed.** `sqlx::migrate!("./migrations")` bakes the history into the binary: nothing to ship alongside, and no way for the binary and the files to disagree about what the schema is.
@@ -14,7 +16,8 @@ Forward-only schema evolution for the Postgres+pgvector store. Plain numbered `.
 
 ## Gotchas learned
 - **`connect_lazy` had no `acquire_timeout` while `connect` did.** First use of an absent store waited sqlx's 30-second default before erroring — the exact silence `CONNECT_TIMEOUT` exists to refuse (`lib.rs:27-32`), and boot migration *is* such a first use. Measured 30.0s → 5.6s after the fix. Nothing in the suite asserts how *long* a failure takes, so this was only visible with a stopwatch on the real binary.
-- **`main.rs` is nearly untested ground.** Every daemon test builds `Config`/`AppState`/`Router` by hand, so a behaviour change in `main` can be shipped with a fully green suite. Only `tests/health.rs:118` (`the_real_binaries_agree_through_a_discovered_config`) runs the real binary — and it covers the *happy* boot-migration path incidentally, because its config takes the default 5433 URL. **The fail-fast contract has no automated test** (parked with o-prime for the config packet). Verify `main` changes by running the binary.
+- **`main.rs` is thin ground — keep it that way deliberately.** Every other daemon test builds `Config`/`AppState`/`Router` by hand, so a behaviour change in `main` can ship with a fully green suite. The boot contract went unguarded for exactly that reason until `boot_contract.rs` pinned it. Anything you add to boot needs its own real-binary test or it is not covered.
+- **An error that names a URL names its password.** The first cut of the boot failure printed `state.config.database.url` verbatim — helpful, and a credential leak into stderr and into the INFO line on every *successful* boot. `boot_contract.rs:72` now asserts the password never appears. Any new message that identifies the database must go through `redact_url_password`.
 - **"Same versions applied" is not idempotence.** A test asserting the version set would pass even if every migration re-ran. `installed_on` compared before/after is the assertion that actually bites.
 - **`installed_on` is `TIMESTAMPTZ` and sqlx has no date/time feature enabled here.** Decoding it fails at runtime; cast with `installed_on::text` in the query.
 - **`CREATE DATABASE` takes no bind parameters** and cannot run in a transaction. The test builds the identifier from hex, so there is nothing to quote out of. `DROP DATABASE ... WITH (FORCE)` needs PG13+ (the image is pg16).
@@ -25,23 +28,19 @@ Forward-only schema evolution for the Postgres+pgvector store. Plain numbered `.
 ```bash
 docker compose up -d                                  # pgvector/pgvector:pg16 on 127.0.0.1:5433
 cargo test -p fs3-store --test pg_migrations          # fresh bootstrap + repeat-is-a-no-op
-harness checks                                        # 5 gates incl. arch (sqlx stays in fs3-store)
+cargo test -p fs3-daemon --test boot_contract         # unreachable store → nonzero, names the fix, hides the password
+harness checks                                        # full gate incl. arch (sqlx stays in fs3-store)
 ```
-Boot behaviour is not covered by the suite — smoke it directly:
+`boot_contract.rs` is the automated form of what used to be a manual smoke. The happy path still is one — no test asserts the success log — so after touching boot:
 ```bash
-# happy path: migrates, then serves
 cargo run -p fs3-daemon        # INFO "store schema is current" → "fs3 daemon listening"
-
-# failure path: config with database.url = postgres://nobody:nobody@127.0.0.1:1/nothing
-FS3_CONFIG_DIR=<dir> ./target/debug/fs3-daemon; echo $?
-# → "Error: applying store migrations to <url> — if the store is not running: docker compose up -d", exit 1, ~5s
 ```
 Leak check after a test run:
 ```bash
 docker exec flowspace3-db psql -U flowspace3 -tAc \
   "SELECT datname FROM pg_database WHERE datname LIKE 'fs3_migrations_%'"   # expect empty
 ```
-As of `0a75c44`: `harness checks` 5/5, `cargo test --workspace` 0 failed, both smoke paths confirmed, no leaked databases.
+As of `a99ceed`: `cargo test -p fs3-daemon --test boot_contract` green (5.8s — the fail-fast budget is the point, `PATIENCE` is 60s and a hang is a failure).
 
 ## Adding a migration
 Add `crates/store/migrations/000N_<what_it_does>.sql`, restart the daemon. That is the whole procedure. To undo `0002`, write `0003`.
