@@ -63,6 +63,7 @@ CREATE TABLE smart_content (
   raw_hash    TEXT NOT NULL,
   model_key   TEXT NOT NULL,             -- "<model>@<prompt_version>" from the config registry
   text        TEXT NOT NULL,
+  text_hash   TEXT NOT NULL,             -- sha256(text) — joins embeddings(source_kind='smart') back to here (sylac fix, 2026-08-26)
   tags        TEXT[] NOT NULL CHECK (cardinality(tags) BETWEEN 1 AND 5),  -- req 36
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (raw_hash, model_key)
@@ -107,6 +108,7 @@ CREATE INDEX ON jobs (state, not_before, priority DESC);
 | D5 | `elements.enrich` records the scanner's injected-policy verdict | policy re-evaluated at queue time | policy lives in ONE place (scanner settings); queue/backfill just reads the flag |
 | D6 | Reconciler sweep derives missing work ("elements where enrich AND no smart_content row for current model_key") and enqueues it | trust the queue alone | self-healing: crashes, model changes, and policy changes all converge without manual replay |
 | D7 | No FK from `smart_content`/`embeddings_*` to `elements` | strict FKs | content outlives any one parse (parser_version bumps re-mint element rows); GC is explicit (D8), not cascade |
+| D9 | `smart_content.text_hash` column (indexed) makes smart-embedding hits resolvable back to their element | redefining smart `source_hash` as `raw_hash` | preserves source_hash = hash-of-embedded-text invariant; found by schema worker during implementation |
 | D8 | GC = a `prune` job kind, later plan: blobs unreferenced by any `worktree_files` row → their elements; enrichment pruned only by explicit model retirement | ON DELETE CASCADE chains | enrichment is the expensive asset — never let a worktree removal cascade into re-payable LLM spend |
 
 ## Key flows (words, one line each)
