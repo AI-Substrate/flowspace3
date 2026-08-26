@@ -1,0 +1,16 @@
+crates/providers/examples/embed_file.rs
+  h_9e71e8b09f7cf2 1-137
+docs/services/local-embeddings.md
+  h_9e71e8b09f7cf2 242-274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0bc2478de0fd343315c4b9abc6d0b1081cdcbf96",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
