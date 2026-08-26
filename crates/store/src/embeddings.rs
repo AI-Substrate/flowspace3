@@ -206,6 +206,169 @@ pub async fn query_embeddings(
     rows.iter().map(similar_from_row).collect()
 }
 
+/// Which candidates a search is allowed to rank, and how many to return.
+///
+/// Every field here becomes a predicate INSIDE the neighbour CTE (workshop 003:
+/// "filters narrow candidates in SQL — never post-hoc in app code"). Filtering
+/// after the `LIMIT` would silently return fewer rows than asked for, and
+/// filtering after a full fetch would read every vector in the table.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SearchFilters {
+    /// Only content held by a live path in this repository identity.
+    pub repo: Option<String>,
+    /// Only content held by a live path matching this SQL `LIKE` pattern.
+    pub path: Option<String>,
+    /// Which vector space to search: raw text, summaries, or both.
+    pub source: Option<SourceKind>,
+    /// Cosine DISTANCE ceiling — a hit further than this is not returned.
+    /// Expressed as the caller's minimum score: `1.0 - min_score`.
+    pub max_distance: Option<f64>,
+    /// How many hits to return.
+    pub limit: i64,
+}
+
+impl Default for SearchFilters {
+    fn default() -> Self {
+        SearchFilters {
+            repo: None,
+            path: None,
+            source: None,
+            max_distance: None,
+            limit: 10,
+        }
+    }
+}
+
+/// One nearest-neighbour hit, resolved to an element AND to where it lives.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SearchHit {
+    /// The content-layer answer: element, blob, parser, which space matched.
+    pub similar: SimilarElement,
+    /// The repository identity a live path holding this blob belongs to.
+    ///
+    /// `None` when no registered worktree holds the blob any more — content
+    /// that outlived the checkout it came from, which decision D7 keeps on
+    /// purpose. The hit is still real; only its address is stale.
+    pub identity: Option<String>,
+    /// A live path holding the blob, relative to its worktree root.
+    pub path: Option<String>,
+}
+
+/// The `limit` nearest elements to `query`, narrowed by `filters`, nearest first.
+///
+/// The filtered sibling of [`query_embeddings`], and the shape is the whole
+/// point: the ref-layer join lives INSIDE the CTE as an `EXISTS` predicate, so
+/// Postgres can still answer `ORDER BY vector <=> $1 LIMIT n` from the HNSW
+/// index while excluding vectors no live path holds. Joining first and sorting
+/// after — the obvious way to write it — reads every row in the table and turns
+/// a millisecond query into a table scan.
+///
+/// The `<=>` operator is not interchangeable here: `embeddings_1024`'s index is
+/// built for `vector_cosine_ops`, and a query written with `<->` gets a
+/// sequential scan with no error to notice.
+///
+/// # Errors
+/// [`StoreError::Dimensions`] when `query` is the wrong width;
+/// [`StoreError::Query`] on failure; [`StoreError::Corrupt`] when a row carries
+/// an unknown kind.
+pub async fn search_elements(
+    pool: &PgPool,
+    model_key: &str,
+    query: &[f32],
+    filters: &SearchFilters,
+) -> Result<Vec<SearchHit>, StoreError> {
+    if query.len() != EMBEDDING_DIMENSIONS {
+        return Err(StoreError::Dimensions {
+            expected: EMBEDDING_DIMENSIONS,
+            actual: query.len(),
+        });
+    }
+
+    // Every filter is bound unconditionally with a NULL-means-any guard, so
+    // there is ONE statement text whatever the caller asked for. A query built
+    // by string concatenation would have a different plan per flag combination
+    // and could not be read as a single thing.
+    let rows = sqlx::query(
+        "WITH nearest AS (
+             SELECT source_hash, source_kind, vector <=> $1 AS distance
+               FROM embeddings_1024 e
+              WHERE model_key = $2
+                AND ($4::text IS NULL OR source_kind = $4)
+                AND ($5::float8 IS NULL OR (vector <=> $1) <= $5)
+                AND ($6::text IS NULL AND $7::text IS NULL
+                     OR EXISTS (
+                          SELECT 1
+                            FROM elements el
+                            JOIN worktree_files f ON f.blob_sha = el.blob_sha
+                            JOIN worktrees w     ON w.id = f.worktree_id
+                            JOIN repos r         ON r.id = w.repo_id
+                           WHERE el.raw_hash = COALESCE(
+                                   (SELECT sc.raw_hash FROM smart_content sc
+                                     WHERE e.source_kind = 'smart'
+                                       AND sc.text_hash = e.source_hash
+                                     LIMIT 1),
+                                   e.source_hash)
+                             AND ($6::text IS NULL OR r.identity = $6)
+                             AND ($7::text IS NULL OR f.path LIKE $7)))
+              ORDER BY vector <=> $1
+              LIMIT $3
+         )
+         SELECT n.source_kind, n.distance,
+                s.text AS smart_text, s.tags AS smart_tags,
+                e.blob_sha, e.parser_version, e.kind, e.subkind, e.name,
+                e.address, e.span_start, e.span_end, e.sibling_order, e.raw_text,
+                live.identity, live.path
+           FROM nearest n
+           LEFT JOIN LATERAL (
+                SELECT sc.raw_hash, sc.text, sc.tags
+                  FROM smart_content sc
+                 WHERE n.source_kind = 'smart' AND sc.text_hash = n.source_hash
+                 ORDER BY sc.created_at, sc.model_key
+                 LIMIT 1
+           ) s ON TRUE
+           JOIN LATERAL (
+                SELECT el.id, el.blob_sha, el.parser_version, el.kind, el.subkind,
+                       el.name, el.address, el.span_start, el.span_end,
+                       el.sibling_order, el.raw_text, el.raw_hash
+                  FROM elements el
+                 WHERE el.raw_hash = COALESCE(s.raw_hash, n.source_hash)
+                 ORDER BY el.id
+                 LIMIT 1
+           ) e ON TRUE
+           LEFT JOIN LATERAL (
+                SELECT r.identity, f.path
+                  FROM worktree_files f
+                  JOIN worktrees w ON w.id = f.worktree_id
+                  JOIN repos r     ON r.id = w.repo_id
+                 WHERE f.blob_sha = e.blob_sha
+                   AND ($6::text IS NULL OR r.identity = $6)
+                   AND ($7::text IS NULL OR f.path LIKE $7)
+                 ORDER BY r.identity, f.path
+                 LIMIT 1
+           ) live ON TRUE
+          ORDER BY n.distance",
+    )
+    .bind(Vector::from(query.to_vec()))
+    .bind(model_key)
+    .bind(filters.limit)
+    .bind(filters.source.map(SourceKind::as_str))
+    .bind(filters.max_distance)
+    .bind(filters.repo.as_deref())
+    .bind(filters.path.as_deref())
+    .fetch_all(pool)
+    .await?;
+
+    rows.iter()
+        .map(|row| {
+            Ok(SearchHit {
+                similar: similar_from_row(row)?,
+                identity: row.try_get("identity")?,
+                path: row.try_get("path")?,
+            })
+        })
+        .collect()
+}
+
 fn similar_from_row(row: &sqlx::postgres::PgRow) -> Result<SimilarElement, StoreError> {
     let kind: String = row.try_get("kind")?;
     let element = Element::new(

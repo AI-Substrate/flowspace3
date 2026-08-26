@@ -22,17 +22,30 @@
 
 use sqlx::postgres::PgPoolOptions;
 
+pub mod admin;
 pub mod elements;
 pub mod embeddings;
 pub mod jobs;
+pub mod refs;
 pub mod smart;
 
+pub use admin::{
+    SchemaStatus, create_database, database_exists, is_missing_database, maintenance_url,
+    schema_current,
+};
 pub use elements::{get_elements, upsert_element_tree};
 pub use embeddings::{
-    EMBEDDING_DIMENSIONS, NewEmbedding, SimilarElement, SourceKind, put_embeddings,
-    query_embeddings,
+    EMBEDDING_DIMENSIONS, NewEmbedding, SearchFilters, SearchHit, SimilarElement, SourceKind,
+    put_embeddings, query_embeddings, search_elements,
 };
-pub use jobs::{Job, claim_job, complete_job, enqueue_job, fail_job};
+pub use jobs::{
+    Job, QueueDepth, claim_job, complete_job, enqueue_job, fail_job, last_failure, queue_depth,
+    retry_job,
+};
+pub use refs::{
+    RegisteredWorktree, WorktreePath, find_worktree, list_worktrees, register_worktree,
+    sync_worktree_files, worktree_paths_for_blob,
+};
 pub use smart::{MissingEnrichment, get_smart_content, missing_enrichment, put_smart_content};
 
 // The store owns the sqlx edge, so every other crate speaks to Postgres through
@@ -76,6 +89,14 @@ pub enum StoreError {
     /// A row in the database does not match the domain model.
     #[error("row is not a valid element: {0}")]
     Corrupt(fs3_core::Error),
+    /// A name or URL the store was asked to act on cannot be used as given.
+    ///
+    /// Its own variant because it is the caller's to fix and it never reaches
+    /// Postgres: `CREATE DATABASE` takes no bind parameters, so an identifier
+    /// that would need escaping is refused *before* a statement is built
+    /// rather than after the server rejects it.
+    #[error("{0}")]
+    InvalidName(String),
     /// A vector was offered to a table of a different width.
     ///
     /// Its own variant rather than a database error because the caller can act

@@ -33,6 +33,21 @@ pub struct Job {
     pub attempts: i32,
 }
 
+/// One `(kind, state)` bucket of the queue.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct QueueDepth {
+    /// The job kind — `scan_file`, `summarize`, `embed`.
+    pub kind: String,
+    /// `pending`, `running`, `done` or `failed`.
+    pub state: String,
+    /// How many rows are in this bucket.
+    pub depth: i64,
+    /// How many of them carry a `last_error` — a retried job that later
+    /// succeeded still counts here, which is the point: it is the difference
+    /// between "flaky" and "fine".
+    pub with_error: i64,
+}
+
 /// Put work on the queue, or push an identical piece of work further out.
 ///
 /// The upsert is decision D1's whole mechanism. `dedupe_key` is unique among
@@ -140,6 +155,100 @@ pub async fn complete_job(pool: &PgPool, id: i64) -> Result<(), StoreError> {
 /// [`StoreError::Query`] when the statement fails.
 pub async fn fail_job(pool: &PgPool, id: i64, error: &str) -> Result<(), StoreError> {
     settle(pool, id, "failed", Some(error)).await
+}
+
+/// Put a claimed job back on the queue, due again after `delay`.
+///
+/// The store gains a VERB here, not a policy. How many attempts are worth
+/// making and how far apart is the worker's decision — the daemon settles it at
+/// three attempts with backoff (plan 003) — and this is the one statement that
+/// decision needs. Keeping the schedule out of the store is what lets two
+/// workers with different appetites share one queue, and it is why
+/// [`fail_job`] stays terminal rather than growing a retry mode.
+///
+/// `attempts` is not touched: [`claim_job`] already incremented it when the row
+/// was taken, so a worker deciding whether to retry reads the count it was
+/// handed rather than one this function invents.
+///
+/// `last_error` is recorded even though the row lives on. A job that succeeds
+/// on its third attempt still leaves the evidence of the first two, which is
+/// the difference between "this is flaky" and "this is fine".
+///
+/// The row returns to `pending`, so it re-enters the live-dedupe index and a
+/// concurrent enqueue of the same key collapses into it rather than racing it.
+///
+/// # Errors
+/// [`StoreError::Query`] when the statement fails.
+pub async fn retry_job(
+    pool: &PgPool,
+    id: i64,
+    delay: Duration,
+    error: &str,
+) -> Result<(), StoreError> {
+    sqlx::query(
+        "UPDATE jobs
+            SET state      = 'pending',
+                last_error = $3,
+                not_before = now() + make_interval(secs => $2),
+                updated_at = now()
+          WHERE id = $1",
+    )
+    .bind(id)
+    .bind(delay.as_secs_f64())
+    .bind(error)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// How many jobs sit in each state, by kind — what `flowspace3 status` reports.
+///
+/// Grouped rather than totalled: "142 pending" answers nothing useful, while
+/// "142 pending embed, 0 pending scan_file" says the scan finished and the
+/// enrichment is the thing to wait for. The zero rows are absent rather than
+/// synthesised — a kind fs3 has never run is not a kind at depth zero.
+///
+/// # Errors
+/// [`StoreError::Query`] when the read fails.
+pub async fn queue_depth(pool: &PgPool) -> Result<Vec<QueueDepth>, StoreError> {
+    let rows = sqlx::query(
+        "SELECT kind, state, count(*) AS depth,
+                count(*) FILTER (WHERE last_error IS NOT NULL) AS with_error
+           FROM jobs
+          GROUP BY kind, state
+          ORDER BY kind, state",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    rows.iter()
+        .map(|row| {
+            Ok(QueueDepth {
+                kind: row.try_get("kind")?,
+                state: row.try_get("state")?,
+                depth: row.try_get("depth")?,
+                with_error: row.try_get("with_error")?,
+            })
+        })
+        .collect()
+}
+
+/// The most recent error from a failed job, for a status report that says what
+/// went wrong rather than only that something did.
+///
+/// # Errors
+/// [`StoreError::Query`] when the read fails.
+pub async fn last_failure(pool: &PgPool) -> Result<Option<(String, String)>, StoreError> {
+    let row = sqlx::query(
+        "SELECT dedupe_key, last_error FROM jobs
+          WHERE state = 'failed' AND last_error IS NOT NULL
+          ORDER BY updated_at DESC LIMIT 1",
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    row.map(|row| Ok((row.try_get("dedupe_key")?, row.try_get("last_error")?)))
+        .transpose()
 }
 
 async fn settle(
