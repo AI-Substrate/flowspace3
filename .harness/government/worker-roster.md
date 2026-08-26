@@ -1,7 +1,7 @@
 # Worker roster — flowspace3
-**Maintained by**: pij-instant-lynx (o-prime) · **Updated**: 2026-08-26 (keep current: update on every seat add/release/revive)
+**Maintained by**: pij-instant-lynx (o-prime) · **Updated**: 2026-08-27 (keep current: update on every seat add/release/revive)
 
-Revive a dead seat: `pij revive <id> --print` shows the exact command (Jordan runs it in a pane, or approves me doing it). Native session ids below are the harness-level resume keys captured at canary time.
+**2026-08-27 fleet close-out (Jordan's order)**: all 13 task/specialist workers CLOSED after the v0.2.0 ship and retro-prep reports landed. Every seat filed its retro observations into the shared buffer first (drain still pending, o-prime-owned). Revive any seat with `pij revive <id> --print`; native session ids below are the harness-level resume keys captured at canary time.
 
 ## Governance seats
 
@@ -9,40 +9,37 @@ Revive a dead seat: `pij revive <id> --print` shows the exact command (Jordan ru
 |---|---|---|---|---|---|
 | pij-instant-lynx | o-prime (me) | claude code / fable-5 | prime window | (this session) | active |
 | pij-bitter-swan | PA sensor/relay | copilot gemini-3.7-flash low | %25 · fs3-pa | (pre-compact canary record) | active; watchdog PAUSED (Jordan) — sweeps only on explicit "SWEEP" |
-| pij-bitter-gibbon | PM s001 fs3-foundations | omp "Ox Alpha" high | %23 · s001-fs3 | 01a03bb8… (canary `canaries/s001-bitter-gibbon.md`) | RELEASED — s001 phase exit ACCEPTED at b7e4230; fleet teardown cleared |
+| pij-bitter-gibbon | PM s001 fs3-foundations | omp "Ox Alpha" high | %23 · s001-fs3 | 01a03bb8… (canary `canaries/s001-bitter-gibbon.md`) | DEAD (pid gone 2026-08-26) — s001 phase exit ACCEPTED at b7e4230; s001 observations drained at plan close |
 
-## Standing specialists
+## Closed workers — who did what (2026-08-27)
 
-| Seat | Role | Pane/window | Native session id | Status |
-|---|---|---|---|---|
-| pij-impressive-ox | resident docker manager ("docker dude") | %31 · window `docker` | 01a03bec-d69d-7000-acdd-aa7ff0d60af7 | active — s002 COMPLETE (both phases); NOW executing plan 004 ship-it (CI gate, release-please, cross-platform release, installer). Brief `briefs/s002-docker-daemon-brief.md` |
+All revivable. "CLOSED" = pane killed, descriptor dissolved, work fully landed on main.
 
-## Task workers
-
-| Seat | Task | Pane/window | Native session id | Status |
-|---|---|---|---|---|
-| pij-sure-kazimir | Azure OpenAI adapter (w-azure) → RE-OPENED: structured summaries (w-structured-summaries) | %33 | 01a03c3b-469a-7000-9970-95d654d6dea6 | RELEASED — landed c971902+e101e9b+cc0c83a (structured outputs, contract tolerance two-side-pinned, openai-compat LAN adapter). Phantom alias: pij-shallow-dog |
-| pij-recent-cicada | sqlx migrations + db how-to (w-migrations) | %34 | 01a03c46-3fea-7000-815f-eada7d9e02da | RELEASED — landed 0a75c44. Brief `briefs/w-migrations-cicada.md`. Phantom aliases: pij-likely-mosquito, pij-aggregate-mosquito |
-| pij-plain-mollusk | scanner v1: element tree + pure scan (w-scanner-v1) | %35 · window `scanner` | 01a03c4c-cd34-7000-8879-385defbdbff2 | RELEASED — landed 0962ba8+17878b6+f2f3cc4 (scanner + docs); add-language skill authored from its recipe |
-| pij-technological-egret | global config system (w-config) | %36 · window `config` | 01a03c50-eecb-7000-9378-1992ecdb548c | RELEASED — landed 0d0fb1c+3e33161+5e73135+a99ceed (registry, config show, boot contract) |
-| pij-surprising-sailfish | daemon shell prototype: watcher+web (w-daemon-shell) | %38 · window `daemon-shell` | 01a03c58-e85e-7000-8a21-4e81b739b51b | COMPLETE 2026-08-26 — w-watcher-live accepted: 10 commits incl. reconcile substrate, live watcher, churn fix, CI-flake fix (894eca5 green); standing by for daemon plan |
-| pij-devoted-cattle | ignore-aware file discovery (w-discovery) | %39 · window `discovery` | 01a03c5c-d775-7000-8c41-a25729de92af | RELEASED 2x — discovery domain: ca27e63/74cecf7/515155e/2f78b7f/84b7db8/c2dba76 (deny list, cross-filter contract, prune ledger) |
-| pij-xenophobic-wren | git/blob layer: identity + snapshot diffing (w-git-blob) | %40 · window `git-blob` | 01a03c5c-d938-7000-bd92-9136895e64c5 | RELEASED — landed c7670cd+b9f5b47 (fs3-git crate, 8-crate amendment) |
-| pij-musical-sylac | schema v1: migrations 0003+ + typed store API (w-schema) | %41 · window `schema` | 01a03c60-310c-7000-b5fb-d6069937b73a | RELEASED — landed 2dd5a25+b58173a; first fully-green harness checks |
-| pij-excellent-dingo | flowspace skill for agents (w-flowspace-skill, req-0052) | %53 · window `flowspace-skill` | 01a03d08-7c56-7000-ac9b-95c4b3ef34d7 | ACTIVE 2026-08-26 — canary PASS (pane %53 pid 94659); authoring skill; resident, Jordan follow-on tasks queued |
-| pij-inevitable-hummingbird | local embeddings validate+adapter (w-local-embed) | %42 · window `local-embed` | 01a03c75-6993-7000-a09f-05afc8b1e2c4 | RELEASED — landed e265429+efedd0b+181c4c4 (live un-ignored contract, slow tier, GPU recipe, alternatives check). Phantom aliases: scrawny-ape, thorough-zakalwe |
-| pij-broad-sawfish | plan 003 first light: wire scan->enrich->query (w-first-light) | %43 · window `first-light` | (canary 2026-08-26) | RELEASED — PLAN 003 COMPLETE: envelope/doctor/runner/enrichment/search + live first-light run + fault-path fixes (597a99d..9ce9fae) |
-| pij-varied-skunk | human-render prototype over frozen envelopes (w-human-render) | %46 · window `human-render` | 01a03c9b-9f4c-7000-a313-e60b097d3436 | ACTIVE — pocs/human-render, rich-style renderer + TTY strategy. Brief `briefs/w-human-render.md` |
+| Seat | Domain / what it landed | Native session id | Status |
+|---|---|---|---|
+| pij-impressive-ox | docker/build/release engineering: plan-002 build container, CI gate, release-please, cross-platform release v0.2.0 (9 tag cycles), installer fixes (Linux musl 404, ps1 refusal), release-preflight harness f0578f0, mac `--lib` tier (committed for it at e3e6757), README agent funnel + install proof | 01a03bec-d69d-7000-acdd-aa7ff0d60af7 | CLOSED 2026-08-27 |
+| pij-sure-kazimir | Azure OpenAI adapter (w-azure), structured summaries c971902+e101e9b+cc0c83a, openai-compat LAN adapter, in-call provider retry (429/Retry-After) 5e532a3. Phantom alias: pij-shallow-dog | 01a03c3b-469a-7000-9970-95d654d6dea6 | CLOSED 2026-08-27 |
+| pij-recent-cicada | sqlx migrations + db how-to (w-migrations) 0a75c44; boot contract hardening. Phantom aliases: pij-likely-mosquito, pij-aggregate-mosquito | 01a03c46-3fea-7000-815f-eada7d9e02da | CLOSED 2026-08-27 |
+| pij-plain-mollusk | scanner v1: element tree + pure scan 0962ba8+17878b6+f2f3cc4; add-language skill authored from its recipe | 01a03c4c-cd34-7000-8879-385defbdbff2 | CLOSED 2026-08-27 |
+| pij-technological-egret | global config system (w-config) 0d0fb1c+3e33161+5e73135+a99ceed (registry, config show, boot contract) | 01a03c50-eecb-7000-9378-1992ecdb548c | CLOSED 2026-08-27 |
+| pij-surprising-sailfish | daemon shell + reconcile substrate + live watcher (w-daemon-shell, w-watcher-live): 10 commits incl. forever-rescan fix de7ae1b, CI-flake fix 894eca5. Queued next: watcher-filter unification, req-0054 update awareness. Phantom alias: pij-damp-clownfish | 01a03c58-e85e-7000-8a21-4e81b739b51b | CLOSED 2026-08-27 |
+| pij-devoted-cattle | ignore-aware discovery (w-discovery), 2 tours: ca27e63/74cecf7/515155e/2f78b7f/84b7db8/c2dba76 (deny list, cross-filter contract, prune ledger) | 01a03c5c-d775-7000-8c41-a25729de92af | CLOSED 2026-08-27 |
+| pij-xenophobic-wren | git/blob layer: fs3-git crate c7670cd+b9f5b47, 8-crate arch amendment | 01a03c5c-d938-7000-bd92-9136895e64c5 | CLOSED 2026-08-27 |
+| pij-musical-sylac | schema v1 + typed store API 2dd5a25+b58173a; extras-persistence fix across all read paths; first fully-green harness checks | 01a03c60-310c-7000-b5fb-d6069937b73a | CLOSED 2026-08-27 |
+| pij-excellent-dingo | flowspace agent skill (req-0052) 55a9016; skill distribution + doctor row 546f475/22485cc; agents-start-here e4533fc (req-0055, shipped in v0.2.0) | 01a03d08-7c56-7000-ac9b-95c4b3ef34d7 | CLOSED 2026-08-27 |
+| pij-inevitable-hummingbird | local embeddings validate+adapter (w-local-embed) e265429+efedd0b+181c4c4; memory-per-model-copy measurement. Phantom aliases: scrawny-ape, thorough-zakalwe | 01a03c75-6993-7000-a09f-05afc8b1e2c4 | CLOSED 2026-08-27 |
+| pij-broad-sawfish | plan 003 first light (envelope/doctor/runner/enrichment/search, 597a99d..9ce9fae); daemon streaming logs 74bf8a7+a293b2e; doctor provider/info rows; throughput packet: multi-claim embed batching, lanes, RateLimited parking, embed pre-check (788481d, e610bb9, f4b7961, eb8a0e5, b61473b) | (canary 2026-08-26) | CLOSED 2026-08-27 |
+| pij-varied-skunk | human-render prototype over frozen envelopes (pocs/human-render): rich-style renderer + TTY strategy, piped-vs-tty assertion | 01a03c9b-9f4c-7000-a313-e60b097d3436 | CLOSED 2026-08-27 |
 
 ## Historical / other
 
 - pij-likely-sailfish — tree-sitter POC (plan 001 assets), long since done.
 - pij-managerial-peacock — engineering-harness standup, done (commit ec66578).
 - pij-alright-mink — s001 reviewer (gpt-5.6-sol high), managed by gibbon; phantom aliases ashamed-gecko, back-scallop, dusty-sole, stormy-hippopotamus, unfair-baboon.
-- pij-continuing-ermine — pij platform prime (repo ~/pi-hacking/pij) — route pij bugs here (Jordan ruling). Was revived once 2026-08-26.
-- Phantom-alias defect: pij#19 (`pij` repo) — one omp process mints extra registry ids; always address the CANARIED id, never close aliases (shared pid).
+- pij-continuing-ermine — pij platform prime (repo ~/pi-hacking/pij) — route pij bugs here (Jordan ruling). Was revived once 2026-08-26. NOT ours to close.
+- Phantom-alias defect: pij#19 (`pij` repo) — one omp process mints extra registry ids; always address the CANARIED id, never close aliases (shared pid). Alias exit tombstones (damp-clownfish, diverse-jerusalem) after the 2026-08-27 close-out are expected noise.
 
 ## Rules
 
 - Address ONLY canaried ids. Canary records live in `.harness/government/canaries/`.
-- Released ≠ dead: released seats stay adopted-idle and can be re-tasked with a fresh brief + (a) round-trip re-check; a dead seat needs `pij revive`.
+- Released ≠ dead ≠ closed: a released seat is adopted-idle; a CLOSED seat's pane is gone and needs `pij revive <id>`; native session ids above are the resume keys.
