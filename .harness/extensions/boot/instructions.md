@@ -5,12 +5,15 @@ before the work starts, it will certainly not be working after.
 
 ## What it computes deterministically
 
-Four stages, stopping at the first hard failure:
+Five stages, stopping at the first hard failure:
 
 1. **toolchain** — `cargo --version` resolves (error `E_NO_TOOLCHAIN` if not).
 2. **crate** — is there a `Cargo.toml` yet? (Absent is reported, not failed.)
 3. **build** — `cargo build --all-targets`, when a crate exists.
-4. **checks** — composes `harness checks --json` and folds its verdict in.
+4. **compose** — `pg_isready` inside the `db` service of `docker-compose.yml`.
+   The store and daemon proof tiers run against real Postgres+pgvector, so a
+   stopped stack is reported `degraded` naming `docker compose up -d`.
+5. **checks** — composes `harness checks --json` and folds its verdict in.
 
 Verdicts: `ok` → ready · `degraded` → the environment is up but the gate cannot
 prove anything (no crate yet, or no `checks` extension) · `error` → the toolchain,

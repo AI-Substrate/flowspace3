@@ -1,0 +1,33 @@
+# The fs3 stack (PRD req 33). Phase 1 composes Postgres+pgvector only; the
+# daemon runs on the host against it and moves into this file in a later plan.
+#
+#   docker compose up -d        # start
+#   docker compose ps           # what is running
+#   docker compose down         # stop, keep data
+#   docker compose down -v      # stop, delete the volume
+#
+# Host port 5433, deliberately off 5432 so a machine-local Postgres is never
+# shadowed and never accidentally migrated.
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: flowspace3-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: flowspace3
+      POSTGRES_PASSWORD: flowspace3
+      POSTGRES_DB: flowspace3
+    ports:
+      - "5433:5432"
+    volumes:
+      - flowspace3-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flowspace3 -d flowspace3"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+volumes:
+  flowspace3-pgdata:

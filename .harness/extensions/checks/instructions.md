@@ -5,11 +5,16 @@ before you call any work done; do not substitute your own reading of the diff.
 
 ## What it computes deterministically
 
-Three gates, in order, stopping at the first red:
+Four gates, in order, stopping at the first red:
 
 1. `cargo fmt --all --check` — formatting is not a matter of opinion here.
 2. `cargo clippy --all-targets -- -D warnings` — lint warnings are failures.
-3. `cargo test --all` — the test suite.
+3. `cargo test --all` — the test suite. Needs the compose stack up
+   (`docker compose up -d`): the store tier tests run against real Postgres and
+   fail, naming that command, rather than skipping.
+4. `cargo run -p fs3-testkit --bin fs3-arch-check` — architecture drift. The
+   crate graph is judged against `testkit/arch-allowlist.toml`, which is an
+   allow-list: an edge nobody added deliberately is a failure.
 
 Envelope: `ok` when every gate passed · `error` (exit 1) naming the first failing
 gate, with the last 40 lines of its output in `error.details` · `degraded` when

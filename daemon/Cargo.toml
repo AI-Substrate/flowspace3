@@ -1,0 +1,32 @@
+[package]
+name = "fs3-daemon"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The fs3 daemon: HTTP surface, workers, and the composition root."
+
+[dependencies]
+fs3-core.workspace = true
+fs3-providers.workspace = true
+fs3-store.workspace = true
+# Not dev-only: `provider = "fake"` is a legal runtime configuration, so the
+# fakes ship in this binary (workshop 001 rule 5).
+fs3-testkit.workspace = true
+
+anyhow.workspace = true
+axum.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+toml.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+reqwest.workspace = true
+
+[[bin]]
+name = "fs3-daemon"
+path = "src/main.rs"

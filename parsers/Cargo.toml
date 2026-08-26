@@ -1,0 +1,17 @@
+[package]
+name = "fs3-parsers"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "tree-sitter grammars turned into fs3 core elements."
+
+# Concrete by design: the parser is not a port. Adding a language is adding a
+# grammar crate and one line in `Language::for_extension` - never per-language
+# extraction code (PRD req 21).
+[dependencies]
+fs3-core.workspace = true
+thiserror.workspace = true
+tree-sitter.workspace = true
+tree-sitter-md.workspace = true
+tree-sitter-rust.workspace = true

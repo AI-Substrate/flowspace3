@@ -7,6 +7,10 @@ const GATES: { name: string; cmd: string; args: string[] }[] = [
   { name: 'fmt', cmd: 'cargo', args: ['fmt', '--all', '--check'] },
   { name: 'clippy', cmd: 'cargo', args: ['clippy', '--all-targets', '--', '-D', 'warnings'] },
   { name: 'test', cmd: 'cargo', args: ['test', '--all'] },
+  // Architecture drift: the crate graph judged against testkit/arch-allowlist.toml.
+  // Cargo stops undeclared imports and cycles; this stops declared-but-refused
+  // edges (sqlx in the functional core, a mocking framework anywhere).
+  { name: 'arch', cmd: 'cargo', args: ['run', '--quiet', '-p', 'fs3-testkit', '--bin', 'fs3-arch-check'] },
 ];
 
 const tail = (s: string, n = 20) => s.trimEnd().split('\n').slice(-n).join('\n');

@@ -3,10 +3,13 @@ import { join } from 'node:path';
 import { defineExtension } from '@ai-substrate/engineering-harness/contract';
 
 const ORIENTATION = [
-  'flowspace3 — Rust workspace. The engineering harness is the front door:',
-  '  harness checks   the quality gate (fmt, clippy, tests) — green before done',
+  'flowspace3 — Rust workspace, 7 crates. The engineering harness is the front door:',
+  '  harness checks   the gate: fmt, clippy, tests, architecture drift — green before done',
   '  harness doctor   what is configured and what is not',
   '  harness observe  capture friction the moment it bites',
+  '',
+  'The proof tiers need the stack up: docker compose up -d (postgres+pgvector, :5433).',
+  'Before adding a file, read docs/how/architecture.md — placement is a table, not a judgment call.',
 ].join('\n');
 
 export default defineExtension({
@@ -54,7 +57,28 @@ export default defineExtension({
           }
         }
 
-        // 3 — compose the quality gate
+        // 3 — the compose stack the store and daemon tiers prove against
+        const COMPOSE_UP = 'docker compose up -d';
+        const pg = await ctx.exec(
+          'docker',
+          ['compose', 'exec', '-T', 'db', 'pg_isready', '-U', 'flowspace3', '-d', 'flowspace3'],
+          { timeoutMs: 60_000 },
+        );
+        stages.push({
+          stage: 'compose',
+          ok: pg.ok,
+          detail: pg.ok
+            ? 'postgres+pgvector accepting connections on 127.0.0.1:5433'
+            : `${pg.stderr || pg.stdout}`.trimEnd().split('\n').slice(-5).join('\n') || 'db service not reachable',
+        });
+        if (!pg.ok) {
+          return ctx.degraded(
+            { stages, orientation: ORIENTATION, verdict: 'degraded' },
+            `Postgres is not answering, so the store and daemon proof tiers cannot run. Start the stack with \`${COMPOSE_UP}\`, then re-run \`harness boot\`. (If docker itself is missing, that is the thing to install — the integration tests fail rather than skip, deliberately.)`,
+          );
+        }
+
+        // 4 — compose the quality gate
         if (!existsSync(join(ctx.cwd, '.harness/extensions/checks'))) {
           return ctx.degraded(
             { stages, orientation: ORIENTATION },

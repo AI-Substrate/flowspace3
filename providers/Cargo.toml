@@ -1,0 +1,18 @@
+[package]
+name = "fs3-providers"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Real implementations of the fs3 Embedder and Summarizer ports."
+
+[dependencies]
+fs3-core.workspace = true
+async-trait.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+fs3-testkit.workspace = true
+tokio.workspace = true

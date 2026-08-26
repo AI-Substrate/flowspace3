@@ -1,0 +1,43 @@
+[workspace]
+resolver = "3"
+members = ["core", "parsers", "providers", "store", "testkit", "daemon", "cli"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/AI-Substrate/flowspace3"
+
+# The crate graph of workshop 001. Direction is enforced mechanically by
+# `cargo run -p fs3-testkit --bin fs3-arch-check` (see testkit/arch-allowlist.toml).
+[workspace.dependencies]
+fs3-core = { path = "core" }
+fs3-parsers = { path = "parsers" }
+fs3-providers = { path = "providers" }
+fs3-store = { path = "store" }
+fs3-testkit = { path = "testkit" }
+
+anyhow = "1"
+async-trait = "0.1"
+axum = "0.8"
+clap = { version = "4", features = ["derive"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sqlx = { version = "0.8", default-features = false, features = [
+  "runtime-tokio",
+  "tls-rustls-ring",
+  "postgres",
+  # `migrate!` embeds the migration files at compile time; it reads the
+  # directory, never a database, so `cargo build` stays docker-free.
+  "macros",
+  "migrate",
+] }
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal"] }
+toml = "0.9"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tree-sitter = "0.26"
+tree-sitter-md = "0.5"
+tree-sitter-rust = "0.24"

@@ -1,0 +1,19 @@
+[package]
+name = "fs3-store"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The central Postgres + pgvector store: migrations and repositories."
+
+# Concrete by design. Postgres is a requirement (PRD req 4), not a variable, so
+# there is no repository trait here and no in-memory implementation to keep in
+# step - the integration tests run against a real dockerized PG.
+[dependencies]
+fs3-core.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+anyhow.workspace = true
+tokio.workspace = true
