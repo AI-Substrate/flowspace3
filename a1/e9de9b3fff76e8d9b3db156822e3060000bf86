@@ -1,0 +1,20 @@
+.github/workflows/ci.yml
+  s_15d888f4b629c1::t_4a23817164537e 17-18
+  s_15d888f4b629c1::t_0b23f931775e92 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a1e9de9b3fff76e8d9b3db156822e3060000bf86",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
