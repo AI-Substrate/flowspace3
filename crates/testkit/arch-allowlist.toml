@@ -145,11 +145,20 @@ internal = [
   "fs3-providers",
   "fs3-store",
   "fs3-testkit",
+  # DEV only: the first-light e2e proves the tk-0108 loop end to end - a behind
+  # database is rejected, `flowspace3 doctor` repairs it, the same call then
+  # succeeds. Proving that without calling the real doctor would mean a second
+  # implementation of it inside a test, which is the drift the split refuses.
+  "fs3-cli@dev",
 ]
 external = [
   "anyhow",
   "axum",
   "reqwest@dev",
+  # DEV only: the e2e asserts ROW COUNTS the typed API has no verb for
+  # ("how many smart vectors exist"), which is a question about the schema
+  # rather than about a flow. Shipping sqlx in the daemon stays refused.
+  "sqlx@dev",
   "serde",
   "serde_json",
   "thiserror",

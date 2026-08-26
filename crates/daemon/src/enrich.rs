@@ -118,11 +118,31 @@ impl EmbedJob {
     }
 }
 
+/// Whether this element's own text earns a raw vector.
+///
+/// Everything does, with ONE exception: a file element that has parsed children.
+/// Its `raw_text` is the concatenation of those children, so its vector is a
+/// blurred average of texts that are already indexed individually — it carries
+/// nothing they do not, it is the largest text in the tree to store, and
+/// because it contains every token in the file it competes with every one of
+/// its own parts on every query about that file. A search for "validate an
+/// expired session token" should answer with the function, not with the file
+/// the function is in.
+///
+/// A file with NO children is the opposite case: prose, an unknown language, a
+/// grammar fs3 does not have. There the file element IS the content, and
+/// skipping it would make the file unsearchable. That is why the rule is
+/// "covered by its children", not "is a file".
+fn earns_raw_vector(element: &Element) -> bool {
+    element.kind != fs3_core::ElementKind::File || element.children.is_empty()
+}
+
 /// Queue the enrichment a freshly-scanned tree earns.
 ///
-/// Raw vectors for every element, summaries only for the ones the policy marked.
-/// Both are jobs rather than inline work: a slow provider must never hold up the
-/// next file's parse, and the queue is where the concurrency already lives.
+/// Raw vectors for every element its children do not already cover, summaries
+/// only for the ones the policy marked. Both are jobs rather than inline work:
+/// a slow provider must never hold up the next file's parse, and the queue is
+/// where the concurrency already lives.
 ///
 /// # Errors
 /// Store failures while enqueueing.
@@ -135,7 +155,9 @@ pub async fn enqueue_for_tree(
     let mut raw_batch: Vec<(String, String)> = Vec::with_capacity(EMBED_BATCH);
 
     for element in root.iter() {
-        raw_batch.push((element.raw_hash().to_string(), element.raw_text.clone()));
+        if earns_raw_vector(element) {
+            raw_batch.push((element.raw_hash().to_string(), element.raw_text.clone()));
+        }
         if raw_batch.len() == EMBED_BATCH {
             enqueue_embed(
                 state,

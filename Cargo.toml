@@ -11,6 +11,7 @@ repository = "https://github.com/AI-Substrate/flowspace3"
 # The crate graph of workshop 001. Direction is enforced mechanically by
 # `cargo run -p fs3-testkit --bin fs3-arch-check` (see crates/testkit/arch-allowlist.toml).
 [workspace.dependencies]
+fs3-cli = { path = "crates/cli" }
 fs3-core = { path = "crates/core" }
 fs3-git = { path = "crates/git" }
 fs3-parsers = { path = "crates/parsers" }

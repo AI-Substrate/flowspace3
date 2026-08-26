@@ -27,7 +27,12 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 
 [dev-dependencies]
+# The e2e proof drives the REAL router over HTTP and the REAL runner against a
+# throwaway database, so it needs a client, a driver, and the fs3 CLI's doctor
+# (dw-0109 proves behind-db -> rejection -> doctor -> success as one loop).
+fs3-cli.workspace = true
 reqwest.workspace = true
+sqlx.workspace = true
 
 [[bin]]
 name = "fs3-daemon"
