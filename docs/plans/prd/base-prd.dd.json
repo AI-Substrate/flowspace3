@@ -51,8 +51,9 @@
           "num": 5,
           "title": "Git-native incremental indexing",
           "requirement": "Derived data is keyed by git blob SHA: indexing any branch, commit, or worktree diffs its git tree against the store and only new blobs pay parse/summarize/embed. Creating a worktree requires no copy and no rescan.",
-          "state": "unchecked",
-          "note": "components COMPLETE (fs3-git snapshots/diff + blob-keyed store + content-addressing); check at first-light e2e (idempotent-rescan proof)"
+          "state": "checked",
+          "note": "components COMPLETE (fs3-git snapshots/diff + blob-keyed store + content-addressing); check at first-light e2e (idempotent-rescan proof)",
+          "completed_evidence": "blob-SHA incremental PROVEN: rescan of unchanged tree = 0 jobs, 0 calls; single-file edit re-indexes exactly that file — first-light live run + CI e2e (plan 003, transcript assets/first-light-run.md; o-prime verified 2026-08-26)"
         },
         {
           "id": "req-0006",
@@ -66,15 +67,17 @@
           "num": 7,
           "title": "Enrichment: summarize + embed",
           "requirement": "Each file and each significant element gets an LLM-generated summary; both raw content and summary are embedded, and semantic search scores against both.",
-          "state": "unchecked"
+          "state": "checked",
+          "completed_evidence": "summarize+embed both raw and smart (204 vectors = raw+smart legs), semantic search scores against both — first-light live run + CI e2e (plan 003, transcript assets/first-light-run.md; o-prime verified 2026-08-26)"
         },
         {
           "id": "req-0008",
           "num": 8,
           "title": "Pluggable providers, online or local",
           "requirement": "LLM summarization and embedding each work against online APIs or local models, selected by config; switching providers never corrupts existing data (derived rows are keyed by model/prompt version).",
-          "state": "unchecked",
-          "note": "providers landed: Azure (online, keyed-proven) + local ONNX (in-process, live contract) + fake; registry selects; model-keyed rows. Check when enrichment pipeline runs both paths (first light + one swap test)"
+          "state": "checked",
+          "note": "providers landed: Azure (online, keyed-proven) + local ONNX (in-process, live contract) + fake; registry selects; model-keyed rows. Check when enrichment pipeline runs both paths (first light + one swap test)",
+          "completed_evidence": "pluggable providers proven BOTH ways: fake in CI, Azure live, local landed; registry-selected; model-keyed rows (deployment@version) — first-light live run + CI e2e (plan 003, transcript assets/first-light-run.md; o-prime verified 2026-08-26)"
         },
         {
           "id": "req-0009",
@@ -95,7 +98,8 @@
           "num": 11,
           "title": "Search modes and envelope",
           "requirement": "`search` supports semantic, text, and regex modes and returns a structured JSON envelope with scores, snippets, pagination, and per-folder hit counts.",
-          "state": "unchecked"
+          "state": "unchecked",
+          "note": "semantic mode + envelope + filters live (plan 003); text/regex modes + folders meta remain (workshop 003 full slice)"
         },
         {
           "id": "req-0012",
@@ -109,7 +113,8 @@
           "num": 13,
           "title": "Fast cold start",
           "requirement": "Any command answers directly from PG with no warm-up step; an agent invoking fs3 mid-task gets its answer in one fast round-trip.",
-          "state": "unchecked"
+          "state": "unchecked",
+          "note": "search answers in one round-trip from PG (live-proven); formal cold-start timing unmeasured"
         },
         {
           "id": "req-0014",
@@ -158,7 +163,8 @@
           "num": 20,
           "title": "Everything through the daemon",
           "requirement": "The daemon is the single PG writer and the single query path: indexing commands AND searches go through its local HTTP API, so the CLI (and later MCP/web) are thin clients of one service that owns the connection pool, queue, batching, and caching.",
-          "state": "unchecked"
+          "state": "checked",
+          "completed_evidence": "daemon is the single data-plane writer and single query path; CLI verbs are thin envelope clients (critic-verified: only doctor opens a pool) — first-light live run + CI e2e (plan 003, transcript assets/first-light-run.md; o-prime verified 2026-08-26)"
         },
         {
           "id": "req-0021",
@@ -232,22 +238,25 @@
           "num": 30,
           "title": "Dirty-file work queue in PG",
           "requirement": "Changed files land in a queue table; daemon workers pick rows up and process them through the pipeline — the queue is the single funnel for all indexing work.",
-          "state": "unchecked",
-          "note": "jobs table designed (workshop 002 D1); migration in flight (sylac)"
+          "state": "checked",
+          "note": "jobs table designed (workshop 002 D1); migration in flight (sylac)",
+          "completed_evidence": "PG jobs queue is the single funnel (221 rows, every provider call a queue row) — first-light live run + CI e2e (plan 003, transcript assets/first-light-run.md; o-prime verified 2026-08-26)"
         },
         {
           "id": "req-0031",
           "num": 31,
           "title": "Scan = bulk enqueue",
           "requirement": "`flowspace3 add path <folder>` (and any fresh scan) simply enqueues all the folder's files into the same queue the watcher feeds — initial indexing and live watching are one mechanism, not two code paths.",
-          "state": "unchecked"
+          "state": "checked",
+          "completed_evidence": "add path = bulk enqueue into the same queue (proven live) — first-light live run + CI e2e (plan 003, transcript assets/first-light-run.md; o-prime verified 2026-08-26)"
         },
         {
           "id": "req-0032",
           "num": 32,
           "title": "Size-floor summaries",
           "requirement": "Only elements above a configurable size threshold get their own LLM summary (code and markdown alike); smaller elements ride on their parent's summary while still getting raw-content embeddings, so everything stays searchable but tokens go where they add signal.",
-          "state": "unchecked"
+          "state": "checked",
+          "completed_evidence": "size-floor summaries live (94 of 154 elements summarized per policy; earns_raw_vector principled) — first-light live run + CI e2e (plan 003, transcript assets/first-light-run.md; o-prime verified 2026-08-26)"
         },
         {
           "id": "req-0033",
@@ -263,7 +272,7 @@
           "title": "`flowspace3 doctor`",
           "requirement": "A doctor command validates the whole stack — compose services up, PG reachable and schema current, daemon healthy, providers reachable — and says exactly what to fix when something isn't.",
           "state": "unchecked",
-          "note": "living design: docs/plans/prd/doctor-design.md"
+          "note": "doctor v1 PROVEN for engine→stack→create-db→migrate (249ms from nothing, repair-as-it-goes); provider probes + full-stack validation remain (doctor-design.md)"
         },
         {
           "id": "req-0035",
@@ -278,8 +287,9 @@
           "num": 36,
           "title": "Summaries carry tags",
           "requirement": "Every LLM summary run also generates 1–5 tags naming the element's most important concepts, stored alongside the summary — a cheap faceting/filter axis on top of vector search.",
-          "state": "unchecked",
-          "note": "Summary carries 1-5 tags (type-enforced, live-proven); tags column landed; check when enrichment writes them e2e (first light)"
+          "state": "checked",
+          "note": "Summary carries 1-5 tags (type-enforced, live-proven); tags column landed; check when enrichment writes them e2e (first light)",
+          "completed_evidence": "tags generated 1-5 on all 94 summaries (avg 4.0), stored — first-light live run + CI e2e (plan 003, transcript assets/first-light-run.md; o-prime verified 2026-08-26)"
         },
         {
           "id": "req-0037",
