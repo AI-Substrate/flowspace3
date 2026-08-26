@@ -20,11 +20,11 @@
 
 | id | criterion | phase | mode | tier | proof | state | note | receipt | probe |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| bp-0001 | ac scan pipeline end-to-end | 1 | BUILD | computational | RUN: e2e CI test + curl transcripts | [ ] unchecked | — | — | — |
-| bp-0002 | ac search v1 | 1 | BUILD | computational | RUN: search test over fixture corpus | [ ] unchecked | — | — | — |
-| bp-0003 | ac CI e2e + idempotence | 1 | BUILD | computational | RUN: cargo test e2e (fake provider, throwaway db) | [ ] unchecked | — | — | — |
-| bp-0004 | ac live Azure self-index run | 1 | BUILD | human-judgement | RUN once, transcript reviewed by o-prime/Jordan | [ ] unchecked | — | — | — |
-| bp-0005 | ac envelope + catalog seed | 1 | BUILD | computational | RUN: envelope unit + catalog drift test | [ ] unchecked | — | — | — |
+| bp-0001 | ac scan pipeline end-to-end | 1 | BUILD | computational | RUN: e2e CI test + curl transcripts | [x] checked | — | e2e add_scan_enrich_and_search_answer_end_to_end + live transcript (154 el/94 sum/204 vec) · verified by o-prime 2026-08-26 | — |
+| bp-0002 | ac search v1 | 1 | BUILD | computational | RUN: search test over fixture corpus | [x] checked | — | search live Q1-Q3 correct + filtered SQL verified by critic · verified by o-prime 2026-08-26 | — |
+| bp-0003 | ac CI e2e + idempotence | 1 | BUILD | computational | RUN: cargo test e2e (fake provider, throwaway db) | [x] checked | — | CI e2e 14/14 green (o-prime re-run) incl. idempotent-rescan-zero-work · verified by o-prime 2026-08-26 | — |
+| bp-0004 | ac live Azure self-index run | 1 | BUILD | human-judgement | RUN once, transcript reviewed by o-prime/Jordan | [x] checked | — | first-light-run.md transcript: Azure/Entra, 94 chat + 110 embed calls, 0 failures · verified by o-prime 2026-08-26 | — |
+| bp-0005 | ac envelope + catalog seed | 1 | BUILD | computational | RUN: envelope unit + catalog drift test | [x] checked | — | envelope+catalog landed 597a99d, drift test green, consumed by every route · verified by o-prime 2026-08-26 | — |
 
 <a id="sensors"></a>
 

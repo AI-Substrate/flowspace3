@@ -22,7 +22,8 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "RUN: e2e CI test + curl transcripts",
-          "state": "unchecked"
+          "state": "checked",
+          "receipt": "e2e add_scan_enrich_and_search_answer_end_to_end + live transcript (154 el/94 sum/204 vec) · verified by o-prime 2026-08-26"
         },
         {
           "id": "bp-0002",
@@ -31,7 +32,8 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "RUN: search test over fixture corpus",
-          "state": "unchecked"
+          "state": "checked",
+          "receipt": "search live Q1-Q3 correct + filtered SQL verified by critic · verified by o-prime 2026-08-26"
         },
         {
           "id": "bp-0003",
@@ -40,7 +42,8 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "RUN: cargo test e2e (fake provider, throwaway db)",
-          "state": "unchecked"
+          "state": "checked",
+          "receipt": "CI e2e 14/14 green (o-prime re-run) incl. idempotent-rescan-zero-work · verified by o-prime 2026-08-26"
         },
         {
           "id": "bp-0004",
@@ -49,7 +52,8 @@
           "mode": "BUILD",
           "tier": "human-judgement",
           "proof": "RUN once, transcript reviewed by o-prime/Jordan",
-          "state": "unchecked"
+          "state": "checked",
+          "receipt": "first-light-run.md transcript: Azure/Entra, 94 chat + 110 embed calls, 0 failures · verified by o-prime 2026-08-26"
         },
         {
           "id": "bp-0005",
@@ -58,7 +62,8 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "RUN: envelope unit + catalog drift test",
-          "state": "unchecked"
+          "state": "checked",
+          "receipt": "envelope+catalog landed 597a99d, drift test green, consumed by every route · verified by o-prime 2026-08-26"
         }
       ]
     },
