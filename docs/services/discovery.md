@@ -49,6 +49,39 @@ the scanner's budget.
 | **Binary is decided by content** | A NUL in the first 8 KiB, the same test `git diff` uses. The PNG someone committed as `logo.md` is caught by the sniff, not by its extension. |
 | **Sequential walk** | The win came from *not visiting* files, not from visiting them on more threads, and a deterministic order makes the result assertable. `ignore::WalkParallel` is a drop-in if a measurement ever asks. |
 
+## Upgrade note — case-sensitive volumes (v0.2.0)
+
+**If you keep first-party source in a directory whose name differs from the
+deny list only by case — `Build/`, `Dist/`, `Vendor/`, `Target/` — it stops
+being indexed in v0.2.0, silently.**
+
+The deny list became ASCII-case-insensitive so it agrees with the watcher's
+filter (see the four axes below). On a case-insensitive volume — macOS and
+Windows by default — nothing changes: `Build/` and `build/` were always the
+same directory. On a **case-sensitive volume**, typically Linux, `Build/` used
+to be walked and now is not.
+
+The symptom is the bad kind: no error, no skip row (a denied directory is
+pruned, not refused), just search missing code you know exists. The remedy
+today is one key:
+
+```toml
+[scan]
+# drop the standard deny list; .gitignore still applies
+standard_ignores = false
+```
+
+**`force_include` is not reachable from config yet** — it is a
+`DiscoverySettings` field with no `[scan]` key, so the per-directory escape
+hatch this page describes is currently programmatic only, and `[scan]` refuses
+unknown keys. Anyone hitting this on a case-sensitive volume has the blunt
+toggle and nothing finer until the config surface carries `force_include` and
+`exclude` (owner: whoever holds `crates/core/src/config.rs`; named here rather
+than left as a surprise).
+
+`flowspace3 config show` reports the effective `scan` section, which is the
+first place to look when a folder is unexpectedly absent.
+
 ## Precedence
 
 Highest first — the first rule that matches decides:
