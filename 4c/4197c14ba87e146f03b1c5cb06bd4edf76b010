@@ -1,0 +1,23 @@
+.harness/extensions/checks/extension.ts
+  s_15d888f4b629c1::t_dc1114b091aeec 7-14
+.harness/extensions/checks/instructions.md
+  s_15d888f4b629c1::t_5930466bedcb06 8,10-18,21
+Cargo.lock
+  s_15d888f4b629c1::t_caab9491caac36 1111,1113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4c4197c14ba87e146f03b1c5cb06bd4edf76b010",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
