@@ -1,0 +1,19 @@
+.harness/government/rulings/2026-08-26-commit-push-as-you-go.md
+  s_15d888f4b629c1::t_8e716750edb292 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4c8deae9965d209b1e6d9be7f07de97f81aba358",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
