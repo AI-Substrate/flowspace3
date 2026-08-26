@@ -1,0 +1,35 @@
+pocs/human-render/src/bin/demo.rs
+  s_15d888f4b629c1::t_e5e8971f1681a1 1-208
+  s_15d888f4b629c1::t_2be336e4c2ab25 209
+pocs/human-render/fixtures/search.json
+  s_15d888f4b629c1::t_1522503a34e5c4 1-111
+pocs/human-render/src/theme.rs
+  s_15d888f4b629c1::t_cecb221bc92a00 1-247,249-259,261-338
+  s_15d888f4b629c1::t_c098aaa5c2db71 248
+  s_15d888f4b629c1::t_f0ed0e1a62fdbc 260
+  s_15d888f4b629c1::t_1de818d6ba1134 339-341
+pocs/human-render/src/surfaces/search.rs
+  s_15d888f4b629c1::t_69a04df0146739 331
+  s_15d888f4b629c1::t_b57124b63088fd 328-330
+  s_15d888f4b629c1::t_9ce4abb94703ec 332-334
+pocs/human-render/Cargo.lock
+  s_15d888f4b629c1::t_441a6998b6aa78 1-737
+pocs/human-render/fixtures/status.json
+  s_15d888f4b629c1::t_17072b30a0f18d 1-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4d2c7b96c6b00f58bd06ddd93b464e13e194ba58",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
