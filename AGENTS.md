@@ -70,3 +70,10 @@ commit's authorship may later be recorded as human.
 Neither shape guarantees delivery. What `harness commit` guarantees is that the
 outcome is never silent. Read `harness instructions commit` for the detail.
 <!-- END harness:commit-guidance -->
+
+**Ownership questions route to o-prime, never to git.** Every seat commits under
+Jordan's git identity, so `git log --format='%an'` is a NULL signal for who wrote
+a file — and `refs/notes/ai` can silently lose attribution (a seat-written commit
+can read humans-only) and carries no seat slug even when healthy. To learn which
+worker owns a file or fence, ask o-prime / read `.harness/government/worker-roster.md`.
+(DL-011, 2026-08-26.)
