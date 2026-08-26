@@ -1,0 +1,152 @@
+docs/plans/001-fs3-foundations/assets/poc/treesitter/out/02b-fixtures-refined-full.txt
+  s_2bb813658c22b9::t_38d410579f7c82 1-229
+docs/plans/001-fs3-foundations/assets/poc/treesitter-results.md
+  s_2bb813658c22b9::t_23f800e132ec47 37-39,141-147,176-193,210
+  s_2bb813658c22b9::t_e8e513bee92880 5,7-17
+  s_2bb813658c22b9::t_4e906dcba881dc 99,108-110,113-117,119-124,161,224
+  s_2bb813658c22b9::t_a65759f2f919a9 1-4,6,18-36,40-98,100-107,111-112,118,125-140,148-160,162-175,194-209,211-223,225-262
+docs/plans/001-fs3-foundations/the-flow.md
+  s_15d888f4b629c1::t_72575f200f9e0e 45-47
+  s_15d888f4b629c1::t_cb16acd5b0f2bf 11,40-44
+  s_15d888f4b629c1::t_455cbd81a50eb0 4,19,48-50
+  s_15d888f4b629c1::t_cb0f9cb0fb7f0c 6,10,31,36
+  s_15d888f4b629c1::t_3abede28842369 1-3,5,7-9,12-18,20-30,32-35,37-39
+docs/plans/001-fs3-foundations/assets/poc/treesitter/out/04-bench-harness-engineering.txt
+  s_2bb813658c22b9::t_de75aa8d99cf25 5,9-18,21-25,40
+  s_2bb813658c22b9::t_1fc64fb138fdc1 1-4,6-8,19-20,26-39,41
+docs/plans/001-fs3-foundations/assets/poc/treesitter/out/05-bench-he-git-tracked.txt
+  s_2bb813658c22b9::t_de75aa8d99cf25 5,9-17,20-24,39
+  s_2bb813658c22b9::t_6996d0fe150aa3 1-4,6-8,18-19,25-38,40
+docs/plans/001-fs3-foundations/plan.dd.json
+  s_15d888f4b629c1::t_3a8d0fb40e9092 1-11,20-23,25-27,36-38,49-51,102-107,110-113,419
+  s_15d888f4b629c1::t_dab34a5bcb00c3 56-57,62-63,68-69,74-75,80-81,86-87,92-93,98-99
+  s_15d888f4b629c1::t_2172fc17a47a3d 28-35,39-45,48,152-167,171-197,231-274,278,282-313,388-407
+  s_15d888f4b629c1::t_3997cdc5c7ca0c 114-116,118-120,128-130,135-137,139-141,149-151,168-170,198-200,228-230,275-277,279-281,314-316,385-387,408-410
+  s_15d888f4b629c1::t_74d13bd06e40ca 24,46-47,142-148,421
+  s_15d888f4b629c1::t_836122294c60d6 117,121-127,131-134,138,201-227,411-418
+  s_15d888f4b629c1::t_69a92c368860cf 13-19,52-55,58-61,64-67,70-73,76-79,82-85,88-91,94-97,100-101,109,420
+  s_15d888f4b629c1::t_365d32af47ac93 12,317-384
+  s_15d888f4b629c1::t_370636dc70d8e4 108
+docs/plans/001-fs3-foundations/validations/plan-validation.md
+  s_15d888f4b629c1::t_b6b798760fe29f 1-22
+docs/plans/001-fs3-foundations/assets/fs3-overview.md
+  s_15d888f4b629c1::t_f4de2502652936 1-73
+docs/plans/001-fs3-foundations/assets/poc/treesitter/out/07-spotchecks.txt
+  s_2bb813658c22b9::t_579db6e09a210d 2-19,21,23-42
+  s_2bb813658c22b9::t_02d278eda58897 75,78-83,97-98,100-104,119-120,122-131,133-148,150-153,155-165
+  s_2bb813658c22b9::t_ef54bfe35f38f6 43-44,47,49-74
+  s_2bb813658c22b9::t_c81451569034f8 1,20,22,45-46,48,76-77,84-96,99,105-118,121,132,149,154,166-177
+docs/plans/001-fs3-foundations/assets/poc/treesitter/Cargo.toml
+  s_2bb813658c22b9::t_2797faedc34a73 7,11,14,18,20-21,23,25,27
+  s_2bb813658c22b9::t_3d0d3c182168d9 1-6,8
+  s_2bb813658c22b9::t_8b84779eeabf34 9-10,12-13,15-17,19,22,24,26
+docs/plans/001-fs3-foundations/assets/poc/treesitter/out/01-fixtures-naive.txt
+  s_2bb813658c22b9::t_8d8d166fa69668 1
+  s_2bb813658c22b9::t_8069456162f140 2-190
+docs/plans/001-fs3-foundations/assets/poc/treesitter/out/06-bench-he-source-only.txt
+  s_2bb813658c22b9::t_a913603e18f50d 1-4,6-8,15-16,22-35,37
+  s_2bb813658c22b9::t_de75aa8d99cf25 5,9-14,17-21,36
+docs/plans/001-fs3-foundations/assets/poc/treesitter/out/02-fixtures-refined.txt
+  s_2bb813658c22b9::t_8069456162f140 2-90
+  s_2bb813658c22b9::t_3fdecfcdec16cf 1
+docs/plans/001-fs3-foundations/original-ask.md
+  s_15d888f4b629c1::t_4877feaf3267e4 1-20
+docs/plans/001-fs3-foundations/assets/poc/treesitter/out/03-bench-fixtures.txt
+  s_2bb813658c22b9::t_38d410579f7c82 5,9-25,28-32,38
+  s_2bb813658c22b9::t_2409441f430e08 4
+  s_2bb813658c22b9::t_fdc68f900d4d20 1-3,6-8,26-27,33-37,39
+docs/plans/001-fs3-foundations/assets/workshops/001-architecture.md
+  s_15d888f4b629c1::t_38f969b9e0cc35 1-132
+docs/plans/001-fs3-foundations/assets/poc-treesitter-packet.md
+  s_15d888f4b629c1::t_4c1f65bb8d3c77 1-68
+docs/plans/001-fs3-foundations/assets/backpressure.dd.md
+  s_15d888f4b629c1::t_455cbd81a50eb0 14
+  s_15d888f4b629c1::t_2f981eafdd185f 1-13,15-43
+docs/plans/001-fs3-foundations/assets/poc/treesitter/src/main.rs
+  s_2bb813658c22b9::t_d593928fa567fc 68-70,88-92,116-119,123-127,210-214,220-224,226,228-231
+  s_2bb813658c22b9::t_8b84779eeabf34 1-67,71-87,128-142,144-168,196-209,227,232-360,364,388-396,398-463,465-489,493-516
+  s_2bb813658c22b9::t_3d0d3c182168d9 464,517
+  s_2bb813658c22b9::t_db5d32452a4768 95-97,104-106,490-492
+  s_2bb813658c22b9::t_f8ec1d1e838a59 225
+  s_2bb813658c22b9::t_c697050fb67977 169-173,177-195,215-219
+  s_2bb813658c22b9::t_9015600bef0666 99-103,120-122,174-176
+  s_2bb813658c22b9::t_80a4edd6963ed7 361-363,365-387,397
+  s_2bb813658c22b9::t_7d19c0dc9db019 93-94,98,107-115,143
+docs/plans/001-fs3-foundations/assets/tasks/phase-1/tasks.dd.json
+  s_15d888f4b629c1::t_67c316376c6665 9,17,21-23,25,31-35,41-45,50-54,59-63,68-72,77-81,87-91,97-99,101,106-110,115-119,124-128,134-138,143-147,153-154,158-160,162-163,165-168,171,173-176,178-179,181-184,186-187,189-192,194-195,197-200,202-203,205-208,210-211,213-216,218-219,221-224,226-227,229-232,234-235,237-240,242-243,245-248,251,253-256,258-259,261-264,266-267,269-271,273-274
+  s_15d888f4b629c1::t_dab34a5bcb00c3 164,172,180,188,196,204,212,220,228,236,244,252,260,268
+  s_15d888f4b629c1::t_73b0abe9d88850 161,169,177,185,193,201,209,217,225,233,241,249,257,265
+  s_15d888f4b629c1::t_74d13bd06e40ca 24,100,170,250
+  s_15d888f4b629c1::t_3a8d0fb40e9092 1-8,10-16,18-20,155-157,272
+  s_15d888f4b629c1::t_455cbd81a50eb0 26-30,36-40,46-49,55-58,64-67,73-76,82-86,92-96,102-105,111-114,120-123,129-133,139-142,148-152
+docs/plans/001-fs3-foundations/assets/backpressure.dd.json
+  s_15d888f4b629c1::t_2f981eafdd185f 1-10,12-147
+  s_15d888f4b629c1::t_455cbd81a50eb0 11
+docs/plans/001-fs3-foundations/plan.dd.md
+  s_15d888f4b629c1::t_2172fc17a47a3d 36-41,47-53,124-127,133-138,157-165,171,177-184,205-209
+  s_15d888f4b629c1::t_365d32af47ac93 15,190-199
+  s_15d888f4b629c1::t_74d13bd06e40ca 30,54,116-118
+  s_15d888f4b629c1::t_dab34a5bcb00c3 62-69
+  s_15d888f4b629c1::t_69a92c368860cf 1,16-17,20-24,60-61,77
+  s_15d888f4b629c1::t_836122294c60d6 83,91-95,103-104,110,145-151,215-220
+  s_15d888f4b629c1::t_3997cdc5c7ca0c 4,78-82,84-90,96-102,105-109,111-115,119-123,128-132,140-144,152-156,166-170,172-176,185-189,200-204,210-214
+  s_15d888f4b629c1::t_3a8d0fb40e9092 2-3,5-14,18-19,25-29,31-35,42-46,55-59,70-76
+  s_15d888f4b629c1::t_af6a9313f16120 139
+docs/plans/001-fs3-foundations/assets/poc/treesitter/.gitignore
+  s_2bb813658c22b9::t_dc4f6ce3ed73a8 1
+docs/plans/001-fs3-foundations/the-flow.json
+  s_15d888f4b629c1::t_455cbd81a50eb0 151-183,438-458
+  s_15d888f4b629c1::t_72575f200f9e0e 124-150,313,329-339
+  s_15d888f4b629c1::t_cb0f9cb0fb7f0c 6,56-111,191,200-203,209,220,222
+  s_15d888f4b629c1::t_cb16acd5b0f2bf 112-123,221,223-231
+  s_15d888f4b629c1::t_3abede28842369 1-5,7-33,184-190,192-199,204-208,210-219,232-312,314-328,340-424,459-462
+  s_15d888f4b629c1::t_28962fb3c7780b 34-55,425-437
+docs/plans/001-fs3-foundations/base-prd.md
+  s_15d888f4b629c1::t_3bc64af0df436c 47
+  s_15d888f4b629c1::t_5d891a3665c84b 48
+  s_15d888f4b629c1::t_0076cb1234c63e 26-28
+  s_15d888f4b629c1::t_8460e36a34a29b 29-32
+  s_15d888f4b629c1::t_499cfb0c26db02 40
+  s_15d888f4b629c1::t_4ce229e61bd5d3 33
+  s_15d888f4b629c1::t_5aa1f571ab06cb 1-19,49-51
+  s_15d888f4b629c1::t_972ea7b743edd6 37
+  s_15d888f4b629c1::t_7115167e1ac25a 35-36
+  s_15d888f4b629c1::t_71dcc6c761cd21 20-24
+  s_15d888f4b629c1::t_6bcc1d1964569a 34
+  s_15d888f4b629c1::t_dbaab6a17a7d0a 43-45
+  s_15d888f4b629c1::t_638d8f4ee24ccf 38-39
+  s_15d888f4b629c1::t_8a1e49f061346f 25
+  s_15d888f4b629c1::t_e4f76f8d95febc 41-42,52
+  s_15d888f4b629c1::t_4af60b41ae4d31 46
+docs/plans/001-fs3-foundations/assets/tasks/phase-1/tasks.dd.md
+  s_15d888f4b629c1::t_455cbd81a50eb0 38-51
+  s_15d888f4b629c1::t_dab34a5bcb00c3 61,67,73,79,85,91,97,103,109,115,121,127,133,139
+  s_15d888f4b629c1::t_3a8d0fb40e9092 2-29,31-35,52-56
+  s_15d888f4b629c1::t_67c316376c6665 1,30,36-37,57-60,62-66,68-72,74-78,80-84,86-90,92-96,98-102,104-108,110-114,116-120,122-126,128-132,134-138
+docs/plans/001-fs3-foundations/assets/poc/treesitter/Cargo.lock
+  s_2bb813658c22b9::t_4679deadb42141 1-508
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c8496d4a4be66c8a2256c3ecc2f323cc23e0c0e7",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_2bb813658c22b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d0b06f2-0ed1-436e-8c90-170c7847c143",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
