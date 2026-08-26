@@ -41,8 +41,10 @@ matches · a failure you had to guess to interpret · runtime behaviour you coul
 only infer · hidden or tribal setup · catching yourself thinking "if only there
 were a…".
 
-Drain at session end:
-`harness observe --list --json` → `harness record retro` → `harness observe --clear`.
+Drain at session end — **BUT the buffer is SHARED across every agent in this tree**, so:
+CAPTURE freely (`harness observe`), but the drain (`--list` → `harness record retro` → `--clear`)
+is **o-prime-owned** — clearing destroys siblings' live observations. Workers: list and REPORT,
+never clear. (Ruled 2026-08-26 after a worker correctly refused the clear.)
 
 Encode, don't document: if you had to infer something twice, that is a missing
 command, not a missing doc.
