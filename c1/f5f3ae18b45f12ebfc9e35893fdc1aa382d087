@@ -1,0 +1,37 @@
+docs/plans/004-ship-it/assets/tasks/phase-1/tasks.dd.json
+  s_15d888f4b629c1::t_b79fe4d77901b1 1-10,13-16,18-20,78-80,131,133
+  s_15d888f4b629c1::t_1522503a34e5c4 11-12,17,21-77,81-130,132
+docs/plans/004-ship-it/assets/tasks/phase-1/tasks.dd.md
+  s_15d888f4b629c1::t_1522503a34e5c4 1,15,17,30,36-43,49-83
+  s_15d888f4b629c1::t_b79fe4d77901b1 2-14,16,18-29,31-35,44-48
+docs/plans/004-ship-it/assets/backpressure.dd.md
+  s_15d888f4b629c1::t_1522503a34e5c4 1-35
+docs/plans/004-ship-it/assets/backpressure.dd.json
+  s_15d888f4b629c1::t_1522503a34e5c4 1-79
+docs/plans/004-ship-it/plan.dd.md
+  s_15d888f4b629c1::t_1522503a34e5c4 1,4,15,17,30,36-39,45-48,54-60,68-116
+  s_15d888f4b629c1::t_b79fe4d77901b1 2-3,5-14,16,18-29,31-35,40-44,49-53,61-67
+docs/plans/004-ship-it/plan.dd.json
+  s_15d888f4b629c1::t_1522503a34e5c4 11-12,17,21-26,30-35,39-70,78,81-174,177-180,182
+  s_15d888f4b629c1::t_b79fe4d77901b1 1-10,13-16,18-20,27-29,36-38,71-77,79-80,175-176,181,183
+docs/plans/004-ship-it/the-flow.json
+  s_15d888f4b629c1::t_3a6b1ff70277be 1-363
+docs/plans/004-ship-it/the-flow.md
+  s_15d888f4b629c1::t_90f78c97783916 1-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c1f5f3ae18b45f12ebfc9e35893fdc1aa382d087",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
