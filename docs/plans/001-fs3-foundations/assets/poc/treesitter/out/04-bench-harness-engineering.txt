@@ -1,0 +1,41 @@
+root: /Users/jordanknight/substrate/harness-engineering  candidate files: 11452
+
+== single-thread ==
+files=11452 bytes=195.91MB elements=41632 error_trees=36 skipped=0
+wall=19.825s  578 files/s  9.88 MB/s
+
+| language | files | elements | MB | cpu-ms | µs/file |
+|---|---:|---:|---:|---:|---:|
+| bash | 25 | 29 | 0.10 | 9.1 | 362 |
+| css | 5 | 0 | 0.02 | 2.9 | 587 |
+| html | 579 | 0 | 18.04 | 1924.6 | 3323 |
+| javascript | 516 | 3279 | 4.26 | 353.4 | 684 |
+| json | 5844 | 0 | 129.79 | 6510.6 | 1114 |
+| markdown | 2911 | 27728 | 30.86 | 3487.2 | 1197 |
+| python | 28 | 152 | 0.21 | 30.0 | 1072 |
+| tsx | 9 | 53 | 0.03 | 4.2 | 467 |
+| typescript | 1504 | 10391 | 12.50 | 1156.9 | 769 |
+| yaml | 31 | 0 | 0.11 | 4.4 | 143 |
+
+slowest files:
+    839702µs    7023043 bytes  /Users/jordanknight/substrate/harness-engineering/.harness/temp/perf/vitest-cov.json
+    676056µs   18067014 bytes  /Users/jordanknight/substrate/harness-engineering/scratch/dogfood-049/june-v2/sessions/15eaa924-56f3-4427-9c7e-e4313cdb3e2a.session.json
+    612755µs   16071237 bytes  /Users/jordanknight/substrate/harness-engineering/scratch/sample-telemetry/sessions/15eaa924-56f3-4427-9c7e-e4313cdb3e2a.session.json
+    194314µs    5083348 bytes  /Users/jordanknight/substrate/harness-engineering/scratch/spike/15eaa924-56f3-4427-9c7e-e4313cdb3e2a.session.json
+    191995µs    5083348 bytes  /Users/jordanknight/substrate/harness-engineering/scratch/dogfood-2026-06/sessions/15eaa924-56f3-4427-9c7e-e4313cdb3e2a.session.json
+
+files with ERROR nodes (first 10):
+  [markdown] /Users/jordanknight/substrate/harness-engineering/.claude/worktrees/md-to-pdf-extension/docs/how/harness-flow.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/.claude/worktrees/md-to-pdf-extension/docs/plans/019-harness-update/execution.log.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/.claude/worktrees/md-to-pdf-extension/docs/plans/026-the-flow-cursor-meta-migration/reviews/review.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/.claude/worktrees/md-to-pdf-extension/docs/plans/008-harness-setup-flow/verification.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/.claude/worktrees/md-to-pdf-extension/docs/plans/040-flow-template-orient-instructions/flow-template-orient-instructions-plan.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/.claude/worktrees/md-to-pdf-extension/docs/plans/013-dogfood-harness-flow/fixes/FX004-onboarding-experience-test.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/.claude/worktrees/md-to-pdf-extension/docs/plans/016-arch-conformance-extension/arch-conformance-extension-plan.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/.claude/worktrees/md-to-pdf-extension/docs/plans/004-harness-core/harness-core-plan.md
+  [typescript] /Users/jordanknight/substrate/harness-engineering/.claude/worktrees/md-to-pdf-extension/harness/cli/test/adapters/exec/node-background.test.ts
+  [json] /Users/jordanknight/substrate/harness-engineering/.claude/worktrees/md-to-pdf-extension/.harness/extensions/arch-check/fixtures/malformed.json
+
+-- parallel (rayon, 16 threads) --
+wall=5.609s  2042 files/s  34.93 MB/s  speedup=3.53x
+determinism check: parallel element count == single-thread ✔

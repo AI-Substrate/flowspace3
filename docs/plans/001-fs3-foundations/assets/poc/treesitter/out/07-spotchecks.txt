@@ -1,0 +1,177 @@
+########## SPOT-CHECK 1 (typescript): /Users/jordanknight/substrate/harness-engineering/harness/cli/src/app.ts
+--- ground truth: grep of declaration keywords ---
+88:export function jsonFlag(argv: string[]): boolean | undefined {
+104:export function quietFlag(argv: string[]): boolean | undefined {
+112:export function asciiFlag(argv: string[]): boolean | undefined {
+126:export function deriveCommand(argv: string[]): string {
+148:export function shouldCaptureForArgv(argv: string[]): boolean {
+169:export function isExtensionsDisabled(argv: string[], env: NodeJS.ProcessEnv): boolean {
+173:function orientationEnvelope(version: string): Envelope {
+193:export function commanderErrorEnvelope(
+221:export function firstPositional(argv: string[]): string | null {
+249:export function noExtensionContextEnvelope(
+278:function unexpectedEnvelope(err: unknown, clock: Clock): Envelope {
+295:export async function loadRegistry(
+338:function readCollectorHooksForNudge(
+389:export function buildProgram(
+538:export interface MainOverrides {
+567:function defaultDeps(): VerbActDeps {
+592:export async function main(
+--- extractor ---
+
+### /Users/jordanknight/substrate/harness-engineering/harness/cli/src/app.ts [typescript]  27895 bytes  parse 4786µs  extract 1329µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  function_declaration         callable     88-96    jsonFlag
+  function_declaration         callable    104-109   quietFlag
+  function_declaration         callable    112-114   asciiFlag
+  function_declaration         callable    126-134   deriveCommand
+  function_declaration         callable    148-158   shouldCaptureForArgv
+  function_declaration         callable    169-171   isExtensionsDisabled
+  function_declaration         callable    173-184   orientationEnvelope
+  function_declaration         callable    193-211   commanderErrorEnvelope
+  function_declaration         callable    221-228   firstPositional
+  function_declaration         callable    249-276   noExtensionContextEnvelope
+  function_declaration         callable    278-286   unexpectedEnvelope
+  function_declaration         callable    295-316   loadRegistry
+  function_declaration         callable    338-381   readCollectorHooksForNudge
+  function_declaration         callable    389-535   buildProgram
+  arrow_function               callable    463-463   buildProgram.collectorHooks
+  interface_declaration        type        538-565   MainOverrides
+  function_declaration         callable    567-582   defaultDeps
+  function_declaration         callable    592-708   main
+
+########## SPOT-CHECK 2 (markdown, tree has ERROR node): /Users/jordanknight/substrate/harness-engineering/docs/how/harness-flow.md
+--- grep '^#{1,6} ' finds: 32 heading-looking lines ---
+--- extractor ---
+
+### /Users/jordanknight/substrate/harness-engineering/docs/how/harness-flow.md [markdown]  43103 bytes  parse 6450µs  extract 339µs  error=true
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  atx_heading                  section       1-771   The `harness flow` verb family
+  atx_heading                  section      23-85    The `harness flow` verb family > The model in one minute
+  atx_heading                  section      63-85    The `harness flow` verb family > The model in one minute > Provenance — and the deliberate `agent` / `plan_id` asymmetry
+  atx_heading                  section      86-257   The `harness flow` verb family > The verb pipeline
+  atx_heading                  section     227-242   The `harness flow` verb family > The verb pipeline > Lean output — `--quiet` (flow mutations only)
+  atx_heading                  section     243-257   The `harness flow` verb family > The verb pipeline > Telemetry: position moves become per-stage attribution for free
+  atx_heading                  section     258-330   The `harness flow` verb family > Position, intent & the rail — `nav` + `rail`
+  atx_heading                  section     297-330   The `harness flow` verb family > Position, intent & the rail — `nav` + `rail` > `orient` — where am I, what do I do next
+  atx_heading                  section     331-353   The `harness flow` verb family > Node `instructions` — authored guidance an agent reads
+  atx_heading                  section     354-369   The `harness flow` verb family > Seed templates — a template can carry a whole starter, not just a spine
+  atx_heading                  section     370-469   The `harness flow` verb family > Chores — cross-cutting upkeep on the spine
+  atx_heading                  section     435-469   The `harness flow` verb family > Chores — cross-cutting upkeep on the spine > Chores on the rail
+  atx_heading                  section     470-647   The `harness flow` verb family > The dd gate — `dd_link`, the one place a flow refuses
+  atx_heading                  section     499-517   The `harness flow` verb family > The dd gate — `dd_link`, the one place a flow refuses > What the gate actually asks
+  atx_heading                  section     518-540   The `harness flow` verb family > The dd gate — `dd_link`, the one place a flow refuses > When it refuses
+  atx_heading                  section     541-551   The `harness flow` verb family > The dd gate — `dd_link`, the one place a flow refuses > `--force` — the defended override
+  atx_heading                  section     552-597   The `harness flow` verb family > The dd gate — `dd_link`, the one place a flow refuses > Seeing it — `orient`, the rail, the render
+  atx_heading                  section     598-647   The `harness flow` verb family > The dd gate — `dd_link`, the one place a flow refuses > Basis drift — information, never a refusal
+  atx_heading                  section     648-700   The `harness flow` verb family > The bundled flows — `harness-adopt` & `harness-loop`
+  atx_heading                  section     675-700   The `harness flow` verb family > The bundled flows — `harness-adopt` & `harness-loop` > Chore injection — the loop alongside an active the-flow
+  atx_heading                  section     701-736   The `harness flow` verb family > Authoring a custom flow type
+  atx_heading                  section     737-746   The `harness flow` verb family > Legacy flows — the clean break
+  atx_heading                  section     747-764   The `harness flow` verb family > Regenerating the golden render fixtures (maintainers)
+  atx_heading                  section     765-771   The `harness flow` verb family > See also
+
+########## SPOT-CHECK 3 (rust): the POC's own src/main.rs
+--- ground truth ---
+13:fn language_for_ext(ext: &str) -> Option<(&'static str, Language)> {
+41:fn classify(ts_kind: &str) -> &'static str {
+86:fn is_element(cat: &str) -> bool {
+93:const DECL_SUFFIXES: [&str; 5] = ["_item", "_declaration", "_definition", "_signature", "_spec"];
+96:const BARE_DECLS: [&str; 6] = ["method", "singleton_method", "class", "module", "def", "function"];
+98:fn is_declaration_shaped(kind: &str, cat: &str) -> bool {
+119:fn is_container_only(kind: &str) -> bool {
+131:struct Element {
+142:fn node_name(node: Node, src: &[u8]) -> Option<String> {
+173:fn bound_callable_name(node: Node, src: &[u8]) -> Option<String> {
+198:fn extract(lang_name: &str, src: &[u8], tree: &tree_sitter::Tree) -> Vec<Element> {
+207:fn walk(node: Node, src: &[u8], stack: &mut Vec<String>, out: &mut Vec<Element>) {
+256:fn extract_markdown(src: &[u8], tree: &tree_sitter::Tree) -> Vec<Element> {
+321:struct FileResult {
+332:fn parse_file(path: &Path) -> Option<FileResult> {
+364:fn collect_files(root: &Path) -> Vec<PathBuf> {
+403:fn print_table(r: &FileResult) {
+418:fn summarize(results: &[FileResult], label: &str, wall: f64) {
+464:fn main() {
+--- extractor ---
+
+### src/main.rs [rust]  19840 bytes  parse 4002µs  extract 1868µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  function_item                callable     13-37    language_for_ext
+  function_item                callable     41-83    classify
+  function_item                callable     86-88    is_element
+  function_item                callable     98-116   is_declaration_shaped
+  function_item                callable    119-128   is_container_only
+  struct_item                  type        131-138   Element
+  function_item                callable    142-167   node_name
+  function_item                callable    173-194   bound_callable_name
+  function_item                callable    198-205   extract
+  function_item                callable    207-252   walk
+  function_item                callable    256-317   extract_markdown
+  struct_item                  type        321-330   FileResult
+  function_item                callable    332-359   parse_file
+  function_item                callable    364-399   collect_files
+  function_item                callable    403-416   print_table
+  function_item                callable    418-462   summarize
+  function_item                callable    464-517   main
+
+########## SPOT-CHECK 4 (python): /Users/jordanknight/substrate/fs2/flow_squared/src/fs2/core/models/code_node.py
+--- ground truth ---
+27:def classify_node(ts_kind: str) -> str:
+97:class CodeNode:
+208:    def file_path(self) -> str:
+222:    def create_file(
+299:    def create_type(
+385:    def create_callable(
+471:    def create_section(
+557:    def create_block(
+--- extractor ---
+
+### /Users/jordanknight/substrate/fs2/flow_squared/src/fs2/core/models/code_node.py [python]  23578 bytes  parse 1700µs  extract 767µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  function_definition          callable     27-93    classify_node
+  class_definition             type         97-640   CodeNode
+  function_definition          callable    208-217   CodeNode.file_path
+  function_definition          callable    222-296   CodeNode.create_file
+  function_definition          callable    299-382   CodeNode.create_type
+  function_definition          callable    385-468   CodeNode.create_callable
+  function_definition          callable    471-554   CodeNode.create_section
+  function_definition          callable    557-640   CodeNode.create_block
+
+########## SPOT-CHECK 5 (tsx): /Users/jordanknight/substrate/harness-engineering/harness/cli/src/services/sensors/tui/app.tsx
+--- ground truth ---
+23:export interface SensorsAppProps extends Omit<SensorsTuiLaunchInput, 'terminal'> {
+36:export interface TerminalSize {
+41:export function rowsForViewport<T>(rows: readonly T[], selected: number, tier: WidthTier): T[] {
+45:export class ResizeDebouncer {
+60:function useTerminalSize(terminal: SensorsTuiTerminal, clock: SensorsAppProps['clock']): TerminalSize {
+81:export function SensorsApp(props: SensorsAppProps) {
+--- extractor ---
+
+### /Users/jordanknight/substrate/harness-engineering/harness/cli/src/services/sensors/tui/app.tsx [tsx]  8229 bytes  parse 3170µs  extract 803µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  interface_declaration        type         23-26    SensorsAppProps
+  interface_declaration        type         36-39    TerminalSize
+  function_declaration         callable     41-43    rowsForViewport
+  class_declaration            type         45-58    ResizeDebouncer
+  method_definition            callable     48-51    ResizeDebouncer.constructor
+  method_definition            callable     53-57    ResizeDebouncer.notify
+  function_declaration         callable     60-79    useTerminalSize
+  arrow_function               callable     69-71    useTerminalSize.onResize
+  function_declaration         callable     81-245   SensorsApp
+
+--- SPOT-CHECK 2 verification: which '#' lines are REAL headings? ---
+headings outside code fences: 24   sections extracted: 24
+'#' lines INSIDE fences (shell comments, correctly NOT headings): 8
+   line 236: # → { "command":"flow", "status":"ok", …, "data": { "path": "<fl
+   line 432: # … "due_chores": [ { id, label, status, kind, importance, comma
+   line 625: # Print to stdout (human: raw markdown; --json: markdown rides i
+   line 628: # Write it to a file (must be inside the repo):
+   line 631: # CI drift guard — re-render and compare to the committed siblin
+   line 682: # add a fire-hook chore inline on the spine (rides the rail):
+   line 687: # or flag an existing the-flow seam node as a chore in place (R-
+   line 709: # edit the statuses / nodeTypes, then:

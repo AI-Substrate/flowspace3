@@ -1,0 +1,229 @@
+
+### /Users/jordanknight/substrate/fs2/flow_squared/tests/fixtures/ast_samples/rust/structs_impl.rs [rust]  321 bytes  parse 96µs  extract 46µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  struct_item                  type          1-3     Calculator
+  impl_item                    type          5-14    Calculator
+  function_item                callable      6-8     Calculator.new
+  function_item                callable     10-13    Calculator.add
+  impl_item                    type         16-20    Calculator
+  function_item                callable     17-19    Calculator.default
+
+### /Users/jordanknight/substrate/fs2/flow_squared/tests/fixtures/ast_samples/rust/traits_generics.rs [rust]  425 bytes  parse 104µs  extract 72µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  trait_item                   type          1-4     Repository
+  function_signature_item      callable      2-2     Repository.find
+  function_signature_item      callable      3-3     Repository.save
+  struct_item                  type          6-8     InMemoryRepo
+  impl_item                    type         10-19    InMemoryRepo
+  function_item                callable     11-13    InMemoryRepo.find
+  function_item                callable     15-18    InMemoryRepo.save
+
+### /Users/jordanknight/substrate/fs2/flow_squared/tests/fixtures/ast_samples/python/decorators_async.py [python]  565 bytes  parse 307µs  extract 53µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  function_definition          callable      4-16    retry
+  function_definition          callable      5-14    retry.decorator
+  function_definition          callable      7-12    retry.decorator.wrapper
+  class_definition             type         19-30    Service
+  function_definition          callable     21-22    Service.call_api
+  function_definition          callable     25-26    Service.status
+  function_definition          callable     29-30    Service.create
+
+### /Users/jordanknight/substrate/fs2/flow_squared/tests/fixtures/ast_samples/python/nested_classes.py [python]  268 bytes  parse 55µs  extract 46µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  class_definition             type          1-15    Outer
+  class_definition             type          2-4     Outer.Inner
+  function_definition          callable      3-4     Outer.Inner.inner_method
+  function_definition          callable      6-12    Outer.create_closure
+  function_definition          callable      9-10    Outer.create_closure.closure_func
+  function_definition          callable     14-15    Outer.processor
+
+### /Users/jordanknight/substrate/fs2/flow_squared/tests/fixtures/ast_samples/typescript/interfaces_types.ts [typescript]  226 bytes  parse 79µs  extract 40µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  interface_declaration        type          1-5     User
+  type_alias_declaration       type          7-7     Status
+  interface_declaration        type          9-12    Repository
+  method_signature             callable     10-10    Repository.find
+  method_signature             callable     11-11    Repository.save
+
+### /Users/jordanknight/substrate/fs2/flow_squared/tests/fixtures/ast_samples/typescript/react_component.tsx [tsx]  264 bytes  parse 477µs  extract 40µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  interface_declaration        type          1-4     Props
+  arrow_function               callable      6-8     Button
+  function_declaration         callable     10-12    App
+
+### /Users/jordanknight/substrate/fs2/flow_squared/tests/fixtures/ast_samples/typescript/anonymous_callbacks.ts [typescript]  1549 bytes  parse 156µs  extract 129µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  arrow_function               callable     17-19    handleClick
+  arrow_function               callable     22-24    fetchData
+  function_declaration         callable     33-35    helperInsideCallback
+  function_declaration         callable     43-45    topLevelFunction
+
+### /Users/jordanknight/substrate/fs2/flow_squared/tests/fixtures/ast_samples/csharp/namespace_class.cs [csharp]  304 bytes  parse 152µs  extract 27µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  class_declaration            type          3-16    MyApp.Services.UserService
+  constructor_declaration      callable      7-10    MyApp.Services.UserService.UserService
+  method_declaration           callable     12-15    MyApp.Services.UserService.GetUser
+
+### /Users/jordanknight/substrate/fs2/flow_squared/tests/fixtures/ast_samples/csharp/async_linq.cs [csharp]  373 bytes  parse 317µs  extract 42µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  class_declaration            type          5-15    DataProcessor
+  method_declaration           callable      7-14    DataProcessor.ProcessAsync
+
+### /Users/jordanknight/substrate/fs2/flow_squared/tests/fixtures/ast_samples/go/structs_methods.go [go]  268 bytes  parse 56µs  extract 50µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  type_spec                    type          3-5     Calculator
+  function_declaration         callable      7-9     NewCalculator
+  method_declaration           callable     11-14    Calculator.Add
+  method_declaration           callable     16-18    Calculator.Value
+
+### /Users/jordanknight/substrate/fs2/flow_squared/tests/fixtures/ast_samples/go/interfaces.go [go]  471 bytes  parse 66µs  extract 70µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  type_spec                    type          7-9     Entity
+  type_spec                    type         11-14    Repository
+  type_spec                    type         16-19    User
+  method_declaration           callable     21-23    User.GetID
+  type_spec                    type         25-27    UserRepo
+  method_declaration           callable     29-34    UserRepo.Find
+
+### /Users/jordanknight/substrate/fs2/flow_squared/tests/fixtures/ast_samples/markdown/headings_nested.md [markdown]  136 bytes  parse 179µs  extract 12µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  atx_heading                  section       1-16    Main Title
+  atx_heading                  section       5-12    Main Title > Section One
+  atx_heading                  section       9-12    Main Title > Section One > Subsection 1.1
+  atx_heading                  section      13-16    Main Title > Section Two
+
+### /Users/jordanknight/substrate/fs2/flow_squared/tests/fixtures/samples/java/UserService.java [java]  8400 bytes  parse 618µs  extract 527µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  class_declaration            type         18-282   UserService
+  record_declaration           type         27-58    UserService.User
+  method_declaration           callable     39-50    UserService.User.create
+  method_invocation            callable     40-40    UserService.User.create.now
+  method_declaration           callable     55-57    UserService.User.withUpdatedAt
+  enum_declaration             type         63-83    UserService.UserRole
+  constructor_declaration      callable     72-74    UserService.UserRole.UserRole
+  method_declaration           callable     76-78    UserService.UserRole.getLevel
+  method_declaration           callable     80-82    UserService.UserRole.hasPermission
+  class_declaration            type         88-99    UserService.UserException
+  constructor_declaration      callable     91-94    UserService.UserException.UserException
+  method_declaration           callable     96-98    UserService.UserException.getCode
+  enum_declaration             type        104-110   UserService.ErrorCode
+  constructor_declaration      callable    119-126   UserService.UserService
+  method_declaration           callable    134-145   UserService.findById
+  method_invocation            callable    136-136   UserService.findById.get
+  method_invocation            callable    142-142   UserService.findById.findById
+  method_declaration           callable    153-155   UserService.findByEmail
+  method_declaration           callable    166-182   UserService.createUser
+  method_invocation            callable    175-175   UserService.createUser.create
+  method_invocation            callable    176-176   UserService.createUser.save
+  method_declaration           callable    193-218   UserService.updateUser
+  method_invocation            callable    194-196   UserService.updateUser.orElseThrow
+  method_invocation            callable    215-215   UserService.updateUser.save
+  method_declaration           callable    226-238   UserService.deactivateUser
+  method_declaration           callable    246-251   UserService.findActiveByRole
+  method_declaration           callable    259-267   UserService.searchByNameAsync
+  method_declaration           callable    269-274   UserService.validateEmail
+  method_declaration           callable    276-281   UserService.validateName
+  interface_declaration        type        285-290   UserRepository
+  method_declaration           callable    286-286   UserRepository.findById
+  method_declaration           callable    287-287   UserRepository.findByEmail
+  method_declaration           callable    288-288   UserRepository.save
+  method_declaration           callable    289-289   UserRepository.findAll
+  interface_declaration        type        292-294   EmailService
+  method_declaration           callable    293-293   EmailService.sendWelcomeEmail
+  interface_declaration        type        296-300   CacheManager
+  method_declaration           callable    297-297   CacheManager.get
+  method_declaration           callable    298-298   CacheManager.put
+  method_declaration           callable    299-299   CacheManager.invalidate
+
+### /Users/jordanknight/substrate/fs2/flow_squared/tests/fixtures/samples/c/main.cpp [cpp]  7139 bytes  parse 691µs  extract 471µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  class_specifier              type         28-52    events.Event
+  function_definition          callable     30-30    events.Event.Event
+  function_definition          callable     31-31    events.Event.~Event()
+  function_definition          callable     42-42    events.Event.stopPropagation
+  function_definition          callable     48-48    events.Event.isPropagationStopped
+  struct_specifier             type         68-72    events.HandlerEntry
+  class_specifier              type         90-252   events.EventEmitter
+  function_definition          callable     92-92    events.EventEmitter.EventEmitter
+  function_definition          callable    102-104   events.EventEmitter.on
+  function_definition          callable    116-118   events.EventEmitter.once
+  function_definition          callable    128-143   events.EventEmitter.off
+  function_definition          callable    157-194   events.EventEmitter.emit
+  function_definition          callable    204-208   events.EventEmitter.emitAsync
+  function_definition          callable    217-224   events.EventEmitter.listenerCount
+  function_definition          callable    232-236   events.EventEmitter.removeAllListeners
+  function_definition          callable    240-247   events.EventEmitter.subscribe
+  struct_specifier             type        255-260   events.UserCreatedEvent
+  function_definition          callable    258-258   events.UserCreatedEvent.UserCreatedEvent
+  function_definition          callable    259-259   events.UserCreatedEvent.type
+  struct_specifier             type        262-269   events.MessageReceivedEvent
+  function_definition          callable    266-267   events.MessageReceivedEvent.MessageReceivedEvent
+  function_definition          callable    268-268   events.MessageReceivedEvent.type
+
+### /Users/jordanknight/substrate/fs2/flow_squared/tests/fixtures/samples/ruby/tasks.rb [ruby]  6276 bytes  parse 657µs  extract 377µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  class                        type         12-32    DatabaseTasks.Config
+  method                       callable     16-25    DatabaseTasks.Config.initialize
+  method                       callable     27-31    DatabaseTasks.Config.connection_url
+  class                        type         35-125   DatabaseTasks.MigrationRunner
+  method                       callable     38-43    DatabaseTasks.MigrationRunner.initialize
+  method                       callable     48-62    DatabaseTasks.MigrationRunner.migrate_up
+  method                       callable     68-80    DatabaseTasks.MigrationRunner.rollback
+  method                       callable     85-93    DatabaseTasks.MigrationRunner.status
+  method                       callable     97-103   DatabaseTasks.MigrationRunner.all_migrations
+  method                       callable    105-107   DatabaseTasks.MigrationRunner.pending_migrations
+  method                       callable    109-111   DatabaseTasks.MigrationRunner.applied_migrations
+  method                       callable    113-116   DatabaseTasks.MigrationRunner.migration_applied
+  method                       callable    118-120   DatabaseTasks.MigrationRunner.apply_migration
+  method                       callable    122-124   DatabaseTasks.MigrationRunner.revert_migration
+  class                        type        128-159   DatabaseTasks.Seeder
+  method                       callable    131-134   DatabaseTasks.Seeder.initialize
+  method                       callable    140-146   DatabaseTasks.Seeder.seed
+  method                       callable    153-158   DatabaseTasks.Seeder.create_unless_exists
+
+### /Users/jordanknight/substrate/fs2/flow_squared/tests/fixtures/samples/bash/deploy.sh [bash]  7322 bytes  parse 1087µs  extract 417µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  function_definition          callable     36-40    log_info
+  function_definition          callable     42-46    log_success
+  function_definition          callable     48-52    log_warning
+  function_definition          callable     54-58    log_error
+  function_definition          callable     65-79    validate_environment
+  function_definition          callable     82-99    check_dependencies
+  function_definition          callable    102-125   wait_for_healthy
+  function_definition          callable    132-146   prepare_image
+  function_definition          callable    149-174   deploy_to_kubernetes
+  function_definition          callable    177-197   rollback
+  function_definition          callable    203-248   main
+
+### /Users/jordanknight/substrate/fs2/flow_squared/tests/fixtures/samples/javascript/utils.js [javascript]  4395 bytes  parse 485µs  extract 237µs  error=false
+  ts_kind                      category       lines  qualified_name
+  ---------------------------- ---------- ---------  ----------------------------------------
+  function_declaration         callable     12-25    debounce
+  function_declaration         callable     33-56    throttle
+  function_declaration         callable     63-88    deepClone
+  function_declaration         callable     97-113   getNestedValue
+  function_declaration         callable    121-126   formatNumber
+  function_declaration         callable    134-146   randomString
+  function_declaration         callable    155-172   retryWithBackoff
+
+### /Users/jordanknight/substrate/fs2/flow_squared/tests/fixtures/ast_samples/terraform/resources_providers.tf [hcl]  322 bytes  parse 122µs  extract 46µs  error=false
+  (no elements)
+
+### /Users/jordanknight/substrate/fs2/flow_squared/tests/fixtures/ast_samples/python/syntax_error.py [python]  101 bytes  parse 34µs  extract 5µs  error=true
+  (no elements)

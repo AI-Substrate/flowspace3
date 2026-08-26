@@ -1,0 +1,52 @@
+# fs3 — base PRD
+**Status**: DRAFT — iterating with Jordan · **Updated**: 2026-08-26
+
+## Core requirements
+
+1. **Semantic code search.** fs3 indexes a codebase into individual code elements and answers queries by meaning, text, or regex — finding the right code even when the query's words never appear in it.
+2. **Rust implementation.** The tool is a single Rust binary; tree-sitter is used directly (native bindings) for AST parsing across languages, with no per-language configuration.
+3. **Element-level model.** A file is split into elements — functions, methods, classes/types, markdown sections — each with a stable address (kind, path, qualified name, line span) and a universal kind classification on top of the raw tree-sitter kind.
+4. **Central Postgres + pgvector store.** All data — elements, summaries, embeddings, refs — lives in one central PG instance covering every repo, queryable in one place; no per-repo graph files, no pickle, no in-memory preload.
+5. **Git-native incremental indexing.** Derived data is keyed by git blob SHA: indexing any branch, commit, or worktree diffs its git tree against the store and only new blobs pay parse/summarize/embed. Creating a worktree requires no copy and no rescan.
+6. **Dirty-file support.** Uncommitted working-tree changes index through the same mechanism (`git hash-object` of working content) — no special case, no stale results for the file you're editing.
+7. **Enrichment: summarize + embed.** Each file and each significant element gets an LLM-generated summary; both raw content and summary are embedded, and semantic search scores against both.
+8. **Pluggable providers, online or local.** LLM summarization and embedding each work against online APIs or local models, selected by config; switching providers never corrupts existing data (derived rows are keyed by model/prompt version).
+9. **Parallel pipeline.** Parsing is CPU-parallel; summarize/embed are async with rate limiting and batching. Indexing a large repo saturates the machine and the API limits, not the developer's patience.
+10. **No SCIP / no cross-file resolution toolchain.** fs3 ships no Sourcegraph/SCIP indexers and no call-graph engine; cross-file relationships are out of scope for the core.
+11. **Search modes and envelope.** `search` supports semantic, text, and regex modes and returns a structured JSON envelope with scores, snippets, pagination, and per-folder hit counts.
+12. **Multi-repo queries.** Because the store is central, a query can target one repo, several, or all of them — repo/branch is a filter, not a separate installation.
+13. **Fast cold start.** Any command answers directly from PG with no warm-up step; an agent invoking fs3 mid-task gets its answer in one fast round-trip.
+14. **CLI first, MCP-ready.** The v1 surface is the CLI (scan, search, get-node-style retrieval, tree/structure views); the data model and envelopes are designed so an MCP server is a thin layer over the same queries.
+15. **Per-machine daemon.** One daemon per machine (not per repo) owns watching and indexing for many folders/repos; folders are added and removed at runtime via the CLI, no restart.
+16. **Change-driven watcher, never rescans.** The watcher queues dirty/changed files as they happen and indexes just those changes; it never re-scans the world (fs2's rescan-everything watcher is the explicit anti-pattern).
+17. **CLI ↔ daemon over local-only HTTP.** The CLI talks to the daemon over HTTP bound to localhost — portable across macOS, Windows, and Linux with no named-pipe/unix-socket platform splits.
+18. **Cross-repo batching.** Because one daemon serves many repos, changed files from different repos share the same batches to LLM and embedding providers — one queue, maximum batch efficiency.
+19. **Daemon web UI (later).** The daemon may later serve a small local website showing index/graph status across repos; the HTTP surface from req 17 is designed so this is an addition, not a rework.
+20. **Everything through the daemon.** The daemon is the single PG writer and the single query path: indexing commands AND searches go through its local HTTP API, so the CLI (and later MCP/web) are thin clients of one service that owns the connection pool, queue, batching, and caching.
+21. **Broad language coverage.** Like fs2, fs3 parses a very large set of file extensions via tree-sitter grammar packs — adding a language is adding a grammar, never writing per-language code.
+22. **First-class markdown.** Markdown files get special handling: split into heading sections as elements (nested structure preserved), each section summarized and embedded like code — docs are as searchable as source.
+23. **Non-git folders still index.** Plain folders without a git repo index through the same content-hash mechanism (hash the bytes directly); git is the optimization for diffing and worktrees, never a requirement to participate.
+24. **Conversations are first-class content.** fs3 indexes agent↔human conversations alongside files: each conversation has a GUID and is anchored to a location (root path + worktree + commit base), and each turn (agent or human) is an element — summarized and embedded raw + summary, exactly like code. This is total-recall memory: everything is kept, and selective recall happens at query time, not storage time.
+25. **Flexible turn payloads.** A turn contains typed sub-items (tool calls today, other kinds tomorrow) stored generically — new item types slot in without schema migrations or hard-coded handling.
+26. **Conversation search + windowed navigation.** Search can be scoped to conversations (e.g. `--in conversations`); hits are turns carrying `(conversation_id, turn_no)`, and the CLI fetches a contiguous window around any hit (`-10/+20` style) — sequence is the navigation shape, as hierarchy is for code and sections are for markdown.
+27. **Harness submits conversation entries.** The engineering harness (git-ai hooks) integrates with fs3 to submit new conversation entries as they happen; the submission mechanism is deliberately deferred — the requirement is the ingestion surface exists and is append-friendly.
+28. **Machine-wide config; the CLI is `flowspace3`.** ALL configuration lives in `~/.config/flowspace3/` as files (machine-wide defaults + per-worktree override sections) — none in the DB; the DB holds data only. The CLI binary is named `flowspace3`.
+29. **Configurable debounce.** How long a dirty file must settle before processing is a config value, defaulting to 10 seconds.
+30. **Dirty-file work queue in PG.** Changed files land in a queue table; daemon workers pick rows up and process them through the pipeline — the queue is the single funnel for all indexing work.
+31. **Scan = bulk enqueue.** `flowspace3 add path <folder>` (and any fresh scan) simply enqueues all the folder's files into the same queue the watcher feeds — initial indexing and live watching are one mechanism, not two code paths.
+32. **Size-floor summaries.** Only elements above a configurable size threshold get their own LLM summary (code and markdown alike); smaller elements ride on their parent's summary while still getting raw-content embeddings, so everything stays searchable but tokens go where they add signal.
+33. **Docker-compose stack, host CLI.** The daemon, Postgres/pgvector, and any supporting services run in Docker via compose (per machine); only the `flowspace3` CLI runs on the host, talking to the daemon over localhost HTTP.
+34. **`flowspace3 doctor`.** A doctor command validates the whole stack — compose services up, PG reachable and schema current, daemon healthy, providers reachable — and says exactly what to fix when something isn't.
+35. **Repo identity = git remote URL, with fallback.** A repo is keyed by its git remote URL when it has one (so clones and worktrees of the same repo share an identity and content); repos without a remote — or plain non-git folders — fall back to a declared name/path key.
+36. **Summaries carry tags.** Every LLM summary run also generates 1–5 tags naming the element's most important concepts, stored alongside the summary — a cheap faceting/filter axis on top of vector search.
+37. **Fail fast, doctor heals.** When the CLI finds the daemon unreachable it fails fast and suggests `flowspace3 doctor`; doctor diagnoses and offers to fire the stack up — the CLI never silently auto-starts infrastructure.
+38. **Central model registry with per-worktree overrides.** Multiple embedding models and LLMs are configured centrally as named entries with machine-wide defaults; any worktree can override which models it uses (override sections in the config folder, keyed by worktree), and every derived row records which model produced it (so model changes coexist, as fs2's graph did).
+39. **Zero repo footprint.** fs3 never writes anything into the repos it indexes — no dotfolder, no config file, no artifacts (unlike fs2's `.fs2/`); all configuration (defaults + worktree overrides) lives in `~/.config/flowspace3/`, the DB holds data only.
+40. **Config hot-reload.** The daemon watches its own config folder and applies changes at runtime (it is a file-watcher by trade); precedence is simple and fixed: machine defaults < worktree override < explicit CLI flag.
+41. **Filtered discovery, git-ignore-aware.** By default the scanner indexes files git does not ignore (tracked + untracked-but-not-ignored, so brand-new files index immediately without `git add`), restricted by an extension allow-list and a max-file-size ceiling — all three configurable. Per-repo config can force-include folders the defaults would miss (e.g. a gitignored folder you do want indexed). POC evidence: identical elements from 11% of the bytes, 13.8× faster.
+42. **Elements are structure-checked, not name-matched.** A node only becomes an element if a small heuristic check confirms it's a genuine declaration (has a name, has a body, sits in a declaration position) — never on type-name pattern matching alone. POC evidence: fs2's name-matching invented elements (C++ file: 58 claimed vs 22 real).
+43. **Config formats are excluded.** Data/config formats (YAML, JSON, TOML, HCL, and kin) are not indexed in v1 — they yield no code-shaped elements and carry PII/secrets risk (they'd otherwise be summarized and embedded into a central store); revisit how to handle configs later. Unsupported/no-grammar files must be an observable outcome (reported as skipped), never a silent gap.
+
+## Open questions (not yet requirements)
+
+*(all resolved 2026-08-26 — see reqs 28–37)*

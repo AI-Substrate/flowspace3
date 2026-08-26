@@ -1,0 +1,147 @@
+{
+  "dd": {
+    "schema": "builder/backpressure"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Backpressure Coverage - fs3 Foundations",
+        "plan": "../plan.dd.json#meta",
+        "basis_sha": "0c282f8cc8aa2bd8115d5e5916e5e5409d231aa0243131debf012191f6e9b295",
+        "certainty": "Partial"
+      }
+    },
+    {
+      "name": "rows",
+      "value": [
+        {
+          "id": "bp-0001",
+          "criterion": "ac-0001 clean-checkout build+test green",
+          "phase": "1",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "RUN: harness checks (paved today; degraded until tk-0001 lands)",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0002",
+          "criterion": "ac-0002 crate graph matches workshop 001; fs3-core dep-free",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "BUILD->RUN: tk-000c drift checker; then harness checks (drift step included)",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0003",
+          "criterion": "ac-0003 drift check goes red on forbidden dep",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "BUILD->RUN: committed fixture manifest asserted RED by cargo test (tk-000c)",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0004",
+          "criterion": "ac-0004 compose PG up + store round-trip",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "BUILD->RUN: tk-0007/tk-0008; then cargo test -p fs3-store (integration)",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0005",
+          "criterion": "ac-0005 daemon /health + flowspace3 ping",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "BUILD->RUN: tk-000a/tk-000b; then daemon integration test + flowspace3 ping",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0006",
+          "criterion": "ac-0006 exemplar tests all tiers + fake determinism",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "BUILD->RUN: tk-0002/4/8; then cargo test --workspace",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0007",
+          "criterion": "ac-0007 harness checks green + boot healthy",
+          "phase": "1",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "RUN: harness checks && harness boot",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0008",
+          "criterion": "ac-0008 README + docs/how/architecture.md signposted (existence)",
+          "phase": "1",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND->RUN: add docs-link step to checks ext (tk-000d); then harness checks",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0009",
+          "criterion": "ac-0008 documentation reads well (quality)",
+          "phase": "1",
+          "mode": "ABSENT",
+          "tier": "human-judgement",
+          "proof": "no command can judge prose quality; human review at phase review",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-000a",
+          "criterion": "failure mode: green-but-wrong drift checker",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "BUILD->RUN: the bp-0003 fixture IS the checker's negative control",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-000b",
+          "criterion": "failure mode: works-on-my-machine (docker/config-dir absent)",
+          "phase": "1",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND->RUN: boot ext gains compose probe (tk-000d); then harness boot",
+          "state": "unchecked"
+        }
+      ]
+    },
+    {
+      "name": "sensors",
+      "value": [
+        {
+          "id": "sn-0001",
+          "name": "quality gate (fmt, clippy -D warnings, test)",
+          "command": "harness checks",
+          "dimension": "maintainability+behaviour",
+          "found_in": ".harness/extensions/checks"
+        },
+        {
+          "id": "sn-0002",
+          "name": "boot (toolchain -> build -> checks + orientation)",
+          "command": "harness boot",
+          "dimension": "behaviour",
+          "found_in": ".harness/extensions/boot"
+        },
+        {
+          "id": "sn-0003",
+          "name": "plan/doc integrity",
+          "command": "harness plan validate docs/plans/001-fs3-foundations",
+          "dimension": "maintainability",
+          "found_in": "global CLI"
+        }
+      ]
+    }
+  ],
+  "references": []
+}

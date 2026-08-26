@@ -1,0 +1,40 @@
+root: /Users/jordanknight/substrate/harness-engineering  candidate files: 2356
+
+== single-thread ==
+files=2356 bytes=47.08MB elements=18628 error_trees=15 skipped=0
+wall=4.898s  481 files/s  9.61 MB/s
+
+| language | files | elements | MB | cpu-ms | µs/file |
+|---|---:|---:|---:|---:|---:|
+| bash | 9 | 13 | 0.04 | 3.8 | 424 |
+| html | 10 | 0 | 0.43 | 21.0 | 2104 |
+| javascript | 19 | 28 | 0.05 | 5.3 | 279 |
+| json | 405 | 0 | 25.05 | 1141.1 | 2817 |
+| markdown | 1205 | 12761 | 13.14 | 1526.3 | 1266 |
+| python | 6 | 12 | 0.01 | 2.0 | 337 |
+| tsx | 9 | 53 | 0.03 | 4.2 | 469 |
+| typescript | 689 | 5761 | 8.27 | 851.0 | 1235 |
+| yaml | 4 | 0 | 0.05 | 1.9 | 468 |
+
+slowest files:
+    129403µs    2415323 bytes  /Users/jordanknight/substrate/harness-engineering/docs/plans/083-windows-portability/assets/windows/vitest-results-control.json
+    127282µs    2338099 bytes  /Users/jordanknight/substrate/harness-engineering/docs/plans/083-windows-portability/assets/windows/vitest-results-timeout.json
+    124631µs    2416744 bytes  /Users/jordanknight/substrate/harness-engineering/docs/plans/083-windows-portability/assets/windows/vm-082/vitest-results.json
+    123971µs    2359275 bytes  /Users/jordanknight/substrate/harness-engineering/docs/plans/083-windows-portability/assets/windows/vm-082/vitest-results2.json
+     40995µs    1072530 bytes  /Users/jordanknight/substrate/harness-engineering/telemetry-report/sessions/22583d3b-197d-4693-81f1-5c8222a35a90.session.json
+
+files with ERROR nodes (first 10):
+  [json] /Users/jordanknight/substrate/harness-engineering/.harness/extensions/arch-check/fixtures/malformed.json
+  [html] /Users/jordanknight/substrate/harness-engineering/.harness/extensions/html-snap/fixtures/bad-nesting.html
+  [markdown] /Users/jordanknight/substrate/harness-engineering/docs/how/harness-flow.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/docs/plans/archive/004-harness-core/harness-core-plan.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/docs/plans/archive/008-harness-setup-flow/verification.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/docs/plans/archive/013-dogfood-harness-flow/fixes/FX004-onboarding-experience-test.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/docs/plans/archive/016-arch-conformance-extension/arch-conformance-extension-plan.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/docs/plans/archive/019-harness-update/execution.log.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/docs/plans/archive/026-the-flow-cursor-meta-migration/reviews/review.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/docs/plans/archive/040-flow-template-orient-instructions/flow-template-orient-instructions-plan.md
+
+-- parallel (rayon, 16 threads) --
+wall=1.008s  2338 files/s  46.71 MB/s  speedup=4.86x
+determinism check: parallel element count == single-thread ✔

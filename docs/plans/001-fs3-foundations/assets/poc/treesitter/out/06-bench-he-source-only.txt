@@ -1,0 +1,37 @@
+root: /Users/jordanknight/substrate/harness-engineering  candidate files: 1937
+
+== single-thread ==
+files=1937 bytes=21.55MB elements=18628 error_trees=12 skipped=0
+wall=3.649s  531 files/s  5.91 MB/s
+
+| language | files | elements | MB | cpu-ms | µs/file |
+|---|---:|---:|---:|---:|---:|
+| bash | 9 | 13 | 0.04 | 3.7 | 410 |
+| javascript | 19 | 28 | 0.05 | 5.6 | 294 |
+| markdown | 1205 | 12761 | 13.14 | 1537.2 | 1275 |
+| python | 6 | 12 | 0.01 | 2.2 | 359 |
+| tsx | 9 | 53 | 0.03 | 4.5 | 505 |
+| typescript | 689 | 5761 | 8.27 | 837.6 | 1215 |
+
+slowest files:
+     12963µs     112513 bytes  /Users/jordanknight/substrate/harness-engineering/harness/cli/test/adapters/git/exec-remote-telemetry-git.int.test.ts
+      9880µs      92787 bytes  /Users/jordanknight/substrate/harness-engineering/docs/plans/archive/fx002-fx004-pin-unavailability-is-a-state/FX002-FX004-PIN-unavailability-is-a-state.log.md
+      9640µs      87428 bytes  /Users/jordanknight/substrate/harness-engineering/docs/plans/archive/082-harness-hooks/assets/tasks/phase-2/execution.log.md
+      9389µs      66695 bytes  /Users/jordanknight/substrate/harness-engineering/harness/cli/src/services/telemetry/published-telemetry.ts
+      9075µs      78141 bytes  /Users/jordanknight/substrate/harness-engineering/docs/plans/archive/082-harness-hooks/assets/tasks/phase-3/execution.log.md
+
+files with ERROR nodes (first 10):
+  [markdown] /Users/jordanknight/substrate/harness-engineering/docs/how/harness-flow.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/docs/plans/archive/004-harness-core/harness-core-plan.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/docs/plans/archive/008-harness-setup-flow/verification.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/docs/plans/archive/013-dogfood-harness-flow/fixes/FX004-onboarding-experience-test.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/docs/plans/archive/016-arch-conformance-extension/arch-conformance-extension-plan.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/docs/plans/archive/019-harness-update/execution.log.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/docs/plans/archive/026-the-flow-cursor-meta-migration/reviews/review.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/docs/plans/archive/040-flow-template-orient-instructions/flow-template-orient-instructions-plan.md
+  [markdown] /Users/jordanknight/substrate/harness-engineering/docs/plans/archive/056-file-write-telemetry/research-dossier.md
+  [typescript] /Users/jordanknight/substrate/harness-engineering/harness/cli/test/adapters/collector-adapters.int.test.ts
+
+-- parallel (rayon, 16 threads) --
+wall=0.402s  4824 files/s  53.67 MB/s  speedup=9.09x
+determinism check: parallel element count == single-thread ✔

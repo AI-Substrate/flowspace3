@@ -1,0 +1,421 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "fs3 Foundations",
+        "slug": "fs3-foundations",
+        "ordinal": 1,
+        "status": "ready",
+        "summary": "Build the fs3 mold: workspace, DI architecture, drift enforcement, exemplars.",
+        "mode": "Simple",
+        "complexity": "CS-3",
+        "complexity_breakdown": "S=1 I=1 D=1 N=1 F=1 T=2 (sum 7 -> CS-3)",
+        "confidence": "0.85",
+        "plan_version": "1.0.0",
+        "created": "2026-08-26"
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Plan 001 does not build fs3's features - it builds the mold the rest of fs3 is poured into: the cargo workspace implementing workshop 001's architecture (7 crates: core, parsers, providers, store, testkit, daemon, cli), full DI via exactly two trait ports (Embedder, Summarizer) wired at one composition root with config-driven provider selection including 'fake', a dockerized Postgres+pgvector compose stack, mechanical architecture-drift enforcement wired into harness checks, and one exemplar of every artifact kind later plans copy (pure-core unit test, port contract test, PG integration test, parser fixture test, build/check pipeline, docs shape). Exit bar: a fresh agent can implement any later feature by copying shapes already present, and architecture violations go red mechanically before review. Shipping this plan proves workshop 001's promotion-gate conditions 1-3; condition 4 (contract tests green over at least one REAL provider) needs an on-demand keyed run - the promotion move to docs/rules-idioms-architecture/ executes only once that run is recorded, else it is a named follow-up."
+    },
+    {
+      "name": "goals",
+      "value": [
+        "Cargo workspace with the 7-crate layout from workshop 001, compiling end-to-end at hello-world depth.",
+        "DI/IoC in the flesh: two trait ports, one composition root, config-driven provider selection including fake.",
+        "Architecture drift detected mechanically: crate-dependency allow-list check + clippy/fmt wired into harness checks.",
+        "Exemplar tests at every tier later plans copy: core unit (no doubles), port contract, PG integration, parser fixture.",
+        "Docker compose stack (Postgres+pgvector) and config loading from ~/.config/flowspace3.",
+        "README quick-start + docs/how/architecture.md signposted from README; harness boot healthy."
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "The real indexing pipeline (queue, watcher, scan) - plans 002+.",
+        "Search (semantic/text/regex), summaries, embeddings as real flows - later plans.",
+        "Conversations, MCP server, daemon web UI - later plans.",
+        "Real provider network calls as a gate requirement (fake providers suffice; real impls are compile-proven stubs).",
+        "The full tree-sitter grammar pack (parsers crate carries rust+markdown as the exemplar only).",
+        "flowspace3 doctor's full stack-repair flow (a ping/health exemplar stands in; doctor is a later plan).",
+        "Config hot-reload and per-worktree overrides (config loading lands; reload/override mechanics later).",
+        "Daemon containerization (PRD req 33's daemon-in-compose) - deferred: phase 1 runs the daemon on the host against composed PG; a later plan moves it into the compose stack."
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-0001",
+          "claim": "From a clean checkout, the documented steps yield green `cargo build --workspace` and `cargo test --workspace`.",
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0001"
+        },
+        {
+          "id": "ac-0002",
+          "claim": "The crate graph matches workshop 001 exactly; core compiles with no tokio/sqlx/HTTP dependencies.",
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0002"
+        },
+        {
+          "id": "ac-0003",
+          "claim": "The drift check FAILS when a forbidden dependency is added (negative test: add sqlx to core, check goes red, revert).",
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0003"
+        },
+        {
+          "id": "ac-0004",
+          "claim": "`docker compose up` brings Postgres+pgvector; the store integration test connects, applies migration 0001, and round-trips a row.",
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0004"
+        },
+        {
+          "id": "ac-0005",
+          "claim": "The daemon boots with fake providers selected via config from the flowspace3 config dir and serves GET /health on localhost; `flowspace3 ping` reports it healthy.",
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0005"
+        },
+        {
+          "id": "ac-0006",
+          "claim": "Exemplar tests pass at all tiers: core unit with zero doubles, Embedder contract over FakeEmbedder, PG integration; FakeEmbedder is deterministic (same text yields the same vector, asserted).",
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0006"
+        },
+        {
+          "id": "ac-0007",
+          "claim": "`harness checks` runs fmt --check, clippy -D warnings, tests, and the drift check, all green; `harness boot` reports healthy.",
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0007"
+        },
+        {
+          "id": "ac-0008",
+          "claim": "README carries the quick-start and signposts docs/how/architecture.md, which exists and reflects workshop 001.",
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0008"
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-78fc",
+          "title": "Phase 1: Foundations — workspace, DI architecture, drift enforcement, exemplars",
+          "brief": "The whole plan in one phase: scaffold the workspace, land the architecture as code, enforce it mechanically, and leave one exemplar of everything. Details in the task file.",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+        }
+      ]
+    },
+    {
+      "name": "research_context",
+      "value": "No research-dossier.md; richer equivalents consumed: fs2 prior-art survey; POC spike assets/poc/treesitter-results.md (reqs 2/3/22 PROVEN, 4,914 files/s, 11 learnings); workshop 001 (authoritative architecture); base-prd.md (43 requirements, all open questions resolved 2026-08-26)."
+    },
+    {
+      "name": "testing_strategy",
+      "value": {
+        "approach": "Hybrid, exemplar-first (workshop 001 per-crate table)",
+        "rationale": "This plan's tests ARE deliverables - one exemplar per tier that later plans copy.",
+        "focus_areas": "core pure functions (no doubles); port contract over fakes; store/daemon integration vs real dockerized PG; parser fixture test.",
+        "excluded": "Live network calls to real providers (real-impl contract tests are #[ignore]d, on demand).",
+        "mock_usage": "No mocking frameworks ever; reusable fakes in testkit (workshop 001 rule 5); fake is a legal runtime provider config."
+      }
+    },
+    {
+      "name": "documentation_strategy",
+      "value": {
+        "location": "Hybrid: README.md quick-start + docs/how/ guides",
+        "rationale": "Jordan 2026-08-26: docs/how and README, with a signpost to the architecture guide under docs/how."
+      }
+    },
+    {
+      "name": "risks_assumptions",
+      "value": "Assumes docker + uv-era toolchain present on dev machines; assumes workshop 001 stands (any change re-opens this plan's drift rules); PG is Postgres 16 + pgvector via compose."
+    },
+    {
+      "name": "open_questions",
+      "value": [
+        {
+          "question": "When to run the real-provider contract test (needs API keys) - it gates workshop 001's promotion (condition 4).",
+          "state": "unchecked",
+          "note": "Jordan's call; recorded by validate-v2 2026-08-26"
+        }
+      ]
+    },
+    {
+      "name": "workshop_opportunities",
+      "value": [
+        {
+          "topic": "fs3 architecture",
+          "type": "Integration Pattern",
+          "why": "Settle crate layout, ports, DI, testing before any code.",
+          "key_questions": "Covered: DI without a container; hexagonal in Rust; fakes over mocks; crate graph.",
+          "status": "COMPLETE - assets/workshops/001-architecture.md (authoritative; this plan implements it)"
+        },
+        {
+          "topic": "PG schema for content+ref layers",
+          "type": "Storage Design",
+          "why": "Blob-keyed content vs ref layers deserves detailed design before plan 002 builds the pipeline.",
+          "key_questions": "Table shapes; (blob, model, prompt-version) keying; tag storage (PRD req 36); GC.",
+          "status": "OPEN - deliberately deferred to plan 002 (this plan ships only migration 0001 as an exemplar)"
+        }
+      ]
+    },
+    {
+      "name": "clarifications",
+      "value": [
+        {
+          "session": "2026-08-26",
+          "question": "Workflow mode?",
+          "answer": "Simple, exactly one phase (Jordan: '/builder the plan, 1 phase please')."
+        },
+        {
+          "session": "2026-08-26",
+          "question": "Testing strategy?",
+          "answer": "Answered by workshop 001 (authoritative): exemplar-first hybrid, per-crate table."
+        },
+        {
+          "session": "2026-08-26",
+          "question": "Mock usage?",
+          "answer": "Answered by workshop 001: never mock; reusable fakes in testkit + fake as runtime provider."
+        },
+        {
+          "session": "2026-08-26",
+          "question": "Documentation strategy?",
+          "answer": "Hybrid README + docs/how, architecture guide signposted from README (Jordan, this session)."
+        },
+        {
+          "session": "2026-08-26",
+          "question": "Branch and landing policy?",
+          "answer": "Jordan (ruling relayed by o-prime, brief amended in place): work DIRECTLY on main — no s001 stream branch; commit to main as you go; first commit is planning substrate excluding .claude/; landing bar = phase exit gates green, no PR ceremony."
+        }
+      ]
+    },
+    {
+      "name": "planning_seam",
+      "value": [
+        {
+          "artifact": "assets/workshops/001-architecture.md",
+          "present": "yes",
+          "effect": "authoritative design decisions - this plan implements them"
+        },
+        {
+          "artifact": "base-prd.md",
+          "present": "yes",
+          "effect": "business source, 43 requirements"
+        },
+        {
+          "artifact": "assets/poc/treesitter-results.md",
+          "present": "yes",
+          "effect": "feasibility proven; informs Key Findings"
+        },
+        {
+          "artifact": "assets/research-dossier.md",
+          "present": "no",
+          "effect": "equivalents above; no further research pass needed"
+        },
+        {
+          "artifact": "OPEN workshop: PG schema design",
+          "present": "deferred",
+          "effect": "deliberately deferred to plan 002; this plan ships only exemplar migration 0001"
+        }
+      ]
+    },
+    {
+      "name": "gate_matrix",
+      "value": [
+        {
+          "gate": "G1",
+          "check": "Clarify",
+          "status": "PASS",
+          "notes": "No [NEEDS CLARIFICATION] markers; all 4 Round-1 answers recorded."
+        },
+        {
+          "gate": "G2",
+          "check": "Constitution",
+          "status": "N/A",
+          "notes": "No docs/project-rules/constitution.md."
+        },
+        {
+          "gate": "G3",
+          "check": "Architecture",
+          "status": "PASS",
+          "notes": "No docs/project-rules/architecture.md yet; plan implements workshop 001, the authoritative architecture source; drift enforcement is itself a deliverable."
+        },
+        {
+          "gate": "G4",
+          "check": "ADR Compliance",
+          "status": "N/A",
+          "notes": "No docs/adr/."
+        },
+        {
+          "gate": "G5",
+          "check": "Structure",
+          "status": "PASS",
+          "notes": "All required sections present in dd-native form."
+        },
+        {
+          "gate": "G6",
+          "check": "Testing Alignment",
+          "status": "PASS",
+          "notes": "Hybrid strategy; every code task row carries its test in Done-When; exemplar tests are explicit tasks."
+        },
+        {
+          "gate": "G7",
+          "check": "Domain Completeness",
+          "status": "N/A",
+          "notes": "Domain mode off."
+        }
+      ]
+    },
+    {
+      "name": "implementation_summary",
+      "value": "One phase. Order: workspace scaffold -> core (types, pure fns, ports) -> testkit fakes -> providers stub -> parsers exemplar -> compose+store -> config -> daemon -> cli -> drift check -> harness extensions -> docs -> evidence sweep. Every task's Done-When is mechanical (a command that passes or a file that exists with stated properties)."
+    },
+    {
+      "name": "key_findings",
+      "value": [
+        {
+          "impact": "Critical",
+          "finding": "POC: file discovery beats parser tuning (identical elements from 11% of bytes, 13.8x faster).",
+          "action": "Foundations need no perf work; discovery filtering is a plan-002 concern (PRD req 41)."
+        },
+        {
+          "impact": "Critical",
+          "finding": "POC: fs2's name-pattern classifier invents elements (C++ 58 claimed vs 22 real).",
+          "action": "core's classify exemplar ships the declaration-shape heuristic gate from day one (PRD req 42)."
+        },
+        {
+          "impact": "High",
+          "finding": "Harness is adopted but degraded: checks/boot expect Cargo.toml that doesn't exist yet.",
+          "action": "This plan turns peacock's harness green - checks/boot extensions are updated as tasks, not later."
+        },
+        {
+          "impact": "High",
+          "finding": "async fn in dyn-usable traits still needs #[async_trait] for object safety.",
+          "action": "Both ports use #[async_trait]; recorded in the architecture guide."
+        },
+        {
+          "impact": "Medium",
+          "finding": "POC: 20 grammar crates added 18.7s clean-build; foundations don't need them.",
+          "action": "parsers carries rust+markdown only; grammar pack lands with the real pipeline."
+        },
+        {
+          "impact": "Medium",
+          "finding": "sqlx compile-time query checks need a live DB or offline cache.",
+          "action": "Use runtime queries (sqlx::query) in exemplars, or check in .sqlx cache; decide in-task, note in execution log."
+        }
+      ]
+    },
+    {
+      "name": "acceptance_coverage",
+      "value": [
+        {
+          "ac": "ac-0001",
+          "covered_by": [
+            "tk-0001",
+            "tk-0007",
+            "tk-000e"
+          ],
+          "verified_in": "tk-000e quick-start walk"
+        },
+        {
+          "ac": "ac-0002",
+          "covered_by": [
+            "tk-0001",
+            "tk-0002",
+            "tk-0003"
+          ],
+          "verified_in": "tk-000c drift check on real graph"
+        },
+        {
+          "ac": "ac-0003",
+          "covered_by": [
+            "tk-000c"
+          ],
+          "verified_in": "tk-000c negative test"
+        },
+        {
+          "ac": "ac-0004",
+          "covered_by": [
+            "tk-0007",
+            "tk-0008"
+          ],
+          "verified_in": "tk-0008 integration test"
+        },
+        {
+          "ac": "ac-0005",
+          "covered_by": [
+            "tk-0009",
+            "tk-000a",
+            "tk-000b"
+          ],
+          "verified_in": "tk-000a/tk-000b tests"
+        },
+        {
+          "ac": "ac-0006",
+          "covered_by": [
+            "tk-0002",
+            "tk-0004",
+            "tk-0008"
+          ],
+          "verified_in": "per-task exemplar tests incl. determinism assert"
+        },
+        {
+          "ac": "ac-0007",
+          "covered_by": [
+            "tk-000c",
+            "tk-000d"
+          ],
+          "verified_in": "harness checks + harness boot runs"
+        },
+        {
+          "ac": "ac-0008",
+          "covered_by": [
+            "tk-000e"
+          ],
+          "verified_in": "file existence + README link check"
+        }
+      ]
+    },
+    {
+      "name": "risks",
+      "value": [
+        {
+          "risk": "Docker unavailable when tests run (CI or fresh machine)",
+          "likelihood": "Medium",
+          "impact": "Medium",
+          "mitigation": "Integration tests detect missing docker and fail with the exact compose command; harness boot names it."
+        },
+        {
+          "risk": "Drift check too weak (passes things workshop 001 forbids)",
+          "likelihood": "Medium",
+          "impact": "High",
+          "mitigation": "AC-03 negative test: deliberately violate, prove red, revert - the check's own exemplar."
+        },
+        {
+          "risk": "Exemplars over-engineered, becoming the very ceremony rule 3 refuses",
+          "likelihood": "Medium",
+          "impact": "Medium",
+          "mitigation": "Each exemplar is the minimum that demonstrates the shape; review cites workshop 001's refused-list."
+        }
+      ]
+    },
+    {
+      "name": "execution_guardrails",
+      "value": [
+        "Workshop 001 is authoritative - do not contradict it; exactly two trait ports, a third is stop-and-ask.",
+        "core must not depend on tokio/sqlx/reqwest/axum; the drift check enforces the whole crate graph.",
+        "No mocking crates in any Cargo.toml; doubles come only from testkit.",
+        "Never hand-edit plan.dd.md / tasks.dd.md (generated).",
+        "Binary is flowspace3; config dir ~/.config/flowspace3 with FS3_CONFIG_DIR override for tests.",
+        "fs3 writes nothing outside the workspace, docs, and compose files (PRD req 39 spirit applies to this repo too)."
+      ]
+    }
+  ]
+}
