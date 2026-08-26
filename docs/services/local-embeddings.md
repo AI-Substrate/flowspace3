@@ -272,6 +272,52 @@ query : "how do I score adaptability and operate-today"
   0.6844  #9   In addition to the two-axis tuple, v0.2 emits an assessment matrix…
 ```
 
+### What it costs across many files — and which parallelism is real
+
+`cargo run --release -p fs3-providers --example embed_files -- FILE...` runs
+the same corpus four ways. 32 markdown files, 151 chunks, M4 Max (16 cores):
+
+| Shape | Wall clock | Throughput | vs sequential |
+|---|---|---|---|
+| sequential, one `embed()` per file | 3 374 ms | 45 chunks/s | — |
+| 32 concurrent tasks, **one** embedder | 3 457 ms | 44 chunks/s | +2.5 % |
+| one batch, every chunk in one call | 3 522 ms | 43 chunks/s | +4.4 % |
+| pool of 4 sessions, chunks sharded | 2 718 ms | 56 chunks/s | −19 % |
+
+**Concurrency against one embedder buys nothing.** `LocalEmbedder` holds one
+ONNX session behind one mutex, and that session already uses every core on a
+single call. The 32 tasks summed 53 590 ms of wall time to finish in 3 457 ms —
+that gap is queueing, not work. This is the shape a worker reaches for first,
+and it is the one to avoid: it looks parallel and costs lock traffic.
+
+**Batching buys nothing either, here.** `fastembed` already chunks internally
+at 256, so one call with 151 texts and 32 calls averaging 5 do the same kernels.
+Batching matters for a *network* provider, where each call is a round trip; for
+a local one it is the same arithmetic either way.
+
+**A pool of sessions is the only real win, and more sessions keep winning:**
+
+| `FS3_POOL` | intra-op threads each | Throughput | vs sequential | peak RSS delta |
+|---|---|---|---|---|
+| 1 | 16 | 39 chunks/s | +14 % | baseline |
+| 2 | 8 | 49 chunks/s | −27 % | — |
+| 4 | 4 | 58 chunks/s | −34 % | +445 MB |
+| 8 | 2 | 60 chunks/s | −37 % | +846 MB |
+| 16 | 1 | **70 chunks/s** | **−40 %** | +1 389 MB |
+
+Sixteen single-threaded sessions beat one sixteen-threaded session by 1.8×.
+ONNX Runtime's intra-op parallelism scales badly on the small matrices a
+33M-parameter encoder produces; splitting the work across independent sessions
+scales nearly linearly instead. The price is memory — roughly **90 MB per extra
+session**, one model copy each. (Absolute RSS from `/usr/bin/time -l` is not
+trustworthy with a statically linked ORT; the *delta* between pool sizes is.)
+
+**For the enrichment worker, that means:** shard by **chunk**, not by file.
+Per-file work here spans 1 to 23 chunks and 4 ms to 542 ms — round-robin by
+file hands one session half the corpus and measures the imbalance instead of
+the parallelism. Sharding by file was 12 % *slower* than sequential; the same
+pool sharding by chunk was 28 % faster.
+
 ## Snap-in
 
 Not wired. `crates/providers/src/local.rs` carries the recipe in its module
