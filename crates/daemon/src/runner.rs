@@ -64,6 +64,13 @@ pub fn backoff(attempts: i32) -> Duration {
 /// How long to wait after finding an empty queue before asking again.
 const IDLE_POLL: Duration = Duration::from_millis(250);
 
+/// How often the progress summary is printed while work is in flight.
+///
+/// Five seconds is slow enough that a long index is a readable handful of
+/// lines rather than a scroll, and fast enough that a watcher can tell "moving"
+/// from "stuck" without waiting.
+const PROGRESS_EVERY: Duration = Duration::from_secs(5);
+
 /// What one drain pass did — the shape the e2e test asserts against.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Drained {
@@ -140,12 +147,70 @@ pub async fn drain(state: &AppState, workers: usize) -> Drained {
 /// Sleeps only when it finds nothing, so a busy queue is never delayed by a
 /// timer.
 pub async fn run_forever(state: AppState, workers: usize) {
+    // Only-when-active, in both directions: nothing is printed while the queue
+    // is empty, and the FIRST line after work appears is not delayed by a timer
+    // that has been ticking through the idle period.
+    let mut last_report: Option<std::time::Instant> = None;
+
     loop {
         let drained = drain(&state, workers).await;
+
         if drained.total() == 0 {
+            // Print a final summary if work just finished, so a run ends with
+            // its own totals rather than trailing off mid-progress.
+            if last_report.take().is_some() {
+                report_progress(&state, "idle").await;
+            }
             tokio::time::sleep(IDLE_POLL).await;
+            continue;
+        }
+
+        let due = last_report.is_none_or(|at| at.elapsed() >= PROGRESS_EVERY);
+        if due {
+            report_progress(&state, "working").await;
+            last_report = Some(std::time::Instant::now());
         }
     }
+}
+
+/// One line saying where the whole index run is up to.
+///
+/// Derived from the queue rather than from counters this loop keeps, so it is
+/// true across restarts and across however many workers are running — a
+/// counter in this process would reset on reboot and would not see a sibling's
+/// work. The cost is one grouped aggregate every few seconds.
+async fn report_progress(state: &AppState, phase: &str) {
+    let Ok(rows) = fs3_store::queue_depth(&state.db).await else {
+        // A store that cannot answer is already being reported by whatever
+        // failed to claim; progress must never add noise to an outage.
+        return;
+    };
+
+    let count = |kind: &str, state_name: &str| -> i64 {
+        rows.iter()
+            .filter(|row| row.kind == kind && row.state == state_name)
+            .map(|row| row.depth)
+            .sum()
+    };
+    let left = |kind: &str| count(kind, "pending") + count(kind, "running");
+
+    let failed: i64 = rows
+        .iter()
+        .filter(|row| row.state == "failed")
+        .map(|row| row.depth)
+        .sum();
+
+    tracing::info!(
+        phase,
+        scanned = count(SCAN_FILE, "done"),
+        scan_left = left(SCAN_FILE),
+        summarized = count(SUMMARIZE, "done"),
+        summarize_left = left(SUMMARIZE),
+        embedded = count(EMBED, "done"),
+        embed_left = left(EMBED),
+        failed,
+        "progress"
+    );
 }
 
 /// Run one job and settle its row.
@@ -154,12 +219,28 @@ async fn settle(state: &AppState, job: Job) -> Drained {
     let attempts = job.attempts;
     let kind = job.kind.clone();
     let key = job.dedupe_key.clone();
+    // The human-readable subject, taken from the payload BEFORE dispatch
+    // consumes it. A dedupe key is an idempotence token, not a sentence: it
+    // says `embed:git:github.com/x:9f2c…`, which tells a watcher nothing about
+    // what is happening to their repository.
+    let subject = subject_of(&kind, &job.payload);
+    let started = std::time::Instant::now();
 
     match dispatch(state, job).await {
         Ok(()) => {
             if let Err(error) = fs3_store::complete_job(&state.db, id).await {
                 tracing::error!(%error, id, "cannot complete job");
             }
+            // One line per job, at info, because a healthy index run used to
+            // print NOTHING at the default filter — the only calls in this
+            // crate were error! and warn!, so a working daemon and a wedged one
+            // looked identical from the outside (Jordan, live, 2026-08-26).
+            tracing::info!(
+                kind = %kind,
+                subject = %subject,
+                ms = started.elapsed().as_millis() as u64,
+                "done"
+            );
             Drained {
                 completed: 1,
                 ..Drained::default()
@@ -191,6 +272,34 @@ async fn settle(state: &AppState, job: Job) -> Drained {
                 }
             }
         }
+    }
+}
+
+/// The human-readable subject of a job, for one log line.
+///
+/// Reads only the fields it names — a path, an address, a batch size. Never the
+/// payload wholesale: an `embed` payload carries the TEXTS being embedded, and
+/// dumping those would put the indexed source code itself into the log, at
+/// volume, for every batch.
+fn subject_of(kind: &str, payload: &serde_json::Value) -> String {
+    let field = |name: &str| payload.get(name).and_then(serde_json::Value::as_str);
+
+    match kind {
+        SCAN_FILE => field("path").unwrap_or("?").to_string(),
+        SUMMARIZE => payload
+            .get("element")
+            .and_then(|element| element.get("address"))
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("?")
+            .to_string(),
+        EMBED => {
+            let count = payload
+                .get("items")
+                .and_then(serde_json::Value::as_array)
+                .map_or(0, Vec::len);
+            format!("{count} x {}", field("source").unwrap_or("?"))
+        }
+        _ => String::new(),
     }
 }
 
