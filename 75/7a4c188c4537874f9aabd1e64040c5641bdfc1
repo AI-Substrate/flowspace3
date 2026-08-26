@@ -1,0 +1,18 @@
+README.md
+  h_9e71e8b09f7cf2 10-13,20-21,23-27,30,32-39,42-55,59-61,76-81,83,86,91-95,98-99,102-103,106-116,119-138,149-152,154-155
+docs/plans/003-first-light/assets/first-light-run.md
+  h_9e71e8b09f7cf2 1-238
+docs/services/first-light.md
+  h_9e71e8b09f7cf2 1-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "757a4c188c4537874f9aabd1e64040c5641bdfc1",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
