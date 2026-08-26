@@ -132,6 +132,66 @@ pub async fn claim_job(pool: &PgPool, kinds: &[&str]) -> Result<Option<Job>, Sto
     .transpose()
 }
 
+/// Claim up to `limit` ready jobs of one kind, in one statement.
+///
+/// The batching primitive. A `summarize` job is one call per element, but
+/// `embed` jobs merge: k jobs' items can ride in ONE wide provider request,
+/// which is where the throughput is. Claiming them one at a time would cost k
+/// round trips to discover work we are about to merge anyway.
+///
+/// ONE KIND, not a set. [`claim_job`]'s `kinds` slice exists so a generic
+/// worker can take whatever is ready; a caller batching jobs is going to merge
+/// their payloads, and payloads are only mergeable within a kind. Accepting a
+/// set here would hand back a pile that cannot be batched and make the caller
+/// re-sort it.
+///
+/// Ordering matches [`claim_job`] exactly — `priority DESC, not_before` — so
+/// mixing batched and single claimants on one queue cannot starve either.
+/// `FOR UPDATE SKIP LOCKED` over the whole `LIMIT` means two workers claiming
+/// concurrently take disjoint sets rather than blocking on each other.
+///
+/// Returns fewer than `limit` when fewer are ready, and empty when none are.
+/// Empty means "nothing READY" — a job backing off is invisible here, which is
+/// how the debounce works.
+///
+/// # Errors
+/// [`StoreError::Query`] when the statement fails.
+pub async fn claim_jobs(pool: &PgPool, kind: &str, limit: i64) -> Result<Vec<Job>, StoreError> {
+    if limit <= 0 {
+        return Ok(Vec::new());
+    }
+
+    let rows = sqlx::query(
+        "UPDATE jobs SET state = 'running', attempts = attempts + 1, updated_at = now()
+          WHERE id IN (
+                SELECT id FROM jobs
+                 WHERE state = 'pending'
+                   AND not_before <= now()
+                   AND kind = $1
+                 ORDER BY priority DESC, not_before
+                 FOR UPDATE SKIP LOCKED
+                 LIMIT $2
+          )
+         RETURNING id, kind, dedupe_key, payload, attempts",
+    )
+    .bind(kind)
+    .bind(limit)
+    .fetch_all(pool)
+    .await?;
+
+    rows.iter()
+        .map(|row| {
+            Ok(Job {
+                id: row.try_get("id")?,
+                kind: row.try_get("kind")?,
+                dedupe_key: row.try_get("dedupe_key")?,
+                payload: row.try_get("payload")?,
+                attempts: row.try_get("attempts")?,
+            })
+        })
+        .collect()
+}
+
 /// Mark a claimed job finished.
 ///
 /// This is also what frees its `dedupe_key`: the live-jobs unique index stops

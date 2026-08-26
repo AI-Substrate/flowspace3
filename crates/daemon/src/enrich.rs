@@ -113,15 +113,27 @@ impl EmbedJob {
     }
 
     fn source_kind(&self) -> Result<SourceKind, Failure> {
-        match self.source.as_str() {
-            "raw" => Ok(SourceKind::Raw),
-            "smart" => Ok(SourceKind::Smart),
-            other => Err(Failure::new(
-                &catalog::QUEUE_JOB_FAILED,
-                format!("unknown embedding source {other:?}"),
-            )
-            .retryable(false)),
-        }
+        source_kind_of(&self.source)
+    }
+}
+
+/// Read the `source` field of an embed job or a merged batch.
+///
+/// One parser for both, so a batch and the job it came from can never disagree
+/// about which vector space they are writing into.
+///
+/// # Errors
+/// Not retryable: an unknown source is a defect in whoever enqueued it, and no
+/// number of attempts will make `"raw "` mean `"raw"`.
+pub fn source_kind_of(source: &str) -> Result<SourceKind, Failure> {
+    match source {
+        "raw" => Ok(SourceKind::Raw),
+        "smart" => Ok(SourceKind::Smart),
+        other => Err(Failure::new(
+            &catalog::QUEUE_JOB_FAILED,
+            format!("unknown embedding source {other:?}"),
+        )
+        .retryable(false)),
     }
 }
 
@@ -268,8 +280,8 @@ pub async fn summarize(state: &AppState, value: serde_json::Value) -> Result<(),
     .await
 }
 
-/// Run one `embed` job: one provider call for the whole batch, one transaction
-/// for the vectors.
+/// Run one `embed` job: one provider call for the batch, one transaction for
+/// the vectors.
 ///
 /// # Errors
 /// A provider failure (retryable), a width mismatch (not retryable — the fix is
@@ -277,11 +289,34 @@ pub async fn summarize(state: &AppState, value: serde_json::Value) -> Result<(),
 pub async fn embed(state: &AppState, value: serde_json::Value) -> Result<(), Failure> {
     let job: EmbedJob = payload(value)?;
     let source_kind = job.source_kind()?;
-    if job.items.is_empty() {
+    embed_items(state, &job.identity, source_kind, &job.items).await
+}
+
+/// Embed `items` for one repo and one source kind, skipping what is stored.
+///
+/// Split out from [`embed`] because a MERGED batch — k claimed jobs whose
+/// items ride in one provider call — needs exactly this and has no single
+/// payload to hand over. Both paths therefore share the dedupe filter and the
+/// alignment assert rather than growing two copies that can drift.
+///
+/// Callers must group by `(identity, source_kind)` before merging: the
+/// identity selects the EMBEDDER, so items from two repos with different
+/// embedders cannot share a call, and the kind is part of the storage key.
+///
+/// # Errors
+/// A provider failure (retryable), a width mismatch (not retryable), or a
+/// store failure.
+pub async fn embed_items(
+    state: &AppState,
+    identity: &str,
+    source_kind: fs3_store::SourceKind,
+    all: &[(String, String)],
+) -> Result<(), Failure> {
+    if all.is_empty() {
         return Ok(());
     }
 
-    let model_key = state.embedder_key(&job.identity);
+    let model_key = state.embedder_key(identity);
 
     // The dirty-is-a-missing-row doctrine, applied to COST rather than
     // correctness. Content-addressed work is re-emitted on purpose — a crash
@@ -291,13 +326,12 @@ pub async fn embed(state: &AppState, value: serde_json::Value) -> Result<(), Fai
     // provider for its whole batch unconditionally.
     //
     // Keeping the re-emission and making re-execution free is the whole fix.
-    let hashes: Vec<&str> = job.items.iter().map(|(hash, _)| hash.as_str()).collect();
+    let hashes: Vec<&str> = all.iter().map(|(hash, _)| hash.as_str()).collect();
     let stored = fs3_store::existing_embedding_hashes(&state.db, &model_key, source_kind, &hashes)
         .await
         .map_err(fail)?;
 
-    let items: Vec<&(String, String)> = job
-        .items
+    let items: Vec<&(String, String)> = all
         .iter()
         .filter(|(hash, _)| !stored.contains(hash))
         .collect();
@@ -312,7 +346,7 @@ pub async fn embed(state: &AppState, value: serde_json::Value) -> Result<(), Fai
     let texts: Vec<String> = items.iter().map(|(_, text)| text.clone()).collect();
 
     let vectors = state
-        .embedder_for(&job.identity)
+        .embedder_for(identity)
         .embed(&texts)
         .await
         .map_err(fail)?;

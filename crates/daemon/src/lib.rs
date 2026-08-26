@@ -4,6 +4,7 @@
 //! the only one that *wires* anything (workshop 001 rule 4).
 
 pub mod answer;
+pub mod batch;
 pub mod boot;
 pub mod config;
 pub mod debounce;

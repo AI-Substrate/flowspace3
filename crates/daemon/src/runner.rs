@@ -31,9 +31,12 @@ use std::time::Duration;
 use fs3_core::catalog;
 use fs3_core::envelope::Failure;
 use fs3_store::{Job, PgPool};
+use std::collections::BTreeMap;
+
 use tokio::task::JoinSet;
 
 use crate::answer::IntoFailure;
+use crate::batch;
 use crate::enrich::{self, EMBED, SUMMARIZE};
 use crate::roots::SCAN_FILE;
 use crate::wiring::AppState;
@@ -43,6 +46,20 @@ use crate::wiring::AppState;
 /// Scans first: a scan produces enrichment work, so draining scans early keeps
 /// the LLM and embedding calls — the slow, parallel part — fed.
 pub const KINDS: &[&str] = &[SCAN_FILE, SUMMARIZE, EMBED];
+
+/// The kinds claimed ONE AT A TIME, because their work cannot merge.
+///
+/// A `scan_file` reads one path and a `summarize` is one call per element.
+/// Only `embed` batches, and it is drained separately — claiming it here too
+/// would have the two paths racing for the same rows.
+pub const SERIAL_KINDS: &[&str] = &[SCAN_FILE, SUMMARIZE];
+
+/// How many embed jobs one batched claim takes.
+///
+/// The token budget does the real limiting; this bounds how much the planner
+/// is asked to hold at once, and how many rows a single failed provider call
+/// can put back.
+pub const EMBED_CLAIM: i64 = 64;
 
 /// How many times a retryable job is attempted before it is failed for good.
 ///
@@ -116,8 +133,14 @@ pub async fn drain(state: &AppState, workers: usize) -> Drained {
     let mut last_report: Option<std::time::Instant> = None;
 
     loop {
+        // Embed first, and batched: it is the only kind whose work merges, and
+        // draining it here rather than through the per-job loop is what turns
+        // k jobs into one provider call.
+        let embedded = drain_embed(state).await;
+        total.absorb(embedded);
+
         while tasks.len() < workers {
-            match fs3_store::claim_job(&state.db, KINDS).await {
+            match fs3_store::claim_job(&state.db, SERIAL_KINDS).await {
                 Ok(Some(job)) => {
                     let state = state.clone();
                     tasks.spawn(async move { settle(&state, job).await });
@@ -132,9 +155,12 @@ pub async fn drain(state: &AppState, workers: usize) -> Drained {
             }
         }
 
-        if tasks.is_empty() {
+        // Exit BEFORE reporting, so a pass with nothing to do stays silent and
+        // an idle daemon still prints nothing at all.
+        if tasks.is_empty() && embedded.total() == 0 {
             return total;
         }
+
         if let Some(result) = tasks.join_next().await {
             match result {
                 Ok(outcome) => total.absorb(outcome),
@@ -145,6 +171,11 @@ pub async fn drain(state: &AppState, workers: usize) -> Drained {
             }
         }
 
+        // Reported here rather than inside the per-job branch, because an
+        // embed-only workload settles entirely in the batched pass above and
+        // spawns no tasks at all — reporting only after `join_next` would give
+        // a long embedding run no progress line, which is the exact bug this
+        // cadence was moved into the loop to fix.
         if last_report.is_none_or(|at| at.elapsed() >= PROGRESS_EVERY) {
             report_progress(state, "working").await;
             last_report = Some(std::time::Instant::now());
@@ -173,6 +204,111 @@ pub async fn run_forever(state: AppState, workers: usize) {
         }
         worked = true;
     }
+}
+
+/// Claim a batch of embed jobs and settle them through as few provider calls
+/// as the token budget allows.
+///
+/// # Why a job settles only when EVERY batch carrying it succeeded
+///
+/// A group of jobs is merged and then cut to the token budget, so one job's
+/// items can span several calls. Marking it done after the first call landed
+/// would record success for vectors that were never bought — a job that says
+/// `done` while half its elements have no row is exactly the silent hole the
+/// reconciler cannot see, because the queue's own memory says the work is
+/// finished.
+async fn drain_embed(state: &AppState) -> Drained {
+    let jobs = match fs3_store::claim_jobs(&state.db, EMBED, EMBED_CLAIM).await {
+        Ok(jobs) if jobs.is_empty() => return Drained::default(),
+        Ok(jobs) => jobs,
+        Err(error) => {
+            tracing::error!(%error, "cannot claim embed jobs");
+            return Drained::default();
+        }
+    };
+
+    let attempts: BTreeMap<i64, i32> = jobs.iter().map(|job| (job.id, job.attempts)).collect();
+    let (batches, unreadable) = batch::plan(&jobs);
+
+    let mut total = Drained::default();
+
+    // An unreadable payload is a defect in whoever enqueued it. It can never
+    // succeed, so it fails terminally rather than costing three attempts.
+    for bad in unreadable {
+        if let Err(error) = fs3_store::fail_job(&state.db, bad.job_id, &bad.reason).await {
+            tracing::error!(%error, id = bad.job_id, "cannot fail an unreadable embed job");
+        }
+        tracing::warn!(id = bad.job_id, kind = EMBED, "{}", bad.reason);
+        total.failed += 1;
+    }
+
+    // Per job: the failure that settles it, if any batch it rode in failed.
+    let mut broken: BTreeMap<i64, Failure> = BTreeMap::new();
+    let mut touched: Vec<i64> = Vec::new();
+
+    for one in batches {
+        let started = std::time::Instant::now();
+        let kind = enrich::source_kind_of(&one.source);
+        let outcome = match kind {
+            Ok(kind) => enrich::embed_items(state, &one.identity, kind, &one.items).await,
+            Err(failure) => Err(failure),
+        };
+
+        for id in &one.job_ids {
+            if !touched.contains(id) {
+                touched.push(*id);
+            }
+        }
+
+        match outcome {
+            Ok(()) => tracing::info!(
+                kind = EMBED,
+                subject = %format!("{} x {}", one.items.len(), one.source),
+                jobs = one.job_ids.len(),
+                ms = started.elapsed().as_millis() as u64,
+                "batch"
+            ),
+            Err(failure) => {
+                for id in one.job_ids {
+                    broken.entry(id).or_insert_with(|| failure.clone());
+                }
+            }
+        }
+    }
+
+    for id in touched {
+        let attempt = attempts.get(&id).copied().unwrap_or(1);
+        match broken.remove(&id) {
+            None => {
+                if let Err(error) = fs3_store::complete_job(&state.db, id).await {
+                    tracing::error!(%error, id, "cannot complete an embed job");
+                }
+                let left = fs3_store::jobs_remaining(&state.db).await.ok();
+                tracing::info!(kind = EMBED, id, left, "done");
+                total.completed += 1;
+            }
+            Some(failure) => {
+                let again = failure.retryable && attempt < MAX_ATTEMPTS;
+                let message = format!("{} {}", failure.code, failure.message);
+                tracing::warn!(id, kind = EMBED, attempt, retrying = again, "{message}");
+                let settled = if again {
+                    fs3_store::retry_job(&state.db, id, backoff(attempt), &message).await
+                } else {
+                    fs3_store::fail_job(&state.db, id, &message).await
+                };
+                if let Err(error) = settled {
+                    tracing::error!(%error, id, "cannot settle a failed embed job");
+                }
+                if again {
+                    total.retried += 1;
+                } else {
+                    total.failed += 1;
+                }
+            }
+        }
+    }
+
+    total
 }
 
 /// One line saying where the whole index run is up to.
