@@ -26,6 +26,8 @@ Revive a dead seat: `pij revive <id> --print` shows the exact command (Jordan ru
 | pij-plain-mollusk | scanner v1: element tree + pure scan (w-scanner-v1) | %35 · window `scanner` | 01a03c4c-cd34-7000-8879-385defbdbff2 | ACTIVE — owns 0002_element_kinds.sql too. Brief `briefs/w-scanner-v1.md` |
 | pij-technological-egret | global config system (w-config) | %36 · window `config` | 01a03c50-eecb-7000-9378-1992ecdb548c | ACTIVE. Brief `briefs/w-config-egret.md` |
 | pij-surprising-sailfish | daemon shell prototype: watcher+web (w-daemon-shell) | %38 · window `daemon-shell` | 01a03c58-e85e-7000-8a21-4e81b739b51b | ACTIVE. Brief `briefs/w-daemon-shell.md` |
+| pij-devoted-cattle | ignore-aware file discovery (w-discovery) | %39 · window `discovery` | 01a03c5c-d775-7000-8c41-a25729de92af | ACTIVE (copilot claude-opus-5-1m/omp). Brief `briefs/w-discovery.md` |
+| pij-xenophobic-wren | git/blob layer: identity + snapshot diffing (w-git-blob) | %40 · window `git-blob` | 01a03c5c-d938-7000-bd92-9136895e64c5 | ACTIVE. Brief `briefs/w-git-blob.md` |
 
 ## Historical / other
 
