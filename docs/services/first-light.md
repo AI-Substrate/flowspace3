@@ -58,9 +58,25 @@ flowspace3 search "<question>"
   tree cost zero, and it is asserted as an acceptance criterion.
 
 - **The queue is the semaphore.** `claim_job`'s `FOR UPDATE SKIP LOCKED` hands
-  N workers N different jobs, so `indexing.worker_concurrency` is the ONE
-  concurrency number in fs3. A second knob inside the provider layer could only
-  disagree with it.
+  N workers N different jobs, so `indexing.worker_concurrency` is the only
+  concurrency number the DAEMON needs — nothing beside the queue has to agree
+  with it.
+
+  It is not, however, a number about provider parallelism, and that distinction
+  is measured rather than assumed. Against Azure, in-flight requests are the
+  lever: the live run did 110 embedding calls at this width, 16 texts per call,
+  and both knobs bought real time because every call is a round trip. Against
+  the LOCAL embedder neither does — 32 concurrent tasks against one session ran
+  2.5% *slower* than sequential, and one large batch 4.4% slower than many
+  small ones. What works there is a pool of independent sessions sharded by
+  chunk (−40% at 16), while sharding by *file* was 12% slower than sequential,
+  because per-file work spans 1 to 23 chunks and one session took half the
+  corpus (pij-thorough-zakalwe, `docs/services/local-embeddings.md`).
+
+  So a future concurrency combinator over `Arc<dyn Embedder>` cannot be one
+  `max_concurrent` for both: the same number means "requests in flight" for one
+  implementation and "sessions loaded" for the other. That knob belongs beside
+  the provider, not here.
 
 - **Retry is the worker's policy, not the store's.** Three attempts with
   exponential backoff, and only for failures the catalog marks `retryable`.

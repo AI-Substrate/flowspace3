@@ -88,7 +88,7 @@ active = "fake"
 [indexing]
 summary_min_lines = 10     # size floor for per-element summaries
 debounce_seconds = 10      # how long a dirty file must settle
-worker_concurrency = 4     # jobs claimed at once — the ONE concurrency number
+worker_concurrency = 4     # jobs claimed at once — the QUEUE's concurrency
 
 [scan]
 max_file_bytes = 2000000   # generated bundles teach the index nothing
@@ -176,6 +176,14 @@ cargo clippy --all-targets -- -D warnings
 cargo test --all
 cargo run -p fs3-testkit --bin fs3-arch-check   # crate-graph drift
 ```
+
+**`--all-targets` and `--all` are load-bearing.** `cargo check` and
+`cargo build` do **not** build `examples/`, so an example can land both
+unformatted and uncompiled with no local signal at all. Only
+`cargo fmt --all --check` and `cargo clippy --all-targets` see them — and
+because fmt is the FIRST gate, one unformatted example stops clippy and the
+test suite from running at all, which makes a red board say nothing about the
+code. (Found the hard way, 2026-08-26.)
 
 `cargo test` needs the compose stack up. The store and daemon integration tests
 run against real Postgres and **fail** — naming `docker compose up -d` — rather

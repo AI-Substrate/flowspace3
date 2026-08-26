@@ -676,12 +676,32 @@ pub struct IndexingConfig {
     pub debounce_seconds: u64,
     /// How many jobs the runner claims at once.
     ///
-    /// This is the ONE concurrency number in fs3, on purpose. The queue is the
-    /// semaphore — `claim_job`'s `SKIP LOCKED` hands N workers N different jobs
-    /// — so a second knob inside the provider layer could only disagree with
-    /// this one. Four is a starting point that keeps an LLM call, an embedding
+    /// This is the QUEUE's concurrency: `claim_job`'s `SKIP LOCKED` hands N
+    /// workers N different jobs, so the queue is the semaphore and the daemon
+    /// needs no second one beside it. Four keeps an LLM call, an embedding
     /// batch and a scan in flight together without turning a rate limit into
     /// the normal case.
+    ///
+    /// It is deliberately NOT a number about provider parallelism, and the
+    /// distinction is measured rather than assumed. For a network provider,
+    /// in-flight requests are the lever: the first-light run against Azure did
+    /// 110 embedding calls at this width, batching 16 texts per call, and both
+    /// knobs bought real time because every call is a round trip. For the LOCAL
+    /// embedder neither does — 32 concurrent tasks against one session measured
+    /// 2.5% SLOWER than sequential (one ONNX session behind one mutex, already
+    /// using every core), and one big batch was 4.4% slower than many small
+    /// ones (fastembed batches internally at 256, so the kernels are the same).
+    /// What works there is a POOL of independent sessions sharded by CHUNK:
+    /// -40% at 16 sessions, while sharding by FILE was 12% slower than
+    /// sequential because per-file work spans 1 to 23 chunks and one session
+    /// took half the corpus. Measurements: pij-thorough-zakalwe, 2026-08-26,
+    /// `docs/services/local-embeddings.md`.
+    ///
+    /// So a future concurrency combinator over `Arc<dyn Embedder>` cannot be
+    /// one `max_concurrent` for both: the same number means "requests in
+    /// flight" for one implementation and "sessions loaded" for the other, and
+    /// it is wrong for one of them whichever way it is read. That knob belongs
+    /// beside the provider, not here.
     pub worker_concurrency: usize,
 }
 
