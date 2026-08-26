@@ -35,14 +35,14 @@
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tk-0101 | Envelope v1 + error-catalog seed in fs3-core (workshop 004 slice): ok/error/fix/next_action/retryable shapes, FS3-E codes for the errors this plan actually ships; serializer helpers | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0101](#tk-0101) | — | — | [ac-0005](../../../plan.dd.md#acceptance-criteria) |
-| tk-0102 | Daemon endpoints + registration: POST /roots (add path: repo_identity + worktree row + bulk-enqueue scan jobs via snapshot), GET /status (roots, queue depth/states), POST /scan (re-enqueue changed via snapshot diff); CLI verbs add/status/scan as thin envelope clients | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0102](#tk-0102) | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
-| tk-0103 | Job runner in the daemon: N concurrent claimers (config), claim_job/complete/fail; retry = 3 attempts with not_before backoff (settles queued decision small); scan_file handler = discovery-filtered snapshot entry -&gt; blob bytes -&gt; pure scan -&gt; upsert_element_tree -&gt; enqueue summarize/embed for enrich-marked missing rows (missing_enrichment) | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0103](#tk-0103) | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
-| tk-0104 | Enrichment handlers through the registry: summarize (tags 1-5) + embed (raw + smart) with per-repo instance resolution (embedder_for/summarizer_for), inline batching + semaphore concurrency from config; Azure + fake arms already exist - snap in azure via ProviderConfig variant per its module recipe | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0104](#tk-0104) | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0004](../../../plan.dd.md#acceptance-criteria) |
-| tk-0105 | Search v1: daemon GET /search (semantic: embed query via active embedder -&gt; store query_embeddings -&gt; join smart+elements+worktree_files) with --repo/--path/--limit/--min-score/--source; CLI search verb; envelope rows per workshop 003 (address, score, match_field, span, snippet, tags) | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0105](#tk-0105) | — | — | [ac-0002](../../../plan.dd.md#acceptance-criteria) |
-| tk-0106 | End-to-end proofs: (a) CI test - fake provider + throwaway db, fixture mini-repo, scan-&gt;enrich-&gt;search assertions + idempotent-rescan-zero-enrichment; (b) LIVE run - daemon scans THIS REPO root (discovery-filtered; subpath support is NOT a requirement - Jordan dropped it 2026-08-26) via Azure, 3 questions, transcript to assets/first-light-run.md with row counts + provider call counts | — | — | [ ] unchecked | — | — | [ ] 0/2 [tk-0106](#tk-0106) | — | — | [ac-0003](../../../plan.dd.md#acceptance-criteria), [ac-0004](../../../plan.dd.md#acceptance-criteria) |
-| tk-0107 | Docs: docs/services/first-light.md (what wired where, verify commands) + README quickstart section update | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0107](#tk-0107) | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
-| tk-0108 | Schema-version discipline (Jordan ruling: dogfood doctor early): fs3_store::schema_current(pool) fast check (embedded MIGRATOR vs _sqlx_migrations); EVERY db-touching daemon endpoint + CLI-reachable path runs it and rejects stale with FS3-E-STORE-SCHEMA-STALE fix='run flowspace3 doctor'; minimal `flowspace3 doctor` verb v1 = schema slice only (report + APPLY migrations automatically — no second command), envelope output; daemon boot migration stays as-is; doctor also CREATES the database when missing (maintenance-db connect + CREATE DATABASE - the throwaway-test helpers already prove the mechanics). Store side: SINGLE-RESPONSIBILITY composition (Jordan) - separate small fns in fs3-store (database_exists / create_database / schema_current / migrate, own admin module in sylac's one-function-per-flow style, store-schema.md updated); doctor ORCHESTRATES them, implements none | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0108](#tk-0108) | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
+| tk-0101 | Envelope v1 + error-catalog seed in fs3-core (workshop 004 slice): ok/error/fix/next_action/retryable shapes, FS3-E codes for the errors this plan actually ships; serializer helpers | — | — | [x] checked | — | — | [x] 1/1 [tk-0101](#tk-0101) | — | — | [ac-0005](../../../plan.dd.md#acceptance-criteria) |
+| tk-0102 | Daemon endpoints + registration: POST /roots (add path: repo_identity + worktree row + bulk-enqueue scan jobs via snapshot), GET /status (roots, queue depth/states), POST /scan (re-enqueue changed via snapshot diff); CLI verbs add/status/scan as thin envelope clients | — | — | [x] checked | — | — | [x] 1/1 [tk-0102](#tk-0102) | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
+| tk-0103 | Job runner in the daemon: N concurrent claimers (config), claim_job/complete/fail; retry = 3 attempts with not_before backoff (settles queued decision small); scan_file handler = discovery-filtered snapshot entry -&gt; blob bytes -&gt; pure scan -&gt; upsert_element_tree -&gt; enqueue summarize/embed for enrich-marked missing rows (missing_enrichment) | — | — | [x] checked | — | — | [x] 1/1 [tk-0103](#tk-0103) | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
+| tk-0104 | Enrichment handlers through the registry: summarize (tags 1-5) + embed (raw + smart) with per-repo instance resolution (embedder_for/summarizer_for), inline batching + semaphore concurrency from config; Azure + fake arms already exist - snap in azure via ProviderConfig variant per its module recipe | — | — | [x] checked | — | — | [x] 1/1 [tk-0104](#tk-0104) | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0004](../../../plan.dd.md#acceptance-criteria) |
+| tk-0105 | Search v1: daemon GET /search (semantic: embed query via active embedder -&gt; store query_embeddings -&gt; join smart+elements+worktree_files) with --repo/--path/--limit/--min-score/--source; CLI search verb; envelope rows per workshop 003 (address, score, match_field, span, snippet, tags) | — | — | [x] checked | — | — | [x] 1/1 [tk-0105](#tk-0105) | — | — | [ac-0002](../../../plan.dd.md#acceptance-criteria) |
+| tk-0106 | End-to-end proofs: (a) CI test - fake provider + throwaway db, fixture mini-repo, scan-&gt;enrich-&gt;search assertions + idempotent-rescan-zero-enrichment; (b) LIVE run - daemon scans THIS REPO root (discovery-filtered; subpath support is NOT a requirement - Jordan dropped it 2026-08-26) via Azure, 3 questions, transcript to assets/first-light-run.md with row counts + provider call counts | — | — | [x] checked | — | — | [x] 2/2 [tk-0106](#tk-0106) | — | — | [ac-0003](../../../plan.dd.md#acceptance-criteria), [ac-0004](../../../plan.dd.md#acceptance-criteria) |
+| tk-0107 | Docs: docs/services/first-light.md (what wired where, verify commands) + README quickstart section update | — | — | [x] checked | — | — | [x] 1/1 [tk-0107](#tk-0107) | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
+| tk-0108 | Schema-version discipline (Jordan ruling: dogfood doctor early): fs3_store::schema_current(pool) fast check (embedded MIGRATOR vs _sqlx_migrations); EVERY db-touching daemon endpoint + CLI-reachable path runs it and rejects stale with FS3-E-STORE-SCHEMA-STALE fix='run flowspace3 doctor'; minimal `flowspace3 doctor` verb v1 = schema slice only (report + APPLY migrations automatically — no second command), envelope output; daemon boot migration stays as-is; doctor also CREATES the database when missing (maintenance-db connect + CREATE DATABASE - the throwaway-test helpers already prove the mechanics). Store side: SINGLE-RESPONSIBILITY composition (Jordan) - separate small fns in fs3-store (database_exists / create_database / schema_current / migrate, own admin module in sylac's one-function-per-flow style, store-schema.md updated); doctor ORCHESTRATES them, implements none | — | — | [x] checked | — | — | [x] 1/1 [tk-0108](#tk-0108) | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
 
 <a id="done-when"></a>
 
@@ -52,47 +52,47 @@
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0101 | envelope unit tests green; every error carries code+fix; catalog drift test (code without docs row fails) seeded | [ ] unchecked | [bp-0005](../../backpressure.dd.md#rows) |
+| dw-0101 | envelope unit tests green; every error carries code+fix; catalog drift test (code without docs row fails) seeded | [x] checked | [bp-0005](../../backpressure.dd.md#rows) |
 
 ### tk-0102
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0102 | curl POST /roots with a path -&gt; worktree row + pending scan jobs; flowspace3 add/status print envelopes; bad path -&gt; FS3-E code with fix | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
+| dw-0102 | curl POST /roots with a path -&gt; worktree row + pending scan jobs; flowspace3 add/status print envelopes; bad path -&gt; FS3-E code with fix | [x] checked | [bp-0001](../../backpressure.dd.md#rows) |
 
 ### tk-0103
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0103 | runner drains a seeded queue concurrently; a failing job retries 3x with backoff then fails with last_error; scan_file on a fixture repo produces the exact expected element rows | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
+| dw-0103 | runner drains a seeded queue concurrently; a failing job retries 3x with backoff then fails with last_error; scan_file on a fixture repo produces the exact expected element rows | [x] checked | [bp-0001](../../backpressure.dd.md#rows) |
 
 ### tk-0104
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0104 | enrichment fills smart_content (valid tag band) + both embedding rows for enrich-marked elements; per-repo override proven by a test with two repos on different fake instances | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
+| dw-0104 | enrichment fills smart_content (valid tag band) + both embedding rows for enrich-marked elements; per-repo override proven by a test with two repos on different fake instances | [x] checked | [bp-0001](../../backpressure.dd.md#rows) |
 
 ### tk-0105
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0105 | search over the fixture corpus returns known-relevant element first; filters narrow candidates in SQL; envelope validates | [ ] unchecked | [bp-0002](../../backpressure.dd.md#rows) |
+| dw-0105 | search over the fixture corpus returns known-relevant element first; filters narrow candidates in SQL; envelope validates | [x] checked | [bp-0002](../../backpressure.dd.md#rows) |
 
 ### tk-0106
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0106 | CI e2e green incl. zero-enrichment rescan; live transcript committed with timings + the 3 Q&A | [ ] unchecked | [bp-0003](../../backpressure.dd.md#rows) |
-| dw-0107 | live Azure run recorded against this repo's root (registry-resolved, Entra); transcript notes element/summary/embedding row counts and provider call counts | [ ] unchecked | [bp-0004](../../backpressure.dd.md#rows) |
+| dw-0106 | CI e2e green incl. zero-enrichment rescan; live transcript committed with timings + the 3 Q&A | [x] checked | [bp-0003](../../backpressure.dd.md#rows) |
+| dw-0107 | live Azure run recorded against this repo's root (registry-resolved, Entra); transcript notes element/summary/embedding row counts and provider call counts | [x] checked | [bp-0004](../../backpressure.dd.md#rows) |
 
 ### tk-0107
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0108 | docs page exists w/ verify commands; README quickstart runs as written | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
+| dw-0108 | docs page exists w/ verify commands; README quickstart runs as written | [x] checked | [bp-0001](../../backpressure.dd.md#rows) |
 
 ### tk-0108
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0109 | from a PG with NO flowspace3 database: any db-touching command rejects with the actionable envelope; `flowspace3 doctor` creates the database AND applies all migrations; the command then succeeds; separately a behind-schema db is detected+patched — both proven as tests composed from the store's separate admin fns | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
+| dw-0109 | from a PG with NO flowspace3 database: any db-touching command rejects with the actionable envelope; `flowspace3 doctor` creates the database AND applies all migrations; the command then succeeds; separately a behind-schema db is detected+patched — both proven as tests composed from the store's separate admin fns | [x] checked | [bp-0001](../../backpressure.dd.md#rows) |

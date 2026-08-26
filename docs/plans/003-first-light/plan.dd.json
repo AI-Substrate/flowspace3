@@ -40,31 +40,31 @@
         {
           "id": "ac-0001",
           "claim": "`flowspace3 add <path>` + `flowspace3 scan` against a real codebase yields elements, smart content, and embeddings rows via daemon-claimed jobs - CLI is a thin envelope client.",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "assets/backpressure.dd.json#rows/bp-0001"
         },
         {
           "id": "ac-0002",
           "claim": "`flowspace3 search \"<question>\"` (semantic, --repo/--path/--limit/--min-score/--source raw|smart) returns ranked hits with addresses, spans, tags, match_field in the workshop-004 envelope.",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "assets/backpressure.dd.json#rows/bp-0002"
         },
         {
           "id": "ac-0003",
           "claim": "A CI-runnable end-to-end test (fake provider, throwaway db) proves scan->enrich->search deterministically, incl. the idempotence claim: second scan of unchanged tree enqueues zero enrichment.",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "assets/backpressure.dd.json#rows/bp-0003"
         },
         {
           "id": "ac-0004",
           "claim": "A recorded LIVE run: the daemon scans THIS REPO (whole tree, discovery-filtered - ~133 files on current main, modest cost; Jordan 2026-08-26 superseding the fixture-subset ruling) through Azure and answers 3 sample questions sensibly - transcript in plan assets.",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "assets/backpressure.dd.json#rows/bp-0004"
         },
         {
           "id": "ac-0005",
           "claim": "Envelope v1 + error catalog seed live in fs3-core: ok/error shapes, FS3-E codes with mandatory fix, next_action - consumed by every new CLI verb and endpoint.",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "assets/backpressure.dd.json#rows/bp-0005"
         }
       ]
@@ -76,7 +76,7 @@
           "id": "ph-9dcc",
           "title": "Wire and prove end-to-end",
           "brief": "One phase: envelope seed, daemon endpoints + job runner, enrichment through the registry, search v1, then the proof runs (CI-fake + live-Azure).",
-          "state": "unchecked",
+          "state": "checked",
           "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
         }
       ]

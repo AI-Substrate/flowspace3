@@ -53,11 +53,11 @@
 
 | id | claim | state | note | receipt | pressure | proven_by |
 | --- | --- | --- | --- | --- | --- | --- |
-| ac-0001 | `flowspace3 add &lt;path&gt;` + `flowspace3 scan` against a real codebase yields elements, smart content, and embeddings rows via daemon-claimed jobs - CLI is a thin envelope client. | [ ] unchecked | — | — | [bp-0001](assets/backpressure.dd.md#rows) | — |
-| ac-0002 | `flowspace3 search "&lt;question&gt;"` (semantic, --repo/--path/--limit/--min-score/--source raw\|smart) returns ranked hits with addresses, spans, tags, match_field in the workshop-004 envelope. | [ ] unchecked | — | — | [bp-0002](assets/backpressure.dd.md#rows) | — |
-| ac-0003 | A CI-runnable end-to-end test (fake provider, throwaway db) proves scan-&gt;enrich-&gt;search deterministically, incl. the idempotence claim: second scan of unchanged tree enqueues zero enrichment. | [ ] unchecked | — | — | [bp-0003](assets/backpressure.dd.md#rows) | — |
-| ac-0004 | A recorded LIVE run: the daemon scans THIS REPO (whole tree, discovery-filtered - ~133 files on current main, modest cost; Jordan 2026-08-26 superseding the fixture-subset ruling) through Azure and answers 3 sample questions sensibly - transcript in plan assets. | [ ] unchecked | — | — | [bp-0004](assets/backpressure.dd.md#rows) | — |
-| ac-0005 | Envelope v1 + error catalog seed live in fs3-core: ok/error shapes, FS3-E codes with mandatory fix, next_action - consumed by every new CLI verb and endpoint. | [ ] unchecked | — | — | [bp-0005](assets/backpressure.dd.md#rows) | — |
+| ac-0001 | `flowspace3 add &lt;path&gt;` + `flowspace3 scan` against a real codebase yields elements, smart content, and embeddings rows via daemon-claimed jobs - CLI is a thin envelope client. | [x] checked | — | — | [bp-0001](assets/backpressure.dd.md#rows) | — |
+| ac-0002 | `flowspace3 search "&lt;question&gt;"` (semantic, --repo/--path/--limit/--min-score/--source raw\|smart) returns ranked hits with addresses, spans, tags, match_field in the workshop-004 envelope. | [x] checked | — | — | [bp-0002](assets/backpressure.dd.md#rows) | — |
+| ac-0003 | A CI-runnable end-to-end test (fake provider, throwaway db) proves scan-&gt;enrich-&gt;search deterministically, incl. the idempotence claim: second scan of unchanged tree enqueues zero enrichment. | [x] checked | — | — | [bp-0003](assets/backpressure.dd.md#rows) | — |
+| ac-0004 | A recorded LIVE run: the daemon scans THIS REPO (whole tree, discovery-filtered - ~133 files on current main, modest cost; Jordan 2026-08-26 superseding the fixture-subset ruling) through Azure and answers 3 sample questions sensibly - transcript in plan assets. | [x] checked | — | — | [bp-0004](assets/backpressure.dd.md#rows) | — |
+| ac-0005 | Envelope v1 + error catalog seed live in fs3-core: ok/error shapes, FS3-E codes with mandatory fix, next_action - consumed by every new CLI verb and endpoint. | [x] checked | — | — | [bp-0005](assets/backpressure.dd.md#rows) | — |
 
 <a id="phases"></a>
 
@@ -65,7 +65,7 @@
 
 | id | title | brief | state | note | receipt | depends_on | tasks | objective | delivers | key_risks |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ph-9dcc | Wire and prove end-to-end | One phase: envelope seed, daemon endpoints + job runner, enrichment through the registry, search v1, then the proof runs (CI-fake + live-Azure). | [ ] unchecked | — | — | — | [tasks](assets/tasks/phase-1/tasks.dd.md#tasks) | — | — | — |
+| ph-9dcc | Wire and prove end-to-end | One phase: envelope seed, daemon endpoints + job runner, enrichment through the registry, search v1, then the proof runs (CI-fake + live-Azure). | [x] checked | — | — | — | [tasks](assets/tasks/phase-1/tasks.dd.md#tasks) | — | — | — |
 
 <a id="open-questions"></a>
 
