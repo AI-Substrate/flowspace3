@@ -62,13 +62,17 @@ flowspace3/                     (cargo workspace)
 ├── crates/parsers/    tree-sitter grammars → core types. Concrete.        → core
 ├── crates/providers/  OpenAI / Azure / ort-local impls of the ports.      → core
 ├── crates/store/      sqlx repos, migrations, queue table. Concrete.      → core
+├── crates/git/        gitoxide: repo identity, blob-keyed snapshots.      → core
 ├── crates/testkit/    FakeEmbedder, FakeSummarizer, fixtures, contract    → core
 │               test harness. A real shipped crate.
 ├── crates/daemon/     axum HTTP, watcher, queue workers, COMPOSITION ROOT → all above
 └── crates/cli/        `flowspace3` binary — thin HTTP client of daemon.   → (core for types)
 ```
+*Amended 2026-08-26 (o-prime ruling): `fs3-git` added — concrete infrastructure of the
+same shape as `fs3-store`, not a port and not a burial in the composition root. The five
+rules are untouched.*
 
-Rule of thumb for placement: **pure logic → core · produces core types from the world → parsers · implements a port → providers · touches PG → store · wires or serves → daemon**.
+Rule of thumb for placement: **pure logic → core · produces core types from the world → parsers · implements a port → providers · touches PG → store · reads git → git · wires or serves → daemon**.
 
 ## Contracts (the shapes to build against)
 
