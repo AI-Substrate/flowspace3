@@ -91,18 +91,25 @@ pub struct EmbedJob {
 }
 
 impl EmbedJob {
-    /// One live job per batch, keyed by the batch's first hash.
+    /// One live job per batch, keyed by the WHOLE batch's contents.
     ///
-    /// The batch is deterministic — same tree, same order, same grouping — so
-    /// this collapses duplicate enqueues of the same work without needing to
-    /// hash the whole batch.
+    /// The first item's hash is not enough, and the failure is silent. Two
+    /// different batches routinely share a first element — two branches whose
+    /// files agree at the top and diverge below, or an edited file whose first
+    /// declaration did not move — and `enqueue_job`'s `ON CONFLICT` REPLACES
+    /// the payload of the live row. The displaced batch's remaining items are
+    /// then never embedded: no error, no failed job, just elements that search
+    /// cannot see.
+    ///
+    /// Hashing every item makes the key mean "this exact set of texts". Sorted
+    /// first, so a batch assembled in a different order is recognised as the
+    /// same work rather than paid for twice.
     #[must_use]
     pub fn dedupe_key(&self) -> String {
-        let first = self
-            .items
-            .first()
-            .map_or("empty", |(hash, _)| hash.as_str());
-        format!("embed:{}:{}:{}", self.identity, self.source, first)
+        let mut hashes: Vec<&str> = self.items.iter().map(|(hash, _)| hash.as_str()).collect();
+        hashes.sort_unstable();
+        let digest = fs3_core::content_hash(hashes.join("\n").as_bytes());
+        format!("embed:{}:{}:{}", self.identity, self.source, digest)
     }
 
     fn source_kind(&self) -> Result<SourceKind, Failure> {
@@ -200,12 +207,27 @@ pub async fn summarize(state: &AppState, value: serde_json::Value) -> Result<(),
 
     // Content-addressed skip: another branch, or an earlier attempt of this
     // same job, may already have paid for this text.
-    if fs3_store::get_smart_content(&state.db, &job.raw_hash, &model_key)
+    //
+    // It RE-EMITS the smart embed rather than returning early, for the same
+    // reason the scan skip does. The summary and its vector are written in
+    // separate steps, so a crash or a provider outage in between — or a retry
+    // of this very job after the summary landed but before its embed was
+    // enqueued — would otherwise leave a summary that is never embedded: paid
+    // for, stored, and unreachable by semantic search, with nothing reporting a
+    // problem. Enqueueing costs nothing when the work is already done, because
+    // the embed job is keyed by content and its handler is itself idempotent.
+    if let Some(existing) = fs3_store::get_smart_content(&state.db, &job.raw_hash, &model_key)
         .await
         .map_err(fail)?
-        .is_some()
     {
-        return Ok(());
+        let text_hash = fs3_core::content_hash(existing.text.as_bytes());
+        return enqueue_embed(
+            state,
+            &job.identity,
+            SourceKind::Smart,
+            vec![(text_hash, existing.text)],
+        )
+        .await;
     }
 
     let summary = state
@@ -380,6 +402,60 @@ mod tests {
             element: subject("a.rs::f"),
         };
         assert_ne!(job("repo-a").dedupe_key(), job("repo-b").dedupe_key());
+    }
+
+    /// The collision the first-hash key allowed, and the reason it was silent:
+    /// `enqueue_job`'s `ON CONFLICT` REPLACES the live row's payload, so the
+    /// displaced batch's items were simply never embedded — no error, no failed
+    /// job, just elements search cannot see.
+    #[test]
+    fn two_batches_sharing_a_first_element_do_not_collide() {
+        let batch = |tail: &str| EmbedJob {
+            identity: "repo".to_string(),
+            source: "raw".to_string(),
+            items: vec![
+                ("shared-head".to_string(), "fn head() {}".to_string()),
+                (tail.to_string(), "fn tail() {}".to_string()),
+            ],
+        };
+        assert_ne!(
+            batch("branch-a-tail").dedupe_key(),
+            batch("branch-b-tail").dedupe_key(),
+            "two branches agreeing at the top and diverging below are different work"
+        );
+    }
+
+    /// The same texts assembled in a different order are the SAME work, and
+    /// paying for them twice is the mirror-image bug of the collision above.
+    #[test]
+    fn batch_order_does_not_change_the_key() {
+        let items = |order: [&str; 2]| EmbedJob {
+            identity: "repo".to_string(),
+            source: "raw".to_string(),
+            items: order
+                .iter()
+                .map(|hash| ((*hash).to_string(), "text".to_string()))
+                .collect(),
+        };
+        assert_eq!(
+            items(["aaa", "bbb"]).dedupe_key(),
+            items(["bbb", "aaa"]).dedupe_key()
+        );
+    }
+
+    /// A batch differing only in its LAST item must still be distinguishable —
+    /// the edited-file case, where the head is unchanged.
+    #[test]
+    fn a_batch_differing_only_in_its_tail_is_different_work() {
+        let batch = |last: &str| EmbedJob {
+            identity: "repo".to_string(),
+            source: "raw".to_string(),
+            items: (0..15)
+                .map(|n| (format!("hash-{n}"), "text".to_string()))
+                .chain(std::iter::once((last.to_string(), "text".to_string())))
+                .collect(),
+        };
+        assert_ne!(batch("before").dedupe_key(), batch("after").dedupe_key());
     }
 
     /// Raw and smart vectors of the same text are different rows in different

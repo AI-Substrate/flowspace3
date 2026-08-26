@@ -394,6 +394,63 @@ async fn queue_depth_is_grouped_by_kind_and_state() {
     database.destroy(pool).await;
 }
 
+/// The boot sweep. A row left `running` has no lease and no heartbeat, so
+/// nothing else can ever move it — and it keeps occupying the live-dedupe
+/// index, which is what turns one dead worker into a file that can never be
+/// scanned again.
+///
+/// Sound only at boot, and only because fs3 has a single writer: at that
+/// instant no worker exists to be holding a claim.
+#[tokio::test]
+async fn the_boot_sweep_frees_rows_a_dead_worker_was_holding() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    for path in ["src/wedged.rs", "src/waiting.rs"] {
+        enqueue_job(
+            &pool,
+            "scan_file",
+            &format!("scan:1:{path}"),
+            &serde_json::json!({}),
+            Duration::ZERO,
+        )
+        .await
+        .unwrap();
+    }
+
+    // Claim one and abandon it — the corpse a killed worker leaves behind.
+    let abandoned = claim_job(&pool, &["scan_file"]).await.unwrap().unwrap();
+
+    let swept = fs3_store::requeue_running(&pool).await.unwrap();
+    assert_eq!(swept, 1, "exactly the running row is swept");
+
+    // Both are claimable again, and the swept one KEPT its attempt count, so a
+    // job that keeps killing its worker is visible as such rather than looping
+    // forever at attempt one.
+    let mut seen = Vec::new();
+    while let Some(job) = claim_job(&pool, &["scan_file"]).await.unwrap() {
+        seen.push((job.id, job.attempts));
+    }
+    assert_eq!(seen.len(), 2, "nothing is left wedged");
+    let recovered = seen
+        .iter()
+        .find(|(id, _)| *id == abandoned.id)
+        .expect("the abandoned row came back");
+    assert_eq!(
+        recovered.1, 2,
+        "the sweep does not reset attempts — claim_job already counted the first one"
+    );
+
+    // A sweep with nothing to do is a no-op, which is what makes running it on
+    // every boot free.
+    for (id, _) in &seen {
+        fs3_store::complete_job(&pool, *id).await.unwrap();
+    }
+    assert_eq!(fs3_store::requeue_running(&pool).await.unwrap(), 0);
+
+    database.destroy(pool).await;
+}
+
 // ---------------------------------------------------------------------------
 // Admin
 

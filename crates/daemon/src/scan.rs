@@ -77,17 +77,6 @@ pub async fn run(state: &AppState, value: serde_json::Value) -> Result<(), Failu
         Failure::new(&catalog::QUEUE_JOB_FAILED, error.to_string()).retryable(false)
     })?;
 
-    // The skip. Cheap, and correct for every branch and checkout at once.
-    if fs3_store::get_elements(&state.db, &blob, PARSER_VERSION)
-        .await
-        .map_err(fail)?
-        .is_some()
-    {
-        return Ok(());
-    }
-
-    let tree = fs3_parsers::scan(std::path::Path::new(&job.path), &bytes).map_err(fail)?;
-
     // The enrichment policy (decision D5) is the scanner's to inject and the
     // store's to record. A file element is excluded because summarising a whole
     // file duplicates what its parts already say; everything else earns a
@@ -95,6 +84,30 @@ pub async fn run(state: &AppState, value: serde_json::Value) -> Result<(), Failu
     let min_lines = state.config.indexing.summary_min_lines;
     let enrich_policy =
         |element: &Element| element.kind != ElementKind::File && needs_summary(element, min_lines);
+
+    // The skip. Cheap, and correct for every branch and checkout at once: these
+    // exact bytes have been parsed by this parser, by anyone, on any branch.
+    //
+    // It RE-EMITS the downstream work rather than returning early. The parse is
+    // what was already paid for, not the enrichment, and the two are written in
+    // separate transactions — so a crash, a provider outage or a retry in the
+    // window between them would otherwise leave elements that no summarize or
+    // embed job will ever be enqueued for, invisible to search forever with
+    // nothing reporting a problem. Re-emitting costs nothing: every downstream
+    // job is content-keyed, so a duplicate enqueue collapses in the live-dedupe
+    // index, and a handler whose work is already done skips it in one query.
+    //
+    // This is the acute half of what the decision-D6 reconciler sweep would
+    // cover. The sweep itself belongs to the daemon plan; making the skip
+    // self-healing removes the need to wait for it.
+    if let Some(stored) = fs3_store::get_elements(&state.db, &blob, PARSER_VERSION)
+        .await
+        .map_err(fail)?
+    {
+        return enrich::enqueue_for_tree(state, &job, &stored, &enrich_policy).await;
+    }
+
+    let tree = fs3_parsers::scan(std::path::Path::new(&job.path), &bytes).map_err(fail)?;
 
     fs3_store::upsert_element_tree(&state.db, &blob, PARSER_VERSION, &tree.root, enrich_policy)
         .await

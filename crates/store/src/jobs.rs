@@ -201,6 +201,46 @@ pub async fn retry_job(
     Ok(())
 }
 
+/// Return every `running` job to `pending`. Returns how many were swept.
+///
+/// The daemon calls this at BOOT, before its runner starts, and it is sound
+/// only there: fs3 has a single writer (PRD req 20), so at that instant no
+/// worker can be holding a claimed row — which means every row still marked
+/// `running` is one whose worker died mid-job.
+///
+/// Without the sweep those rows are wedged forever. There is no lease and no
+/// heartbeat, so nothing else can ever move them, and `claim_job` only looks at
+/// `pending`. Worse, they keep OCCUPYING the live-dedupe index: `scan_file` is
+/// keyed by `(worktree, path)`, so a wedged row makes every future `add` or
+/// `scan` of that file collapse into it — `enqueue_job`'s `ON CONFLICT` bumps
+/// the payload and the deadline but can never change the state. One `SIGKILL`
+/// during a large index would leave those files permanently unindexable, and
+/// the symptom is silence: the scan reports success and enqueues nothing.
+///
+/// A lease with an expiry is the general answer and belongs to the daemon plan.
+/// This is the whole fix for the crash that actually happens — the process
+/// stopping — and it costs one statement at a moment when correctness is free.
+///
+/// `last_error` records why the row moved, so a job that reappears after a
+/// crash is distinguishable from one that was simply slow.
+///
+/// # Errors
+/// [`StoreError::Query`] when the statement fails.
+pub async fn requeue_running(pool: &PgPool) -> Result<u64, StoreError> {
+    let swept = sqlx::query(
+        "UPDATE jobs
+            SET state      = 'pending',
+                last_error = 'requeued at daemon boot: the worker holding this job did not \
+                              finish it',
+                updated_at = now()
+          WHERE state = 'running'",
+    )
+    .execute(pool)
+    .await?
+    .rows_affected();
+    Ok(swept)
+}
+
 /// How many jobs sit in each state, by kind — what `flowspace3 status` reports.
 ///
 /// Grouped rather than totalled: "142 pending" answers nothing useful, while

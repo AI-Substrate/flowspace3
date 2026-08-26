@@ -40,7 +40,7 @@ pub use embeddings::{
 };
 pub use jobs::{
     Job, QueueDepth, claim_job, complete_job, enqueue_job, fail_job, last_failure, queue_depth,
-    retry_job,
+    requeue_running, retry_job,
 };
 pub use refs::{
     RegisteredWorktree, WorktreePath, find_worktree, list_worktrees, register_worktree,

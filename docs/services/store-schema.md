@@ -147,6 +147,23 @@ on, which is the difference between "this is flaky" and "this is fine". Keeping
 the schedule out of the store is what lets two workers with different appetites
 share one queue, and it is why `fail_job` stays terminal.
 
+`requeue_running()` is the BOOT sweep, and it exists because a worker that dies
+mid-job leaves its row `running` forever. There is no lease and no heartbeat, so
+nothing else can move it, and `claim_job` only looks at `pending`. The
+compounding half is what makes it urgent rather than untidy: `scan_file` dedupes
+on `(worktree, path)`, so a wedged row absorbs every future `add` or `scan` of
+that file — `enqueue_job`'s `ON CONFLICT` bumps the payload and the deadline but
+can never change the state. One `SIGKILL` during a large index would leave those
+files permanently unindexable, reported as success.
+
+It is sound only at boot, and only because fs3 has a single writer (workshop
+002; PRD req 20): at that instant no worker exists to be holding a claim.
+Attempts are NOT reset — `claim_job` already counted them — so a job that keeps
+killing its worker stays visible as such rather than looping forever at attempt
+one. A lease with an expiry is the general answer and belongs to the daemon
+plan; this is the whole fix for the crash that actually happens, which is the
+process stopping.
+
 `queue_depth()` groups by `(kind, state)` rather than totalling: "142 pending
 embed, 0 pending scan_file" says the scan finished and the enrichment is the
 thing to wait for, while "142 pending" says nothing. `last_failure()` is the

@@ -73,6 +73,24 @@ async fn serve(configuration: Config, address: String) -> Result<()> {
     })?;
     tracing::info!(%database, "store schema is current");
 
+    // Recover anything a previous process died holding, BEFORE the runner can
+    // claim. A row left `running` has no lease and no heartbeat, so nothing
+    // else would ever move it — and because `scan_file` dedupes on
+    // (worktree, path), it would silently absorb every future add or scan of
+    // that file. One SIGKILL during a large index would otherwise make those
+    // files permanently unindexable, reported as success.
+    //
+    // Sound only here: fs3 is the single writer (PRD req 20), so at this
+    // instant no worker exists to be holding a claim.
+    match fs3_store::requeue_running(&state.db).await {
+        Ok(0) => {}
+        Ok(swept) => tracing::warn!(
+            swept,
+            "requeued jobs left running by a previous process — it did not shut down cleanly"
+        ),
+        Err(error) => tracing::error!(%error, "cannot requeue jobs left running"),
+    }
+
     // The worker loop is a background task rather than a second process: it
     // shares the composition root's provider Arcs (and therefore their HTTP
     // clients and Entra token cache), and the queue's own SKIP LOCKED claim is
