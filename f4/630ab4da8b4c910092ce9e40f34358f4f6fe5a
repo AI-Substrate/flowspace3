@@ -1,0 +1,22 @@
+.harness/government/briefs/w-linux-test.md
+  s_15d888f4b629c1::t_5577944452f408 23-29,31
+  s_15d888f4b629c1::t_e592d7f165176f 1-22,30,32-66
+.harness/government/worker-roster.md
+  s_15d888f4b629c1::t_d23807bc7551d6 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f4630ab4da8b4c910092ce9e40f34358f4f6fe5a",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
