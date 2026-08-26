@@ -21,3 +21,6 @@ target
 #.idea/
 .flow-pair/
 scratch/
+
+# private agent tooling — never committed (standing ruling)
+.claude/

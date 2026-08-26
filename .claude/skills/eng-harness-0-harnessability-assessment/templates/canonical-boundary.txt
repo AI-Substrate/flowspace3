@@ -1,2 +1,0 @@
-The agent harness drives. The engineering harness proves.
-
