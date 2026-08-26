@@ -1,0 +1,130 @@
+{
+  "workspace_members": [
+    "path+file:///workspace/fs3-core#fs3-core@0.1.0",
+    "path+file:///workspace/fs3-parsers#fs3-parsers@0.1.0",
+    "path+file:///workspace/fs3-providers#fs3-providers@0.1.0",
+    "path+file:///workspace/fs3-store#fs3-store@0.1.0",
+    "path+file:///workspace/fs3-testkit#fs3-testkit@0.1.0",
+    "path+file:///workspace/fs3-daemon#fs3-daemon@0.1.0",
+    "path+file:///workspace/fs3-cli#fs3-cli@0.1.0"
+  ],
+  "packages": [
+    {
+      "name": "fs3-core",
+      "id": "path+file:///workspace/fs3-core#fs3-core@0.1.0",
+      "manifest_path": "/workspace/fs3-core/Cargo.toml",
+      "dependencies": [
+        {
+          "name": "serde",
+          "kind": null
+        },
+        {
+          "name": "thiserror",
+          "kind": null
+        }
+      ]
+    },
+    {
+      "name": "fs3-parsers",
+      "id": "path+file:///workspace/fs3-parsers#fs3-parsers@0.1.0",
+      "manifest_path": "/workspace/fs3-parsers/Cargo.toml",
+      "dependencies": [
+        {
+          "name": "fs3-core",
+          "kind": null
+        },
+        {
+          "name": "tree-sitter",
+          "kind": null
+        }
+      ]
+    },
+    {
+      "name": "fs3-providers",
+      "id": "path+file:///workspace/fs3-providers#fs3-providers@0.1.0",
+      "manifest_path": "/workspace/fs3-providers/Cargo.toml",
+      "dependencies": [
+        {
+          "name": "fs3-core",
+          "kind": null
+        },
+        {
+          "name": "reqwest",
+          "kind": null
+        },
+        {
+          "name": "fs3-testkit",
+          "kind": null
+        }
+      ]
+    },
+    {
+      "name": "fs3-store",
+      "id": "path+file:///workspace/fs3-store#fs3-store@0.1.0",
+      "manifest_path": "/workspace/fs3-store/Cargo.toml",
+      "dependencies": [
+        {
+          "name": "fs3-core",
+          "kind": null
+        },
+        {
+          "name": "sqlx",
+          "kind": null
+        }
+      ]
+    },
+    {
+      "name": "fs3-testkit",
+      "id": "path+file:///workspace/fs3-testkit#fs3-testkit@0.1.0",
+      "manifest_path": "/workspace/fs3-testkit/Cargo.toml",
+      "dependencies": [
+        {
+          "name": "fs3-core",
+          "kind": null
+        },
+        {
+          "name": "serde_json",
+          "kind": null
+        }
+      ]
+    },
+    {
+      "name": "fs3-daemon",
+      "id": "path+file:///workspace/fs3-daemon#fs3-daemon@0.1.0",
+      "manifest_path": "/workspace/fs3-daemon/Cargo.toml",
+      "dependencies": [
+        {
+          "name": "fs3-core",
+          "kind": null
+        },
+        {
+          "name": "fs3-store",
+          "kind": null
+        },
+        {
+          "name": "fs3-testkit",
+          "kind": null
+        },
+        {
+          "name": "axum",
+          "kind": null
+        }
+      ]
+    },
+    {
+      "name": "fs3-cli",
+      "id": "path+file:///workspace/fs3-cli#fs3-cli@0.1.0",
+      "manifest_path": "/workspace/fs3-cli/Cargo.toml",
+      "dependencies": [
+        {
+          "name": "fs3-core",
+          "kind": null
+        },
+        {
+          "name": "clap",
+          "kind": null
+        }
+      ]
+    }
+  ]
+}

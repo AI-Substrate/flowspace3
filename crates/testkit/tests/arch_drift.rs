@@ -129,3 +129,104 @@ fn an_inverted_dependency_direction_is_caught() {
         }]
     );
 }
+
+/// The negative proof for the dependency-KIND dimension: `fs3-providers` may
+/// use `fs3-testkit` in its tests, and only there. Promoting that edge into
+/// `[dependencies]` ships the fakes inside the real provider crate.
+///
+/// The fixture differs from the clean one by exactly one JSON line — the edge's
+/// `kind` — so any violation here is that promotion and nothing else. Before
+/// the allow-list carried kinds, this fixture produced ZERO violations and the
+/// rule was enforced only by a TOML comment.
+#[test]
+fn promoting_a_dev_edge_into_the_shipped_binary_is_caught() {
+    let graph = arch::Graph::from_cargo_metadata(include_str!(
+        "../fixtures/arch/promoted-dev-edge-metadata.json"
+    ))
+    .expect("fixture is cargo-metadata shaped");
+
+    let violations = arch::check(&graph, &allowlist());
+
+    assert_eq!(
+        violations,
+        vec![Violation::WrongDependencyKind {
+            crate_name: "fs3-providers".to_string(),
+            dep: "fs3-testkit".to_string(),
+            kind: DepKind::Normal,
+            allowed: DepKind::Dev,
+        }],
+        "the fixture's only difference from the clean one is the promoted edge"
+    );
+
+    let message = violations[0].to_string();
+    assert!(message.contains("dev-dependencies"), "{message}");
+    assert!(message.contains("dependencies]"), "{message}");
+    assert!(message.contains("arch-allowlist.toml"), "{message}");
+}
+
+/// Privilege runs one way. An edge cleared to ship is also cleared for tests,
+/// so a shipped dependency appearing in `[dev-dependencies]` is not drift —
+/// otherwise the kind dimension would just be a second way to spell equality.
+#[test]
+fn a_shipped_edge_may_also_be_used_by_tests() {
+    let mut graph =
+        arch::Graph::from_cargo_metadata(include_str!("../fixtures/arch/clean-metadata.json"))
+            .expect("fixture is cargo-metadata shaped");
+    let core = graph
+        .crates
+        .iter_mut()
+        .find(|c| c.name == "fs3-core")
+        .expect("fixture has fs3-core");
+    core.deps.push(arch::Dep {
+        name: "serde".to_string(),
+        kind: DepKind::Dev,
+    });
+
+    assert_eq!(
+        arch::check(&graph, &allowlist()),
+        Vec::new(),
+        "serde is allow-listed for fs3-core as a shipped edge, so using it in \
+         tests too is not drift"
+    );
+}
+
+/// A build-dependency is a separate axis: a shipped edge does not license one.
+#[test]
+fn a_shipped_edge_does_not_license_a_build_script_edge() {
+    let mut graph =
+        arch::Graph::from_cargo_metadata(include_str!("../fixtures/arch/clean-metadata.json"))
+            .expect("fixture is cargo-metadata shaped");
+    let core = graph
+        .crates
+        .iter_mut()
+        .find(|c| c.name == "fs3-core")
+        .expect("fixture has fs3-core");
+    core.deps.push(arch::Dep {
+        name: "serde".to_string(),
+        kind: DepKind::Build,
+    });
+
+    assert_eq!(
+        arch::check(&graph, &allowlist()),
+        vec![Violation::WrongDependencyKind {
+            crate_name: "fs3-core".to_string(),
+            dep: "serde".to_string(),
+            kind: DepKind::Build,
+            allowed: DepKind::Normal,
+        }]
+    );
+}
+
+/// A typo in the suffix must fail the parse rather than quietly becoming part
+/// of a crate name — a rule named `tokio@devv` would match nothing and silently
+/// forbid the edge it was meant to allow.
+#[test]
+fn an_unknown_kind_suffix_fails_the_allowlist_parse() {
+    let error =
+        toml::from_str::<arch::Allowlist>("[crates.fs3-core]\nexternal = [\"tokio@devv\"]\n")
+            .expect_err("an unknown kind suffix must not parse");
+
+    let message = error.to_string();
+    assert!(message.contains("tokio@devv"), "{message}");
+    assert!(message.contains("@dev"), "{message}");
+}

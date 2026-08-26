@@ -69,6 +69,65 @@ pub struct Dep {
     pub kind: DepKind,
 }
 
+/// One allow-list entry: a crate name, and the most privileged dependency
+/// table it may appear in.
+///
+/// Spelled `"name"` for a shipped `[dependencies]` edge, `"name@dev"` for a
+/// test-only one, `"name@build"` for a build script. Before this existed the
+/// dev/normal distinction was carried by a TOML *comment*, so promoting a
+/// dev-only edge into the shipped binary produced no violation at all.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Rule {
+    /// The crate this rule permits.
+    pub dep: String,
+    /// The most privileged table it may be declared in.
+    pub kind: DepKind,
+}
+
+impl Rule {
+    /// Does this rule permit an edge declared in `actual`?
+    ///
+    /// Privilege runs one way. An edge cleared to SHIP is also cleared to be
+    /// used by tests, so `dependencies` implies `dev-dependencies`. The
+    /// converse is the entire point of this dimension: a dev-only edge found in
+    /// `[dependencies]` has been promoted into the binary. `build-dependencies`
+    /// is a separate axis and implies nothing either way.
+    pub const fn permits(&self, actual: DepKind) -> bool {
+        matches!(
+            (self.kind, actual),
+            (DepKind::Normal, DepKind::Normal | DepKind::Dev)
+                | (DepKind::Dev, DepKind::Dev)
+                | (DepKind::Build, DepKind::Build)
+        )
+    }
+}
+
+impl<'de> Deserialize<'de> for Rule {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let raw = String::deserialize(deserializer)?;
+        let (dep, kind) = match raw.split_once('@') {
+            None => (raw.as_str(), DepKind::Normal),
+            Some((dep, "dev")) => (dep, DepKind::Dev),
+            Some((dep, "build")) => (dep, DepKind::Build),
+            Some((_, unknown)) => {
+                return Err(serde::de::Error::custom(format!(
+                    "allow-list entry `{raw}`: unknown dependency kind `@{unknown}` \
+                     - use `@dev`, `@build`, or no suffix for a shipped [dependencies] edge"
+                )));
+            }
+        };
+        if dep.is_empty() {
+            return Err(serde::de::Error::custom(format!(
+                "allow-list entry `{raw}` names no crate"
+            )));
+        }
+        Ok(Rule {
+            dep: dep.to_string(),
+            kind,
+        })
+    }
+}
+
 /// One workspace crate and its direct dependency edges.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CrateDeps {
@@ -151,10 +210,22 @@ pub struct Allowlist {
 pub struct CrateRules {
     /// Allowed workspace-internal edges.
     #[serde(default)]
-    pub internal: Vec<String>,
+    pub internal: Vec<Rule>,
     /// Allowed direct external edges.
     #[serde(default)]
-    pub external: Vec<String>,
+    pub external: Vec<Rule>,
+}
+
+impl CrateRules {
+    /// The rule covering `dep`, if the allow-list carries one at all.
+    fn rule_for(&self, dep: &str, internal: bool) -> Option<&Rule> {
+        let table = if internal {
+            &self.internal
+        } else {
+            &self.external
+        };
+        table.iter().find(|rule| rule.dep == dep)
+    }
 }
 
 /// A refused edge, or an allow-list that has fallen out of step with reality.
@@ -196,6 +267,18 @@ pub enum Violation {
         dep: String,
         /// Which table declared it.
         kind: DepKind,
+    },
+    /// An allowed edge, declared in a table the architecture does not allow it
+    /// in — a dev-only dependency promoted into the shipped binary, typically.
+    WrongDependencyKind {
+        /// The crate that declared the edge.
+        crate_name: String,
+        /// The crate it depends on.
+        dep: String,
+        /// The table it was actually declared in.
+        kind: DepKind,
+        /// The most privileged table the allow-list permits.
+        allowed: DepKind,
     },
 }
 
@@ -241,6 +324,23 @@ impl std::fmt::Display for Violation {
                 "{crate_name} -> {dep} ({kind}): refused workspace-wide. Workshop 001 rule 5 - \
                  fakes over mocks; doubles come from fs3-testkit, never a mocking framework."
             ),
+            Violation::WrongDependencyKind {
+                crate_name,
+                dep,
+                kind,
+                allowed,
+            } => write!(
+                f,
+                "{crate_name} -> {dep}: declared in [{kind}] but the allow-list permits it \
+                 only in [{allowed}]. A dev-only edge that gets promoted ships in the \
+                 binary; if the promotion is deliberate, change `{dep}@{allowed_suffix}` to \
+                 `{dep}` in testkit/arch-allowlist.toml and say why in the review.",
+                allowed_suffix = match allowed {
+                    DepKind::Normal => "dependencies",
+                    DepKind::Dev => "dev",
+                    DepKind::Build => "build",
+                }
+            ),
         }
     }
 }
@@ -285,19 +385,39 @@ pub fn check(graph: &Graph, allowlist: &Allowlist) -> Vec<Violation> {
                     kind: dep.kind,
                 });
             } else if members.contains(dep.name.as_str()) {
-                if !rules.internal.iter().any(|a| a == &dep.name) {
-                    violations.push(Violation::ForbiddenInternal {
+                match rules.rule_for(&dep.name, true) {
+                    None => violations.push(Violation::ForbiddenInternal {
                         crate_name,
                         dep: dep_name,
                         kind: dep.kind,
-                    });
+                    }),
+                    Some(rule) if !rule.permits(dep.kind) => {
+                        violations.push(Violation::WrongDependencyKind {
+                            crate_name,
+                            dep: dep_name,
+                            kind: dep.kind,
+                            allowed: rule.kind,
+                        });
+                    }
+                    Some(_) => {}
                 }
-            } else if !rules.external.iter().any(|a| a == &dep.name) {
-                violations.push(Violation::ForbiddenExternal {
-                    crate_name,
-                    dep: dep_name,
-                    kind: dep.kind,
-                });
+            } else {
+                match rules.rule_for(&dep.name, false) {
+                    None => violations.push(Violation::ForbiddenExternal {
+                        crate_name,
+                        dep: dep_name,
+                        kind: dep.kind,
+                    }),
+                    Some(rule) if !rule.permits(dep.kind) => {
+                        violations.push(Violation::WrongDependencyKind {
+                            crate_name,
+                            dep: dep_name,
+                            kind: dep.kind,
+                            allowed: rule.kind,
+                        });
+                    }
+                    Some(_) => {}
+                }
             }
         }
     }

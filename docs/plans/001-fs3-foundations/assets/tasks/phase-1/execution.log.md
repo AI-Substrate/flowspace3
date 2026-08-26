@@ -100,3 +100,61 @@ Corrections to them are dated here rather than edited in place.
 11. The daemon integration test locates `flowspace3` from the target directory
     rather than `CARGO_BIN_EXE_*` (which only covers the current package), and
     fails loudly naming `cargo build --workspace` when it is absent.
+
+## fix-0003 (coder, 2026-08-26) — rev-0004 findings addressed
+
+Appended, not rewritten. Crate paths below are the post-ruling `crates/` layout.
+
+### Corrections to the record above
+
+- 2026-08-26 — tk-000c row and the fix-0002 arch notes: the drift check now has
+  a dependency-KIND dimension, and `crates/testkit/fixtures/arch/` holds a third
+  fixture. The live-graph numbers are unchanged (7 crates, 50 edges, 0
+  violations).
+- 2026-08-26 — tk-0008 row: the CHECK-constraint claim was weaker than it read.
+  It asserted only `is_err()`; it now reads the SQLSTATE.
+
+### Findings and what changed
+
+| Finding | Change | Why it satisfies the finding |
+| --- | --- | --- |
+| HIGH bit-exact `Vec<f32>` equality across calls (`crates/testkit/src/contract.rs`) | Cross-call and cross-batch comparisons go through `assert_same_embedding`, which compares cosine similarity against `SAME_EMBEDDING = 0.999`. Equality stays exact only *within* one response, where nothing was recomputed. | A real provider batches its float kernels, so the reduction order for one text depends on what travelled with it; the same input embedded alone and in a batch of three can differ in the last few ulps. The old harness would have failed a correct provider, which is why the keyed run was plausibly unsatisfiable. `float_jitter_across_calls_is_still_the_same_embedding` runs the full contract over an embedder that perturbs every call, and first asserts the fixture really does perturb, so it cannot pass for the wrong reason. |
+| — same finding, strength kept | Added a distinctness precondition: the three sample texts must embed to vectors that are pairwise *below* the threshold. | Loosening a comparison can quietly delete the assertion. Under similarity, an embedder returning one constant vector per call satisfies every ordering check; under the old `==` it also did. `one_vector_for_every_text_fails_the_distinctness_precondition` is that embedder, and it must panic. `a_swapped_slot_is_still_caught_by_similarity` proves the slot-by-slot check from fix-0002 survived the weakening. |
+| MEDIUM allow-list has no dependency-KIND dimension (`crates/testkit/src/arch.rs`, `crates/testkit/arch-allowlist.toml`) | Allow-list entries are now `Rule { dep, kind }`, parsed from `"name"`, `"name@dev"`, `"name@build"`. `Rule::permits` encodes one-way privilege: a shipped edge may also be used by tests; a dev-only edge in `[dependencies]` is a new `Violation::WrongDependencyKind`. All six dev-only edges in the workspace are now marked. | The rule used to be a TOML *comment*. The RED proof is `crates/testkit/fixtures/arch/promoted-dev-edge-metadata.json`, which differs from the clean fixture by exactly one JSON line — `fs3-providers → fs3-testkit` promoted from `"dev"` to `null` — so the single violation it produces is that promotion and nothing else. Before this change that fixture produced ZERO violations. |
+| — same finding, two directions | `a_shipped_edge_may_also_be_used_by_tests` and `a_shipped_edge_does_not_license_a_build_script_edge`. | Without the first, kind-awareness would just be a second spelling of equality and every ordinary dev-use of a shipped crate would go red. The second keeps `build-dependencies` a separate axis. |
+| — same finding, parse strictness | An unknown suffix fails the allow-list parse. | A rule silently read as a crate named `tokio@devv` matches nothing and forbids the edge it was written to allow. `an_unknown_kind_suffix_fails_the_allowlist_parse` pins it. |
+| MEDIUM CHECK test asserted only `is_err()` (`crates/store/tests/pg_round_trip.rs`) | Destructure `StoreError::Query(sqlx::Error::Database(_))`, then assert SQLSTATE `23514` **and** constraint `elements_span_ordered`. | `is_err()` passed for a dropped connection, a typo in the SQL, or a missing table — it proved the write failed, not that the schema refused it. Mutating the INSERT to name a table that does not exist now fails the test with `42P01`; it passed before. |
+| MEDIUM isolation keyed on `process::id()` (`crates/store/tests/pg_round_trip.rs`) | `unique_blob()` seeds from nanos ^ pid ^ a per-process counter. | These tests DELETE by blob, so a collision on the shared 5433 stack cross-deletes another run's rows rather than merely interfering. The counter matters as much as the clock: the old key was constant *within* a process, so two tests in one binary shared it. `every_blob_key_is_unique_within_a_process` demands 1000 distinct keys and checks the 40-char lowercase-hex shape. |
+
+### Gate receipts (coder, 2026-08-26T03:50Z)
+
+- `harness checks` → status ok, 5/5 gates (docs 4 links, fmt, clippy
+  `-D warnings`, `cargo test --all`, arch drift).
+- `cargo run -q -p fs3-testkit --bin fs3-arch-check` → `ok - 7 crates, 50 direct
+  edges, 0 violations` under the kind-aware allow-list.
+- Mutation gate → 8/8 killed. Script: `/tmp/fs3-mutations-0003.py`.
+
+### Deliberately NOT done
+
+- The packet asks for the keyed OpenAI contract run to be executed once and its
+  result recorded. The orchestrator held it pending Jordan's call, so it was not
+  run. `crates/providers/tests/openai_contract.rs` stays `#[ignore]`; it still
+  compiles and type-checks under `cargo test --all`. The finding's *cause* — a
+  harness a correct provider could not satisfy — is fixed; the confirming run is
+  outstanding and is the one open item from rev-0004.
+
+### Decisions added by this fix
+
+12. 0.999 cosine, not an epsilon per component. Provider jitter is relative, so
+    a per-component epsilon has to be scaled by magnitude to mean anything,
+    while cosine is the metric these vectors are actually used under.
+13. Privilege in the allow-list is one-way (`dependencies` implies
+    `dev-dependencies`) rather than exact. Requiring an exact match would force
+    every crate to list its dev-uses of a shipped dependency twice, and that
+    ceremony is what makes an allow-list rot.
+14. A malformed `@suffix` is a parse ERROR, not a silently-normal edge: a rule
+    that matches nothing fails open in the direction of nagging, which is how
+    allow-lists get bypassed.
+15. `crates/testkit/tests/arch_drift.rs` and the new fixture were written under
+    the orchestrator's scope amendment; the RED proof for a *data* dimension
+    cannot live in the code file alone.

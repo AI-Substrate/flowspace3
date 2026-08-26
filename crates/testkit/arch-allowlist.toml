@@ -4,6 +4,17 @@
 # is not named here is architecture drift and fails the check. Adding a
 # dependency therefore costs one deliberate line — which is the point.
 #
+# Entries are KIND-AWARE, because the shipped/test distinction is architecture:
+#
+#   "serde"        may be declared in [dependencies] — and, being the more
+#                  privileged table, in [dev-dependencies] as well.
+#   "tokio@dev"    may be declared ONLY in [dev-dependencies]. Promoting it to
+#                  [dependencies] ships it, and the check says so by name.
+#   "cc@build"     may be declared ONLY in [build-dependencies].
+#
+# A suffix that is not `@dev` or `@build` fails the allow-list parse rather than
+# being read as part of a crate name.
+#
 # Checked by `cargo run -p fs3-testkit --bin fs3-arch-check` (wired into
 # `harness checks`). The check's own negative proof lives in
 # `crates/testkit/tests/arch_drift.rs` against `fixtures/arch/drifted-metadata.json`.
@@ -41,18 +52,19 @@ internal = ["fs3-core"]
 external = ["thiserror", "tree-sitter", "tree-sitter-md", "tree-sitter-rust"]
 
 [crates.fs3-providers]
-# fs3-testkit is a dev-edge here: the real provider runs the same contract
-# harness the fake does.
-internal = ["fs3-core", "fs3-testkit"]
-external = ["async-trait", "reqwest", "serde", "serde_json", "tokio"]
+# fs3-testkit is a DEV edge here: the real provider runs the same contract
+# harness the fake does, and the fake must not ship inside the provider crate.
+# The `@dev` suffix is what enforces that — it used to be this comment.
+internal = ["fs3-core", "fs3-testkit@dev"]
+external = ["async-trait", "reqwest", "serde", "serde_json", "tokio@dev"]
 
 [crates.fs3-store]
 internal = ["fs3-core"]
-external = ["anyhow", "sqlx", "thiserror", "tokio"]
+external = ["anyhow@dev", "sqlx", "thiserror", "tokio@dev"]
 
 [crates.fs3-testkit]
 internal = ["fs3-core"]
-external = ["async-trait", "serde", "serde_json", "thiserror", "toml", "tokio"]
+external = ["async-trait", "serde", "serde_json", "thiserror", "toml", "tokio@dev"]
 
 # The composition root, and the only crate allowed to see everything.
 [crates.fs3-daemon]
@@ -60,7 +72,7 @@ internal = ["fs3-core", "fs3-parsers", "fs3-providers", "fs3-store", "fs3-testki
 external = [
   "anyhow",
   "axum",
-  "reqwest",
+  "reqwest@dev",
   "serde",
   "serde_json",
   "thiserror",
