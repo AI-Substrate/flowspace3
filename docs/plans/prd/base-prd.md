@@ -47,6 +47,8 @@
 42. **Elements are structure-checked, not name-matched.** A node only becomes an element if a small heuristic check confirms it's a genuine declaration (has a name, has a body, sits in a declaration position) — never on type-name pattern matching alone. POC evidence: fs2's name-matching invented elements (C++ file: 58 claimed vs 22 real).
 43. **Config formats are excluded.** Data/config formats (YAML, JSON, TOML, HCL, and kin) are not indexed in v1 — they yield no code-shaped elements and carry PII/secrets risk (they'd otherwise be summarized and embedded into a central store); revisit how to handle configs later. Unsupported/no-grammar files must be an observable outcome (reported as skipped), never a silent gap.
 
+44. **Self-teaching CLI (harness-style agent affordances).** `flowspace3 docs list` / `flowspace3 docs get <topic>` serve bundled offline documentation from the binary itself, and every command's JSON envelope carries agent guidance (`next_action` on success, the mandatory `fix` on errors — workshop 004), so an agent learns and steers the tool from the tool, the way the engineering-harness CLI does. *(Jordan, 2026-08-26.)*
+
 ## Open questions (not yet requirements)
 
 *(all resolved 2026-08-26 — see reqs 28–37)*

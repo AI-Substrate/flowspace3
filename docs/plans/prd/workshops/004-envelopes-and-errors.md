@@ -7,7 +7,7 @@
 Every CLI command and daemon endpoint returns exactly one of these two shapes — JSON-only in v1 (human rendering is a later additive layer over the same envelope):
 
 ```json
-{ "ok": true,  "command": "search", "v": 1, "data": { …verb-specific… }, "meta": { …optional… } }
+{ "ok": true,  "command": "search", "v": 1, "data": { …verb-specific… }, "meta": { …optional… }, "next_action": "optional agent steer — what a consumer typically does next (PRD req 44)" }
 
 { "ok": false, "command": "search", "v": 1,
   "error": {
