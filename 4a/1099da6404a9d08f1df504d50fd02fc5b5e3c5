@@ -1,0 +1,19 @@
+docs/plans/002-docker-daemon-base/assets/poc/cross-platform-strategy.md
+  s_15d888f4b629c1::t_07ede9e7808a11 1-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4a1099da6404a9d08f1df504d50fd02fc5b5e3c5",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
