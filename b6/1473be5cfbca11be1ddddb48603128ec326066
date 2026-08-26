@@ -1,0 +1,18 @@
+crates/core/src/config.rs
+  h_9e71e8b09f7cf2 669-670,708-736,755-768,778-779
+crates/daemon/src/runner.rs
+  h_9e71e8b09f7cf2 36,53-60,185,198-224,328-345,347,354-396,400-403,460-472
+crates/daemon/tests/lanes.rs
+  h_9e71e8b09f7cf2 1-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b61473be5cfbca11be1ddddb48603128ec326066",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
