@@ -158,3 +158,57 @@ Appended, not rewritten. Crate paths below are the post-ruling `crates/` layout.
 15. `crates/testkit/tests/arch_drift.rs` and the new fixture were written under
     the orchestrator's scope amendment; the RED proof for a *data* dimension
     cannot live in the code file alone.
+
+## fix-0004 (coder, 2026-08-26) — rev-0005 findings addressed
+
+Appended, not rewritten. Two of the four rev-0005 findings are process items the
+orchestrator resolved directly and this seat was instructed not to touch: the
+scope amendment covering `crates/testkit/tests/arch_drift.rs` and the arch
+fixture, and the keyed OpenAI run. Both are recorded below as held, not as done.
+
+### Corrections to the record above
+
+- 2026-08-26 — fix-0003's claim that "exact equality is kept only WITHIN one
+  response" was TRUE of the doc comment and FALSE of the code. The harness never
+  sent a text twice in one request, so nothing asserted it. Read that line as a
+  statement of intent until this fix; from here it is an assertion.
+
+### Findings and what changed
+
+| Finding | Change | Why it satisfies the finding |
+| --- | --- | --- |
+| HIGH within-response exactness was unasserted (`crates/testkit/src/contract.rs`) | `embedder_contract` now sends a fourth batch `[t0, t1, t0]` and asserts `duplicate_vectors[0] == duplicate_vectors[2]` — `==`, not cosine. | The reviewer built a provider that returned two DIFFERENT vectors for two IDENTICAL texts in one response and passed the entire contract, 1/1 green. That provider is now a committed fixture, `WithinResponseDriftEmbedder`, and `drift_between_duplicate_slots_in_one_response_is_caught` requires it to panic. The two comparison grades are now stated as separate promises in the doc comment, because one does not imply the other: `SAME_EMBEDDING` exists to excuse batch-composition jitter, and within one response there is no batch composition to differ. |
+| — same finding, fixture honesty | `the_drift_fixture_really_does_differ_within_one_response` asserts the probe drifts AND that it drifts only within jitter. | A `should_panic` test whose fixture has silently stopped misbehaving passes forever. The second half matters as much: if the probe drifted beyond 0.999 the similarity checks would catch it first and the exactness assertion would never be reached, so the test would pass without exercising the new line. |
+| — same finding, the survivor it exposed | Slots 0 and 2 are built from one binding, and `duplicated[0] == duplicated[2]` is asserted before the vectors are compared. | Found by the mutation gate, not by reading. Changing slot 2 to a THIRD text left `drift_between_duplicate_slots_in_one_response_is_caught` still panicking with `bit-identical` — the vectors differed, but because the texts differed. The test passed for the wrong reason, which is the same defect class the finding is about. The precondition makes that mutation fail loudly. |
+| LOW `WrongDependencyKind` rendered impossible advice (`crates/testkit/src/arch.rs`) | New `kind_advice(dep, actual, allowed)` renders from the ACTUAL/ALLOWED pair. A build edge is told to write `dep@build` or move out of `[build-dependencies]`; a dev edge, `dep@dev`; a promotion into `[dependencies]` keeps its existing wording. | Reading `allowed` alone produced `serde@dependencies` — not a suffix the allow-list can parse, and `serde` is what the rule already said, so the advice was to make a change that is not a change. `a_build_script_edge_is_told_a_rule_the_allowlist_can_actually_hold` asserts the presence of `serde@build` and the ABSENCE of `@dependencies`; `a_promoted_dev_edge_still_gets_the_promotion_warning` pins the branch that was already right, so the rewrite cannot quietly drop it. |
+| — same finding, generalised | `no_rendered_violation_recommends_a_suffix_that_does_not_exist` walks every violation both RED fixtures produce and rejects `@dependencies` in any of them. | Per-branch tests only cover branches someone thought of. This one reads violations the check actually emits. |
+
+### Held by the orchestrator, not done here
+
+- **Scope amendment (HIGH, rev-0005)**: `crates/testkit/tests/arch_drift.rs` and
+  `crates/testkit/fixtures/arch/promoted-dev-edge-metadata.json` were written in
+  fix-0003 outside that packet's literal file list. fix-0004's own allowed scope
+  lists both paths explicitly, so the tests added above sit inside scope; the
+  retroactive amendment for fix-0003 is the orchestrator's to record.
+- **Keyed OpenAI contract run (HIGH, rev-0005)**: still not run — credential use
+  remains held pending Jordan's call. The remediation of the ORIGINAL finding
+  (a harness a correct provider could not satisfy) is complete and now has the
+  within-response half it was missing; the confirming keyed run is outstanding.
+  Read the rev-0004 remediation as BLOCKED on that evidence, not complete.
+
+### Gate receipts (coder, 2026-08-26)
+
+- `harness checks` → 5/5 gates.
+- Mutation gate → 6/6 killed. Script: `/tmp/fs3-mutations-0004.py`.
+
+### Decisions added by this fix
+
+16. Determinism is TWO promises, not one, and the doc comment now says so. The
+    weakening in fix-0003 was correct for the across-call promise and silently
+    dropped the within-response one; naming both is what stops the next
+    loosening from taking the other with it.
+17. Diagnostics are rendered from the (actual, allowed) PAIR. Advice derived
+    from half the state will eventually describe a state that cannot exist.
+18. The unreachable `(Normal, Normal)` arm says something true and general
+    rather than `unreachable!()`. `Display` panicking while reporting a
+    violation would replace a real verdict with a crash.

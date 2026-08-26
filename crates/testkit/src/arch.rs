@@ -332,16 +332,54 @@ impl std::fmt::Display for Violation {
             } => write!(
                 f,
                 "{crate_name} -> {dep}: declared in [{kind}] but the allow-list permits it \
-                 only in [{allowed}]. A dev-only edge that gets promoted ships in the \
-                 binary; if the promotion is deliberate, change `{dep}@{allowed_suffix}` to \
-                 `{dep}` in testkit/arch-allowlist.toml and say why in the review.",
-                allowed_suffix = match allowed {
-                    DepKind::Normal => "dependencies",
-                    DepKind::Dev => "dev",
-                    DepKind::Build => "build",
-                }
+                 only in [{allowed}]. {advice}",
+                advice = kind_advice(dep, *kind, *allowed)
             ),
         }
+    }
+}
+
+/// The actionable half of a [`Violation::WrongDependencyKind`] message.
+///
+/// Rendered from the ACTUAL/ALLOWED pair, never from `allowed` alone. Reading
+/// `allowed` alone produced advice an agent cannot follow: a dep allow-listed
+/// to ship but found in `[build-dependencies]` was told to change
+/// `serde@dependencies` to `serde` — `@dependencies` is not a suffix the
+/// allow-list has, and `serde` is exactly what the rule already said. A
+/// diagnostic that sends someone to edit a line that is already correct is
+/// worse than one that says nothing, because it costs a round trip to disbelieve.
+fn kind_advice(dep: &str, actual: DepKind, allowed: DepKind) -> String {
+    match (actual, allowed) {
+        // The dangerous direction, and the one this dimension was built for:
+        // something cleared only for tests or build scripts now ships.
+        (DepKind::Normal, DepKind::Dev) => format!(
+            "A dev-only edge that gets promoted ships in the binary; if the promotion \
+             is deliberate, change `{dep}@dev` to `{dep}` in testkit/arch-allowlist.toml \
+             and say why in the review."
+        ),
+        (DepKind::Normal, DepKind::Build) => format!(
+            "A build-script edge that gets promoted ships in the binary; if the \
+             promotion is deliberate, change `{dep}@build` to `{dep}` in \
+             testkit/arch-allowlist.toml and say why in the review."
+        ),
+        // Build scripts are a separate axis, so no other rule spelling permits
+        // this edge — `@build` or nothing.
+        (DepKind::Build, _) => format!(
+            "If the build-script edge is intentional, write `{dep}@build` in \
+             testkit/arch-allowlist.toml; if it is not, move {dep} out of \
+             [build-dependencies]."
+        ),
+        (DepKind::Dev, _) => format!(
+            "If the test-only edge is intentional, write `{dep}@dev` in \
+             testkit/arch-allowlist.toml; if it is not, move {dep} out of \
+             [dev-dependencies]."
+        ),
+        // `check` never builds this pair — a shipped rule permits a shipped
+        // edge — so say the true general thing rather than invent a suffix.
+        (DepKind::Normal, DepKind::Normal) => format!(
+            "Reconcile `{dep}` in testkit/arch-allowlist.toml with the table it is \
+             declared in."
+        ),
     }
 }
 

@@ -63,9 +63,13 @@ fn assert_same_embedding(actual: &[f32], expected: &[f32], context: &str) {
 /// text, fixed dimensionality across calls, non-degenerate vectors, and
 /// **determinism**: the same text embedded twice yields the same embedding.
 ///
-/// Comparisons *within* one response are exact. Comparisons *across* calls use
-/// cosine similarity against [`SAME_EMBEDDING`], because a real provider's
-/// float kernels are not bit-reproducible across batch compositions.
+/// Determinism is asserted at two grades, because the port promises two
+/// different things. *Across* calls, comparison is cosine similarity against
+/// [`SAME_EMBEDDING`] — a real provider's float kernels are not bit-reproducible
+/// across batch compositions. *Within* one response, comparison is `==`: the
+/// same text sent twice in one batch must come back bit-identical, since
+/// nothing was recomputed between the two slots. The second grade is not
+/// implied by the first, and a provider can pass one while failing the other.
 ///
 /// # Panics
 /// On any contract violation, naming the property that broke.
@@ -165,6 +169,45 @@ pub async fn embedder_contract<E: Embedder + ?Sized>(embedder: &E) {
             &format!("reordering the inputs reorders the outputs (index {index})"),
         );
     }
+
+    // Within ONE response nothing is recomputed: the same text went through the
+    // same kernel in the same batch, so two identical inputs must come back
+    // bit-identical. `SAME_EMBEDDING` deliberately does NOT cover this — it
+    // exists to excuse *batch-composition* jitter, and there is no batch
+    // composition to differ here. Until this assertion existed, "exact equality
+    // survives within a single response" was a claim in a doc comment with
+    // nothing behind it: an embedder returning two different vectors for two
+    // identical texts in one call passed the whole contract.
+    let repeated = &texts[0];
+    let duplicated = vec![repeated.clone(), texts[1].clone(), repeated.clone()];
+    // Slots 0 and 2 must actually be the SAME text, or the equality below is
+    // asserting something else entirely — and would then be satisfied by an
+    // embedder that ignores its input. A mutation that quietly makes these two
+    // different texts must fail here, not pass the exactness check by accident.
+    assert_eq!(
+        duplicated[0], duplicated[2],
+        "harness: the repeat check needs the same text in both slots"
+    );
+    let duplicate_vectors = embedder
+        .embed(&duplicated)
+        .await
+        .expect("embedder should embed a batch containing a repeated text");
+    assert_eq!(
+        duplicate_vectors.len(),
+        duplicated.len(),
+        "contract: one vector per input text, repeats included"
+    );
+    assert_ne!(
+        duplicate_vectors[0], duplicate_vectors[1],
+        "contract: two different texts in one response must not collapse to \
+         one vector, which would make the repeat check below vacuous"
+    );
+    assert_eq!(
+        duplicate_vectors[0], duplicate_vectors[2],
+        "contract: the same text twice in ONE response must yield bit-identical \
+         vectors (slots 0 and 2) — nothing is recomputed within a single call, \
+         so no batch-composition jitter can excuse a difference"
+    );
 
     // An empty batch is legal and costs nothing.
     let empty = embedder
@@ -293,6 +336,33 @@ mod tests {
         }
     }
 
+    /// Perturbs every VECTOR rather than every CALL, so two identical texts in
+    /// one response come back different.
+    ///
+    /// This is the reviewer's surviving counterexample, kept as a fixture. It
+    /// stays inside provider jitter, so every similarity-based assertion in the
+    /// contract accepts it — it passed the entire harness while violating the
+    /// one property `SAME_EMBEDDING` was never meant to cover.
+    #[derive(Default)]
+    struct WithinResponseDriftEmbedder {
+        inner: FakeEmbedder,
+        vectors: AtomicUsize,
+    }
+
+    #[async_trait]
+    impl Embedder for WithinResponseDriftEmbedder {
+        async fn embed(&self, texts: &[String]) -> Result<Vec<Vec<f32>>> {
+            let mut vectors = self.inner.embed(texts).await?;
+            for vector in &mut vectors {
+                let nth = self.vectors.fetch_add(1, Ordering::Relaxed);
+                for value in vector.iter_mut() {
+                    *value += *value * 1e-5 * (nth as f32 + 1.0);
+                }
+            }
+            Ok(vectors)
+        }
+    }
+
     #[tokio::test]
     async fn float_jitter_across_calls_is_still_the_same_embedding() {
         let embedder = JitteryEmbedder::default();
@@ -326,6 +396,37 @@ mod tests {
     #[should_panic(expected = "embed to the same vector")]
     async fn one_vector_for_every_text_fails_the_distinctness_precondition() {
         embedder_contract(&ConstantEmbedder).await;
+    }
+
+    #[tokio::test]
+    async fn the_drift_fixture_really_does_differ_within_one_response() {
+        let embedder = WithinResponseDriftEmbedder::default();
+        let text = "fn main() { println!(\"hello\"); }".to_string();
+        let vectors = embedder
+            .embed(&[text.clone(), text])
+            .await
+            .expect("fixture embeds");
+
+        // Without this, the should_panic test below could pass because the
+        // fixture is broken rather than because the contract caught it.
+        assert_ne!(
+            vectors[0], vectors[1],
+            "the fixture must return different vectors for two identical texts \
+             in one response, otherwise it is not the counterexample"
+        );
+        // And it must drift only within jitter, or the similarity assertions
+        // would catch it first and the exactness check would never be reached.
+        let similarity = cosine(&vectors[0], &vectors[1]);
+        assert!(
+            similarity >= SAME_EMBEDDING,
+            "the fixture must stay inside provider jitter, got {similarity}"
+        );
+    }
+
+    #[tokio::test]
+    #[should_panic(expected = "bit-identical")]
+    async fn drift_between_duplicate_slots_in_one_response_is_caught() {
+        embedder_contract(&WithinResponseDriftEmbedder::default()).await;
     }
 
     #[test]

@@ -230,3 +230,90 @@ fn an_unknown_kind_suffix_fails_the_allowlist_parse() {
     assert!(message.contains("tokio@devv"), "{message}");
     assert!(message.contains("@dev"), "{message}");
 }
+
+fn wrong_kind_message(dep: &str, kind: DepKind, allowed: DepKind) -> String {
+    Violation::WrongDependencyKind {
+        crate_name: "fs3-store".to_string(),
+        dep: dep.to_string(),
+        kind,
+        allowed,
+    }
+    .to_string()
+}
+
+/// A verdict is only half of a diagnostic. The other half is a fix an agent can
+/// actually apply, and this branch used to render one that does not exist: a
+/// shipped-allow-listed dep found in `[build-dependencies]` was told to change
+/// `serde@dependencies` to `serde`, which is neither valid allow-list syntax nor
+/// a change — the rule already reads `serde`.
+#[test]
+fn a_build_script_edge_is_told_a_rule_the_allowlist_can_actually_hold() {
+    let message = wrong_kind_message("serde", DepKind::Build, DepKind::Normal);
+
+    assert!(
+        !message.contains("@dependencies"),
+        "`@dependencies` is not allow-list syntax; the advice invents it: {message}"
+    );
+    assert!(
+        message.contains("`serde@build`"),
+        "advice must name the one rule spelling that would permit this edge: {message}"
+    );
+    assert!(
+        message.contains("move serde out of [build-dependencies]"),
+        "advice must offer the other real option — not having the edge: {message}"
+    );
+    // The verdict itself was never wrong, and must survive the rewrite.
+    assert!(
+        message.contains("declared in [build-dependencies]"),
+        "{message}"
+    );
+}
+
+/// The same defect one step over: allow-listed for tests, found in a build
+/// script. `@dev` is not the fix here either.
+#[test]
+fn a_build_script_edge_allow_listed_for_tests_is_told_the_same_real_fix() {
+    let message = wrong_kind_message("cc", DepKind::Build, DepKind::Dev);
+
+    assert!(message.contains("`cc@build`"), "{message}");
+    assert!(!message.contains("`cc@dev`"), "{message}");
+}
+
+/// The dangerous direction keeps its warning: this is the promotion the kind
+/// dimension exists to catch, and its advice was already correct.
+#[test]
+fn a_promoted_dev_edge_still_gets_the_promotion_warning() {
+    let message = wrong_kind_message("fs3-testkit", DepKind::Normal, DepKind::Dev);
+
+    assert!(
+        message.contains("ships in the binary"),
+        "the promotion warning must not be lost in the rewrite: {message}"
+    );
+    assert!(message.contains("`fs3-testkit@dev`"), "{message}");
+    assert!(message.contains("to `fs3-testkit`"), "{message}");
+}
+
+/// No violation the check can actually produce may render advice that points at
+/// a suffix the allow-list cannot parse. The RED fixture is the live source of
+/// such violations, so read them rather than hand-build them.
+#[test]
+fn no_rendered_violation_recommends_a_suffix_that_does_not_exist() {
+    let fixtures = [
+        include_str!("../fixtures/arch/drifted-metadata.json"),
+        include_str!("../fixtures/arch/promoted-dev-edge-metadata.json"),
+    ];
+
+    let mut rendered = 0;
+    for fixture in fixtures {
+        let graph = arch::Graph::from_cargo_metadata(fixture).expect("fixture parses");
+        for violation in arch::check(&graph, &allowlist()) {
+            let message = violation.to_string();
+            assert!(
+                !message.contains("@dependencies"),
+                "no rule can be spelled `@dependencies`: {message}"
+            );
+            rendered += 1;
+        }
+    }
+    assert!(rendered > 0, "the fixtures must produce violations to read");
+}
