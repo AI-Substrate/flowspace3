@@ -28,9 +28,20 @@ use fs3_core::{Element, Embedder, Summarizer};
 ///
 /// 0.999 sits far above provider jitter (which lands around 1.0 - 1e-6) and far
 /// below the similarity of two genuinely different texts, so the ordering
-/// assertions keep their force. Within a single response nothing is
-/// recomputed, so equality there stays exact.
+/// assertions keep their force.
 const SAME_EMBEDDING: f32 = 0.999;
+
+/// How close two vectors must sit to mean the same thing when they arrive in
+/// the SAME response — tighter than [`SAME_EMBEDDING`], because there is no
+/// batch composition to differ, but not exact, because there is quantisation.
+const SAME_MEANING: f32 = 0.9999;
+
+/// The widest component-wise gap a repeated text may show inside one response.
+///
+/// Live Azure returns differences of exactly 2^-13 for a repeated input; 2^-11
+/// leaves four quantisation steps of headroom without approaching the scale at
+/// which a component means something different.
+const QUANTISATION_TOLERANCE: f32 = 1.0 / 2048.0;
 
 /// Cosine similarity. Callers have already proved both vectors non-degenerate,
 /// so the denominator cannot be zero.
@@ -53,6 +64,41 @@ fn assert_same_embedding(actual: &[f32], expected: &[f32], context: &str) {
         similarity >= SAME_EMBEDDING,
         "contract: {context} — expected the same embedding, but cosine \
          similarity is {similarity}, below {SAME_EMBEDDING}"
+    );
+}
+
+/// Assert that two vectors from ONE response carry the same meaning.
+///
+/// Both checks are needed, and each covers what the other cannot: cosine is
+/// blind to a pure rescale, and a component-wise bound is blind to a small
+/// rotation of a small vector. Together they admit hardware quantisation and
+/// nothing else — in particular they still reject a slot holding a different
+/// text's embedding, which is the failure this assertion exists to catch.
+fn assert_same_meaning(actual: &[f32], expected: &[f32], context: &str) {
+    assert_eq!(
+        actual.len(),
+        expected.len(),
+        "contract: {context} — dimensionality must be stable within a response"
+    );
+
+    let similarity = cosine(actual, expected);
+    assert!(
+        similarity >= SAME_MEANING,
+        "contract: {context} — must mean the same thing, but cosine similarity \
+         is {similarity}, below {SAME_MEANING}"
+    );
+
+    let (index, gap) = actual
+        .iter()
+        .zip(expected)
+        .map(|(a, b)| (a - b).abs())
+        .enumerate()
+        .max_by(|(_, left), (_, right)| left.total_cmp(right))
+        .expect("a non-empty vector, already proved");
+    assert!(
+        gap <= QUANTISATION_TOLERANCE,
+        "contract: {context} — component {index} differs by {gap}, beyond the \
+         {QUANTISATION_TOLERANCE} a provider's quantisation can explain"
     );
 }
 
@@ -170,20 +216,29 @@ pub async fn embedder_contract<E: Embedder + ?Sized>(embedder: &E) {
         );
     }
 
-    // Within ONE response nothing is recomputed: the same text went through the
-    // same kernel in the same batch, so two identical inputs must come back
-    // bit-identical. `SAME_EMBEDDING` deliberately does NOT cover this — it
-    // exists to excuse *batch-composition* jitter, and there is no batch
-    // composition to differ here. Until this assertion existed, "exact equality
-    // survives within a single response" was a claim in a doc comment with
-    // nothing behind it: an embedder returning two different vectors for two
-    // identical texts in one call passed the whole contract.
+    // Within ONE response the same text must come back meaning the same thing.
+    //
+    // This clause used to demand BIT-IDENTICAL vectors, reasoning that nothing
+    // is recomputed inside a single call. Measurement says otherwise: 12
+    // identical requests to a live Azure `text-embedding-3-small` deployment,
+    // each carrying the same text in slots 0 and 2, returned DIFFERENT vectors
+    // for those slots in 4 of the 12. The difference is always exactly 2^-13
+    // (0.0001220703125) on at least one component — a quantisation step, not
+    // drift — and it appears with and without the `dimensions` parameter, so it
+    // is not Matryoshka truncation. Bit-exactness here failed a *correct*
+    // provider about one run in six.
+    //
+    // So the defended property is the one fs3 actually relies on: a repeated
+    // text is never given a different MEANING. Belt and braces, because either
+    // check alone is weak — cosine cannot see a rescale, and an absolute
+    // tolerance cannot see a small rotation of a small vector.
+    //
+    // Do not re-tighten this from first principles. The evidence above is why.
     let repeated = &texts[0];
     let duplicated = vec![repeated.clone(), texts[1].clone(), repeated.clone()];
-    // Slots 0 and 2 must actually be the SAME text, or the equality below is
+    // Slots 0 and 2 must actually be the SAME text, or the comparison below is
     // asserting something else entirely — and would then be satisfied by an
-    // embedder that ignores its input. A mutation that quietly makes these two
-    // different texts must fail here, not pass the exactness check by accident.
+    // embedder that ignores its input.
     assert_eq!(
         duplicated[0], duplicated[2],
         "harness: the repeat check needs the same text in both slots"
@@ -202,11 +257,10 @@ pub async fn embedder_contract<E: Embedder + ?Sized>(embedder: &E) {
         "contract: two different texts in one response must not collapse to \
          one vector, which would make the repeat check below vacuous"
     );
-    assert_eq!(
-        duplicate_vectors[0], duplicate_vectors[2],
-        "contract: the same text twice in ONE response must yield bit-identical \
-         vectors (slots 0 and 2) — nothing is recomputed within a single call, \
-         so no batch-composition jitter can excuse a difference"
+    assert_same_meaning(
+        &duplicate_vectors[0],
+        &duplicate_vectors[2],
+        "the same text twice in ONE response (slots 0 and 2)",
     );
 
     // An empty batch is legal and costs nothing.
@@ -344,34 +398,40 @@ mod tests {
         }
     }
 
-    /// Perturbs every VECTOR rather than every CALL, so two identical texts in
-    /// one response come back different.
+    /// Returns a DIFFERENT text's embedding in the repeated slot.
     ///
-    /// This is the reviewer's surviving counterexample, kept as a fixture. It
-    /// stays inside provider jitter, so every similarity-based assertion in the
-    /// contract accepts it — it passed the entire harness while violating the
-    /// one property `SAME_EMBEDDING` was never meant to cover.
+    /// This replaces a rescaling fixture that perturbed every vector by ~1e-5
+    /// relative. That one was retired with the bit-exact clause it defended: a
+    /// pure rescale is meaning-neutral under `vector_cosine_ops`, the metric
+    /// fs3 actually searches with, so it violated no property fs3 relies on —
+    /// and no tolerance wide enough to admit real hardware quantisation could
+    /// have caught it anyway.
+    ///
+    /// Substituting another text's embedding is the failure that matters, and
+    /// it is caught by any sane tolerance — which is what keeps the relaxed
+    /// check provably non-vacuous.
     #[derive(Default)]
-    struct WithinResponseDriftEmbedder {
+    struct SubstitutedSlotEmbedder {
         inner: FakeEmbedder,
-        vectors: AtomicUsize,
     }
 
     #[async_trait]
-    impl Embedder for WithinResponseDriftEmbedder {
+    impl Embedder for SubstitutedSlotEmbedder {
         async fn embed(&self, texts: &[String]) -> Result<Vec<Vec<f32>>> {
             let mut vectors = self.inner.embed(texts).await?;
-            for vector in &mut vectors {
-                let nth = self.vectors.fetch_add(1, Ordering::Relaxed);
-                for value in vector.iter_mut() {
-                    *value += *value * 1e-5 * (nth as f32 + 1.0);
-                }
+            // Only when the batch actually repeats a text — [a, b, a] — hand
+            // back b's vector for the second `a`, exactly as a mis-indexed
+            // response would. Corrupting every batch would instead trip the
+            // distinctness precondition earlier in the contract, and this
+            // fixture would then prove nothing about the repeat check.
+            if texts.len() > 2 && texts[0] == texts[2] {
+                vectors[2] = vectors[1].clone();
             }
             Ok(vectors)
         }
 
         fn key(&self) -> String {
-            "within-response-drift@8".to_string()
+            "substituted-slot@8".to_string()
         }
     }
 
@@ -411,34 +471,73 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn the_drift_fixture_really_does_differ_within_one_response() {
-        let embedder = WithinResponseDriftEmbedder::default();
-        let text = "fn main() { println!(\"hello\"); }".to_string();
+    async fn the_substitution_fixture_really_does_return_the_wrong_vector() {
+        let embedder = SubstitutedSlotEmbedder::default();
+        let texts = ["alpha alpha".to_string(), "beta beta".to_string()];
         let vectors = embedder
-            .embed(&[text.clone(), text])
+            .embed(&[texts[0].clone(), texts[1].clone(), texts[0].clone()])
             .await
             .expect("fixture embeds");
 
         // Without this, the should_panic test below could pass because the
         // fixture is broken rather than because the contract caught it.
-        assert_ne!(
-            vectors[0], vectors[1],
-            "the fixture must return different vectors for two identical texts \
-             in one response, otherwise it is not the counterexample"
-        );
-        // And it must drift only within jitter, or the similarity assertions
-        // would catch it first and the exactness check would never be reached.
-        let similarity = cosine(&vectors[0], &vectors[1]);
-        assert!(
-            similarity >= SAME_EMBEDDING,
-            "the fixture must stay inside provider jitter, got {similarity}"
+        assert_eq!(
+            vectors[2], vectors[1],
+            "the fixture must put the WRONG text's vector in the repeated slot"
         );
     }
 
     #[tokio::test]
-    #[should_panic(expected = "bit-identical")]
-    async fn drift_between_duplicate_slots_in_one_response_is_caught() {
-        embedder_contract(&WithinResponseDriftEmbedder::default()).await;
+    #[should_panic(expected = "must mean the same thing")]
+    async fn a_substituted_duplicate_slot_is_caught() {
+        embedder_contract(&SubstitutedSlotEmbedder::default()).await;
+    }
+
+    /// The relaxation must actually admit what it was relaxed for. A provider
+    /// whose repeated slot differs by one quantisation step is CORRECT, and
+    /// this is the fixture that proves the harness now says so.
+    #[tokio::test]
+    async fn a_quantisation_step_between_duplicate_slots_is_accepted() {
+        /// Nudges one component of every vector by the 2^-13 step measured on
+        /// live Azure.
+        #[derive(Default)]
+        struct QuantisedEmbedder {
+            inner: FakeEmbedder,
+            vectors: AtomicUsize,
+        }
+
+        #[async_trait]
+        impl Embedder for QuantisedEmbedder {
+            async fn embed(&self, texts: &[String]) -> Result<Vec<Vec<f32>>> {
+                let mut vectors = self.inner.embed(texts).await?;
+                for vector in &mut vectors {
+                    let nth = self.vectors.fetch_add(1, Ordering::Relaxed);
+                    if nth.is_multiple_of(2) {
+                        vector[0] += 1.0 / 8192.0;
+                    }
+                }
+                Ok(vectors)
+            }
+
+            fn key(&self) -> String {
+                "quantised@8".to_string()
+            }
+        }
+
+        let embedder = QuantisedEmbedder::default();
+        let text = "fn main() { println!(\"hello\"); }".to_string();
+        let vectors = embedder
+            .embed(&[text.clone(), text])
+            .await
+            .expect("fixture embeds");
+        assert_ne!(
+            vectors[0], vectors[1],
+            "the fixture must actually differ, or this proves nothing"
+        );
+
+        // The finding, as a test: bit-exactness would panic here, and a real
+        // provider does exactly this about one response in three.
+        embedder_contract(&embedder).await;
     }
 
     #[test]
