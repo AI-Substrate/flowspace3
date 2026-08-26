@@ -411,6 +411,14 @@
           "requirement": "The daemon ships INSIDE the flowspace3 binary as `flowspace3 daemon` (no separate fs3-daemon artifact) - one file to install, one version, req 2 literally true. (Jordan, 2026-08-26.)",
           "state": "unchecked",
           "note": "sawfish re-opened; must land BEFORE ship-it bakes artifact names into the release workflow"
+        },
+        {
+          "id": "req-0052",
+          "num": 52,
+          "title": "Agent-facing flowspace skill (.agents/skills)",
+          "requirement": "A skill in .agents/skills teaches any agent to USE flowspace: detect whether it is installed, install it briefly if not (convenience script / README), read the bundled docs (flowspace3 docs get), search with it (semantic modes, filters, el: addresses), and why semantic search beats grep for meaning-shaped questions. (Jordan, 2026-08-26.)",
+          "state": "unchecked",
+          "note": "coder being dispatched; more tasks to follow on the same seat per Jordan"
         }
       ]
     }
