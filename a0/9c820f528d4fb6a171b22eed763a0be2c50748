@@ -1,0 +1,19 @@
+crates/core/src/config.rs
+  s_15d888f4b629c1::t_cc1050a8ea9c9f 679-681,684-704
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a09c820f528d4fb6a171b22eed763a0be2c50748",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
