@@ -1,0 +1,19 @@
+crates/daemon/src/runner.rs
+  s_15d888f4b629c1::t_44d5967bea3d92 112-116,147-151,160-164,167-168,174,240-246,251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a293b2e42d03fc86c620c5b71cfbe1e6b7b5ccc8",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
