@@ -1,0 +1,66 @@
+crates/daemon/Cargo.toml
+  s_15d888f4b629c1::t_be2e6fba4beeaa 11-12
+crates/daemon/src/enrich.rs
+  s_15d888f4b629c1::t_61312abd813b54 47
+  s_15d888f4b629c1::t_d22467e2805479 44-46
+  s_15d888f4b629c1::t_b1774d3a779038 48-50
+  s_15d888f4b629c1::t_dcde5054cefc1a 1-43,51-387
+crates/cli/Cargo.toml
+  s_15d888f4b629c1::t_f8d265737017b7 11-18
+crates/cli/src/client.rs
+  s_15d888f4b629c1::t_43bb6f3fbb618e 1-15,19-21,23,61-68,76,95-107,112-113,115-116,125-211
+crates/cli/src/doctor.rs
+  s_15d888f4b629c1::t_c1627dd294f6ed 1-381
+crates/cli/src/lib.rs
+  s_15d888f4b629c1::t_dbd75e72cd0ee8 8,13
+crates/cli/src/main.rs
+  s_15d888f4b629c1::t_4b781dc07d6794 2-7,14-15,37-93,115-117,131,136,151,154-191,194,198-245,265-266,284
+crates/core/src/config.rs
+  s_15d888f4b629c1::t_829986a1ec611e 479-486,506-529,546-549,559,570-624,668,677-685,697-703,712
+crates/daemon/src/answer.rs
+  s_15d888f4b629c1::t_10c2cf1c63b60c 1-214
+crates/daemon/src/http.rs
+  s_15d888f4b629c1::t_1b8a459766f781 2-16,19-20,26-29,55-58,71-160
+crates/daemon/src/lib.rs
+  s_15d888f4b629c1::t_a2b7535f7744a3 6,8,10-15,18,23
+crates/daemon/src/main.rs
+  s_15d888f4b629c1::t_7da3b759b3d4c4 76-87
+crates/daemon/src/roots.rs
+  s_15d888f4b629c1::t_9511a1b8d1fdc2 1-346
+crates/daemon/src/runner.rs
+  s_15d888f4b629c1::t_f02a0b0c266f3c 1-283
+crates/daemon/src/scan.rs
+  s_15d888f4b629c1::t_04c6cce93a5585 1-141
+crates/daemon/src/schema.rs
+  s_15d888f4b629c1::t_3fba34ee0fa396 1-73
+crates/daemon/src/search.rs
+  s_15d888f4b629c1::t_379f5272cb5ced 1-308
+crates/daemon/src/status.rs
+  s_15d888f4b629c1::t_e1088244a11177 1-107
+crates/daemon/src/wiring.rs
+  s_15d888f4b629c1::t_0c2ab73e1d9eae 39-42,59-66,154-175,192-201,211-226,242-254,258-297
+crates/store/src/lib.rs
+  s_15d888f4b629c1::t_310ef8886aa1c7 47
+crates/store/src/refs.rs
+  s_15d888f4b629c1::t_5dae629b789912 161-184
+crates/testkit/arch-allowlist.toml
+  s_15d888f4b629c1::t_d13268eb93c5ae 135-139,141-148,162-168,170
+docs/services/store-schema.md
+  s_15d888f4b629c1::t_6e2fbc9cf2c5b0 127-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "31464e805f618952e9afc845cf12e0c608ae9907",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
