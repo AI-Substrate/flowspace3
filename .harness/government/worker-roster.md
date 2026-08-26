@@ -30,7 +30,8 @@ Revive a dead seat: `pij revive <id> --print` shows the exact command (Jordan ru
 | pij-xenophobic-wren | git/blob layer: identity + snapshot diffing (w-git-blob) | %40 · window `git-blob` | 01a03c5c-d938-7000-bd92-9136895e64c5 | RELEASED — landed c7670cd+b9f5b47 (fs3-git crate, 8-crate amendment) |
 | pij-musical-sylac | schema v1: migrations 0003+ + typed store API (w-schema) | %41 · window `schema` | 01a03c60-310c-7000-b5fb-d6069937b73a | RELEASED — landed 2dd5a25+b58173a; first fully-green harness checks |
 | pij-inevitable-hummingbird | local embeddings validate+adapter (w-local-embed) | %42 · window `local-embed` | 01a03c75-6993-7000-a09f-05afc8b1e2c4 | ACTIVE — stage 1 POC. Brief `briefs/w-local-embed.md` · phantom aliases: scrawny-ape, thorough-zakalwe |
-| pij-broad-sawfish | plan 003 first light: wire scan->enrich->query (w-first-light) | %43 · window `first-light` | (canary 2026-08-26) | ACTIVE — executes all of plan 003. Brief `briefs/w-first-light.md` |
+| pij-broad-sawfish | plan 003 first light: wire scan->enrich->query (w-first-light) | %43 · window `first-light` | (canary 2026-08-26) | ACTIVE — ckpt 1 done (envelope 597a99d); wiring daemon (doctor/runner/enrich/search in flight) |
+| pij-varied-skunk | human-render prototype over frozen envelopes (w-human-render) | %46 · window `human-render` | 01a03c9b-9f4c-7000-a313-e60b097d3436 | ACTIVE — pocs/human-render, rich-style renderer + TTY strategy. Brief `briefs/w-human-render.md` |
 
 ## Historical / other
 

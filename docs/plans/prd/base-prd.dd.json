@@ -380,6 +380,14 @@
           "requirement": "A generic OpenAI-compatible Summarizer adapter (config kind openai-compat: base_url, optional key env, max_tokens, all registry-configured) supports local/LAN LLM servers (llama.cpp-class, reasoning models incl. reasoning_content handling) - selectable per repo/root via the registry so PRIVATE repos can be summarized entirely on-network. (Jordan, 2026-08-26.)",
           "state": "unchecked",
           "note": "kazimir unit 2 in flight; live LAN endpoint used for validation"
+        },
+        {
+          "id": "req-0050",
+          "num": 50,
+          "title": "Human-readable CLI rendering (fast-follow)",
+          "requirement": "A human presentation layer renders the SAME envelopes as rich terminal output (python-rich-class aesthetics: tables, color, checklists) - a pure renderer over the frozen envelope contract, TTY-autodetected with --json always forcing the envelope; agents see no change. Prototyped ahead of need. (Jordan, 2026-08-26.)",
+          "state": "unchecked",
+          "note": "prototype in flight (pocs/); JSON-only v1 stands (workshop 003 D5) until this is promoted"
         }
       ]
     }
