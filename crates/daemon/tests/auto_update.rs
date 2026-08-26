@@ -98,6 +98,17 @@ fn published(bytes: &[u8]) -> Vec<(String, Vec<u8>)> {
     assets
 }
 
+/// A stand-in binary that answers `--version` the way the real one does.
+///
+/// A shell script rather than a compiled artefact: the updater now RUNS what it
+/// downloaded before installing it (req-0060's loop guard), so an asset that is
+/// merely bytes is no longer a realistic fake. What is being modelled is "a
+/// thing that execs and reports a version", and a script is exactly that
+/// without adding a build step to the test suite.
+fn binary_reporting(version: &str) -> Vec<u8> {
+    format!("#!/bin/sh\necho \"flowspace3 {version}\"\n").into_bytes()
+}
+
 fn throwaway_binary(label: &str, contents: &[u8]) -> (PathBuf, PathBuf) {
     let directory = support::temp_dir(label);
     let path = directory.join("flowspace3");
@@ -107,7 +118,7 @@ fn throwaway_binary(label: &str, contents: &[u8]) -> (PathBuf, PathBuf) {
 
 #[tokio::test]
 async fn a_newer_release_is_downloaded_verified_and_swapped_in() {
-    let base = spawn_release_server("v9.9.9", published(b"the new binary")).await;
+    let base = spawn_release_server("v9.9.9", published(&binary_reporting("9.9.9"))).await;
     let (_directory, installed) = throwaway_binary("update-swap", b"the old binary");
 
     let updater = Updater::against(&base, "0.1.0")
@@ -122,13 +133,13 @@ async fn a_newer_release_is_downloaded_verified_and_swapped_in() {
     );
     assert_eq!(
         std::fs::read(&installed).expect("reading back"),
-        b"the new binary"
+        binary_reporting("9.9.9")
     );
 }
 
 #[tokio::test]
 async fn the_newest_release_already_running_is_a_no_op() {
-    let base = spawn_release_server("v9.9.9", published(b"the new binary")).await;
+    let base = spawn_release_server("v9.9.9", published(&binary_reporting("9.9.9"))).await;
     let (_directory, installed) = throwaway_binary("update-current", b"the old binary");
 
     let outcome = Updater::against(&base, "9.9.9")
@@ -148,7 +159,7 @@ async fn the_newest_release_already_running_is_a_no_op() {
 
 #[tokio::test]
 async fn an_older_published_release_never_walks_the_install_backwards() {
-    let base = spawn_release_server("v0.0.1", published(b"an ancient binary")).await;
+    let base = spawn_release_server("v0.0.1", published(&binary_reporting("0.0.1"))).await;
     let (_directory, installed) = throwaway_binary("update-downgrade", b"the current binary");
 
     let outcome = Updater::against(&base, "9.9.9")
@@ -170,7 +181,7 @@ async fn an_older_published_release_never_walks_the_install_backwards() {
 /// error, because the user is the one who needs to hear it.
 #[tokio::test]
 async fn an_asset_that_does_not_match_the_published_checksum_is_refused() {
-    let mut assets = published(b"the new binary");
+    let mut assets = published(&binary_reporting("9.9.9"));
     // Serve different bytes than the checksums promise — the shape of a
     // corrupted mirror or a tampered asset.
     for (name, bytes) in &mut assets {
@@ -211,7 +222,7 @@ async fn an_asset_that_does_not_match_the_published_checksum_is_refused() {
 /// forever.
 #[tokio::test]
 async fn a_release_with_no_checksums_asset_is_reported_rather_than_erroring() {
-    let assets: Vec<(String, Vec<u8>)> = published(b"the new binary")
+    let assets: Vec<(String, Vec<u8>)> = published(&binary_reporting("9.9.9"))
         .into_iter()
         .filter(|(name, _)| name != "SHA256SUMS")
         .collect();
@@ -246,7 +257,7 @@ async fn a_release_with_no_checksums_asset_is_reported_rather_than_erroring() {
 /// same shape of news — the triple exists, the asset does not.
 #[tokio::test]
 async fn a_release_missing_this_platforms_asset_is_reported_rather_than_erroring() {
-    let assets: Vec<(String, Vec<u8>)> = published(b"the new binary")
+    let assets: Vec<(String, Vec<u8>)> = published(&binary_reporting("9.9.9"))
         .into_iter()
         .filter(|(name, _)| !name.starts_with("flowspace3-"))
         .collect();
@@ -278,7 +289,7 @@ async fn a_release_missing_this_platforms_asset_is_reported_rather_than_erroring
 /// loop.
 #[tokio::test]
 async fn an_unwritable_install_directory_degrades_to_notify_only() {
-    let base = spawn_release_server("v9.9.9", published(b"the new binary")).await;
+    let base = spawn_release_server("v9.9.9", published(&binary_reporting("9.9.9"))).await;
 
     let outcome = Updater::against(&base, "0.1.0")
         .expect("building the updater")
@@ -348,7 +359,7 @@ async fn a_running_binary_can_be_replaced_underneath_itself() {
     }
     assert!(flag.exists(), "the throwaway binary never started");
 
-    let base = spawn_release_server("v9.9.9", published(b"#!/bin/sh\necho new\n")).await;
+    let base = spawn_release_server("v9.9.9", published(&binary_reporting("9.9.9"))).await;
     let outcome = Updater::against(&base, "0.1.0")
         .expect("building the updater")
         .at_path(installed.clone())
@@ -372,8 +383,77 @@ async fn a_running_binary_can_be_replaced_underneath_itself() {
         "the running process keeps executing its ORIGINAL inode"
     );
     assert_eq!(
-        std::fs::read_to_string(&installed).expect("reading back"),
-        "#!/bin/sh\necho new\n"
+        std::fs::read(&installed).expect("reading back"),
+        binary_reporting("9.9.9")
+    );
+}
+
+/// The loop guard (req-0060). A published binary whose compiled-in version is
+/// stale is permanently "older" than every release, so an updater that trusted
+/// the tag alone would download and swap it once per interval FOREVER, raising
+/// a restart message that restarting cannot clear.
+///
+/// Not hypothetical: v0.2.0 shipped reporting 0.1.0, because release-please
+/// bumped its own manifest and not the workspace `Cargo.toml`.
+#[cfg(unix)]
+#[tokio::test]
+async fn a_binary_that_lies_about_its_version_is_refused_rather_than_reinstalled_forever() {
+    // The exact shape of the real defect: tagged 9.9.9, reports 0.1.0 — which
+    // is also the version the updater is running.
+    let base = spawn_release_server("v9.9.9", published(&binary_reporting("0.1.0"))).await;
+    let (_directory, installed) = throwaway_binary("update-lying", b"the old binary");
+
+    let outcome = Updater::against(&base, "0.1.0")
+        .expect("building the updater")
+        .at_path(installed.clone())
+        .run_once()
+        .await
+        .expect("a lying binary is an outcome, not a failure");
+
+    match outcome {
+        Outcome::Blocked { latest, reason } => {
+            assert_eq!(latest.to_string(), "9.9.9");
+            assert!(reason.contains("reports itself as"), "reason: {reason}");
+            assert!(
+                reason.contains("reinstall it on every check forever"),
+                "the reason must name the loop, which is WHY this is refused: {reason}"
+            );
+        }
+        other => panic!("expected the swap to be refused, got {other:?}"),
+    }
+    assert_eq!(
+        std::fs::read(&installed).expect("reading back"),
+        b"the old binary",
+        "the install path must be untouched — the whole point is that the swap never happened"
+    );
+}
+
+/// The same guard catches the class a version comparison never could: an asset
+/// that cannot execute at all — a build for the wrong triple, or a truncated
+/// artefact whose checksum somehow matched.
+#[cfg(unix)]
+#[tokio::test]
+async fn an_asset_that_cannot_be_executed_is_refused() {
+    let base = spawn_release_server("v9.9.9", published(b"\x7fELF not really\n")).await;
+    let (_directory, installed) = throwaway_binary("update-noexec", b"the old binary");
+
+    let outcome = Updater::against(&base, "0.1.0")
+        .expect("building the updater")
+        .at_path(installed.clone())
+        .run_once()
+        .await
+        .expect("an unrunnable asset is an outcome, not a failure");
+
+    assert!(
+        matches!(
+            &outcome,
+            Outcome::Blocked { reason, .. } if reason.contains("could not be run to confirm its version")
+        ),
+        "expected the probe to refuse it, got {outcome:?}"
+    );
+    assert_eq!(
+        std::fs::read(&installed).expect("reading back"),
+        b"the old binary"
     );
 }
 
@@ -387,7 +467,7 @@ async fn a_reconcile_pass_installs_and_then_steers_through_the_message_queue() {
     let pool = database.pool().await;
     fs3_store::migrate(&pool).await.expect("migrations");
 
-    let base = spawn_release_server("v9.9.9", published(b"the new binary")).await;
+    let base = spawn_release_server("v9.9.9", published(&binary_reporting("9.9.9"))).await;
     let (_directory, installed) = throwaway_binary("update-reconcile", b"the old binary");
 
     let mut supervisor = UpdateSupervisor::new(pool.clone(), &UpdateConfig::default(), "0.1.0")
@@ -399,7 +479,7 @@ async fn a_reconcile_pass_installs_and_then_steers_through_the_message_queue() {
     assert_eq!(pass.changed, 1, "the first pass must run a check");
     assert_eq!(
         std::fs::read(&installed).expect("reading back"),
-        b"the new binary"
+        binary_reporting("9.9.9")
     );
 
     let messages = fs3_store::live_messages(&pool).await.expect("the queue");
@@ -439,7 +519,7 @@ async fn the_restart_steer_clears_once_the_daemon_runs_the_installed_version() {
     let pool = database.pool().await;
     fs3_store::migrate(&pool).await.expect("migrations");
 
-    let base = spawn_release_server("v9.9.9", published(b"the new binary")).await;
+    let base = spawn_release_server("v9.9.9", published(&binary_reporting("9.9.9"))).await;
     let (_directory, installed) = throwaway_binary("update-clear", b"the old binary");
 
     UpdateSupervisor::new(pool.clone(), &UpdateConfig::default(), "0.1.0")
@@ -484,7 +564,7 @@ async fn auto_update_off_never_installs() {
     let pool = database.pool().await;
     fs3_store::migrate(&pool).await.expect("migrations");
 
-    let base = spawn_release_server("v9.9.9", published(b"the new binary")).await;
+    let base = spawn_release_server("v9.9.9", published(&binary_reporting("9.9.9"))).await;
     let (_directory, installed) = throwaway_binary("update-off", b"the old binary");
 
     let configuration = UpdateConfig {

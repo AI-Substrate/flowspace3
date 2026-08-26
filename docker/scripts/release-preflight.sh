@@ -43,6 +43,43 @@ smoke() {
 }
 leg "B smoke-run" "macos-builds ($TARGET_MAC)" smoke
 
+# --- B2: the binary must agree with the version being RELEASED --------------
+# The defect this exists for (req-0060): release-please's `simple` strategy
+# bumps .release-please-manifest.json and NOTHING in the Rust manifests, so
+# v0.2.0 was tagged and published carrying a binary whose `--version` said
+# 0.1.0. Nothing caught it — the smoke leg above RUNS `--version` and never
+# reads what it prints.
+#
+# It is not cosmetic. The auto-updater compares its own compiled-in version
+# against the newest published tag, so a binary that under-reports is
+# permanently "older" than every release: it would re-download and re-swap once
+# per check interval forever, raising a restart message that restarting cannot
+# clear.
+#
+# The ORACLE is .release-please-manifest.json, not Cargo.toml. That is the
+# whole point: a binary is always built from Cargo.toml, so comparing the two
+# compares a thing with itself and can never fail. The manifest is what the
+# next tag will be named after, and the bug was precisely that it and Cargo.toml
+# had drifted apart. Keeping them equal is the job of the
+# `x-release-please-version` annotation on `[workspace.package] version`.
+version_truthful() {
+  local releasing binary
+  releasing=$(jq -r '."."' .release-please-manifest.json)
+  binary=$("$BIN" --version | awk '{print $NF}')
+
+  if [ "$releasing" != "$binary" ]; then
+    printf 'version mismatch: the next release is %s, the built binary says %s\n' \
+      "$releasing" "$binary" >&2
+    printf 'Cargo.toml [workspace.package] version has drifted from\n' >&2
+    printf '.release-please-manifest.json — check the x-release-please-version\n' >&2
+    printf 'annotation in Cargo.toml and the extra-files entry in\n' >&2
+    printf 'release-please-config.json.\n' >&2
+    return 1
+  fi
+  printf 'the binary agrees with the version being released: %s\n' "$binary"
+}
+leg "B2 version truth (binary == released version)" "macos-builds ($TARGET_MAC)" version_truthful
+
 # --- C1: the mac fast tier, verbatim, normal environment --------------------
 leg "C1 fast tier (normal env)" "macos-builds ($TARGET_MAC)" \
   cargo test --workspace --lib --exclude fs3-store

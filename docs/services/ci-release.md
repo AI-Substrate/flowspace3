@@ -76,6 +76,42 @@ on each Release, a curl installer, Dependabot.
   a 404). After ANY tag cycle, verify before calling it shipped:
   `gh release view <tag> --json isDraft,assets`; re-publish with
   `gh release edit <tag> --draft=false --latest`.
+- **The shipped binary can lie about its version, and v0.2.0 did** (req-0060,
+  fixed 2026-08-27). release-please's `simple` strategy bumps
+  `.release-please-manifest.json` and the changelog and *nothing in the Rust
+  manifests*, so `[workspace.package] version` sat at `0.1.0` while tags marched
+  on. The v0.2.0 release binary self-reported `0.1.0`. Nothing caught it: the
+  release smoke step RUNS `--version` and never reads what it prints.
+
+  It stopped being cosmetic the moment auto-update landed. The updater compares
+  its own `env!("CARGO_PKG_VERSION")` against the newest published tag, so a
+  binary that under-reports is permanently "older" than every release — it would
+  re-download and re-swap once per check interval **forever**, raising a restart
+  message that restarting cannot clear.
+
+  Three things now hold it shut, and it is worth knowing why each exists:
+
+  1. **`Cargo.toml` carries an annotation**: `version = "…" #
+     x-release-please-version`, with a typed `{"type": "generic", "path":
+     "Cargo.toml"}` entry in `release-please-config.json`'s `extra-files`.
+     `release-type: rust` is NOT usable here — release-please's own
+     `src/updaters/rust/cargo-toml.ts` throws on any manifest without a
+     `[package]` table, and our root is a virtual workspace. The typed
+     `generic` form is deliberate too: a bare `"Cargo.toml"` string additionally
+     runs `GenericToml('$.version')`, which targets a top-level `version` we do
+     not have.
+  2. **`release-please.yml` syncs `Cargo.lock`** on the release branch, because
+     the generic updater cannot regenerate a lockfile and the lock carries a
+     `[[package]] version` for all eight members. Annotating those is not an
+     option — cargo rewrites the lock from scratch whenever resolution changes
+     and drops every comment, so the annotations would vanish silently. The step
+     asserts `cargo metadata --locked` afterwards, so a sync that did not take
+     fails the job rather than the tag.
+  3. **Preflight leg B2** compares the built binary's `--version` against
+     `.release-please-manifest.json`. The manifest is the oracle, not
+     `Cargo.toml`: a binary is always built FROM `Cargo.toml`, so comparing
+     those two compares a thing with itself and can never fail. The drift that
+     actually happened was between the manifest and the manifest-that-ships.
 
 ## Release runbook — NO TAG CYCLE WITHOUT PREFLIGHT GREEN
 
