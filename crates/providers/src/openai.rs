@@ -4,7 +4,10 @@ use async_trait::async_trait;
 use fs3_core::{Element, Embedder, Error, Result, Summarizer, Summary};
 use serde::{Deserialize, Serialize};
 
-use crate::DEFAULT_API_BASE;
+use crate::{
+    DEFAULT_API_BASE,
+    retry::{self, PostFailure, Rejection, RetryPolicy},
+};
 
 /// An API key that never appears in `Debug` output.
 ///
@@ -44,16 +47,25 @@ impl OpenAiClient {
         }
     }
 
+    /// A POST that retries transient failures and gives up on everything else.
+    ///
+    /// Every call through this adapter goes through the retry loop; the
+    /// distinction that matters is made in [`crate::retry`], not here.
     async fn post<Req: Serialize, Res: for<'de> Deserialize<'de>>(
         &self,
         route: &str,
         body: &Req,
     ) -> Result<Res> {
-        self.try_post(route, body).await.map_err(Error::from)
+        retry::with_retry(RetryPolicy::default(), "openai", || {
+            self.try_post(route, body)
+        })
+        .await
+        .map_err(PostFailure::into_error)
     }
 
-    /// `post`, but keeping a rejection distinguishable from a transport
-    /// failure so a caller can decide whether the *request* was the problem.
+    /// One attempt, keeping a rejection distinguishable from a transport
+    /// failure so the retry loop and the structured-output downgrade can each
+    /// decide whether the *request* was the problem.
     async fn try_post<Req: Serialize, Res: for<'de> Deserialize<'de>>(
         &self,
         route: &str,
@@ -71,12 +83,17 @@ impl OpenAiClient {
 
         let status = response.status();
         if !status.is_success() {
+            // Read the header before the body: consuming the body moves the
+            // response, and the advice is on the header.
+            let retry_after = retry::retry_after_of(&response);
             let detail = response.text().await.unwrap_or_default();
-            return Err(PostFailure::Rejected {
-                url,
+            let detail = detail.trim().to_string();
+            return Err(PostFailure::Rejected(Rejection {
                 status,
-                detail: detail.trim().to_string(),
-            });
+                error: Error::Provider(format!("POST {url}: {status}: {detail}")),
+                detail,
+                retry_after,
+            }));
         }
 
         response.json::<Res>().await.map_err(|e| {
@@ -84,54 +101,6 @@ impl OpenAiClient {
                 "POST {url}: unreadable response: {e}"
             )))
         })
-    }
-}
-
-/// Why a POST did not produce a body.
-///
-/// The distinction exists for exactly one caller: the summarizer, which must
-/// tell "this endpoint does not understand structured outputs" (retry in the
-/// older shape) from "the network is down" (do not).
-pub(crate) enum PostFailure {
-    Fatal(Error),
-    Rejected {
-        url: String,
-        status: reqwest::StatusCode,
-        detail: String,
-    },
-}
-
-impl From<PostFailure> for Error {
-    fn from(failure: PostFailure) -> Self {
-        match failure {
-            PostFailure::Fatal(error) => error,
-            PostFailure::Rejected {
-                url,
-                status,
-                detail,
-            } => Error::Provider(format!("POST {url}: {status}: {detail}")),
-        }
-    }
-}
-
-impl PostFailure {
-    /// Whether this rejection means "I do not support that `response_format`".
-    ///
-    /// Endpoints disagree about how to say it — OpenAI names the parameter,
-    /// Azure on an older `api-version` calls it unknown, and compat servers
-    /// (Ollama, vLLM, LM Studio) each phrase it their own way — so the test is
-    /// a client error that mentions the thing we asked for. Anything else is
-    /// a real failure and must not be retried into a weaker request.
-    pub(crate) fn rejects_structured_output(&self) -> bool {
-        match self {
-            Self::Fatal(_) => false,
-            Self::Rejected { status, detail, .. } => {
-                status.is_client_error() && {
-                    let detail = detail.to_ascii_lowercase();
-                    detail.contains("response_format") || detail.contains("json_schema")
-                }
-            }
-        }
     }
 }
 
@@ -202,6 +171,12 @@ impl Embedder for OpenAiEmbedder {
     /// naming it would add a number that can never vary.
     fn key(&self) -> String {
         self.model.clone()
+    }
+
+    /// Sized by quota rather than by connections: OpenAI answers many requests
+    /// at once and prices the rest as 429s, which the retry loop absorbs.
+    fn concurrency_ceiling(&self) -> usize {
+        16
     }
 }
 
@@ -438,6 +413,11 @@ impl Summarizer for OpenAiSummarizer {
 
     fn key(&self) -> String {
         format!("{}@{}", self.model, Self::PROMPT_VERSION)
+    }
+
+    /// See [`OpenAiEmbedder::concurrency_ceiling`].
+    fn concurrency_ceiling(&self) -> usize {
+        16
     }
 }
 

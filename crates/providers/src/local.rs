@@ -446,6 +446,14 @@ impl Embedder for LocalEmbedder {
     fn key(&self) -> String {
         format!("{}@{}", self.model, self.dimensions)
     }
+
+    /// **One.** The `fastembed` session is behind a `Mutex` and inference is
+    /// CPU-bound, so extra concurrency here does not overlap work — it queues
+    /// on the lock while occupying scheduler permits another provider could
+    /// have used. Declaring 1 makes that honest.
+    fn concurrency_ceiling(&self) -> usize {
+        1
+    }
 }
 
 #[cfg(test)]

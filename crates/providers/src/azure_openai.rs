@@ -64,7 +64,10 @@ use azure_core::{
 use fs3_core::{Element, Embedder, Error, Result, Summarizer, Summary};
 use serde::{Deserialize, Serialize};
 
-use crate::OpenAiSummarizer;
+use crate::{
+    OpenAiSummarizer,
+    retry::{self, PostFailure, Rejection, RetryPolicy},
+};
 
 /// The Entra scope every Azure OpenAI resource in the public cloud is guarded
 /// by. Sovereign clouds use a different one; a resource in those needs its own
@@ -251,14 +254,21 @@ impl AzureOpenAiClient {
         }
     }
 
+    /// A POST that retries transient failures and gives up on everything else.
+    ///
+    /// The deployment names the provider in any [`Error::RateLimited`] this
+    /// produces, because that is the thing whose quota was actually hit — an
+    /// Azure resource can hold several deployments with separate quotas.
     async fn post<Req: Serialize, Res: for<'de> Deserialize<'de>>(
         &self,
         route: &str,
         body: &Req,
     ) -> Result<Res> {
-        self.try_post(route, body)
-            .await
-            .map_err(PostFailure::into_error)
+        retry::with_retry(RetryPolicy::default(), &self.config.deployment, || {
+            self.try_post(route, body)
+        })
+        .await
+        .map_err(PostFailure::into_error)
     }
 
     /// `post`, but keeping a rejection distinguishable from a transport
@@ -281,18 +291,17 @@ impl AzureOpenAiClient {
 
         let status = response.status();
         if !status.is_success() {
+            // Read the header before the body: consuming the body moves the
+            // response, and the advice is on the header.
+            let retry_after = retry::retry_after_of(&response);
             let detail = response.text().await.unwrap_or_default();
-            let detail = detail.trim();
-            return Err(PostFailure::Rejected {
+            let detail = detail.trim().to_string();
+            return Err(PostFailure::Rejected(Rejection {
                 status,
-                // Keep the raw body for the structured-output test below, and
-                // the fully explained error for whoever ends up reading it.
-                structured_unsupported: status.is_client_error() && {
-                    let lowered = detail.to_ascii_lowercase();
-                    lowered.contains("response_format") || lowered.contains("json_schema")
-                },
-                error: self.failure(&url, status, detail),
-            });
+                error: self.failure(&url, status, &detail),
+                detail,
+                retry_after,
+            }));
         }
 
         response.json::<Res>().await.map_err(|e| {
@@ -340,41 +349,6 @@ impl AzureOpenAiClient {
             _ => "see the response body".to_string(),
         };
         Error::Provider(format!("POST {url}: {status}: {detail} — {hint}"))
-    }
-}
-
-/// Why a POST did not produce a body.
-///
-/// The distinction exists for exactly one caller: the summarizer, which must
-/// tell "this api-version does not understand structured outputs" (retry in
-/// the older shape) from "the deployment does not exist" (do not). Azure says
-/// both with a 400.
-enum PostFailure {
-    Fatal(Error),
-    Rejected {
-        #[allow(dead_code, reason = "kept for the error it explains; read via `error`")]
-        status: reqwest::StatusCode,
-        structured_unsupported: bool,
-        error: Error,
-    },
-}
-
-impl PostFailure {
-    fn into_error(self) -> Error {
-        match self {
-            Self::Fatal(error) | Self::Rejected { error, .. } => error,
-        }
-    }
-
-    /// Whether this rejection means "I do not support that `response_format`".
-    fn rejects_structured_output(&self) -> bool {
-        matches!(
-            self,
-            Self::Rejected {
-                structured_unsupported: true,
-                ..
-            }
-        )
     }
 }
 
@@ -467,6 +441,14 @@ impl Embedder for AzureOpenAiEmbedder {
             None => self.client.config.deployment.clone(),
         }
     }
+
+    /// High: an Azure deployment is sized by its own provisioned quota, and
+    /// exceeding it produces 429s carrying `Retry-After` — which the retry loop
+    /// absorbs and, past that, the scheduler parks on. Throttling by connection
+    /// count here would leave provisioned capacity unused.
+    fn concurrency_ceiling(&self) -> usize {
+        32
+    }
 }
 
 /// Place each returned vector at the index the API claims for it.
@@ -531,10 +513,29 @@ impl AzureOpenAiSummarizer {
     }
 
     /// One chat round trip in the requested response format.
+    /// One chat round trip, retrying transient failures.
+    ///
+    /// The retry wraps the single attempt rather than `summarize`, so a blip
+    /// costs milliseconds instead of an unwound job — while a rejection of the
+    /// SCHEMA still reaches the downgrade untouched, because the loop hands
+    /// non-transient rejections back unchanged.
     async fn chat(
         &self,
         user: &str,
         response_format: serde_json::Value,
+    ) -> std::result::Result<ChatResponse, PostFailure> {
+        retry::with_retry(
+            RetryPolicy::default(),
+            &self.client.config.deployment,
+            || self.attempt_chat(user, &response_format),
+        )
+        .await
+    }
+
+    async fn attempt_chat(
+        &self,
+        user: &str,
+        response_format: &serde_json::Value,
     ) -> std::result::Result<ChatResponse, PostFailure> {
         self.client
             .try_post(
@@ -560,7 +561,7 @@ impl AzureOpenAiSummarizer {
 #[derive(Serialize)]
 struct ChatRequest<'a> {
     messages: Vec<ChatMessage<'a>>,
-    response_format: serde_json::Value,
+    response_format: &'a serde_json::Value,
 }
 
 #[derive(Serialize)]
@@ -627,6 +628,11 @@ impl Summarizer for AzureOpenAiSummarizer {
             self.client.config.deployment,
             OpenAiSummarizer::PROMPT_VERSION
         )
+    }
+
+    /// See [`AzureOpenAiEmbedder::concurrency_ceiling`].
+    fn concurrency_ceiling(&self) -> usize {
+        32
     }
 }
 

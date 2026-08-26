@@ -16,6 +16,34 @@ pub enum Error {
     #[error("provider failure: {0}")]
     Provider(String),
 
+    /// A provider refused the work because we are asking too fast, and kept
+    /// refusing after the adapter had retried its own way out.
+    ///
+    /// Distinct from [`Error::Provider`] because a scheduler can *act* on this
+    /// one: `retry_after` is how long the service asked us to wait, so a lane
+    /// can park the claim for exactly that long instead of guessing, or
+    /// treating a temporary squeeze as a failed unit of work. A formatted
+    /// string could carry the same information and no caller could use it.
+    ///
+    /// `retry_after` is `None` when the service rate-limited us without saying
+    /// for how long — common, and the reason this is an `Option` rather than a
+    /// number someone invented.
+    #[error(
+        "{provider} rate limited after {attempts} attempt(s){}",
+        match retry_after {
+            Some(wait) => format!("; retry after {}s", wait.as_secs()),
+            None => String::new(),
+        }
+    )]
+    RateLimited {
+        /// Which provider said no, named the way its errors name it.
+        provider: String,
+        /// What the service asked us to wait, when it said.
+        retry_after: Option<std::time::Duration>,
+        /// How many times the adapter tried before giving the caller this.
+        attempts: usize,
+    },
+
     /// Two tree snapshots that describe different repositories were diffed.
     #[error("snapshot mismatch: {old} is not {new}")]
     SnapshotMismatch { old: String, new: String },

@@ -132,6 +132,12 @@ impl Embedder for FakeEmbedder {
     fn key(&self) -> String {
         format!("fake@{}", self.dimensions)
     }
+
+    /// Unbounded in practice — it is a hash function. `usize::MAX` would be
+    /// posturing, so this is simply a number no test will ever saturate.
+    fn concurrency_ceiling(&self) -> usize {
+        64
+    }
 }
 
 /// A [`Summarizer`] that produces a stable, readable summary and tags derived
@@ -220,6 +226,11 @@ impl Summarizer for FakeSummarizer {
     /// summarizer keys by. The version moves when the fake's text or tags do.
     fn key(&self) -> String {
         format!("fake@{}", Self::PROMPT_VERSION)
+    }
+
+    /// See [`FakeEmbedder::concurrency_ceiling`]: no network, no lock, no cost.
+    fn concurrency_ceiling(&self) -> usize {
+        64
     }
 }
 

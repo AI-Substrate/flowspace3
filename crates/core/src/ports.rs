@@ -91,6 +91,25 @@ pub trait Embedder: Send + Sync {
     /// provider knows what actually served the request — on Azure that is a
     /// deployment name, which no amount of config-reading will reveal.
     fn key(&self) -> String;
+
+    /// The most requests this provider will tolerate in flight at once.
+    ///
+    /// A **declaration**, not a limiter: nothing here counts anything. The
+    /// scheduler owns the semaphore, because only the scheduler can see the
+    /// queue — a provider handed one request cannot know how many others are
+    /// in flight. What a provider does know is its own shape, and that is what
+    /// this reports: a cloud endpoint sized by quota can take many, a LAN box
+    /// serving one model on one GPU can take exactly one, and an in-process
+    /// model behind a mutex can take exactly one no matter what anyone wishes.
+    ///
+    /// The intended use is `min(lane_width, provider.concurrency_ceiling())`.
+    ///
+    /// Deliberately **required**, with no default. A default is a number
+    /// nobody chose, and both ways of being wrong are silent: too high thrashes
+    /// a small box, too low drives a cloud provider at a fraction of its
+    /// capacity, and neither surfaces as an error — only as throughput that
+    /// nobody can explain.
+    fn concurrency_ceiling(&self) -> usize;
 }
 
 /// Summarises an element into text plus concept tags.
@@ -119,6 +138,25 @@ pub trait Summarizer: Send + Sync {
     /// reconciler fills, instead of a migration that destroys the evidence of
     /// what the previous prompt said.
     fn key(&self) -> String;
+
+    /// The most requests this provider will tolerate in flight at once.
+    ///
+    /// A **declaration**, not a limiter: nothing here counts anything. The
+    /// scheduler owns the semaphore, because only the scheduler can see the
+    /// queue — a provider handed one request cannot know how many others are
+    /// in flight. What a provider does know is its own shape, and that is what
+    /// this reports: a cloud endpoint sized by quota can take many, a LAN box
+    /// serving one model on one GPU can take exactly one, and an in-process
+    /// model behind a mutex can take exactly one no matter what anyone wishes.
+    ///
+    /// The intended use is `min(lane_width, provider.concurrency_ceiling())`.
+    ///
+    /// Deliberately **required**, with no default. A default is a number
+    /// nobody chose, and both ways of being wrong are silent: too high thrashes
+    /// a small box, too low drives a cloud provider at a fraction of its
+    /// capacity, and neither surfaces as an error — only as throughput that
+    /// nobody can explain.
+    fn concurrency_ceiling(&self) -> usize;
 }
 
 #[cfg(test)]

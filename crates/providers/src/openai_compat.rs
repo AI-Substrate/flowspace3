@@ -57,7 +57,10 @@ use async_trait::async_trait;
 use fs3_core::{Element, Error, Result, Summarizer, Summary};
 use serde::{Deserialize, Serialize};
 
-use crate::{OpenAiSummarizer, openai::PostFailure};
+use crate::{
+    OpenAiSummarizer,
+    retry::{self, PostFailure, Rejection, RetryPolicy},
+};
 
 /// Token budget when the caller does not choose one.
 ///
@@ -252,10 +255,27 @@ impl OpenAiCompatSummarizer {
         &self.served_model
     }
 
+    /// One chat round trip, retrying transient failures.
+    ///
+    /// The retry wraps `attempt` rather than `summarize`, so a transient blip
+    /// costs a few hundred milliseconds here instead of an unwound job — while
+    /// a structured-output rejection still reaches the downgrade untouched,
+    /// because the loop hands non-transient rejections back unchanged.
     async fn chat(
         &self,
         user: &str,
         response_format: serde_json::Value,
+    ) -> std::result::Result<ChatResponse, PostFailure> {
+        retry::with_retry(RetryPolicy::default(), self.served_model(), || {
+            self.attempt_chat(user, &response_format)
+        })
+        .await
+    }
+
+    async fn attempt_chat(
+        &self,
+        user: &str,
+        response_format: &serde_json::Value,
     ) -> std::result::Result<ChatResponse, PostFailure> {
         let url = self.config.url("chat/completions");
         let body = ChatRequest {
@@ -287,12 +307,17 @@ impl OpenAiCompatSummarizer {
 
         let status = response.status();
         if !status.is_success() {
+            // Read the header before the body: consuming the body moves the
+            // response, and the advice is on the header.
+            let retry_after = retry::retry_after_of(&response);
             let detail = response.text().await.unwrap_or_default();
-            return Err(PostFailure::Rejected {
-                url,
+            let detail = detail.trim().to_string();
+            return Err(PostFailure::Rejected(Rejection {
                 status,
-                detail: detail.trim().to_string(),
-            });
+                error: Error::Provider(format!("POST {url}: {status}: {detail}")),
+                detail,
+                retry_after,
+            }));
         }
 
         response.json::<ChatResponse>().await.map_err(|e| {
@@ -308,7 +333,7 @@ struct ChatRequest<'a> {
     model: &'a str,
     max_tokens: usize,
     messages: Vec<ChatMessage<'a>>,
-    response_format: serde_json::Value,
+    response_format: &'a serde_json::Value,
 }
 
 #[derive(Serialize)]
@@ -373,6 +398,15 @@ impl Summarizer for OpenAiCompatSummarizer {
     /// reconnect when the box changes mode, and see the service page.
     fn key(&self) -> String {
         format!("{}@{}", self.served_model, OpenAiSummarizer::PROMPT_VERSION)
+    }
+
+    /// **One.** These servers host a single model on a single accelerator, so a
+    /// second concurrent request does not run in parallel — it queues inside
+    /// the server while holding a connection, and on a reasoning model it
+    /// queues for a long time. Declaring anything higher would move the wait
+    /// from a place we can see (the scheduler) to a place we cannot (the box).
+    fn concurrency_ceiling(&self) -> usize {
+        1
     }
 }
 

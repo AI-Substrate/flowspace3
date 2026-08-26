@@ -48,9 +48,28 @@ impl Captured {
     }
 }
 
-/// What the service should answer. Taken per request so a test can make the
-/// reply depend on what was asked — which is how a downgrade is provable.
-type Answer = Arc<dyn Fn(&Captured) -> (StatusCode, String) + Send + Sync>;
+/// What the service should answer.
+pub struct Reply {
+    pub status: StatusCode,
+    pub body: String,
+    /// Sent as the `Retry-After` header. The adapter's backoff reads it, so a
+    /// test cannot prove the honouring without being able to send one.
+    pub retry_after: Option<String>,
+}
+
+impl From<(StatusCode, String)> for Reply {
+    fn from((status, body): (StatusCode, String)) -> Self {
+        Self {
+            status,
+            body,
+            retry_after: None,
+        }
+    }
+}
+
+/// Taken per request so a test can make the reply depend on what was asked —
+/// which is how a downgrade, or a blip that heals, is provable.
+type Answer = Arc<dyn Fn(&Captured) -> Reply + Send + Sync>;
 
 #[derive(Clone)]
 struct StubState {
@@ -66,9 +85,10 @@ pub struct StubServer {
 
 impl StubServer {
     /// A server whose reply is computed from the request.
-    pub async fn answering_with(
-        answer: impl Fn(&Captured) -> (StatusCode, String) + Send + Sync + 'static,
+    pub async fn answering_with<R: Into<Reply>>(
+        answer: impl Fn(&Captured) -> R + Send + Sync + 'static,
     ) -> Self {
+        let answer = move |captured: &Captured| answer(captured).into();
         let seen = Arc::new(Mutex::new(Vec::new()));
         let state = StubState {
             answer: Arc::new(answer),
@@ -86,6 +106,40 @@ impl StubServer {
         });
 
         Self { endpoint, seen }
+    }
+
+    /// A server that fails the first `failures` requests with `status` (and an
+    /// optional `Retry-After` header), then answers with `body`.
+    ///
+    /// This is how a transient blip is made reproducible: a retry loop is only
+    /// worth anything if it turns a first failure into a success the caller
+    /// never sees.
+    pub async fn failing_then(
+        failures: usize,
+        status: StatusCode,
+        retry_after: Option<&str>,
+        body: &str,
+    ) -> Self {
+        let body = body.to_string();
+        let retry_after = retry_after.map(str::to_string);
+        let seen = std::sync::atomic::AtomicUsize::new(0);
+        Self::answering_with(move |_| {
+            let nth = seen.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            if nth < failures {
+                Reply {
+                    status,
+                    body: r#"{"error":{"code":"transient","message":"slow down"}}"#.to_string(),
+                    retry_after: retry_after.clone(),
+                }
+            } else {
+                Reply {
+                    status: StatusCode::OK,
+                    body: body.clone(),
+                    retry_after: None,
+                }
+            }
+        })
+        .await
     }
 
     /// A server that answers every route the same way.
@@ -144,12 +198,16 @@ async fn record(State(state): State<StubState>, request: Request) -> Response {
         body: serde_json::from_slice(&bytes).unwrap_or(serde_json::Value::Null),
     };
 
-    let (status, reply) = (state.answer)(&captured);
+    let reply = (state.answer)(&captured);
     state.seen.lock().expect("no poisoned lock").push(captured);
 
-    Response::builder()
-        .status(status)
-        .header("content-type", "application/json")
-        .body(Body::from(reply))
+    let mut response = Response::builder()
+        .status(reply.status)
+        .header("content-type", "application/json");
+    if let Some(retry_after) = reply.retry_after {
+        response = response.header("retry-after", retry_after);
+    }
+    response
+        .body(Body::from(reply.body))
         .expect("a valid response")
 }

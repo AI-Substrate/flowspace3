@@ -17,6 +17,7 @@ mod azure_openai;
 mod local;
 mod openai;
 mod openai_compat;
+mod retry;
 
 pub use azure_openai::{
     AzureCredential, AzureOpenAiConfig, AzureOpenAiEmbedder, AzureOpenAiSummarizer,

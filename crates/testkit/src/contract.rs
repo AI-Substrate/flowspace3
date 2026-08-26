@@ -361,6 +361,10 @@ mod tests {
         fn key(&self) -> String {
             "jittery@8".to_string()
         }
+
+        fn concurrency_ceiling(&self) -> usize {
+            1
+        }
     }
 
     /// Honest vectors, wrong order: the exact defect the slot-by-slot check
@@ -381,6 +385,10 @@ mod tests {
         fn key(&self) -> String {
             "swapped-slot@8".to_string()
         }
+
+        fn concurrency_ceiling(&self) -> usize {
+            1
+        }
     }
 
     /// One vector for every input. Bit-exact and deterministic — which is why
@@ -395,6 +403,10 @@ mod tests {
 
         fn key(&self) -> String {
             "constant@8".to_string()
+        }
+
+        fn concurrency_ceiling(&self) -> usize {
+            1
         }
     }
 
@@ -432,6 +444,10 @@ mod tests {
 
         fn key(&self) -> String {
             "substituted-slot@8".to_string()
+        }
+
+        fn concurrency_ceiling(&self) -> usize {
+            1
         }
     }
 
@@ -521,6 +537,10 @@ mod tests {
 
             fn key(&self) -> String {
                 "quantised@8".to_string()
+            }
+
+            fn concurrency_ceiling(&self) -> usize {
+                1
             }
         }
 
