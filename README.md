@@ -29,8 +29,10 @@ and put it on your `PATH`. Published triples:
 `aarch64-apple-darwin`, `aarch64-unknown-linux-gnu`,
 `x86_64-unknown-linux-gnu`.
 
-**Intel Macs are not supported.** Windows: `install.ps1` ships in the repo
-but is **not yet validated**.
+**Intel Macs are not supported.** **Windows binaries are not published yet** —
+the local embedder (ONNX Runtime) has no prebuilt library for the Windows
+target; use WSL2 with the Linux installer above. `install.ps1` is in the repo
+and says so plainly rather than failing obscurely.
 
 **Releases**: a rolling release PR (`chore(main): release x.y.z`) is kept up
 to date automatically; merging it tags the semver version and publishes.
