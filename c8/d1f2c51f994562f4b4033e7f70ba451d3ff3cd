@@ -1,0 +1,23 @@
+.harness/government/worker-roster.md
+  s_15d888f4b629c1::t_2aef8acc2fb816 28
+docs/plans/prd/daemon-worker-architecture.md
+  s_15d888f4b629c1::t_069e4d4b50bae2 17-23
+docs/plans/prd/doctor-design.md
+  s_15d888f4b629c1::t_89c048f0c1447c 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c8d1f2c51f994562f4b4033e7f70ba451d3ff3cd",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
