@@ -1,0 +1,60 @@
+crates/parsers/src/discovery.rs
+  s_15d888f4b629c1::t_37be06b7efb597 67-96,226-232,246,255,543
+  s_15d888f4b629c1::t_1f0012847d2bc0 256-258
+  s_15d888f4b629c1::t_8fc9a3ee1285ef 540-542
+  s_15d888f4b629c1::t_42ccf57fa4281a 544-546
+crates/core/src/config.rs
+  s_15d888f4b629c1::t_be00636c8e1d72 746,762-766,798
+crates/parsers/fixtures/discovery-bare/.cache/warm.js
+  s_15d888f4b629c1::t_810ae9e7b72b15 1
+crates/parsers/fixtures/discovery-bare/.next/server.js
+  s_15d888f4b629c1::t_b650265ffacc4a 1
+crates/parsers/fixtures/discovery-bare/.venv/lib/site.py
+  s_15d888f4b629c1::t_0214b9ef3afd13 1
+crates/parsers/fixtures/discovery-bare/README.md
+  s_15d888f4b629c1::t_f97462fcd55a61 1-3
+crates/parsers/fixtures/discovery-bare/__pycache__/mod.py
+  s_15d888f4b629c1::t_fc763a7a1ee6da 1
+crates/parsers/fixtures/discovery-bare/build/out.js
+  s_15d888f4b629c1::t_281965620c82f9 1
+crates/parsers/fixtures/discovery-bare/builder/main.rs
+  s_15d888f4b629c1::t_8df9823783f348 1
+crates/parsers/fixtures/discovery-bare/dist/bundle.js
+  s_15d888f4b629c1::t_4f9b8cf12747da 1
+crates/parsers/fixtures/discovery-bare/distribution/notes.md
+  s_15d888f4b629c1::t_e7b0ecaa915951 1
+crates/parsers/fixtures/discovery-bare/my-vendor/keep.rs
+  s_15d888f4b629c1::t_fd8be7b0105082 1
+crates/parsers/fixtures/discovery-bare/node_modules/.bin/tool.js
+  s_15d888f4b629c1::t_ec72b237559bac 1
+crates/parsers/fixtures/discovery-bare/node_modules/pkg/index.js
+  s_15d888f4b629c1::t_9531eef9213028 1
+crates/parsers/fixtures/discovery-bare/src/main.rs
+  s_15d888f4b629c1::t_5376f18f6b3f87 1
+crates/parsers/fixtures/discovery-bare/src/node_modules_helper.rs
+  s_15d888f4b629c1::t_baee9f0e3832d6 1
+crates/parsers/fixtures/discovery-bare/src/target_types.rs
+  s_15d888f4b629c1::t_2123516386b169 1
+crates/parsers/fixtures/discovery-bare/target/debug/build_script.rs
+  s_15d888f4b629c1::t_8c2144a3ed818d 1
+crates/parsers/fixtures/discovery-bare/vendor/lib.rs
+  s_15d888f4b629c1::t_ccf1882abe2113 1
+crates/parsers/fixtures/discovery-bare/venv/lib/site.py
+  s_15d888f4b629c1::t_2a6b9395faac0b 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "74cecf7f35134937746863ee913f9fbfcfdc0420",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
