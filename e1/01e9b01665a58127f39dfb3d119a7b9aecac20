@@ -1,0 +1,21 @@
+crates/testkit/src/contract.rs
+  s_15d888f4b629c1::t_e1723a3d8a1221 31,34-45,70-102
+  s_15d888f4b629c1::t_d79ddd6daf7488 401-408,410-412,414,419,422-428,434
+  s_15d888f4b629c1::t_cd1644751d07c3 103-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e101e9b01665a58127f39dfb3d119a7b9aecac20",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
