@@ -22,7 +22,7 @@
         {
           "id": "tk-0101",
           "title": "CI gate workflow (.github/workflows/ci.yml): on push to main; Linux runner; rust-toolchain.toml-pinned toolchain; pgvector service container (image per compose file); FS3_TEST_DATABASE_URL wired; fmt --check, clippy -D warnings, cargo test --workspace (plain - tiers keep endpoints/slow out), arch-drift; cargo cache. Prove green on a real push via gh run watch",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0101",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001"
@@ -35,7 +35,8 @@
           "done": "#done_when/tk-0102",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0002"
-          ]
+          ],
+          "note": "Workflow + config landed and running; PR open; final observation blocked on Jordan-approved merge"
         },
         {
           "id": "tk-0103",
@@ -58,7 +59,7 @@
         {
           "id": "tk-0105",
           "title": ".github/dependabot.yml: cargo + github-actions ecosystems, sensible cadence; confirm first scan via gh api",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0105",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0005"
@@ -67,7 +68,7 @@
         {
           "id": "tk-0106",
           "title": "README: release/install section (one-line install front and center, req 46) + CI badge; docs/services/ci-release.md per convention",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0106",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001",
@@ -83,7 +84,7 @@
           {
             "id": "dw-0101",
             "assertion": "gh run watch shows the gate green on a real main push; a deliberately-red probe branch run (or local act equivalent) proves it fails when tests fail",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0001"
           }
         ],
@@ -92,7 +93,8 @@
             "id": "dw-0102",
             "assertion": "release PR appears after a feat/fix landing; merging it (Jordan's word) tags + publishes",
             "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+            "pressure": "../../backpressure.dd.json#rows/bp-0002",
+            "note": "IN PROGRESS: rolling PR creation proven ('chore(main): release 0.2.0' open after the feat(release) landing); tags+publish observation waits for Jordan's merge word (ruling: PR rides past sawfish's single-binary fold)"
           }
         ],
         "tk-0103": [
@@ -100,7 +102,8 @@
             "id": "dw-0103",
             "assertion": "a real Release carries all 7 assets; file(1) on each matches its triple",
             "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+            "pressure": "../../backpressure.dd.json#rows/bp-0003",
+            "note": "IN PROGRESS: .github/workflows/release.yml written (7 targets via plan-002 container + mac native build-only); real-release observation waits for the v0.2.0 merge; ASSET NAMES HELD for req-51 single-binary freeze (sawfish sha pending)"
           }
         ],
         "tk-0104": [
@@ -108,14 +111,15 @@
             "id": "dw-0104",
             "assertion": "install.sh verified live on mac + linux container (binary runs --version); ps1 present with unvalidated banner",
             "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+            "pressure": "../../backpressure.dd.json#rows/bp-0004",
+            "note": "IN PROGRESS: install.sh verified on mac + linux container against simulated local release layout (ps1 twin present with unvalidated banner); live verification against the published Release waits for the v0.2.0 merge"
           }
         ],
         "tk-0105": [
           {
             "id": "dw-0105",
             "assertion": "dependabot config accepted by GitHub (gh api) and first PRs/scan visible",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0005"
           }
         ],
@@ -123,7 +127,7 @@
           {
             "id": "dw-0106",
             "assertion": "README section + badge live; ci-release.md follows the services convention",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0001"
           }
         ]
