@@ -53,7 +53,7 @@ CREATE TABLE elements (
   raw_text       TEXT NOT NULL,
   raw_hash       TEXT NOT NULL,          -- sha256(raw_text) — THE dirtiness/enrichment key
   enrich         BOOLEAN NOT NULL,       -- scanner's injected-policy verdict (size threshold etc.)
-  UNIQUE (blob_sha, parser_version, address)
+  UNIQUE (blob_sha, parser_version, address, span_start)  -- addresses are NOT unique alone: struct+impl share one (scanner semantics, amended 2026-08-26)
 );
 CREATE INDEX ON elements (raw_hash);
 CREATE INDEX ON elements (blob_sha, parser_version);
