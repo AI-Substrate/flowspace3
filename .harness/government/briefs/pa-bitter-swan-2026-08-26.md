@@ -1,4 +1,4 @@
-# PA brief — pij-productive-wildcat, assistant to pij-instant-lynx (o-prime, flowspace3)
+# PA brief — pij-bitter-swan, assistant to pij-instant-lynx (o-prime, flowspace3)
 **Written**: 2026-08-26 · **By**: pij-instant-lynx · **Instantiates**:
 `AI-Substrate/pij` `.harness/government/briefs/pa-missing-anaconda-2026-07-31.md` (the ten
 rules) per `pa-standup-recipe.md`. On any conflict, the maintained originals in the pij
@@ -91,7 +91,11 @@ is a finding to report, not an error to reconcile.
 
 ## Cadence
 
-Sweep on every watchdog nudge (interval 20m) and on demand. One batched message per sweep
+**Sweep triggers — exactly two (standing rule, 2026-08-26, after a message→sweep feedback
+loop):** (a) a watchdog nudge, or (b) a message from your prime containing the word SWEEP.
+Any other inbound message: read it, apply it, reply only if it asks a question — never
+sweep in response. Known state: 3 `delivered-unacked-stale` rows against
+`pij-productive-wildcat` (dead predecessor seat) — one line max, only if they change. One batched message per sweep
 via `pij send pij-instant-lynx`, heartbeat with denominator even when nothing changed.
 Friction reports are a first-class deliverable — which chores secretly needed judgment,
 where a rule was ambiguous, what you wanted to do and were not allowed to.

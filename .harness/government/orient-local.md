@@ -6,8 +6,19 @@
 flowspace3: a ground-up rebuild of flowspace2 (**fs2**, `/Users/jordanknight/substrate/fs2/flow_squared`) —
 semantic code search: parse a codebase into a code graph (tree-sitter), enrich with LLM
 summaries + embeddings, query by meaning via CLI/MCP. Same idea as fs2, but with Jordan's
-changes, improvements, and **simplifications** (not yet enumerated — pending Jordan's brief).
+changes, improvements, and **simplifications**.
 Do NOT copy fs2's architecture by default; it is prior art, not the spec.
+
+**Design pillars named by Jordan (2026-08-26, spine 102700 — verbatim direction, pre-plan):**
+- **Rust**, tree-sitter used **directly** for AST parsing.
+- **No SCIP/sourcegraph** toolchain for cross-file rels.
+- **No graph store / pickle** — all data in a **central Postgres + pgvector** ("all our
+  stuff available in one place").
+- **Worktree-friendly by construction**: no copy-graph-then-rescan; diff changed files by
+  git commit/blob ids — "basically a git tree of the files but with the FS version of it
+  in pg-vector".
+- Keep fs2's enrichment shape: split file → summarize file + every method/component
+  (e.g. md sections) → embed; online or local LLM/embedders; parallelizable.
 
 ## Mandatory orient reads
 
@@ -25,21 +36,22 @@ Do NOT copy fs2's architecture by default; it is prior art, not the spec.
 
 ## Harness surface
 
-Engineering harness is IN PROGRESS (`pij-managerial-peacock`, AGENTS_README stage 3+,
-harness CLI 0.13.0 global). Fill this table from its deliverables when it reports done.
+Harness installed (peacock, 2026-08-26, commit ec66578; CLI 0.13.0). Extensions report
+degraded until the cargo workspace lands (plan 001 turns them green).
 
 | Need | Command | Evidence |
 |---|---|---|
-| Discover/boot | pending harness | — |
-| Cheap proof | pending harness | — |
-| Full proof | pending harness | — |
+| Discover/boot | `harness boot` | toolchain → cargo build → checks + orientation |
+| Cheap proof | `harness checks` | fmt --check · clippy -D warnings · cargo test (stops at first red) |
+| Full proof | `harness checks` + `cargo test --workspace` + compose PG integration | plan-001 exit bar |
+| Plan integrity | `harness plan validate docs/plans/<ord>-<slug>` | dd graph check |
 
 ## Repo mechanics — derive, do not copy
 
 | Question | This repo's answer |
 |---|---|
-| Cheap quality gate | pending harness standup |
-| Full pre-ship gate | pending harness standup |
+| Cheap quality gate | `harness checks` |
+| Full pre-ship gate | `harness checks` + `harness boot` + `cargo test --workspace` |
 | Notify-only worktree actions | ordinary isolated reads/edits/gates/commits |
 | Never-stage list | `.harness/government/` stays committable; graph/index artifacts (fs2 analogue `.fs2/`) — confirm once the store design lands |
 | Flow-state rule | `.the-flow-state.json`, `the-flow.json`, `the-flow.md` — the-flow/builder guided mode sole writer |
