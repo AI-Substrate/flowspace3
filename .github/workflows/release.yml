@@ -145,6 +145,25 @@ jobs:
           file dist/*
           test "$(ls dist | wc -l)" -eq 3
 
+      # PRD req 54: the auto-updater verifies a downloaded asset against this
+      # file before it renames anything over the installed binary. TLS plus
+      # GitHub is not verification, and without a published digest the updater
+      # would have nothing to compare against.
+      #
+      # Generated AFTER the count check above, deliberately — that check counts
+      # BINARIES, and folding the checksums file into it would mean editing an
+      # assertion about the matrix every time a non-binary asset is added.
+      #
+      # `cd dist` so the names in the file are bare asset names, which is what
+      # the updater looks a line up by (it tolerates a path prefix, but the
+      # published file should not need the tolerance).
+      - name: Generate SHA256SUMS
+        shell: bash
+        run: |
+          cd dist
+          sha256sum flowspace3-* > SHA256SUMS
+          cat SHA256SUMS
+
       - name: Attach binaries to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

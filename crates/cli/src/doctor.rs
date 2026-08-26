@@ -323,17 +323,19 @@ async fn walk(
     // daemon needs in order to start at all.
     steps.push(check_daemon(daemon_url).await);
     steps.push(check_providers(config));
-    // req-0053: the skills row walks last, after providers — informational,
-    // never degrading, and the one row reporting state doctor will never
-    // itself change.
-    steps.push(check_skills());
     // req-0054 / req-0059. Both read the store, so they walk after the schema
-    // row that guarantees the tables exist. Neither ever repairs: doctor does
-    // not update binaries behind your back — `doctor upgrade` is the verb that
-    // does, and this row names it.
+    // row that guarantees the tables exist, and after `daemon` and `providers`
+    // so the steer order stays right: a reader with no daemon running is told
+    // to start one before being told to restart it for a new binary.
+    //
+    // Neither ever repairs. Doctor does not update binaries behind your back —
+    // `flowspace3 doctor upgrade` is the verb that does, and the row names it.
     steps.push(check_update(database_url, config).await);
-    let (row, messages) = check_messages(database_url).await;
-    steps.push(row);
+    let (messages_row, messages) = check_messages(database_url).await;
+    steps.push(messages_row);
+    // req-0053: the skills row walks LAST — informational, never degrading, and
+    // the one row reporting state doctor will never itself change.
+    steps.push(check_skills());
     Ok(messages)
 }
 

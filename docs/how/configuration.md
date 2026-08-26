@@ -15,6 +15,13 @@ Neither file has to exist. With both absent fs3 runs on its defaults, which are
 a complete offline stack: both ports select the built-in `fake` provider
 instance, so no API keys are needed.
 
+**Looking for one specific option?**
+[`docs/reference/configuration.md`](../reference/configuration.md) is the
+exhaustive table — every key the binary reads, with its type, default, effect
+and `FS3_*` override name (PRD req 58). A test fails when an option exists with
+no row there, so it cannot quietly go stale. This page is the narrative: where
+configuration lives, how the layers merge, and how to add to it.
+
 ## Where a value comes from
 
 Three layers, lowest precedence first:
