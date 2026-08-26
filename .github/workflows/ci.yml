@@ -1,6 +1,10 @@
-# CI gate (PRD req 46). Every push to main proves the tree on Linux exactly
-# as `harness checks` does locally. Linux is the only checking platform:
-# macOS/Windows builds are release-only and never gated (plan 004).
+# CI gate (PRD req 46). Runs on PULL REQUESTS into main only (Jordan ruling
+# 2026-08-27, PR-workflow cutover: main is branch-protected, all work arrives
+# via PRs from worktree branches, and we do NOT build on every push). The
+# gate proves the PR's merge result on Linux exactly as `harness checks` does
+# locally. Linux is the only checking platform: macOS/Windows builds are
+# release-only and never gated (plan 004). release-please.yml still fires on
+# push to main (merges) — that is the release trigger, not this gate.
 #
 # The store tier needs Postgres+pgvector; the service container below mirrors
 # docker-compose.yml (pgvector/pgvector:pg16, host port 5433). Tiers above
@@ -9,8 +13,9 @@
 name: ci
 
 on:
-  push:
+  pull_request:
     branches: [main]
+  workflow_dispatch:
 
 env:
   # Shipped default database address; tests spawn the real daemon binary
