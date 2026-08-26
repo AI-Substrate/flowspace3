@@ -1,0 +1,28 @@
+crates/providers/src/lib.rs
+  h_9e71e8b09f7cf2 19,30-33
+crates/providers/src/openai.rs
+  h_9e71e8b09f7cf2 95,125,461
+crates/providers/src/openai_compat.rs
+  h_9e71e8b09f7cf2 1-469
+crates/providers/tests/openai_compat_contract.rs
+  h_9e71e8b09f7cf2 1-94
+crates/providers/tests/openai_compat_stub.rs
+  h_9e71e8b09f7cf2 1-271
+crates/testkit/src/lib.rs
+  h_9e71e8b09f7cf2 21
+docs/plans/prd/providers-roster.md
+  h_9e71e8b09f7cf2 9
+docs/services/openai-compat.md
+  h_9e71e8b09f7cf2 1-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cc0c83af8a0f74f073d9d83bb8db66a193157bc3",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
