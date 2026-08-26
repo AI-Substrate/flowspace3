@@ -27,7 +27,8 @@ Revive a dead seat: `pij revive <id> --print` shows the exact command (Jordan ru
 | pij-technological-egret | global config system (w-config) | %36 · window `config` | 01a03c50-eecb-7000-9378-1992ecdb548c | ACTIVE. Brief `briefs/w-config-egret.md` |
 | pij-surprising-sailfish | daemon shell prototype: watcher+web (w-daemon-shell) | %38 · window `daemon-shell` | 01a03c58-e85e-7000-8a21-4e81b739b51b | ACTIVE. Brief `briefs/w-daemon-shell.md` |
 | pij-devoted-cattle | ignore-aware file discovery (w-discovery) | %39 · window `discovery` | 01a03c5c-d775-7000-8c41-a25729de92af | ACTIVE (copilot claude-opus-5-1m/omp). Brief `briefs/w-discovery.md` |
-| pij-xenophobic-wren | git/blob layer: identity + snapshot diffing (w-git-blob) | %40 · window `git-blob` | 01a03c5c-d938-7000-bd92-9136895e64c5 | ACTIVE. Brief `briefs/w-git-blob.md` |
+| pij-xenophobic-wren | git/blob layer: identity + snapshot diffing (w-git-blob) | %40 · window `git-blob` | 01a03c5c-d938-7000-bd92-9136895e64c5 | ACTIVE — ruled: new crate fs3-git (workshop amendment, 7→8 crates). Brief `briefs/w-git-blob.md` |
+| pij-musical-sylac | schema v1: migrations 0003+ + typed store API (w-schema) | %41 · window `schema` | 01a03c60-310c-7000-b5fb-d6069937b73a | ACTIVE. Brief `briefs/w-schema.md` · authority: workshop 002 |
 
 ## Historical / other
 
