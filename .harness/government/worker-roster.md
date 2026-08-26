@@ -15,7 +15,7 @@ Revive a dead seat: `pij revive <id> --print` shows the exact command (Jordan ru
 
 | Seat | Role | Pane/window | Native session id | Status |
 |---|---|---|---|---|
-| pij-impressive-ox | resident docker manager ("docker dude") | %31 · window `docker` | 01a03bec-d69d-7000-acdd-aa7ff0d60af7 | active — cross-platform ACCEPTED (66bdefb+4a1099d); NOW executing re-scoped s002 phase 2 (docker/ + harness extension, gate opened 2026-08-26). Brief `briefs/s002-docker-daemon-brief.md` |
+| pij-impressive-ox | resident docker manager ("docker dude") | %31 · window `docker` | 01a03bec-d69d-7000-acdd-aa7ff0d60af7 | active — s002 COMPLETE (both phases); NOW executing plan 004 ship-it (CI gate, release-please, cross-platform release, installer). Brief `briefs/s002-docker-daemon-brief.md` |
 
 ## Task workers
 

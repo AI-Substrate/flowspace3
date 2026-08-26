@@ -1,0 +1,101 @@
+{
+  "dd": {
+    "schema": "builder/backpressure"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Backpressure Coverage - Docker build infra + base daemon",
+        "plan": "../plan.dd.json#meta",
+        "basis_sha": "1d98c4894d40ed67e6724acef1cd7f794fd7ef39e45b6d594e1f3f598da84dd5",
+        "certainty": "Partial"
+      }
+    },
+    {
+      "name": "rows",
+      "value": [
+        {
+          "id": "bp-0001",
+          "criterion": "ac-0001 paved stack-up + containerized /health 200",
+          "phase": "1-2",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "RUN: engine compose up -d; curl http://127.0.0.1:<port>/health (compose exists db-only from s001; daemon service is the delta)",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0002",
+          "criterion": "ac-0002 zero-image-rebuild reload, db uninterrupted",
+          "phase": "1-2",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN: reload script; engine inspect StartedAt on db vs daemon containers",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0003",
+          "criterion": "ac-0003 pgvector serves + data survives via named volume",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN: psql CREATE EXTENSION IF NOT EXISTS vector against the POC compose's db service (phase 1; distinct port/volume - NEVER the live s001 stack on 5433); phase 2 re-proves against the root stack after integration",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0004",
+          "criterion": "ac-0004 linux aarch64 ELF from mac host, warm incremental build",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN: build script; file(1) on artifact; timed warm rebuild after 1-line change",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0005",
+          "criterion": "ac-0005 paved docker verbs discoverable + green",
+          "phase": "2",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN: harness surface listing; each verb executed green incl. one-shot in-container cargo test",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0006",
+          "criterion": "ac-0006 engine-agnostic: compose-spec valid, FS3_ENGINE honoured, no docker-only features",
+          "phase": "1-2",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "RUN: compose config; lint script; FS3_ENGINE=podman dry-run (live podman run parked as open question)",
+          "state": "unchecked"
+        }
+      ]
+    },
+    {
+      "name": "sensors",
+      "value": [
+        {
+          "id": "sn-0001",
+          "name": "quality gate (fmt, clippy -D warnings, test)",
+          "command": "harness checks",
+          "dimension": "maintainability+behaviour",
+          "found_in": ".harness/extensions/checks"
+        },
+        {
+          "id": "sn-0002",
+          "name": "stack smoke (up -> health -> pgvector)",
+          "command": "docker/scripts/status (phase-2 paved verb; POC script in phase 1)",
+          "dimension": "behaviour",
+          "found_in": "docs/plans/002-docker-daemon-base/assets/poc/docker (phase 1) -> docker/ (phase 2)"
+        },
+        {
+          "id": "sn-0003",
+          "name": "engine-agnostic lint",
+          "command": "docker/scripts/lint-engine-agnostic",
+          "dimension": "portability",
+          "found_in": "tk-0105 deliverable, wired into the extension in phase 2"
+        }
+      ]
+    }
+  ]
+}
