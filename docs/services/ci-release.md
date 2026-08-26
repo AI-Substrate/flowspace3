@@ -26,8 +26,13 @@ on each Release, a curl installer, Dependabot.
 - **Single binary per platform** (req 51): one asset per target triple;
   asset names freeze at one constant in `install.sh` / `install.ps1`.
 
-## Gotchas
 
+- **`scratch/**` is shared mutable ground — READ side included**: exclude
+  `scratch/` from repo-wide greps/globs/verification sweeps unless the tree
+  is yours; a sibling's detached worktree carries foreign-sha content that
+  pattern-hunting will happily match (DL-012 addendum). Worktrees are
+  seat-scoped (`scratch/verify-<seat> <sha> --detach`) and never
+  force-removed by anyone but their owner.
 - The pgvector image has no HEALTHCHECK → GitHub service health probes fail
   with "map has no entry for key Health". Observe readiness yourself.
 - Port discipline matters: tests spawn the real daemon against the SHIPPED
