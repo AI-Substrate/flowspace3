@@ -1,0 +1,22 @@
+docs/plans/004-ship-it/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 34,44,53,95,104,106,113,115
+docs/plans/004-ship-it/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 39-41,59,65,71
+docs/plans/prd/base-prd.dd.json
+  h_9e71e8b09f7cf2 383-384,391-392
+docs/plans/prd/base-prd.dd.md
+  h_9e71e8b09f7cf2 68-69
+docs/services/ci-release.md
+  h_9e71e8b09f7cf2 70-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "698b56305e718d1daf5c0c8fdc8014452173ccf0",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
