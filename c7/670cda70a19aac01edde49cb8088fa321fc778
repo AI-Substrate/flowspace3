@@ -1,0 +1,35 @@
+crates/git/Cargo.toml
+  s_15d888f4b629c1::t_0543aa4e17e321 1-18
+Cargo.lock
+  s_15d888f4b629c1::t_02dbef9c5b0ced 82-96,291-296,315-325,419-427,534-561,587-631,702-710,758-783,811-816,823-828,883-892,898,928-930,950-1694,1696-1703,1706-1707,1709,1711-1717,1721-1722,1724,1726-1730,1734-1735,1737,1740-1741,1743,1745-1753,1757-1758,1760,1762-1770,1774-1775,1777-1784,1787-1788,1790,1792-1795,1799-1800,1802-1805,1808-1809,1811-1824,1827-1828,1830,1832-1841,1845-1846,1848,1850-1851,1855-1856,1858,1860-1864,1868-1869,1871,1873,1876-1881,1890-1901,1909-1913,1924-1933,2182-2197,2226-2278,2376,2392-2397,2456-2464,2492-2497,2620-2628,2688-2702,2736-2744,2879,2888,3045-3057,3176,3286-3295,3316-3321,3493,3495,3509,3532,3551,3596,3681-3693,3901,4104-4112,4119-4124,4645-4650
+Cargo.toml
+  s_15d888f4b629c1::t_45b86f0d3c30be 3,15,39-46,61-63
+crates/git/src/lib.rs
+  s_15d888f4b629c1::t_a91708f004b77f 1-261
+crates/testkit/arch-allowlist.toml
+  s_15d888f4b629c1::t_fef6bfaf7e2fff 26,83-106,108
+crates/testkit/fixtures/arch/clean-metadata.json
+  s_15d888f4b629c1::t_a0757fa1630109 7,77-95
+crates/testkit/fixtures/arch/drifted-metadata.json
+  s_15d888f4b629c1::t_4bcea6b9ef10b6 7,81-99
+crates/testkit/fixtures/arch/promoted-dev-edge-metadata.json
+  s_15d888f4b629c1::t_f24b98ee04fa31 7,77-95
+crates/testkit/tests/arch_drift.rs
+  s_15d888f4b629c1::t_63a21ef14012ff 21-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c7670cda70a19aac01edde49cb8088fa321fc778",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
