@@ -1,0 +1,21 @@
+.harness/government/rulings/2026-08-26-daemon-native-on-host.md
+  s_15d888f4b629c1::t_00c8643e2e0d8c 1-8
+docs/plans/prd/base-prd.md
+  s_15d888f4b629c1::t_78df03c5e1ac6b 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ab551539a6bfdbf1143864cc9264d9e4a333a006",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
