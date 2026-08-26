@@ -20,17 +20,17 @@
 
 | id | criterion | phase | mode | tier | proof | state | note | receipt | probe |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| bp-0001 | ac-0001 clean-checkout build+test green | 1 | EXISTS | computational | RUN: harness checks (paved today; degraded until tk-0001 lands) | [ ] unchecked | — | — | — |
-| bp-0002 | ac-0002 crate graph matches workshop 001; fs3-core dep-free | 1 | BUILD | computational | BUILD-&gt;RUN: tk-000c drift checker; then harness checks (drift step included) | [ ] unchecked | — | — | — |
-| bp-0003 | ac-0003 drift check goes red on forbidden dep | 1 | BUILD | computational | BUILD-&gt;RUN: committed fixture manifest asserted RED by cargo test (tk-000c) | [ ] unchecked | — | — | — |
-| bp-0004 | ac-0004 compose PG up + store round-trip | 1 | BUILD | computational | BUILD-&gt;RUN: tk-0007/tk-0008; then cargo test -p fs3-store (integration) | [ ] unchecked | — | — | — |
-| bp-0005 | ac-0005 daemon /health + flowspace3 ping | 1 | BUILD | computational | BUILD-&gt;RUN: tk-000a/tk-000b; then daemon integration test + flowspace3 ping | [ ] unchecked | — | — | — |
-| bp-0006 | ac-0006 exemplar tests all tiers + fake determinism | 1 | BUILD | computational | BUILD-&gt;RUN: tk-0002/4/8; then cargo test --workspace | [ ] unchecked | — | — | — |
-| bp-0007 | ac-0007 harness checks green + boot healthy | 1 | EXISTS | computational | RUN: harness checks && harness boot | [ ] unchecked | — | — | — |
-| bp-0008 | ac-0008 README + docs/how/architecture.md signposted (existence) | 1 | EXTEND | computational | EXTEND-&gt;RUN: add docs-link step to checks ext (tk-000d); then harness checks | [ ] unchecked | — | — | — |
-| bp-0009 | ac-0008 documentation reads well (quality) | 1 | ABSENT | human-judgement | no command can judge prose quality; human review at phase review | [ ] unchecked | — | — | — |
-| bp-000a | failure mode: green-but-wrong drift checker | 1 | BUILD | computational | BUILD-&gt;RUN: the bp-0003 fixture IS the checker's negative control | [ ] unchecked | — | — | — |
-| bp-000b | failure mode: works-on-my-machine (docker/config-dir absent) | 1 | EXTEND | computational | EXTEND-&gt;RUN: boot ext gains compose probe (tk-000d); then harness boot | [ ] unchecked | — | — | — |
+| bp-0001 | ac-0001 clean-checkout build+test green | 1 | EXISTS | computational | RUN: harness checks (paved today; degraded until tk-0001 lands) | [x] checked | — | — | — |
+| bp-0002 | ac-0002 crate graph matches workshop 001; fs3-core dep-free | 1 | BUILD | computational | BUILD-&gt;RUN: tk-000c drift checker; then harness checks (drift step included) | [x] checked | — | — | — |
+| bp-0003 | ac-0003 drift check goes red on forbidden dep | 1 | BUILD | computational | BUILD-&gt;RUN: committed fixture manifest asserted RED by cargo test (tk-000c) | [x] checked | — | — | — |
+| bp-0004 | ac-0004 compose PG up + store round-trip | 1 | BUILD | computational | BUILD-&gt;RUN: tk-0007/tk-0008; then cargo test -p fs3-store (integration) | [x] checked | — | — | — |
+| bp-0005 | ac-0005 daemon /health + flowspace3 ping | 1 | BUILD | computational | BUILD-&gt;RUN: tk-000a/tk-000b; then daemon integration test + flowspace3 ping | [x] checked | — | — | — |
+| bp-0006 | ac-0006 exemplar tests all tiers + fake determinism | 1 | BUILD | computational | BUILD-&gt;RUN: tk-0002/4/8; then cargo test --workspace | [x] checked | — | — | — |
+| bp-0007 | ac-0007 harness checks green + boot healthy | 1 | EXISTS | computational | RUN: harness checks && harness boot | [x] checked | — | — | — |
+| bp-0008 | ac-0008 README + docs/how/architecture.md signposted (existence) | 1 | EXTEND | computational | EXTEND-&gt;RUN: add docs-link step to checks ext (tk-000d); then harness checks | [x] checked | — | — | — |
+| bp-0009 | ac-0008 documentation reads well (quality) | 1 | ABSENT | human-judgement | no command can judge prose quality; human review at phase review | [x] checked | — | — | — |
+| bp-000a | failure mode: green-but-wrong drift checker | 1 | BUILD | computational | BUILD-&gt;RUN: the bp-0003 fixture IS the checker's negative control | [x] checked | — | — | — |
+| bp-000b | failure mode: works-on-my-machine (docker/config-dir absent) | 1 | EXTEND | computational | EXTEND-&gt;RUN: boot ext gains compose probe (tk-000d); then harness boot | [x] checked | — | — | — |
 
 <a id="sensors"></a>
 

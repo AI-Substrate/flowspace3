@@ -22,7 +22,7 @@
           "mode": "EXISTS",
           "tier": "computational",
           "proof": "RUN: harness checks (paved today; degraded until tk-0001 lands)",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "bp-0002",
@@ -31,7 +31,7 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "BUILD->RUN: tk-000c drift checker; then harness checks (drift step included)",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "bp-0003",
@@ -40,7 +40,7 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "BUILD->RUN: committed fixture manifest asserted RED by cargo test (tk-000c)",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "bp-0004",
@@ -49,7 +49,7 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "BUILD->RUN: tk-0007/tk-0008; then cargo test -p fs3-store (integration)",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "bp-0005",
@@ -58,7 +58,7 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "BUILD->RUN: tk-000a/tk-000b; then daemon integration test + flowspace3 ping",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "bp-0006",
@@ -67,7 +67,7 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "BUILD->RUN: tk-0002/4/8; then cargo test --workspace",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "bp-0007",
@@ -76,7 +76,7 @@
           "mode": "EXISTS",
           "tier": "computational",
           "proof": "RUN: harness checks && harness boot",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "bp-0008",
@@ -85,7 +85,7 @@
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "EXTEND->RUN: add docs-link step to checks ext (tk-000d); then harness checks",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "bp-0009",
@@ -94,7 +94,7 @@
           "mode": "ABSENT",
           "tier": "human-judgement",
           "proof": "no command can judge prose quality; human review at phase review",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "bp-000a",
@@ -103,7 +103,7 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "BUILD->RUN: the bp-0003 fixture IS the checker's negative control",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "bp-000b",
@@ -112,7 +112,7 @@
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "EXTEND->RUN: boot ext gains compose probe (tk-000d); then harness boot",
-          "state": "unchecked"
+          "state": "checked"
         }
       ]
     },
@@ -142,6 +142,5 @@
         }
       ]
     }
-  ],
-  "references": []
+  ]
 }

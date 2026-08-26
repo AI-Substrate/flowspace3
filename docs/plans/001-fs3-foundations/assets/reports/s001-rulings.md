@@ -1,0 +1,10 @@
+# Rulings log — s001-fs3-foundations
+
+- **2026-08-26 · Branch/landing**: work DIRECTLY on main; no s001 stream branch; landing bar = phase exit gates green, no PR ceremony. (Relayed by o-prime; recorded in plan.dd.json#clarifications.)
+- **2026-08-26 · Tmux placement** (Jordan, direct in pane): "mv you and your code to a new tmux window away from prime" — executed: PM (%23) + coder %29 moved to new window `s001-fs3` (flowspace3:2); prime now alone in window 0, PA in window 1. Pane ids unchanged → pij registry untouched.
+- **2026-08-26 · Tmux split direction** (Jordan, direct in pane): "split vertical not horizontally like now" — window `s001-fs3` re-laid to `even-horizontal` (PM %23 left, coder %29 right, side by side).
+- 04:0xZ Jordan (direct): "they keep not using pij skill to reply" — fleet dispatches must order peers to load skill://pij and follow C10 wire discipline before replying. Recorded in rulings log; encoded into dispatch template.
+- 04:10Z Jordan (direct, reiterate): "i have to tell them use pij tool to reply" — STANDING RULE added to every fleet dispatch: load skill://pij before replying; reply via the pij tool with C10 wire discipline. Captured DL-002.
+- 04:2xZ Jordan (ruling 2026-08-26-commit-push-as-you-go): commit AND push at every coherent unit; scoped adds only (never git add -A); git pull --rebase (autostash in shared tree) then push. Executed: fetched, rebased autostash, pushed — origin/main has d93efa3 + siblings 51f16d1/3d864e2.
+- 04:3xZ AMENDED: push-first — never pull --rebase while siblings have unstaged work; on push rejection coordinate a rebase window with o-prime. (My autostash rebase at 04:2xZ predates the amendment and completed cleanly with no sibling harm — noted, not repeated.)
+- 04:4xZ Jordan (direct): no OPENAI_API_KEY exists — environment uses Azure integrated auth only. Real-provider promotion leg must retarget the ignored OpenAI-shaped contract tests at the Azure adapter (crates/providers/src/azure_openai.rs, in flight by o-prime worker kazimir). Keyed-run open item reframed accordingly.

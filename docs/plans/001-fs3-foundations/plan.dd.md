@@ -59,14 +59,14 @@ Plan 001 does not build fs3's features - it builds the mold the rest of fs3 is p
 
 | id | claim | state | note | receipt | pressure | proven_by |
 | --- | --- | --- | --- | --- | --- | --- |
-| ac-0001 | From a clean checkout, the documented steps yield green `cargo build --workspace` and `cargo test --workspace`. | [ ] unchecked | — | — | [bp-0001](assets/backpressure.dd.md#rows) | — |
-| ac-0002 | The crate graph matches workshop 001 exactly; core compiles with no tokio/sqlx/HTTP dependencies. | [ ] unchecked | — | — | [bp-0002](assets/backpressure.dd.md#rows) | — |
-| ac-0003 | The drift check FAILS when a forbidden dependency is added (negative test: add sqlx to core, check goes red, revert). | [ ] unchecked | — | — | [bp-0003](assets/backpressure.dd.md#rows) | — |
-| ac-0004 | `docker compose up` brings Postgres+pgvector; the store integration test connects, applies migration 0001, and round-trips a row. | [ ] unchecked | — | — | [bp-0004](assets/backpressure.dd.md#rows) | — |
-| ac-0005 | The daemon boots with fake providers selected via config from the flowspace3 config dir and serves GET /health on localhost; `flowspace3 ping` reports it healthy. | [ ] unchecked | — | — | [bp-0005](assets/backpressure.dd.md#rows) | — |
-| ac-0006 | Exemplar tests pass at all tiers: core unit with zero doubles, Embedder contract over FakeEmbedder, PG integration; FakeEmbedder is deterministic (same text yields the same vector, asserted). | [ ] unchecked | — | — | [bp-0006](assets/backpressure.dd.md#rows) | — |
-| ac-0007 | `harness checks` runs fmt --check, clippy -D warnings, tests, and the drift check, all green; `harness boot` reports healthy. | [ ] unchecked | — | — | [bp-0007](assets/backpressure.dd.md#rows) | — |
-| ac-0008 | README carries the quick-start and signposts docs/how/architecture.md, which exists and reflects workshop 001. | [ ] unchecked | — | — | [bp-0008](assets/backpressure.dd.md#rows) | — |
+| ac-0001 | From a clean checkout, the documented steps yield green `cargo build --workspace` and `cargo test --workspace`. | [x] checked | — | — | [bp-0001](assets/backpressure.dd.md#rows) | — |
+| ac-0002 | The crate graph matches workshop 001 exactly; core compiles with no tokio/sqlx/HTTP dependencies. | [x] checked | — | — | [bp-0002](assets/backpressure.dd.md#rows) | — |
+| ac-0003 | The drift check FAILS when a forbidden dependency is added (negative test: add sqlx to core, check goes red, revert). | [x] checked | — | — | [bp-0003](assets/backpressure.dd.md#rows) | — |
+| ac-0004 | `docker compose up` brings Postgres+pgvector; the store integration test connects, applies migration 0001, and round-trips a row. | [x] checked | — | — | [bp-0004](assets/backpressure.dd.md#rows) | — |
+| ac-0005 | The daemon boots with fake providers selected via config from the flowspace3 config dir and serves GET /health on localhost; `flowspace3 ping` reports it healthy. | [x] checked | — | — | [bp-0005](assets/backpressure.dd.md#rows) | — |
+| ac-0006 | Exemplar tests pass at all tiers: core unit with zero doubles, Embedder contract over FakeEmbedder, PG integration; FakeEmbedder is deterministic (same text yields the same vector, asserted). | [x] checked | — | — | [bp-0006](assets/backpressure.dd.md#rows) | — |
+| ac-0007 | `harness checks` runs fmt --check, clippy -D warnings, tests, and the drift check, all green; `harness boot` reports healthy. | [x] checked | — | — | [bp-0007](assets/backpressure.dd.md#rows) | — |
+| ac-0008 | README carries the quick-start and signposts docs/how/architecture.md, which exists and reflects workshop 001. | [x] checked | — | — | [bp-0008](assets/backpressure.dd.md#rows) | — |
 
 <a id="phases"></a>
 
@@ -74,7 +74,7 @@ Plan 001 does not build fs3's features - it builds the mold the rest of fs3 is p
 
 | id | title | brief | state | note | receipt | depends_on | tasks | objective | delivers | key_risks |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ph-78fc | Phase 1: Foundations — workspace, DI architecture, drift enforcement, exemplars | The whole plan in one phase: scaffold the workspace, land the architecture as code, enforce it mechanically, and leave one exemplar of everything. Details in the task file. | [ ] unchecked | — | — | — | [tasks](assets/tasks/phase-1/tasks.dd.md#tasks) | — | — | — |
+| ph-78fc | Phase 1: Foundations — workspace, DI architecture, drift enforcement, exemplars | The whole plan in one phase: scaffold the workspace, land the architecture as code, enforce it mechanically, and leave one exemplar of everything. Details in the task file. | [x] checked | — | — | — | [tasks](assets/tasks/phase-1/tasks.dd.md#tasks) | — | — | — |
 
 <a id="research-context"></a>
 

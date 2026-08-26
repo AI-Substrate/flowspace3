@@ -6,7 +6,7 @@
     {
       "name": "meta",
       "value": {
-        "title": "Phase 1: Foundations \u2014 workspace, DI architecture, drift enforcement, exemplars",
+        "title": "Phase 1: Foundations — workspace, DI architecture, drift enforcement, exemplars",
         "slug": "phase-1",
         "status": "draft",
         "summary": ""
@@ -22,7 +22,7 @@
         {
           "id": "tk-0001",
           "title": "Workspace scaffold: root Cargo.toml + 7 crates compiling - package names fs3-core, fs3-parsers, fs3-providers, fs3-store, fs3-testkit, fs3-daemon, fs3-cli (dir names core/, parsers/, ...; `core` itself is a reserved cargo name); fs3-cli's [[bin]] is named flowspace3",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0001",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001",
@@ -32,7 +32,7 @@
         {
           "id": "tk-0002",
           "title": "core: domain types (Element, ElementKind, BlobRef) + pure fns incl. classify with declaration-shape gate + needs_summary; exemplar unit tests",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0002",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0002",
@@ -42,7 +42,7 @@
         {
           "id": "tk-0003",
           "title": "core: Embedder + Summarizer port traits (#[async_trait], dyn-safe, Send+Sync)",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0003",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0002"
@@ -51,7 +51,7 @@
         {
           "id": "tk-0004",
           "title": "testkit: FakeEmbedder (deterministic hash vectors, call recording, failure injection) + FakeSummarizer + generic embedder_contract harness",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0004",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0006"
@@ -60,7 +60,7 @@
         {
           "id": "tk-0005",
           "title": "providers: OpenAI-shaped stub implementing both ports behind a config enum (compiles; real calls #[ignore]d)",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0005",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0006"
@@ -69,7 +69,7 @@
         {
           "id": "tk-0006",
           "title": "parsers: tree-sitter direct with rust + markdown grammars; parse-to-elements exemplar + fixture test (POC learnings: structure gate, bare-kind table)",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0006",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0006"
@@ -78,7 +78,7 @@
         {
           "id": "tk-0007",
           "title": "compose: docker-compose.yml with Postgres+pgvector; documented up/down commands",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0007",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001",
@@ -88,7 +88,7 @@
         {
           "id": "tk-0008",
           "title": "store: sqlx setup + migration 0001 (minimal exemplar table) + integration test vs compose PG",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0008",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0004",
@@ -98,7 +98,7 @@
         {
           "id": "tk-0009",
           "title": "config: types + serde derives in fs3-core (pure, no IO); file discovery/parsing of ~/.config/flowspace3 (TOML) with FS3_CONFIG_DIR override in fs3-daemon; fs3-cli reads only the daemon URL via the same core types; provider selection incl. fake",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0009",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0005"
@@ -107,7 +107,7 @@
         {
           "id": "tk-000a",
           "title": "daemon: axum skeleton, AppState, composition root (config match incl. fake), GET /health on localhost",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-000a",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0005"
@@ -116,7 +116,7 @@
         {
           "id": "tk-000b",
           "title": "cli: flowspace3 binary, HTTP client, flowspace3 ping; fail-fast message naming doctor when daemon absent",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-000b",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0005"
@@ -125,7 +125,7 @@
         {
           "id": "tk-000c",
           "title": "drift check: per-crate dependency allow-list script/config wired as a check; negative verification",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-000c",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003",
@@ -135,7 +135,7 @@
         {
           "id": "tk-000d",
           "title": "harness extensions: checks ext = fmt --check + clippy -D warnings + cargo test + drift check; boot ext = toolchain + build + compose probe",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-000d",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0007"
@@ -144,7 +144,7 @@
         {
           "id": "tk-000e",
           "title": "docs: README quick-start + docs/how/architecture.md (from workshop 001) signposted from README",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-000e",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001",
@@ -160,7 +160,7 @@
           {
             "id": "dw-0001",
             "assertion": "cargo build --workspace green from clean checkout",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0001"
           }
         ],
@@ -168,7 +168,7 @@
           {
             "id": "dw-0002",
             "assertion": "cargo test -p fs3-core green; zero test doubles anywhere in core tests; classify rejects a non-declaration node in a test (PRD req 42 exemplar)",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0006"
           }
         ],
@@ -176,7 +176,7 @@
           {
             "id": "dw-0003",
             "assertion": "Arc<dyn Embedder> compiles in a doc-test or unit test proving object safety",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0002"
           }
         ],
@@ -184,7 +184,7 @@
           {
             "id": "dw-0004",
             "assertion": "contract test green over FakeEmbedder; determinism asserted: same text -> same vector twice",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0006"
           }
         ],
@@ -192,7 +192,7 @@
           {
             "id": "dw-0005",
             "assertion": "cargo build -p providers green; #[ignore]d contract test exists for the real impl",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0006"
           }
         ],
@@ -200,7 +200,7 @@
           {
             "id": "dw-0006",
             "assertion": "fixture test green: known .rs and .md files yield expected element tables",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0006"
           }
         ],
@@ -208,7 +208,7 @@
           {
             "id": "dw-0007",
             "assertion": "docker compose up -d then pg_isready succeeds; documented in README",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0004"
           }
         ],
@@ -216,7 +216,7 @@
           {
             "id": "dw-0008",
             "assertion": "integration test connects, migrates, round-trips a row; test names the exact compose command when docker is absent",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0004"
           }
         ],
@@ -224,7 +224,7 @@
           {
             "id": "dw-0009",
             "assertion": "unit test: temp config dir with provider=fake parses and selects the fake arm",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0005"
           }
         ],
@@ -232,7 +232,7 @@
           {
             "id": "dw-000a",
             "assertion": "integration test: boot with fake config, GET /health returns 200 {status:ok}",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0005"
           }
         ],
@@ -240,7 +240,7 @@
           {
             "id": "dw-000b",
             "assertion": "ping against running daemon prints healthy; against no daemon exits non-zero with the doctor suggestion",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0005"
           }
         ],
@@ -248,7 +248,7 @@
           {
             "id": "dw-000c",
             "assertion": "check green on the real graph; a committed fixture manifest with a forbidden edge (e.g. sqlx in fs3-core) is asserted RED by a normal cargo test - the negative proof is re-runnable, not a one-shot violate-and-revert",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0003"
           }
         ],
@@ -256,7 +256,7 @@
           {
             "id": "dw-000d",
             "assertion": "harness checks green; harness boot healthy (degraded state resolved)",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0007"
           }
         ],
@@ -264,7 +264,7 @@
           {
             "id": "dw-000e",
             "assertion": "both files exist; README links the guide; quick-start commands verified by following them",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0008"
           }
         ]

@@ -53,49 +53,49 @@
         {
           "id": "ac-0001",
           "claim": "From a clean checkout, the documented steps yield green `cargo build --workspace` and `cargo test --workspace`.",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "assets/backpressure.dd.json#rows/bp-0001"
         },
         {
           "id": "ac-0002",
           "claim": "The crate graph matches workshop 001 exactly; core compiles with no tokio/sqlx/HTTP dependencies.",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "assets/backpressure.dd.json#rows/bp-0002"
         },
         {
           "id": "ac-0003",
           "claim": "The drift check FAILS when a forbidden dependency is added (negative test: add sqlx to core, check goes red, revert).",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "assets/backpressure.dd.json#rows/bp-0003"
         },
         {
           "id": "ac-0004",
           "claim": "`docker compose up` brings Postgres+pgvector; the store integration test connects, applies migration 0001, and round-trips a row.",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "assets/backpressure.dd.json#rows/bp-0004"
         },
         {
           "id": "ac-0005",
           "claim": "The daemon boots with fake providers selected via config from the flowspace3 config dir and serves GET /health on localhost; `flowspace3 ping` reports it healthy.",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "assets/backpressure.dd.json#rows/bp-0005"
         },
         {
           "id": "ac-0006",
           "claim": "Exemplar tests pass at all tiers: core unit with zero doubles, Embedder contract over FakeEmbedder, PG integration; FakeEmbedder is deterministic (same text yields the same vector, asserted).",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "assets/backpressure.dd.json#rows/bp-0006"
         },
         {
           "id": "ac-0007",
           "claim": "`harness checks` runs fmt --check, clippy -D warnings, tests, and the drift check, all green; `harness boot` reports healthy.",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "assets/backpressure.dd.json#rows/bp-0007"
         },
         {
           "id": "ac-0008",
           "claim": "README carries the quick-start and signposts docs/how/architecture.md, which exists and reflects workshop 001.",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "assets/backpressure.dd.json#rows/bp-0008"
         }
       ]
@@ -107,7 +107,7 @@
           "id": "ph-78fc",
           "title": "Phase 1: Foundations — workspace, DI architecture, drift enforcement, exemplars",
           "brief": "The whole plan in one phase: scaffold the workspace, land the architecture as code, enforce it mechanically, and leave one exemplar of everything. Details in the task file.",
-          "state": "unchecked",
+          "state": "checked",
           "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
         }
       ]

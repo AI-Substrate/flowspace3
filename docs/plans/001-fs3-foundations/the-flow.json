@@ -3,9 +3,9 @@
   "kind": "flight-plan",
   "slug": "fs3-foundations",
   "nav": {
-    "now": "phase-1",
+    "now": "ship",
     "next": null,
-    "intent": "PM s001 driving phase-1 implementation via /pij pair fleet",
+    "intent": "fix-0004 approved (rev-0006); phase exit reconciliation",
     "bag": {
       "mode": "unknown",
       "status": "active"
@@ -202,6 +202,59 @@
         "from": "known",
         "to": "in_progress"
       }
+    },
+    {
+      "id": "STA-006",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-26T04:46:03.827Z",
+      "details": {
+        "node": "phase-1",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-003",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-26T04:46:03.988Z",
+      "details": {
+        "from": "phase-1",
+        "to": "review-1"
+      }
+    },
+    {
+      "id": "STA-007",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-26T04:46:13.708Z",
+      "details": {
+        "node": "review-1",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-004",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-26T04:48:10.124Z",
+      "details": {
+        "from": "review-1",
+        "to": "ship"
+      }
+    },
+    {
+      "id": "STA-008",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-26T04:48:10.271Z",
+      "details": {
+        "node": "ship",
+        "from": "assumed",
+        "to": "done"
+      }
     }
   ],
   "nodes": [
@@ -256,13 +309,21 @@
       "type": "phase",
       "phase": 1,
       "label": "P1: Implementation",
-      "status": "in_progress",
+      "status": "done",
       "command": "/builder 6 implement",
       "next": [
         "review-1"
       ],
       "dd_link": {
-        "address": "docs/plans/001-fs3-foundations/assets/tasks/phase-1/tasks.dd.json#tasks"
+        "address": "docs/plans/001-fs3-foundations/assets/tasks/phase-1/tasks.dd.json#tasks",
+        "basis_sha": "1ae4de33b0f74604ab801f1733f96c447a00f25d98341cdfb77cc82aa62aeb5f",
+        "reading": {
+          "status": "complete",
+          "terminal": 14,
+          "total": 14,
+          "incomplete": [],
+          "at": "2026-08-26T04:46:03.988Z"
+        }
       },
       "instructions": [
         "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
@@ -274,13 +335,14 @@
         "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
       ],
-      "modified_at": "2026-08-26T02:07:36.018Z"
+      "modified_at": "2026-08-26T04:46:03.827Z",
+      "ran_at": "2026-08-26T04:46:03.827Z"
     },
     {
       "id": "review-1",
       "type": "review",
       "label": "Review: P1",
-      "status": "assumed",
+      "status": "done",
       "command": "/builder 7 review",
       "next": [
         "post-flight"
@@ -288,7 +350,15 @@
       "zone": "flight",
       "dd_link": {
         "address": "docs/plans/001-fs3-foundations/plan.dd.json",
-        "check": "plan-validate"
+        "check": "plan-validate",
+        "basis_sha": "e44dbbc8f2ae1c48557ed85b8aee31607483fb27cc38bc0eec11a7f085e18365",
+        "reading": {
+          "status": "complete",
+          "terminal": 1,
+          "total": 1,
+          "incomplete": [],
+          "at": "2026-08-26T04:48:10.124Z"
+        }
       },
       "instructions": [
         "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in.",
@@ -297,7 +367,9 @@
         "This node carries the plan-validate CHECK gate: departure is refused until harness plan validate \"<plan dir>/plan.dd.json\" --complete is green (zero errors AND zero warnings). Run it BEFORE you try to leave — the refusal quotes every finding, but reading them early is cheaper.",
         "Close criteria through the CLI: node_modules/.bin/dd set \"<plan dir>/plan.dd.json#acceptance_criteria/ac-XXXX/state\" checked, and re-verify any moved basis with node_modules/.bin/dd link verify-basis <address> --sha <sha> --update <doc>.",
         "If the gate refuses and departing anyway is the HUMAN's decision, they pass --force — it records a defended override. An agent may not force a dd gate on its own judgment."
-      ]
+      ],
+      "modified_at": "2026-08-26T04:46:13.708Z",
+      "ran_at": "2026-08-26T04:46:13.708Z"
     },
     {
       "id": "post-flight",
@@ -319,14 +391,16 @@
       "id": "ship",
       "type": "ship",
       "label": "Ship",
-      "status": "assumed",
+      "status": "done",
       "command": "/builder 8 ship",
       "next": [],
       "instructions": [
         "Get the work out — push the branch, open a PR (using the repo's PR guidance), watch its CI checks, and report problems; the merge itself is optional.",
         "Run /builder 8 ship --plan \"<plan path>\" — the plan folder was archived at post-flight, so resolve --plan under docs/plans/archive/<ord>-<slug>/; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.",
         "Done when the PR is open and its checks are green (or the failures are reported with a fix-loop offer); a diverged base hands off to 8c reconcile."
-      ]
+      ],
+      "modified_at": "2026-08-26T04:48:10.271Z",
+      "ran_at": "2026-08-26T04:48:10.271Z"
     },
     {
       "id": "backpressure",
