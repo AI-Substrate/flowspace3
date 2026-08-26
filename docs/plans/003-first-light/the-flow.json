@@ -219,6 +219,47 @@
           "importance": "optional"
         }
       }
+    },
+    {
+      "id": "NOD-003",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-26T05:20:38.495Z",
+      "details": {
+        "node": "backpressure-bf7063c83430",
+        "type": "backpressure",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
+    },
+    {
+      "id": "UPD-007",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-26T05:20:38.617Z",
+      "details": {
+        "node": "backpressure-bf7063c83430",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-007",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-26T05:20:38.735Z",
+      "details": {
+        "node": "backpressure-bf7063c83430",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
     }
   ],
   "nodes": [
@@ -524,6 +565,32 @@
         }
       ],
       "ran_at": "2026-08-26T05:20:09.862Z"
+    },
+    {
+      "id": "backpressure-bf7063c83430",
+      "type": "backpressure",
+      "label": "Backpressure (re-survey: subpath dropped)",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-08-26T05:20:38.495Z",
+      "modified_at": "2026-08-26T05:20:38.734Z",
+      "command": "run /eng-harness-flow --hook pre-coding --json",
+      "chore": {
+        "kind": "command",
+        "importance": "optional"
+      },
+      "branch_of": "plan",
+      "comments": [
+        {
+          "at": "2026-08-26T05:20:38.616Z",
+          "text": "verdict:re-surveyed reason:subpath requirement dropped; live run = whole repo discovery-filtered. basis_sha256:bf7063c83430820c86c0e56987cb5fbff11130221d1e596f2ac8a54011edbf33",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-26T05:20:38.734Z"
     }
   ],
   "plan_dir": "docs/plans/003-first-light"

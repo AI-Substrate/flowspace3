@@ -56,7 +56,7 @@
 | ac-0001 | `flowspace3 add &lt;path&gt;` + `flowspace3 scan` against a real codebase yields elements, smart content, and embeddings rows via daemon-claimed jobs - CLI is a thin envelope client. | [ ] unchecked | — | — | [bp-0001](assets/backpressure.dd.md#rows) | — |
 | ac-0002 | `flowspace3 search "&lt;question&gt;"` (semantic, --repo/--path/--limit/--min-score/--source raw\|smart) returns ranked hits with addresses, spans, tags, match_field in the workshop-004 envelope. | [ ] unchecked | — | — | [bp-0002](assets/backpressure.dd.md#rows) | — |
 | ac-0003 | A CI-runnable end-to-end test (fake provider, throwaway db) proves scan-&gt;enrich-&gt;search deterministically, incl. the idempotence claim: second scan of unchanged tree enqueues zero enrichment. | [ ] unchecked | — | — | [bp-0003](assets/backpressure.dd.md#rows) | — |
-| ac-0004 | A recorded LIVE run: the daemon scans an ISOLATED FIXTURE SUBSET (crates/parsers/fixtures corpus - cheap, cents not dollars; Jordan 2026-08-26) through Azure (registry-selected) and answers 3 sample questions sensibly - transcript in plan assets. | [ ] unchecked | — | — | [bp-0004](assets/backpressure.dd.md#rows) | — |
+| ac-0004 | A recorded LIVE run: the daemon scans THIS REPO (whole tree, discovery-filtered - ~133 files on current main, modest cost; Jordan 2026-08-26 superseding the fixture-subset ruling) through Azure and answers 3 sample questions sensibly - transcript in plan assets. | [ ] unchecked | — | — | [bp-0004](assets/backpressure.dd.md#rows) | — |
 | ac-0005 | Envelope v1 + error catalog seed live in fs3-core: ok/error shapes, FS3-E codes with mandatory fix, next_action - consumed by every new CLI verb and endpoint. | [ ] unchecked | — | — | [bp-0005](assets/backpressure.dd.md#rows) | — |
 
 <a id="phases"></a>
@@ -83,6 +83,7 @@ _No entries._
 | 2026-08-26 | Retry/re-queue decisions? | Settled small in-plan: 3 attempts + backoff; running-job changes ride the reconciler (daemon plan may revisit). |
 | 2026-08-26 | Search scope? | Workshop 003 v1 slice: semantic only + 5 filters; text/regex/conversations later. |
 | 2026-08-26 | Schema rollforward during iteration? | Jordan: doctor should patch/upgrade automatically (no second command); every db-accessing command does a quick schema check and rejects stale pointing at doctor; dogfood doctor from now. tk-0108. |
+| 2026-08-26 | Subpath roots? | DROPPED as a requirement (Jordan: 'just scan this repo... not worry about the subpath thing') - supersedes the earlier subpath contract + fixture-subset cost ruling. Live run = whole repo, discovery-filtered. What falls out free of sawfish's composition stays, but no subpath assertions are required. |
 
 <a id="gate-matrix"></a>
 

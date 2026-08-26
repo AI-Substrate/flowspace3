@@ -57,7 +57,7 @@
         },
         {
           "id": "ac-0004",
-          "claim": "A recorded LIVE run: the daemon scans an ISOLATED FIXTURE SUBSET (crates/parsers/fixtures corpus - cheap, cents not dollars; Jordan 2026-08-26) through Azure (registry-selected) and answers 3 sample questions sensibly - transcript in plan assets.",
+          "claim": "A recorded LIVE run: the daemon scans THIS REPO (whole tree, discovery-filtered - ~133 files on current main, modest cost; Jordan 2026-08-26 superseding the fixture-subset ruling) through Azure and answers 3 sample questions sensibly - transcript in plan assets.",
           "state": "unchecked",
           "pressure": "assets/backpressure.dd.json#rows/bp-0004"
         },
@@ -107,6 +107,11 @@
           "session": "2026-08-26",
           "question": "Schema rollforward during iteration?",
           "answer": "Jordan: doctor should patch/upgrade automatically (no second command); every db-accessing command does a quick schema check and rejects stale pointing at doctor; dogfood doctor from now. tk-0108."
+        },
+        {
+          "session": "2026-08-26",
+          "question": "Subpath roots?",
+          "answer": "DROPPED as a requirement (Jordan: 'just scan this repo... not worry about the subpath thing') - supersedes the earlier subpath contract + fixture-subset cost ruling. Live run = whole repo, discovery-filtered. What falls out free of sawfish's composition stays, but no subpath assertions are required."
         }
       ]
     },

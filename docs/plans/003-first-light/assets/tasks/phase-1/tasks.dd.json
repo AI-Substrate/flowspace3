@@ -67,7 +67,7 @@
         },
         {
           "id": "tk-0106",
-          "title": "End-to-end proofs: (a) CI test - fake provider + throwaway db, fixture mini-repo, scan->enrich->search assertions + idempotent-rescan-zero-enrichment; (b) LIVE run - daemon scans ONLY the isolated fixture corpus (crates/parsers/fixtures or an equivalent small root; never a whole repo - cost ruling) via Azure, 3 questions, transcript to assets/first-light-run.md with row counts + spend-relevant call counts",
+          "title": "End-to-end proofs: (a) CI test - fake provider + throwaway db, fixture mini-repo, scan->enrich->search assertions + idempotent-rescan-zero-enrichment; (b) LIVE run - daemon scans THIS REPO root (discovery-filtered; subpath support is NOT a requirement - Jordan dropped it 2026-08-26) via Azure, 3 questions, transcript to assets/first-light-run.md with row counts + provider call counts",
           "state": "unchecked",
           "done": "#done_when/tk-0106",
           "satisfies": [
@@ -147,7 +147,7 @@
           },
           {
             "id": "dw-0107",
-            "assertion": "live Azure run recorded against the fixture-subset root only (registry-resolved, Entra); transcript notes element/summary/embedding row counts and provider call counts",
+            "assertion": "live Azure run recorded against this repo's root (registry-resolved, Entra); transcript notes element/summary/embedding row counts and provider call counts",
             "state": "unchecked",
             "pressure": "../../backpressure.dd.json#rows/bp-0004"
           }
