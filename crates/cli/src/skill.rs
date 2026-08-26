@@ -228,10 +228,7 @@ mod tests {
             "not the bundled bytes",
         )
         .unwrap();
-        assert_eq!(
-            audit(&home),
-            vec![RootState::Stale, RootState::Current]
-        );
+        assert_eq!(audit(&home), vec![RootState::Stale, RootState::Current]);
 
         fs::remove_dir_all(&home).unwrap();
     }

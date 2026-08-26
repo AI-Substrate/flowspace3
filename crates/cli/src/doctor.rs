@@ -688,7 +688,9 @@ fn skills_row(states: &[crate::skill::RootState], started: Instant) -> Step {
     let found = match (missing, stale) {
         (0, 0) => "the agent skill is installed and current in both skills roots".to_string(),
         (missing, 0) => format!("the agent skill is missing from {missing} of 2 skills roots"),
-        (0, stale) => format!("the installed agent skill is out of date in {stale} of 2 skills roots"),
+        (0, stale) => {
+            format!("the installed agent skill is out of date in {stale} of 2 skills roots")
+        }
         (missing, stale) => format!(
             "the agent skill is missing from {missing} and out of date in {stale} of 2 skills roots"
         ),
@@ -803,10 +805,7 @@ mod tests {
             started,
         );
         assert_eq!(clean.outcome, "info");
-        assert!(
-            clean.steer.is_none(),
-            "nothing to ask, nothing to steer"
-        );
+        assert!(clean.steer.is_none(), "nothing to ask, nothing to steer");
 
         let missing = skills_row(
             &[
