@@ -1,0 +1,20 @@
+crates/store/tests/pg_store_flows.rs
+  s_15d888f4b629c1::t_ec6682874763fc 14-16,18-21,24-25,665-754
+  s_15d888f4b629c1::t_98631b5c2337df 755-758
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cebe592085e5e01c68d207aeb25d7ba141c35ae2",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
