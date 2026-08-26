@@ -1,0 +1,143 @@
+# How we work — Jordan, o-prime, and the agent fleet
+**Author**: pij-instant-lynx (o-prime) · 2026-08-26 · recorded on Jordan's ask ("write up a detailed
+report on how we've been working with our agents… how I've been directing you and what to expect").
+This is the operating manual for this repo's human+agent working model, written from one day of
+building fs3 from an empty repo to a released-candidate system with ~16 agent seats.
+
+## 1. The shape
+
+```
+Jordan (human director — voice, fast, hates ceremony)
+  └── o-prime  (one governance seat; single writer of .harness/government/**)
+        ├── coder seats, one per DOMAIN, each in its own tmux window
+        │     (store, config, scanner, providers, docker/CI, watcher, skills…)
+        ├── occasional PM seats for full plans (e.g. s001), running their own coder+reviewer fleets
+        └── platform peers outside the repo (pij prime for pij bugs, etc.)
+```
+
+One brain per domain. A seat's context is a first-class asset: we RE-OPEN the author seat for
+work in its domain (rulings/2026-08-26-context-single-responsibility.md) and spawn fresh only for
+genuinely new domains. Every seat, task, window, native session id (the revive key) and status
+lives in `worker-roster.md` — kept current because Jordan checks it.
+
+## 2. How Jordan directs
+
+- **Voice-first, conversational.** Asks arrive as spoken-style prose, sometimes mid-turn, often
+  with a transcription typo. O-prime's job is to extract the INTENT and preserve it verbatim where
+  it matters (rulings quote him).
+- **Question vs work.** "What do you think / walk me through it / report back" = deliver an
+  assessment and STOP — no code, no dispatch. "Get a coder on it / fire that up / thanks" = execute.
+  When ambiguous, o-prime plays the ask back ("report what I'm asking for") before acting.
+- **Numbered lists, one sentence per item** is his preferred playback format for options, sequences,
+  and status. Short replies when he says short.
+- **Decisions come one at a time.** When o-prime needs rulings, ask ONE question per message: one
+  sentence of context, one sentence of ask. He answers fast; don't batch or essay.
+- **He rules; we record.** A Jordan decision becomes either a ruling file
+  (`.harness/government/rulings/`) quoting his intent, or a doctrine section in the relevant
+  design doc, or a PRD requirement — the same day, before it can drift. Reversals are recorded as
+  reversals (e.g. primes-owe-status-cards).
+- **Some things only Jordan does**: merging release PRs ("we wait for the PR leader"), deleting
+  other projects' resources, admin toggles, teardown of ambiguous processes. When in doubt whether
+  an action is his, it is.
+
+## 3. What o-prime does with an ask
+
+Classify, then route:
+
+1. **Question** → investigate (read the tree, run the CLI, check the DB), answer with evidence,
+   stop. The deliverable is the assessment.
+2. **Small bounded work in an existing domain** → write a PACKET and send it to the domain's
+   author seat (often as an extension to their open unit).
+3. **New domain** → write a BRIEF, spawn a fresh seat (canary-verify it), add it to the roster,
+   give it its own window.
+4. **A big rock** → a dd-native PLAN (builder skill), usually preceded by one or more WORKSHOPS
+   where the design decisions get made and become authoritative documents. Plans get validated
+   (/validate-v2), executed by a PM or a single strong coder, reviewed by o-prime + critic, and
+   closed with proof (the "first light" pattern: a live end-to-end run transcript as the plan's
+   exit evidence).
+5. **Platform bug** (pij/omp itself) → evidence to the platform prime (ermine), never fixed
+   locally, never worked around silently.
+
+## 4. Briefs, packets, dossiers
+
+- **Brief** (`briefs/w-<name>.md`): opens a seat on a job. Structure that has worked: verbatim
+  Jordan intent up top · "The job" as numbered units · what to read FIRST (doctrine, prior art,
+  LEARNINGS) · what is explicitly DEFERRED (do-not-build list) · Rules & fence (exact paths the
+  seat may touch; whose in-flight files are hands-off) · report-back contract (claim · shas ·
+  transcript · service page) · "Deviations = stop-and-ask".
+- **Packet**: the lighter-weight follow-on — a pij message extending an open seat's unit with the
+  same elements compressed. Anything substantive is PERSISTED TO A FILE first and the message
+  carries the path (pointer delivery — this also survives the message-truncation bug).
+- **Dossier**: o-prime's own handover documents (e.g. `scratch/oprime-handover.md` before a
+  context compaction) — everything a successor needs: board state, active threads, queued work,
+  Jordan's local state, immediate next actions.
+- **Workers ack before coding**: plan-of-attack in a few lines, o-prime approves or corrects,
+  THEN code. Mid-work, real design discoveries come back as **stop-and-asks** — the worker states
+  what it measured, the proposed fix, alternatives it rejected and why, and does NOT act if the
+  fix reverses an o-prime ruling. (Live example: the watcher forever-rescan defect — measured on
+  the real binary, fix reversed a ruling, worker held with the fix written and tested until GO.)
+
+## 5. The verification culture
+
+- **Verify-then-relay.** O-prime never forwards a worker claim unverified: check the sha exists,
+  run the command, read the table. "Done" is a claim until verified — the platform enforces this
+  too (assignment verify stamps, anomaly rows for unverified-dones).
+- **Evidence-gated PRD.** The requirements register (`docs/plans/prd/base-prd.dd.json`, mutated
+  ONLY via the ddocs CLI) has a state + note per requirement; a check-off requires named evidence
+  (sha, transcript, live-run pointer) in the note. Swept at every acceptance.
+- **Mutation-checked fix tests.** A fix's test must FAIL without the fix. Workers state this;
+  reviews check it.
+- **Reviews.** O-prime (plus an independent critic for big landings) reviews plan exits;
+  findings are severity-ranked with smallest-fixes, and fixes land before plan close.
+- **Identity is verified too.** New seats get a canary before trust; when the platform's identity
+  wobbled (alias rotation), work continued only through the canary-proven canonical id.
+
+## 6. Communication mechanics
+
+- **pij sends**, wire-disciplined: short, pointer-heavy, single-quoted (backticks in a double-quoted
+  send get executed by zsh — learned the hard way).
+- **Status cards** at unit edges (`pij report now "<did>" "<next>"`) — primes owe them too.
+- **Mid-turn steering**: Jordan and workers can interject while o-prime is working; messages are
+  addressed within the running turn.
+- **Known platform quirks** are documented and routed, not suffered: head-truncation of
+  omp→busy-claude messages (workaround: pointer delivery), send-path alias rotation (workaround:
+  always address the canonical id; canary on doubt).
+
+## 7. Documentation trail (who writes what)
+
+- **Workers** write `docs/services/<their-domain>.md` — living pages, updated as their domain
+  evolves; and LEARNINGS.md for prototypes (which become doctrine).
+- **O-prime** writes rulings, briefs, reviews, the roster, workshop docs, and keeps the PRD
+  register current.
+- **Skills** (`.agents/skills/`) capture repeatable recipes (add-provider, add-language,
+  flowspace) so parallel workers execute them without re-derivation; they grow with each use.
+- **Retro drains**: worker friction observations are captured via `harness observe` and drained
+  by o-prime (o-prime-owned; workers list-and-report, never clear) into retro records; the best
+  become encoded improvements.
+
+## 8. Shared-tree discipline (pre-cutover era)
+
+All seats committed directly to main: conventional commits binding · file-scoped adds, never
+`git add -A` · hunk-audit before commit · push-first (never rebase over a sibling's unstaged
+work) · stage only at the moment of commit (parked staged changes get swept into siblings'
+commits — happened twice) · `.claude/` and secrets never committed · atomic cutovers in single
+pushes. Incidents were unswept surgically and each one amended the ruling.
+
+## 9. Where this is heading (ruled, queued)
+
+`rulings/2026-08-26-pr-workflow-cutover.md`: after the current work drains and v0.2.0 ships,
+main gets branch protection and the fleet moves to **worktree-per-coder + PRs** — same briefing
+discipline, but each coder works its own worktree/branch and opens a PR when ready; o-prime
+coordinates merges and releases; worktrees are tidied at packet end. CI moves to
+pull_request-only at the same moment. The swept-stage incident class disappears with the shared
+tree.
+
+## 10. What a new agent should expect, in one paragraph
+
+You'll get a brief with a fence and a report-back contract; read the named doctrine first; ack
+with a short plan of attack and wait for the go; work only inside your fence; commit and push as
+you go with conventional subjects; verify your own claims before reporting them (shas, runs,
+transcripts); stop-and-ask the moment reality contradicts your brief or a ruling; write the
+living service page for what you built; report claim+evidence at the end and expect o-prime to
+check it before anything is relayed upward. Jordan names the work; o-prime shapes and routes it;
+you own your domain's truth.
