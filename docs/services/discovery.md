@@ -156,8 +156,37 @@ this repo's own root `.gitignore` cannot fake a pass.
   plain bool with `deny_unknown_fields`, defaulting to `true`, and the list
   itself deliberately lives in code rather than config).
 - `crates/daemon/src/debounce.rs` — `IGNORED_DIRECTORIES`, the watcher's
-  three-name pre-filter. It answers a different question (when to *walk*), but
-  it is a strict subset of `STANDARD_IGNORES` and can now delegate to it;
-  `discovery_standard_ignores.rs` pins that subset relationship so the two
-  cannot silently disagree.
+  three-name pre-filter, answering a different question (when to *walk*).
+  `discovery_standard_ignores.rs` pins that its names stay a subset of
+  `STANDARD_IGNORES` — but see **"Delegation is to the settings, not the
+  const"** below before wiring the two together.
 - `crates/testkit/arch-allowlist.toml` — the `fs3-parsers → ignore` row.
+
+## Delegation is to the settings, not the const
+
+`STANDARD_IGNORES` is `pub`, and the obvious move — point the watcher's
+`IGNORED_DIRECTORIES` at it — is **wrong today**. sawfish probed it against
+`main` before touching that const and measured three divergences, of which the
+names are only the first:
+
+1. **Names** — 11 here, 3 there, a strict subset. Pinned by
+   `the_list_is_sorted_and_covers_the_watchers_names`.
+2. **Root-relativity** — discovery matches components *below the root*;
+   `debounce::is_ignored` scans every component of the **absolute** event path.
+   So a repository living under `~/target/myrepo` is already invisible to the
+   watcher (`observe(...) -> Rejected(Ignored)` for every event, silently), and
+   widening its three names to these eleven would do the same to `~/build/…`,
+   `~/dist/…` and `~/vendor/…` — ordinary places to keep code — for roots that
+   `add` indexes perfectly. Pinned from this side by
+   `the_deny_list_is_root_relative_never_absolute`.
+3. **The toggle** — `scan.standard_ignores = false` empties the deny list here,
+   and a `const` cannot be turned off. Setting it false would make discovery
+   index `build/` while the watcher still refused to walk it: indexed once by
+   `add`, then never updated. That is the add-vs-watcher mismatch this deny
+   list closed, running backwards, eleven names wide.
+
+The safe delegation is to the **settings value** —
+`DiscoverySettings::standard_ignores`, matched root-relatively — so the two
+filters cannot disagree on any axis rather than only on names. That is a change
+to the watcher's contract (`Debouncer` would thread the list, `is_ignored`
+would take root + path), owned by the daemon side and awaiting a ruling.

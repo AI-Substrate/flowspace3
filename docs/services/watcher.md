@@ -92,11 +92,29 @@ with the config and **had no reader until this landed**.
   `discovery::STANDARD_IGNORES` now denies `node_modules`, `target`, `dist`,
   `build`, `vendor`, `.venv`, `venv`, `__pycache__`, `.next`, `.cache` and
   `.git` by whole path component, `.gitignore` or no `.gitignore`, toggled by
-  `scan.standard_ignores`. `IGNORED_DIRECTORIES` here is a three-name subset of
-  that list and can now delegate to it rather than keep its own copy; a test in
-  `crates/parsers/tests/discovery_standard_ignores.rs` pins the subset
-  relationship so the two cannot silently disagree. See
-  `docs/services/discovery.md`.
+  `scan.standard_ignores`.
+- **`IGNORED_DIRECTORIES` must NOT simply be pointed at `STANDARD_IGNORES`.**
+  It is a three-name subset (a test in
+  `crates/parsers/tests/discovery_standard_ignores.rs` pins that it stays one),
+  but the two filters diverge on two further axes, both measured against `main`
+  before anything here was touched:
+  **(a) root-relativity** — `is_ignored` scans every component of the
+  *absolute* event path, so a repository living under `~/target/myrepo` is
+  already dead to the watcher (every event `Rejected(Ignored)`, silently),
+  while `discover` deliberately applies its list only *below* the root.
+  Widening three names to eleven would extend that silent death to `~/build/…`,
+  `~/dist/…`, `~/vendor/…`, `~/venv/…`, `~/.cache/…`, `~/.next/…` and
+  `~/__pycache__/…` — ordinary places to keep code, which `add` indexes
+  perfectly.
+  **(b) the toggle** — `scan.standard_ignores = false` empties discovery's list;
+  a `const` cannot be turned off, so the watcher would refuse to walk `build/`
+  while `add` indexed it: the mismatch above, running backwards.
+  The correct wiring is to the **settings value**
+  (`DiscoverySettings::standard_ignores`), matched root-relatively, which makes
+  disagreement impossible on all three axes. That is a behaviour change to this
+  crate's contract — `Debouncer` threads the list, `is_ignored` takes root +
+  path — and is awaiting a ruling rather than being slipped in as a tidy-up.
+  See `docs/services/discovery.md`.
 - **Deletions are reaped only inside a re-listed directory.** A file deleted
   from a directory that then settles leaves the map at the next pass. A file in
   a directory that never fires an event again — because the whole directory was

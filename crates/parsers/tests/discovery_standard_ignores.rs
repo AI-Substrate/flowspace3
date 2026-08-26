@@ -133,6 +133,7 @@ fn an_empty_list_turns_the_deny_list_off() {
             "dist/bundle.js",
             "distribution/notes.md",
             "my-vendor/keep.rs",
+            "node_modules/pkg/dist/inner.js",
             "node_modules/pkg/index.js",
             "src/main.rs",
             "src/node_modules_helper.rs",
@@ -229,9 +230,27 @@ fn git_internals_are_unwalkable_at_any_setting() {
     assert_eq!(outcome.1, Vec::<(String, SkipReason)>::new());
 }
 
-/// The list is `pub` so `fs3-daemon`'s watcher pre-filter can delegate to it
-/// instead of keeping its own copy. If that copy ever grows a name this one
-/// lacks, the two mechanisms have started to disagree about the same question.
+/// The names, and only the names.
+///
+/// `fs3-daemon`'s `debounce::IGNORED_DIRECTORIES` answers the same question
+/// with a three-name subset, so this pins that the subset stays a subset.
+///
+/// It does **not** license swapping that const for this one. sawfish probed
+/// exactly that during first-light integration and measured why it would be a
+/// regression: `debounce::is_ignored` scans every component of the ABSOLUTE
+/// event path, so a repository merely *living* under a directory called
+/// `target` is already dead to the watcher — and widening its three names to
+/// these eleven would make `~/build/…`, `~/dist/…` and `~/vendor/…` dead too,
+/// silently, for roots `add` indexes perfectly. A names-only test cannot see
+/// that, because the divergence is about which path the names are matched
+/// against; [`the_deny_list_is_root_relative_never_absolute`] is the half that
+/// can. The third axis is the toggle: emptying `standard_ignores` must empty
+/// the watcher's filter too, and a `const` cannot be turned off.
+///
+/// The delegation that is actually safe is to the *settings value*
+/// (`DiscoverySettings::standard_ignores`), matched root-relatively — then the
+/// two filters cannot disagree on any of the three axes rather than just this
+/// one.
 #[test]
 fn the_list_is_sorted_and_covers_the_watchers_names() {
     let mut sorted = STANDARD_IGNORES.to_vec();
@@ -244,4 +263,30 @@ fn the_list_is_sorted_and_covers_the_watchers_names() {
             "{watched} is filtered by the watcher but not by discovery",
         );
     }
+}
+
+/// The deny list is matched **relative to the root**, never against the root's
+/// own absolute path — the half of the contract a names-only test structurally
+/// cannot see (sawfish's ask, 2026-08-26).
+///
+/// Three cases, one rule: what the caller *named* is never second-guessed,
+/// what is *under* it still is.
+#[test]
+fn the_deny_list_is_root_relative_never_absolute() {
+    // 1. The root's own name is denied. `flowspace3 add ./target` is an
+    //    instruction, not an accident.
+    let discovery = discover(&bare().join("target"), &ungoverned()).expect("walks");
+    assert_eq!(kept(&discovery), ["debug/build_script.rs"]);
+
+    // 2. A denied name is an ANCESTOR of the root. A checkout that happens to
+    //    live under `~/target/` or `~/build/` is an ordinary place to keep
+    //    code, and must index like anywhere else.
+    let discovery = discover(&bare().join("target/debug"), &ungoverned()).expect("walks");
+    assert_eq!(kept(&discovery), ["build_script.rs"]);
+
+    // 3. ...and none of that disarms the list BELOW the root: `pkg/dist/` is
+    //    still pruned inside an explicitly-named `node_modules` root. The rule
+    //    is root-relative, not "off once you point at something denied".
+    let discovery = discover(&bare().join("node_modules"), &ungoverned()).expect("walks");
+    assert_eq!(kept(&discovery), ["pkg/index.js"]);
 }
