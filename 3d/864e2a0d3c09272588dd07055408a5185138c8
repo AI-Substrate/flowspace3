@@ -1,0 +1,31 @@
+docs/plans/002-docker-daemon-base/assets/tasks/phase-1/tasks.dd.json
+  s_15d888f4b629c1::t_6bda1f08cf3c53 24,34,43
+  s_15d888f4b629c1::t_49b36be65ef2f6 25,35,44,54,63,72
+  s_15d888f4b629c1::t_6a40179acb8e24 1-23,26-33,36-42,45-53,55-62,64-71,73-147
+docs/plans/002-docker-daemon-base/assets/tasks/phase-2/tasks.dd.json
+  s_15d888f4b629c1::t_6a40179acb8e24 1-23,25-53,55-68,70-92,94-101
+  s_15d888f4b629c1::t_6bda1f08cf3c53 24,54,69,93
+docs/plans/002-docker-daemon-base/assets/tasks/phase-1/tasks.dd.md
+  s_15d888f4b629c1::t_6a40179acb8e24 1-37,44-84
+  s_15d888f4b629c1::t_49b36be65ef2f6 38-43
+  s_15d888f4b629c1::t_0034dba49e4693 85
+docs/plans/002-docker-daemon-base/assets/tasks/phase-2/tasks.dd.md
+  s_15d888f4b629c1::t_6a40179acb8e24 1-37,39-40,42-50,52-68
+  s_15d888f4b629c1::t_6bda1f08cf3c53 38,41,51,69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3d864e2a0d3c09272588dd07055408a5185138c8",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
