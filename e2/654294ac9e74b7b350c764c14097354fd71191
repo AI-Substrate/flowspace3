@@ -1,0 +1,23 @@
+crates/providers/src/local.rs
+  s_15d888f4b629c1::t_495b23cb8fc73d 1-630
+crates/providers/tests/local_contract.rs
+  s_15d888f4b629c1::t_9f61fa33743ede 1-121
+docs/plans/prd/providers-roster.md
+  s_15d888f4b629c1::t_9dccf5cdd4819d 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e2654294ac9e74b7b350c764c14097354fd71191",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
