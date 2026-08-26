@@ -1,0 +1,14 @@
+Cargo.toml
+  h_9e71e8b09f7cf2 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "17878b6a4c20297d08d35cddd995a74f22404679",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
