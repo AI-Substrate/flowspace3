@@ -1,0 +1,25 @@
+docs/plans/003-first-light/assets/backpressure.dd.json
+  s_15d888f4b629c1::t_3cfd17feb820b0 25-26,35-36,45-46,55-56,65-66
+docs/plans/003-first-light/assets/backpressure.dd.md
+  s_15d888f4b629c1::t_f23bafba4c586d 23-27
+docs/plans/003-first-light/the-flow.json
+  s_15d888f4b629c1::t_f517a05b9d8baf 6,8,263-399,460,466-474,485-495,501,518-528,595,611-621,627,644-654,660,674-684
+docs/plans/003-first-light/the-flow.md
+  s_15d888f4b629c1::t_e623e7e39332e1 4,6,12-13,20,35,48-53,57-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ac1d04162bb435e974524cd11be9e5a991c1bcd6",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
