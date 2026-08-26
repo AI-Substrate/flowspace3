@@ -1,0 +1,27 @@
+.harness/government/worker-roster.md
+  s_15d888f4b629c1::t_07cb63bb96670a 33
+docs/plans/003-first-light/assets/backpressure.dd.json
+  s_15d888f4b629c1::t_62c083f3d3e343 11-12
+docs/plans/003-first-light/assets/backpressure.dd.md
+  s_15d888f4b629c1::t_dbe5558448b594 14-15
+docs/plans/003-first-light/the-flow.json
+  s_15d888f4b629c1::t_6c0bd21a338e60 400-440,830-855
+docs/plans/003-first-light/the-flow.md
+  s_15d888f4b629c1::t_4472a20bc4beff 4,19,75-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8b1ca20d1a571e5d04687d98c1d4f58d9c096f4d",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
