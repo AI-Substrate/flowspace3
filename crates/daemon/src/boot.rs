@@ -1,40 +1,36 @@
-//! `fs3-daemon` — the fs3 background service.
+//! Booting the daemon: config, the composition root, the runner, HTTP.
 //!
-//! Loads secrets, reads configuration, wires the composition root, migrates the
-//! store, serves HTTP on localhost.
+//! This used to be `fs3-daemon`'s `main`. The daemon now ships INSIDE the
+//! `flowspace3` binary as `flowspace3 daemon` (PRD req 51, Jordan 2026-08-26):
+//! one file to install, one version, and no way for a CLI and a daemon of
+//! different vintages to meet. The crate is unchanged in every other respect —
+//! it is still the composition root, and still the only crate that sees every
+//! other one.
+//!
+//! What did NOT move here is the secrets chain. Putting `secrets.env` into the
+//! process environment is only sound while the process is single-threaded, so
+//! it has to happen before a runtime exists — and the CLI already does exactly
+//! that, first thing, for every verb. Doing it again here would be a second
+//! implementation of a rule that is easy to get subtly wrong, so [`run`]
+//! assumes the environment is already loaded and says so.
 
 use anyhow::{Context, Result, ensure};
 use fs3_core::{Config, Port, redact_url_password};
-use fs3_daemon::{AppState, config, http};
 
-/// Boot is deliberately *not* `#[tokio::main]`.
+use crate::wiring::AppState;
+use crate::{config, http};
+
+/// Run the daemon until it is asked to stop.
 ///
-/// The secrets chain puts `secrets.env` into the process environment, and
-/// mutating the environment is only sound while the process is
-/// single-threaded. So everything up to and including the environment mutation
-/// happens here, before a runtime — and therefore before any worker thread —
-/// exists.
-fn main() -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "fs3_daemon=info,tower_http=info".into()),
-        )
-        .init();
-
+/// Must be called from OUTSIDE a Tokio runtime: it builds its own, because the
+/// caller's `main` is deliberately not `#[tokio::main]`.
+///
+/// # Errors
+/// A configuration that cannot be read, a `daemon.url` that is not loopback, a
+/// store that cannot be migrated, or an address that cannot be bound — all
+/// startup failures on purpose (PRD req 37).
+pub fn run() -> Result<()> {
     let directory = config::config_dir().context("locating the fs3 config directory")?;
-
-    let secrets = config::load_secrets_from(&directory)
-        .with_context(|| format!("loading secrets from {}", directory.display()))?;
-    if secrets.present {
-        // Names only. A value from this file never reaches a log line.
-        tracing::info!(
-            path = %secrets.path.display(),
-            applied = ?secrets.applied,
-            already_set = ?secrets.already_set,
-            "loaded secrets into the environment"
-        );
-    }
 
     let configuration = config::load_effective_from(&directory)
         .with_context(|| format!("loading configuration from {}", directory.display()))?;
@@ -101,7 +97,7 @@ async fn serve(configuration: Config, address: String) -> Result<()> {
     // written.
     let workers = state.config.indexing.worker_concurrency;
     tracing::info!(workers, "starting the job runner");
-    tokio::spawn(fs3_daemon::run_forever(state.clone(), workers));
+    tokio::spawn(crate::runner::run_forever(state.clone(), workers));
 
     http::serve(state, &address).await
 }

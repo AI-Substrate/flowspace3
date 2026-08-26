@@ -182,7 +182,7 @@ No embeddings exist for the active model, so a semantic search has nothing to ra
 
 The fs3 daemon did not answer on its configured URL.
 
-**Fix**: start it with `fs3-daemon`, or run `flowspace3 doctor` to diagnose the stack. The CLI never starts infrastructure itself (PRD req 37).
+**Fix**: start it with `flowspace3 daemon &`, or run `flowspace3 doctor` to diagnose the stack. Doctor reports the daemon but never starts one — a diagnostic command must not leave a process running that you did not ask for.
 
 | retryable | status |
 | --- | --- |

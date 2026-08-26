@@ -74,7 +74,7 @@ $ flowspace3 doctor
     { "check": "schema",   "outcome": "repaired", "found": "missing migration(s) 0001-0005",
       "action": "applied 0001-0005",                                                             "elapsed_ms": 137 } ],
     "healthy": true },
-  "next_action": "the store is ready — start the daemon (`fs3-daemon`) and `flowspace3 add <path>`" }
+  "next_action": "the store is ready — start the daemon (`flowspace3 daemon &`) and `flowspace3 add <path>`" }
 ```
 
 249 ms from "no database at all" to a migrated store. Every row says what was
@@ -225,10 +225,10 @@ whole-repository run, deliberately not paid for.
 ## Reproduce
 
 ```bash
-cargo build --release -p fs3-daemon -p fs3-cli
+cargo build --release -p fs3-cli
 export FS3_CONFIG_DIR=$PWD/.harness/temp/sawfish/cfg-live   # config above
 env -u AZURE_OPENAI_API_KEY -u AZURE_EMBEDDING_API_KEY flowspace3 doctor
-env -u AZURE_OPENAI_API_KEY -u AZURE_EMBEDDING_API_KEY fs3-daemon &
+env -u AZURE_OPENAI_API_KEY -u AZURE_EMBEDDING_API_KEY flowspace3 daemon &
 flowspace3 add crates/store
 flowspace3 status                       # until the queue is empty
 flowspace3 search "how does the queue stop two workers taking the same job"

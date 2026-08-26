@@ -51,6 +51,11 @@ const STACK_READY_TIMEOUT: Duration = Duration::from_secs(60);
 /// How often to re-probe while waiting.
 const STACK_POLL: Duration = Duration::from_millis(500);
 
+/// How long to wait for the daemon's health endpoint. Short: a daemon that is
+/// up answers immediately, and one that is not should not cost a diagnostic
+/// command three seconds of silence.
+const DAEMON_PROBE_TIMEOUT: Duration = Duration::from_secs(2);
+
 /// One step of the walk.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Step {
@@ -80,6 +85,17 @@ impl Step {
         }
     }
 
+    /// Found not running, and deliberately not started.
+    fn down(check: &str, found: impl Into<String>, started: Instant) -> Self {
+        Step {
+            check: check.to_string(),
+            outcome: "down".to_string(),
+            found: found.into(),
+            action: Some("not started — run `flowspace3 daemon &`".to_string()),
+            elapsed_ms: started.elapsed().as_millis(),
+        }
+    }
+
     /// Found broken, and fixed.
     fn repaired(
         check: &str,
@@ -102,8 +118,25 @@ impl Step {
 pub struct DoctorReport {
     /// Every step, in dependency order.
     pub steps: Vec<Step>,
-    /// Whether the store is usable now.
+    /// Whether the STORE is usable now.
     pub healthy: bool,
+    /// The whole stack's verdict: `ok`, or `degraded` when something doctor
+    /// cannot repair for you is not running.
+    ///
+    /// Separate from `healthy` because they answer different questions, and
+    /// conflating them is what made doctor say a plain "ok" on a machine with
+    /// no daemon running (Jordan, live, 2026-08-26). The store really was fine;
+    /// the stack was not usable. `ok: true` on the envelope stays either way —
+    /// the COMMAND succeeded, and it is the subject it reports on that is
+    /// degraded.
+    pub verdict: String,
+}
+
+impl DoctorReport {
+    /// Everything doctor checked is up.
+    pub const OK: &'static str = "ok";
+    /// Doctor ran fine; something it checked is not up.
+    pub const DEGRADED: &'static str = "degraded";
 }
 
 /// Walk the chain, repairing as it goes.
@@ -115,20 +148,32 @@ pub struct DoctorReport {
 /// # Errors
 /// The failure of the step that could not be repaired, with its own catalog
 /// code and fix.
-pub async fn run(database_url: &str) -> Envelope<DoctorReport> {
+pub async fn run(database_url: &str, daemon_url: &str) -> Envelope<DoctorReport> {
     let mut steps = Vec::new();
 
-    match walk(database_url, &mut steps).await {
-        Ok(()) => Envelope::ok(
-            "doctor",
-            DoctorReport {
-                steps,
-                healthy: true,
-            },
-        )
-        .with_next_action(
-            "the store is ready — start the daemon (`fs3-daemon`) and `flowspace3 add <path>`",
-        ),
+    match walk(database_url, daemon_url, &mut steps).await {
+        Ok(()) => {
+            let degraded = steps.iter().any(|step| step.outcome == "down");
+            let verdict = if degraded {
+                DoctorReport::DEGRADED
+            } else {
+                DoctorReport::OK
+            };
+            Envelope::ok(
+                "doctor",
+                DoctorReport {
+                    steps,
+                    healthy: true,
+                    verdict: verdict.to_string(),
+                },
+            )
+            .with_next_action(if degraded {
+                "the store is ready but the daemon is not running — start it with \
+                 `flowspace3 daemon &`, then `flowspace3 add <path>`"
+            } else {
+                "everything is up — `flowspace3 add <path>` to index, then `flowspace3 search`"
+            })
+        }
         Err(failure) => {
             let mut envelope = Envelope::failed("doctor", failure);
             // The steps that DID pass are the useful half of a failed run, so
@@ -136,6 +181,7 @@ pub async fn run(database_url: &str) -> Envelope<DoctorReport> {
             envelope.meta = serde_json::to_value(DoctorReport {
                 steps,
                 healthy: false,
+                verdict: DoctorReport::DEGRADED.to_string(),
             })
             .ok();
             envelope
@@ -143,7 +189,7 @@ pub async fn run(database_url: &str) -> Envelope<DoctorReport> {
     }
 }
 
-async fn walk(database_url: &str, steps: &mut Vec<Step>) -> Result<(), Failure> {
+async fn walk(database_url: &str, daemon_url: &str, steps: &mut Vec<Step>) -> Result<(), Failure> {
     steps.push(check_engine()?);
 
     let (maintenance, name) = fs3_store::maintenance_url(database_url).map_err(|error| {
@@ -160,6 +206,13 @@ async fn walk(database_url: &str, steps: &mut Vec<Step>) -> Result<(), Failure> 
     admin.close().await;
 
     steps.push(check_schema(database_url).await?);
+
+    // The daemon is the one step doctor deliberately does NOT repair. Starting
+    // a foreground server from a diagnostic command would leave a process the
+    // user did not ask for and cannot see; the honest move is to report it and
+    // name the command. It runs last because everything above it is what the
+    // daemon needs in order to start at all.
+    steps.push(check_daemon(daemon_url).await);
     Ok(())
 }
 
@@ -313,6 +366,73 @@ async fn check_schema(database_url: &str) -> Result<Step, Failure> {
         format!("applied {missing}"),
         started,
     ))
+}
+
+/// Step 4: is the daemon answering?
+///
+/// Reported, never repaired. Doctor starts the compose stack because a
+/// container is a background service the user already asked for by configuring
+/// it; a daemon is a FOREGROUND process, and spawning one from a diagnostic
+/// command would leave something running that the user did not ask for and
+/// cannot see. So this row says what it found and names the command.
+///
+/// Not an error either: a store that is ready with no daemon in front of it is
+/// a perfectly good outcome for `doctor` to report — it is the state right
+/// before you start one. The envelope stays `ok: true`, because the COMMAND
+/// succeeded; the STACK is what the verdict calls degraded.
+///
+/// This row exists because its absence was actively misleading: doctor said a
+/// plain "ok" on a machine with no daemon running (Jordan, live, 2026-08-26).
+async fn check_daemon(daemon_url: &str) -> Step {
+    let started = Instant::now();
+    let url = format!("{}/health", daemon_url.trim_end_matches('/'));
+
+    let probe = reqwest::Client::builder()
+        .timeout(DAEMON_PROBE_TIMEOUT)
+        .build()
+        .map(|client| client.get(&url));
+
+    let response = match probe {
+        Ok(request) => request.send().await,
+        Err(error) => {
+            return Step::down(
+                "daemon",
+                format!("cannot probe {daemon_url}: {error}"),
+                started,
+            );
+        }
+    };
+
+    match response {
+        Ok(response) if response.status().is_success() => {
+            // The version echo is free — it is already in the health body — and
+            // it is the fastest way to see a stale binary still serving.
+            let version = response
+                .json::<crate::HealthReport>()
+                .await
+                .map(|health| health.version)
+                .unwrap_or_default();
+            let found = if version.is_empty() {
+                format!("answering at {daemon_url}")
+            } else {
+                format!("answering at {daemon_url} (version {version})")
+            };
+            Step::ok("daemon", found, started)
+        }
+        Ok(response) => Step::down(
+            "daemon",
+            format!(
+                "{daemon_url} answered {} rather than a health report",
+                response.status()
+            ),
+            started,
+        ),
+        Err(_) => Step::down(
+            "daemon",
+            format!("nothing is listening on {daemon_url}"),
+            started,
+        ),
+    }
 }
 
 /// The engine to drive.

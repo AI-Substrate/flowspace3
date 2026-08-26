@@ -1064,13 +1064,17 @@ name = "fs3-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "axum",
  "clap",
  "fs3-core",
+ "fs3-daemon",
+ "fs3-store",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
  "tokio",
  "toml",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -1091,13 +1095,17 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "fs3-cli",
  "fs3-core",
+ "fs3-git",
+ "fs3-parsers",
  "fs3-providers",
  "fs3-store",
  "fs3-testkit",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
+ "sqlx",
  "thiserror",
  "tokio",
  "toml",

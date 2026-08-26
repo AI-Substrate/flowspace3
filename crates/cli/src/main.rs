@@ -91,6 +91,13 @@ enum Command {
         #[arg(long, value_name = "DIR")]
         config_dir: Option<PathBuf>,
     },
+    /// Run the fs3 daemon in the foreground.
+    ///
+    /// The daemon lives in THIS binary (PRD req 51): one file to install, one
+    /// version, and no way for a CLI and a daemon of different vintages to
+    /// meet. It serves HTTP on `daemon.url`, migrates the store at boot, and
+    /// drains the job queue until stopped.
+    Daemon,
     /// Inspect fs3's configuration.
     Config {
         #[command(subcommand)]
@@ -120,6 +127,20 @@ const EXIT_ERROR: u8 = 1;
 /// single-threaded. Secrets load first, the runtime starts after.
 fn main() -> ExitCode {
     let outcome = boot().and_then(|command| {
+        // `daemon` is the one verb that must NOT run inside a runtime this
+        // function built: it builds its own, sized for a server rather than for
+        // one request, and it never returns. Routing it here rather than in
+        // `run` is what keeps that true.
+        if matches!(command, Command::Daemon) {
+            tracing_subscriber::fmt()
+                .with_env_filter(
+                    tracing_subscriber::EnvFilter::try_from_default_env()
+                        .unwrap_or_else(|_| "fs3_daemon=info,tower_http=info".into()),
+                )
+                .init();
+            return fs3_daemon::run().map(|()| ExitCode::SUCCESS);
+        }
+
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
@@ -187,11 +208,15 @@ async fn run(command: Command) -> Result<ExitCode> {
                 None => settings::config_dir()?,
             };
             let effective = settings::load_effective_from(&dir)?;
-            Ok(emit(&doctor::run(&effective.config.database.url).await))
+            Ok(emit(
+                &doctor::run(&effective.config.database.url, &effective.config.daemon.url).await,
+            ))
         }
         Command::Config {
             command: ConfigCommand::Show { config_dir },
         } => config_show(config_dir).map(|()| ExitCode::SUCCESS),
+        // Routed before the runtime was built; see `main`.
+        Command::Daemon => unreachable!("the daemon verb is handled in main"),
     }
 }
 

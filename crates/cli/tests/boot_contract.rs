@@ -7,15 +7,18 @@
 //! This is the automated form of a check that used to be done by hand: run the
 //! real binary against an unreachable database and read the exit code and the
 //! stderr it produced.
+//!
+//! It lives in `fs3-cli` because since PRD req 51 that is where the binary is:
+//! the daemon ships inside `flowspace3` as `flowspace3 daemon`. The contract it
+//! defends is the daemon crate's; the artifact that has to honour it is this
+//! one.
 
 use std::io::Read;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-mod support;
-
 /// The binary under test, built by cargo for this integration test.
-const FS3_DAEMON: &str = env!("CARGO_BIN_EXE_fs3-daemon");
+const FLOWSPACE3: &str = env!("CARGO_BIN_EXE_flowspace3");
 
 /// Port 1 is privileged and never serves Postgres, so the connection is
 /// refused immediately rather than hanging.
@@ -27,14 +30,15 @@ const PATIENCE: Duration = Duration::from_secs(60);
 
 #[test]
 fn a_daemon_that_cannot_reach_its_store_exits_non_zero_and_says_how_to_fix_it() {
-    let dir = support::temp_dir("boot-contract");
+    let dir = temp_dir("boot-contract");
     std::fs::write(
         dir.join("config.toml"),
         format!("[database]\nurl = \"{UNREACHABLE}\"\n"),
     )
     .expect("writing the fixture config");
 
-    let mut child = Command::new(FS3_DAEMON)
+    let mut child = Command::new(FLOWSPACE3)
+        .arg("daemon")
         .env("FS3_CONFIG_DIR", &dir)
         // Deterministic output regardless of the developer's own filter.
         .env("RUST_LOG", "fs3_daemon=info")
@@ -94,4 +98,18 @@ fn wait_for(child: &mut std::process::Child) -> std::process::ExitStatus {
             None => std::thread::sleep(Duration::from_millis(50)),
         }
     }
+}
+
+/// A fresh directory under the system temp dir, unique per call.
+fn temp_dir(label: &str) -> std::path::PathBuf {
+    use std::sync::atomic::{AtomicU32, Ordering};
+    static COUNTER: AtomicU32 = AtomicU32::new(0);
+
+    let path = std::env::temp_dir().join(format!(
+        "fs3-{label}-{}-{}",
+        std::process::id(),
+        COUNTER.fetch_add(1, Ordering::Relaxed)
+    ));
+    std::fs::create_dir_all(&path).expect("creating a temp config directory");
+    path
 }

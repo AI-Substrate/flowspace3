@@ -30,6 +30,10 @@ use fs3_daemon::{roots, runner};
 use serde_json::Value;
 use sqlx::Row;
 
+/// A daemon URL nothing is listening on, for tests that exercise doctor's store
+/// steps rather than its daemon row. Port 1 is privileged and never serves.
+const NO_DAEMON: &str = "http://127.0.0.1:1";
+
 /// A git repository with fs3-shaped content in it.
 struct Fixture {
     root: PathBuf,
@@ -639,7 +643,9 @@ async fn a_behind_database_is_rejected_then_repaired_by_doctor_then_works() {
     assert!(health.is_success(), "health must not depend on the schema");
 
     // --- doctor repairs it -------------------------------------------------
-    let report = fs3_cli::doctor::run(&stack.database.url()).await;
+    // No daemon is listening in this test, so doctor reports the stack as
+    // degraded — correctly. What is under test is the SCHEMA row.
+    let report = fs3_cli::doctor::run(&stack.database.url(), NO_DAEMON).await;
     assert!(report.ok, "doctor failed: {:?}", report.error);
     let data = report.data.expect("doctor reports its steps");
     assert!(data.healthy);
@@ -709,7 +715,7 @@ async fn doctor_creates_a_database_that_is_not_there() {
     );
     probe.close().await;
 
-    let report = fs3_cli::doctor::run(&url).await;
+    let report = fs3_cli::doctor::run(&url, NO_DAEMON).await;
     assert!(report.ok, "doctor failed: {:?}", report.error);
     let data = report.data.expect("doctor reports its steps");
 

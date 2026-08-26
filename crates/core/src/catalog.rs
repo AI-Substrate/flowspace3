@@ -348,8 +348,9 @@ pub const DAEMON_UNAVAILABLE: Code = Code::new(
     "FS3-E-DAEMON-UNAVAILABLE",
     Area::Daemon,
     "The fs3 daemon did not answer on its configured URL.",
-    "start it with `fs3-daemon`, or run `flowspace3 doctor` to diagnose the stack. The CLI never \
-     starts infrastructure itself (PRD req 37).",
+    "start it with `flowspace3 daemon &`, or run `flowspace3 doctor` to diagnose the stack. \
+     Doctor reports the daemon but never starts one — a diagnostic command must not leave a \
+     process running that you did not ask for.",
     true,
 );
 

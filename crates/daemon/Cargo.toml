@@ -34,6 +34,3 @@ fs3-cli.workspace = true
 reqwest.workspace = true
 sqlx.workspace = true
 
-[[bin]]
-name = "fs3-daemon"
-path = "src/main.rs"

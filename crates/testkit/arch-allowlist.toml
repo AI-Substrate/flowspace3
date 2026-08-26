@@ -168,13 +168,37 @@ external = [
   "tracing-subscriber",
 ]
 
-# A thin HTTP client. It shares core's types and knows nothing else - with one
-# named exception: `fs3-store` is here for `flowspace3 doctor` and nothing else.
+# The `flowspace3` binary. Still a thin HTTP client for every INDEXING verb —
+# add/status/scan/search open no pool and hold no state — with two named
+# exceptions.
+#
+# `fs3-daemon`: PRD req 51 (Jordan, 2026-08-26) folds the daemon INTO this
+# binary as `flowspace3 daemon`, so there is one file to install, one version,
+# and no way for a CLI and a daemon of different vintages to meet. This edge
+# does NOT make the CLI the composition root — fs3-daemon still is; the CLI
+# calls `fs3_daemon::run()` and knows nothing else about it. The dependency
+# direction still points inward, and the arch check still refuses everything
+# else.
+#
+# `fs3-store`: `fs3-store` is here for `flowspace3 doctor` and nothing else.
 # PRD req 20's single-writer rule governs the DATA plane; doctor's writes are
 # CONTROL plane (create the database, apply migrations), bootstrap operations
 # that logically precede a daemon existing - and doctor is precisely the verb
 # you run when the daemon is DOWN, so it cannot be a client of it. Ruled by
 # o-prime 2026-08-26. Every other verb still opens no pool.
 [crates.fs3-cli]
-internal = ["fs3-core", "fs3-store"]
-external = ["anyhow", "clap", "reqwest", "serde", "serde_json", "tokio", "toml"]
+internal = ["fs3-core", "fs3-daemon", "fs3-store"]
+external = [
+  "anyhow",
+  "clap",
+  "reqwest",
+  "serde",
+  "serde_json",
+  "tokio",
+  "toml",
+  # The daemon subcommand installs the log subscriber before handing off.
+  "tracing-subscriber",
+  # DEV only: doctor's daemon row is probed against a stub /health server — a
+  # fake, not a mock (workshop 001 rule 5).
+  "axum@dev",
+]

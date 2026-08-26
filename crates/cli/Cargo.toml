@@ -15,6 +15,11 @@ fs3-core.workspace = true
 # the daemon is DOWN, so it cannot be a client of an endpoint that is not
 # listening. Every other verb stays a thin HTTP client and never opens a pool.
 fs3-store.workspace = true
+# PRD req 51 (Jordan, 2026-08-26): the daemon ships INSIDE this binary as
+# `flowspace3 daemon`. One file to install, one version, and no way for a CLI
+# and a daemon of different vintages to meet — req 2 made literally true. The
+# composition root stays in fs3-daemon; this crate only starts it.
+fs3-daemon.workspace = true
 
 anyhow.workspace = true
 clap.workspace = true
@@ -23,8 +28,15 @@ serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
 toml.workspace = true
+# The daemon subcommand installs the log subscriber before handing off.
+tracing-subscriber.workspace = true
 
 # The binary is `flowspace3` (PRD req 28), not the package name.
 [[bin]]
 name = "flowspace3"
 path = "src/main.rs"
+
+[dev-dependencies]
+# The doctor daemon-row test stands up a stub /health to probe — a fake, not a
+# mock (workshop 001 rule 5).
+axum.workspace = true

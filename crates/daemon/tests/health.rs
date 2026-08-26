@@ -113,12 +113,15 @@ fn cli_binary() -> std::path::PathBuf {
 /// The end-to-end proof that AC-0005 holds for the binaries that actually ship.
 ///
 /// Every test above builds `Config`, `AppState` and `Router` by hand, so
-/// `daemon/src/main.rs` — config discovery, the bind-address guard, the bin
-/// target itself — never runs. Replacing main's discovered configuration with
-/// defaults would leave them all green. This one starts the real daemon binary
-/// against a real `FS3_CONFIG_DIR` and then asks the real `flowspace3` binary
-/// how it is, with **no `--daemon-url`**: the answer can only arrive if both
-/// binaries discovered and honoured the same config file.
+/// `boot.rs` — config discovery, the bind-address guard, the subcommand wiring
+/// — never runs. Replacing boot's discovered configuration with defaults would
+/// leave them all green. This one starts the real daemon (`flowspace3 daemon`)
+/// against a real `FS3_CONFIG_DIR` and then asks the real `flowspace3 ping` how
+/// it is, with **no `--daemon-url`**: the answer can only arrive if both
+/// invocations discovered and honoured the same config file.
+///
+/// Since PRD req 51 those are the SAME binary, which is the point — a CLI and a
+/// daemon of different vintages can no longer meet.
 #[tokio::test]
 async fn the_real_binaries_agree_through_a_discovered_config() {
     let port = free_port();
@@ -134,7 +137,8 @@ async fn the_real_binaries_agree_through_a_discovered_config() {
     .expect("writing the config the binaries must discover");
 
     let mut daemon = Daemon(
-        std::process::Command::new(env!("CARGO_BIN_EXE_fs3-daemon"))
+        std::process::Command::new(cli_binary())
+            .arg("daemon")
             .env(fs3_core::CONFIG_DIR_ENV, &directory)
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())

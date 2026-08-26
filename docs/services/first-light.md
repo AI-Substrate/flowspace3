@@ -8,7 +8,7 @@ its code gets an answer.
 ```bash
 docker compose up -d          # or let doctor do it
 flowspace3 doctor             # engine -> stack -> database -> schema, repairing
-fs3-daemon &                  # composition root + HTTP + the worker loop
+flowspace3 daemon &           # composition root + HTTP + the worker loop
 flowspace3 add /path/to/repo  # walk, hash, enqueue
 flowspace3 status             # until the queue is empty
 flowspace3 search "how does the queue avoid two workers taking the same job"
@@ -125,6 +125,13 @@ flowspace3 search "<question>"
   the schema changing underneath a running process. `/health` is exempt — it is
   how a CLI decides whether the daemon exists at all.
 
+- **One binary.** The daemon ships inside `flowspace3` as `flowspace3 daemon`
+  (PRD req 51): one file to install, one version, and no way for a CLI and a
+  daemon of different vintages to meet. `fs3-daemon` remains the crate and the
+  composition root; the CLI only starts it. `doctor` reports the daemon but
+  never STARTS one — a diagnostic command that spawns a foreground process
+  leaves something running the user did not ask for and cannot see.
+
 - **`doctor` is the one CLI verb that opens a pool.** Ruled by o-prime
   2026-08-26: PRD req 20's single-writer rule governs the DATA plane, and
   doctor's writes are CONTROL plane — create the database, apply migrations —
@@ -162,8 +169,8 @@ flowspace3 search "<question>"
 
 ```bash
 docker compose up -d
-cargo test -p fs3-daemon --test first_light   # 11: the whole path, offline
-cargo test -p fs3-store  --test pg_first_light # 15: ref layer, admin, filters
+cargo test -p fs3-daemon --test first_light    # 14: the whole path + fault paths
+cargo test -p fs3-store  --test pg_first_light # 16: ref layer, admin, filters
 harness checks                                 # fmt, clippy -D warnings, arch, tests
 ```
 

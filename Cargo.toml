@@ -13,6 +13,7 @@ repository = "https://github.com/AI-Substrate/flowspace3"
 [workspace.dependencies]
 fs3-cli = { path = "crates/cli" }
 fs3-core = { path = "crates/core" }
+fs3-daemon = { path = "crates/daemon" }
 fs3-git = { path = "crates/git" }
 fs3-parsers = { path = "crates/parsers" }
 fs3-providers = { path = "crates/providers" }

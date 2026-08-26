@@ -137,7 +137,7 @@ Selecting a name that is not in the registry is a startup error that lists the
 names that are:
 
 ```console
-$ fs3-daemon
+$ flowspace3 daemon
 Caused by: invalid config: 1 problem found:
   - embedder.active: names provider "smal", which is not configured; configured
     providers are: big, fake, small
@@ -149,7 +149,7 @@ Mistakes are reported **all at once**, each naming the file, the key, and a line
 you can paste:
 
 ```console
-$ fs3-daemon
+$ flowspace3 daemon
 Error: loading configuration from /Users/you/.config/flowspace3
 Caused by: invalid config: 2 problems found:
   - daemon.url: must not be empty
@@ -165,10 +165,10 @@ A missing file is not a mistake: the daemon logs, at INFO, the path to create.
 An override is `FS3_` + section + `__` + key, upper-cased:
 
 ```bash
-FS3_DATABASE__URL=postgres://user:pw@db:5432/fs3 fs3-daemon
+FS3_DATABASE__URL=postgres://user:pw@db:5432/fs3 flowspace3 daemon
 FS3_SCAN__MAX_FILE_BYTES=4096 flowspace3 config show
-FS3_EMBEDDER__ACTIVE=fake fs3-daemon                      # select another instance
-FS3_PROVIDERS__SMALL__MODEL=text-embedding-3-large fs3-daemon  # reshape one
+FS3_EMBEDDER__ACTIVE=fake flowspace3 daemon               # select another instance
+FS3_PROVIDERS__SMALL__MODEL=text-embedding-3-large flowspace3 daemon  # reshape one
 ```
 
 Two rules make this predictable:
@@ -197,7 +197,7 @@ api_key_env = "OPENAI_API_KEY"
 
 ...and the value comes from one of two places, in this order:
 
-1. the process environment — `OPENAI_API_KEY=… fs3-daemon` wins over everything;
+1. the process environment — `OPENAI_API_KEY=… flowspace3 daemon` wins over everything;
 2. `~/.config/flowspace3/secrets.env`, which both binaries load *into* the
    environment as their first act at startup.
 
