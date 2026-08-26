@@ -1,15 +1,21 @@
 //! The local ONNX embedder runs the *same* contract harness the fake does.
 //!
-//! Unlike the keyed legs, this one is **not** `#[ignore]`d: it needs no
-//! credentials, no account and no service, so there is no reason to hide the
-//! only run that proves the adapter against the real thing. What it does need,
-//! exactly once per machine, is a ~128 MB model download from HuggingFace —
-//! after which every run is offline and takes about two seconds.
+//! `#[ignore]`d on the **slow** tier, not the keyed one. There is nothing to
+//! authenticate against here — the run is free and needs no account — but it
+//! loads a real ONNX model, which costs ~18 s and a ~129 MB download the first
+//! time on any machine. That is enough to keep it out of the default
+//! `cargo test` / `harness checks` path, which must stay fast and offline
+//! everywhere.
+//!
+//! Repo convention: an `#[ignore]` carries a reason, and the reason names its
+//! tier — `keyed: <vars>` for runs that need credentials, `slow: <why>` for
+//! runs that are merely expensive. A bare `#[ignore]` says nothing about which
+//! it is, and so says nothing about whether *you* can run it.
 //!
 //! # Running it
 //!
 //! ```bash
-//! cargo test -p fs3-providers --test local_contract
+//! cargo test -p fs3-providers --test local_contract -- --ignored
 //!
 //! # optional — put the model cache somewhere else (default:
 //! # ~/.cache/flowspace3/models). NEVER point this inside a repository.
@@ -19,8 +25,9 @@
 //! export FS3_LOCAL_MODEL=AllMiniLML6V2
 //! ```
 //!
-//! First run on a machine with no network fails rather than skipping: a green
-//! test that silently did nothing is worse than a red one.
+//! A first run with no network fails rather than skipping: a green test that
+//! silently did nothing is worse than a red one. After that first pull the
+//! whole file runs offline in about a fifth of a second.
 
 use std::sync::LazyLock;
 
@@ -60,6 +67,7 @@ async fn embedder() -> LocalEmbedder {
 }
 
 #[tokio::test]
+#[ignore = "slow: loads the ONNX model (~18s and ~129MB on a cold cache) — see this file's header"]
 async fn local_embedder_honours_the_embedder_contract() {
     embedder_contract(&embedder().await).await;
 }
@@ -71,6 +79,7 @@ async fn local_embedder_honours_the_embedder_contract() {
 /// had to add a mismatch guard later; the number is asserted here so a
 /// catalogue change cannot move it quietly.
 #[tokio::test]
+#[ignore = "slow: loads the ONNX model (~18s and ~129MB on a cold cache) — see this file's header"]
 async fn the_default_model_embeds_at_the_width_it_advertises() {
     let embedder = embedder().await;
     if embedder.model() != DEFAULT_LOCAL_MODEL {
@@ -98,6 +107,7 @@ async fn the_default_model_embeds_at_the_width_it_advertises() {
 /// input — deterministic, ordered, non-degenerate, and useless for search.
 /// This is the assertion that says the model is really a model.
 #[tokio::test]
+#[ignore = "slow: loads the ONNX model (~18s and ~129MB on a cold cache) — see this file's header"]
 async fn near_synonyms_sit_closer_than_unrelated_words() {
     let embedder = embedder().await;
     let texts = ["cat", "kitten", "carburetor"].map(str::to_string).to_vec();

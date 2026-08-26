@@ -581,6 +581,44 @@ mod tests {
     }
 
     #[test]
+    fn the_enrichment_key_discriminator_cannot_collide_two_vector_spaces() {
+        // `key()` is `model@dimensions`, and `model` is the CATALOGUE NAME —
+        // deliberately not the HuggingFace code. `fastembed` maps
+        // EmbeddingGemma300M (full precision) and EmbeddingGemma300MQ4
+        // (quantised) onto ONE code, and both are the same width, so a key
+        // built from the code would file two genuinely different vector spaces
+        // under one enrichment row. Catalogue names are unique per model file,
+        // so they cannot. This test is the reason the choice is not arbitrary.
+        let models = supported_models();
+        let shared_code = models
+            .iter()
+            .filter(|info| info.huggingface_code == "onnx-community/embeddinggemma-300m-ONNX")
+            .collect::<Vec<_>>();
+        assert!(
+            shared_code.len() > 1,
+            "this test guards a real collision in fastembed's catalogue; if that catalogue \
+             stopped sharing a code between entries, re-derive the argument rather than \
+             deleting the test"
+        );
+        assert_eq!(
+            shared_code[0].dimensions, shared_code[1].dimensions,
+            "the entries sharing a code also share a width — which is exactly why the width \
+             alone cannot separate them"
+        );
+
+        // Catalogue names, by contrast, are unique across the whole catalogue.
+        let mut names: Vec<&str> = models.iter().map(|info| info.name.as_str()).collect();
+        let total = names.len();
+        names.sort_unstable();
+        names.dedup();
+        assert_eq!(
+            names.len(),
+            total,
+            "catalogue names must be unique, or `key()` could collide too"
+        );
+    }
+
+    #[test]
     fn a_load_failure_names_the_model_the_cache_and_the_fix() {
         let error = load_error(
             "BGESmallENV15",

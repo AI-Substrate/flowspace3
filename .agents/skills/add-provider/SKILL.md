@@ -40,6 +40,64 @@ docs/plans/prd/providers-roster.md         # flip your row's status when done
 6. **Gates**: `harness checks` green (fmt, clippy -D warnings, tests, arch drift) + `cargo test -p fs3-providers` green. Keyed contract run: check your packet for credentials, THEN the machine (existing provider configs like `~/.config/fs2/`, `az login`, ambient env) before declaring it not-run; if found, run it and report actual output.
 7. **Report**: claim · files · gate outputs · keyed-run status · any deviation from this recipe (deviations are stop-and-ask, not improvisation). Flip your roster row, and write your service page `docs/services/<name>.md` (convention: `docs/services/README.md` — what it is, decisions, gotchas, verify commands, code pointers).
 
+## If your provider is LOCAL (in-process model, no HTTP)
+
+The steps above were written for HTTP services, and five of them mean something
+different — or nothing — when the model runs inside the process. Written from
+w-local-embed (`fastembed`/ONNX); read this *instead of*, not after, the parts
+it replaces.
+
+1. **Config axis (replaces step 2's credential shape).** There are no
+   credentials, so "config carries env var names" has nothing to carry. The
+   three axes are **model identity · cache location · device/threads**. Model
+   identity is not one string: a library's own name for a model, the
+   HuggingFace code it pulls from, and the name humans actually write are
+   routinely three different things — accept every form you can resolve
+   unambiguously, and make an ambiguous one an error that NAMES ALL CANDIDATES
+   rather than a silent first match.
+2. **Cache-path precedence (the local analogue of step 4's auth precedence).**
+   Work out, from the library's source, exactly which of env var / explicit
+   config / built-in default wins — and document it. Two traps live here and
+   both are real: a library default that is **relative to the current working
+   directory** will write model weights into whatever repository fs3 is
+   scanning (`fastembed`'s is `./.fastembed_cache`), and an **environment
+   variable that overrides explicit config** inverts every other precedence
+   rule in fs3 (`HF_HOME` beats `with_cache_dir`). Always pass the cache
+   directory explicitly, default it under the user's home, and prove with a
+   test that the default is absolute and outside the working directory.
+3. **Keyless tests (replaces step 3's stub server).** There is no wire to stub,
+   so `axum` has nothing to serve. The offline, keyless, default-path tests for
+   a local provider are **pure functions**: model-name resolution, cache-path
+   resolution, key/discriminator construction, and error-message construction.
+   Test those directly. If the library's `Display` hides its cause behind
+   `#[source]`, walk the chain — `{e}` alone reports a failure with no reason.
+4. **Preconditions are network + disk, not credentials (replaces step 6's
+   credential hunt).** Before declaring a run not-done, the question is whether
+   the machine can reach the model host and has room for the weights. State the
+   first-download size and the cold/warm timings in your report; they are the
+   numbers that decide the test tier (see *Test tiers* below — a free but
+   expensive run is `slow:`, never `keyed:`).
+5. **Your constructor blocks, and your `embed` blocks.** The recipe assumes
+   every provider call is async I/O. A local one is CPU-bound: loading a model
+   downloads and builds a session (seconds), and inference occupies a core for
+   hundreds of milliseconds. Hand the work to `tokio::task::spawn_blocking`
+   rather than stalling an async worker thread, take any lock INSIDE the
+   blocking closure so it is never held across an await, and say in the
+   constructor's docs that it blocks and may download.
+6. **A shared on-disk cache is a concurrency hazard.** `cargo test` runs tests
+   in parallel; several tests each loading the same missing model means several
+   simultaneous downloads into one directory, and they corrupt each other —
+   this failed 2 of 3 tests before it was fixed. Load once, share the handle
+   (`LazyLock` in tests; the composition root everywhere else), and make your
+   adapter cheap to clone so sharing costs nothing.
+
+Two smaller things worth copying: a library catalogue backed by a `HashMap`
+iterates in a different order every run, so anything built from it (an error
+message, a `--list-models` output) must be sorted or it is unquotable in a bug
+report; and expose the vector **width** from config, before anything is
+embedded — the store column is fixed-width, and fs2 had to retrofit a mismatch
+guard it could have had for free.
+
 ## Test tiers (repo convention)
 Default `cargo test` stays FAST and OFFLINE. Anything else is `#[ignore = "<tier>: <reason>"]` with the reason string mandatory: `keyed: <env vars>` for real endpoints (missing var fails BY NAME when run), `slow: <why>` for expensive-but-free work (model loads/downloads). Opt-in via `-- --ignored`.
 

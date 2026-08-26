@@ -68,9 +68,18 @@ deliberately not taken.
 to native-tls (contradicting the workspace's `reqwest` choice) and pulls
 `image-models`, which a text embedder never uses.
 
-**The contract leg is not `#[ignore]`d.** Every other adapter's contract run
-needs credentials. This one needs nothing, so hiding it behind `--ignored`
-would hide the only test that proves the adapter against a real model.
+**The contract leg is `slow`, not `keyed`.** Every other adapter's contract run
+is hidden because it needs credentials. This one needs none — it is free, and
+anyone can run it — but it loads a real model, and `cargo test` must stay fast
+and offline everywhere. So it is `#[ignore = "slow: …"]` and one flag away,
+rather than unrunnable for want of an account. The distinction is the reason
+the tier is in the reason string.
+
+**The enrichment key is `catalogue-name@dimensions`.** Not the HuggingFace
+code: `fastembed` maps `EmbeddingGemma300M` and `EmbeddingGemma300MQ4` onto one
+code at one width, and keying on it would file two different vector spaces
+under one enrichment row. Catalogue names are unique per model file. Pinned by
+`the_enrichment_key_discriminator_cannot_collide_two_vector_spaces`.
 
 ## Gotchas — the expensive ones
 
@@ -123,21 +132,35 @@ deliberate: a green test that silently did nothing is worse than a red one.
 
 ## How to verify it works
 
+The contract leg is `#[ignore]`d on the **slow** tier. Repo convention is two
+tiers, and the reason string is mandatory and names which one:
+
+| Tier | Reason string | Means |
+|---|---|---|
+| keyed | `keyed: <env vars>` | needs credentials you may not have |
+| slow | `slow: <why>` | free to run, but too expensive for the default path |
+
+This suite is free — no account, no key, nobody's quota — but it loads a real
+ONNX model, so it stays out of `cargo test` / `harness checks`, which must be
+fast and offline on every machine. `-- --ignored` is the whole difference.
+
 ```bash
-# offline, keyless, no download — name resolution, cache placement, error text
+# offline, keyless, no download, runs by default — name resolution, cache
+# placement, key discriminator, error text
 cargo test -p fs3-providers --lib local
 
 # the real thing: the shared Embedder contract suite against a real model
 #   ~18 s cold (downloads ~129 MB), ~0.2 s warm
-cargo test -p fs3-providers --test local_contract
+cargo test -p fs3-providers --test local_contract -- --ignored
 
 # a different model, and/or a different cache
 FS3_LOCAL_MODEL=AllMiniLML6V2 \
 FS3_LOCAL_MODEL_CACHE=/tmp/fs3-models \
-  cargo test -p fs3-providers --test local_contract
+  cargo test -p fs3-providers --test local_contract -- --ignored
 
 # prove the offline claim: warm cache, unreachable hub
-HF_ENDPOINT=http://127.0.0.1:1 cargo test -p fs3-providers --test local_contract
+HF_ENDPOINT=http://127.0.0.1:1 \
+  cargo test -p fs3-providers --test local_contract -- --ignored
 
 # prove nothing landed in the repo
 git status --porcelain | grep fastembed   # must print nothing
