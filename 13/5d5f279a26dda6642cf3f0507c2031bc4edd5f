@@ -1,0 +1,26 @@
+.github/workflows/release.yml
+  h_9e71e8b09f7cf2 148-166
+.harness/government/briefs/w-auto-update.md
+  h_9e71e8b09f7cf2 3-7
+crates/cli/src/doctor.rs
+  h_9e71e8b09f7cf2 327-332,334-338
+crates/core/tests/config_reference.rs
+  h_9e71e8b09f7cf2 1-116
+docs/how/configuration.md
+  h_9e71e8b09f7cf2 18-24
+docs/reference/configuration.md
+  h_9e71e8b09f7cf2 1-150
+docs/services/auto-update.md
+  h_9e71e8b09f7cf2 1-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "135d5f279a26dda6642cf3f0507c2031bc4edd5f",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
