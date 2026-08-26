@@ -1,0 +1,43 @@
+docs/plans/001-fs3-foundations/plan.dd.md
+  s_15d888f4b629c1::t_67cc6d5645d667 63-64
+  s_15d888f4b629c1::t_5a262e1d192e58 62
+  s_15d888f4b629c1::t_dd7b0c98d9c9d3 65-67
+  s_f7f7f9237e4685::t_1c2b32911991c3 68-69,77
+docs/plans/001-fs3-foundations/assets/tasks/phase-1/tasks.dd.json
+  s_15d888f4b629c1::t_a373b62cf7c391 163,171,179,187,195,203,211,219,227,235,243,251,259,267
+  s_f7f7f9237e4685::t_7d681602f77d3e 9,25,35,45,54,63,72,81,91,101,110,119,128,138,147,274
+docs/plans/001-fs3-foundations/assets/tasks/phase-1/tasks.dd.md
+  s_15d888f4b629c1::t_a373b62cf7c391 38-51,61,67
+  s_f7f7f9237e4685::t_cbb4b3bb2281e0 73,79,85,91,97,103,109,115,121,127,133,139
+docs/plans/001-fs3-foundations/plan.dd.json
+  s_15d888f4b629c1::t_67cc6d5645d667 56,62,68
+  s_f7f7f9237e4685::t_d98efa22b85de5 74,80,86,92,98,110
+docs/plans/001-fs3-foundations/assets/backpressure.dd.json
+  s_f7f7f9237e4685::t_c17063ee3a8365 25,34,43,52,61,70,79,88,97,106,115,145-146
+docs/plans/001-fs3-foundations/assets/backpressure.dd.md
+  s_f7f7f9237e4685::t_eb2381b187c3c8 23-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5cd00bd41bd3c8ddf1a057fb5bb1272e5b34da6f",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_f7f7f9237e4685": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a70719368629424ce",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
