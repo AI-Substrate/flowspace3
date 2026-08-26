@@ -1,0 +1,14 @@
+docs/services/discovery.md
+  h_9e71e8b09f7cf2 52-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c2dba7690c9d251624c4dc73ca5e7c9651893222",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
