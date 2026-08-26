@@ -1,0 +1,20 @@
+docs/plans/003-first-light/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 25,34,43,52,62,71,81,90,105,113,121,129,137,145,151,159,167
+docs/plans/003-first-light/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 38-45,55,61,67,73,79,85-86,92,98
+docs/plans/003-first-light/plan.dd.json
+  h_9e71e8b09f7cf2 43,49,55,61,67,79
+docs/plans/003-first-light/plan.dd.md
+  h_9e71e8b09f7cf2 56-60,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "433c8a46f703db1c01b4c509b967df89a30b8596",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
