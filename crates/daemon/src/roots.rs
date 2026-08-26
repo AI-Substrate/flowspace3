@@ -59,6 +59,13 @@ pub struct RootReport {
     /// Files discovery saw and refused, by reason (PRD req 43: never a silent
     /// gap).
     pub skipped: Vec<SkipCount>,
+    /// Directories discovery refused to walk at all, named individually.
+    ///
+    /// Unaggregated on purpose, unlike [`RootReport::skipped`]: there are
+    /// about eleven of these on a real repository and the names ARE the
+    /// answer to "why is my code missing", where thousands of file rows would
+    /// only be a summary of it.
+    pub pruned: Vec<PrunedDirectoryRow>,
     /// Scan jobs enqueued by this call.
     pub enqueued: usize,
     /// Files whose bytes are unchanged since the last scan, so no job was
@@ -76,6 +83,26 @@ pub struct SkipCount {
     pub reason: String,
     /// How many files.
     pub count: usize,
+}
+
+/// One directory discovery never walked.
+///
+/// A wire type rather than `fs3_parsers::discovery::PrunedDirectory` for the
+/// same reason [`SkipCount`] is one: `fs3-parsers` has no serde dependency and
+/// does not need one to say what it found.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PrunedDirectoryRow {
+    /// Relative to the root, `/`-separated.
+    pub path: String,
+    /// Why — `standard-ignore` today.
+    pub reason: String,
+    /// What to do about it, when the answer is not "nothing".
+    ///
+    /// Names `scan.standard_ignores = false` and nothing else: `force_include`
+    /// would be the better answer per directory, and it has no `[scan]` key
+    /// yet, so a diagnostic pointing there would prescribe a line that cannot
+    /// be typed into a config file.
+    pub fix: String,
 }
 
 /// What one `scan_file` job needs to do its work.
@@ -189,6 +216,7 @@ pub async fn add_root(state: &AppState, root: &Path) -> Result<RootReport, RootE
         worktree_id,
         files: files.len(),
         skipped: skip_counts(&discovery),
+        pruned: pruned_rows(&discovery),
         enqueued,
         unchanged,
         removed,
@@ -240,6 +268,25 @@ fn skip_counts(discovery: &discovery::Discovery) -> Vec<SkipCount> {
         .map(|(reason, count)| SkipCount {
             reason: reason.to_string(),
             count,
+        })
+        .collect()
+}
+
+/// Name every directory discovery refused to walk — **not** aggregated.
+///
+/// The opposite call from [`skip_counts`], for the opposite reason. Skips are
+/// thousands of files, so a count is what a human can read. Prunes are about
+/// eleven directories, and the names are the entire value: a denied directory
+/// puts nothing in either file list, so without this the only symptom of
+/// `Build/` not being indexed is code missing from search results.
+fn pruned_rows(discovery: &discovery::Discovery) -> Vec<PrunedDirectoryRow> {
+    discovery
+        .pruned
+        .iter()
+        .map(|pruned| PrunedDirectoryRow {
+            path: pruned.path.clone(),
+            reason: pruned.reason.as_str().to_string(),
+            fix: "index it anyway with `[scan] standard_ignores = false`".to_string(),
         })
         .collect()
 }

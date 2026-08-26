@@ -39,6 +39,7 @@ the scanner's budget.
 | **Grammar table consulted first** | `LanguageFamily::for_extension` asks `Language::for_extension` before its own tables, so a file fs3 can parse can never be classified `Unknown`. The invariant is mechanical, not remembered. |
 | **A standard deny list, independent of git** | `STANDARD_IGNORES` — `.cache`, `.git`, `.next`, `.venv`, `__pycache__`, `build`, `dist`, `node_modules`, `target`, `vendor`, `venv` — is refused whether or not the repo has a `.gitignore`. Git-ignore rules are the *repo's* opinion; this list is fs3's, and it has to hold when the repo has none. Found by sailfish during first-light integration: a `.gitignore`-less clone indexes `node_modules/**/*.js`, because that is real JavaScript and `js` is in the source table. |
 | **Denied directories are PRUNED, not judged per file** | The deny list is a `filter_entry` prune in the walker, so `node_modules` costs one string comparison instead of a descent. Measured below: not descending is the entire saving. |
+| **Denied directories are NAMED, not counted** | `Discovery::pruned` carries one row per refused directory — the directory, never its contents. Both halves of fs3 had applied the ledger-explosion argument one level too far: discovery pruned to avoid 316,609 rows and the daemon aggregated to avoid thousands, and neither noticed that the ~11 directories themselves are cheap and are the actual answer to "why is my code missing". Separating directory from contents is what makes the ledger affordable. |
 | **Whole path components, never substrings** | `src/target_types.rs`, `src/node_modules_helper.rs`, `my-vendor/`, `builder/` and `build-output/` all survive. The check only ever looks at *directory* components, so a file's name cannot trip it. |
 | **Denied names are ASCII-case-insensitive** | `Build/` is denied as surely as `build/`. Case sensitivity is a property of the volume, not the platform — on a case-insensitive volume they are one directory — so no `cfg!` gets it right, and denying both is the safer half of the disagreement. It also makes this prune agree with `fs3-daemon`'s watcher filter, which was already `eq_ignore_ascii_case`. |
 | **The named root always wins** | The deny list applies at depth > 0 only: `flowspace3 add ./node_modules` is a deliberate instruction, not an accident. `.git` is the single exception — never walked, at any setting, by any route. |
@@ -61,9 +62,10 @@ Windows by default — nothing changes: `Build/` and `build/` were always the
 same directory. On a **case-sensitive volume**, typically Linux, `Build/` used
 to be walked and now is not.
 
-The symptom is the bad kind: no error, no skip row (a denied directory is
-pruned, not refused), just search missing code you know exists. The remedy
-today is one key:
+The symptom used to be the bad kind — no error, nothing in either file list,
+just search missing code you know exists. It is now **named**: `Discovery`
+reports the directory in `pruned`, and `flowspace3 add` returns those rows
+unaggregated with the reason and a fix. The remedy is one key:
 
 ```toml
 [scan]
@@ -129,15 +131,24 @@ Highest first — the first rule that matches decides:
   repo: 57 skips with the defaults, **316,609** with both `respect_gitignore =
   false` and the deny list emptied (every `target/` artefact is a named,
   unsupported file). The ledger is sized for "what did fs3 refuse", not "what
-  is on disk" — which is why a denied directory is pruned rather than reported.
-- **A denied directory is invisible, not reported.** If you are wondering why
-  `vendor/` produced nothing and there is no skip row explaining it, that is
-  the deny list. `standard_ignores` in `flowspace3 config show` is the thing to
-  look at, and `force_include` is the way back in.
+  is on disk" — which is why a denied directory's *contents* are pruned rather
+  than reported.
+- **A denied directory is named in `Discovery::pruned`** — the directory, never
+  its contents. That distinction is the whole reason this list is affordable:
+  ~11 rows on a real repository against the 316,609 its contents would cost.
+  If `vendor/` produced nothing, the prune ledger says so by name, with the
+  reason and a fix; `flowspace3 add` surfaces it unaggregated in its response.
+- **Git-ignored paths are still in no list at all.** `ignore`'s walker applies
+  its own matchers before fs3's callback (`Walk::skip_entry` consults
+  `should_skip_entry` first), so a git-ignored directory is pruned before this
+  crate is asked about it and cannot be reported honestly. That half has a
+  better tool than anything fs3 would be guessing at: `git check-ignore -v
+  <path>` names the file and line responsible.
 - **The deny list is a fixed list of names, not a heuristic.** It will be wrong
   for somebody: a Go project with a real `vendor/` directory of first-party
-  code, or a Java project whose sources live under `build/`. Both are one
-  `force_include` line, and the empty list turns the whole thing off.
+  code, or a Java project whose sources live under `build/`. Today the answer
+  is `standard_ignores = false`; per-directory `force_include` is the better
+  answer and is not typeable until the config surface carries it.
 
 ## Measured on this repo (2026-08-26, debug build)
 

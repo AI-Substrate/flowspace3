@@ -48,10 +48,11 @@
 //! refuses. The IO is confined to [`discover`]; the decisions it makes are pure
 //! functions tested without a filesystem.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 use fs3_core::ScanConfig;
 use ignore::WalkBuilder;
@@ -344,14 +345,58 @@ pub struct SkippedFile {
     pub reason: SkipReason,
 }
 
-/// What a walk found. Both lists are sorted by path, so a discovery result is
-/// directly comparable — in a test, and between two scans of the same tree.
+/// Why a directory was never walked.
+///
+/// One variant, deliberately. `ignore`'s walker applies its own matchers
+/// *before* the callback fs3 supplies (`Walk::skip_entry` consults
+/// `should_skip_entry` first), so a git-ignored or hidden directory is pruned
+/// before this crate is ever asked about it and cannot honestly be reported
+/// here. That half already has an answer fs3 would only be guessing at:
+/// `git check-ignore -v <path>` names the file and line that did it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum PruneReason {
+    /// Denied by [`DiscoverySettings::standard_ignores`].
+    StandardIgnore,
+}
+
+impl PruneReason {
+    /// The name used in reports.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            PruneReason::StandardIgnore => "standard-ignore",
+        }
+    }
+}
+
+/// A directory fs3 refused to walk, named so its absence is not silent.
+///
+/// The directory, never its contents: that is what makes this ledger safe.
+/// Reporting the files under a denied `node_modules` was measured at 316,609
+/// rows on this repo; reporting the directories themselves is ~11, and eleven
+/// rows are the answer to "why is my code missing" rather than a summary of it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PrunedDirectory {
+    /// Relative to the discovery root, `/`-separated — the same shape as every
+    /// other path in a [`Discovery`].
+    pub path: String,
+    /// Why.
+    pub reason: PruneReason,
+}
+
+/// What a walk found. All three lists are sorted by path, so a discovery
+/// result is directly comparable — in a test, and between two scans of the
+/// same tree.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Discovery {
     /// Files to scan.
     pub files: Vec<DiscoveredFile>,
     /// Files seen and refused, with the reason (PRD req 43).
     pub skipped: Vec<SkippedFile>,
+    /// Directories never walked, with the reason. Their contents are in
+    /// neither of the other lists — that is the point of pruning — so this is
+    /// the only thing standing between a denied directory and a user who
+    /// cannot work out why their code is missing.
+    pub pruned: Vec<PrunedDirectory>,
 }
 
 /// Why a walk could not start. Per-file trouble is a [`SkipReason`], not an
@@ -399,9 +444,21 @@ pub fn discover(root: &Path, settings: &DiscoverySettings) -> Result<Discovery, 
         skipped: BTreeMap::new(),
     };
 
-    walk(root, settings, true, &mut |absolute, relative, bytes| {
-        collector.consider(absolute, relative, bytes);
-    });
+    // The deny list prunes whole directories, so what it refuses can never
+    // appear in either file list. This is where those directories get named:
+    // a `BTreeSet` because the two passes overlap and because sorted output
+    // makes a discovery result comparable.
+    let pruned: Arc<Mutex<BTreeSet<String>>> = Arc::new(Mutex::new(BTreeSet::new()));
+
+    walk(
+        root,
+        settings,
+        true,
+        &pruned,
+        &mut |absolute, relative, bytes| {
+            collector.consider(absolute, relative, bytes);
+        },
+    );
 
     // Second pass: paths the config asked for by name that the defaults
     // refuse — git-ignored, or under a `STANDARD_IGNORES` directory (a
@@ -411,15 +468,23 @@ pub fn discover(root: &Path, settings: &DiscoverySettings) -> Result<Discovery, 
     // legible: the first walk answers "what is visible by default", the
     // second "what did the repo insist on anyway".
     if !settings.force_include.is_empty() {
-        walk(root, settings, false, &mut |absolute, relative, bytes| {
-            if force_include
-                .matched_path_or_any_parents(relative, false)
-                .is_ignore()
-            {
-                collector.consider(absolute, relative, bytes);
-            }
-        });
+        walk(
+            root,
+            settings,
+            false,
+            &pruned,
+            &mut |absolute, relative, bytes| {
+                if force_include
+                    .matched_path_or_any_parents(relative, false)
+                    .is_ignore()
+                {
+                    collector.consider(absolute, relative, bytes);
+                }
+            },
+        );
     }
+
+    let pruned = std::mem::take(&mut *pruned.lock().expect("prune ledger is never poisoned"));
 
     Ok(Discovery {
         files: collector.files.into_values().collect(),
@@ -427,6 +492,13 @@ pub fn discover(root: &Path, settings: &DiscoverySettings) -> Result<Discovery, 
             .skipped
             .into_iter()
             .map(|(path, reason)| SkippedFile { path, reason })
+            .collect(),
+        pruned: pruned
+            .into_iter()
+            .map(|path| PrunedDirectory {
+                path,
+                reason: PruneReason::StandardIgnore,
+            })
             .collect(),
     })
 }
@@ -551,11 +623,13 @@ fn verdict(
 /// The deny list is applied here, as a `filter_entry` prune, rather than as a
 /// verdict per file: not descending into `node_modules` is the entire saving,
 /// and a pruned directory costs one string comparison instead of a hundred
-/// thousand ledger rows.
+/// thousand ledger rows. Each directory it refuses is recorded in `pruned` —
+/// the directory, never its contents — so the absence has a name.
 fn walk(
     root: &Path,
     settings: &DiscoverySettings,
     honour_ignores: bool,
+    pruned: &Arc<Mutex<BTreeSet<String>>>,
     visit: &mut dyn FnMut(&Path, &Path, Option<u64>),
 ) {
     let honour = honour_ignores && settings.respect_gitignore;
@@ -567,6 +641,11 @@ fn walk(
     } else {
         Vec::new()
     };
+    // Cloned into the walker's callback, which must be `Send + Sync + 'static`.
+    // Contended only when a directory is actually refused — eleven times on a
+    // real repository, not once per entry.
+    let ledger = Arc::clone(pruned);
+    let ledger_root = root.to_path_buf();
     let mut builder = WalkBuilder::new(root);
     builder
         .hidden(!settings.include_hidden)
@@ -596,8 +675,9 @@ fn walk(
             // `cfg!` gets it right: on a case-insensitive volume `Build/` and
             // `build/` are one directory, and a case-sensitive check would
             // walk what the watcher refuses. Denying both is the strictly safer
-            // half of that disagreement, and `force_include` is the way back in
-            // for a real `Dist/` of first-party code.
+            // half of that disagreement; the typed way out today is
+            // `scan.standard_ignores = false`, since `force_include` has no
+            // `[scan]` key yet.
             if name.eq_ignore_ascii_case(".git") {
                 return false;
             }
@@ -607,9 +687,21 @@ fn walk(
             // Whole component, never substring: `src/target_types.rs` is a
             // file (already returned above), `my-vendor/` and `builder/` are
             // directories whose NAMES simply are not on the list.
-            !denied
+            if !denied
                 .iter()
                 .any(|denied| denied.eq_ignore_ascii_case(name))
+            {
+                return true;
+            }
+            // Refused — so name it. Only the directory: everything under it is
+            // never visited, which is the saving this ledger must not undo.
+            if let Ok(relative) = entry.path().strip_prefix(&ledger_root) {
+                ledger
+                    .lock()
+                    .expect("prune ledger is never poisoned")
+                    .insert(display_path(relative));
+            }
+            false
         });
 
     for entry in builder.build() {

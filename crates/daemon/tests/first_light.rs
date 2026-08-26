@@ -118,6 +118,14 @@ impl Rect {
         // Hidden from discovery by git.
         Self::write(&root, ".gitignore", "ignored/\n");
         Self::write(&root, "ignored/secret.rs", "fn never_indexed() {}\n");
+        // Refused by the standard deny list, and NOT by git: nothing in
+        // `.gitignore` mentions it, so its absence can only be the deny list.
+        // Real JavaScript, in the directory a fresh clone is fullest of.
+        Self::write(
+            &root,
+            "node_modules/pkg/index.js",
+            "module.exports = () => 'somebody else\\'s dependency';\n",
+        );
 
         git(&root, &["init", "--quiet"]);
         git(&root, &["config", "user.email", "fixture@fs3.test"]);
@@ -309,7 +317,36 @@ async fn add_scan_enrich_and_search_answer_end_to_end() {
     );
     assert!(
         !skipped.iter().any(|row| row["reason"] == "gitignored"),
-        "a git-ignored file is out of scope, not refused — it belongs in neither list"
+        "a git-ignored FILE is out of scope, not refused: it is in neither file \
+         list, and git already answers why (`git check-ignore -v`). This is not \
+         the same claim as `nothing unindexed is ever reported` — see the prune \
+         ledger below, which names DIRECTORIES fs3 itself refused to walk"
+    );
+
+    // The other half of that doctrine, and the reason it had to be split: a
+    // denied directory puts nothing in EITHER file list, so without this the
+    // only symptom of node_modules/ not being indexed is code missing from a
+    // search months later. Named, not counted — eleven directories are the
+    // answer, where thousands of files would only be a summary of it.
+    let pruned = data["pruned"].as_array().expect("a prune ledger");
+    let node_modules = pruned
+        .iter()
+        .find(|row| row["path"] == "node_modules")
+        .unwrap_or_else(|| panic!("node_modules must be NAMED as pruned, got {pruned:?}"));
+    assert_eq!(node_modules["reason"], "standard-ignore");
+    assert!(
+        node_modules["fix"]
+            .as_str()
+            .expect("a fix is text")
+            .contains("standard_ignores"),
+        "the fix must name a line that can actually be typed into config",
+    );
+    assert!(
+        !pruned
+            .iter()
+            .any(|row| row["path"].as_str().is_some_and(|p| p.contains('/'))),
+        "the DIRECTORY is named, never its contents — that is what keeps this \
+         ledger eleven rows instead of a hundred thousand, got {pruned:?}"
     );
 
     // --- drain -------------------------------------------------------------

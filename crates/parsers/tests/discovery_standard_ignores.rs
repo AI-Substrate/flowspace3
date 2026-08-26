@@ -339,3 +339,84 @@ fn the_deny_list_ignores_ascii_case() {
     // `Src/` is not on the list at any casing; the other two are.
     assert_eq!(kept, ["Src/main.rs"]);
 }
+
+/// The absence has a name. A denied directory puts nothing in either file
+/// list, so without this list the only symptom of `Build/` not being indexed
+/// is code missing from a search months later.
+#[test]
+fn every_denied_directory_is_named_in_the_prune_ledger() {
+    let discovery = found(&ungoverned());
+    let pruned: Vec<(&str, &str)> = discovery
+        .pruned
+        .iter()
+        .map(|dir| (dir.path.as_str(), dir.reason.as_str()))
+        .collect();
+
+    assert_eq!(
+        pruned,
+        [
+            ("__pycache__", "standard-ignore"),
+            ("build", "standard-ignore"),
+            ("dist", "standard-ignore"),
+            ("node_modules", "standard-ignore"),
+            ("target", "standard-ignore"),
+            ("vendor", "standard-ignore"),
+            ("venv", "standard-ignore"),
+        ],
+    );
+}
+
+/// The directory, never its contents — the property that keeps this ledger
+/// eleven rows instead of the 316,609 its contents were measured at.
+#[test]
+fn the_prune_ledger_never_descends() {
+    let discovery = found(&ungoverned());
+
+    assert!(
+        discovery.pruned.iter().all(|dir| !dir.path.contains('/')),
+        "only top-level refusals here, got {:?}",
+        discovery.pruned,
+    );
+    // `node_modules/pkg/dist` is denied too, and is deliberately absent: the
+    // walk stopped at `node_modules` and never learned it existed.
+    assert!(
+        !discovery
+            .pruned
+            .iter()
+            .any(|dir| dir.path.starts_with("node_modules/")),
+        "a pruned directory's insides are never visited, so never reported",
+    );
+}
+
+/// Turning the policy off empties the ledger with it: nothing was refused, so
+/// there is nothing to explain.
+#[test]
+fn an_empty_deny_list_prunes_nothing_and_reports_nothing() {
+    let discovery = found(&DiscoverySettings {
+        standard_ignores: Vec::new(),
+        ..ungoverned()
+    });
+
+    assert!(discovery.pruned.is_empty(), "{:?}", discovery.pruned);
+}
+
+/// Hidden denied directories are reported only when the walker can see them —
+/// otherwise `.venv` would be claimed as a policy decision when the hidden
+/// filter is what actually stopped it.
+#[test]
+fn hidden_denied_directories_are_reported_only_when_walked() {
+    let visible = found(&ungoverned());
+    assert!(!visible.pruned.iter().any(|dir| dir.path == ".venv"));
+
+    let hidden_on = found(&DiscoverySettings {
+        include_hidden: true,
+        ..ungoverned()
+    });
+    for hidden in [".cache", ".next", ".venv"] {
+        assert!(
+            hidden_on.pruned.iter().any(|dir| dir.path == hidden),
+            "{hidden} must be named once the walker can reach it, got {:?}",
+            hidden_on.pruned,
+        );
+    }
+}
