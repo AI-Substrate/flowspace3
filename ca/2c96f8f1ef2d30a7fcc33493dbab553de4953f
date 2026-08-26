@@ -1,0 +1,23 @@
+.harness/government/rulings/2026-08-27-production-database.md
+  s_15d888f4b629c1::t_cdda1584a8bd1f 1-30
+docs/plans/prd/base-prd.dd.json
+  s_15d888f4b629c1::t_b7e9e574258bf3 464,489-496
+docs/plans/prd/base-prd.dd.md
+  s_15d888f4b629c1::t_ff94aecf4662ef 78,82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ca2c96f8f1ef2d30a7fcc33493dbab553de4953f",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
