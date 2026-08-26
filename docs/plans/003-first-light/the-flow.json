@@ -151,6 +151,33 @@
           "importance": "optional"
         }
       }
+    },
+    {
+      "id": "UPD-005",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-26T05:13:55.060Z",
+      "details": {
+        "node": "backpressure-e33506f4e497",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-005",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-26T05:13:55.183Z",
+      "details": {
+        "node": "backpressure-e33506f4e497",
+        "from": "done",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
     }
   ],
   "nodes": [
@@ -408,7 +435,7 @@
         "plan"
       ],
       "created_at": "2026-08-26T05:13:10.685Z",
-      "modified_at": "2026-08-26T05:13:10.968Z",
+      "modified_at": "2026-08-26T05:13:55.183Z",
       "command": "run /eng-harness-flow --hook pre-coding --json",
       "chore": {
         "kind": "command",
@@ -421,9 +448,15 @@
           "text": "verdict:re-surveyed reason:tk-0108 added (schema check+doctor apply) under existing bp-0001; rows unchanged. basis_sha256:e33506f4e497c056495759dac00c53d19f4225f9c83721b91a4c5b822b8fb993 time:2026-08-26",
           "source": "agent",
           "kind": "validation"
+        },
+        {
+          "at": "2026-08-26T05:13:55.060Z",
+          "text": "verdict:re-surveyed reason:tk-0108 extended (db-create + single-responsibility store admin fns); rows unchanged. basis_sha256:e33506f4e497c056495759dac00c53d19f4225f9c83721b91a4c5b822b8fb993",
+          "source": "agent",
+          "kind": "validation"
         }
       ],
-      "ran_at": "2026-08-26T05:13:10.968Z"
+      "ran_at": "2026-08-26T05:13:55.183Z"
     }
   ],
   "plan_dir": "docs/plans/003-first-light"
