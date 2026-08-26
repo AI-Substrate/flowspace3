@@ -111,6 +111,9 @@ CREATE INDEX ON jobs (state, not_before, priority DESC);
 | D9 | `smart_content.text_hash` column (indexed) makes smart-embedding hits resolvable back to their element | redefining smart `source_hash` as `raw_hash` | preserves source_hash = hash-of-embedded-text invariant; found by schema worker during implementation |
 | D8 | GC = a `prune` job kind, later plan: blobs unreferenced by any `worktree_files` row → their elements; enrichment pruned only by explicit model retirement | ON DELETE CASCADE chains | enrichment is the expensive asset — never let a worktree removal cascade into re-payable LLM spend |
 
+## Naming + config linkage (added 2026-08-26, Jordan)
+The unit `flowspace3 add <path>` creates is a **ROOT** (= a `worktrees` row; the surface language says root). Multiple roots may share one repo (subpaths, several checkouts); a non-git folder is a root on a path-fallback identity. Config override chain: **root > repo > global** — `[roots."<abs path>"]` is a small additive extension to the landed registry (`[repos.*]` today); `*_for()` resolution stays one total lookup.
+
 ## Key flows (words, one line each)
 
 - **Watcher fires** → upsert `jobs(scan:wt:path, not_before=now()+10s)` — re-fires push `not_before` out (debounce in SQL).
