@@ -1,0 +1,12 @@
+# Ruling — commit and push as you go
+**By**: Jordan (verbatim: "Make sure Gibbon is committing and pushing as we go. In fact, they all should be committing and pushing their work. We don't want to leave too much outstanding.") · **Recorded**: 2026-08-26 · pij-instant-lynx
+
+Supersedes the "no commits — working tree only, o-prime coordinates" line in all standing worker briefs (w-azure-openai-kazimir, w-migrations-cicada, s002 brief; s001 already committed).
+
+## Protocol (shared main tree, several writers)
+
+1. Commit at every coherent unit — never leave finished work uncommitted.
+2. Stage ONLY your fenced paths: explicit `git add <path>…`. **Never `git add -A` / `git commit -a`** — siblings have in-flight work in the same tree.
+3. **Push first**: commit, then `git push` (to `main`). Only if the push is REJECTED (non-fast-forward), coordinate a rebase window with the o-prime — `git pull --rebase` is all-or-nothing over the worktree and MUST NOT be run while siblings have unstaged work (never stash a sibling's edits). *(Amended per kazimir's field report 2026-08-26 — the original "pull --rebase then push" is unrunnable in a shared tree.)*
+4. Shared-merge files (root Cargo.toml/Cargo.lock, providers lib.rs, arch-allowlist, roster): commit promptly after touching to shrink the collision window.
+5. `.claude/**` stays uncommitted (standing exclusion, unchanged). `.harness/government/**` remains o-prime-only.
