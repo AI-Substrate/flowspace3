@@ -1,0 +1,23 @@
+crates/daemon/src/watch.rs
+  s_15d888f4b629c1::t_8677576d0e3e4e 285-289,302-303,307,332-334,337-402,511-526,627-651
+docs/plans/prd/daemon-worker-architecture.md
+  s_15d888f4b629c1::t_a9764e87549d4a 19-20
+docs/services/watcher.md
+  s_15d888f4b629c1::t_843dafb6cf3e2e 72-73,83-95,116-127,129,131,133-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "de7ae1b5bdbb806bc0622c8ff12052addb884c24",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
