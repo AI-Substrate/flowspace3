@@ -1,0 +1,57 @@
+# POC compose stack for plan 002 (tk-0103). Shape copied from s001's root
+# docker-compose.yml (pgvector/pgvector:pg16, named volume, healthcheck) on
+# DISTINCT ports/names so the s001 stack is never touched:
+#   db:  host 127.0.0.1:5434 (s001 uses 5433), container fs3-poc-db
+#   daemon: host 127.0.0.1:8081, container fs3-poc-daemon
+#
+# Compose-spec only: no Docker-exclusive features (podman by construction).
+# The build/cache/output volumes are external with explicit fixed names —
+# they are created by build.sh and MUST survive `down`; the paved down never
+# deletes them (`down` without -v; they are also unmanaged by compose).
+name: fs3-poc
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: fs3-poc-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: flowspace3_poc
+      POSTGRES_PASSWORD: flowspace3_poc
+      POSTGRES_DB: flowspace3_poc
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - poc-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flowspace3_poc -d flowspace3_poc"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+  daemon:
+    image: debian:bookworm-slim
+    container_name: fs3-poc-daemon
+    restart: unless-stopped
+    command: ["/app/fs3-poc-daemon"]
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8081:8081"
+    volumes:
+      - bin:/app:ro
+
+volumes:
+  poc-pgdata:
+    name: fs3-poc-pgdata
+  cargo-registry:
+    external: true
+    name: fs3-poc-cargo-registry
+  cargo-target:
+    external: true
+    name: fs3-poc-cargo-target
+  bin:
+    external: true
+    name: fs3-poc-bin

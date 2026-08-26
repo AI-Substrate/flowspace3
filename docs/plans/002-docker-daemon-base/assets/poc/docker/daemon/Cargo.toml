@@ -1,0 +1,9 @@
+[package]
+name = "fs3-poc-daemon"
+version = "0.0.0"
+edition = "2021"
+[dependencies]
+
+# Standalone crate: excluded from the repo root workspace by an explicit
+# empty table so the read-only source mount never needs a manifest edit.
+[workspace]

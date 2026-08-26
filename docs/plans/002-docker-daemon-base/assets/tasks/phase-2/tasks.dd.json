@@ -1,0 +1,101 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 2: Integrate - root compose, fs3-daemon wiring, harness extension",
+        "slug": "phase-2",
+        "status": "draft",
+        "summary": ""
+      }
+    },
+    {
+      "name": "summary",
+      "value": "\"GATED on s001 phase exit + o-prime fence coordination (docker-compose.yml and .harness/extensions/ overlap). Promote the POC shapes to the repo root and pave the harness surface.\""
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-0201",
+          "title": "Extend root docker-compose.yml with the daemon service (binary from the build-container output volume, restart per-service); db service definition untouched from s001; daemon service mounts a container-scoped config dir via FS3_CONFIG_DIR with database.url=postgres://flowspace3:flowspace3@db:5432/flowspace3 (in-container 127.0.0.1:5433 is unreachable and connect_lazy hides it - the DB path must be PROVEN, not assumed)",
+          "state": "unchecked",
+          "done": "#done_when/tk-0201",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0002",
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
+        },
+        {
+          "id": "tk-0202",
+          "title": "docker/ dir: Dockerfile.build, Dockerfile.run, and scripts (build, reload, up, down, status, exec, run) - all honouring FS3_ENGINE; wire the real fs3-daemon binary (replaces the POC daemon)",
+          "state": "unchecked",
+          "done": "#done_when/tk-0202",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002",
+            "../../../plan.dd.json#acceptance_criteria/ac-0006"
+          ]
+        },
+        {
+          "id": "tk-0203",
+          "title": "Docker harness extension: verbs shell through to docker/scripts/*; docs/how/docker.md; README quick-start pointer; `harness checks` stays green",
+          "state": "unchecked",
+          "done": "#done_when/tk-0203",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        },
+        {
+          "id": "tk-0204",
+          "title": "In-container test exemplar: the one-shot run verb executes `cargo test --workspace` inside the build container and passes; documented as the paved way to run things in the stack; the run verb joins the compose network and exports FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@db:5432/flowspace3 (store/tests/pg_round_trip.rs PANICS without reachable Postgres; the shipped default targets the host's 127.0.0.1:5433 which is the container itself in-network)",
+          "state": "unchecked",
+          "done": "#done_when/tk-0204",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {
+        "tk-0201": [
+          {
+            "id": "dw-0201",
+            "assertion": "paved stack-up from repo root brings up db+daemon; /health returns 200 from the containerized fs3-daemon; a paved probe exercises the daemon's DB path against the db service (connect_lazy means /health alone proves nothing about PG); git diff shows the db service block unchanged",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          }
+        ],
+        "tk-0202": [
+          {
+            "id": "dw-0202",
+            "assertion": "each script runs green on the installed engine; reload leaves db StartedAt unchanged; no image rebuild occurs on a source change",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          }
+        ],
+        "tk-0203": [
+          {
+            "id": "dw-0203",
+            "assertion": "the harness surface lists the docker verbs; each verb runs green; docs/how/docker.md exists; harness checks green",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+          }
+        ],
+        "tk-0204": [
+          {
+            "id": "dw-0204",
+            "assertion": "containerized `cargo test --workspace` passes via the paved run verb, with the container attached to the compose network and FS3_TEST_DATABASE_URL pointing at db:5432",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+# Build container for plan 002 POC. Toolchain pinned by exact tag so builds
+# are reproducible; the same image later serves the CI cross-platform matrix.
+# Runtime base for the daemon container matches this Debian release so the
+# produced glibc-linked binary runs there unmodified.
+FROM rust:1.85.0-slim-bookworm

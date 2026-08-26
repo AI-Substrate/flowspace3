@@ -1,0 +1,147 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: POC - build/run containers, compose stack, /health daemon (plan assets only)",
+        "slug": "phase-1",
+        "status": "draft",
+        "summary": "All work under docs/plans/002-docker-daemon-base/assets/poc/docker/ - zero collision with s001."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "\"Prove the whole docker loop as throwaway POC: build container with named-volume cargo caches, minimal /health daemon, POC compose (db shape from s001 + daemon), db-safe reload loop, engine-agnostic lint, results writeup with timings and go/no-go for phase 2.\""
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-0101",
+          "title": "Build container: Dockerfile.build with pinned rust toolchain; build script (honours FS3_ENGINE, default docker) mounting source read-only + two NAMED cache volumes (cargo registry, target dir); builds the POC daemon for aarch64 linux from the mac host; cache/output volumes use EXPLICIT fixed names (compose declares them with `name:`/`external: true` so `engine run -v` and compose mount the SAME volumes despite compose's project-name prefixing); builds run `cargo build --locked`",
+          "state": "checked",
+          "done": "#done_when/tk-0101",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002",
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ]
+        },
+        {
+          "id": "tk-0102",
+          "title": "Throwaway /health daemon: one minimal rust binary (single file, smallest dependency surface) answering GET /health with 200 {\"status\":\"ok\"} - no config, no other endpoints; Cargo.lock generated and kept in the POC crate (source is mounted read-only - cargo must never need to write it)",
+          "state": "checked",
+          "done": "#done_when/tk-0102",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ]
+        },
+        {
+          "id": "tk-0103",
+          "title": "POC compose: db service copied from s001's shape (pgvector:pg16, named volume, healthcheck, distinct port) + daemon service running the built binary from a shared volume, local-only port binds; compose volume blocks pin explicit `name:` matching the build script's volumes, and the paved down NEVER deletes cache volumes (warm cache survives down/up)",
+          "state": "checked",
+          "done": "#done_when/tk-0103",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
+        },
+        {
+          "id": "tk-0104",
+          "title": "Reload loop script: rebuild in the build container then restart ONLY the daemon service; prove the db container's StartedAt is unchanged across two consecutive reloads",
+          "state": "checked",
+          "done": "#done_when/tk-0104",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002"
+          ]
+        },
+        {
+          "id": "tk-0105",
+          "title": "Engine-agnostic proof: every script honours FS3_ENGINE; `compose config` validates the file; lint script greps for Docker-exclusive features (develop/watch, docker-only extensions) and passes",
+          "state": "checked",
+          "done": "#done_when/tk-0105",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0006"
+          ]
+        },
+        {
+          "id": "tk-0106",
+          "title": "POC results writeup assets/poc/docker-results.md: cold vs warm build timings, reload timings, learnings, recommended phase-2 file layout and verb->script mapping, go/no-go verdict",
+          "state": "checked",
+          "done": "#done_when/tk-0106",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002",
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {
+        "tk-0101": [
+          {
+            "id": "dw-0101",
+            "assertion": "file(1) on the output reports an ELF aarch64 executable, built from the mac host entirely inside the build container",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+          },
+          {
+            "id": "dw-0102",
+            "assertion": "after a 1-line source change, the containerized rebuild completes without recompiling dependencies; cold and warm timings recorded",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+          }
+        ],
+        "tk-0102": [
+          {
+            "id": "dw-0103",
+            "assertion": "curl inside the container network returns 200 {\"status\":\"ok\"} from /health",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          }
+        ],
+        "tk-0103": [
+          {
+            "id": "dw-0104",
+            "assertion": "POC stack up green; /health reachable from the host; `CREATE EXTENSION IF NOT EXISTS vector` succeeds in the db service",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          },
+          {
+            "id": "dw-0105",
+            "assertion": "db data survives stack down/up via the named volume",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          }
+        ],
+        "tk-0104": [
+          {
+            "id": "dw-0106",
+            "assertion": "across two consecutive reload-script runs the db container StartedAt (engine inspect) is unchanged while the daemon container's changes",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          }
+        ],
+        "tk-0105": [
+          {
+            "id": "dw-0107",
+            "assertion": "lint script exits 0; `compose config` validates; running any script with FS3_ENGINE=podman changes only the engine binary invoked (dry-run acceptable)",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0006"
+          }
+        ],
+        "tk-0106": [
+          {
+            "id": "dw-0108",
+            "assertion": "docker-results.md exists with timings table, learnings, phase-2 layout recommendation, and an explicit go/no-go",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          }
+        ]
+      }
+    }
+  ]
+}
