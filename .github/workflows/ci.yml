@@ -1,0 +1,58 @@
+# CI gate (PRD req 46). Every push to main proves the tree on Linux exactly
+# as `harness checks` does locally. Linux is the only checking platform:
+# macOS/Windows builds are release-only and never gated (plan 004).
+#
+# The store tier needs Postgres+pgvector; the service container below mirrors
+# docker-compose.yml (pgvector/pgvector:pg16). Tiers above store keep CI
+# endpoint-free — no API keys, no network services (GITHUB_TOKEN only).
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+
+env:
+  FS3_TEST_DATABASE_URL: postgres://flowspace3:flowspace3@localhost:5432/flowspace3
+  CARGO_TERM_COLOR: always
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: flowspace3
+          POSTGRES_PASSWORD: flowspace3
+          POSTGRES_DB: flowspace3
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U flowspace3 -d flowspace3"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Installs exactly what rust-toolchain.toml pins (channel=stable,
+      # rustfmt+clippy) — same toolchain the repo's own convention selects.
+      - name: Install pinned toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: fmt
+        run: cargo fmt --all --check
+
+      - name: clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: test
+        run: cargo test --workspace
+
+      - name: arch drift
+        run: cargo run --quiet -p fs3-testkit --bin fs3-arch-check
