@@ -315,12 +315,23 @@ pub fn check(graph: &Graph, allowlist: &Allowlist) -> Vec<Violation> {
     violations
 }
 
-/// Absolute path to this workspace's root manifest, resolved at compile time so
-/// the check never depends on the caller's working directory.
+/// Absolute path to this workspace's root manifest, found by walking up from
+/// this crate's manifest dir until a manifest declaring `[workspace]` appears,
+/// so the check never depends on the caller's working directory or on how deep
+/// in the tree this crate lives.
 pub fn workspace_manifest_path() -> std::path::PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("Cargo.toml")
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    for ancestor in dir.ancestors().skip(1) {
+        let candidate = ancestor.join("Cargo.toml");
+        if let Ok(text) = std::fs::read_to_string(&candidate)
+            && text.contains("[workspace]")
+        {
+            return candidate;
+        }
+    }
+    // Fall back to the historical sibling assumption; `cargo metadata` will
+    // name the missing path in its error if this is wrong.
+    dir.join("..").join("Cargo.toml")
 }
 
 /// Read the live workspace graph by shelling out to `cargo metadata`.

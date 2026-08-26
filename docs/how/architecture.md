@@ -22,7 +22,7 @@ Read this before adding a file.
    `Summarizer` (online API vs local model — PRD req 8). Everything else is
    concrete: the parser, git ops, the queue, the store. **A third port is
    stop-and-ask.**
-4. **One composition root.** `daemon/src/wiring.rs` reads config and wires
+4. **One composition root.** `crates/daemon/src/wiring.rs` reads config and wires
    concrete adapters into `Arc<dyn Port>`. That `match` *is* the entire IoC
    container. `dyn` for service seams (dispatch cost ≪ I/O); generics only in
    proven hot loops.
@@ -35,16 +35,16 @@ Read this before adding a file.
 
 ```
 flowspace3/                     (cargo workspace)
-├── core/       fs3-core       domain types (Element, BlobRef) + pure logic
+├── crates/core/       fs3-core       domain types (Element, BlobRef) + pure logic
 │                              (classify, needs_summary, config types)
 │                              + the two PORT traits. Depends on ~nothing.
-├── parsers/    fs3-parsers    tree-sitter grammars → core types.   → core
-├── providers/  fs3-providers  OpenAI impls of the ports.           → core
-├── store/      fs3-store      sqlx repos + migrations.             → core
-├── testkit/    fs3-testkit    fakes, contract harnesses, the       → core
+├── crates/parsers/    fs3-parsers    tree-sitter grammars → core types.   → core
+├── crates/providers/  fs3-providers  OpenAI impls of the ports.           → core
+├── crates/store/      fs3-store      sqlx repos + migrations.             → core
+├── crates/testkit/    fs3-testkit    fakes, contract harnesses, the       → core
 │                              architecture check. A shipped crate.
-├── daemon/     fs3-daemon     axum HTTP + COMPOSITION ROOT         → all above
-└── cli/        fs3-cli        `flowspace3` binary, HTTP client.    → core
+├── crates/daemon/     fs3-daemon     axum HTTP + COMPOSITION ROOT         → all above
+└── crates/cli/        fs3-cli        `flowspace3` binary, HTTP client.    → core
 ```
 
 Directory names are short; package names are prefixed `fs3-` (`core` is a
@@ -82,12 +82,12 @@ pub trait Summarizer: Send + Sync {
 
 Both use `#[async_trait]` rather than native `async fn` in traits: native async
 fns are still not object-safe, and both seams are used as `Arc<dyn Port>`.
-`core/src/ports.rs` carries a doc-test that will stop compiling the day that
+`crates/core/src/ports.rs` carries a doc-test that will stop compiling the day that
 stops being true.
 
 ## The composition root
 
-`daemon/src/wiring.rs`, in full shape:
+`crates/daemon/src/wiring.rs`, in full shape:
 
 ```rust
 let embedder: Arc<dyn Embedder> = match &config.embedder {
@@ -131,12 +131,12 @@ defaults hides a typo behind a running daemon.
 
 Every tier has exactly one exemplar in this repo. Copy the shape:
 
-- core unit — `core/src/classify.rs` (`declaration_gate_rejects_…`)
-- parser fixture — `parsers/tests/fixture_elements.rs`
-- port contract — `testkit/tests/fakes_contract.rs` + `providers/tests/openai_contract.rs`
-- PG integration — `store/tests/pg_round_trip.rs`
-- daemon integration — `daemon/tests/health.rs`
-- CLI end-to-end — `cli/tests/ping.rs`
+- core unit — `crates/core/src/classify.rs` (`declaration_gate_rejects_…`)
+- parser fixture — `crates/parsers/tests/fixture_elements.rs`
+- port contract — `crates/testkit/tests/fakes_contract.rs` + `crates/providers/tests/openai_contract.rs`
+- PG integration — `crates/store/tests/pg_round_trip.rs`
+- daemon integration — `crates/daemon/tests/health.rs`
+- CLI end-to-end — `crates/cli/tests/ping.rs`
 
 Integration tests **fail** when docker is absent; they do not skip. The failure
 names `docker compose up -d`. A silently-skipped integration test is how a store
@@ -149,11 +149,11 @@ Rules that only live in a document decay. These are mechanical:
 | Rule | Enforced by |
 |---|---|
 | Dependency direction, undeclared imports, cycles | Cargo |
-| Refused *declared* edges (`sqlx` in core, `axum` in parsers) | `testkit/arch-allowlist.toml` + `fs3-arch-check` |
+| Refused *declared* edges (`sqlx` in core, `axum` in parsers) | `crates/testkit/arch-allowlist.toml` + `fs3-arch-check` |
 | No mocking frameworks, anywhere, in any table | the same check, with its own message |
 | Formatting, lints | `cargo fmt --check`, `clippy -D warnings` |
 
-`testkit/arch-allowlist.toml` is an **allow-list**, not a deny-list: any direct
+`crates/testkit/arch-allowlist.toml` is an **allow-list**, not a deny-list: any direct
 dependency edge nobody added deliberately fails the check. Adding a dependency
 costs one considered line, which is the point.
 
@@ -165,8 +165,8 @@ harness checks
 ```
 
 The check's own failure mode is proved re-runnably, not by a violate-and-revert
-ritual: `testkit/fixtures/arch/drifted-metadata.json` is a committed manifest
-with `sqlx` in the functional core, and `testkit/tests/arch_drift.rs` asserts the
+ritual: `crates/testkit/fixtures/arch/drifted-metadata.json` is a committed manifest
+with `sqlx` in the functional core, and `crates/testkit/tests/arch_drift.rs` asserts the
 check goes red on it — on every `cargo test`.
 
 ## Refused anti-patterns

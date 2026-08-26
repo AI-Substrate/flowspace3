@@ -82,13 +82,13 @@ trait, how is it tested", and it is enforced mechanically rather than by review.
 The short version — seven crates, dependencies pointing inward:
 
 ```
-core/       domain types + pure logic + the two PORT traits.  → nothing
-parsers/    tree-sitter grammars → core types.                → core
-providers/  OpenAI implementations of the ports.              → core
-store/      sqlx repositories + migrations.                   → core
-testkit/    fakes, contract harnesses, the arch check.        → core
-daemon/     axum HTTP + the composition root.                 → all above
-cli/        the `flowspace3` binary, a thin HTTP client.      → core
+crates/core/       domain types + pure logic + the two PORT traits.  → nothing
+crates/parsers/    tree-sitter grammars → core types.                → core
+crates/providers/  OpenAI implementations of the ports.              → core
+crates/store/      sqlx repositories + migrations.                   → core
+crates/testkit/    fakes, contract harnesses, the arch check.        → core
+crates/daemon/     axum HTTP + the composition root.                 → all above
+crates/cli/        the `flowspace3` binary, a thin HTTP client.      → core
 ```
 
 Exactly two trait ports exist (`Embedder`, `Summarizer`); a third is

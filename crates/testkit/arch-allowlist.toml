@@ -6,15 +6,15 @@
 #
 # Checked by `cargo run -p fs3-testkit --bin fs3-arch-check` (wired into
 # `harness checks`). The check's own negative proof lives in
-# `testkit/tests/arch_drift.rs` against `fixtures/arch/drifted-metadata.json`.
+# `crates/testkit/tests/arch_drift.rs` against `fixtures/arch/drifted-metadata.json`.
 #
-#   core/       domain types + pure logic + the two PORT traits. Depends on ~nothing.
-#   parsers/    tree-sitter grammars -> core types. Concrete.        -> core
-#   providers/  OpenAI / local impls of the ports.                   -> core
-#   store/      sqlx repos, migrations, queue table. Concrete.       -> core
-#   testkit/    fakes, contract harnesses. A real shipped crate.     -> core
-#   daemon/     axum HTTP, workers, COMPOSITION ROOT                 -> all above
-#   cli/        `flowspace3` binary - thin HTTP client of daemon.    -> core
+#   crates/core/       domain types + pure logic + the two PORT traits. Depends on ~nothing.
+#   crates/parsers/    tree-sitter grammars -> core types. Concrete.        -> core
+#   crates/providers/  OpenAI / local impls of the ports.                   -> core
+#   crates/store/      sqlx repos, migrations, queue table. Concrete.       -> core
+#   crates/testkit/    fakes, contract harnesses. A real shipped crate.     -> core
+#   crates/daemon/     axum HTTP, workers, COMPOSITION ROOT                 -> all above
+#   crates/cli/        `flowspace3` binary - thin HTTP client of daemon.    -> core
 
 # Refused workspace-wide (workshop 001 rule 5: fakes over mocks). Reported with
 # a distinct message so a review can cite the rule by name.

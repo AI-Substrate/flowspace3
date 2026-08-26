@@ -47,23 +47,23 @@ Settle fs3's architecture: how hexagonal/DI/IoC is expressed in Rust, which seam
 1. **The workspace is the architecture.** Boundaries are crates; Cargo makes an undeclared dependency a build error and forbids cycles. No layer folders inside crates.
 2. **Functional core, imperative shell.** `core` is pure data-in/data-out (no tokio, no sqlx, no HTTP); effects live at the edges. Core tests need zero mocks.
 3. **A trait earns its existence only when a second real implementation exists or is firmly planned.** fs3 v1 has exactly two ports: `Embedder` and `Summarizer` (online vs local — req 8). Everything else is concrete: parser (tree-sitter direct IS the point), git ops, queue, store (PG is a requirement — req 4 — not a variable).
-4. **One composition root.** `daemon/main.rs` reads config and wires concrete adapters into `Arc<dyn Port>`; the config `match` is the entire IoC container. `dyn` for service seams (dispatch cost ≪ I/O), generics only in proven hot loops.
+4. **One composition root.** `crates/daemon/main.rs` reads config and wires concrete adapters into `Arc<dyn Port>`; the config `match` is the entire IoC container. `dyn` for service seams (dispatch cost ≪ I/O), generics only in proven hot loops.
 5. **Fakes over mocks, shipped as infrastructure.** Rich reusable fakes live in a `testkit` crate; `provider = "fake"` is a legal config value (whole stack runs offline, no keys); contract tests keep fakes honest against real impls.
 
 ## Crate layout & dependency direction
 
 ```
 flowspace3/                     (cargo workspace)
-├── core/       domain types (Element, Turn, BlobRef) + pure logic
+├── crates/core/       domain types (Element, Turn, BlobRef) + pure logic
 │               (classify, chunk, tree-diff planning, ranking, needs_summary)
 │               + the two PORT traits: Embedder, Summarizer. Depends on ~nothing.
-├── parsers/    tree-sitter grammars → core types. Concrete.        → core
-├── providers/  OpenAI / Azure / ort-local impls of the ports.      → core
-├── store/      sqlx repos, migrations, queue table. Concrete.      → core
-├── testkit/    FakeEmbedder, FakeSummarizer, fixtures, contract    → core
+├── crates/parsers/    tree-sitter grammars → core types. Concrete.        → core
+├── crates/providers/  OpenAI / Azure / ort-local impls of the ports.      → core
+├── crates/store/      sqlx repos, migrations, queue table. Concrete.      → core
+├── crates/testkit/    FakeEmbedder, FakeSummarizer, fixtures, contract    → core
 │               test harness. A real shipped crate.
-├── daemon/     axum HTTP, watcher, queue workers, COMPOSITION ROOT → all above
-└── cli/        `flowspace3` binary — thin HTTP client of daemon.   → (core for types)
+├── crates/daemon/     axum HTTP, watcher, queue workers, COMPOSITION ROOT → all above
+└── crates/cli/        `flowspace3` binary — thin HTTP client of daemon.   → (core for types)
 ```
 
 Rule of thumb for placement: **pure logic → core · produces core types from the world → parsers · implements a port → providers · touches PG → store · wires or serves → daemon**.

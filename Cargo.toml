@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["core", "parsers", "providers", "store", "testkit", "daemon", "cli"]
+members = ["crates/core", "crates/parsers", "crates/providers", "crates/store", "crates/testkit", "crates/daemon", "crates/cli"]
 
 [workspace.package]
 version = "0.1.0"
@@ -9,13 +9,13 @@ license = "MIT"
 repository = "https://github.com/AI-Substrate/flowspace3"
 
 # The crate graph of workshop 001. Direction is enforced mechanically by
-# `cargo run -p fs3-testkit --bin fs3-arch-check` (see testkit/arch-allowlist.toml).
+# `cargo run -p fs3-testkit --bin fs3-arch-check` (see crates/testkit/arch-allowlist.toml).
 [workspace.dependencies]
-fs3-core = { path = "core" }
-fs3-parsers = { path = "parsers" }
-fs3-providers = { path = "providers" }
-fs3-store = { path = "store" }
-fs3-testkit = { path = "testkit" }
+fs3-core = { path = "crates/core" }
+fs3-parsers = { path = "crates/parsers" }
+fs3-providers = { path = "crates/providers" }
+fs3-store = { path = "crates/store" }
+fs3-testkit = { path = "crates/testkit" }
 
 anyhow = "1"
 async-trait = "0.1"
