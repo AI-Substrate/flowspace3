@@ -100,7 +100,7 @@ _No entries._
 ## Execution Guardrails
 
 - Authorities bind: workshops 002/003/004 + fs3-architecture.md; contradiction = stop-and-ask.
-- Only the daemon writes PG (PRD 20); the CLI never opens a pool.
+- Only the daemon writes PG on the DATA plane (PRD 20); the CLI never opens a pool — with ONE named exception: `flowspace3 doctor` orchestrates fs3-store's admin fns in-process (CONTROL-plane bootstrap: create db, migrate — it must work with the daemon down). The fs3-cli->fs3-store allowlist edge names doctor as its sole user; every other verb is a thin HTTP client.
 - Enrichment stays keyed by raw_hash (D2) - anything keyed by element id is drift.
 - Fake provider for all CI; keyed Azure only for the recorded live run.
 - Shared-tree commit discipline per ruling 2026-08-26 (file-scoped adds, push-first, scoped fmt).

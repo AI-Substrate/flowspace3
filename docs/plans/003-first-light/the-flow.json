@@ -178,6 +178,47 @@
           "importance": "optional"
         }
       }
+    },
+    {
+      "id": "NOD-002",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-26T05:20:09.603Z",
+      "details": {
+        "node": "backpressure-94b4c076b82f",
+        "type": "backpressure",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
+    },
+    {
+      "id": "UPD-006",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-26T05:20:09.732Z",
+      "details": {
+        "node": "backpressure-94b4c076b82f",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-006",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-26T05:20:09.862Z",
+      "details": {
+        "node": "backpressure-94b4c076b82f",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
     }
   ],
   "nodes": [
@@ -457,6 +498,32 @@
         }
       ],
       "ran_at": "2026-08-26T05:13:55.183Z"
+    },
+    {
+      "id": "backpressure-94b4c076b82f",
+      "type": "backpressure",
+      "label": "Backpressure (re-survey: doctor exception)",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-08-26T05:20:09.603Z",
+      "modified_at": "2026-08-26T05:20:09.862Z",
+      "command": "run /eng-harness-flow --hook pre-coding --json",
+      "chore": {
+        "kind": "command",
+        "importance": "optional"
+      },
+      "branch_of": "plan",
+      "comments": [
+        {
+          "at": "2026-08-26T05:20:09.732Z",
+          "text": "verdict:re-surveyed reason:guardrail amended (doctor = named control-plane exception, option A); rows unchanged. basis_sha256:94b4c076b82fbb10a72f9ab7bf6d6966d7d885f9588bcf8358542721219a37b2",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-26T05:20:09.862Z"
     }
   ],
   "plan_dir": "docs/plans/003-first-light"
