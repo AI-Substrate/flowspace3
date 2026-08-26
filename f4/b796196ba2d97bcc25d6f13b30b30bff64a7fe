@@ -1,0 +1,30 @@
+crates/core/src/catalog.rs
+  h_9e71e8b09f7cf2 297-313,410
+crates/daemon/src/answer.rs
+  h_9e71e8b09f7cf2 87-104
+crates/daemon/src/batch.rs
+  h_9e71e8b09f7cf2 211,281,319
+crates/daemon/src/runner.rs
+  h_9e71e8b09f7cf2 81-122,142-143,150,157,276,337,339-369,422,462-478,480-500,568-605,639,645
+crates/daemon/tests/rate_limit_park.rs
+  h_9e71e8b09f7cf2 1-167
+crates/store/migrations/0007_job_parks.sql
+  h_9e71e8b09f7cf2 1-17
+crates/store/src/jobs.rs
+  h_9e71e8b09f7cf2 34-41,125,138,184,199,230-262
+crates/store/src/lib.rs
+  h_9e71e8b09f7cf2 43
+docs/reference/error-codes.md
+  h_9e71e8b09f7cf2 133-141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f4b796196ba2d97bcc25d6f13b30b30bff64a7fe",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
