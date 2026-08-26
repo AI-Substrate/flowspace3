@@ -1,0 +1,25 @@
+docs/plans/001-fs3-foundations/assets/workshops/001-architecture.md
+  s_15d888f4b629c1::t_ea4ae1f871263c 50,57,60-63,65-66
+README.md
+  s_15d888f4b629c1::t_ea4ae1f871263c 85-91
+docs/how/architecture.md
+  s_15d888f4b629c1::t_ea4ae1f871263c 25,38,41-44,46-47,85,90,134-139,152,156,168-169
+crates/testkit/arch-allowlist.toml
+  s_15d888f4b629c1::t_ea4ae1f871263c 1-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c6c34ef303d5f480c70b2e919c537c576a4516be",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
