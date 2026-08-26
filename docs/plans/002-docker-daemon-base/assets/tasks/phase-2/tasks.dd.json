@@ -28,12 +28,13 @@
             "../../../plan.dd.json#acceptance_criteria/ac-0001",
             "../../../plan.dd.json#acceptance_criteria/ac-0002",
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
-          ]
+          ],
+          "note": "SUPERSEDED by ruling 2026-08-26-daemon-native-on-host: compose stays db-only permanently; daemon runs natively on host - no compose daemon service to wire. DB-path proof intent carried by dw-0204."
         },
         {
           "id": "tk-0202",
           "title": "docker/ dir: Dockerfile.build, Dockerfile.run, and scripts (build, reload, up, down, status, exec, run) - all honouring FS3_ENGINE; wire the real fs3-daemon binary (replaces the POC daemon)",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0202",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0002",
@@ -43,7 +44,7 @@
         {
           "id": "tk-0203",
           "title": "Docker harness extension: verbs shell through to docker/scripts/*; docs/how/docker.md; README quick-start pointer; `harness checks` stays green",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0203",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0005"
@@ -52,7 +53,7 @@
         {
           "id": "tk-0204",
           "title": "In-container test exemplar: the one-shot run verb executes `cargo test --workspace` inside the build container and passes; documented as the paved way to run things in the stack; the run verb joins the compose network and exports FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@db:5432/flowspace3 (store/tests/pg_round_trip.rs PANICS without reachable Postgres; the shipped default targets the host's 127.0.0.1:5433 which is the container itself in-network)",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0204",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0005"
@@ -75,15 +76,16 @@
           {
             "id": "dw-0202",
             "assertion": "each script runs green on the installed engine; reload leaves db StartedAt unchanged; no image rebuild occurs on a source change",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002",
+            "note": "reload clause superseded by ruling 2026-08-26-daemon-native-on-host: no compose daemon service exists to reload; db StartedAt invariance was proven in phase 1 and the paved surface never touches the db service"
           }
         ],
         "tk-0203": [
           {
             "id": "dw-0203",
             "assertion": "the harness surface lists the docker verbs; each verb runs green; docs/how/docker.md exists; harness checks green",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0005"
           }
         ],
@@ -91,7 +93,7 @@
           {
             "id": "dw-0204",
             "assertion": "containerized `cargo test --workspace` passes via the paved run verb, with the container attached to the compose network and FS3_TEST_DATABASE_URL pointing at db:5432",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0005"
           }
         ]

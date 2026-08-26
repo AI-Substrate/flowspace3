@@ -35,10 +35,10 @@
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tk-0201 | Extend root docker-compose.yml with the daemon service (binary from the build-container output volume, restart per-service); db service definition untouched from s001; daemon service mounts a container-scoped config dir via FS3_CONFIG_DIR with database.url=postgres://flowspace3:flowspace3@db:5432/flowspace3 (in-container 127.0.0.1:5433 is unreachable and connect_lazy hides it - the DB path must be PROVEN, not assumed) | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0201](#tk-0201) | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0003](../../../plan.dd.md#acceptance-criteria) |
-| tk-0202 | docker/ dir: Dockerfile.build, Dockerfile.run, and scripts (build, reload, up, down, status, exec, run) - all honouring FS3_ENGINE; wire the real fs3-daemon binary (replaces the POC daemon) | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0202](#tk-0202) | — | — | [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0006](../../../plan.dd.md#acceptance-criteria) |
-| tk-0203 | Docker harness extension: verbs shell through to docker/scripts/*; docs/how/docker.md; README quick-start pointer; `harness checks` stays green | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0203](#tk-0203) | — | — | [ac-0005](../../../plan.dd.md#acceptance-criteria) |
-| tk-0204 | In-container test exemplar: the one-shot run verb executes `cargo test --workspace` inside the build container and passes; documented as the paved way to run things in the stack; the run verb joins the compose network and exports FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@db:5432/flowspace3 (store/tests/pg_round_trip.rs PANICS without reachable Postgres; the shipped default targets the host's 127.0.0.1:5433 which is the container itself in-network) | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0204](#tk-0204) | — | — | [ac-0005](../../../plan.dd.md#acceptance-criteria) |
+| tk-0201 | Extend root docker-compose.yml with the daemon service (binary from the build-container output volume, restart per-service); db service definition untouched from s001; daemon service mounts a container-scoped config dir via FS3_CONFIG_DIR with database.url=postgres://flowspace3:flowspace3@db:5432/flowspace3 (in-container 127.0.0.1:5433 is unreachable and connect_lazy hides it - the DB path must be PROVEN, not assumed) | — | — | [ ] unchecked | SUPERSEDED by ruling 2026-08-26-daemon-native-on-host: compose stays db-only permanently; daemon runs natively on host - no compose daemon service to wire. DB-path proof intent carried by dw-0204. | — | [ ] 0/1 [tk-0201](#tk-0201) | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0003](../../../plan.dd.md#acceptance-criteria) |
+| tk-0202 | docker/ dir: Dockerfile.build, Dockerfile.run, and scripts (build, reload, up, down, status, exec, run) - all honouring FS3_ENGINE; wire the real fs3-daemon binary (replaces the POC daemon) | — | — | [x] checked | — | — | [x] 1/1 [tk-0202](#tk-0202) | — | — | [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0006](../../../plan.dd.md#acceptance-criteria) |
+| tk-0203 | Docker harness extension: verbs shell through to docker/scripts/*; docs/how/docker.md; README quick-start pointer; `harness checks` stays green | — | — | [x] checked | — | — | [x] 1/1 [tk-0203](#tk-0203) | — | — | [ac-0005](../../../plan.dd.md#acceptance-criteria) |
+| tk-0204 | In-container test exemplar: the one-shot run verb executes `cargo test --workspace` inside the build container and passes; documented as the paved way to run things in the stack; the run verb joins the compose network and exports FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@db:5432/flowspace3 (store/tests/pg_round_trip.rs PANICS without reachable Postgres; the shipped default targets the host's 127.0.0.1:5433 which is the container itself in-network) | — | — | [x] checked | — | — | [x] 1/1 [tk-0204](#tk-0204) | — | — | [ac-0005](../../../plan.dd.md#acceptance-criteria) |
 
 <a id="done-when"></a>
 
@@ -52,18 +52,18 @@
 
 ### tk-0202
 
-| id | assertion | state | pressure |
-| --- | --- | --- | --- |
-| dw-0202 | each script runs green on the installed engine; reload leaves db StartedAt unchanged; no image rebuild occurs on a source change | [ ] unchecked | [bp-0002](../../backpressure.dd.md#rows) |
+| id | assertion | state | pressure | note |
+| --- | --- | --- | --- | --- |
+| dw-0202 | each script runs green on the installed engine; reload leaves db StartedAt unchanged; no image rebuild occurs on a source change | [x] checked | [bp-0002](../../backpressure.dd.md#rows) | reload clause superseded by ruling 2026-08-26-daemon-native-on-host: no compose daemon service exists to reload; db StartedAt invariance was proven in phase 1 and the paved surface never touches the db service |
 
 ### tk-0203
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0203 | the harness surface lists the docker verbs; each verb runs green; docs/how/docker.md exists; harness checks green | [ ] unchecked | [bp-0005](../../backpressure.dd.md#rows) |
+| dw-0203 | the harness surface lists the docker verbs; each verb runs green; docs/how/docker.md exists; harness checks green | [x] checked | [bp-0005](../../backpressure.dd.md#rows) |
 
 ### tk-0204
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0204 | containerized `cargo test --workspace` passes via the paved run verb, with the container attached to the compose network and FS3_TEST_DATABASE_URL pointing at db:5432 | [ ] unchecked | [bp-0005](../../backpressure.dd.md#rows) |
+| dw-0204 | containerized `cargo test --workspace` passes via the paved run verb, with the container attached to the compose network and FS3_TEST_DATABASE_URL pointing at db:5432 | [x] checked | [bp-0005](../../backpressure.dd.md#rows) |
