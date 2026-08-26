@@ -27,12 +27,19 @@ on each Release, a curl installer, Dependabot.
   asset names freeze at one constant in `install.sh` / `install.ps1`.
 
 
-- **`scratch/**` is shared mutable ground — READ side included**: exclude
-  `scratch/` from repo-wide greps/globs/verification sweeps unless the tree
-  is yours; a sibling's detached worktree carries foreign-sha content that
-  pattern-hunting will happily match (DL-012 addendum). Worktrees are
-  seat-scoped (`scratch/verify-<seat> <sha> --detach`) and never
-  force-removed by anyone but their owner.
+- **`scratch/**` is shared mutable ground — READ and WRITE sides both count**
+  (DL-012 + addenda). Mechanism: `scratch/` is GITIGNORED, so the exposure is
+  exactly the moment you DISABLE gitignore filtering in a sweep (hunting build
+  output, dotfiles, `.env`) — sibling worktrees then join your results wearing
+  main relative paths. Corollary: cargo gates are structurally IMMUNE
+  (workspace members are path-listed; no manifests under `scratch/`) — never
+  distrust a green gate on this account. Worktrees are seat-scoped
+  (`scratch/verify-<seat> <sha> --detach`) and never force-removed by anyone
+  but their owner — `git worktree list` shows paths, not owners, so skipping
+  the seat naming disarms the rule for everyone. **Mutation checks**
+  (disable-the-fix-watch-it-fail) run in your seat-scoped worktree only — in
+  the shared tree a deliberately-broken state fails OTHER seats' tests while
+  naming YOUR file.
 - The pgvector image has no HEALTHCHECK → GitHub service health probes fail
   with "map has no entry for key Health". Observe readiness yourself.
 - Port discipline matters: tests spawn the real daemon against the SHIPPED
