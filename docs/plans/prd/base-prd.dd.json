@@ -389,7 +389,7 @@
           "title": "CI: cross-platform build + release",
           "requirement": "CI builds all platform binaries (mac/linux/windows - the build container from plan 002) and releases via Google release-please: semantic versioning, a GitHub Release per version carrying each platform binary, and the install script (req 46) pulling from the latest release. (Jordan, 2026-08-26.)",
           "state": "unchecked",
-          "note": "CI gate PROVEN (green 32940220912, red-probe 32940760574); release workflow unproven — matrix re-proof post-fold in flight, v0.2.0 PR held on Jordan's word"
+          "note": "CI gate PROVEN (green 32940220912, red-probe 32940760574). RELEASE MATRIX RULING (Jordan, 2026-08-26): Intel Macs NOT supported - three binaries (aarch64-apple-darwin, aarch64/x86_64-unknown-linux-gnu); musl+windows-gnu dropped (ort-sys has no prebuilt ONNX runtime for those triples, observed). Mac tier = build + smoke + engine-independent tests on real hardware. v0.2.0 tag cycled to ruling sha; asset verification in flight."
         },
         {
           "id": "req-0048",

@@ -24,12 +24,13 @@ curl -fsSL https://raw.githubusercontent.com/AI-Substrate/flowspace3/main/instal
 Installs to `/usr/local/bin` when permitted, otherwise `~/.local/bin`.
 
 **Option B — direct download**: take `flowspace3-<your-triple>` from the
-[latest release](https://github.com/AI-Substrate/flowspace3/releases/latest),
-`chmod +x` it, and put it on your `PATH`. Published triples:
-`aarch64-apple-darwin`, `x86_64-apple-darwin`, `aarch64-unknown-linux-gnu`,
+[latest release](https://github.com/AI-Substrate/flowspace3/releases/latest)
+and put it on your `PATH`. Published triples:
+`aarch64-apple-darwin`, `aarch64-unknown-linux-gnu`,
 `x86_64-unknown-linux-gnu`.
 
-Windows: `install.ps1` ships in the repo but is **not yet validated**.
+**Intel Macs are not supported.** Windows: `install.ps1` ships in the repo
+but is **not yet validated**.
 
 **Releases**: a rolling release PR (`chore(main): release x.y.z`) is kept up
 to date automatically; merging it tags the semver version and publishes.

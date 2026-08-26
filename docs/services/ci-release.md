@@ -16,8 +16,9 @@ on each Release, a curl installer, Dependabot.
   (host port 5433 so the daemon's shipped default address holds; readiness is
   observed manually because the image defines no HEALTHCHECK).
 - **macOS/Windows never gated**: mac builds are release-only and native on
-  macOS runners (Apple SDK licensing forbids Darwin builds in Linux
-  containers); windows binaries are produced-not-run.
+  macOS runners; windows binaries are produced-not-run. **Intel Macs are not
+  supported** (Jordan, 2026-08-26) — the matrix is Apple Silicon only:
+  three shipped binaries (aarch64-apple-darwin, aarch64/x86_64-linux-gnu).
 - **release-please `simple` type**: the repo's root Cargo.toml is a virtual
   workspace (`[workspace.package]`) which the `rust` strategy can't drive;
   version truth lives in `.release-please-manifest.json` + git tags.

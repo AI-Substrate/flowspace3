@@ -28,6 +28,12 @@ esac
 
 case "$arch" in
   arm64|aarch64) arch_part="aarch64" ;;
+  x86_64)
+    if [ "$os" = "Darwin" ]; then
+      echo "Intel Macs are not supported (Apple Silicon only)." >&2
+      exit 1
+    fi
+    arch_part="x86_64" ;;
   *) echo "unsupported architecture: $arch" >&2; exit 1 ;;
 esac
 

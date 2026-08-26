@@ -83,8 +83,9 @@ jobs:
         include:
           - target: aarch64-apple-darwin
             runner: macos-14
-          - target: x86_64-apple-darwin
-            runner: macos-13
+    # Intel Macs are NOT supported (Jordan, 2026-08-26): x86_64-apple-darwin
+    # was removed from the matrix; the release ships THREE binaries.
+
     steps:
       - uses: actions/checkout@v4
 
@@ -142,7 +143,7 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq file >/dev/null
           file dist/*
-          test "$(ls dist | wc -l)" -eq 4
+          test "$(ls dist | wc -l)" -eq 3
 
       - name: Attach binaries to the release
         env:
@@ -156,6 +157,6 @@ jobs:
           ---
           **Validation stances** (plan 004):
           - Linux binaries: built in the pinned plan-002 container; x86_64 smoke-run (\`--version\`) inside the container. Runtime tiers proven by CI on Linux only.
-          - macOS binaries: **built and run on real hardware** — smoke-run + fast unkeyed test tier on macOS runners (ruling 2026-08-26).
+          - macOS binaries (Apple Silicon only — **Intel Macs are not supported**, Jordan 2026-08-26): **built and run on real hardware** — smoke-run + engine-independent test tier on a macOS runner.
           - Windows binary: **not shipped yet** — ort-sys has no prebuilt ONNX runtime for windows-gnu/musl triples (observed 2026-08-26); revisit when ort supports them or moves to load-dynamic/source builds.
           - musl variants: not shipped for the same reason."
