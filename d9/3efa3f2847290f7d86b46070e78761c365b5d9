@@ -1,0 +1,26 @@
+crates/testkit/src/arch.rs
+  s_15d888f4b629c1::t_fa8ba6677df49a 356,363,368-370
+  s_15d888f4b629c1::t_e3e13924145603 353-355
+  s_15d888f4b629c1::t_541103fd2b5f67 357-362
+  s_15d888f4b629c1::t_fc909784eed1c4 364-367
+  s_15d888f4b629c1::t_46e2dadf4f131b 371-373
+crates/testkit/src/contract.rs
+  s_15d888f4b629c1::t_fa8ba6677df49a 181-190,195,199,204-205,210
+  s_15d888f4b629c1::t_ec2ce931bd36d8 66-72,173-180,191-194,196-198,200-203,206-209,211,339-365,401-431
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d93efa3f2847290f7d86b46070e78761c365b5d9",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
