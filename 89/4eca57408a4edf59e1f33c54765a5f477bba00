@@ -1,0 +1,16 @@
+crates/daemon/tests/watcher.rs
+  h_9e71e8b09f7cf2 332-349,353,366-377,379-396
+docs/services/watcher.md
+  h_9e71e8b09f7cf2 83-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "894eca57408a4edf59e1f33c54765a5f477bba00",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
