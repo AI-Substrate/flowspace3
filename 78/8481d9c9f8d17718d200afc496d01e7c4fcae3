@@ -1,0 +1,20 @@
+crates/daemon/src/enrich.rs
+  h_9e71e8b09f7cf2 285-312,324,330,336
+crates/daemon/tests/embed_dedupe.rs
+  h_9e71e8b09f7cf2 1-178
+crates/store/src/embeddings.rs
+  h_9e71e8b09f7cf2 17,69-115
+crates/store/src/lib.rs
+  h_9e71e8b09f7cf2 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "788481d9c9f8d17718d200afc496d01e7c4fcae3",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
