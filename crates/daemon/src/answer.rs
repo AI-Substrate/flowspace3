@@ -84,6 +84,24 @@ impl IntoFailure for fs3_core::Error {
             fs3_core::Error::Provider(_) => {
                 Failure::new(&catalog::PROVIDER_FAILED, self.to_string())
             }
+            // Congestion, not failure. The details carry what the SERVICE
+            // said, because the worker parks on the provider's schedule rather
+            // than inventing one — and `attempts` tells it how hard the
+            // adapter already tried, which is the difference between "briefly
+            // busy" and "genuinely saturated".
+            fs3_core::Error::RateLimited {
+                provider,
+                retry_after,
+                attempts,
+            } => {
+                let mut failure = Failure::new(&catalog::PROVIDER_RATE_LIMITED, self.to_string())
+                    .with_detail("provider", provider)
+                    .with_detail("provider_attempts", attempts);
+                if let Some(wait) = retry_after {
+                    failure = failure.with_detail("retry_after_secs", wait.as_secs_f64());
+                }
+                failure
+            }
             fs3_core::Error::InvalidConfig(_) => {
                 Failure::new(&catalog::CONFIG_INVALID, self.to_string())
             }

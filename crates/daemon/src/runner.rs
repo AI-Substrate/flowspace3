@@ -78,6 +78,48 @@ pub fn backoff(attempts: i32) -> Duration {
     Duration::from_secs(1 << attempts.clamp(1, 6))
 }
 
+/// How many times a job may be parked for congestion before we stop calling it
+/// congestion.
+///
+/// Parking deliberately costs no attempt, which means without a bound a
+/// permanently throttled provider would park a job forever and nothing would
+/// ever say so. Twenty parks against the schedule below is roughly twenty
+/// minutes of patience — long enough to ride out a real quota window, short
+/// enough that a misconfigured deployment surfaces the same day.
+pub const MAX_PARKS: i32 = 20;
+
+/// How long to park when the service did not say.
+///
+/// Exponential in the number of parks so far, floored at 5s and capped at 60s,
+/// then JITTERED. The jitter is not decoration: k jobs parked by one merged
+/// call would otherwise all wake in the same instant and arrive together at a
+/// provider that just asked us to slow down.
+#[must_use]
+pub fn park_delay(parks: i32, retry_after: Option<Duration>) -> Duration {
+    if let Some(wait) = retry_after {
+        // The service told us. Believe it, and add a little jitter anyway so a
+        // merged batch does not return as a thundering herd.
+        return wait + jitter(wait.as_millis() as u64 / 8);
+    }
+    let base = 5u64 << parks.clamp(0, 4);
+    let base = base.min(60);
+    Duration::from_secs(base) + jitter(base * 250)
+}
+
+/// A small pseudo-random spread, seeded from the clock.
+///
+/// Deliberately not a dependency: this needs to be unpredictable enough that
+/// two workers do not collide, not cryptographically random.
+fn jitter(span_ms: u64) -> Duration {
+    if span_ms == 0 {
+        return Duration::ZERO;
+    }
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |since| since.subsec_nanos() as u64);
+    Duration::from_millis(nanos % span_ms)
+}
+
 /// How long to wait after finding an empty queue before asking again.
 const IDLE_POLL: Duration = Duration::from_millis(250);
 
@@ -97,19 +139,22 @@ pub struct Drained {
     pub retried: usize,
     /// Jobs that failed terminally.
     pub failed: usize,
+    /// Jobs parked for provider congestion, costing no attempt.
+    pub parked: usize,
 }
 
 impl Drained {
     /// Total jobs settled this pass.
     #[must_use]
     pub fn total(&self) -> usize {
-        self.completed + self.retried + self.failed
+        self.completed + self.retried + self.failed + self.parked
     }
 
     fn absorb(&mut self, other: Drained) {
         self.completed += other.completed;
         self.retried += other.retried;
         self.failed += other.failed;
+        self.parked += other.parked;
     }
 }
 
@@ -228,6 +273,7 @@ async fn drain_embed(state: &AppState) -> Drained {
     };
 
     let attempts: BTreeMap<i64, i32> = jobs.iter().map(|job| (job.id, job.attempts)).collect();
+    let parks: BTreeMap<i64, i32> = jobs.iter().map(|job| (job.id, job.parks)).collect();
     let (batches, unreadable) = batch::plan(&jobs);
 
     let mut total = Drained::default();
@@ -288,21 +334,39 @@ async fn drain_embed(state: &AppState) -> Drained {
                 total.completed += 1;
             }
             Some(failure) => {
-                let again = failure.retryable && attempt < MAX_ATTEMPTS;
+                let parked_before = parks.get(&id).copied().unwrap_or(0);
                 let message = format!("{} {}", failure.code, failure.message);
-                tracing::warn!(id, kind = EMBED, attempt, retrying = again, "{message}");
-                let settled = if again {
-                    fs3_store::retry_job(&state.db, id, backoff(attempt), &message).await
-                } else {
-                    fs3_store::fail_job(&state.db, id, &message).await
-                };
-                if let Err(error) = settled {
-                    tracing::error!(%error, id, "cannot settle a failed embed job");
-                }
-                if again {
-                    total.retried += 1;
-                } else {
-                    total.failed += 1;
+                match verdict(&failure, attempt, parked_before) {
+                    Verdict::Park => {
+                        let delay = park_delay(parked_before, retry_after_of(&failure));
+                        tracing::warn!(
+                            id,
+                            kind = EMBED,
+                            parks = parked_before,
+                            wait_s = delay.as_secs(),
+                            "parked, no attempt spent: {message}"
+                        );
+                        if let Err(error) = fs3_store::park_job(&state.db, id, delay).await {
+                            tracing::error!(%error, id, "cannot park an embed job");
+                        }
+                        total.parked += 1;
+                    }
+                    Verdict::Retry => {
+                        tracing::warn!(id, kind = EMBED, attempt, retrying = true, "{message}");
+                        if let Err(error) =
+                            fs3_store::retry_job(&state.db, id, backoff(attempt), &message).await
+                        {
+                            tracing::error!(%error, id, "cannot settle a failed embed job");
+                        }
+                        total.retried += 1;
+                    }
+                    Verdict::Fail => {
+                        tracing::warn!(id, kind = EMBED, attempt, retrying = false, "{message}");
+                        if let Err(error) = fs3_store::fail_job(&state.db, id, &message).await {
+                            tracing::error!(%error, id, "cannot settle a failed embed job");
+                        }
+                        total.failed += 1;
+                    }
                 }
             }
         }
@@ -355,6 +419,7 @@ async fn report_progress(state: &AppState, phase: &str) {
 async fn settle(state: &AppState, job: Job) -> Drained {
     let id = job.id;
     let attempts = job.attempts;
+    let parks = job.parks;
     let kind = job.kind.clone();
     let key = job.dedupe_key.clone();
     // The human-readable subject, taken from the payload BEFORE dispatch
@@ -393,28 +458,46 @@ async fn settle(state: &AppState, job: Job) -> Drained {
             }
         }
         Err(failure) => {
-            let again = failure.retryable && attempts < MAX_ATTEMPTS;
             let message = format!("{} {}", failure.code, failure.message);
-            tracing::warn!(id, %kind, %key, attempts, retrying = again, "{message}");
-
-            let outcome = if again {
-                fs3_store::retry_job(&state.db, id, backoff(attempts), &message).await
-            } else {
-                fs3_store::fail_job(&state.db, id, &message).await
-            };
-            if let Err(error) = outcome {
-                tracing::error!(%error, id, "cannot settle a failed job");
-            }
-
-            if again {
-                Drained {
-                    retried: 1,
-                    ..Drained::default()
+            match verdict(&failure, attempts, parks) {
+                Verdict::Park => {
+                    let delay = park_delay(parks, retry_after_of(&failure));
+                    tracing::warn!(
+                        id,
+                        %kind,
+                        parks,
+                        wait_s = delay.as_secs(),
+                        "parked, no attempt spent: {message}"
+                    );
+                    if let Err(error) = fs3_store::park_job(&state.db, id, delay).await {
+                        tracing::error!(%error, id, "cannot park a job");
+                    }
+                    Drained {
+                        parked: 1,
+                        ..Drained::default()
+                    }
                 }
-            } else {
-                Drained {
-                    failed: 1,
-                    ..Drained::default()
+                Verdict::Retry => {
+                    tracing::warn!(id, %kind, %key, attempts, retrying = true, "{message}");
+                    if let Err(error) =
+                        fs3_store::retry_job(&state.db, id, backoff(attempts), &message).await
+                    {
+                        tracing::error!(%error, id, "cannot settle a failed job");
+                    }
+                    Drained {
+                        retried: 1,
+                        ..Drained::default()
+                    }
+                }
+                Verdict::Fail => {
+                    tracing::warn!(id, %kind, %key, attempts, retrying = false, "{message}");
+                    if let Err(error) = fs3_store::fail_job(&state.db, id, &message).await {
+                        tracing::error!(%error, id, "cannot settle a failed job");
+                    }
+                    Drained {
+                        failed: 1,
+                        ..Drained::default()
+                    }
                 }
             }
         }
@@ -482,6 +565,44 @@ pub fn payload<T: serde::de::DeserializeOwned>(value: serde_json::Value) -> Resu
     })
 }
 
+/// What to do with a failed job: park it, retry it, or fail it for good.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Verdict {
+    /// Congestion. Come back later; spend no attempt.
+    Park,
+    /// Try again on our own schedule; the attempt is spent.
+    Retry,
+    /// Terminal.
+    Fail,
+}
+
+/// Decide a failed job's fate.
+///
+/// Parking is checked FIRST and independently of `retryable`, because a rate
+/// limit is not a failure of the job — the provider is working and busy. Only
+/// once congestion has stopped being plausible (`MAX_PARKS`) does a
+/// rate-limited job fall back to the ordinary retry ladder.
+#[must_use]
+pub fn verdict(failure: &Failure, attempts: i32, parks: i32) -> Verdict {
+    if failure.code == catalog::PROVIDER_RATE_LIMITED.as_str() && parks < MAX_PARKS {
+        return Verdict::Park;
+    }
+    if failure.retryable && attempts < MAX_ATTEMPTS {
+        return Verdict::Retry;
+    }
+    Verdict::Fail
+}
+
+/// The service's own `Retry-After`, if it gave one.
+#[must_use]
+pub fn retry_after_of(failure: &Failure) -> Option<Duration> {
+    failure
+        .details
+        .get("retry_after_secs")
+        .and_then(serde_json::Value::as_f64)
+        .map(Duration::from_secs_f64)
+}
+
 /// Bridge any error the daemon maps into a [`Failure`].
 pub fn fail<E: IntoFailure>(error: E) -> Failure {
     error.into_failure()
@@ -515,11 +636,13 @@ mod tests {
             completed: 2,
             retried: 1,
             failed: 0,
+            parked: 0,
         });
         total.absorb(Drained {
             completed: 1,
             retried: 0,
             failed: 3,
+            parked: 0,
         });
         assert_eq!(total.completed, 3);
         assert_eq!(total.retried, 1);

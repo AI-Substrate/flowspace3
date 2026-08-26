@@ -31,6 +31,14 @@ pub struct Job {
     /// How many times this row has been claimed, including now. A worker that
     /// finds a high count is looking at a job that keeps dying.
     pub attempts: i32,
+    /// How many times this row was PARKED for provider congestion.
+    ///
+    /// Separate from `attempts` because congestion is not poison. A parked job
+    /// has not failed — the provider asked us to come back later — so parking
+    /// returns `attempts` to its pre-claim value and increments this instead.
+    /// Folding the two would make a heavily throttled healthy job look exactly
+    /// like a flaky one.
+    pub parks: i32,
 }
 
 /// One `(kind, state)` bucket of the queue.
@@ -114,7 +122,7 @@ pub async fn claim_job(pool: &PgPool, kinds: &[&str]) -> Result<Option<Job>, Sto
                  FOR UPDATE SKIP LOCKED
                  LIMIT 1
           )
-         RETURNING id, kind, dedupe_key, payload, attempts",
+         RETURNING id, kind, dedupe_key, payload, attempts, parks",
     )
     .bind(kinds)
     .fetch_optional(pool)
@@ -127,6 +135,7 @@ pub async fn claim_job(pool: &PgPool, kinds: &[&str]) -> Result<Option<Job>, Sto
             dedupe_key: row.try_get("dedupe_key")?,
             payload: row.try_get("payload")?,
             attempts: row.try_get("attempts")?,
+            parks: row.try_get("parks")?,
         })
     })
     .transpose()
@@ -172,7 +181,7 @@ pub async fn claim_jobs(pool: &PgPool, kind: &str, limit: i64) -> Result<Vec<Job
                  FOR UPDATE SKIP LOCKED
                  LIMIT $2
           )
-         RETURNING id, kind, dedupe_key, payload, attempts",
+         RETURNING id, kind, dedupe_key, payload, attempts, parks",
     )
     .bind(kind)
     .bind(limit)
@@ -187,6 +196,7 @@ pub async fn claim_jobs(pool: &PgPool, kind: &str, limit: i64) -> Result<Vec<Job
                 dedupe_key: row.try_get("dedupe_key")?,
                 payload: row.try_get("payload")?,
                 attempts: row.try_get("attempts")?,
+                parks: row.try_get("parks")?,
             })
         })
         .collect()
@@ -215,6 +225,39 @@ pub async fn complete_job(pool: &PgPool, id: i64) -> Result<(), StoreError> {
 /// [`StoreError::Query`] when the statement fails.
 pub async fn fail_job(pool: &PgPool, id: i64, error: &str) -> Result<(), StoreError> {
     settle(pool, id, "failed", Some(error)).await
+}
+
+/// Park a claimed job for provider congestion, WITHOUT spending an attempt.
+///
+/// The difference from [`retry_job`] is the whole point. A retry says "this
+/// failed, try again"; a park says "the provider asked us to come back later,
+/// and that is not the job's fault". `attempts` is returned to its pre-claim
+/// value — [`claim_job`] incremented it on the way in — so a sustained squeeze
+/// cannot exhaust jobs that were never broken.
+///
+/// `parks` counts instead, and it is the caller's bound: a provider that
+/// throttles forever would otherwise park a job forever, and nothing would
+/// ever notice. Returns the new count so the worker can decide when a park has
+/// stopped being congestion and started being a wall.
+///
+/// # Errors
+/// [`StoreError::Query`] when the statement fails.
+pub async fn park_job(pool: &PgPool, id: i64, delay: Duration) -> Result<i32, StoreError> {
+    let row = sqlx::query(
+        "UPDATE jobs
+            SET state = 'pending',
+                not_before = now() + make_interval(secs => $2),
+                attempts = greatest(attempts - 1, 0),
+                parks = parks + 1,
+                updated_at = now()
+          WHERE id = $1
+         RETURNING parks",
+    )
+    .bind(id)
+    .bind(delay.as_secs_f64())
+    .fetch_one(pool)
+    .await?;
+    Ok(row.try_get("parks")?)
 }
 
 /// Put a claimed job back on the queue, due again after `delay`.

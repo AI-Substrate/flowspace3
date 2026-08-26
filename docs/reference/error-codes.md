@@ -133,6 +133,15 @@ The configured embedder or summarizer refused the call.
 | retryable | status |
 | --- | --- |
 | true | 500 |
+### `FS3-E-PROVIDER-RATE-LIMITED`
+
+The provider is rate limiting us.
+
+**Fix**: nothing, usually — the job is parked and retried on the service's own schedule. If it persists, lower `worker_concurrency` or raise the deployment's quota; `flowspace3 doctor` names the active instance.
+
+| retryable | status |
+| --- | --- |
+| true | 500 |
 ### `FS3-E-PROVIDER-DIMENSIONS`
 
 The embedder returned vectors of a width no embeddings table holds.

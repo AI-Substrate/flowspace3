@@ -294,6 +294,23 @@ pub const SCAN_UNPARSEABLE: Code = Code::new(
     false,
 );
 
+/// A provider asked us to slow down.
+///
+/// Distinct from [`PROVIDER_FAILED`] because the RESPONSE is different: a
+/// failure asks the worker to retry on its own schedule and count the attempt,
+/// while congestion asks it to wait the service's own interval and count
+/// nothing. Reporting a 429 as a generic provider failure would spend the
+/// job's attempts on a provider that is working perfectly and simply busy.
+pub const PROVIDER_RATE_LIMITED: Code = Code::new(
+    "FS3-E-PROVIDER-RATE-LIMITED",
+    Area::Provider,
+    "The provider is rate limiting us.",
+    "nothing, usually — the job is parked and retried on the service's own \
+     schedule. If it persists, lower `worker_concurrency` or raise the \
+     deployment's quota; `flowspace3 doctor` names the active instance.",
+    true,
+);
+
 /// An embedder or summarizer failed.
 pub const PROVIDER_FAILED: Code = Code::new(
     "FS3-E-PROVIDER-FAILED",
@@ -390,6 +407,7 @@ pub const ALL: &[Code] = &[
     SCAN_DISCOVERY_FAILED,
     SCAN_UNPARSEABLE,
     PROVIDER_FAILED,
+    PROVIDER_RATE_LIMITED,
     PROVIDER_DIMENSIONS,
     QUEUE_JOB_FAILED,
     QUERY_INVALID,

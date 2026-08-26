@@ -208,6 +208,7 @@ mod tests {
             dedupe_key: format!("embed:{id}"),
             payload: json!({ "identity": identity, "source": source, "items": items }),
             attempts,
+            parks: 0,
         }
     }
 
@@ -277,6 +278,7 @@ mod tests {
             dedupe_key: "embed:1".to_string(),
             payload,
             attempts: 1,
+            parks: 0,
         };
 
         let (batches, _) = plan(&[job]);
@@ -314,6 +316,7 @@ mod tests {
             dedupe_key: "embed:1".to_string(),
             payload,
             attempts: 1,
+            parks: 0,
         }]);
 
         assert_eq!(batches.len(), 1);
