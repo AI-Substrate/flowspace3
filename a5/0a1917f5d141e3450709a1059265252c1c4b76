@@ -1,0 +1,18 @@
+docs/plans/002-docker-daemon-base/assets/tasks/phase-2/tasks.dd.json
+  h_9e71e8b09f7cf2 31-32,37,47,56,79-81,88,96
+docs/plans/002-docker-daemon-base/assets/tasks/phase-2/tasks.dd.md
+  h_9e71e8b09f7cf2 38-41,55-57,63,69
+docs/services/docker.md
+  h_9e71e8b09f7cf2 3,7,9-11,16,19-20,26,30-35,38-40,42-43,46-49,52-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a50a1917f5d141e3450709a1059265252c1c4b76",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
