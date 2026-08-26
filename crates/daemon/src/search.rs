@@ -176,9 +176,68 @@ pub async fn search(state: &AppState, request: &SearchRequest) -> Result<SearchR
         .await
         .map_err(fail)?;
 
+    // An empty result is the most misread signal we have: "not indexed yet",
+    // "indexed under a model this search cannot see", and "genuinely no match"
+    // all look identical, and only the last one is an answer. Returning the
+    // empty list for all three makes the first two into confident lies.
+    if hits.is_empty()
+        && let Some(failure) = nothing_to_search(state, &model_key).await
+    {
+        return Err(failure);
+    }
+
     Ok(SearchResults {
         results: hits.iter().map(render).collect(),
     })
+}
+
+/// Why an empty result was empty — when the reason is not "no match".
+///
+/// Returns `None` when the active model really does have an index, because
+/// then zero hits IS the answer and dressing it up as an error would be its
+/// own lie.
+///
+/// A store that cannot answer this also returns `None`: the search itself
+/// succeeded, and failing it now over a diagnostic query would turn a working
+/// empty result into an outage.
+async fn nothing_to_search(state: &AppState, model_key: &str) -> Option<Failure> {
+    let models = fs3_store::embedding_models(&state.db).await.ok()?;
+
+    if models.iter().any(|(key, _)| key == model_key) {
+        return None;
+    }
+
+    // Vectors exist, but under other keys. This is the dangerous one: the
+    // index is intact and unreachable, and nothing about "no results" would
+    // ever have told the user that changing provider or width was the cause.
+    if let Some((other, count)) = models.first() {
+        let names: Vec<String> = models
+            .iter()
+            .map(|(key, count)| format!("{key} ({count})"))
+            .collect();
+        return Some(
+            Failure::new(
+                &catalog::QUERY_NO_INDEX,
+                format!(
+                    "no embeddings for the active model {model_key}; {} vectors are stored under \
+                     {other}",
+                    count
+                ),
+            )
+            .with_detail("active_model", model_key)
+            .with_detail("stored_models", names)
+            .with_fix(format!(
+                "the index was built by a different embedder. Either select the instance that \
+                 produced {other} again, or re-index with the current one: `flowspace3 add \
+                 <path>`. `flowspace3 doctor` names the active provider."
+            )),
+        );
+    }
+
+    Some(Failure::new(
+        &catalog::QUERY_NO_INDEX,
+        "no embeddings exist at all",
+    ))
 }
 
 /// Turn a store hit into a workshop-003 row.

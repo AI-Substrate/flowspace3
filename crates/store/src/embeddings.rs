@@ -113,6 +113,34 @@ pub async fn existing_embedding_hashes(
         .collect()
 }
 
+/// Every embedding model that has vectors, and how many.
+///
+/// The question behind an empty search: is there NOTHING indexed, or is there
+/// an index the active model cannot see? Vectors are keyed by `model_key`, so
+/// changing embedder — or changing width — makes an entire existing index
+/// invisible without deleting a row of it. Reported as "no results", that is
+/// indistinguishable from "your code does not contain that", which is the
+/// worst possible answer because it is a confident lie.
+///
+/// Ordered by count, so the biggest index is named first.
+///
+/// # Errors
+/// [`StoreError::Query`] when the lookup fails.
+pub async fn embedding_models(pool: &PgPool) -> Result<Vec<(String, i64)>, StoreError> {
+    let rows = sqlx::query(
+        "SELECT model_key, count(*) AS vectors
+           FROM embeddings_1024
+          GROUP BY model_key
+          ORDER BY vectors DESC, model_key",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    rows.iter()
+        .map(|row| Ok((row.try_get("model_key")?, row.try_get("vectors")?)))
+        .collect()
+}
+
 /// Store a batch of vectors under one embedding model, atomically.
 ///
 /// `model_key` here names the EMBEDDING model, a different namespace from
