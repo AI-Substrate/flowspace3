@@ -1,5 +1,6 @@
 # flowspace3
 
+[![ci](https://github.com/AI-Substrate/flowspace3/actions/workflows/ci.yml/badge.svg)](https://github.com/AI-Substrate/flowspace3/actions/workflows/ci.yml)
 Semantic code search over a central index. A codebase is split into
 elements — functions, types, markdown sections — each summarized, embedded, and
 searchable by meaning, text, or regex, across every repo on the machine at once.
@@ -12,13 +13,28 @@ and the `flowspace3` CLI.
 > Offline by default, with no keys. The file watcher, `get`/`tree`, text and
 > regex modes, and conversations land in later plans.
 
+## Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/AI-Substrate/flowspace3/main/install.sh | sh
+```
+
+One binary per platform (mac arm64/x64 · linux arm64/x64 gnu+musl · windows
+x64), attached to every [GitHub Release](https://github.com/AI-Substrate/flowspace3/releases).
+Windows users: `install.ps1` is present but not yet validated.
+
+**Releases**: a rolling release PR (`chore(main): release x.y.z`) is kept up
+to date automatically; merging it tags the semver version and publishes.
+Conventional commit subjects (`feat:`, `fix:`, …) are binding on main — they
+are what drives the version.
+
 ## Quick start
 
 Prerequisites: a Rust toolchain (1.95+, edition 2024) and Docker.
 
 ```bash
 # 1. Build the binaries
-cargo build --release -p fs3-daemon -p fs3-cli
+cargo build --release -p fs3-cli    # one binary: flowspace3
 
 # 2. Bring up the store — or skip this and let doctor do it for you.
 #    `doctor` walks engine -> stack -> database -> schema and REPAIRS as it
@@ -27,7 +43,7 @@ cargo build --release -p fs3-daemon -p fs3-cli
 ./target/release/flowspace3 doctor
 
 # 3. Run the daemon — no config file needed, no API keys needed
-./target/release/fs3-daemon &
+./target/release/flowspace3 daemon &
 
 # 4. Index something. Any directory: a git repo, a worktree, a plain folder.
 ./target/release/flowspace3 add .
