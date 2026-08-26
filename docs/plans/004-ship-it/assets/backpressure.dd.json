@@ -1,0 +1,79 @@
+{
+ "dd": {
+  "schema": "builder/backpressure"
+ },
+ "sections": [
+  {
+   "name": "meta",
+   "value": {
+    "title": "Backpressure - ship it",
+    "plan": "../plan.dd.json#meta",
+    "basis_sha": "d93cb387695dc5c651c0b37a1dd9b9568c4e2fd7d0b8bc3c248738551d17c8e1",
+    "certainty": "Confident"
+   }
+  },
+  {
+   "name": "rows",
+   "value": [
+    {
+     "id": "bp-0001",
+     "criterion": "gate green on real push",
+     "phase": "1",
+     "mode": "BUILD",
+     "tier": "computational",
+     "proof": "RUN: gh run watch on a real main push + red-probe",
+     "state": "unchecked"
+    },
+    {
+     "id": "bp-0002",
+     "criterion": "release PR -> tag -> Release",
+     "phase": "1",
+     "mode": "BUILD",
+     "tier": "computational",
+     "proof": "RUN: observed via gh release view",
+     "state": "unchecked"
+    },
+    {
+     "id": "bp-0003",
+     "criterion": "7 assets by triple",
+     "phase": "1",
+     "mode": "BUILD",
+     "tier": "computational",
+     "proof": "RUN: gh release download + file(1) each",
+     "state": "unchecked"
+    },
+    {
+     "id": "bp-0004",
+     "criterion": "installer live mac+linux",
+     "phase": "1",
+     "mode": "BUILD",
+     "tier": "computational",
+     "proof": "RUN: curl|sh on this mac + in container",
+     "state": "unchecked"
+    },
+    {
+     "id": "bp-0005",
+     "criterion": "dependabot live",
+     "phase": "1",
+     "mode": "BUILD",
+     "tier": "computational",
+     "proof": "RUN: gh api dependabot config + first scan",
+     "state": "unchecked"
+    }
+   ]
+  },
+  {
+   "name": "sensors",
+   "value": [
+    {
+     "id": "sn-0001",
+     "name": "actions status",
+     "command": "gh run list --limit 5",
+     "dimension": "behaviour",
+     "found_in": "gh CLI (authed)"
+    }
+   ]
+  }
+ ],
+ "references": []
+}

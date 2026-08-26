@@ -1,0 +1,183 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Ship it: CI, cross-platform release, install",
+        "slug": "ship-it",
+        "status": "ready",
+        "summary": "GitHub Actions gate on main, release-please semver releases with all-platform binaries, curl installer, Dependabot. PRD reqs 46-48."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "\"Turn the proven build substrate into pipelines (Jordan agreements 2026-08-26): a Linux gate on every main push (checks + tests with pgvector service, fake provider, no endpoints/secrets); release-please rolling release PR (conventional commits now binding) cut on merge; release builds = Linux+Windows in the plan-002 build container + mac BUILT on a macOS runner but never gated (Windows produced-not-run, both deferred-validation stances recorded honestly in release notes); a curl installer (+ PowerShell twin) pulling the latest GitHub Release; Dependabot on cargo+actions. gh CLI is authed for watching runs.\""
+    },
+    {
+      "name": "goals",
+      "value": [
+        "Every main push proves the tree on Linux exactly as harness checks does locally, incl. store tests against a pgvector service container.",
+        "Merging the release PR produces a semver GitHub Release carrying mac(arm64+x64)/linux(arm64+x64, gnu+musl)/windows(x64) binaries named by target triple.",
+        "One-line install works on mac and linux from the README (windows script present, validated later).",
+        "Dependabot keeps cargo + actions patched (req 48)."
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "Running/validating windows binaries (deferred; procedure documented in ox's strategy doc).",
+        "Gating on macOS runners (mac builds release-only; Linux is the only checking platform).",
+        "PR-based workflows/branch protection (we work on main; revisit at first PR).",
+        "Publishing to crates.io/homebrew/winget (later; GitHub Releases only)."
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-0001",
+          "claim": "A workflow on every main push runs fmt/clippy -D warnings/tests/arch-drift on Linux with a pgvector service; observed green on a real push via gh run watch.",
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0001"
+        },
+        {
+          "id": "ac-0002",
+          "claim": "release-please maintains a rolling release PR from conventional commits; merging it tags semver and publishes a GitHub Release.",
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0002"
+        },
+        {
+          "id": "ac-0003",
+          "claim": "The Release carries 7 binaries (darwin arm64+x64; linux arm64+x64 gnu+musl... per ox's matrix; windows x64 gnu .exe) named by target triple, built via the plan-002 container (mac native on macos runner).",
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0003"
+        },
+        {
+          "id": "ac-0004",
+          "claim": "`curl -fsSL <raw url>/install.sh | sh` installs the right binary on mac and linux, verified live on this machine; install.ps1 exists (unvalidated, stated).",
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0004"
+        },
+        {
+          "id": "ac-0005",
+          "claim": "Dependabot config live for cargo + github-actions; first scan observed.",
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0005"
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-8f37",
+          "title": "Workflows, release, install",
+          "brief": "CI gate first (watch it green on main), then release machinery, then installer + dependabot.",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+        }
+      ]
+    },
+    {
+      "name": "clarifications",
+      "value": [
+        {
+          "session": "2026-08-26",
+          "question": "Gate scope?",
+          "answer": "Every main push now; PR gating when PRs begin (Jordan). Linux only checks; mac builds release-only unvalidated; windows produced-not-run."
+        },
+        {
+          "session": "2026-08-26",
+          "question": "Release cadence?",
+          "answer": "release-please rolling PR, merged on Jordan's word."
+        },
+        {
+          "session": "2026-08-26",
+          "question": "Secrets?",
+          "answer": "None: tier system keeps CI endpoint-free; GITHUB_TOKEN only."
+        }
+      ]
+    },
+    {
+      "name": "gate_matrix",
+      "value": [
+        {
+          "gate": "G1",
+          "check": "Clarify",
+          "status": "PASS",
+          "notes": "3 agreements recorded"
+        },
+        {
+          "gate": "G5",
+          "check": "Structure",
+          "status": "PASS",
+          "notes": "1 phase, 6 tasks, 5 ACs claimed"
+        },
+        {
+          "gate": "G6",
+          "check": "Testing",
+          "status": "PASS",
+          "notes": "every dw is an observed real run via gh"
+        }
+      ]
+    },
+    {
+      "name": "execution_guardrails",
+      "value": [
+        "CI runs plain cargo test ONLY - keyed/slow tiers stay out; no provider secrets exist in Actions.",
+        "Toolchain comes from rust-toolchain.toml - never a hardcoded version in workflows.",
+        "Conventional commits binding (ruling 2026-08-26 item 6).",
+        "Release notes state deferred-validation honestly (mac unvalidated-by-CI, windows unexecuted).",
+        "Shared-tree commit discipline unchanged; workflows land as normal scoped commits."
+      ]
+    },
+    {
+      "name": "acceptance_coverage",
+      "value": [
+        {
+          "ac": "ac-0001",
+          "covered_by": [
+            "tk-0101",
+            "tk-0106"
+          ],
+          "verified_in": "dw-0101"
+        },
+        {
+          "ac": "ac-0002",
+          "covered_by": [
+            "tk-0102"
+          ],
+          "verified_in": "dw-0102"
+        },
+        {
+          "ac": "ac-0003",
+          "covered_by": [
+            "tk-0103"
+          ],
+          "verified_in": "dw-0103"
+        },
+        {
+          "ac": "ac-0004",
+          "covered_by": [
+            "tk-0104"
+          ],
+          "verified_in": "dw-0104"
+        },
+        {
+          "ac": "ac-0005",
+          "covered_by": [
+            "tk-0105"
+          ],
+          "verified_in": "dw-0105"
+        }
+      ]
+    },
+    {
+      "name": "open_questions",
+      "value": []
+    }
+  ]
+}
