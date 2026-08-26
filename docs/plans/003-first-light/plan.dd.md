@@ -82,6 +82,7 @@ _No entries._
 | 2026-08-26 | Scope discipline? | Jordan: 'draft up the plan, but don't overbake it... a bit of a campfire for our next step' - lean wiring plan, one phase. |
 | 2026-08-26 | Retry/re-queue decisions? | Settled small in-plan: 3 attempts + backoff; running-job changes ride the reconciler (daemon plan may revisit). |
 | 2026-08-26 | Search scope? | Workshop 003 v1 slice: semantic only + 5 filters; text/regex/conversations later. |
+| 2026-08-26 | Schema rollforward during iteration? | Jordan: doctor should patch/upgrade automatically (no second command); every db-accessing command does a quick schema check and rejects stale pointing at doctor; dogfood doctor from now. tk-0108. |
 
 <a id="gate-matrix"></a>
 

@@ -102,6 +102,11 @@
           "session": "2026-08-26",
           "question": "Search scope?",
           "answer": "Workshop 003 v1 slice: semantic only + 5 filters; text/regex/conversations later."
+        },
+        {
+          "session": "2026-08-26",
+          "question": "Schema rollforward during iteration?",
+          "answer": "Jordan: doctor should patch/upgrade automatically (no second command); every db-accessing command does a quick schema check and rejects stale pointing at doctor; dogfood doctor from now. tk-0108."
         }
       ]
     },

@@ -42,6 +42,7 @@
 | tk-0105 | Search v1: daemon GET /search (semantic: embed query via active embedder -&gt; store query_embeddings -&gt; join smart+elements+worktree_files) with --repo/--path/--limit/--min-score/--source; CLI search verb; envelope rows per workshop 003 (address, score, match_field, span, snippet, tags) | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0105](#tk-0105) | — | — | [ac-0002](../../../plan.dd.md#acceptance-criteria) |
 | tk-0106 | End-to-end proofs: (a) CI test - fake provider + throwaway db, fixture mini-repo, scan-&gt;enrich-&gt;search assertions + idempotent-rescan-zero-enrichment; (b) LIVE run - daemon scans ONLY the isolated fixture corpus (crates/parsers/fixtures or an equivalent small root; never a whole repo - cost ruling) via Azure, 3 questions, transcript to assets/first-light-run.md with row counts + spend-relevant call counts | — | — | [ ] unchecked | — | — | [ ] 0/2 [tk-0106](#tk-0106) | — | — | [ac-0003](../../../plan.dd.md#acceptance-criteria), [ac-0004](../../../plan.dd.md#acceptance-criteria) |
 | tk-0107 | Docs: docs/services/first-light.md (what wired where, verify commands) + README quickstart section update | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0107](#tk-0107) | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
+| tk-0108 | Schema-version discipline (Jordan ruling: dogfood doctor early): fs3_store::schema_current(pool) fast check (embedded MIGRATOR vs _sqlx_migrations); EVERY db-touching daemon endpoint + CLI-reachable path runs it and rejects stale with FS3-E-STORE-SCHEMA-STALE fix='run flowspace3 doctor'; minimal `flowspace3 doctor` verb v1 = schema slice only (report + APPLY migrations automatically — no second command), envelope output; daemon boot migration stays as-is | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0108](#tk-0108) | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
 
 <a id="done-when"></a>
 
@@ -89,3 +90,9 @@
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
 | dw-0108 | docs page exists w/ verify commands; README quickstart runs as written | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
+
+### tk-0108
+
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0109 | with a deliberately behind db, any db-touching command returns FS3-E-STORE-SCHEMA-STALE naming doctor; `flowspace3 doctor` applies the missing migrations and the same command then succeeds — proven as a test | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |

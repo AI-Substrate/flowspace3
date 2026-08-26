@@ -83,6 +83,15 @@
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001"
           ]
+        },
+        {
+          "id": "tk-0108",
+          "title": "Schema-version discipline (Jordan ruling: dogfood doctor early): fs3_store::schema_current(pool) fast check (embedded MIGRATOR vs _sqlx_migrations); EVERY db-touching daemon endpoint + CLI-reachable path runs it and rejects stale with FS3-E-STORE-SCHEMA-STALE fix='run flowspace3 doctor'; minimal `flowspace3 doctor` verb v1 = schema slice only (report + APPLY migrations automatically — no second command), envelope output; daemon boot migration stays as-is",
+          "state": "unchecked",
+          "done": "#done_when/tk-0108",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ]
         }
       ]
     },
@@ -147,6 +156,14 @@
           {
             "id": "dw-0108",
             "assertion": "docs page exists w/ verify commands; README quickstart runs as written",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          }
+        ],
+        "tk-0108": [
+          {
+            "id": "dw-0109",
+            "assertion": "with a deliberately behind db, any db-touching command returns FS3-E-STORE-SCHEMA-STALE naming doctor; `flowspace3 doctor` applies the missing migrations and the same command then succeeds — proven as a test",
             "state": "unchecked",
             "pressure": "../../backpressure.dd.json#rows/bp-0001"
           }

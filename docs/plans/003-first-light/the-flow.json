@@ -110,6 +110,47 @@
         "from": "research",
         "to": "phase-1"
       }
+    },
+    {
+      "id": "NOD-001",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-26T05:13:10.685Z",
+      "details": {
+        "node": "backpressure-e33506f4e497",
+        "type": "backpressure",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
+    },
+    {
+      "id": "UPD-004",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-26T05:13:10.834Z",
+      "details": {
+        "node": "backpressure-e33506f4e497",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-004",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-26T05:13:10.968Z",
+      "details": {
+        "node": "backpressure-e33506f4e497",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
     }
   ],
   "nodes": [
@@ -357,6 +398,32 @@
         "Run /eng-harness-flow --hook post-flight --json — a REAL invocation; narrate its envelope verbatim.",
         "On done, receipt first, status second: harness flow comment --path <flow-path> --node retro-harvest --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node retro-harvest --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node retro-harvest --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node retro-harvest --to skipped."
       ]
+    },
+    {
+      "id": "backpressure-e33506f4e497",
+      "type": "backpressure",
+      "label": "Backpressure (re-survey: tk-0108 schema discipline)",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-08-26T05:13:10.685Z",
+      "modified_at": "2026-08-26T05:13:10.968Z",
+      "command": "run /eng-harness-flow --hook pre-coding --json",
+      "chore": {
+        "kind": "command",
+        "importance": "optional"
+      },
+      "branch_of": "plan",
+      "comments": [
+        {
+          "at": "2026-08-26T05:13:10.834Z",
+          "text": "verdict:re-surveyed reason:tk-0108 added (schema check+doctor apply) under existing bp-0001; rows unchanged. basis_sha256:e33506f4e497c056495759dac00c53d19f4225f9c83721b91a4c5b822b8fb993 time:2026-08-26",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-26T05:13:10.968Z"
     }
   ],
   "plan_dir": "docs/plans/003-first-light"
