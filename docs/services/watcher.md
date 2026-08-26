@@ -81,14 +81,22 @@ with the config and **had no reader until this landed**.
 - **The watcher is a hint, never a ledger.** Anything that assumes the dirty set
   is the complete list of what changed is wrong on Linux. Pair it with a walk.
 - **The component filter decides WHEN to walk, never WHAT to index.** `discover`
-  owns what is indexed, identically for `add` and for the watcher. In a
-  repository with **no `.gitignore`**, `discover` accepts `node_modules/**/*.js`
-  — `js` is in its source-extension table — so `flowspace3 add` indexes
-  `node_modules` too. The watcher's filter suppresses the pointless *walk*; it
-  does not and must not override discovery, because a watcher that indexed a
-  different set from `add` would be worse than either. Real repositories ignore
-  these directories and the two mechanisms agree; the mismatch is only reachable
-  without a `.gitignore`, and the fix belongs in `fs3-parsers`, not here.
+  owns what is indexed, identically for `add` and for the watcher. The watcher's
+  filter suppresses a pointless *walk*; it does not and must not override
+  discovery, because a watcher that indexed a different set from `add` would be
+  worse than either.
+  **Closed 2026-08-26**: the mismatch this entry used to describe — a repository
+  with **no `.gitignore`**, where `discover` accepted `node_modules/**/*.js`
+  because `js` is in its source-extension table, so `flowspace3 add` indexed
+  `node_modules` — is fixed where this page said it belonged, in `fs3-parsers`.
+  `discovery::STANDARD_IGNORES` now denies `node_modules`, `target`, `dist`,
+  `build`, `vendor`, `.venv`, `venv`, `__pycache__`, `.next`, `.cache` and
+  `.git` by whole path component, `.gitignore` or no `.gitignore`, toggled by
+  `scan.standard_ignores`. `IGNORED_DIRECTORIES` here is a three-name subset of
+  that list and can now delegate to it rather than keep its own copy; a test in
+  `crates/parsers/tests/discovery_standard_ignores.rs` pins the subset
+  relationship so the two cannot silently disagree. See
+  `docs/services/discovery.md`.
 - **Deletions are reaped only inside a re-listed directory.** A file deleted
   from a directory that then settles leaves the map at the next pass. A file in
   a directory that never fires an event again — because the whole directory was

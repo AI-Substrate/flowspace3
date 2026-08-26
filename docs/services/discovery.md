@@ -37,11 +37,28 @@ the scanner's budget.
 | **Settings are injected, never read here** | `DiscoverySettings` is a plain value. `impl From<&ScanConfig>` is the whole wiring story: the composition root resolves config (machine < worktree < flag, req 40) and passes `(&config.scan).into()`. |
 | **Families, not a flat extension list** | `Source` / `Document` / `Config` / `Unknown`. Req 43 excludes an entire *class* (YAML, JSON, TOML, HCL and kin), so the class is the type. `index_config_formats = true` turns it back on for a repo that wants it. |
 | **Grammar table consulted first** | `LanguageFamily::for_extension` asks `Language::for_extension` before its own tables, so a file fs3 can parse can never be classified `Unknown`. The invariant is mechanical, not remembered. |
+| **A standard deny list, independent of git** | `STANDARD_IGNORES` — `.cache`, `.git`, `.next`, `.venv`, `__pycache__`, `build`, `dist`, `node_modules`, `target`, `vendor`, `venv` — is refused whether or not the repo has a `.gitignore`. Git-ignore rules are the *repo's* opinion; this list is fs3's, and it has to hold when the repo has none. Found by sailfish during first-light integration: a `.gitignore`-less clone indexes `node_modules/**/*.js`, because that is real JavaScript and `js` is in the source table. |
+| **Denied directories are PRUNED, not judged per file** | The deny list is a `filter_entry` prune in the walker, so `node_modules` costs one string comparison instead of a descent. Measured below: not descending is the entire saving. |
+| **Whole path components, never substrings** | `src/target_types.rs`, `src/node_modules_helper.rs`, `my-vendor/`, `builder/` and `build-output/` all survive. The check only ever looks at *directory* components, so a file's name cannot trip it. |
+| **The named root always wins** | The deny list applies at depth > 0 only: `flowspace3 add ./node_modules` is a deliberate instruction, not an accident. `.git` is the single exception — never walked, at any setting, by any route. |
+| **A list, exposed as a bool** | `scan.standard_ignores` is a bool in TOML (that is the whole question a config file needs to answer); `DiscoverySettings.standard_ignores` is a `Vec<String>`, which is a superset — `false` is the empty list, `true` is the default list, and a caller with a reason can pass its own names without a config schema change. A custom list *replaces* the defaults, like `exclude` does. |
 | **Skips are a ledger, ignores are not** | A refused file (unsupported extension, config format, too large, binary, excluded) is reported — req 43 demands "never a silent gap". A git-ignored file is *out of scope*, not refused, and stays out of both lists; otherwise every `node_modules` entry would be in the report. |
 | **Force-include is a second walk** | `force_include` globs run a separate pass with ignore rules off, keeping only paths those globs name. The common case (no force-includes) stays at exactly one traversal, and the semantics stay legible: pass 1 = "what does git leave visible", pass 2 = "what did the repo insist on anyway". |
 | **`exclude` outranks `force_include`** | An explicit refusal beats an explicit inclusion. Force-include overrides *git*, not judgement. |
 | **Binary is decided by content** | A NUL in the first 8 KiB, the same test `git diff` uses. The PNG someone committed as `logo.md` is caught by the sniff, not by its extension. |
 | **Sequential walk** | The win came from *not visiting* files, not from visiting them on more threads, and a deterministic order makes the result assertable. `ignore::WalkParallel` is a drop-in if a measurement ever asks. |
+
+## Precedence
+
+Highest first — the first rule that matches decides:
+
+1. `exclude` globs — an explicit refusal beats everything, and is *reported*.
+2. `force_include` globs — the escape hatch, reaching past git AND the deny
+   list (a genuinely-vendored `vendor/` is the motivating case).
+3. `STANDARD_IGNORES` — fs3's own opinion, gitignore or no gitignore.
+4. Git's ignore rules — `.gitignore`, `.ignore`, `.git/info/exclude`, parents.
+
+`.git` sits outside the ladder: it is never walked at any setting.
 
 ## Gotchas (the expensive ones)
 
@@ -57,11 +74,16 @@ the scanner's budget.
   honoured — git would not. PRD req 23 says plain folders index through the
   same mechanism, and it would be worse for the same tree to index differently
   for having been cloned.
-- **`.git` is never walked**, even with `include_hidden = true`.
+- **`.git` is never walked**, even with `include_hidden = true`, an emptied
+  deny list, or a `force_include` naming it. It is also the one case that
+  cannot be a committed fixture — git refuses to track a path named `.git` — so
+  that test builds its tree in a temp directory.
 - **Fixture files that are ignored had to be committed with `git add -f`**
-  (`build-output/generated.rs`, `app.log`, `secret-notes.md`). They exist so
-  the tests can prove they do *not* come back. If they ever vanish from a fresh
-  clone, that is why.
+  (`discovery-tree/build-output/generated.rs`, `app.log`, `secret-notes.md`,
+  and all of `discovery-bare/target/`). They exist so the tests can prove they
+  do *not* come back. If they ever vanish from a fresh clone, that is why.
+  `discovery-tree/`'s nested-ignore directory is named `third_party/`, not
+  `vendor/`, precisely so the deny list does not mask what that test proves.
 - **The sniff costs one `open` per candidate file** and the pipeline then reads
   the file again. If that shows up in a profile, hand the sniff buffer onward
   rather than dropping it.
@@ -70,20 +92,33 @@ the scanner's budget.
   PRD req 42 refuses elsewhere. They land in the skip ledger, so the gap is
   visible rather than silent.
 - **With the ignore rules off, the skip ledger is enormous.** Measured on this
-  repo: 38 skips with the defaults, **124,674** with `respect_gitignore =
-  false` (every `target/` artefact is a named, unsupported file). The ledger is
-  sized for "what did fs3 refuse", not "what is on disk".
+  repo: 57 skips with the defaults, **316,609** with both `respect_gitignore =
+  false` and the deny list emptied (every `target/` artefact is a named,
+  unsupported file). The ledger is sized for "what did fs3 refuse", not "what
+  is on disk" — which is why a denied directory is pruned rather than reported.
+- **A denied directory is invisible, not reported.** If you are wondering why
+  `vendor/` produced nothing and there is no skip row explaining it, that is
+  the deny list. `standard_ignores` in `flowspace3 config show` is the thing to
+  look at, and `force_include` is the way back in.
+- **The deny list is a fixed list of names, not a heuristic.** It will be wrong
+  for somebody: a Go project with a real `vendor/` directory of first-party
+  code, or a Java project whose sources live under `build/`. Both are one
+  `force_include` line, and the empty list turns the whole thing off.
 
 ## Measured on this repo (2026-08-26, debug build)
 
-| Settings | Files | Bytes | Wall |
-|---|---|---|---|
-| defaults | 133 | 924 KiB | 42 ms |
-| `respect_gitignore=false`, hidden, configs, no ceiling | 3,200 | 9,685 KiB | 8,575 ms |
+| Settings | Files | Bytes | Skips | Wall |
+|---|---|---|---|---|
+| defaults | 230 | 1,827 KiB | 57 | 110 ms |
+| `respect_gitignore=false`, deny list ON | 454 | 3,615 KiB | 116 | 108 ms |
+| `respect_gitignore=false`, deny list OFF | 1,270 | 20,656 KiB | 316,609 | 10,711 ms |
 
-**9.5% of the bytes, 204× faster** — the POC's 13.8×/11% finding reproduced by
-the shipped walker (this tree exaggerates it: the POC assets carry two `target/`
-directories). The filtering, not the parser, is where a scan's time goes.
+Rows 2 and 3 are the sailfish scenario — a repository with no usable
+`.gitignore`. The deny list alone accounts for **99× wall-clock, 5.7× the
+bytes, and a skip ledger three orders of magnitude smaller**, with no git
+involvement whatsoever. The earlier POC finding (13.8× from gitignore-aware
+filtering) and this one are the same lesson twice: what a scan costs is decided
+before a parser is ever handed a byte.
 
 ## How to verify it works
 
@@ -94,20 +129,35 @@ cargo test -p fs3-parsers --lib discovery
 # The committed fixture tree, asserted as an exact set — both lists
 cargo test -p fs3-parsers --test discovery_fixtures
 
+# The standard deny list, against a tree with NO .gitignore at all
+cargo test -p fs3-parsers --test discovery_standard_ignores
+
 # The architecture edge this added (fs3-parsers -> ignore)
 cargo run -p fs3-testkit --bin fs3-arch-check
 ```
 
-The fixture tree is deliberately small and total: every file in
-`crates/parsers/fixtures/discovery-tree/` appears in an assertion, so adding a
-file to it fails the default test until the expected set is updated.
+Both fixture trees are deliberately small and total: every file in
+`crates/parsers/fixtures/discovery-tree/` and `.../discovery-bare/` appears in
+an assertion, so adding a file fails the exact-set test until the expectation
+is updated. The bare tree's tests all pass `respect_gitignore: false` — with
+git's rules out of the picture, only the deny list can explain an absence, and
+this repo's own root `.gitignore` cannot fake a pass.
 
 ## Code pointers
 
 - `crates/parsers/src/discovery.rs` — `discover`, `DiscoverySettings`,
-  `LanguageFamily`, `SkipReason`; the pure `verdict` is the whole policy.
+  `STANDARD_IGNORES`, `LanguageFamily`, `SkipReason`; the pure `verdict` is the
+  per-file policy, and the `filter_entry` closure in `walk` is the deny list.
 - `crates/parsers/src/lib.rs` — `Language::for_extension`, the grammar table
   discovery defers to.
 - `crates/core/src/config.rs` — `ScanConfig`, the `[scan]` section
-  `DiscoverySettings` converts from.
+  `DiscoverySettings` converts from, including `standard_ignores` (added with
+  the deny list — **note for egret**, who owns the config surface: it is a
+  plain bool with `deny_unknown_fields`, defaulting to `true`, and the list
+  itself deliberately lives in code rather than config).
+- `crates/daemon/src/debounce.rs` — `IGNORED_DIRECTORIES`, the watcher's
+  three-name pre-filter. It answers a different question (when to *walk*), but
+  it is a strict subset of `STANDARD_IGNORES` and can now delegate to it;
+  `discovery_standard_ignores.rs` pins that subset relationship so the two
+  cannot silently disagree.
 - `crates/testkit/arch-allowlist.toml` — the `fs3-parsers → ignore` row.

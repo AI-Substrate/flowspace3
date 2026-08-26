@@ -743,6 +743,7 @@ impl Default for IndexingConfig {
 /// respect_gitignore = true
 /// include_hidden = false
 /// follow_symlinks = false
+/// standard_ignores = true
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -758,6 +759,11 @@ pub struct ScanConfig {
     pub include_hidden: bool,
     /// Follow symlinks. Off by default: a link loop is an infinite scan.
     pub follow_symlinks: bool,
+    /// Skip the directories nobody indexes — `node_modules`, `target`, `dist`
+    /// and kin (`fs3_parsers::discovery::STANDARD_IGNORES`), matched as whole
+    /// path components, **even when the repo has no `.gitignore`**. Off means
+    /// a `.gitignore`-less clone indexes its dependencies.
+    pub standard_ignores: bool,
 }
 
 impl ScanConfig {
@@ -789,6 +795,7 @@ impl Default for ScanConfig {
             respect_gitignore: true,
             include_hidden: false,
             follow_symlinks: false,
+            standard_ignores: true,
         }
     }
 }

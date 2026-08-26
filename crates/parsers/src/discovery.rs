@@ -6,22 +6,31 @@
 //! (`docs/plans/001-fs3-foundations/assets/poc/treesitter-results.md`). So the
 //! walk is not a detail of the scanner; it is the scanner's budget.
 //!
-//! Three filters, all injected (never read from the environment here):
+//! Four filters, all injected (never read from the environment here):
 //!
 //! 1. **What git ignores, fs3 ignores** — tracked *and* untracked-but-not-
 //!    ignored, so a brand-new file indexes without `git add`. Per-repo config
 //!    can force-include folders the default would miss (PRD req 41).
-//! 2. **An extension allow-list by family** — config/data formats are excluded
+//! 2. **[`STANDARD_IGNORES`]** — the directories nobody indexes, denied by
+//!    whole path component whether or not the repo has a `.gitignore`. A
+//!    fresh clone with no ignore file is otherwise a first-run trap: its
+//!    `node_modules/**/*.js` is real JavaScript, and the summarise-and-embed
+//!    budget is real money.
+//! 3. **An extension allow-list by family** — config/data formats are excluded
 //!    by default (PRD req 43: they yield no code-shaped elements and carry
 //!    PII/secrets risk in a central store).
-//! 3. **A size ceiling and a binary sniff** — one 18 MB `.session.json` cost
+//! 4. **A size ceiling and a binary sniff** — one 18 MB `.session.json` cost
 //!    0.62 s in the POC; a PNG named `.md` costs a parse and teaches nothing.
+//!
+//! Precedence, highest first: `exclude` · `force_include` ·
+//! [`STANDARD_IGNORES`] · git's ignore rules.
 //!
 //! Everything a file is refused *for* lands in [`Discovery::skipped`] with a
 //! reason, because "unsupported/no-grammar files must be an observable
-//! outcome, never a silent gap" (PRD req 43). What git ignores is **not** in
-//! that ledger: an ignored file is out of scope, not refused — otherwise every
-//! `node_modules` entry would be reported.
+//! outcome, never a silent gap" (PRD req 43). What git ignores — and what the
+//! deny list prunes — is **not** in that ledger: those paths are out of scope,
+//! not refused, and a pruned `node_modules` must not cost a hundred thousand
+//! ledger rows.
 //!
 //! Paths come back **relative to the root** with `/` separators, so the same
 //! folder scanned from any absolute location (or any machine) yields identical
@@ -54,6 +63,36 @@ use crate::Language;
 /// how `git diff` calls a file binary, and it is enough: real source files do
 /// not open with a NUL.
 const SNIFF_BYTES: usize = 8 * 1024;
+
+/// Directory names fs3 never walks, `.gitignore` or no `.gitignore`.
+///
+/// A repository without a `.gitignore` is not a repository without build
+/// output: `node_modules/**/*.js` is real JavaScript, `js` is in the source
+/// table, and nothing else in this module would stop it — so a first scan of a
+/// fresh clone could spend a summarise-and-embed budget on somebody else's
+/// dependencies before anyone noticed. Git-ignore rules are the *repo's*
+/// opinion; this list is fs3's, and it holds when the repo has none.
+///
+/// Matched against whole path COMPONENTS of directories, never substrings:
+/// `src/target_types.rs`, `my-vendor/`, `builder/` and `build-output/` all
+/// survive. Applied at depth > 0 only, so `flowspace3 add ./node_modules` —
+/// an explicit, deliberate root — still works.
+///
+/// `crates/daemon`'s watcher pre-filter is a three-name subset of this list;
+/// it is `pub` so that filter can delegate here rather than drift.
+pub const STANDARD_IGNORES: &[&str] = &[
+    ".cache",
+    ".git",
+    ".next",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "node_modules",
+    "target",
+    "vendor",
+    "venv",
+];
 
 /// What a file's extension says it is — the axis PRD req 43 excludes on.
 ///
@@ -184,6 +223,13 @@ pub struct DiscoverySettings {
     /// never index. The highest precedence rule there is: an explicit refusal
     /// beats an explicit inclusion.
     pub exclude: Vec<String>,
+    /// Directory names never walked, matched as whole path components,
+    /// **whether or not the repo has a `.gitignore`** — see
+    /// [`STANDARD_IGNORES`], which is this field's default.
+    ///
+    /// Empty turns the deny list off (the `scan.standard_ignores = false`
+    /// shape); any other list replaces it wholesale.
+    pub standard_ignores: Vec<String>,
 }
 
 impl Default for DiscoverySettings {
@@ -197,6 +243,7 @@ impl Default for DiscoverySettings {
             index_config_formats: false,
             force_include: Vec::new(),
             exclude: Vec::new(),
+            standard_ignores: STANDARD_IGNORES.iter().map(|s| s.to_string()).collect(),
         }
     }
 }
@@ -205,6 +252,12 @@ impl From<&ScanConfig> for DiscoverySettings {
     /// The `[scan]` section, plus the discovery-only knobs at their defaults.
     /// This is the whole wiring story: the composition root passes
     /// `(&config.scan).into()`.
+    ///
+    /// `scan.standard_ignores` is a **bool** in TOML because that is the whole
+    /// question a config file needs to answer; [`DiscoverySettings`] carries
+    /// the list itself, which is a superset — `false` is the empty list, and a
+    /// caller with a reason can pass its own names without a config schema
+    /// change.
     fn from(scan: &ScanConfig) -> Self {
         Self {
             max_file_bytes: scan.max_file_bytes,
@@ -212,6 +265,14 @@ impl From<&ScanConfig> for DiscoverySettings {
             respect_gitignore: scan.respect_gitignore,
             include_hidden: scan.include_hidden,
             follow_symlinks: scan.follow_symlinks,
+            standard_ignores: if scan.standard_ignores {
+                STANDARD_IGNORES
+                    .iter()
+                    .map(|name| name.to_string())
+                    .collect()
+            } else {
+                Vec::new()
+            },
             ..Self::default()
         }
     }
@@ -335,10 +396,12 @@ pub fn discover(root: &Path, settings: &DiscoverySettings) -> Result<Discovery, 
         collector.consider(absolute, relative, bytes);
     });
 
-    // Second pass: git-ignored paths the config asked for by name. Running it
-    // as its own walk (ignores off, force globs on) keeps the common case —
-    // no force-includes — at exactly one traversal, and keeps the semantics
-    // legible: the first walk answers "what does git leave visible", the
+    // Second pass: paths the config asked for by name that the defaults
+    // refuse — git-ignored, or under a `STANDARD_IGNORES` directory (a
+    // vendored `vendor/` someone genuinely wants indexed). Running it as its
+    // own walk (all ignores off, force globs on) keeps the common case — no
+    // force-includes — at exactly one traversal, and keeps the semantics
+    // legible: the first walk answers "what is visible by default", the
     // second "what did the repo insist on anyway".
     if !settings.force_include.is_empty() {
         walk(root, settings, false, &mut |absolute, relative, bytes| {
@@ -472,9 +535,16 @@ fn verdict(
 
 /// Visit every file under `root`, handing back `(absolute, relative, size)`.
 ///
-/// `honour_ignores` off strips gitignore, `.ignore` files and parent ignores —
-/// the force-include pass. The hidden filter and the `.git` refusal survive
-/// both passes: nothing indexes a git object database.
+/// `honour_ignores` off strips gitignore, `.ignore` files, parent ignores
+/// **and the standard deny list** — that is the force-include pass, whose
+/// whole job is to reach what the defaults refuse. The hidden filter and the
+/// `.git` refusal survive both passes: nothing indexes a git object database,
+/// at any setting.
+///
+/// The deny list is applied here, as a `filter_entry` prune, rather than as a
+/// verdict per file: not descending into `node_modules` is the entire saving,
+/// and a pruned directory costs one string comparison instead of a hundred
+/// thousand ledger rows.
 fn walk(
     root: &Path,
     settings: &DiscoverySettings,
@@ -482,6 +552,14 @@ fn walk(
     visit: &mut dyn FnMut(&Path, &Path, Option<u64>),
 ) {
     let honour = honour_ignores && settings.respect_gitignore;
+    // Deliberately keyed off `honour_ignores`, not `honour`: the deny list is
+    // fs3's own opinion and must hold in a repo with no `.gitignore` at all —
+    // which is exactly the case that motivated it.
+    let denied: Vec<String> = if honour_ignores {
+        settings.standard_ignores.clone()
+    } else {
+        Vec::new()
+    };
     let mut builder = WalkBuilder::new(root);
     builder
         .hidden(!settings.include_hidden)
@@ -497,7 +575,26 @@ fn walk(
         // tree would index differently for having been cloned.
         .require_git(false)
         .follow_links(settings.follow_symlinks)
-        .filter_entry(|entry| entry.depth() == 0 || entry.file_name() != ".git");
+        .filter_entry(move |entry| {
+            // Depth 0 is the root the caller named. `flowspace3 add
+            // ./node_modules` is a deliberate instruction, not an accident.
+            if entry.depth() == 0 {
+                return true;
+            }
+            let Some(name) = entry.file_name().to_str() else {
+                return true;
+            };
+            if name == ".git" {
+                return false;
+            }
+            if !entry.file_type().is_some_and(|kind| kind.is_dir()) {
+                return true;
+            }
+            // Whole component, never substring: `src/target_types.rs` is a
+            // file (already returned above), `my-vendor/` and `builder/` are
+            // directories whose NAMES simply are not on the list.
+            !denied.iter().any(|denied| denied == name)
+        });
 
     for entry in builder.build() {
         let entry = match entry {
@@ -668,6 +765,7 @@ mod tests {
             respect_gitignore: false,
             include_hidden: true,
             follow_symlinks: true,
+            standard_ignores: true,
         };
         let settings = DiscoverySettings::from(&scan);
         assert_eq!(settings.max_file_bytes, 4_096);
@@ -675,9 +773,25 @@ mod tests {
         assert!(!settings.respect_gitignore);
         assert!(settings.include_hidden);
         assert!(settings.follow_symlinks);
+        assert_eq!(settings.standard_ignores, STANDARD_IGNORES);
         // The knobs `[scan]` does not carry keep their defaults.
         assert!(!settings.index_config_formats);
         assert!(settings.force_include.is_empty());
+    }
+
+    /// The TOML bool is the whole question a config file needs to answer; the
+    /// list is how the walker asks it.
+    #[test]
+    fn the_config_bool_maps_onto_the_list() {
+        let scan = ScanConfig {
+            standard_ignores: false,
+            ..ScanConfig::default()
+        };
+        assert!(DiscoverySettings::from(&scan).standard_ignores.is_empty());
+        assert_eq!(
+            DiscoverySettings::from(&ScanConfig::default()).standard_ignores,
+            STANDARD_IGNORES,
+        );
     }
 
     #[test]

@@ -1,7 +1,7 @@
 //! Discovery against a committed fixture tree — the exact set, both lists.
 //!
 //! The tree in `fixtures/discovery-tree/` carries its own `.gitignore` (and a
-//! nested one under `vendor/`), so the rules under test are the fixture's own,
+//! nested one under `third_party/`), so the rules under test are the fixture's own,
 //! not this repo's. Three of its files are ignored by those rules and are
 //! therefore committed with `git add -f`: `build-output/generated.rs`,
 //! `app.log` and `secret-notes.md`. They exist on disk precisely so the
@@ -49,7 +49,7 @@ fn the_default_walk_returns_exactly_the_scannable_files() {
             "src/big_generated.rs",
             "src/lib.rs",
             "src/util.py",
-            "vendor/keep.rs",
+            "third_party/keep.rs",
         ],
     );
     assert_eq!(
@@ -73,7 +73,7 @@ fn ignored_and_hidden_files_are_absent_from_both_lists() {
         "build-output/generated.rs", // ignored directory
         "secret-notes.md",           // ignored by name — indexable extension, still gone
         "app.log",                   // ignored by pattern
-        "vendor/tool.py",            // ignored by a NESTED .gitignore
+        "third_party/tool.py",       // ignored by a NESTED .gitignore
         ".hidden/notes.md",          // hidden directory
         ".gitignore",                // hidden file
     ] {
@@ -104,7 +104,7 @@ fn force_include_reaches_into_a_gitignored_folder() {
             "src/big_generated.rs",
             "src/lib.rs",
             "src/util.py",
-            "vendor/keep.rs",
+            "third_party/keep.rs",
         ],
     );
     // The force-include is a named door, not an open one: the other ignored
@@ -151,7 +151,7 @@ fn exclude_globs_cover_directories_and_extensions() {
             "src/big_generated.rs",
             "src/lib.rs",
             "src/util.py",
-            "vendor/keep.rs",
+            "third_party/keep.rs",
         ],
     );
     // `docs/corrupt-binary.md` is refused as *excluded*, not as binary: the
@@ -191,8 +191,8 @@ fn turning_gitignore_off_indexes_the_whole_tree() {
             "src/big_generated.rs",
             "src/lib.rs",
             "src/util.py",
-            "vendor/keep.rs",
-            "vendor/tool.py",
+            "third_party/keep.rs",
+            "third_party/tool.py",
         ],
     );
     assert!(refused(&discovery).contains(&("app.log", SkipReason::UnsupportedExtension)));
@@ -248,7 +248,9 @@ fn hidden_files_appear_only_when_asked_for() {
     // The ignore files themselves have no extension, so they are named as
     // unsupported rather than quietly vanishing.
     assert!(refused(&discovery).contains(&(".gitignore", SkipReason::UnsupportedExtension)));
-    assert!(refused(&discovery).contains(&("vendor/.gitignore", SkipReason::UnsupportedExtension)));
+    assert!(
+        refused(&discovery).contains(&("third_party/.gitignore", SkipReason::UnsupportedExtension))
+    );
 }
 
 /// Each row carries what the pipeline needs next: a relative path, the size

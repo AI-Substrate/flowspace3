@@ -64,6 +64,18 @@ silently does nothing is the worst failure mode in a config system — you chang
 it, nothing happens, and you go looking in the wrong place. `FS3_DATABSE__URL`
 fails at boot and lists the real section names.
 
+**`scan.standard_ignores` (added 2026-08-26, by the discovery worker — note for
+whoever owns this surface).** A plain bool, defaulting to `true`, honouring
+`deny_unknown_fields` like every other `[scan]` key. It toggles
+`fs3_parsers::discovery::STANDARD_IGNORES` — `node_modules`, `target`, `dist`
+and kin, denied by whole path component even in a repo with no `.gitignore`.
+The **list itself deliberately stays in code, not config**: it is fs3's opinion
+about build output, and a repo that disagrees has two sharper tools already —
+`force_include` to reach one directory, or `standard_ignores = false` to drop
+the policy entirely. If a future need makes the names themselves configurable,
+the field becomes a bool-or-list enum rather than a second key; `DiscoverySettings`
+already carries the list shape. See `docs/services/discovery.md`.
+
 **Validation collects; it never returns on the first problem.** One bad file
 costs one edit round-trip. Every `Problem` carries the key, what is wrong, and a
 pasteable example line, and the loader prefixes the file path.
