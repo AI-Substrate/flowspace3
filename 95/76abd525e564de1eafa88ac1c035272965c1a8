@@ -1,0 +1,21 @@
+.harness/government/briefs/w-daemon-shell.md
+  s_15d888f4b629c1::t_adb2e6a004d5a8 1-26
+.harness/government/worker-roster.md
+  s_15d888f4b629c1::t_ae952eff9acc37 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9576abd525e564de1eafa88ac1c035272965c1a8",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
