@@ -40,6 +40,9 @@ docs/plans/prd/providers-roster.md         # flip your row's status when done
 6. **Gates**: `harness checks` green (fmt, clippy -D warnings, tests, arch drift) + `cargo test -p fs3-providers` green. Keyed contract run: check your packet for credentials, THEN the machine (existing provider configs like `~/.config/fs2/`, `az login`, ambient env) before declaring it not-run; if found, run it and report actual output.
 7. **Report**: claim · files · gate outputs · keyed-run status · any deviation from this recipe (deviations are stop-and-ask, not improvisation). Flip your roster row, and write your service page `docs/services/<name>.md` (convention: `docs/services/README.md` — what it is, decisions, gotchas, verify commands, code pointers).
 
+## Test tiers (repo convention)
+Default `cargo test` stays FAST and OFFLINE. Anything else is `#[ignore = "<tier>: <reason>"]` with the reason string mandatory: `keyed: <env vars>` for real endpoints (missing var fails BY NAME when run), `slow: <why>` for expensive-but-free work (model loads/downloads). Opt-in via `-- --ignored`.
+
 ## Done means
 
 - [ ] Builds in-workspace; arch check green; no mocking crates; no new ports
