@@ -1,0 +1,22 @@
+crates/daemon/src/boot.rs
+  s_15d888f4b629c1::t_e4e5938270410b 115-134
+  s_15d888f4b629c1::t_3390f2c1c53944 135
+crates/daemon/src/lib.rs
+  s_15d888f4b629c1::t_063c31596f1d1c 9,12,19,28,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c41c6c62729cc45ec3b8aebf42086cbbe25468f8",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
