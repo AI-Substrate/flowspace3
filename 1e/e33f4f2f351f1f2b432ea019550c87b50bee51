@@ -1,0 +1,21 @@
+docs/plans/prd/daemon-worker-architecture.md
+  s_15d888f4b629c1::t_b545b2991d17e8 24-30
+.harness/government/briefs/w-watcher-live.md
+  s_15d888f4b629c1::t_4e9039a0370b5d 1-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1ee33f4f2f351f1f2b432ea019550c87b50bee51",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
