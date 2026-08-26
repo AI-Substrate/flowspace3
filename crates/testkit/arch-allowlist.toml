@@ -202,6 +202,8 @@ external = [
   "anyhow",
   "clap",
   "reqwest",
+  # PRD req-0053: sha256 of the bundled skill's content — pure computation, no IO.
+  "sha2",
   "serde",
   "serde_json",
   "tokio",
