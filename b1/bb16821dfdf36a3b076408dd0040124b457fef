@@ -1,0 +1,21 @@
+.harness/records/retro/2026-08-27/raw-drain-buffer.json
+  s_15d888f4b629c1::t_204c07f4d23efc 1
+.harness/records/retro/2026-08-27/008.md
+  s_15d888f4b629c1::t_d012777e97a0c9 1-1256
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b1bb16821dfdf36a3b076408dd0040124b457fef",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
