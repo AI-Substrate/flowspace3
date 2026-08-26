@@ -1,0 +1,19 @@
+Cargo.lock
+  s_15d888f4b629c1::t_7697a503b8fe1b 1097,1106,1191-1199,2512-2531,2682-2701,2885,2943-2969,5217-5225,5259,5266-5282,5295-5300,5313-5318,5331-5336,5343-5348,5361-5366,5379-5384,5397-5402,5415-5420
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6e46221249de69152ece93c263c33210d7215e44",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
