@@ -503,6 +503,40 @@ mod tests {
         );
     }
 
+    /// A filename that is not valid UTF-8 cannot be reported over JSON.
+    ///
+    /// `serde`'s `Path` impl refuses rather than lossily transcoding, so one
+    /// such file anywhere under a watched root turns `GET /dirty` into a
+    /// serialization failure for the WHOLE set — every other dirty path goes
+    /// with it. Linux allows any byte but `/` and NUL in a filename, so this
+    /// is reachable in the field, not a curiosity.
+    ///
+    /// Unix-only because that is the only place the bad value can be built:
+    /// macOS rejects invalid UTF-8 at the filesystem, and Windows paths are
+    /// UTF-16 (whose unpaired surrogates are the same problem in a different
+    /// encoding). The real daemon has to answer this — with lossy display plus
+    /// a byte-exact key, or by refusing the path with a named error.
+    #[cfg(unix)]
+    #[test]
+    fn a_non_utf8_path_cannot_be_serialized() {
+        use std::ffi::OsStr;
+        use std::os::unix::ffi::OsStrExt;
+
+        let dirty = Dirty {
+            path: PathBuf::from(OsStr::from_bytes(b"/repo/\xff\xfe.rs")),
+            root: root(),
+            first_event_ms: 0,
+            last_event_ms: 0,
+            settled_at_ms: 1,
+            events: 1,
+        };
+        let error = serde_json::to_string(&dirty).expect_err("must refuse, not transcode");
+        assert!(
+            error.to_string().contains("UTF-8"),
+            "the failure names the encoding, not a mystery: {error}"
+        );
+    }
+
     #[test]
     fn nesting_conflicts_name_the_root_they_collide_with() {
         let existing = vec![PathBuf::from("/a/b"), PathBuf::from("/c")];

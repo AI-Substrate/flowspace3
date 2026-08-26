@@ -236,10 +236,13 @@ impl Supervisor {
         };
         root.events += 1;
         let outcome = state.debouncer.observe(&raw.root, &raw.path, raw.at_ms);
-        if outcome == Observed::Rejected(Rejected::Ignored)
-            && let Some(root) = state.roots.get_mut(&raw.root)
-        {
-            root.ignored_events += 1;
+        if outcome == Observed::Rejected(Rejected::Ignored) {
+            // The root was present a line ago and the lock has not been
+            // released, so this lookup cannot fail; `if let` rather than
+            // `expect` keeps a future refactor from turning that into a panic.
+            if let Some(root) = state.roots.get_mut(&raw.root) {
+                root.ignored_events += 1;
+            }
         }
         tracing::debug!(
             path = %raw.path.display(),

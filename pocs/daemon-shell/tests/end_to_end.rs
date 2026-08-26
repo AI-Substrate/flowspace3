@@ -36,10 +36,15 @@ async fn start(debounce_ms: u64) -> (SocketAddr, Arc<Supervisor>) {
     rx.await.expect("server bound")
 }
 
-/// Poll `GET /dirty` until it reports `expected` paths, or give up.
+/// Poll `GET /dirty` until it reports AT LEAST `expected` paths, or give up.
 ///
-/// Polling rather than sleeping a fixed time: the assertion is "it settles",
-/// and the elapsed time is reported so a regression in latency is visible.
+/// Polling rather than sleeping a fixed time: the assertion is "it settles".
+///
+/// At-least, not exactly, because whether the OS also reports the PARENT
+/// DIRECTORY of a written file is not deterministic — the same 100-file burst
+/// produced 101 entries under `/var/folders` and 100 under a repo-local path
+/// on the same machine. Tests that pin an exact count on that are flaky by
+/// construction; the exact claims are made afterwards, on the paths.
 async fn wait_for_dirty(
     client: &reqwest::Client,
     address: SocketAddr,
@@ -49,20 +54,24 @@ async fn wait_for_dirty(
     let deadline = std::time::Instant::now() + within;
     let mut last = Value::Null;
     while std::time::Instant::now() < deadline {
-        last = client
-            .get(format!("http://{address}/dirty"))
-            .send()
-            .await
-            .expect("GET /dirty")
-            .json()
-            .await
-            .expect("dirty json");
-        if last["count"].as_u64() == Some(expected as u64) {
+        last = read_dirty(client, address).await;
+        if last["count"].as_u64().expect("count") >= expected as u64 {
             return last;
         }
         tokio::time::sleep(Duration::from_millis(25)).await;
     }
     panic!("dirty set never reached {expected} entries; last was {last}");
+}
+
+async fn read_dirty(client: &reqwest::Client, address: SocketAddr) -> Value {
+    client
+        .get(format!("http://{address}/dirty"))
+        .send()
+        .await
+        .expect("GET /dirty")
+        .json()
+        .await
+        .expect("dirty json")
 }
 
 fn paths_of(report: &Value) -> Vec<PathBuf> {
@@ -156,21 +165,34 @@ async fn a_hundred_file_burst_coalesces_and_settles_together() {
 
     let burst = root.join("burst");
     std::fs::create_dir(&burst).expect("mkdir");
+    // Deliberate pause before writing INTO the new directory. On Linux,
+    // `RecursiveMode::Recursive` is implemented by walking the tree and adding
+    // one inotify watch per directory, so a directory created a moment ago is
+    // not yet watched. Without this pause the first files written into it are
+    // never reported — proved, and pinned down, by the race test below.
+    tokio::time::sleep(Duration::from_millis(500)).await;
+
     for index in 0..100 {
         std::fs::write(burst.join(format!("f{index:03}.txt")), "x").expect("write");
     }
 
-    // 101 = the 100 files plus the `burst` directory itself, which the OS also
-    // reports as modified. That extra entry is not noise to be filtered — it is
-    // how a watcher learns a directory's listing changed.
-    let report = wait_for_dirty(&client, address, 101, Duration::from_secs(15)).await;
+    // Every one of the 100 files must arrive. The parent directory MAY also
+    // arrive — see `wait_for_dirty` — so the count is a floor and the claim
+    // that matters is made per path.
+    let report = wait_for_dirty(&client, address, 100, Duration::from_secs(15)).await;
     let paths = paths_of(&report);
+    for index in 0..100 {
+        let expected = burst.join(format!("f{index:03}.txt"));
+        assert!(
+            paths.contains(&expected),
+            "{} never went dirty",
+            expected.display()
+        );
+    }
     assert!(
-        paths.contains(&burst),
-        "the directory itself went dirty too"
+        paths.iter().all(|p| p.starts_with(&burst)),
+        "nothing outside the burst directory leaked in: {paths:?}"
     );
-    assert!(paths.contains(&burst.join("f000.txt")));
-    assert!(paths.contains(&burst.join("f099.txt")));
 
     let events: u64 = report["dirty"]
         .as_array()
@@ -179,9 +201,48 @@ async fn a_hundred_file_burst_coalesces_and_settles_together() {
         .map(|entry| entry["events"].as_u64().expect("events"))
         .sum();
     assert!(
-        events >= 101,
+        events >= 100,
         "every file produced at least one raw event ({events} folded into {} entries)",
         paths.len()
+    );
+}
+
+/// The recursive-watch race, stated as a contract instead of a comment.
+///
+/// Writing into a directory the instant it is created loses per-file events on
+/// Linux (inotify has not been told about the new directory yet) and keeps them
+/// on macOS (one FSEvents stream already covers the subtree). Neither is a bug
+/// to fix in the watcher — it is the backend.
+///
+/// What IS guaranteed on both is the recovery signal: the new DIRECTORY goes
+/// dirty. So the real daemon's rule has to be "a dirty directory means re-list
+/// that directory", not "a dirty path means re-read that file". This test
+/// asserts only the portable part.
+#[tokio::test]
+async fn a_directory_created_and_written_in_one_breath_still_reports_the_directory() {
+    let scratch = tempfile::tempdir().expect("temp dir");
+    let root = resolved(scratch.path());
+    let (address, _supervisor) = start(400).await;
+    let client = reqwest::Client::new();
+
+    client
+        .post(format!("http://{address}/watch"))
+        .json(&serde_json::json!({ "path": root }))
+        .send()
+        .await
+        .expect("POST /watch");
+
+    let fresh = root.join("fresh");
+    std::fs::create_dir(&fresh).expect("mkdir");
+    for index in 0..20 {
+        std::fs::write(fresh.join(format!("r{index:02}.txt")), "x").expect("write");
+    }
+
+    let report = wait_for_dirty(&client, address, 1, Duration::from_secs(15)).await;
+    let paths = paths_of(&report);
+    assert!(
+        paths.contains(&fresh),
+        "the new directory itself must be reported on every backend; got {paths:?}"
     );
 }
 
@@ -243,9 +304,10 @@ async fn get_dirty_is_idempotent_and_delete_is_the_acknowledgement() {
         .expect("POST /watch");
     std::fs::write(root.join("a.txt"), "a").expect("write");
 
-    wait_for_dirty(&client, address, 1, Duration::from_secs(10)).await;
+    let first = wait_for_dirty(&client, address, 1, Duration::from_secs(10)).await;
+    assert_eq!(paths_of(&first), vec![root.join("a.txt")]);
     // Read twice: a GET that consumed its own answer would make this zero.
-    let second = wait_for_dirty(&client, address, 1, Duration::from_secs(1)).await;
+    let second = read_dirty(&client, address).await;
     assert_eq!(second["count"], 1);
 
     let drained: Value = client
@@ -258,8 +320,11 @@ async fn get_dirty_is_idempotent_and_delete_is_the_acknowledgement() {
         .expect("drain json");
     assert_eq!(drained["drained"], 1);
 
-    let after = wait_for_dirty(&client, address, 0, Duration::from_secs(1)).await;
-    assert_eq!(after["count"], 0);
+    assert_eq!(
+        read_dirty(&client, address).await["count"],
+        0,
+        "DELETE is the acknowledgement, and it is what empties the set"
+    );
 }
 
 #[tokio::test]
@@ -362,16 +427,9 @@ async fn unwatching_stops_events_and_discards_that_roots_work() {
 
     // Well past the window the pending file would have settled in.
     tokio::time::sleep(Duration::from_millis(3_500)).await;
-    let report: Value = client
-        .get(format!("http://{address}/dirty"))
-        .send()
-        .await
-        .expect("GET /dirty")
-        .json()
-        .await
-        .expect("dirty json");
     assert_eq!(
-        report["count"], 0,
+        read_dirty(&client, address).await["count"],
+        0,
         "an unwatched root must not hand out work after removal"
     );
 
