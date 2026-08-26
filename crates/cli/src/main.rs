@@ -107,6 +107,15 @@ enum Command {
     /// meet. It serves HTTP on `daemon.url`, migrates the store at boot, and
     /// drains the job queue until stopped.
     Daemon,
+    /// Orient an agent that has just installed fs3: print the bundled agents
+    /// guide — setup from scratch through doctor, provider and config
+    /// creation, daemon, add and search (PRD req-0055).
+    ///
+    /// One obvious verb, answered offline like `docs`: no daemon, no network.
+    /// It is a front door onto `docs get agents` with the steer replaced by
+    /// the next operational step, so an agent that runs it lands pointed at
+    /// `flowspace3 doctor` rather than at the topic list.
+    AgentsStartHere,
     /// Read the documentation bundled into this binary.
     ///
     /// Answers offline, with no daemon and no network: an agent that has just
@@ -260,6 +269,18 @@ async fn run(command: Command) -> Result<ExitCode> {
             DocsCommand::List => emit(&fs3_cli::docs::list()),
             DocsCommand::Get { topic } => emit(&fs3_cli::docs::get(&topic)),
         }),
+        Command::AgentsStartHere => {
+            let envelope = fs3_cli::docs::get("agents");
+            let envelope = match envelope.data {
+                Some(page) => Envelope::ok("agents-start-here", page).with_next_action(
+                    "the guide above ends where operation begins — `flowspace3 doctor` \
+                     diagnoses what is missing and names the provider and config \
+                     steps it finds",
+                ),
+                None => envelope,
+            };
+            Ok(emit(&envelope))
+        }
         Command::Config {
             command: ConfigCommand::Show { config_dir },
         } => config_show(config_dir).map(|()| ExitCode::SUCCESS),
