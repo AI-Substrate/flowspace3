@@ -1,0 +1,161 @@
+.claude/skills/builder/references/stages/80-merge.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-1032
+.claude/skills/builder/references/stages/50-phase-tasks.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-415
+.claude/skills/eng-harness-flow/references/stages/retro.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-543
+.claude/skills/validate-v2/references/contract-and-forward-compatibility.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-80
+.harness/records/retro/2026-08-26/001.md
+  s_26553d8a1e03ee::t_a5e7da5c2384c9 3-8,12-27,29-55,57-83,85,87-90
+  s_26553d8a1e03ee::t_bf51b3237a61a0 1-2,9-11,28,56,84,86
+.claude/skills/builder/references/harness-seams.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-219
+.claude/skills/eng-harness-0-harnessability-assessment/README.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-63
+.claude/skills/eng-harness-flow/references/stages/add-extension.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-95
+.claude/skills/eng-harness-0-harnessability-assessment/templates/assessment-report.schema.json
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-679
+.harness/engineering-harness.md
+  s_26553d8a1e03ee::t_11cf32e1a4d74a 8-12,14,16-22,25-27,29,31-32,34,36-39,42-48,50-53,55-58,60,63-65,69-73,75,77-90,93-98
+  s_26553d8a1e03ee::t_e6e38d976864e3 1-7,13,15,23-24,28,30,33,35,40-41,49,54,59,61-62,66-68,74,76,91-92,99
+.claude/skills/builder/references/coach.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-376
+.claude/skills/eng-harness-0-harnessability-assessment/SKILL.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-1102
+.harness/extensions/checks/instructions.md
+  s_26553d8a1e03ee::t_b25f047a68e913 1-20
+  s_26553d8a1e03ee::t_6f70d36519aea4 21-25
+.claude/skills/plan-0-v2-constitution/SKILL.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-470
+.claude/skills/builder/references/00-routing.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-324
+.claude/skills/eng-harness-flow/references/getting-started.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-307
+.claude/skills/eng-harness-0-harnessability-assessment/templates/summary.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-27
+.claude/skills/eng-harness-flow/references/00-routing.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-422
+.harness/extensions/checks/extension.ts
+  s_26553d8a1e03ee::t_b25f047a68e913 1-14
+  s_26553d8a1e03ee::t_d8b6e990d30af3 15-45
+.harness/extensions/boot/extension.ts
+  s_26553d8a1e03ee::t_0841213da910ba 1-89
+AGENTS.md
+  s_26553d8a1e03ee::t_d6fd42f5317a9a 1-70
+.claude/skills/builder/references/flight-plan.schema.json
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-25
+.claude/skills/the-flow/SKILL.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-11
+.claude/skills/eng-harness-flow/references/flight-plan-ops.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-205
+.claude/skills/validate-v2/references/record-template.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-43
+.claude/skills/eng-harness-flow/SKILL.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-161
+.claude/skills/eng-harness-flow/references/coach.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-136
+.harness/government/orient-local.md
+  s_15d888f4b629c1::t_a2693934b02651 1-58
+.claude/skills/builder/references/flight-plan-ops.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-128
+.claude/skills/eng-harness-flow/references/stages/adopt.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-268
+.harness/extensions/boot/instructions.md
+  s_26553d8a1e03ee::t_0841213da910ba 1-27
+.claude/skills/builder/references/stages/60-implement.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-236
+.claude/skills/builder/references/stages/62-progress.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-110
+.claude/skills/builder/references/stages/80-ship.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-287
+.claude/skills/builder/references/stages/70-review.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-461
+.claude/skills/builder/references/stages/20-plan.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-679
+.claude/skills/validate-v2/SKILL.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-209
+skills-lock.json
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-50
+.claude/skills/builder/references/stages/75-post-flight.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-101
+.claude/skills/builder/references/stages/35-adr.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-486
+.claude/skills/builder/SKILL.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-120
+.claude/skills/eng-harness-0-harnessability-assessment/AUTHORING.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-106
+.claude/skills/eng-harness-flow/references/governance-doc.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-71
+.claude/skills/builder/references/flight-plan.example.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-126
+.claude/skills/eng-harness-flow/references/retro.schema.json
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-141
+.claude/skills/grill-agent-done/SKILL.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-70
+.claude/skills/eng-harness-0-harnessability-assessment/templates/assessment-latest.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-244
+.claude/skills/eng-harness-flow/references/stages/backpressure.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-273
+.claude/skills/eng-harness-0-harnessability-assessment/templates/codebase-affordance-record.json
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-21
+.claude/skills/eng-harness-in-a-box/SKILL.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-69
+.claude/skills/validate-v2/references/artifact-checks.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-53
+.claude/skills/builder/references/flight-plan.example.json
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-113
+.claude/skills/builder/references/flight-plan.template.json
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-122
+.claude/skills/builder/references/getting-started.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-276
+.claude/skills/eng-harness-flow/references/maturity-assessment.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-44
+.claude/skills/plan-v2-extract-domain/SKILL.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-410
+.claude/skills/validate-v2/references/examples.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-41
+.harness/skills.lock.json
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-12
+.harness/government/briefs/pa-productive-wildcat-2026-08-26.md
+  s_15d888f4b629c1::t_acd58b02356fae 1-97
+.claude/skills/eng-harness-0-harnessability-assessment/templates/canonical-boundary.txt
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-2
+.claude/skills/builder/references/stages/10-explore.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-210
+.claude/skills/eng-harness-0-harnessability-assessment/templates/evidence-log.jsonl
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-2
+.claude/skills/eng-harness-0-harnessability-assessment/templates/assessment-report.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-185
+.claude/skills/eng-harness-flow/references/stages/boot.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-169
+.claude/skills/builder/references/stages/25-workshop.md
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-678
+.claude/skills/eng-harness-0-harnessability-assessment/templates/assessment-latest.json
+  s_26553d8a1e03ee::t_24b6a15811c7c6 1-239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ec665788a3285a5bd129400a10aa399c91229dd7",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_26553d8a1e03ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1d6f4fb-bd8e-4a10-a018-4205f4058b8e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
