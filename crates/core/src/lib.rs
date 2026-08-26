@@ -18,9 +18,10 @@ pub mod ports;
 
 pub use classify::{category_hint, classify, is_declaration_shaped};
 pub use config::{
-    CONFIG_DIR_ENV, CONFIG_FILE_NAME, Config, DEFAULT_CONFIG_SUBDIR, DaemonConfig, DatabaseConfig,
-    ENV_NESTING, ENV_PREFIX, Effective, IndexingConfig, Layer, Origin, Problem, ProviderConfig,
-    REDACTED, SECRETS_FILE_NAME, SECTIONS, ScanConfig, Sources, env_overrides, parse_env_file,
+    CONFIG_DIR_ENV, CONFIG_FILE_NAME, Config, DEFAULT_CONFIG_SUBDIR, DEFAULT_PROVIDER,
+    DaemonConfig, DatabaseConfig, ENV_NESTING, ENV_PREFIX, Effective, IndexingConfig, Layer,
+    Origin, Port, PortSelection, Problem, ProviderInstance, REDACTED, RepoSelection,
+    SECRETS_FILE_NAME, SECTIONS, ScanConfig, Sources, env_overrides, parse_env_file,
     redact_url_password, resolve,
 };
 pub use element::{

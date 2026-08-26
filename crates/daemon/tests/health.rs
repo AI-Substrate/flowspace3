@@ -1,6 +1,7 @@
 //! Exemplar: the daemon integration tier.
 //!
-//! Boots the real router over a real socket with `provider = "fake"` — the
+//! Boots the real router over a real socket with both ports selecting the
+//! built-in `fake` provider instance — the
 //! offline configuration a fresh machine gets — and asks it the question the
 //! CLI asks. The router needs no database, which is the point of wiring the
 //! pool lazily.
@@ -15,10 +16,10 @@ async fn health_returns_200_and_status_ok_under_the_fake_provider() {
     let config = Config::from_toml_str(
         r#"
         [embedder]
-        provider = "fake"
+        active = "fake"
 
         [summarizer]
-        provider = "fake"
+        active = "fake"
         "#,
     )
     .expect("the offline configuration must parse");
@@ -126,8 +127,8 @@ async fn the_real_binaries_agree_through_a_discovered_config() {
         directory.join("config.toml"),
         format!(
             "[daemon]\nurl = \"http://127.0.0.1:{port}\"\n\n\
-             [embedder]\nprovider = \"fake\"\n\n\
-             [summarizer]\nprovider = \"fake\"\n"
+             [embedder]\nactive = \"fake\"\n\n\
+             [summarizer]\nactive = \"fake\"\n"
         ),
     )
     .expect("writing the config the binaries must discover");

@@ -10,7 +10,7 @@
 use std::path::Path;
 use std::sync::{LazyLock, Mutex, MutexGuard};
 
-use fs3_core::{CONFIG_DIR_ENV, Layer, ProviderConfig};
+use fs3_core::{CONFIG_DIR_ENV, Layer, Port};
 use fs3_daemon::config;
 
 mod support;
@@ -113,7 +113,8 @@ fn secrets_reach_the_environment_without_being_named_in_the_config_file() {
     write(
         &dir,
         "config.toml",
-        "[embedder]\nprovider = \"openai\"\nmodel = \"m\"\napi_key_env = \"FS3_TEST_SECRET_FROM_FILE\"\n",
+        "[providers.keyed]\nkind = \"openai\"\nmodel = \"m\"\n\
+         api_key_env = \"FS3_TEST_SECRET_FROM_FILE\"\n\n[embedder]\nactive = \"keyed\"\n",
     );
     write(
         &dir,
@@ -137,10 +138,10 @@ fn secrets_reach_the_environment_without_being_named_in_the_config_file() {
     // The config file names the VARIABLE, never the value — and the wiring
     // finds the value in the environment the secrets file just populated.
     let config = config::load_config_from(&dir).expect("the config loads");
-    assert_eq!(
-        config.embedder.api_key_env(),
-        Some("FS3_TEST_SECRET_FROM_FILE")
-    );
+    let selected = config
+        .provider(config.selected(Port::Embedder, None))
+        .unwrap();
+    assert_eq!(selected.api_key_env(), Some("FS3_TEST_SECRET_FROM_FILE"));
 
     unset("FS3_TEST_SECRET_FROM_FILE");
     std::fs::remove_dir_all(&dir).ok();
@@ -237,21 +238,22 @@ fn the_env_override_wins_over_the_home_directory() {
 }
 
 #[test]
-fn an_override_can_select_a_provider_arm_with_no_file_at_all() {
+fn an_override_can_select_an_instance_with_no_file_at_all() {
     let _guard = env_lock();
     let dir = support::temp_dir("env-provider");
 
-    set("FS3_EMBEDDER__PROVIDER", "openai");
-    set("FS3_EMBEDDER__MODEL", "text-embedding-3-small");
+    set("FS3_PROVIDERS__FAKE__KIND", "openai");
+    set("FS3_PROVIDERS__FAKE__MODEL", "text-embedding-3-small");
     let effective = config::load_effective_from(&dir).expect("env alone is a valid config");
-    unset("FS3_EMBEDDER__PROVIDER");
-    unset("FS3_EMBEDDER__MODEL");
+    unset("FS3_PROVIDERS__FAKE__KIND");
+    unset("FS3_PROVIDERS__FAKE__MODEL");
 
-    assert!(matches!(
-        effective.config.embedder,
-        ProviderConfig::OpenAi { .. }
-    ));
-    assert_eq!(effective.layer("embedder"), Layer::Env);
+    assert_eq!(
+        effective.config.provider("fake").unwrap().kind(),
+        "openai",
+        "an override may reshape a registry instance without a file"
+    );
+    assert_eq!(effective.layer("providers"), Layer::Env);
     assert_eq!(effective.layer("daemon"), Layer::Defaults);
 
     std::fs::remove_dir_all(&dir).ok();

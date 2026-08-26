@@ -6,7 +6,9 @@ use axum::routing::get;
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 
-use crate::wiring::{AppState, describe};
+use fs3_core::Port;
+
+use crate::wiring::AppState;
 
 /// What `GET /health` answers with.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -38,8 +40,8 @@ async fn health(State(state): State<AppState>) -> Json<Health> {
     Json(Health {
         status: Health::OK.to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
-        embedder: describe(&state.config.embedder).to_string(),
-        summarizer: describe(&state.config.summarizer).to_string(),
+        embedder: state.active_kind(Port::Embedder).to_string(),
+        summarizer: state.active_kind(Port::Summarizer).to_string(),
     })
 }
 

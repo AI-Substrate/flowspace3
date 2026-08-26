@@ -72,11 +72,24 @@ pub const REDACTED: &str = "<redacted>";
 /// [database]
 /// url = "postgres://flowspace3:flowspace3@127.0.0.1:5433/flowspace3"
 ///
+/// # The registry: any number of named provider instances.
+/// [providers.offline]
+/// kind = "fake"
+///
+/// [providers.small]
+/// kind = "openai"
+/// model = "text-embedding-3-small"
+///
+/// # The ports name one of them.
 /// [embedder]
-/// provider = "fake"
+/// active = "small"
 ///
 /// [summarizer]
-/// provider = "fake"
+/// active = "offline"
+///
+/// # A repo may name a different instance for either port.
+/// [repos."github.com/AI-Substrate/flowspace3"]
+/// summarizer = "offline"
 ///
 /// [indexing]
 /// summary_min_lines = 10
@@ -85,29 +98,59 @@ pub const REDACTED: &str = "<redacted>";
 /// [scan]
 /// max_file_bytes = 2000000
 /// ```
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Config {
     /// Where the daemon listens, and where the CLI looks for it.
     pub daemon: DaemonConfig,
     /// The central Postgres + pgvector store (PRD req 4).
     pub database: DatabaseConfig,
-    /// Which [`crate::Embedder`] the composition root wires.
-    pub embedder: ProviderConfig,
-    /// Which [`crate::Summarizer`] the composition root wires.
-    pub summarizer: ProviderConfig,
+    /// Every provider instance the machine knows about, by name. Declaring one
+    /// costs nothing: only the instances a port or a repo actually names are
+    /// constructed.
+    #[serde(default = "default_providers")]
+    pub providers: BTreeMap<String, ProviderInstance>,
+    /// Which instance the [`crate::Embedder`] port uses by default.
+    pub embedder: PortSelection,
+    /// Which instance the [`crate::Summarizer`] port uses by default.
+    pub summarizer: PortSelection,
+    /// Per-repo overrides of those choices, keyed by repo identity. Global
+    /// file, per-repo *data* — not a second config file (PRD req 28).
+    pub repos: BTreeMap<String, RepoSelection>,
     /// Knobs the indexing pipeline reads.
     pub indexing: IndexingConfig,
     /// Knobs the filesystem scanner reads.
     pub scan: ScanConfig,
 }
 
+impl Default for Config {
+    /// A fresh machine: one offline fake in the registry, both ports naming it.
+    fn default() -> Self {
+        Self {
+            daemon: DaemonConfig::default(),
+            database: DatabaseConfig::default(),
+            providers: default_providers(),
+            embedder: PortSelection::default(),
+            summarizer: PortSelection::default(),
+            repos: BTreeMap::new(),
+            indexing: IndexingConfig::default(),
+            scan: ScanConfig::default(),
+        }
+    }
+}
+
+/// The name of the provider instance every fresh machine has: the offline
+/// deterministic fake, which needs no keys.
+pub const DEFAULT_PROVIDER: &str = "fake";
+
 /// The top-level section names, in the order `config show` prints them.
 pub const SECTIONS: &[&str] = &[
     "daemon",
     "database",
+    "providers",
     "embedder",
     "summarizer",
+    "repos",
     "indexing",
     "scan",
 ];
@@ -128,6 +171,60 @@ impl Config {
         .config)
     }
 
+    /// The instance a port uses for a repo: the repo's override if it has one,
+    /// otherwise the port's `active`.
+    ///
+    /// `repo` is a repo identity as the daemon knows it; `None` (or an unknown
+    /// one) means "no override", which is the common case.
+    #[must_use]
+    pub fn selected(&self, port: Port, repo: Option<&str>) -> &str {
+        repo.and_then(|repo| self.repos.get(repo))
+            .and_then(|selection| selection.get(port))
+            .unwrap_or_else(|| self.selection(port).active.as_str())
+    }
+
+    /// The port's default selection.
+    #[must_use]
+    pub fn selection(&self, port: Port) -> &PortSelection {
+        match port {
+            Port::Embedder => &self.embedder,
+            Port::Summarizer => &self.summarizer,
+        }
+    }
+
+    /// Look up a provider instance by name.
+    ///
+    /// # Errors
+    /// [`Error::InvalidConfig`] naming the missing instance and listing the
+    /// ones that *are* configured — the whole point of a registry is that the
+    /// available names are knowable.
+    pub fn provider(&self, name: &str) -> Result<&ProviderInstance> {
+        self.providers.get(name).ok_or_else(|| {
+            Error::InvalidConfig(render(&[unknown_instance(
+                "provider",
+                name,
+                &self.providers,
+            )]))
+        })
+    }
+
+    /// Every instance name some port or repo actually names, deduplicated.
+    ///
+    /// This is the set the composition root constructs: declaring an instance
+    /// you never select must not cost an API key.
+    #[must_use]
+    pub fn referenced_providers(&self, port: Port) -> Vec<&str> {
+        let mut names = vec![self.selection(port).active.as_str()];
+        for selection in self.repos.values() {
+            if let Some(name) = selection.get(port)
+                && !names.contains(&name)
+            {
+                names.push(name);
+            }
+        }
+        names
+    }
+
     /// Every problem in this configuration, collected rather than short-circuited.
     ///
     /// One bad file should cost one edit round-trip, not one per mistake.
@@ -135,8 +232,37 @@ impl Config {
         let mut problems = Vec::new();
         self.daemon.collect(&mut problems);
         self.database.collect(&mut problems);
-        self.embedder.collect("embedder", &mut problems);
-        self.summarizer.collect("summarizer", &mut problems);
+
+        for (name, instance) in &self.providers {
+            instance.collect(name, &mut problems);
+        }
+
+        for port in Port::ALL {
+            let active = &self.selection(port).active;
+            if !self.providers.contains_key(active.as_str()) {
+                problems.push(unknown_instance(
+                    &format!("{port}.active"),
+                    active,
+                    &self.providers,
+                ));
+            }
+        }
+
+        for (repo, selection) in &self.repos {
+            for port in Port::ALL {
+                let Some(name) = selection.get(port) else {
+                    continue;
+                };
+                if !self.providers.contains_key(name) {
+                    problems.push(unknown_instance(
+                        &format!("repos.{repo:?}.{port}"),
+                        name,
+                        &self.providers,
+                    ));
+                }
+            }
+        }
+
         self.indexing.collect(&mut problems);
         self.scan.collect(&mut problems);
         problems
@@ -255,7 +381,87 @@ impl Default for DatabaseConfig {
     }
 }
 
-/// Which implementation of a port to wire.
+/// Which port a selection is about.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Port {
+    /// [`crate::Embedder`].
+    Embedder,
+    /// [`crate::Summarizer`].
+    Summarizer,
+}
+
+impl Port {
+    /// Both ports, in the order `config show` prints them.
+    pub const ALL: [Port; 2] = [Port::Embedder, Port::Summarizer];
+}
+
+impl std::fmt::Display for Port {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Port::Embedder => "embedder",
+            Port::Summarizer => "summarizer",
+        })
+    }
+}
+
+/// Which registry instance a port uses.
+///
+/// The section carries a *name*, not a shape: choosing and configuring are
+/// separate concerns, so two ports can share one instance (and one HTTP client)
+/// by naming it twice.
+///
+/// ```toml
+/// [embedder]
+/// active = "small"
+/// ```
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct PortSelection {
+    /// The name of an instance in [`Config::providers`].
+    pub active: String,
+}
+
+impl Default for PortSelection {
+    /// Offline by default: a fresh machine runs the stack before it has keys.
+    fn default() -> Self {
+        Self {
+            active: DEFAULT_PROVIDER.to_string(),
+        }
+    }
+}
+
+/// One repo's overrides of the default selections.
+///
+/// Keyed by repo identity in [`Config::repos`], so a monorepo of Rust can use a
+/// different summarizer from a repo of prose without a second config file.
+///
+/// ```toml
+/// [repos."github.com/AI-Substrate/flowspace3"]
+/// summarizer = "offline"
+/// ```
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RepoSelection {
+    /// Instance name for the embedder port, or `None` to use the default.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub embedder: Option<String>,
+    /// Instance name for the summarizer port, or `None` to use the default.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summarizer: Option<String>,
+}
+
+impl RepoSelection {
+    /// This repo's override for `port`, if it has one.
+    #[must_use]
+    pub fn get(&self, port: Port) -> Option<&str> {
+        match port {
+            Port::Embedder => self.embedder.as_deref(),
+            Port::Summarizer => self.summarizer.as_deref(),
+        }
+    }
+}
+
+/// One configured provider instance — a named entry in the registry.
 ///
 /// This enum *is* the IoC container's input: `daemon`'s composition root
 /// matches on it (workshop 001 rule 4). `fake` is a first-class production
@@ -263,17 +469,17 @@ impl Default for DatabaseConfig {
 /// with no API keys (rule 5).
 ///
 /// ```toml
-/// [embedder]
-/// provider = "openai"
+/// [providers.small]
+/// kind = "openai"
 /// model = "text-embedding-3-small"
 /// api_key_env = "OPENAI_API_KEY"   # the NAME of a variable, never a key
 ///
-/// [summarizer]
-/// provider = "fake"
+/// [providers.offline]
+/// kind = "fake"
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "provider", rename_all = "snake_case", deny_unknown_fields)]
-pub enum ProviderConfig {
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum ProviderInstance {
     /// The deterministic fake from `fs3-testkit`. Offline, no keys.
     Fake,
     /// An OpenAI-shaped HTTP API.
@@ -286,24 +492,34 @@ pub enum ProviderConfig {
         api_base: Option<String>,
         /// Environment variable holding the API key. Keys never live in config
         /// files (PRD req 39 spirit: fs3 stores no secrets).
-        #[serde(default = "ProviderConfig::default_api_key_env")]
+        #[serde(default = "ProviderInstance::default_api_key_env")]
         api_key_env: String,
     },
 }
 
-impl ProviderConfig {
+impl ProviderInstance {
     /// The conventional key variable, used when config does not name one.
     pub const DEFAULT_API_KEY_ENV: &'static str = "OPENAI_API_KEY";
 
-    /// The environment variable this arm reads its key from, if it needs one.
+    /// The environment variable this instance reads its key from, if it needs
+    /// one.
     ///
     /// Printers use it to report *whether* a key is present without ever
     /// touching the value.
     #[must_use]
     pub fn api_key_env(&self) -> Option<&str> {
         match self {
-            ProviderConfig::Fake => None,
-            ProviderConfig::OpenAi { api_key_env, .. } => Some(api_key_env),
+            ProviderInstance::Fake => None,
+            ProviderInstance::OpenAi { api_key_env, .. } => Some(api_key_env),
+        }
+    }
+
+    /// A one-word name for this instance's kind, for logs and `/health`.
+    #[must_use]
+    pub fn kind(&self) -> &'static str {
+        match self {
+            ProviderInstance::Fake => "fake",
+            ProviderInstance::OpenAi { .. } => "openai",
         }
     }
 
@@ -311,8 +527,10 @@ impl ProviderConfig {
         Self::DEFAULT_API_KEY_ENV.to_string()
     }
 
-    fn collect(&self, section: &str, problems: &mut Vec<Problem>) {
-        let ProviderConfig::OpenAi {
+    /// Problems with this instance's own shape, named by registry key so the
+    /// message points at the table to edit.
+    fn collect(&self, name: &str, problems: &mut Vec<Problem>) {
+        let ProviderInstance::OpenAi {
             model, api_key_env, ..
         } = self
         else {
@@ -320,14 +538,14 @@ impl ProviderConfig {
         };
         if model.trim().is_empty() {
             problems.push(Problem::file(
-                format!("{section}.model"),
-                "must name a model when provider = \"openai\"",
+                format!("providers.{name}.model"),
+                "must name a model when kind = \"openai\"",
                 "model = \"text-embedding-3-small\"",
             ));
         }
         if api_key_env.trim().is_empty() {
             problems.push(Problem::file(
-                format!("{section}.api_key_env"),
+                format!("providers.{name}.api_key_env"),
                 "must name the environment variable holding the key (never the key itself)",
                 format!("api_key_env = \"{}\"", Self::DEFAULT_API_KEY_ENV),
             ));
@@ -335,11 +553,37 @@ impl ProviderConfig {
     }
 }
 
-impl Default for ProviderConfig {
+impl Default for ProviderInstance {
     /// Offline by default: a fresh machine runs the stack before it has keys.
     fn default() -> Self {
-        ProviderConfig::Fake
+        ProviderInstance::Fake
     }
+}
+
+/// The registry a fresh machine has: one offline fake, named [`DEFAULT_PROVIDER`].
+fn default_providers() -> BTreeMap<String, ProviderInstance> {
+    BTreeMap::from([(DEFAULT_PROVIDER.to_string(), ProviderInstance::Fake)])
+}
+
+/// "That name is not in the registry — here is what is."
+fn unknown_instance(
+    key: &str,
+    name: &str,
+    registry: &BTreeMap<String, ProviderInstance>,
+) -> Problem {
+    let configured: Vec<&str> = registry.keys().map(String::as_str).collect();
+    Problem::file(
+        key,
+        format!(
+            "names provider {name:?}, which is not configured; configured providers are: {}",
+            if configured.is_empty() {
+                "none".to_string()
+            } else {
+                configured.join(", ")
+            }
+        ),
+        format!("[providers.{name}]\n         kind = \"fake\""),
+    )
 }
 
 /// Indexing knobs.
@@ -659,7 +903,7 @@ fn merge_tables(base: &mut Table, overlay: Table) {
     for (key, value) in overlay {
         match (base.get_mut(&key), value) {
             (Some(Value::Table(existing)), Value::Table(incoming)) => {
-                if switches_provider(existing, &incoming) {
+                if switches_kind(existing, &incoming) {
                     *existing = incoming;
                 } else {
                     merge_tables(existing, incoming);
@@ -672,8 +916,13 @@ fn merge_tables(base: &mut Table, overlay: Table) {
     }
 }
 
-fn switches_provider(existing: &Table, incoming: &Table) -> bool {
-    match (existing.get("provider"), incoming.get("provider")) {
+/// Does the overlay make this table a *different* tagged shape?
+///
+/// `[providers.x]` is an internally-tagged enum: merging a `kind = "fake"`
+/// default with a `kind = "openai"` override key-by-key would leave a table
+/// belonging to neither arm.
+fn switches_kind(existing: &Table, incoming: &Table) -> bool {
+    match (existing.get("kind"), incoming.get("kind")) {
         (Some(Value::String(before)), Some(Value::String(after))) => before != after,
         _ => false,
     }
@@ -897,8 +1146,15 @@ mod tests {
     #[test]
     fn empty_config_is_the_offline_default() {
         let config = Config::from_toml_str("").unwrap();
-        assert_eq!(config.embedder, ProviderConfig::Fake);
-        assert_eq!(config.summarizer, ProviderConfig::Fake);
+        assert_eq!(config.providers, default_providers());
+        assert_eq!(config.embedder.active, DEFAULT_PROVIDER);
+        assert_eq!(config.summarizer.active, DEFAULT_PROVIDER);
+        assert_eq!(
+            config
+                .provider(config.selected(Port::Embedder, None))
+                .unwrap(),
+            &ProviderInstance::Fake
+        );
         assert_eq!(config.daemon.url, DaemonConfig::DEFAULT_URL);
         // PRD req 29: debounce defaults to 10 seconds.
         assert_eq!(config.indexing.debounce_seconds, 10);
@@ -906,28 +1162,164 @@ mod tests {
     }
 
     #[test]
-    fn provider_tables_select_an_arm() {
+    fn the_registry_holds_instances_and_the_ports_name_them() {
         let config = Config::from_toml_str(
             r#"
-            [embedder]
-            provider = "openai"
+            [providers.small]
+            kind = "openai"
             model = "text-embedding-3-small"
 
+            [embedder]
+            active = "small"
+
             [summarizer]
-            provider = "fake"
+            active = "fake"
             "#,
         )
         .unwrap();
 
+        assert_eq!(config.selected(Port::Embedder, None), "small");
         assert_eq!(
-            config.embedder,
-            ProviderConfig::OpenAi {
+            config.provider("small").unwrap(),
+            &ProviderInstance::OpenAi {
                 model: "text-embedding-3-small".into(),
                 api_base: None,
-                api_key_env: ProviderConfig::DEFAULT_API_KEY_ENV.into(),
+                api_key_env: ProviderInstance::DEFAULT_API_KEY_ENV.into(),
             }
         );
-        assert_eq!(config.summarizer, ProviderConfig::Fake);
+        // The offline fake is always in the registry, so `fake` never has to be
+        // declared to be selectable.
+        assert_eq!(config.provider("fake").unwrap(), &ProviderInstance::Fake);
+    }
+
+    #[test]
+    fn two_ports_may_share_one_instance() {
+        let config = Config::from_toml_str(
+            r#"
+            [providers.one]
+            kind = "openai"
+            model = "gpt-4o-mini"
+
+            [embedder]
+            active = "one"
+
+            [summarizer]
+            active = "one"
+            "#,
+        )
+        .unwrap();
+
+        assert_eq!(config.referenced_providers(Port::Embedder), vec!["one"]);
+        assert_eq!(config.referenced_providers(Port::Summarizer), vec!["one"]);
+    }
+
+    #[test]
+    fn a_repo_may_name_a_different_instance() {
+        let config = Config::from_toml_str(
+            r#"
+            [providers.big]
+            kind = "openai"
+            model = "gpt-4o"
+
+            [repos."github.com/AI-Substrate/flowspace3"]
+            summarizer = "big"
+            "#,
+        )
+        .unwrap();
+
+        let repo = Some("github.com/AI-Substrate/flowspace3");
+        assert_eq!(config.selected(Port::Summarizer, repo), "big");
+        // The other port, and every other repo, still get the default.
+        assert_eq!(config.selected(Port::Embedder, repo), DEFAULT_PROVIDER);
+        assert_eq!(
+            config.selected(Port::Summarizer, Some("some/other/repo")),
+            DEFAULT_PROVIDER
+        );
+        assert_eq!(config.selected(Port::Summarizer, None), DEFAULT_PROVIDER);
+
+        // Both instances are referenced, so both get constructed — once each.
+        assert_eq!(
+            config.referenced_providers(Port::Summarizer),
+            vec![DEFAULT_PROVIDER, "big"]
+        );
+    }
+
+    #[test]
+    fn an_unknown_instance_name_lists_the_configured_ones() {
+        let err = Config::from_toml_str(
+            r#"
+            [providers.small]
+            kind = "openai"
+            model = "m"
+
+            [embedder]
+            active = "smal"
+            "#,
+        )
+        .unwrap_err();
+
+        let message = err.to_string();
+        assert!(message.contains("embedder.active"), "{message}");
+        assert!(message.contains("\"smal\""), "{message}");
+        assert!(
+            message.contains("configured providers are: fake, small"),
+            "{message}"
+        );
+    }
+
+    #[test]
+    fn an_unknown_instance_in_a_repo_override_names_the_repo() {
+        let err = Config::from_toml_str(
+            r#"
+            [repos."github.com/acme/thing"]
+            embedder = "nope"
+            "#,
+        )
+        .unwrap_err();
+
+        let message = err.to_string();
+        assert!(message.contains("github.com/acme/thing"), "{message}");
+        assert!(message.contains("embedder"), "{message}");
+        assert!(message.contains("\"nope\""), "{message}");
+    }
+
+    #[test]
+    fn an_instance_failing_its_kind_shape_names_the_bad_key() {
+        let err = Config::from_toml_str(
+            r#"
+            [providers.small]
+            kind = "openai"
+            model = ""
+            api_key_env = ""
+            "#,
+        )
+        .unwrap_err();
+
+        let message = err.to_string();
+        assert!(message.contains("providers.small.model"), "{message}");
+        assert!(message.contains("providers.small.api_key_env"), "{message}");
+        assert!(message.contains("2 problems"), "{message}");
+    }
+
+    #[test]
+    fn an_unselected_instance_is_still_validated_but_never_referenced() {
+        let config = Config::from_toml_str(
+            r#"
+            [providers.spare]
+            kind = "openai"
+            model = "gpt-4o"
+            api_key_env = "SPARE_KEY"
+            "#,
+        )
+        .unwrap();
+
+        assert!(config.providers.contains_key("spare"));
+        // Declaring an instance must not cost an API key: nothing references it,
+        // so the composition root never constructs it.
+        assert_eq!(
+            config.referenced_providers(Port::Embedder),
+            vec![DEFAULT_PROVIDER]
+        );
     }
 
     #[test]
@@ -1034,35 +1426,47 @@ summary_min_lines = 0
     }
 
     #[test]
-    fn an_override_can_switch_a_provider_arm_whole() {
+    fn an_override_can_switch_the_active_instance() {
+        let effective = resolved(
+            "[providers.small]\nkind = \"openai\"\nmodel = \"text-embedding-3-small\"\n",
+            &[("FS3_EMBEDDER__ACTIVE", "small")],
+        )
+        .unwrap();
+
+        assert_eq!(effective.config.selected(Port::Embedder, None), "small");
+        assert_eq!(effective.layer("embedder"), Layer::Env);
+        assert_eq!(effective.layer("providers"), Layer::File);
+    }
+
+    #[test]
+    fn an_override_can_reshape_an_instance_in_the_registry() {
         let effective = resolved(
             "",
             &[
-                ("FS3_EMBEDDER__PROVIDER", "openai"),
-                ("FS3_EMBEDDER__MODEL", "text-embedding-3-small"),
+                ("FS3_PROVIDERS__FAKE__KIND", "openai"),
+                ("FS3_PROVIDERS__FAKE__MODEL", "gpt-4o-mini"),
             ],
         )
         .unwrap();
 
-        assert_eq!(
-            effective.config.embedder,
-            ProviderConfig::OpenAi {
-                model: "text-embedding-3-small".into(),
-                api_base: None,
-                api_key_env: ProviderConfig::DEFAULT_API_KEY_ENV.into(),
-            }
-        );
-        assert_eq!(effective.layer("embedder"), Layer::Env);
+        assert!(matches!(
+            effective.config.provider("fake").unwrap(),
+            ProviderInstance::OpenAi { .. }
+        ));
     }
 
     #[test]
-    fn switching_the_arm_in_the_file_does_not_inherit_the_other_arms_keys() {
-        // The default arm is `fake`; the file names `openai`. Merging key-wise
-        // would leave a shape belonging to neither.
+    fn switching_the_kind_in_the_file_does_not_inherit_the_other_arms_keys() {
+        // The default `fake` instance has no `model`; redefining it as openai
+        // must replace the table rather than merge into it, or the result is a
+        // shape belonging to neither arm.
         let config =
-            Config::from_toml_str("[summarizer]\nprovider = \"openai\"\nmodel = \"gpt-4o-mini\"\n")
+            Config::from_toml_str("[providers.fake]\nkind = \"openai\"\nmodel = \"gpt-4o-mini\"\n")
                 .unwrap();
-        assert!(matches!(config.summarizer, ProviderConfig::OpenAi { .. }));
+        assert!(matches!(
+            config.provider("fake").unwrap(),
+            ProviderInstance::OpenAi { .. }
+        ));
     }
 
     #[test]

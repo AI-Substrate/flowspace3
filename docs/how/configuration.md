@@ -12,8 +12,8 @@ configuration.
 ```
 
 Neither file has to exist. With both absent fs3 runs on its defaults, which are
-a complete offline stack: `provider = "fake"` for both ports, no API keys
-needed.
+a complete offline stack: both ports select the built-in `fake` provider
+instance, so no API keys are needed.
 
 ## Where a value comes from
 
@@ -39,20 +39,28 @@ $ flowspace3 config show
 #
 # [daemon]     from config.toml
 # [database]   from defaults
+# [providers]  from config.toml
 # [embedder]   from config.toml
 # [summarizer] from defaults
+# [repos]      from config.toml
 # [indexing]   from defaults
 # [scan]       from FS3_* environment
 #
-# secrets are never printed:
-#   embedder.api_key_env = OPENAI_API_KEY (set)
-#   summarizer: no key needed (provider = "fake")
+# resolved providers (secrets are never printed):
+#   embedder -> small (OPENAI_API_KEY: set)
+#   summarizer -> fake
+#   summarizer for github.com/AI-Substrate/flowspace3 -> big (AZURE_KEY: NOT SET — the daemon will refuse to start)
 
 [daemon]
 url = "http://127.0.0.1:7373"
 
 [database]
 url = "postgres://flowspace3:<redacted>@127.0.0.1:5433/flowspace3"
+
+[providers.small]
+kind = "openai"
+model = "text-embedding-3-small"
+api_key_env = "OPENAI_API_KEY"
 ...
 ```
 
@@ -67,7 +75,7 @@ and every key is documented — with an example block — on the types in
 [`fs3_core::config`](../../crates/core/src/config.rs); `cargo doc -p fs3-core
 --open` renders them.
 
-A full file, with the defaults spelled out:
+A full file:
 
 ```toml
 [daemon]
@@ -76,13 +84,28 @@ url = "http://127.0.0.1:7373"      # loopback only; anything else is refused at 
 [database]
 url = "postgres://flowspace3:flowspace3@127.0.0.1:5433/flowspace3"
 
-[embedder]
-provider = "openai"                # or "fake" — offline, deterministic, no keys
+# --- the provider registry: any number of named instances ---------------------
+[providers.small]
+kind = "openai"                    # the shape; the rest of the table follows it
 model = "text-embedding-3-small"
 api_key_env = "OPENAI_API_KEY"     # the NAME of a variable, never a key
 
+[providers.big]
+kind = "openai"
+model = "gpt-4o"
+
+# `fake` always exists — offline, deterministic, no keys — and may be redefined.
+
+# --- the ports name one instance each -----------------------------------------
+[embedder]
+active = "small"
+
 [summarizer]
-provider = "fake"
+active = "fake"
+
+# --- per-repo overrides, keyed by repo identity -------------------------------
+[repos."github.com/AI-Substrate/flowspace3"]
+summarizer = "big"                 # this repo only; `embedder` stays the default
 
 [indexing]
 summary_min_lines = 10             # PRD req 32: the size floor for summaries
@@ -94,6 +117,32 @@ min_file_bytes = 1                 # skip empty files
 respect_gitignore = true
 include_hidden = false
 follow_symlinks = false            # a link loop is an infinite scan
+```
+
+### Providers are a registry, not a shape per port
+
+Declaring an instance and *selecting* it are separate steps, which buys three
+things:
+
+- **Two ports can share one instance** by naming it twice — one client, one
+  connection pool, one place to change the model.
+- **A repo can differ from the default** without a second config file:
+  `[repos."<identity>"]` names an instance for either port. This is still the one
+  global file; per-repo settings are keyed *data* in it.
+- **Declaring an instance costs nothing.** Only instances something references
+  are constructed, so a `[providers.…]` table you have no key for does not stop
+  the daemon starting.
+
+Selecting a name that is not in the registry is a startup error that lists the
+names that are:
+
+```console
+$ fs3-daemon
+Caused by: invalid config: 1 problem found:
+  - embedder.active: names provider "smal", which is not configured; configured
+    providers are: big, fake, small
+    try: [providers.smal]
+         kind = "fake"
 ```
 
 Mistakes are reported **all at once**, each naming the file, the key, and a line
@@ -118,7 +167,8 @@ An override is `FS3_` + section + `__` + key, upper-cased:
 ```bash
 FS3_DATABASE__URL=postgres://user:pw@db:5432/fs3 fs3-daemon
 FS3_SCAN__MAX_FILE_BYTES=4096 flowspace3 config show
-FS3_EMBEDDER__PROVIDER=openai FS3_EMBEDDER__MODEL=text-embedding-3-small fs3-daemon
+FS3_EMBEDDER__ACTIVE=fake fs3-daemon                      # select another instance
+FS3_PROVIDERS__SMALL__MODEL=text-embedding-3-large fs3-daemon  # reshape one
 ```
 
 Two rules make this predictable:
@@ -140,8 +190,8 @@ Secret **values** never appear in `config.toml`. Config names the variable that
 holds a key:
 
 ```toml
-[embedder]
-provider = "openai"
+[providers.small]
+kind = "openai"
 api_key_env = "OPENAI_API_KEY"
 ```
 
@@ -170,9 +220,14 @@ daemon's startup log lists the variable *names* a secrets file supplied, and
 
 This is the repo's DI story, and it is deliberately boring: **services receive
 everything they need and go looking for nothing.** There is no container, no
-registry, no service locator, and no `Config` global. The composition root is
-the only code that chooses (workshop 001 rule 4 — see
+service locator, and no `Config` global. The composition root is the only code
+that chooses (workshop 001 rule 4 — see
 [fs3-architecture.md](../rules-idioms-architecture/fs3-architecture.md)).
+
+(The provider *registry* is not a counter-example: it is configuration data, and
+`[providers.…]` names are resolved to objects once, at startup, in the
+composition root. Nothing looks a service up by name at call time —
+`AppState::embedder_for(repo)` is a map lookup over objects that already exist.)
 
 Say you are adding a `Scanner`.
 
@@ -226,7 +281,7 @@ of what it wired (`/health` and `config show` report from it) — not so service
 can reach into it. Nothing constructs itself from `AppState`.
 
 **4. Prove it.** A core unit test for the section's validation, and a daemon
-test that a fixture directory selects the arm you expect
+test that a fixture directory selects the instance you expect
 (`crates/daemon/tests/config_loading.rs` is the pattern). If the service is a
 new *port* — a trait with a second real implementation — stop: rule 3 says a
 third port is a stop-and-ask.
@@ -249,3 +304,20 @@ The daemon and the CLI each own their ~30 lines of file IO and call the same
 daemon crate, so the *shim* is duplicated; the *meaning* is not, and a
 divergence in behaviour would be a bug in one shim rather than a second config
 system.
+
+### Adding a new provider kind
+
+A new kind of embedder or summarizer is a new arm of `ProviderInstance` (`kind =
+"…"`), not a new port and not a new section:
+
+1. Add the arm in `crates/core/src/config.rs`, with its rustdoc `[providers.x]`
+   block and its shape validation in `ProviderInstance::collect` — name the bad
+   key as `providers.<name>.<key>`.
+2. Add the matching arm to `build_embedder` / `build_summarizer` in
+   `crates/daemon/src/wiring.rs`, constructing from the instance and taking its
+   key through `api_key_env`.
+3. Prove it in `crates/daemon/tests/config_wiring.rs`: a fixture file naming the
+   new kind resolves to it, and a missing key fails at startup naming the
+   instance.
+
+A new *port* — a third trait — is a stop-and-ask (workshop 001 rule 3).

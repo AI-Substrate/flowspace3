@@ -3,13 +3,13 @@
 //!
 //! This is the debuggability anchor for the whole layered scheme: when the
 //! daemon is not doing what a config file says, this prints what fs3 actually
-//! resolved and which layer won. Secrets are never printed — the database
-//! password is masked and a key variable is reported as *set or not*, never by
-//! value.
+//! resolved, which layer won, and which registry instance each port ended up
+//! with. Secrets are never printed — the database password is masked and a key
+//! variable is reported as *set or not*, never by value.
 
 use std::path::Path;
 
-use fs3_core::{Effective, ProviderConfig, SECTIONS};
+use fs3_core::{Effective, Port, SECTIONS};
 
 /// Render the effective configuration as annotated TOML.
 ///
@@ -23,6 +23,7 @@ pub fn render(
     file_present: bool,
     secrets_present: bool,
 ) -> String {
+    let config = &effective.config;
     let mut out = String::new();
 
     out.push_str("# effective fs3 configuration\n");
@@ -52,23 +53,23 @@ pub fn render(
         ));
     }
 
-    out.push_str("#\n# secrets are never printed:\n");
-    for (section, provider) in [
-        ("embedder", &effective.config.embedder),
-        ("summarizer", &effective.config.summarizer),
-    ] {
-        match provider.api_key_env() {
-            None => out.push_str(&format!(
-                "#   {section}: no key needed (provider = \"fake\")\n"
-            )),
-            Some(variable) => out.push_str(&format!(
-                "#   {section}.api_key_env = {variable} ({})\n",
-                if std::env::var_os(variable).is_some() {
-                    "set"
-                } else {
-                    "NOT SET — the daemon will refuse to start"
-                }
-            )),
+    out.push_str("#\n# resolved providers (secrets are never printed):\n");
+    for port in Port::ALL {
+        let name = config.selected(port, None);
+        out.push_str(&format!(
+            "#   {port} -> {name}{}\n",
+            key_status(effective, name)
+        ));
+    }
+    for (repo, selection) in &config.repos {
+        for port in Port::ALL {
+            let Some(name) = selection.get(port) else {
+                continue;
+            };
+            out.push_str(&format!(
+                "#   {port} for {repo} -> {name}{}\n",
+                key_status(effective, name)
+            ));
         }
     }
     out.push('\n');
@@ -76,29 +77,59 @@ pub fn render(
     // `redacted()` masks the database password; serializing the redacted copy
     // means a field added later cannot leak by being forgotten here.
     out.push_str(
-        &toml::to_string_pretty(&effective.config.redacted())
-            .expect("a Config always serializes to TOML"),
+        &toml::to_string_pretty(&config.redacted()).expect("a Config always serializes to TOML"),
     );
     out
 }
 
-/// Whether any provider arm needs a key variable that is not set.
+/// ` (OPENAI_API_KEY: set)` — or nothing, for an instance that needs no key.
+fn key_status(effective: &Effective, name: &str) -> String {
+    let Ok(instance) = effective.config.provider(name) else {
+        return " — NOT CONFIGURED".to_string();
+    };
+    match instance.api_key_env() {
+        None => String::new(),
+        Some(variable) => format!(
+            " ({variable}: {})",
+            if std::env::var_os(variable).is_some() {
+                "set"
+            } else {
+                "NOT SET — the daemon will refuse to start"
+            }
+        ),
+    }
+}
+
+/// Key variables that a *referenced* instance needs and the environment does
+/// not have.
 ///
-/// `config show` reports it; a future `doctor` can act on it.
+/// `config show` reports them; a future `doctor` can act on them. An instance
+/// nobody selects is not reported: declaring a provider you have no key for is
+/// legal and costs nothing.
 #[must_use]
 pub fn missing_key_variables(effective: &Effective) -> Vec<String> {
-    [&effective.config.embedder, &effective.config.summarizer]
-        .into_iter()
-        .filter_map(ProviderConfig::api_key_env)
-        .filter(|variable| std::env::var_os(variable).is_none())
-        .map(str::to_string)
-        .collect()
+    let config = &effective.config;
+    let mut missing = Vec::new();
+    for port in Port::ALL {
+        for name in config.referenced_providers(port) {
+            let Ok(instance) = config.provider(name) else {
+                continue;
+            };
+            let Some(variable) = instance.api_key_env() else {
+                continue;
+            };
+            if std::env::var_os(variable).is_none() && !missing.iter().any(|m| m == variable) {
+                missing.push(variable.to_string());
+            }
+        }
+    }
+    missing
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fs3_core::{Config, Layer, REDACTED};
+    use fs3_core::{Config, Layer, ProviderInstance, REDACTED, RepoSelection};
 
     fn effective() -> Effective {
         let mut layers = std::collections::BTreeMap::new();
@@ -137,29 +168,63 @@ mod tests {
     }
 
     #[test]
-    fn the_fake_provider_is_reported_as_needing_no_key() {
+    fn each_port_reports_the_instance_it_resolved_to() {
         let rendered = render(&effective(), Path::new("/tmp/fs3"), true, false);
-        assert!(rendered.contains("embedder: no key needed"), "{rendered}");
+        assert!(rendered.contains("#   embedder -> fake"), "{rendered}");
+        assert!(rendered.contains("#   summarizer -> fake"), "{rendered}");
         assert!(missing_key_variables(&effective()).is_empty());
     }
 
     #[test]
-    fn a_missing_key_variable_is_called_out_by_name() {
+    fn a_repo_override_is_shown_next_to_the_default() {
         let mut effective = effective();
-        effective.config.embedder = ProviderConfig::OpenAi {
-            model: "text-embedding-3-small".into(),
-            api_base: None,
-            api_key_env: "FS3_TEST_DEFINITELY_UNSET_KEY".into(),
-        };
+        effective.config.providers.insert(
+            "big".to_string(),
+            ProviderInstance::OpenAi {
+                model: "gpt-4o".into(),
+                api_base: None,
+                api_key_env: "FS3_TEST_DEFINITELY_UNSET_KEY".into(),
+            },
+        );
+        effective.config.repos.insert(
+            "github.com/acme/thing".to_string(),
+            RepoSelection {
+                embedder: None,
+                summarizer: Some("big".to_string()),
+            },
+        );
 
         let rendered = render(&effective, Path::new("/tmp/fs3"), true, false);
         assert!(
-            rendered.contains("embedder.api_key_env = FS3_TEST_DEFINITELY_UNSET_KEY (NOT SET"),
+            rendered.contains("#   summarizer for github.com/acme/thing -> big"),
+            "{rendered}"
+        );
+        assert!(
+            rendered.contains("FS3_TEST_DEFINITELY_UNSET_KEY: NOT SET"),
             "{rendered}"
         );
         assert_eq!(
             missing_key_variables(&effective),
-            vec!["FS3_TEST_DEFINITELY_UNSET_KEY".to_string()]
+            vec!["FS3_TEST_DEFINITELY_UNSET_KEY".to_string()],
+            "a referenced instance's missing key is reportable"
+        );
+    }
+
+    #[test]
+    fn an_unreferenced_instance_never_asks_for_a_key() {
+        let mut effective = effective();
+        effective.config.providers.insert(
+            "spare".to_string(),
+            ProviderInstance::OpenAi {
+                model: "gpt-4o".into(),
+                api_base: None,
+                api_key_env: "FS3_TEST_DEFINITELY_UNSET_KEY".into(),
+            },
+        );
+
+        assert!(
+            missing_key_variables(&effective).is_empty(),
+            "declaring an instance must not cost an API key"
         );
     }
 

@@ -4,8 +4,8 @@
 //! store, serves HTTP on localhost.
 
 use anyhow::{Context, Result, ensure};
-use fs3_core::{Config, redact_url_password};
-use fs3_daemon::{AppState, config, http, wiring};
+use fs3_core::{Config, Port, redact_url_password};
+use fs3_daemon::{AppState, config, http};
 
 /// Boot is deliberately *not* `#[tokio::main]`.
 ///
@@ -44,8 +44,9 @@ fn main() -> Result<()> {
         config = %directory.display(),
         daemon = %configuration.layer("daemon"),
         database = %configuration.layer("database"),
-        embedder = wiring::describe(&configuration.config.embedder),
-        summarizer = wiring::describe(&configuration.config.summarizer),
+        embedder = %configuration.config.selected(Port::Embedder, None),
+        summarizer = %configuration.config.selected(Port::Summarizer, None),
+        repos = configuration.config.repos.len(),
         "fs3 daemon starting"
     );
 
