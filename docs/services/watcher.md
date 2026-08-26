@@ -69,7 +69,8 @@ with the config and **had no reader until this landed**.
 | **Ignore filter before the debouncer** | `.git` is the loudest thing on a developer's disk and is in nobody's `.gitignore`; without a pre-filter every `git status` would buy a directory walk. Matched on whole path components, so `src/target_types.rs` survives. This is a noise filter, not the indexing rule — `discover` still owns what is worth scanning. |
 | **Never canonicalize an event path** | `canonicalize` fails on a path that has been deleted, which is precisely when the watcher needs to reason about it. Event paths are normalised lexically; only *roots* are canonicalized, at registration, where the path is guaranteed present. |
 | **Nested settled directories are pruned** | `discover` recurses, so walking both `/repo/src` and `/repo/src/deep` parses the same files twice for nothing. |
-| **Never call `sync_worktree_files`** | It syncs a **whole** worktree, so handing it one subdirectory's files would reap every path outside that subdirectory. The cost is that deletions are not reaped here — see below. |
+| **Write the worktree map back after a re-list** | The blob diff compares against `worktree_files`, and only `add`/`scan` used to write it — so every file the WATCHER discovered was absent from it and re-enqueued on every later event in its directory, forever. Measured on a live daemon before the fix: `src/second.rs` scanned **five** times, `src/third.rs` three, for three unrelated edits. `record_walk` writes the map back with the walked subtree replaced by what the walk found. |
+| **Reconstruct the WHOLE map, never hand over a subtree** | `sync_worktree_files` deletes every path absent from what it is given, so passing one subdirectory's files would reap the entire rest of the worktree. Everything outside the walked prefix is carried through verbatim. The prefix test is a path-boundary test, not a string one — `src` must not swallow `src2`, because "under the prefix and not found" means DELETED. |
 | **Enqueue through `roots.rs`'s shape only** | One `SCAN_FILE` kind, one `ScanFileJob::dedupe_key` (`scan:{worktree}:{path}` — path-shaped, so a file edited twice before the queue drains collapses to one pending scan of the latest content). No parallel queue. |
 | **Overlapping roots are both watched** | `~/code` and `~/code/project` both registered means an edit is seen twice, under two worktree ids. That is duplicated bookkeeping, not duplicated work: both scans key content by blob, so the second finds everything already stored. Absorbing the covered root is a product decision, not a diff-time guess. |
 | **Log the subject, never the payload** | An event line names a path. Job payloads carry indexed source text and have no business in a log. |
@@ -79,8 +80,19 @@ with the config and **had no reader until this landed**.
 
 - **The watcher is a hint, never a ledger.** Anything that assumes the dirty set
   is the complete list of what changed is wrong on Linux. Pair it with a walk.
-- **Deletions are not reaped.** A deleted file keeps its `worktree_files` row
-  until a full walk (`add` or `scan`) runs. Queued below.
+- **Deletions are reaped only inside a re-listed directory.** A file deleted
+  from a directory that then settles leaves the map at the next pass. A file in
+  a directory that never fires an event again — because the whole directory was
+  removed, so there is nothing left to watch — keeps its row until a full walk.
+- **Writing the map back costs N upserts per settled directory**, where N is the
+  WHOLE worktree's file count, not the directory's: `sync_worktree_files` only
+  takes the whole map. 133 rows on this repo, ~10k on a monorepo, once per
+  debounced directory event. Cheap here, worth a profile there — the named
+  follow-up is a per-path upsert verb in `fs3-store` (queued below).
+- **Writing the map back races a concurrent `add`.** Both are read-modify-write
+  of the same map, so the later writer wins. The cost of losing is one redundant
+  re-enqueue on the next event, which content keying makes free — far less than
+  the transaction it would take to prevent.
 - **Un-settled directories are lost on restart.** Scan jobs already enqueued are
   safe in Postgres; directories still inside their debounce window are not.
 - **There is a window after `add`.** `add` walks and enqueues everything present
@@ -101,17 +113,25 @@ with the config and **had no reader until this landed**.
 
 ## Queued decisions (they join the daemon plan)
 
-1. **Periodic full-walk backstop** — the answer to deletions, to lost pending
-   directories, to the post-`add` window, and to the inotify race in general.
-   The single highest-value follow-up.
-2. **Root-overlap absorb policy** — accept a covering root and retire the
+1. **Periodic full-walk backstop** — still the single highest-value follow-up,
+   though `record_walk` shrank its job: it now answers directories removed
+   wholesale, pending work lost on restart, the post-`add` window, and the
+   inotify race in general. Deletions inside a live directory are already
+   handled.
+2. **Per-path upsert verb in `fs3-store`** — `sync_worktree_files` only takes
+   the whole map, so a re-list writes N rows to record the handful it walked.
+   A `touch_worktree_file(worktree, path, blob)` would write one. Rejected for
+   this landing on two grounds: it is a cross-crate change outside the fence,
+   and it does NOT reap deletions, which the whole-map write does. Revisit when
+   the write shows up in a profile — a monorepo is the case that will surface it.
+3. **Root-overlap absorb policy** — accept a covering root and retire the
    covered one, re-attributing its work.
-3. **inotify descriptor budgeting** — and a named error when the ceiling is hit,
+4. **inotify descriptor budgeting** — and a named error when the ceiling is hit,
    rather than a silently partial watch.
-4. **Non-UTF-8 path answer at the boundary** — lossy display plus a byte-exact
+5. **Non-UTF-8 path answer at the boundary** — lossy display plus a byte-exact
    key, or refuse the path by name.
-5. **`Notify` nudge handle** — only if add-latency ever becomes visible.
-6. **Graceful shutdown** — one ctrl-c future wired to both long-lived loops.
+6. **`Notify` nudge handle** — only if add-latency ever becomes visible.
+7. **Graceful shutdown** — one ctrl-c future wired to both long-lived loops.
 
 ## How to verify it works
 

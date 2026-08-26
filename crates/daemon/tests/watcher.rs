@@ -126,6 +126,36 @@ impl Stack {
         .await
     }
 
+    /// The worktree-relative paths of every scan job not yet settled, sorted.
+    ///
+    /// Sharper than a count: "which files did this pass think had changed" is
+    /// the actual claim, and a count of 1 would pass even if it were the wrong
+    /// file.
+    async fn queued_scan_paths(&self) -> Vec<String> {
+        sqlx::query(
+            "SELECT payload->>'path' AS path FROM jobs
+              WHERE kind = 'scan_file' AND state IN ('pending', 'running')
+              ORDER BY path",
+        )
+        .fetch_all(&self.state.db)
+        .await
+        .expect("querying queued scans")
+        .iter()
+        .map(|row| row.try_get::<String, _>("path").expect("a path"))
+        .collect()
+    }
+
+    /// Every path the store currently believes lives in this worktree.
+    async fn mapped_paths(&self) -> Vec<String> {
+        sqlx::query("SELECT path FROM worktree_files ORDER BY path")
+            .fetch_all(&self.state.db)
+            .await
+            .expect("querying the worktree map")
+            .iter()
+            .map(|row| row.try_get::<String, _>("path").expect("a path"))
+            .collect()
+    }
+
     async fn destroy(self) {
         let pool = self.state.db.clone();
         self.database.destroy(pool).await;
@@ -360,6 +390,102 @@ async fn a_dirty_directory_whose_content_is_unchanged_enqueues_nothing() {
         );
         tokio::time::sleep(Duration::from_millis(200)).await;
     }
+
+    stack.destroy().await;
+}
+
+/// The regression the test above was too weak to catch, and the reason it was
+/// too weak: it touched a file `add` had already recorded.
+///
+/// `worktree_files` is the map the blob diff compares against, and only
+/// `add`/`scan` used to write it. So every file the WATCHER discovered was
+/// absent from that map and was re-enqueued on every later event in its
+/// directory — forever. Measured on a live daemon before the fix:
+/// `src/second.rs` scanned five times and `src/third.rs` three, for three
+/// unrelated edits.
+///
+/// This test therefore asserts on a file `add` never saw. Without
+/// `record_walk`, the second edit's pass re-enqueues `late.rs` as well as
+/// `other.rs` and the count is 2.
+#[tokio::test]
+async fn a_file_the_watcher_discovered_is_not_rescanned_on_the_next_event() {
+    let stack = Stack::create("watch-rescan").await;
+    stack.write("src/first.rs", "/// One.\npub fn first() -> u8 { 1 }\n");
+    stack.add_root().await;
+    stack.drain().await;
+
+    let mut supervisor = WatcherSupervisor::new(stack.state.clone());
+    supervisor.reconcile().await.expect("the boot pass");
+
+    // A file `add` never knew about — discovered only because the watcher saw
+    // it appear.
+    stack.write("src/late.rs", "/// Late.\npub fn late() -> u8 { 3 }\n");
+    assert!(
+        reconcile_until(&mut supervisor, PATIENCE, async || {
+            stack.pending_scans().await > 0
+        })
+        .await,
+        "the watcher must first discover the file"
+    );
+    stack.drain().await;
+    assert!(stack.elements_for("src/late.rs").await > 0);
+
+    // A SECOND, unrelated edit in the same directory. `late.rs` has not
+    // changed, so the pass that picks up `other.rs` must leave it alone.
+    stack.write("src/other.rs", "/// Other.\npub fn other() -> u8 { 4 }\n");
+    assert!(
+        reconcile_until(&mut supervisor, PATIENCE, async || {
+            stack.pending_scans().await > 0
+        })
+        .await,
+        "the second edit must be seen"
+    );
+
+    let queued = stack.queued_scan_paths().await;
+    assert_eq!(
+        queued,
+        vec!["src/other.rs".to_string()],
+        "only the file that actually changed — a watcher-discovered file must \
+         not be re-enqueued forever"
+    );
+
+    stack.drain().await;
+    stack.destroy().await;
+}
+
+/// The other half of writing the map back: a file deleted from a watched
+/// directory stops being findable at the next event, rather than surviving
+/// until someone runs a full `scan`.
+#[tokio::test]
+async fn a_file_deleted_from_a_watched_directory_leaves_the_worktree_map() {
+    let stack = Stack::create("watch-delete").await;
+    stack.write("src/first.rs", "/// One.\npub fn first() -> u8 { 1 }\n");
+    stack.write(
+        "src/doomed.rs",
+        "/// Doomed.\npub fn doomed() -> u8 { 9 }\n",
+    );
+    stack.add_root().await;
+    stack.drain().await;
+    assert_eq!(stack.mapped_paths().await.len(), 2);
+
+    let mut supervisor = WatcherSupervisor::new(stack.state.clone());
+    supervisor.reconcile().await.expect("the boot pass");
+
+    std::fs::remove_file(stack.root.join("src/doomed.rs")).expect("deleting a watched file");
+
+    let reaped = reconcile_until(&mut supervisor, PATIENCE, async || {
+        !stack
+            .mapped_paths()
+            .await
+            .contains(&"src/doomed.rs".to_string())
+    })
+    .await;
+    assert!(reaped, "the deleted path is still in the worktree map");
+    assert_eq!(
+        stack.mapped_paths().await,
+        vec!["src/first.rs".to_string()],
+        "and nothing outside the walked directory was reaped with it"
+    );
 
     stack.destroy().await;
 }

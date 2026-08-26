@@ -282,6 +282,11 @@ impl WatcherSupervisor {
             .context("reading the worktree's known blobs")?;
 
         let mut enqueued = 0;
+        // The walked directory's own path -> blob answer, which becomes this
+        // subtree's slice of the worktree map below.
+        let mut walked: Vec<(String, fs3_core::BlobRef)> =
+            Vec::with_capacity(discovered.files.len());
+
         for file in &discovered.files {
             let relative = join_relative(&prefix, &file.path);
             let absolute = settled.directory.join(&file.path);
@@ -294,10 +299,12 @@ impl WatcherSupervisor {
                 Err(error) => return Err(anyhow::Error::new(error).context("hashing a file")),
             };
 
+            let unchanged = known.get(&relative).map(String::as_str) == Some(blob.as_str());
+            walked.push((relative.clone(), blob.clone()));
             // The whole reason over-reporting is free: content keying means an
             // unchanged file enqueues nothing at all, so a directory walk
             // triggered by one edit costs one job, not a directory's worth.
-            if known.get(&relative).map(String::as_str) == Some(blob.as_str()) {
+            if unchanged {
                 continue;
             }
 
@@ -322,7 +329,76 @@ impl WatcherSupervisor {
             enqueued += 1;
         }
 
+        self.record_walk(watched.worktree_id, &prefix, &known, walked)
+            .await?;
+
         Ok(enqueued)
+    }
+
+    /// Write the worktree's path→blob map back, with the walked subtree
+    /// replaced by what the walk just found.
+    ///
+    /// Without this the blob diff above is blind to every file the WATCHER
+    /// discovered: only `add`/`scan` write this map, so a watcher-found file is
+    /// never in `known` and is therefore re-enqueued on every subsequent event
+    /// in its directory, forever. Measured before the fix on a live daemon:
+    /// `src/second.rs` scanned five times, `src/third.rs` three, for three
+    /// unrelated edits.
+    ///
+    /// The whole map is written rather than a delta, because that is the only
+    /// shape `sync_worktree_files` has — and handing it just the subtree would
+    /// reap every path outside it. Entries outside the walked prefix are
+    /// carried through verbatim, so nothing beyond this directory is touched.
+    ///
+    /// The reap that DOES happen is the useful one: a path under the prefix
+    /// that the walk no longer found is dropped, so a deleted file stops being
+    /// findable at the next event rather than at the next full walk.
+    ///
+    /// Race: a concurrent `add_root` on the same worktree is also a
+    /// read-modify-write of this map, so the later writer wins. The cost of
+    /// losing that race is one redundant re-enqueue on the next event, which
+    /// content keying makes free — worth far less than the transaction it would
+    /// take to prevent.
+    async fn record_walk(
+        &self,
+        worktree_id: i64,
+        prefix: &str,
+        known: &std::collections::HashMap<String, String>,
+        walked: Vec<(String, fs3_core::BlobRef)>,
+    ) -> Result<()> {
+        let mut full = walked;
+
+        for (path, blob) in known {
+            // Everything the walk found is under the prefix by construction
+            // (`join_relative` builds it that way), so one check covers both
+            // "this subtree is being replaced" and "this exact path was just
+            // re-listed".
+            if under_prefix(path, prefix) {
+                continue;
+            }
+            // A stored blob that no longer parses is a row this daemon did not
+            // write; carrying it through unvalidated would be worse than
+            // dropping it, because `sync_worktree_files` would reject the whole
+            // transaction.
+            match fs3_core::BlobRef::new(blob.clone()) {
+                Ok(blob) => full.push((path.clone(), blob)),
+                Err(error) => {
+                    tracing::warn!(path, %error, "dropping an unreadable worktree_files row");
+                }
+            }
+        }
+
+        let removed = fs3_store::sync_worktree_files(&self.state.db, worktree_id, &full)
+            .await
+            .context("recording the walked directory's blobs")?;
+        if removed > 0 {
+            tracing::info!(
+                removed,
+                prefix = if prefix.is_empty() { "." } else { prefix },
+                "paths under a re-listed directory are gone"
+            );
+        }
+        Ok(())
     }
 }
 
@@ -432,6 +508,22 @@ fn worktree_relative(root: &Path, directory: &Path) -> String {
         .unwrap_or_default()
 }
 
+/// Is this worktree-relative path inside the walked subtree?
+///
+/// An empty prefix means the walk was the worktree root, and everything is
+/// inside it. Otherwise the path must be the directory itself or sit below a
+/// `/` boundary — the check every string-prefix implementation gets wrong,
+/// where `src2/x.rs` looks like it is under `src`.
+fn under_prefix(path: &str, prefix: &str) -> bool {
+    if prefix.is_empty() {
+        return true;
+    }
+    path == prefix
+        || (path.len() > prefix.len()
+            && path.starts_with(prefix)
+            && path.as_bytes()[prefix.len()] == b'/')
+}
+
 /// Join a worktree-relative prefix to a discovery-relative path.
 fn join_relative(prefix: &str, path: &str) -> String {
     if prefix.is_empty() {
@@ -531,5 +623,30 @@ mod tests {
             "crates/core/src/lib.rs",
             "the store keys on worktree-relative paths; discovery reports walk-relative ones"
         );
+    }
+
+    #[test]
+    fn an_empty_prefix_covers_the_whole_worktree() {
+        // The walk was the root itself, so nothing is "outside" it and the
+        // whole map is replaced by what the walk found.
+        assert!(under_prefix("src/lib.rs", ""));
+        assert!(under_prefix("", ""));
+    }
+
+    #[test]
+    fn a_prefix_matches_the_directory_and_what_is_under_it() {
+        assert!(under_prefix("src", "src"));
+        assert!(under_prefix("src/lib.rs", "src"));
+        assert!(under_prefix("src/deep/x.rs", "src"));
+    }
+
+    #[test]
+    fn a_prefix_stops_at_a_path_boundary_not_a_string_one() {
+        // This is the bug that would silently reap a sibling directory: the
+        // walked prefix `src` must not swallow `src2`, because everything
+        // "under the prefix" that the walk did not find gets DELETED.
+        assert!(!under_prefix("src2/lib.rs", "src"));
+        assert!(!under_prefix("srcx", "src"));
+        assert!(!under_prefix("other/src/lib.rs", "src"));
     }
 }
