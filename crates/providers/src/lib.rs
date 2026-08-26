@@ -16,6 +16,7 @@
 mod azure_openai;
 mod local;
 mod openai;
+mod openai_compat;
 
 pub use azure_openai::{
     AzureCredential, AzureOpenAiConfig, AzureOpenAiEmbedder, AzureOpenAiSummarizer,
@@ -26,6 +27,10 @@ pub use local::{
     supported_models,
 };
 pub use openai::{OpenAiEmbedder, OpenAiSummarizer};
+pub use openai_compat::{
+    DEFAULT_MAX_TOKENS, DEFAULT_MODEL, OpenAiCompatConfig, OpenAiCompatSummarizer,
+    embeddings_unsupported,
+};
 
 /// The default OpenAI API base. Overridable for Azure or a gateway.
 pub const DEFAULT_API_BASE: &str = "https://api.openai.com/v1";

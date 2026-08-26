@@ -18,5 +18,5 @@ pub mod arch;
 pub mod contract;
 pub mod fakes;
 
-pub use contract::{embedder_contract, summarizer_contract};
+pub use contract::{embedder_contract, sample_element, summarizer_contract};
 pub use fakes::{FakeEmbedder, FakeSummarizer};

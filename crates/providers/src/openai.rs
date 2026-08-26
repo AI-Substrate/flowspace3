@@ -92,7 +92,7 @@ impl OpenAiClient {
 /// The distinction exists for exactly one caller: the summarizer, which must
 /// tell "this endpoint does not understand structured outputs" (retry in the
 /// older shape) from "the network is down" (do not).
-enum PostFailure {
+pub(crate) enum PostFailure {
     Fatal(Error),
     Rejected {
         url: String,
@@ -122,7 +122,7 @@ impl PostFailure {
     /// (Ollama, vLLM, LM Studio) each phrase it their own way — so the test is
     /// a client error that mentions the thing we asked for. Anything else is
     /// a real failure and must not be retried into a weaker request.
-    fn rejects_structured_output(&self) -> bool {
+    pub(crate) fn rejects_structured_output(&self) -> bool {
         match self {
             Self::Fatal(_) => false,
             Self::Rejected { status, detail, .. } => {
@@ -458,7 +458,7 @@ fn summary_from(response: ChatResponse, element: &Element) -> Result<Summary> {
 /// 36's band — and reject what cannot. Returning `Ok` with blank text or a
 /// blank tag would hand the caller a value that the shared contract harness
 /// rejects; the provider boundary is where that has to stop.
-fn parse_summary(content: &str, fallback_tag: &str) -> Result<Summary> {
+pub(crate) fn parse_summary(content: &str, fallback_tag: &str) -> Result<Summary> {
     let mut summary: Summary = serde_json::from_str(content).map_err(|e| {
         Error::Provider(format!(
             "chat/completions: summary was not the requested JSON: {e}"
