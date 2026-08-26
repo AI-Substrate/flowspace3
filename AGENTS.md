@@ -76,6 +76,17 @@ never clear. (Ruled 2026-08-26 after a worker correctly refused the clear.)
 Encode, don't document: if you had to infer something twice, that is a missing
 command, not a missing doc.
 
+## Coming in cold? Read the operating manual
+
+**`.harness/government/how-we-work.md`** is the complete record of how this repo
+is run — how Jordan directs, what o-prime is, how work becomes briefs and briefs
+become coder seats, the PR-era workflow, rulings, retros, and what a new agent
+should expect. If you have no context, read it before doing anything. The other
+standing references: `worker-roster.md` (who did/does what — the ownership
+authority), `rulings/` (binding decisions), `docs/plans/prd/base-prd.dd.json`
+(the product source of truth), and `.harness/records/retro/` (what has hurt us
+and what we encoded in response).
+
 ## Working model: worktree-per-coder + PRs (since 2026-08-27)
 
 Main is **branch-protected** — you cannot push to it. The workflow for any
