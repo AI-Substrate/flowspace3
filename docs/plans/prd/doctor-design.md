@@ -23,3 +23,6 @@ Doctor is the repair-as-it-goes half of the actionable-error doctrine: it walks 
 
 ## Sequencing
 Doctor ships with the daemon/integration plan (it needs the daemon to be worth talking to), but egret's config validation and the store's migration check are built NOW as library functions doctor will call — doctor is an assembler of checks that already exist in their owning crates, never a second implementation of them.
+
+## Provider-config check (Jordan, 2026-08-26 — with sawfish's docs-subcommand unit)
+A fresh install has NO provider configs. Doctor detects "no embedder / no summarizer configured (and no actives)" and WARNS (degraded-style, not error) with fix = `flowspace3 docs get providers`. That topic must make setup self-serve from scratch: Azure registration (endpoint/deployment/api_version/dimensions), BOTH auth modes (Entra via az login AND api-key), embeddings choices (azure_openai / local ONNX / openai-compat LAN), actives global + per-repo. The `docs get agents` guide points here as the explicit first-run step. Intent: an agent runs the CLI and knows exactly how to set it up from scratch.
