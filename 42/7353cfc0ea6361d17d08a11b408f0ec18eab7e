@@ -1,0 +1,16 @@
+pocs/daemon-shell/LEARNINGS.md
+  h_9e71e8b09f7cf2 55,57-64,302-304,308-310,319-322
+pocs/daemon-shell/README.md
+  h_9e71e8b09f7cf2 69-71,74-77,86-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "427353cfc0ea6361d17d08a11b408f0ec18eab7e",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
