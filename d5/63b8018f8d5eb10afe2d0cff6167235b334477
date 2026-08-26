@@ -1,0 +1,60 @@
+.harness/extensions/checks/extension.ts
+  h_9e71e8b09f7cf2 15-29
+.harness/extensions/checks/instructions.md
+  h_9e71e8b09f7cf2 8,16-25,28
+Cargo.lock
+  h_9e71e8b09f7cf2 1072
+crates/cli/Cargo.toml
+  h_9e71e8b09f7cf2 46-50
+crates/cli/src/doctor.rs
+  h_9e71e8b09f7cf2 640-656
+crates/cli/tests/boot_contract.rs
+  h_9e71e8b09f7cf2 40-55
+crates/cli/tests/doctor_daemon.rs
+  h_9e71e8b09f7cf2 18-23,25
+crates/core/src/lib.rs
+  h_9e71e8b09f7cf2 21,42
+crates/core/src/skew.rs
+  h_9e71e8b09f7cf2 1-253
+crates/daemon/src/boot.rs
+  h_9e71e8b09f7cf2 19,73-91,178-188
+crates/daemon/src/lib.rs
+  h_9e71e8b09f7cf2 19,33
+crates/daemon/src/skew.rs
+  h_9e71e8b09f7cf2 1-80
+crates/daemon/tests/schema_skew.rs
+  h_9e71e8b09f7cf2 1-150
+crates/daemon/tests/support/mod.rs
+  h_9e71e8b09f7cf2 44-48,50
+crates/store/src/admin.rs
+  h_9e71e8b09f7cf2 81-95,275-324
+crates/store/src/lib.rs
+  h_9e71e8b09f7cf2 93-100,102,131-138
+crates/store/tests/support/mod.rs
+  h_9e71e8b09f7cf2 25-29,31
+crates/testkit/Cargo.toml
+  h_9e71e8b09f7cf2 27-33
+crates/testkit/arch-allowlist.toml
+  h_9e71e8b09f7cf2 215-219
+crates/testkit/src/bin/test_db_check.rs
+  h_9e71e8b09f7cf2 1-29
+crates/testkit/src/database.rs
+  h_9e71e8b09f7cf2 1-109
+crates/testkit/src/lib.rs
+  h_9e71e8b09f7cf2 23,28
+docs/services/auto-update.md
+  h_9e71e8b09f7cf2 208-215
+docs/services/schema-skew.md
+  h_9e71e8b09f7cf2 1-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d563b8018f8d5eb10afe2d0cff6167235b334477",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
