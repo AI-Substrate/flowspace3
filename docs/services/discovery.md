@@ -69,6 +69,21 @@ the scanner's budget.
   are not v1 index material, and guessing by filename is the name-matching
   PRD req 42 refuses elsewhere. They land in the skip ledger, so the gap is
   visible rather than silent.
+- **With the ignore rules off, the skip ledger is enormous.** Measured on this
+  repo: 38 skips with the defaults, **124,674** with `respect_gitignore =
+  false` (every `target/` artefact is a named, unsupported file). The ledger is
+  sized for "what did fs3 refuse", not "what is on disk".
+
+## Measured on this repo (2026-08-26, debug build)
+
+| Settings | Files | Bytes | Wall |
+|---|---|---|---|
+| defaults | 133 | 924 KiB | 42 ms |
+| `respect_gitignore=false`, hidden, configs, no ceiling | 3,200 | 9,685 KiB | 8,575 ms |
+
+**9.5% of the bytes, 204× faster** — the POC's 13.8×/11% finding reproduced by
+the shipped walker (this tree exaggerates it: the POC assets carry two `target/`
+directories). The filtering, not the parser, is where a scan's time goes.
 
 ## How to verify it works
 
