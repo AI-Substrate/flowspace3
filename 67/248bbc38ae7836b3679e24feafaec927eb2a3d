@@ -1,0 +1,28 @@
+.github/workflows/release-please.yml
+  h_9e71e8b09f7cf2 9-34,51,56-90
+Cargo.lock
+  h_9e71e8b09f7cf2 1064,1083,1095,1123,1133,1147,1164,1178
+Cargo.toml
+  h_9e71e8b09f7cf2 6
+crates/daemon/src/update.rs
+  h_9e71e8b09f7cf2 210-239,407-415,418-419,449-503,511-519
+crates/daemon/tests/auto_update.rs
+  h_9e71e8b09f7cf2 101-111,121,136,142,162,184,225,260,292,362,386-456,470,482,522,567
+docker/scripts/release-preflight.sh
+  h_9e71e8b09f7cf2 46-82
+docs/services/ci-release.md
+  h_9e71e8b09f7cf2 79-114
+release-please-config.json
+  h_9e71e8b09f7cf2 9-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "67248bbc38ae7836b3679e24feafaec927eb2a3d",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
