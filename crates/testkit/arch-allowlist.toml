@@ -45,11 +45,17 @@ banned_everywhere = [
 # no tokio, no sqlx, no HTTP client, no web framework, no parser.
 [crates.fs3-core]
 internal = []
-external = ["async-trait", "serde", "thiserror", "toml"]
+external = ["async-trait", "serde", "sha2", "thiserror", "toml"]
 
 [crates.fs3-parsers]
 internal = ["fs3-core"]
-external = ["thiserror", "tree-sitter", "tree-sitter-md", "tree-sitter-rust"]
+external = [
+  "thiserror",
+  "tree-sitter",
+  "tree-sitter-md",
+  "tree-sitter-python",
+  "tree-sitter-rust",
+]
 
 [crates.fs3-providers]
 # fs3-testkit is a DEV edge here: the real provider runs the same contract

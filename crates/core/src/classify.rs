@@ -13,13 +13,16 @@
 //! caller needs.
 //!
 //! Adding a language never edits this file (PRD req 21): a new grammar brings
-//! new `ts_kind` strings that the tables already cover, or it earns one more
-//! table entry — never a language branch.
+//! new kind strings that the tables already cover, or it earns one more table
+//! entry — never a language branch.
+//!
+//! [`ElementKind::File`] is never returned here. A file element is synthesised
+//! by the scanner as the tree's root; no grammar node classifies as one.
 
 use crate::element::ElementKind;
 
 /// Substrings that mark a callable. Checked first: "constructor" contains
-/// "struct", so type matching must not win the race.
+/// "struct", so container matching must not win the race.
 const CALLABLE_HINTS: &[&str] = &[
     "function",
     "method",
@@ -28,8 +31,13 @@ const CALLABLE_HINTS: &[&str] = &[
     "procedure",
 ];
 
-/// Substrings that mark a type-like declaration.
-const TYPE_HINTS: &[&str] = &[
+/// Substrings that mark a container — something other declarations live inside.
+///
+/// `mod` covers Rust's `mod_item` and every grammar that spells it `module` or
+/// `module_declaration`. A module *is* an element in the tree model: it is the
+/// parent of what it contains, and `mod` is exactly the kind of language detail
+/// that belongs in `subkind` under a `container`.
+const CONTAINER_HINTS: &[&str] = &[
     "class",
     "struct",
     "interface",
@@ -40,7 +48,8 @@ const TYPE_HINTS: &[&str] = &[
     "protocol",
     "impl",
     "union",
-    "module",
+    "mod",
+    "namespace",
 ];
 
 /// Substrings that mark a document section (PRD req 22).
@@ -55,9 +64,9 @@ const DECL_SUFFIXES: &[&str] = &[
     "_spec",
 ];
 
-/// `_specifier` is a declaration only for types (C/C++ `struct_specifier`);
+/// `_specifier` is a declaration only for containers (C/C++ `struct_specifier`);
 /// for callables it is a parameter modifier.
-const TYPE_ONLY_SUFFIXES: &[&str] = &["_specifier"];
+const CONTAINER_ONLY_SUFFIXES: &[&str] = &["_specifier"];
 
 /// Grammars that declare with bare kind names and no suffix at all.
 ///
@@ -79,10 +88,10 @@ const BARE_DECLS: &[&str] = &[
 /// This is the classifier fs2 shipped, and on its own it is wrong.
 pub fn category_hint(ts_kind: &str) -> Option<ElementKind> {
     if CALLABLE_HINTS.iter().any(|hint| ts_kind.contains(hint)) {
-        return Some(ElementKind::Callable);
+        return Some(ElementKind::Function);
     }
-    if TYPE_HINTS.iter().any(|hint| ts_kind.contains(hint)) {
-        return Some(ElementKind::Type);
+    if CONTAINER_HINTS.iter().any(|hint| ts_kind.contains(hint)) {
+        return Some(ElementKind::Container);
     }
     if SECTION_HINTS.iter().any(|hint| ts_kind.contains(hint)) {
         return Some(ElementKind::Section);
@@ -101,7 +110,7 @@ pub fn is_declaration_shaped(ts_kind: &str, hint: ElementKind) -> bool {
     if DECL_SUFFIXES.iter().any(|suffix| ts_kind.ends_with(suffix)) {
         return true;
     }
-    hint == ElementKind::Type && TYPE_ONLY_SUFFIXES.iter().any(|s| ts_kind.ends_with(s))
+    hint == ElementKind::Container && CONTAINER_ONLY_SUFFIXES.iter().any(|s| ts_kind.ends_with(s))
 }
 
 /// Map a raw tree-sitter kind to a universal category, or `None` when the node
@@ -110,8 +119,8 @@ pub fn is_declaration_shaped(ts_kind: &str, hint: ElementKind) -> bool {
 /// ```
 /// use fs3_core::{classify, ElementKind};
 ///
-/// assert_eq!(classify("function_item"), Some(ElementKind::Callable));
-/// assert_eq!(classify("struct_item"), Some(ElementKind::Type));
+/// assert_eq!(classify("function_item"), Some(ElementKind::Function));
+/// assert_eq!(classify("struct_item"), Some(ElementKind::Container));
 /// // `Self { .. }` is a literal, not a declaration:
 /// assert_eq!(classify("struct_expression"), None);
 /// ```
@@ -130,22 +139,47 @@ mod tests {
 
     #[test]
     fn rust_declarations_classify() {
-        assert_eq!(classify("function_item"), Some(ElementKind::Callable));
+        assert_eq!(classify("function_item"), Some(ElementKind::Function));
         assert_eq!(
             classify("function_signature_item"),
-            Some(ElementKind::Callable)
+            Some(ElementKind::Function)
         );
-        assert_eq!(classify("struct_item"), Some(ElementKind::Type));
-        assert_eq!(classify("enum_item"), Some(ElementKind::Type));
-        assert_eq!(classify("trait_item"), Some(ElementKind::Type));
-        assert_eq!(classify("impl_item"), Some(ElementKind::Type));
-        assert_eq!(classify("union_item"), Some(ElementKind::Type));
+        assert_eq!(classify("struct_item"), Some(ElementKind::Container));
+        assert_eq!(classify("enum_item"), Some(ElementKind::Container));
+        assert_eq!(classify("trait_item"), Some(ElementKind::Container));
+        assert_eq!(classify("impl_item"), Some(ElementKind::Container));
+        assert_eq!(classify("union_item"), Some(ElementKind::Container));
+    }
+
+    /// Python's two declaration kinds, and the wrapper that is not one.
+    #[test]
+    fn python_declarations_classify() {
+        assert_eq!(classify("function_definition"), Some(ElementKind::Function));
+        assert_eq!(classify("class_definition"), Some(ElementKind::Container));
+        // A decorated def is a wrapper around the real declaration; promoting
+        // it would twin every decorated function.
+        assert_eq!(classify("decorated_definition"), None);
     }
 
     #[test]
     fn markdown_headings_are_sections() {
         assert_eq!(classify("atx_heading"), Some(ElementKind::Section));
         assert_eq!(classify("setext_heading"), Some(ElementKind::Section));
+    }
+
+    /// A module is a container element in the tree model — it parents what is
+    /// inside it, and `mod` is `subkind` detail, not a new kind.
+    #[test]
+    fn modules_are_containers_not_invisible_scopes() {
+        assert_eq!(classify("mod_item"), Some(ElementKind::Container));
+        assert_eq!(classify("module_declaration"), Some(ElementKind::Container));
+        assert_eq!(
+            classify("namespace_declaration"),
+            Some(ElementKind::Container)
+        );
+        // `mod` is a substring, so guard the near-miss it could catch: a Java /
+        // C# `modifiers` node is not a declaration and must stay out.
+        assert_eq!(classify("modifiers"), None);
     }
 
     /// PRD req 42 / POC learning L2 — the exemplar this whole gate exists for.
@@ -156,17 +190,17 @@ mod tests {
     #[test]
     fn declaration_gate_rejects_nodes_the_substring_guess_accepts() {
         let invented = [
-            // Rust `Self { .. }` — a literal, classified `type` by substring.
-            ("struct_expression", ElementKind::Type),
+            // Rust `Self { .. }` — a literal, classified container by substring.
+            ("struct_expression", ElementKind::Container),
             // TypeScript — a duplicate anonymous type per interface.
-            ("interface_body", ElementKind::Type),
+            ("interface_body", ElementKind::Container),
             // C++ — twinned every `function_definition`, named after the
             // return type (elements literally called `void`).
-            ("function_declarator", ElementKind::Callable),
+            ("function_declarator", ElementKind::Function),
             // TypeScript — every anonymous test callback promoted.
-            ("arrow_function", ElementKind::Callable),
+            ("arrow_function", ElementKind::Function),
             // Ruby — every `foo.method_call` matched the `method` substring.
-            ("method_call", ElementKind::Callable),
+            ("method_call", ElementKind::Function),
         ];
 
         for (ts_kind, expected_hint) in invented {
@@ -190,25 +224,26 @@ mod tests {
     #[test]
     fn bare_kind_grammars_still_declare() {
         // Ruby: no suffix anywhere. Without the bare table these yield nothing.
-        assert_eq!(classify("method"), Some(ElementKind::Callable));
-        assert_eq!(classify("class"), Some(ElementKind::Type));
-        assert_eq!(classify("module"), Some(ElementKind::Type));
+        assert_eq!(classify("method"), Some(ElementKind::Function));
+        assert_eq!(classify("class"), Some(ElementKind::Container));
+        assert_eq!(classify("module"), Some(ElementKind::Container));
     }
 
     #[test]
-    fn specifier_is_a_declaration_only_for_types() {
-        assert!(is_declaration_shaped("struct_specifier", ElementKind::Type));
+    fn specifier_is_a_declaration_only_for_containers() {
+        assert!(is_declaration_shaped(
+            "struct_specifier",
+            ElementKind::Container
+        ));
         assert!(!is_declaration_shaped(
             "storage_class_specifier",
-            ElementKind::Callable
+            ElementKind::Function
         ));
     }
 
     #[test]
-    fn containers_and_bindings_are_not_elements() {
-        // `mod_item` contributes a qualified-name segment (parsers' job); it is
-        // not an element itself. Consts and statics are deliberately excluded.
-        assert_eq!(classify("mod_item"), None);
+    fn bindings_are_not_elements() {
+        // Consts and statics are deliberately excluded.
         assert_eq!(classify("const_item"), None);
         assert_eq!(classify("static_item"), None);
         assert_eq!(classify("identifier"), None);
@@ -216,11 +251,11 @@ mod tests {
     }
 
     #[test]
-    fn constructor_is_callable_not_type() {
+    fn constructor_is_callable_not_container() {
         // "constructor" contains "struct"; hint order is load-bearing.
         assert_eq!(
             classify("constructor_declaration"),
-            Some(ElementKind::Callable)
+            Some(ElementKind::Function)
         );
     }
 }

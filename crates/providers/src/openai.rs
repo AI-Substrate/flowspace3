@@ -216,13 +216,8 @@ impl OpenAiSummarizer {
     /// without making a network call.
     pub fn user_prompt(element: &Element) -> String {
         format!(
-            "{} `{}` from {} lines {}-{}:\n\n{}",
-            element.kind,
-            element.qualified_name,
-            element.path,
-            element.start_line,
-            element.end_line,
-            element.text
+            "{} `{}` at {} lines {}:\n\n{}",
+            element.kind, element.name, element.address, element.span, element.raw_text
         )
     }
 }
@@ -340,27 +335,24 @@ fn parse_summary(content: &str, fallback_tag: &str) -> Result<Summary> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fs3_core::{BlobRef, ElementKind};
+    use fs3_core::{ElementKind, Span};
 
     fn element() -> Element {
-        Element {
-            path: "core/src/classify.rs".into(),
-            blob: BlobRef::new("0123456789abcdef").unwrap(),
-            ts_kind: "function_item".into(),
-            kind: ElementKind::Callable,
-            qualified_name: "classify".into(),
-            start_line: 120,
-            end_line: 127,
-            text: "pub fn classify(ts_kind: &str) -> Option<ElementKind> { .. }".into(),
-            has_error: false,
-        }
+        Element::new(
+            ElementKind::Function,
+            "function_item",
+            "classify",
+            "core/src/classify.rs::classify",
+            Span::new(120, 127),
+            "pub fn classify(ts_kind: &str) -> Option<ElementKind> { .. }",
+        )
     }
 
     #[test]
     fn the_prompt_carries_the_address_and_the_body() {
         let prompt = OpenAiSummarizer::user_prompt(&element());
-        assert!(prompt.contains("callable `classify`"));
-        assert!(prompt.contains("core/src/classify.rs lines 120-127"));
+        assert!(prompt.contains("function `classify`"));
+        assert!(prompt.contains("core/src/classify.rs::classify lines 120-127"));
         assert!(prompt.contains("pub fn classify"));
     }
 

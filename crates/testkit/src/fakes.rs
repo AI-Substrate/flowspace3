@@ -3,7 +3,7 @@
 use std::sync::Mutex;
 
 use async_trait::async_trait;
-use fs3_core::{Element, Embedder, Error, Result, Summarizer, Summary};
+use fs3_core::{ADDRESS_SEGMENT, Element, Embedder, Error, Result, Summarizer, Summary};
 
 /// Vector width the fakes produce. Wide enough that unrelated texts do not
 /// collide in every bucket, narrow enough to eyeball in a failing assertion.
@@ -157,7 +157,7 @@ impl Summarizer for FakeSummarizer {
     async fn summarize(&self, element: &Element) -> Result<Summary> {
         let call_index = {
             let mut calls = self.calls.lock().expect("fake summarizer lock");
-            calls.push(element.qualified_name.clone());
+            calls.push(element.address.clone());
             calls.len() - 1
         };
         if self.fail_after.is_some_and(|limit| call_index >= limit) {
@@ -168,12 +168,15 @@ impl Summarizer for FakeSummarizer {
         }
 
         // Tags from the element's own address: always 1–5, always the same for
-        // the same element (PRD req 36's band, honoured by the fake too).
+        // the same element (PRD req 36's band, honoured by the fake too). The
+        // first address segment is the file path, which is a location rather
+        // than a concept, so the tags start after it.
         let mut tags = vec![element.kind.as_str().to_string()];
         tags.extend(
             element
-                .qualified_name
-                .split(['.', '>'])
+                .address
+                .split(ADDRESS_SEGMENT)
+                .skip(1)
                 .map(str::trim)
                 .filter(|segment| !segment.is_empty())
                 .map(str::to_lowercase)
@@ -182,12 +185,10 @@ impl Summarizer for FakeSummarizer {
 
         Ok(Summary {
             text: format!(
-                "{} `{}` at {}:{}-{} ({} lines)",
+                "{} `{}` at {} ({} lines)",
                 element.kind,
-                element.qualified_name,
-                element.path,
-                element.start_line,
-                element.end_line,
+                element.address,
+                element.span,
                 element.line_count()
             ),
             tags,

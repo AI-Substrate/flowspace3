@@ -1,180 +1,216 @@
 //! Exemplar: the parser fixture tier.
 //!
-//! Known files in, an exact element table out. Copy this shape when a grammar
-//! is added — the assertion is the whole table, not a spot-check, because a
-//! classifier regression shows up as an *extra* row far more often than a
-//! missing one.
+//! Known files in, an exact element **tree** out. Copy this shape when a
+//! grammar is added — the assertion is the whole tree, not a spot-check,
+//! because a classifier regression shows up as an *extra* row far more often
+//! than a missing one, and a parenting regression shows up as the same rows at
+//! the wrong depth.
+//!
+//! Every row reads `<kind> <subkind> <address> #<sibling_order> <span>`,
+//! indented by depth. That one line covers everything the model promises about
+//! a node except its text, which the hash tests below cover instead.
 
-use fs3_core::{BlobRef, ElementKind};
-use fs3_parsers::parse;
+use std::collections::BTreeMap;
+use std::path::Path;
 
-fn blob() -> BlobRef {
-    BlobRef::new("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391").unwrap()
+use fs3_core::{Element, ElementKind, ElementTree};
+use fs3_parsers::scan;
+
+const RUST_FIXTURE: &str = include_str!("../fixtures/sample.rs");
+const PYTHON_FIXTURE: &str = include_str!("../fixtures/sample.py");
+const MARKDOWN_FIXTURE: &str = include_str!("../fixtures/sample.md");
+
+const RUST_PATH: &str = "parsers/fixtures/sample.rs";
+const PYTHON_PATH: &str = "parsers/fixtures/sample.py";
+const MARKDOWN_PATH: &str = "parsers/fixtures/sample.md";
+
+fn tree(path: &str, source: &str) -> ElementTree {
+    scan(Path::new(path), source.as_bytes()).expect("fixtures parse")
 }
 
-/// `(ts_kind, kind, qualified_name, start_line, end_line)`
-type Row = (&'static str, ElementKind, &'static str, u32, u32);
+/// One line per element, indented by depth — so the assertion covers parenting
+/// and sibling order, not just membership.
+fn rows(tree: &ElementTree) -> Vec<String> {
+    fn walk(element: &Element, depth: usize, out: &mut Vec<String>) {
+        out.push(format!(
+            "{:indent$}{} {} {} #{} {}",
+            "",
+            element.kind,
+            element.subkind,
+            element.address,
+            element.sibling_order,
+            element.span,
+            indent = depth * 2
+        ));
+        for child in &element.children {
+            walk(child, depth + 1, out);
+        }
+    }
 
-fn table(elements: &[fs3_core::Element]) -> Vec<(String, ElementKind, String, u32, u32)> {
-    elements
-        .iter()
-        .map(|e| {
-            (
-                e.ts_kind.clone(),
-                e.kind,
-                e.qualified_name.clone(),
-                e.start_line,
-                e.end_line,
-            )
-        })
+    let mut out = Vec::new();
+    walk(&tree.root, 0, &mut out);
+    out
+}
+
+fn expect(tree: &ElementTree, expected: &[&str]) {
+    assert_eq!(rows(tree), expected, "the whole tree, not a spot-check");
+}
+
+/// Every subkind in the tree, root included.
+fn subkinds(tree: &ElementTree) -> Vec<&str> {
+    tree.iter()
+        .map(|element| element.subkind.as_str())
         .collect()
 }
 
-fn expect(actual: &[fs3_core::Element], expected: &[Row]) {
-    let expected: Vec<(String, ElementKind, String, u32, u32)> = expected
-        .iter()
-        .map(|(kind, category, name, start, end)| {
-            (
-                (*kind).to_string(),
-                *category,
-                (*name).to_string(),
-                *start,
-                *end,
-            )
-        })
-        .collect();
-    assert_eq!(table(actual), expected);
-}
-
 #[test]
-fn rust_fixture_yields_the_expected_element_table() {
-    let source = include_str!("../fixtures/sample.rs");
-    let elements = parse("parsers/fixtures/sample.rs", &blob(), source).unwrap();
-
+fn rust_fixture_yields_the_expected_tree() {
     expect(
-        &elements,
+        &tree(RUST_PATH, RUST_FIXTURE),
         &[
+            "file rust parsers/fixtures/sample.rs #0 1-42",
+            // A module is a container element AND the parent of what it holds.
+            "  container mod_item parsers/fixtures/sample.rs::geometry #0 3-30",
             // Line spans are the declaration's own extent — the doc comment on
             // `Rect` is a sibling node, so the struct starts at 5, not 4.
-            ("struct_item", ElementKind::Type, "geometry.Rect", 5, 8),
-            // `impl Rect` is both an element and a name scope; its name comes
-            // from the `type` field, tried last so C/C++ return types never win.
-            ("impl_item", ElementKind::Type, "geometry.Rect", 10, 20),
-            (
-                "function_item",
-                ElementKind::Callable,
-                "geometry.Rect.new",
-                11,
-                15,
-            ),
-            (
-                "function_item",
-                ElementKind::Callable,
-                "geometry.Rect.area",
-                17,
-                19,
-            ),
-            ("trait_item", ElementKind::Type, "geometry.Shape", 22, 24),
+            "    container struct_item parsers/fixtures/sample.rs::geometry::Rect #0 5-8",
+            // `impl Rect` shares the struct's address on purpose: it is the same
+            // logical entity, seen in another piece. An address identifies a
+            // thing, not a node — `(address, span)` identifies a node.
+            "    container impl_item parsers/fixtures/sample.rs::geometry::Rect #1 10-20",
+            // Methods hang off the impl, and their address reads as you would
+            // write it by hand.
+            "      function function_item parsers/fixtures/sample.rs::geometry::Rect::new #0 11-15",
+            "      function function_item parsers/fixtures/sample.rs::geometry::Rect::area #1 17-19",
+            "    container trait_item parsers/fixtures/sample.rs::geometry::Shape #2 22-24",
             // A bodiless trait method is still a declaration.
-            (
-                "function_signature_item",
-                ElementKind::Callable,
-                "geometry.Shape.area",
-                23,
-                23,
-            ),
-            ("enum_item", ElementKind::Type, "geometry.Kind", 26, 29),
-            ("function_item", ElementKind::Callable, "main_entry", 34, 36),
+            "      function function_signature_item parsers/fixtures/sample.rs::geometry::Shape::area #0 23-23",
+            "    container enum_item parsers/fixtures/sample.rs::geometry::Kind #3 26-29",
+            "  function function_item parsers/fixtures/sample.rs::main_entry #1 34-42",
+            // A fn inside a fn belongs to that fn, not to the file.
+            "    function function_item parsers/fixtures/sample.rs::main_entry::half #0 37-39",
         ],
     );
 }
 
 /// PRD req 42 / POC learning L2, on a real file rather than a kind string:
-/// `mod geometry` scopes but is not an element, `Self { .. }` is not a type,
-/// `MAX_SIDES` is not a callable, and enum variants are not declarations.
+/// `Self { .. }` is not a container, `MAX_SIDES` is not anything, and enum
+/// variants and struct fields are not declarations.
 #[test]
 fn rust_fixture_invents_nothing() {
-    let source = include_str!("../fixtures/sample.rs");
-    let elements = parse("parsers/fixtures/sample.rs", &blob(), source).unwrap();
+    let tree = tree(RUST_PATH, RUST_FIXTURE);
+    let subkinds = subkinds(&tree);
 
-    let kinds: Vec<&str> = elements.iter().map(|e| e.ts_kind.as_str()).collect();
     for refused in [
         "struct_expression",
-        "mod_item",
         "const_item",
         "enum_variant",
         "field_declaration",
     ] {
         assert!(
-            !kinds.contains(&refused),
-            "{refused} must not become an element; got {kinds:?}"
+            !subkinds.contains(&refused),
+            "{refused} must not become an element; got {subkinds:?}"
         );
     }
+}
 
-    // `mod geometry` is invisible as an element but visible in every name.
+#[test]
+fn python_fixture_yields_the_expected_tree() {
+    expect(
+        &tree(PYTHON_PATH, PYTHON_FIXTURE),
+        &[
+            "file python parsers/fixtures/sample.py #0 1-36",
+            "  function function_definition parsers/fixtures/sample.py::trace #0 11-12",
+            "  container class_definition parsers/fixtures/sample.py::Rect #1 15-31",
+            "    function function_definition parsers/fixtures/sample.py::Rect::__init__ #0 20-22",
+            "    function function_definition parsers/fixtures/sample.py::Rect::area #1 24-28",
+            // A def inside a def, two levels down from the file.
+            "      function function_definition parsers/fixtures/sample.py::Rect::area::scale #0 25-26",
+            // A class inside a class.
+            "    container class_definition parsers/fixtures/sample.py::Rect::Kind #2 30-31",
+            // `@trace` wraps the def in a `decorated_definition`. That wrapper is
+            // spliced through rather than promoted, so the function appears once
+            // — and its span is the `def`, matching how a Rust doc comment sits
+            // outside the declaration it documents.
+            "  function function_definition parsers/fixtures/sample.py::main_entry #2 35-36",
+        ],
+    );
+}
+
+/// The Python twin of the Rust negative: module- and class-level assignments
+/// are bindings, and a decorated def must not be twinned.
+#[test]
+fn python_fixture_invents_nothing() {
+    let tree = tree(PYTHON_PATH, PYTHON_FIXTURE);
+    let subkinds = subkinds(&tree);
+
+    for refused in [
+        "decorated_definition",
+        "expression_statement",
+        "assignment",
+        "block",
+    ] {
+        assert!(
+            !subkinds.contains(&refused),
+            "{refused} must not become an element; got {subkinds:?}"
+        );
+    }
     assert!(
-        elements
-            .iter()
-            .filter(|e| e.qualified_name != "main_entry")
-            .all(|e| e.qualified_name.starts_with("geometry.")),
-        "the module must contribute a qualified-name segment"
+        tree.find("parsers/fixtures/sample.py::MAX_SIDES").is_none(),
+        "a module-level binding is not a declaration"
+    );
+    assert_eq!(
+        tree.iter()
+            .filter(|element| element.name == "main_entry")
+            .count(),
+        1,
+        "a decorated def must appear exactly once"
     );
 }
 
 #[test]
-fn markdown_fixture_yields_nested_sections_with_real_spans() {
-    let source = include_str!("../fixtures/sample.md");
-    let elements = parse("parsers/fixtures/sample.md", &blob(), source).unwrap();
-
+fn markdown_fixture_yields_the_expected_tree() {
     expect(
-        &elements,
+        &tree(MARKDOWN_PATH, MARKDOWN_FIXTURE),
         &[
-            ("atx_heading", ElementKind::Section, "Main Title", 1, 20),
-            (
-                "atx_heading",
-                ElementKind::Section,
-                "Main Title > Section One",
-                5,
-                12,
-            ),
-            (
-                "atx_heading",
-                ElementKind::Section,
-                "Main Title > Section One > Subsection 1.1",
-                9,
-                12,
-            ),
-            (
-                "atx_heading",
-                ElementKind::Section,
-                "Main Title > Section Two",
-                13,
-                20,
-            ),
+            "file markdown parsers/fixtures/sample.md #0 1-30",
+            // A section's span runs to the line before the next heading of
+            // equal-or-shallower level (L9), so a parent's span covers its
+            // children's.
+            "  section atx_heading parsers/fixtures/sample.md::Main Title #0 1-30",
+            "    section atx_heading parsers/fixtures/sample.md::Main Title::Section One #0 5-12",
+            "      section atx_heading parsers/fixtures/sample.md::Main Title::Section One::Subsection 1.1 #0 9-12",
+            "    section atx_heading parsers/fixtures/sample.md::Main Title::Section Two #1 13-21",
+            "    section atx_heading parsers/fixtures/sample.md::Main Title::Section Three #2 22-30",
+            "      section atx_heading parsers/fixtures/sample.md::Main Title::Section Three::Deep One #0 24-30",
+            "        section atx_heading parsers/fixtures/sample.md::Main Title::Section Three::Deep One::Deeper Two #0 26-30",
+            "          section atx_heading parsers/fixtures/sample.md::Main Title::Section Three::Deep One::Deeper Two::Deepest Three #0 28-30",
         ],
     );
 }
 
 /// POC learning L9 — the concrete argument for parsing markdown rather than
-/// grepping it. `grep '^#'` finds five heading-looking lines in this fixture;
+/// grepping it. `grep '^#'` finds six heading-looking lines in this fixture;
 /// one of them is a shell comment inside a fenced code block.
 #[test]
 fn fenced_code_comments_are_not_headings() {
-    let source = include_str!("../fixtures/sample.md");
-    let heading_shaped_lines = source.lines().filter(|l| l.starts_with('#')).count();
-    assert_eq!(heading_shaped_lines, 5, "the fixture must contain the trap");
+    let heading_shaped_lines = MARKDOWN_FIXTURE
+        .lines()
+        .filter(|line| line.starts_with('#'))
+        .count();
+    assert_eq!(heading_shaped_lines, 9, "the fixture must contain the trap");
 
-    let elements = parse("parsers/fixtures/sample.md", &blob(), source).unwrap();
+    let tree = tree(MARKDOWN_PATH, MARKDOWN_FIXTURE);
     assert_eq!(
-        elements.len(),
-        4,
-        "only the four real headings are sections"
+        tree.len() - 1,
+        8,
+        "only the eight real headings are sections"
     );
     assert!(
-        !elements
+        !tree
             .iter()
-            .any(|e| e.qualified_name.contains("shell comment")),
-        "a fenced code comment leaked into the element table"
+            .any(|element| element.name.contains("shell comment")),
+        "a fenced code comment leaked into the element tree"
     );
 }
 
@@ -182,15 +218,119 @@ fn fenced_code_comments_are_not_headings() {
 /// body — not just its heading line.
 #[test]
 fn section_text_carries_the_body_not_just_the_heading() {
-    let source = include_str!("../fixtures/sample.md");
-    let elements = parse("parsers/fixtures/sample.md", &blob(), source).unwrap();
-
-    let section_one = elements
-        .iter()
-        .find(|e| e.qualified_name == "Main Title > Section One")
+    let tree = tree(MARKDOWN_PATH, MARKDOWN_FIXTURE);
+    let section_one = tree
+        .find("parsers/fixtures/sample.md::Main Title::Section One")
         .expect("fixture has Section One");
-    assert!(section_one.text.starts_with("## Section One"));
-    assert!(section_one.text.contains("Body of section one."));
-    assert!(section_one.text.contains("### Subsection 1.1"));
-    assert!(!section_one.text.contains("## Section Two"));
+
+    assert!(section_one.raw_text.starts_with("## Section One"));
+    assert!(section_one.raw_text.contains("Body of section one."));
+    assert!(section_one.raw_text.contains("### Subsection 1.1"));
+    assert!(!section_one.raw_text.contains("## Section Two"));
+}
+
+/// `(address, start_line)` — an address alone is not unique (a struct and its
+/// `impl` share one), and this is the map that proves the hash story, so it must
+/// not silently collapse two elements into one.
+fn hashes(tree: &ElementTree) -> BTreeMap<(String, u32), String> {
+    let mut map = BTreeMap::new();
+    for element in tree.iter() {
+        let previous = map.insert(
+            (element.address.clone(), element.span.start_line),
+            element.raw_hash().to_string(),
+        );
+        assert!(
+            previous.is_none(),
+            "two elements at {} line {}",
+            element.address,
+            element.span.start_line
+        );
+    }
+    map
+}
+
+#[test]
+fn the_same_bytes_always_produce_the_same_hashes() {
+    let once = tree(RUST_PATH, RUST_FIXTURE);
+    let twice = tree(RUST_PATH, RUST_FIXTURE);
+
+    assert_eq!(hashes(&once), hashes(&twice));
+    assert_eq!(once, twice, "the whole tree is a deterministic value");
+
+    // And the path is not part of the element hash — only the text is. Two
+    // copies of one file differ by address, never by dirtiness.
+    let elsewhere = tree("vendor/copy.rs", RUST_FIXTURE);
+    assert_eq!(once.root.raw_hash(), elsewhere.root.raw_hash());
+    assert_eq!(once.blob, elsewhere.blob);
+}
+
+/// The dirtiness key earning its name: a one-character edit must re-hash the
+/// elements that CONTAIN the edit, and nothing else. If it re-hashed siblings,
+/// every commit would re-embed the whole file.
+#[test]
+fn a_one_character_edit_rehashes_only_the_elements_containing_it() {
+    let before = tree(RUST_PATH, RUST_FIXTURE);
+
+    let edited = RUST_FIXTURE.replace(
+        "self.width * self.height",
+        "self.width + self.height", // one character, inside `Rect::area`
+    );
+    assert_ne!(edited, RUST_FIXTURE, "the edit must actually apply");
+    let after = tree(RUST_PATH, &edited);
+
+    let before_hashes = hashes(&before);
+    let after_hashes = hashes(&after);
+    assert_eq!(
+        before_hashes.keys().collect::<Vec<_>>(),
+        after_hashes.keys().collect::<Vec<_>>(),
+        "an edit inside a body must not move any element's address or span"
+    );
+
+    let changed: Vec<&(String, u32)> = before_hashes
+        .iter()
+        .filter(|(key, hash)| after_hashes.get(*key) != Some(*hash))
+        .map(|(key, _)| key)
+        .collect();
+
+    assert_eq!(
+        changed,
+        vec![
+            // The file, the module, the impl block, the method: the containment
+            // chain of the edited line, and only that chain.
+            &("parsers/fixtures/sample.rs".to_string(), 1),
+            &("parsers/fixtures/sample.rs::geometry".to_string(), 3),
+            &("parsers/fixtures/sample.rs::geometry::Rect".to_string(), 10),
+            &(
+                "parsers/fixtures/sample.rs::geometry::Rect::area".to_string(),
+                17
+            ),
+        ],
+        "only the containment chain of the edit may re-hash"
+    );
+
+    // Named explicitly, because "the sibling did not change" is the property
+    // that makes incremental indexing worth having.
+    for untouched in [
+        ("parsers/fixtures/sample.rs::geometry::Rect".to_string(), 5),
+        (
+            "parsers/fixtures/sample.rs::geometry::Rect::new".to_string(),
+            11,
+        ),
+        ("parsers/fixtures/sample.rs::main_entry".to_string(), 34),
+    ] {
+        assert_eq!(
+            before_hashes[&untouched], after_hashes[&untouched],
+            "{untouched:?} does not contain the edit and must keep its hash"
+        );
+    }
+}
+
+/// The file element is the whole file, so its hash is the file's content key —
+/// one comparison answers "did this file change at all?".
+#[test]
+fn the_file_element_hashes_the_whole_file() {
+    let tree = tree(RUST_PATH, RUST_FIXTURE);
+    assert_eq!(tree.root.kind, ElementKind::File);
+    assert_eq!(tree.root.raw_text, RUST_FIXTURE);
+    assert_eq!(tree.root.raw_hash(), tree.blob.as_str());
 }

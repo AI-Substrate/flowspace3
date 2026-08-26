@@ -9,7 +9,7 @@
 //! macros: the macros need a live database or a checked-in `.sqlx` cache at
 //! *build* time, which would make `cargo build` depend on docker.
 
-use fs3_core::{BlobRef, Element, ElementKind};
+use fs3_core::{BlobRef, Element, ElementKind, ElementTree, Span};
 use sqlx::Row;
 use sqlx::postgres::{PgPoolOptions, PgRow};
 
@@ -103,11 +103,25 @@ pub async fn migrate(pool: &PgPool) -> Result<(), StoreError> {
     Ok(())
 }
 
-/// Insert or replace one element, keyed by its content address.
+/// Insert or replace one element of `tree`, keyed by its content address.
+///
+/// The element is passed separately from the tree because a tree is nested and
+/// this table is flat: a caller writes `tree.iter()`, one row per element. The
+/// tree supplies the facts that are true of the whole file — path, content key,
+/// parse health — which is why they are not repeated on every node.
+///
+/// 0001's table is the exemplar, not the schema: it has no column for
+/// `sibling_order` or for the parent link, so a round-trip returns a flat list
+/// in source order rather than the tree. Storing the tree shape is workshop
+/// material for plan 002.
 ///
 /// # Errors
 /// [`StoreError::Query`] when the statement fails.
-pub async fn upsert_element(pool: &PgPool, element: &Element) -> Result<(), StoreError> {
+pub async fn upsert_element(
+    pool: &PgPool,
+    tree: &ElementTree,
+    element: &Element,
+) -> Result<(), StoreError> {
     sqlx::query(
         "INSERT INTO elements
            (blob, path, qualified_name, ts_kind, kind, start_line, end_line, body, has_error)
@@ -120,28 +134,28 @@ pub async fn upsert_element(pool: &PgPool, element: &Element) -> Result<(), Stor
            body = EXCLUDED.body,
            has_error = EXCLUDED.has_error",
     )
-    .bind(element.blob.as_str())
-    .bind(&element.path)
-    .bind(&element.qualified_name)
-    .bind(&element.ts_kind)
+    .bind(tree.blob.as_str())
+    .bind(&tree.path)
+    .bind(&element.address)
+    .bind(&element.subkind)
     .bind(element.kind.as_str())
-    .bind(element.start_line as i32)
-    .bind(element.end_line as i32)
-    .bind(&element.text)
-    .bind(element.has_error)
+    .bind(element.span.start_line as i32)
+    .bind(element.span.end_line as i32)
+    .bind(&element.raw_text)
+    .bind(tree.has_error)
     .execute(pool)
     .await?;
     Ok(())
 }
 
-/// Every element recorded for one blob, in source order.
+/// Every element recorded for one blob, flat, in source order.
 ///
 /// # Errors
 /// [`StoreError::Query`] on failure; [`StoreError::Corrupt`] when a stored row
 /// cannot be read back as a domain element.
 pub async fn elements_for_blob(pool: &PgPool, blob: &BlobRef) -> Result<Vec<Element>, StoreError> {
     let rows = sqlx::query(
-        "SELECT blob, path, qualified_name, ts_kind, kind, start_line, end_line, body, has_error
+        "SELECT qualified_name, ts_kind, kind, start_line, end_line, body
            FROM elements
           WHERE blob = $1
           ORDER BY start_line, qualified_name",
@@ -150,29 +164,48 @@ pub async fn elements_for_blob(pool: &PgPool, blob: &BlobRef) -> Result<Vec<Elem
     .fetch_all(pool)
     .await?;
 
-    rows.iter().map(element_from_row).collect()
+    rows.iter()
+        .enumerate()
+        .map(|(index, row)| element_from_row(row, index as u32))
+        .collect()
 }
 
-fn element_from_row(row: &PgRow) -> Result<Element, StoreError> {
-    let blob: String = row.try_get("blob")?;
+/// Rebuild an element from its row.
+///
+/// `raw_hash` is not a stored column and does not need to be: it is derived
+/// from the body, so reading it back and re-deriving it give the same digest by
+/// construction. `sibling_order` IS lost — the flat table cannot express it —
+/// so it is re-derived as position in source order.
+fn element_from_row(row: &PgRow, source_order: u32) -> Result<Element, StoreError> {
     let kind: String = row.try_get("kind")?;
-    Ok(Element {
-        blob: BlobRef::new(blob).map_err(StoreError::Corrupt)?,
-        path: row.try_get("path")?,
-        qualified_name: row.try_get("qualified_name")?,
-        ts_kind: row.try_get("ts_kind")?,
-        kind: kind_from_str(&kind)?,
-        start_line: row.try_get::<i32, _>("start_line")? as u32,
-        end_line: row.try_get::<i32, _>("end_line")? as u32,
-        text: row.try_get("body")?,
-        has_error: row.try_get("has_error")?,
-    })
+    Ok(Element::new(
+        kind_from_str(&kind)?,
+        row.try_get::<String, _>("ts_kind")?,
+        // The declaration's own name is the last address segment.
+        last_segment(row.try_get::<&str, _>("qualified_name")?),
+        row.try_get::<String, _>("qualified_name")?,
+        Span::new(
+            row.try_get::<i32, _>("start_line")? as u32,
+            row.try_get::<i32, _>("end_line")? as u32,
+        ),
+        row.try_get::<String, _>("body")?,
+    )
+    .with_sibling_order(source_order))
+}
+
+/// The declaration's own name within `src/foo.rs::Indexer::scan`.
+fn last_segment(address: &str) -> &str {
+    address
+        .rsplit(fs3_core::ADDRESS_SEGMENT)
+        .next()
+        .unwrap_or(address)
 }
 
 fn kind_from_str(value: &str) -> Result<ElementKind, StoreError> {
     match value {
-        "callable" => Ok(ElementKind::Callable),
-        "type" => Ok(ElementKind::Type),
+        "file" => Ok(ElementKind::File),
+        "container" => Ok(ElementKind::Container),
+        "function" => Ok(ElementKind::Function),
         "section" => Ok(ElementKind::Section),
         other => Err(StoreError::Corrupt(fs3_core::Error::InvalidConfig(
             format!("unknown element kind {other:?}"),
@@ -187,13 +220,25 @@ mod tests {
     #[test]
     fn kind_round_trips_through_its_stored_spelling() {
         for kind in [
-            ElementKind::Callable,
-            ElementKind::Type,
+            ElementKind::File,
+            ElementKind::Container,
+            ElementKind::Function,
             ElementKind::Section,
         ] {
             assert_eq!(kind_from_str(kind.as_str()).unwrap(), kind);
         }
+        // The spellings 0001 used, which migration 0002 renamed. A row that
+        // still says `callable` means the migration did not run.
+        assert!(kind_from_str("callable").is_err());
+        assert!(kind_from_str("type").is_err());
         assert!(kind_from_str("block").is_err());
+    }
+
+    #[test]
+    fn a_name_is_the_last_address_segment() {
+        assert_eq!(last_segment("src/foo.rs::Indexer::scan"), "scan");
+        // A file element's address has no segments at all.
+        assert_eq!(last_segment("src/foo.rs"), "src/foo.rs");
     }
 
     #[test]

@@ -1,23 +1,44 @@
-//! The element model (PRD req 3): a file is a set of addressable elements.
+//! The element model (PRD req 3): a file is a *tree* of addressable elements.
+//!
+//! One node type, self-parented. A scan returns an owned [`ElementTree`] whose
+//! root is the file itself; everything the file declares hangs beneath it in
+//! source order. Parent ids, foreign keys and adjacency tables are the store's
+//! concern — this model is a value, not a row set.
+//!
+//! Three properties carry the weight:
+//!
+//! * [`Element::address`] is stable across re-parses, so an element keeps its
+//!   identity when the lines around it move.
+//! * [`Element::raw_hash`] is the dirtiness key: same bytes, same hash, and a
+//!   hash that changed is the only reason to re-embed or re-summarise.
+//! * File-level facts (path, content key, parse health) live once on the
+//!   [`ElementTree`], not duplicated onto every node.
 
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::fmt;
 
 use crate::error::{Error, Result};
 
-/// The universal category sitting on top of a raw tree-sitter kind.
+/// Separator between address segments: `src/foo.rs::Indexer::scan`.
+pub const ADDRESS_SEGMENT: &str = "::";
+
+/// The universal category sitting on top of a raw grammar kind.
 ///
-/// v1 promotes exactly three categories. Config/data languages classify as
-/// `block` under fs2's taxonomy and are deliberately **not indexed** (PRD
-/// req 43), so `block` is not a variant here.
+/// Deliberately CLOSED and deliberately small. Language-specific detail —
+/// `impl_item`, `class_definition`, `atx_heading` — is [`Element::subkind`], a
+/// free string, so a new grammar never grows this enum.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ElementKind {
-    /// Functions, methods, constructors.
-    Callable,
-    /// Classes, structs, interfaces, enums, traits, impls.
-    Type,
-    /// Markdown heading sections (PRD req 22).
+    /// The file itself: every tree has exactly one, at the root.
+    File,
+    /// Something that holds other declarations: class, struct, impl, trait,
+    /// enum, module.
+    Container,
+    /// Something callable: function, method, constructor.
+    Function,
+    /// A document section — a markdown heading and its body (PRD req 22).
     Section,
 }
 
@@ -25,8 +46,9 @@ impl ElementKind {
     /// The stable wire/storage spelling. Matches the serde representation.
     pub const fn as_str(self) -> &'static str {
         match self {
-            ElementKind::Callable => "callable",
-            ElementKind::Type => "type",
+            ElementKind::File => "file",
+            ElementKind::Container => "container",
+            ElementKind::Function => "function",
             ElementKind::Section => "section",
         }
     }
@@ -102,40 +124,217 @@ impl From<BlobRef> for String {
     }
 }
 
-/// One addressable unit of content: a callable, a type, or a markdown section.
+/// The sha-256 of some bytes, lowercase hex.
 ///
-/// The address is `(path, qualified_name, start_line..=end_line)` plus the
-/// content key `blob`; `ts_kind` is kept verbatim so a raw grammar kind is
-/// never lost behind the universal [`ElementKind`].
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Element {
-    /// Repo-relative path of the file the element came from.
-    pub path: String,
-    /// Content key of the file's bytes.
-    pub blob: BlobRef,
-    /// The raw tree-sitter node kind, unmodified.
-    pub ts_kind: String,
-    /// The universal category derived from `ts_kind`.
-    pub kind: ElementKind,
-    /// Nested name, e.g. `Calculator.new` or `Main Title > Section One`.
-    pub qualified_name: String,
+/// The one hash function in fs3: it keys element dirtiness and, for a folder
+/// with no git to ask, a whole file's content (PRD req 23).
+pub fn content_hash(bytes: &[u8]) -> String {
+    let digest = Sha256::digest(bytes);
+    let mut hex = String::with_capacity(digest.len() * 2);
+    for byte in digest {
+        // `{:02x}` through `write!` would need a `fmt::Write` import and can
+        // fail; a two-character table lookup cannot.
+        const HEX: &[u8; 16] = b"0123456789abcdef";
+        hex.push(HEX[(byte >> 4) as usize] as char);
+        hex.push(HEX[(byte & 0x0f) as usize] as char);
+    }
+    hex
+}
+
+/// An inclusive, 1-based line range.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Span {
     /// 1-based inclusive first line.
     pub start_line: u32,
     /// 1-based inclusive last line.
     pub end_line: u32,
-    /// The element's own source text — what a [`crate::Summarizer`] reads.
-    pub text: String,
-    /// Whether the file parsed with an ERROR node.
+}
+
+impl Span {
+    /// A span over `start_line..=end_line`.
+    pub const fn new(start_line: u32, end_line: u32) -> Self {
+        Span {
+            start_line,
+            end_line,
+        }
+    }
+
+    /// Number of lines the span covers, inclusive of both ends.
+    pub const fn line_count(self) -> u32 {
+        self.end_line.saturating_sub(self.start_line) + 1
+    }
+}
+
+impl fmt::Display for Span {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}-{}", self.start_line, self.end_line)
+    }
+}
+
+/// One addressable unit of content, plus everything declared inside it.
+///
+/// Build with [`Element::new`]: `raw_hash` is derived from `raw_text` there and
+/// nowhere else, which is what makes "the hash changed" mean "the text changed".
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Element {
+    /// The universal category.
+    pub kind: ElementKind,
+    /// The grammar's own kind, verbatim (`impl_item`, `class_definition`), or
+    /// for a [`ElementKind::File`] root, the language it was read as.
+    pub subkind: String,
+    /// The declaration's own name — `scan`, not `Indexer::scan`.
+    pub name: String,
+    /// Stable identity: `src/foo.rs::Indexer::scan`.
+    ///
+    /// Deliberately independent of line numbers, so an element keeps its
+    /// address when code above it moves.
+    pub address: String,
+    /// The element's line range within its file.
+    pub span: Span,
+    /// The element's exact source slice — what a [`crate::Summarizer`] reads.
+    pub raw_text: String,
+    /// sha-256 of [`Element::raw_text`]. Derived, never set by hand.
+    raw_hash: String,
+    /// Position among its siblings, 0-based, in source order.
+    pub sibling_order: u32,
+    /// Declarations nested directly inside this one, in source order.
+    pub children: Vec<Element>,
+}
+
+impl Element {
+    /// A childless element at sibling position 0, with its hash derived.
+    pub fn new(
+        kind: ElementKind,
+        subkind: impl Into<String>,
+        name: impl Into<String>,
+        address: impl Into<String>,
+        span: Span,
+        raw_text: impl Into<String>,
+    ) -> Self {
+        let raw_text = raw_text.into();
+        Element {
+            kind,
+            subkind: subkind.into(),
+            name: name.into(),
+            address: address.into(),
+            span,
+            raw_hash: content_hash(raw_text.as_bytes()),
+            raw_text,
+            sibling_order: 0,
+            children: Vec::new(),
+        }
+    }
+
+    /// Place this element at a sibling position.
+    #[must_use]
+    pub fn with_sibling_order(mut self, sibling_order: u32) -> Self {
+        self.sibling_order = sibling_order;
+        self
+    }
+
+    /// Attach children, which are assumed to already carry their own order.
+    #[must_use]
+    pub fn with_children(mut self, children: Vec<Element>) -> Self {
+        self.children = children;
+        self
+    }
+
+    /// sha-256 of the element's raw text — the dirtiness key.
+    pub fn raw_hash(&self) -> &str {
+        &self.raw_hash
+    }
+
+    /// Number of lines the element spans, inclusive of both ends.
+    pub const fn line_count(&self) -> u32 {
+        self.span.line_count()
+    }
+
+    /// This element and every descendant, in source order (pre-order).
+    pub fn iter(&self) -> PreOrder<'_> {
+        PreOrder { stack: vec![self] }
+    }
+}
+
+impl<'a> IntoIterator for &'a Element {
+    type Item = &'a Element;
+    type IntoIter = PreOrder<'a>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+/// Depth-first, source-order walk over an element and its descendants.
+pub struct PreOrder<'a> {
+    stack: Vec<&'a Element>,
+}
+
+impl<'a> Iterator for PreOrder<'a> {
+    type Item = &'a Element;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let element = self.stack.pop()?;
+        // Reversed, so the first child is popped first and the walk reads in
+        // source order.
+        self.stack.extend(element.children.iter().rev());
+        Some(element)
+    }
+}
+
+/// One file's elements, owned, plus the facts that are true of the whole file.
+///
+/// `path`, `blob` and `has_error` live here rather than on every node: they are
+/// one value per file, and copying them onto each of a few hundred elements is
+/// allocation with no information in it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ElementTree {
+    /// Repo-relative path the file was scanned at.
+    pub path: String,
+    /// Content key of the file's bytes.
+    pub blob: BlobRef,
+    /// Whether the parse hit an ERROR node.
     ///
     /// Metadata only. POC learning L8: error recovery routinely yields correct
     /// elements, so this must never be used to reject a file.
     pub has_error: bool,
+    /// The file element. Always [`ElementKind::File`].
+    pub root: Element,
 }
 
-impl Element {
-    /// Number of lines the element spans, inclusive of both ends.
-    pub const fn line_count(&self) -> u32 {
-        self.end_line.saturating_sub(self.start_line) + 1
+impl ElementTree {
+    /// The language the file was read as — `rust`, `markdown`, `unknown`.
+    ///
+    /// PRD req 43 wants "no grammar" to be an observable outcome rather than a
+    /// silent gap; this is where a caller sees it.
+    pub fn language(&self) -> &str {
+        &self.root.subkind
+    }
+
+    /// Every element including the root, in source order.
+    pub fn iter(&self) -> PreOrder<'_> {
+        self.root.iter()
+    }
+
+    /// Total element count, root included.
+    pub fn len(&self) -> usize {
+        self.iter().count()
+    }
+
+    /// Always false — a tree always has its file element.
+    pub fn is_empty(&self) -> bool {
+        false
+    }
+
+    /// The element at `address`, if the tree holds one.
+    pub fn find(&self, address: &str) -> Option<&Element> {
+        self.iter().find(|element| element.address == address)
+    }
+}
+
+impl<'a> IntoIterator for &'a ElementTree {
+    type Item = &'a Element;
+    type IntoIter = PreOrder<'a>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 
@@ -153,17 +352,14 @@ mod tests {
     use super::*;
 
     fn element(start: u32, end: u32) -> Element {
-        Element {
-            path: "core/src/element.rs".into(),
-            blob: BlobRef::new("0123456789abcdef").unwrap(),
-            ts_kind: "function_item".into(),
-            kind: ElementKind::Callable,
-            qualified_name: "needs_summary".into(),
-            start_line: start,
-            end_line: end,
-            text: String::new(),
-            has_error: false,
-        }
+        Element::new(
+            ElementKind::Function,
+            "function_item",
+            "needs_summary",
+            "core/src/element.rs::needs_summary",
+            Span::new(start, end),
+            "",
+        )
     }
 
     #[test]
@@ -190,6 +386,31 @@ mod tests {
         ));
     }
 
+    /// The hash is what the whole dirtiness story rests on, so pin it against a
+    /// published vector rather than against itself.
+    #[test]
+    fn content_hash_matches_the_known_sha256_of_abc() {
+        assert_eq!(
+            content_hash(b"abc"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+        // And it is always a legal content key.
+        assert!(BlobRef::new(content_hash(b"abc")).is_ok());
+    }
+
+    #[test]
+    fn raw_hash_is_derived_from_raw_text() {
+        let element = Element::new(
+            ElementKind::Function,
+            "function_item",
+            "f",
+            "a.rs::f",
+            Span::new(1, 1),
+            "fn f() {}",
+        );
+        assert_eq!(element.raw_hash(), content_hash(b"fn f() {}"));
+    }
+
     #[test]
     fn line_count_is_inclusive_of_both_ends() {
         assert_eq!(element(10, 10).line_count(), 1);
@@ -208,5 +429,74 @@ mod tests {
             "the floor itself qualifies"
         );
         assert!(needs_summary(&element(100, 140), floor));
+    }
+
+    fn leaf(name: &str, order: u32) -> Element {
+        Element::new(
+            ElementKind::Function,
+            "function_item",
+            name,
+            format!("a.rs::{name}"),
+            Span::new(1, 1),
+            "",
+        )
+        .with_sibling_order(order)
+    }
+
+    fn tree() -> ElementTree {
+        let inner = Element::new(
+            ElementKind::Container,
+            "impl_item",
+            "Rect",
+            "a.rs::Rect",
+            Span::new(1, 9),
+            "",
+        )
+        .with_children(vec![leaf("new", 0), leaf("area", 1)]);
+
+        ElementTree {
+            path: "a.rs".to_string(),
+            blob: BlobRef::new("0123456789abcdef").unwrap(),
+            has_error: false,
+            root: Element::new(
+                ElementKind::File,
+                "rust",
+                "a.rs",
+                "a.rs",
+                Span::new(1, 9),
+                "",
+            )
+            .with_children(vec![inner, leaf("free", 1)]),
+        }
+    }
+
+    /// A depth-first walk that reordered siblings would silently scramble
+    /// `sibling_order`, so assert the sequence, not the set.
+    #[test]
+    fn iteration_is_depth_first_in_source_order() {
+        let tree = tree();
+        let addresses: Vec<&str> = tree.iter().map(|e| e.address.as_str()).collect();
+        assert_eq!(
+            addresses,
+            vec![
+                "a.rs",
+                "a.rs::Rect",
+                "a.rs::new",
+                "a.rs::area",
+                "a.rs::free",
+            ]
+        );
+    }
+
+    #[test]
+    fn find_reaches_a_nested_element_by_address() {
+        let tree = tree();
+        assert_eq!(tree.len(), 5);
+        assert_eq!(
+            tree.find("a.rs::area").map(|e| e.name.as_str()),
+            Some("area")
+        );
+        assert!(tree.find("a.rs::nope").is_none());
+        assert_eq!(tree.language(), "rust");
     }
 }

@@ -3,99 +3,102 @@
 //! tree-sitter-md reports headings as *point* nodes, so a section's range is
 //! fs3 code rather than grammar output (POC learning L9): a section runs from
 //! its heading line to the line before the next heading of equal-or-shallower
-//! level.
+//! level. Those ranges nest exactly, which is what makes a heading hierarchy a
+//! tree rather than a flat list with a naming convention.
 //!
 //! Doing this through the AST rather than `grep '^#'` is not ceremony. The POC
 //! measured a 43 KB doc where the regex found 32 heading-looking lines, 8 of
 //! them shell comments inside fenced code blocks; tree-sitter returned exactly
 //! the 24 real headings.
 
-use fs3_core::{BlobRef, Element, ElementKind, classify};
-use tree_sitter::{Node, Parser};
-
-use crate::ParseError;
-
-/// Separator between nested heading segments.
-const SEGMENT: &str = " > ";
+use fs3_core::{ADDRESS_SEGMENT, Element, ElementKind, Span, classify};
+use tree_sitter::Node;
 
 struct Heading {
     level: usize,
     title: String,
     /// 0-based row of the heading line.
     row: usize,
+    /// 0-based row of the last line the section covers.
+    end_row: usize,
     ts_kind: String,
 }
 
-/// Parse Markdown into one element per heading section.
-pub(crate) fn parse_markdown(
-    path: &str,
-    blob: &BlobRef,
-    source: &str,
-) -> Result<Vec<Element>, ParseError> {
-    let mut parser = Parser::new();
-    parser
-        .set_language(&tree_sitter_md::LANGUAGE.into())
-        .map_err(|_| ParseError::Unparseable {
-            path: path.to_string(),
-            language: "markdown",
-        })?;
-    let tree = parser.parse(source, None).ok_or(ParseError::Unparseable {
-        path: path.to_string(),
-        language: "markdown",
-    })?;
-    let has_error = tree.root_node().has_error();
-
+/// Every heading section in the document, nested by heading level.
+pub(crate) fn sections(root: Node<'_>, source: &str, path: &str) -> Vec<Element> {
     let lines: Vec<&str> = source.lines().collect();
-    let mut headings = Vec::new();
-    collect_headings(tree.root_node(), source, &mut headings);
-    headings.sort_by_key(|heading| heading.row);
 
+    let mut found = Vec::new();
+    collect_headings(root, source, &mut found);
+    found.sort_by_key(|heading| heading.row);
+
+    // A section ends just before the next heading at the same or a shallower
+    // level; otherwise at end of file.
     let last_row = lines.len().saturating_sub(1);
-    let mut elements = Vec::with_capacity(headings.len());
-    let mut scope: Vec<(usize, String)> = Vec::new();
-
-    for (index, heading) in headings.iter().enumerate() {
-        // The section ends just before the next heading at the same or a
-        // shallower level; otherwise at end of file.
-        let end_row = headings[index + 1..]
-            .iter()
-            .find(|next| next.level <= heading.level)
-            .map_or(last_row, |next| next.row.saturating_sub(1));
-
-        scope.retain(|(level, _)| *level < heading.level);
-        let qualified_name = scope
-            .iter()
-            .map(|(_, title)| title.as_str())
-            .chain(std::iter::once(heading.title.as_str()))
-            .collect::<Vec<_>>()
-            .join(SEGMENT);
-        scope.push((heading.level, heading.title.clone()));
-
-        elements.push(Element {
-            path: path.to_string(),
-            blob: blob.clone(),
-            ts_kind: heading.ts_kind.clone(),
-            kind: ElementKind::Section,
-            qualified_name,
-            start_line: heading.row as u32 + 1,
-            end_line: end_row as u32 + 1,
-            text: lines
-                .get(heading.row..=end_row.max(heading.row))
-                .unwrap_or_default()
-                .join("\n"),
-            has_error,
-        });
+    let ends: Vec<usize> = found
+        .iter()
+        .enumerate()
+        .map(|(index, heading)| {
+            found[index + 1..]
+                .iter()
+                .find(|next| next.level <= heading.level)
+                .map_or(last_row, |next| next.row.saturating_sub(1))
+        })
+        .collect();
+    for (heading, end_row) in found.iter_mut().zip(ends) {
+        heading.end_row = end_row;
     }
 
-    Ok(elements)
+    nest(&found, &lines, path)
+}
+
+/// Turn a flat, source-ordered heading list into a forest.
+///
+/// The first heading owns every following heading deeper than it; the next
+/// heading at its level or shallower starts a sibling.
+fn nest(headings: &[Heading], lines: &[&str], scope: &str) -> Vec<Element> {
+    let mut out: Vec<Element> = Vec::new();
+    let mut index = 0;
+
+    while index < headings.len() {
+        let heading = &headings[index];
+        let end = headings[index + 1..]
+            .iter()
+            .position(|next| next.level <= heading.level)
+            .map_or(headings.len(), |offset| index + 1 + offset);
+
+        let address = format!("{scope}{ADDRESS_SEGMENT}{}", heading.title);
+        let children = nest(&headings[index + 1..end], lines, &address);
+
+        let body = lines
+            .get(heading.row..=heading.end_row.max(heading.row))
+            .unwrap_or_default()
+            .join("\n");
+
+        out.push(
+            Element::new(
+                ElementKind::Section,
+                &heading.ts_kind,
+                &heading.title,
+                &address,
+                Span::new(heading.row as u32 + 1, heading.end_row as u32 + 1),
+                body,
+            )
+            .with_sibling_order(out.len() as u32)
+            .with_children(children),
+        );
+
+        index = end;
+    }
+
+    out
 }
 
 fn collect_headings(node: Node<'_>, source: &str, out: &mut Vec<Heading>) {
-    if classify(node.kind()) == Some(ElementKind::Section) {
-        let raw = source.get(node.byte_range()).unwrap_or_default();
-        if let Some(heading) = heading_from(node, raw, source) {
-            out.push(heading);
-        }
+    if classify(node.kind()) == Some(ElementKind::Section)
+        && let Some(heading) = heading_from(node, source)
+    {
+        out.push(heading);
     }
 
     let mut cursor = node.walk();
@@ -104,7 +107,8 @@ fn collect_headings(node: Node<'_>, source: &str, out: &mut Vec<Heading>) {
     }
 }
 
-fn heading_from(node: Node<'_>, raw: &str, source: &str) -> Option<Heading> {
+fn heading_from(node: Node<'_>, source: &str) -> Option<Heading> {
+    let raw = source.get(node.byte_range())?;
     let first_line = raw.lines().next()?.trim();
     let level = if node.kind() == "setext_heading" {
         // `===` is h1, `---` is h2 — the marker is the grammar's child kind.
@@ -129,6 +133,7 @@ fn heading_from(node: Node<'_>, raw: &str, source: &str) -> Option<Heading> {
         level,
         title,
         row: node.start_position().row,
+        end_row: node.start_position().row,
         ts_kind: node.kind().to_string(),
     })
 }
@@ -185,15 +190,30 @@ fn strip_closing_sequence(content: &str) -> &str {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::path::Path;
 
+    use fs3_core::ElementTree;
+
+    use crate::scan;
+
+    const DOC: &str = "docs/probe.md";
+
+    fn markdown(source: &str) -> ElementTree {
+        scan(Path::new(DOC), source.as_bytes()).expect("markdown always parses")
+    }
+
+    /// Addresses of every section, file element excluded.
     fn titles(source: &str) -> Vec<String> {
-        let blob = BlobRef::new("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-            .expect("literal is a valid digest");
-        parse_markdown("docs/probe.md", &blob, source)
-            .expect("markdown always parses")
-            .into_iter()
-            .map(|element| element.qualified_name)
+        markdown(source)
+            .iter()
+            .skip(1)
+            .map(|element| {
+                element
+                    .address
+                    .strip_prefix(&format!("{DOC}::"))
+                    .expect("every section hangs off the file")
+                    .to_string()
+            })
             .collect()
     }
 
@@ -223,7 +243,7 @@ mod tests {
     fn setext_headings_still_carry_their_level() {
         assert_eq!(
             titles("Parent\n======\n\nChild\n------\n\nText.\n"),
-            vec!["Parent".to_string(), "Parent > Child".to_string()]
+            vec!["Parent".to_string(), "Parent::Child".to_string()]
         );
     }
 
@@ -234,5 +254,25 @@ mod tests {
             titles("# Real\n\n```sh\n# not a heading\n```\n"),
             vec!["Real".to_string()]
         );
+    }
+
+    /// A level jump (h1 straight to h3) still nests: the h3 is inside the h1,
+    /// because nesting follows depth, not a fixed step of one.
+    #[test]
+    fn a_skipped_heading_level_still_nests() {
+        let tree = markdown("# Top\n\n### Deep\n\nText.\n");
+        let top = tree.find(&format!("{DOC}::Top")).expect("h1");
+        assert_eq!(top.children.len(), 1, "the h3 belongs to the h1");
+        assert_eq!(top.children[0].name, "Deep");
+    }
+
+    /// A shallower heading closes the deeper ones and starts a sibling.
+    #[test]
+    fn a_shallower_heading_pops_back_out() {
+        let tree = markdown("# One\n\n## Under\n\n# Two\n\nText.\n");
+        assert_eq!(tree.root.children.len(), 2, "two h1 siblings");
+        assert_eq!(tree.root.children[0].children.len(), 1);
+        assert_eq!(tree.root.children[1].sibling_order, 1);
+        assert!(tree.root.children[1].children.is_empty());
     }
 }

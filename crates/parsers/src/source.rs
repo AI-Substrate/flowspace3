@@ -1,9 +1,13 @@
 //! The generic code walk. One function, no language branches.
+//!
+//! The shape is: descend the syntax tree; a node that classifies *and* has a
+//! name becomes an element and its subtree becomes that element's children; a
+//! node that does neither is spliced through, so the declarations inside a
+//! wrapper node (a `decorated_definition`, an error-recovery stub, a bare
+//! block) are never lost — they simply attach to the nearest real ancestor.
 
-use fs3_core::{BlobRef, Element, classify};
-use tree_sitter::{Node, Parser};
-
-use crate::ParseError;
+use fs3_core::{ADDRESS_SEGMENT, Element, Span, classify};
+use tree_sitter::Node;
 
 /// Fields that can carry a node's name, in priority order.
 ///
@@ -13,129 +17,82 @@ use crate::ParseError;
 /// `bool`.
 const NAME_FIELDS: &[&str] = &["name", "declarator", "path", "pattern", "type"];
 
-/// Kinds that contribute a qualified-name segment without being elements
-/// themselves (POC learning L4a): modules, namespaces, packages.
-///
-/// This is what turns `UserService` into `MyApp.Services.UserService`.
-fn is_container_only(kind: &str) -> bool {
-    kind.contains("namespace")
-        || matches!(
-            kind,
-            "mod_item" | "module_declaration" | "package_declaration"
-        )
+/// Every declaration inside `root`, as a source-ordered forest.
+pub(crate) fn declarations(root: Node<'_>, source: &str, path: &str) -> Vec<Element> {
+    let mut out = Vec::new();
+    collect(root, source, path, &mut out);
+    ordered(out)
 }
 
-/// Separator between qualified-name segments in code.
-const SEGMENT: &str = ".";
-
-/// Parse Rust source into elements.
-pub(crate) fn parse_rust(
-    path: &str,
-    blob: &BlobRef,
-    source: &str,
-) -> Result<Vec<Element>, ParseError> {
-    let mut parser = Parser::new();
-    parser
-        .set_language(&tree_sitter_rust::LANGUAGE.into())
-        .map_err(|_| ParseError::Unparseable {
-            path: path.to_string(),
-            language: "rust",
-        })?;
-    let tree = parser.parse(source, None).ok_or(ParseError::Unparseable {
-        path: path.to_string(),
-        language: "rust",
-    })?;
-
-    // L8: `has_error` is metadata. Error recovery routinely yields correct
-    // elements, so it must never be used to reject a file.
-    let has_error = tree.root_node().has_error();
-
-    let mut elements = Vec::new();
-    let mut scope: Vec<String> = Vec::new();
-    walk(
-        tree.root_node(),
-        source,
-        path,
-        blob,
-        has_error,
-        &mut scope,
-        &mut elements,
-    );
-    Ok(elements)
+/// Walk a node's children, promoting the ones that are declarations.
+fn collect(node: Node<'_>, source: &str, scope: &str, out: &mut Vec<Element>) {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        match element_at(child, source, scope) {
+            Some(element) => out.push(element),
+            // Not a declaration itself — but its subtree may hold several, and
+            // they belong to this level. PRD req 42: skipping a nameless node
+            // must not cost us the named declarations inside it, nor leave a
+            // gap in their addresses.
+            None => collect(child, source, scope, out),
+        }
+    }
 }
 
-fn walk(
-    node: Node<'_>,
-    source: &str,
-    path: &str,
-    blob: &BlobRef,
-    has_error: bool,
-    scope: &mut Vec<String>,
-    out: &mut Vec<Element>,
-) {
-    let kind = node.kind();
-    let name = node_name(node, source);
-
-    let mut pushed_scope = false;
-
+/// Turn one node into an element, children and all, if it is a declaration.
+fn element_at(node: Node<'_>, source: &str, scope: &str) -> Option<Element> {
+    let ts_kind = node.kind();
+    let kind = classify(ts_kind)?;
     // PRD req 42 wants genuine *named* declarations. A classified node with no
     // name is not one — it is error-recovery debris, or a suffix match on an
     // anonymous construct. Emitting it as `<anonymous>` invented an element
-    // nobody can address, and worse, pushed that junk onto the scope of every
-    // real declaration beneath it. Skip the node but keep walking its children:
-    // a nameless parent must not cost us the named declarations inside it.
-    if let Some(element_kind) = classify(kind)
-        && let Some(name) = name.clone()
-    {
-        let qualified_name = qualify(scope, &name);
-        out.push(Element {
-            path: path.to_string(),
-            blob: blob.clone(),
-            ts_kind: kind.to_string(),
-            kind: element_kind,
-            qualified_name,
-            start_line: node.start_position().row as u32 + 1,
-            end_line: node.end_position().row as u32 + 1,
-            text: node_text(node, source),
-            has_error,
-        });
-        scope.push(name);
-        pushed_scope = true;
-    } else if is_container_only(kind)
-        && let Some(name) = name
-    {
-        scope.push(name);
-        pushed_scope = true;
-    }
+    // nobody can address.
+    let name = node_name(node, source)?;
 
-    let mut cursor = node.walk();
-    for child in node.children(&mut cursor) {
-        walk(child, source, path, blob, has_error, scope, out);
-    }
-
-    if pushed_scope {
-        scope.pop();
-    }
-}
-
-/// Derive a node's name from its fields, in [`NAME_FIELDS`] priority order.
-///
-/// A `receiver` field scopes a callable onto its type (POC learning L4b), which
-/// is how Go's `Add` becomes `Calculator.Add`.
-fn node_name(node: Node<'_>, source: &str) -> Option<String> {
+    // A receiver (Go's `func (c Calculator) Add`) is real parenting the syntax
+    // tree cannot express: the method is not nested inside the type. It scopes
+    // the address (L4b) without becoming part of the declaration's own name.
     let receiver = node
         .child_by_field_name("receiver")
-        .and_then(|r| first_identifier_text(r, source));
+        .and_then(|receiver| first_identifier_text(receiver, source));
+    let address = match &receiver {
+        Some(receiver) => format!("{scope}{ADDRESS_SEGMENT}{receiver}{ADDRESS_SEGMENT}{name}"),
+        None => format!("{scope}{ADDRESS_SEGMENT}{name}"),
+    };
 
-    let own = NAME_FIELDS
+    let mut children = Vec::new();
+    collect(node, source, &address, &mut children);
+
+    Some(
+        Element::new(
+            kind,
+            ts_kind,
+            name,
+            &address,
+            Span::new(
+                node.start_position().row as u32 + 1,
+                node.end_position().row as u32 + 1,
+            ),
+            node_text(node, source),
+        )
+        .with_children(ordered(children)),
+    )
+}
+
+/// Stamp source order onto a sibling list.
+fn ordered(mut elements: Vec<Element>) -> Vec<Element> {
+    for (index, element) in elements.iter_mut().enumerate() {
+        element.sibling_order = index as u32;
+    }
+    elements
+}
+
+/// Derive a node's own name from its fields, in [`NAME_FIELDS`] priority order.
+fn node_name(node: Node<'_>, source: &str) -> Option<String> {
+    NAME_FIELDS
         .iter()
         .find_map(|field| node.child_by_field_name(field))
-        .and_then(|named| first_identifier_text(named, source))?;
-
-    Some(match receiver {
-        Some(receiver) => format!("{receiver}{SEGMENT}{own}"),
-        None => own,
-    })
+        .and_then(|named| first_identifier_text(named, source))
 }
 
 /// Take a name node's text, descending to the first identifier when the node is
@@ -144,8 +101,8 @@ fn node_name(node: Node<'_>, source: &str) -> Option<String> {
 /// Returns `None` for a blank node. Tree-sitter's error recovery inserts
 /// *zero-width* MISSING nodes, so a name field can be present and still hold
 /// nothing: `impl<T> {` yields an `impl_item` whose `type` field is empty. That
-/// used to become an element with an empty qualified name — addressable by
-/// nobody, and a blank segment in the scope of everything beneath it.
+/// used to become an element with an empty address — addressable by nobody, and
+/// a blank segment in the address of everything beneath it.
 fn first_identifier_text(node: Node<'_>, source: &str) -> Option<String> {
     let text = node_text(node, source);
     if text.trim().is_empty() {
@@ -170,17 +127,13 @@ fn node_text(node: Node<'_>, source: &str) -> String {
         .to_string()
 }
 
-fn qualify(scope: &[String], name: &str) -> String {
-    if scope.is_empty() {
-        name.to_string()
-    } else {
-        format!("{}{SEGMENT}{name}", scope.join(SEGMENT))
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::path::Path;
+
+    use fs3_core::{ADDRESS_SEGMENT, ElementKind, ElementTree};
+
+    use crate::scan;
 
     /// Rust that tree-sitter can only recover from.
     ///
@@ -197,19 +150,20 @@ mod tests {
                              \n\
                              fn also_good() {}\n";
 
-    fn parse(source: &str) -> Vec<Element> {
-        let blob = BlobRef::new("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-            .expect("literal is a valid digest");
-        parse_rust("parsers/src/probe.rs", &blob, source).expect("Rust always parses")
+    fn rust(source: &str) -> ElementTree {
+        scan(Path::new("parsers/src/probe.rs"), source.as_bytes()).expect("Rust always parses")
+    }
+
+    fn addresses(tree: &ElementTree) -> Vec<String> {
+        tree.iter().map(|e| e.address.clone()).collect()
     }
 
     /// State assertion: this really is the error-recovery path, so the negative
     /// assertions below are exercising the branch they claim to.
     #[test]
     fn the_malformed_fixture_actually_triggers_error_recovery() {
-        let elements = parse(MALFORMED);
         assert!(
-            elements.iter().all(|element| element.has_error),
+            rust(MALFORMED).has_error,
             "the fixture must put the tree in recovery, or this suite proves nothing"
         );
     }
@@ -218,53 +172,70 @@ mod tests {
     /// `<anonymous>`, which PRD req 42's "genuine named declaration" forbids.
     #[test]
     fn no_element_is_nameless_or_anonymous() {
-        for element in parse(MALFORMED) {
+        let tree = rust(MALFORMED);
+        for element in tree.iter().filter(|e| e.kind != ElementKind::File) {
             assert!(
-                !element.qualified_name.trim().is_empty(),
+                !element.name.trim().is_empty(),
                 "empty name from {}: {element:?}",
-                element.ts_kind
+                element.subkind
             );
             assert!(
-                !element.qualified_name.contains("<anonymous>"),
+                !element.address.contains("<anonymous>"),
                 "invented name from {}: {element:?}",
-                element.ts_kind
+                element.subkind
             );
         }
     }
 
     /// Skipping the nameless node must not skip its subtree, and must not leave
-    /// a hole in the qualified names of what is inside it.
+    /// a hole in the addresses of what is inside it.
     #[test]
-    fn children_of_a_nameless_node_are_still_found_and_cleanly_named() {
-        let names: Vec<String> = parse(MALFORMED)
-            .into_iter()
-            .map(|element| element.qualified_name)
-            .collect();
+    fn children_of_a_nameless_node_are_still_found_and_cleanly_addressed() {
+        let tree = rust(MALFORMED);
+        let addresses = addresses(&tree);
+        let file = "parsers/src/probe.rs";
 
-        assert!(names.contains(&"good_one".to_string()), "{names:?}");
-        assert!(names.contains(&"also_good".to_string()), "{names:?}");
         assert!(
-            names.contains(&"inside_a_nameless_impl".to_string()),
-            "the function inside the nameless impl must survive, unprefixed: {names:?}"
+            addresses.contains(&format!("{file}::good_one")),
+            "{addresses:?}"
         );
         assert!(
-            names.iter().all(|name| !name.starts_with(SEGMENT)
-                && !name.contains("..")
-                && !name.ends_with(SEGMENT)),
-            "a skipped node must leave no gap in a qualified name: {names:?}"
+            addresses.contains(&format!("{file}::also_good")),
+            "{addresses:?}"
+        );
+        assert!(
+            addresses.contains(&format!("{file}::inside_a_nameless_impl")),
+            "the function inside the nameless impl must survive, reparented onto \
+             the file rather than onto a nameless ghost: {addresses:?}"
+        );
+        assert!(
+            addresses
+                .iter()
+                .all(|address| !address.ends_with(ADDRESS_SEGMENT) && !address.contains(":::")),
+            "a skipped node must leave no gap in an address: {addresses:?}"
         );
     }
 
-    /// Well-formed source is unaffected: scoping still nests.
+    /// Well-formed source is unaffected: nesting still produces nesting.
     #[test]
-    fn well_formed_source_still_qualifies_through_its_scopes() {
-        let names: Vec<String> = parse("mod geometry { struct Rect; impl Rect { fn area() {} } }")
-            .into_iter()
-            .map(|element| element.qualified_name)
-            .collect();
+    fn well_formed_source_nests_through_its_scopes() {
+        let tree = rust("mod geometry { struct Rect; impl Rect { fn area() {} } }");
         assert!(
-            names.contains(&"geometry.Rect.area".to_string()),
-            "{names:?}"
+            addresses(&tree).contains(&"parsers/src/probe.rs::geometry::Rect::area".to_string()),
+            "{:?}",
+            addresses(&tree)
         );
+    }
+
+    /// A receiver scopes the address without polluting the name (L4b).
+    #[test]
+    fn a_declaration_keeps_its_own_short_name() {
+        let tree = rust("mod geometry { impl Rect { fn area() {} } }");
+        let area = tree
+            .find("parsers/src/probe.rs::geometry::Rect::area")
+            .expect("nested fn is addressable");
+        assert_eq!(area.name, "area", "the name is the declaration's own");
+        assert_eq!(area.subkind, "function_item");
+        assert_eq!(area.kind, ElementKind::Function);
     }
 }

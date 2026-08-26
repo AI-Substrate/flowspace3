@@ -250,18 +250,14 @@ pub async fn summarizer_contract<S: Summarizer + ?Sized>(summarizer: &S) {
 
 /// A plain element for contract harnesses to work on.
 pub fn sample_element() -> Element {
-    Element {
-        path: "core/src/element.rs".to_string(),
-        blob: fs3_core::BlobRef::new("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-            .expect("literal is a valid digest"),
-        ts_kind: "struct_item".to_string(),
-        kind: fs3_core::ElementKind::Type,
-        qualified_name: "Element".to_string(),
-        start_line: 92,
-        end_line: 118,
-        text: "pub struct Element { pub path: String }".to_string(),
-        has_error: false,
-    }
+    Element::new(
+        fs3_core::ElementKind::Container,
+        "struct_item",
+        "Element",
+        "core/src/element.rs::Element",
+        fs3_core::Span::new(92, 118),
+        "pub struct Element { pub name: String }",
+    )
 }
 
 #[cfg(test)]

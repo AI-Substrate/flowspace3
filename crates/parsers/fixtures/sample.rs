@@ -32,5 +32,11 @@ pub mod geometry {
 pub const MAX_SIDES: u32 = 4;
 
 pub fn main_entry() {
-    let _ = geometry::Rect::new(1.0, 2.0);
+    // A function declared inside a function is still a declaration, and it
+    // belongs to the function it is written in - not to the file.
+    fn half(value: f64) -> f64 {
+        value / 2.0
+    }
+
+    let _ = geometry::Rect::new(half(2.0), 2.0);
 }

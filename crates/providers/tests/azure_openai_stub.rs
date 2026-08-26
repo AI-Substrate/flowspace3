@@ -26,7 +26,7 @@ use azure_core::{
     credentials::{AccessToken, TokenCredential, TokenRequestOptions},
     time::OffsetDateTime,
 };
-use fs3_core::{BlobRef, Element, ElementKind, Embedder, Summarizer};
+use fs3_core::{Element, ElementKind, Embedder, Span, Summarizer};
 use fs3_providers::{
     AzureCredential, AzureOpenAiConfig, AzureOpenAiEmbedder, AzureOpenAiSummarizer,
     COGNITIVE_SERVICES_SCOPE,
@@ -475,17 +475,14 @@ async fn a_credential_that_cannot_get_a_token_fails_before_the_request() {
 }
 
 fn element() -> Element {
-    Element {
-        path: "core/src/classify.rs".into(),
-        blob: BlobRef::new("0123456789abcdef").expect("a valid digest"),
-        ts_kind: "function_item".into(),
-        kind: ElementKind::Callable,
-        qualified_name: "classify".into(),
-        start_line: 120,
-        end_line: 127,
-        text: "pub fn classify(ts_kind: &str) -> Option<ElementKind> { .. }".into(),
-        has_error: false,
-    }
+    Element::new(
+        ElementKind::Function,
+        "function_item",
+        "classify",
+        "core/src/classify.rs::classify",
+        Span::new(120, 127),
+        "pub fn classify(ts_kind: &str) -> Option<ElementKind> { .. }",
+    )
 }
 
 /// The summarizer's request: the chat route under the same deployment scheme,
@@ -526,7 +523,7 @@ async fn the_summarizer_asks_azure_for_json_and_parses_what_comes_back() {
         request.body["messages"][1]["content"]
             .as_str()
             .expect("a user prompt")
-            .contains("core/src/classify.rs lines 120-127"),
+            .contains("core/src/classify.rs::classify lines 120-127"),
         "{}",
         request.body
     );

@@ -12,7 +12,7 @@ use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use fs3_core::{BlobRef, Element, ElementKind};
+use fs3_core::{BlobRef, Element, ElementKind, ElementTree, Span};
 use fs3_store::{StoreError, connect, elements_for_blob, migrate, upsert_element};
 use sqlx::PgPool;
 
@@ -58,18 +58,40 @@ async fn ready_pool() -> PgPool {
     pool
 }
 
-fn element(blob: &BlobRef, qualified_name: &str, start: u32, end: u32) -> Element {
-    Element {
-        path: "parsers/fixtures/sample.rs".to_string(),
+/// A one-file tree with one function in it — the smallest thing the flat table
+/// has to hold.
+fn tree(blob: &BlobRef, qualified: &str, start: u32, end: u32) -> ElementTree {
+    let path = "parsers/fixtures/sample.rs";
+    // An element's `name` is its own short name; the address carries the scope.
+    let name = qualified.rsplit("::").next().unwrap_or(qualified);
+    let body = format!("pub fn {name}() {{}}");
+    let child = Element::new(
+        ElementKind::Function,
+        "function_item",
+        name,
+        format!("{path}::{qualified}"),
+        Span::new(start, end),
+        &body,
+    );
+    ElementTree {
+        path: path.to_string(),
         blob: blob.clone(),
-        ts_kind: "function_item".to_string(),
-        kind: ElementKind::Callable,
-        qualified_name: qualified_name.to_string(),
-        start_line: start,
-        end_line: end,
-        text: format!("pub fn {qualified_name}() {{}}"),
         has_error: false,
+        root: Element::new(
+            ElementKind::File,
+            "rust",
+            "sample.rs",
+            path,
+            Span::new(1, end),
+            format!("{body}\n"),
+        )
+        .with_children(vec![child]),
     }
+}
+
+/// The element the row-per-element write is about.
+fn only_child(tree: &ElementTree) -> &Element {
+    &tree.root.children[0]
 }
 
 /// Connect, migrate, round-trip. The whole exemplar in one test.
@@ -86,8 +108,9 @@ async fn migration_applies_and_an_element_round_trips() {
         .await
         .expect("cleanup should succeed");
 
-    let written = element(&blob, "geometry.Rect.new", 11, 16);
-    upsert_element(&pool, &written).await.expect("insert");
+    let tree = tree(&blob, "geometry::Rect::new", 11, 16);
+    let written = only_child(&tree);
+    upsert_element(&pool, &tree, written).await.expect("insert");
 
     let read_back = elements_for_blob(&pool, &blob).await.expect("select");
     assert_eq!(
@@ -95,10 +118,68 @@ async fn migration_applies_and_an_element_round_trips() {
         vec![written.clone()],
         "the row must survive the trip"
     );
+    assert_eq!(
+        read_back[0].raw_hash(),
+        written.raw_hash(),
+        "the dirtiness key is derived from the body, so it survives a trip \
+         through a table that has no column for it"
+    );
 
     // Upsert is keyed by the content address, so re-indexing is idempotent.
-    upsert_element(&pool, &written).await.expect("re-insert");
+    upsert_element(&pool, &tree, written)
+        .await
+        .expect("re-insert");
     assert_eq!(elements_for_blob(&pool, &blob).await.unwrap().len(), 1);
+
+    sqlx::query("DELETE FROM elements WHERE blob = $1")
+        .bind(blob.as_str())
+        .execute(&pool)
+        .await
+        .expect("cleanup should succeed");
+}
+
+/// What migration 0002 is for. Under 0001's CHECK the tree model's spellings
+/// were all illegal — `file` most of all, since 0001 predates the file element
+/// existing. A green `cargo test` with an unmigrated database would otherwise
+/// be the first place this is noticed.
+#[tokio::test]
+async fn every_tree_model_kind_is_a_legal_row() {
+    let pool = ready_pool().await;
+    let blob = unique_blob();
+
+    let tree = tree(&blob, "geometry::Rect::new", 11, 16);
+    for (line, kind) in [
+        (1, ElementKind::File),
+        (2, ElementKind::Container),
+        (3, ElementKind::Function),
+        (4, ElementKind::Section),
+    ] {
+        let mut element = only_child(&tree).clone();
+        element.kind = kind;
+        element.address = format!("kind-probe::{kind}");
+        element.span = Span::new(line, line);
+        upsert_element(&pool, &tree, &element)
+            .await
+            .unwrap_or_else(|error| {
+                panic!("{kind} must be a legal element kind after 0002: {error}")
+            });
+    }
+
+    let kinds: Vec<ElementKind> = elements_for_blob(&pool, &blob)
+        .await
+        .expect("select")
+        .iter()
+        .map(|element| element.kind)
+        .collect();
+    assert_eq!(
+        kinds,
+        vec![
+            ElementKind::File,
+            ElementKind::Container,
+            ElementKind::Function,
+            ElementKind::Section,
+        ]
+    );
 
     sqlx::query("DELETE FROM elements WHERE blob = $1")
         .bind(blob.as_str())
@@ -129,9 +210,8 @@ async fn the_schema_refuses_an_impossible_span() {
     let pool = ready_pool().await;
     let blob = unique_blob();
 
-    let mut backwards = element(&blob, "backwards", 40, 10);
-    backwards.end_line = 10;
-    let error = upsert_element(&pool, &backwards)
+    let backwards = tree(&blob, "backwards", 40, 10);
+    let error = upsert_element(&pool, &backwards, only_child(&backwards))
         .await
         .expect_err("end_line < start_line must be refused by the database, not just by Rust");
 
