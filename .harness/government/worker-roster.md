@@ -21,7 +21,7 @@ Revive a dead seat: `pij revive <id> --print` shows the exact command (Jordan ru
 
 | Seat | Task | Pane/window | Native session id | Status |
 |---|---|---|---|---|
-| pij-sure-kazimir | Azure OpenAI adapter (w-azure) | %33 | 01a03c3b-469a-7000-9970-95d654d6dea6 | RELEASED — landed 51f16d1, keyed run green. Brief `briefs/w-azure-openai-kazimir.md`. Known phantom alias: pij-shallow-dog |
+| pij-sure-kazimir | Azure OpenAI adapter (w-azure) → RE-OPENED: structured summaries (w-structured-summaries) | %33 | 01a03c3b-469a-7000-9970-95d654d6dea6 | ACTIVE — response_format + PROMPT_VERSION + port key() + Summary.extras. Phantom alias: pij-shallow-dog |
 | pij-recent-cicada | sqlx migrations + db how-to (w-migrations) | %34 | 01a03c46-3fea-7000-815f-eada7d9e02da | RELEASED — landed 0a75c44. Brief `briefs/w-migrations-cicada.md`. Phantom aliases: pij-likely-mosquito, pij-aggregate-mosquito |
 | pij-plain-mollusk | scanner v1: element tree + pure scan (w-scanner-v1) | %35 · window `scanner` | 01a03c4c-cd34-7000-8879-385defbdbff2 | RELEASED — landed 0962ba8+17878b6+f2f3cc4 (scanner + docs); add-language skill authored from its recipe |
 | pij-technological-egret | global config system (w-config) | %36 · window `config` | 01a03c50-eecb-7000-9378-1992ecdb548c | RELEASED — landed 0d0fb1c+3e33161+5e73135+a99ceed (registry, config show, boot contract) |
