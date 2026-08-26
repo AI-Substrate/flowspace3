@@ -31,7 +31,7 @@
         {
           "id": "tk-0102",
           "title": "release-please workflow + config: rust release type, semver from conventional commits, rolling release PR; document the merge-to-release flow in the README release section",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0102",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0002"
@@ -41,7 +41,7 @@
         {
           "id": "tk-0103",
           "title": "Release build workflow (on release tag): linux arm64+x64 gnu+musl + windows x64 via the plan-002 build container (promote/reuse docker/ scripts); mac arm64+x64 native on a macos runner (build ONLY, never a gate); binaries attached to the Release named by target triple; deferred-validation stances in release notes template",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0103",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
@@ -50,7 +50,7 @@
         {
           "id": "tk-0104",
           "title": "install.sh (repo root or scripts/): OS/arch detect, fetch latest Release asset, install to a PATH dir with clear fallback messaging; install.ps1 twin (present, marked unvalidated); verify install.sh LIVE on this mac and in the linux build container",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0104",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0004"
@@ -92,7 +92,7 @@
           {
             "id": "dw-0102",
             "assertion": "release PR appears after a feat/fix landing; merging it (Jordan's word) tags + publishes",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0002",
             "note": "IN PROGRESS: rolling PR creation proven ('chore(main): release 0.2.0' open after the feat(release) landing); tags+publish observation waits for Jordan's merge word (ruling: PR rides past sawfish's single-binary fold)"
           }
@@ -101,18 +101,18 @@
           {
             "id": "dw-0103",
             "assertion": "a real Release carries all 7 assets; file(1) on each matches its triple",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0003",
-            "note": "IN PROGRESS: .github/workflows/release.yml written (7 targets via plan-002 container + mac native build-only); real-release observation waits for the v0.2.0 merge; ASSET NAMES HELD for req-51 single-binary freeze (sawfish sha pending)"
+            "note": "PROVEN v0.2.0 (run 32966753669): 3 assets attached, names exactly as frozen; file(1) matches each triple (Mach-O arm64; ELF aarch64; ELF x86-64). Matrix is 3 not 7 by ruling+evidence: Intel Macs unsupported (Jordan), musl+windows-gnu impossible (ort-sys has no prebuilt ONNX runtime)."
           }
         ],
         "tk-0104": [
           {
             "id": "dw-0104",
             "assertion": "install.sh verified live on mac + linux container (binary runs --version); ps1 present with unvalidated banner",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0004",
-            "note": "IN PROGRESS -> mechanics DONE: install.sh verified live on mac + linux container (binary answers --version) and via full README walkthrough (fresh container: install | doctor ok | daemon | add | status | search all green); asset names frozen flowspace3-<triple>; linux picks gnu per matrix. Remaining for CHECKED: one run against the PUBLISHED Release after v0.2.0 merge"
+            "note": "PROVEN against the PUBLISHED Release: curl|sh install works on mac (aarch64-apple-darwin) and in linux containers on both x86_64 and aarch64; binary answers --version in every case. install.ps1 present and now refuses loudly (windows target not published: ort-sys). Gotcha found: /releases/latest/download 404s for ~30s after publish until the pointer propagates."
           }
         ],
         "tk-0105": [

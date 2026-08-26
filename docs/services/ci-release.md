@@ -67,6 +67,10 @@ on each Release, a curl installer, Dependabot.
 > drift. Mechanical change owned by pij-impressive-ox.
 - Repo-level "Dependabot alerts" toggle is an admin setting separate from
   version updates; alerts were off at setup time.
+- **`/releases/latest/download/<asset>` 404s for ~30s after a release
+  publishes** until GitHub's latest-pointer propagates — an installer run in
+  the same minute as the release can fail spuriously. Retry before believing
+  it; the tagged URL (`/releases/download/<tag>/<asset>`) works immediately.
 
 ## Release runbook — NO TAG CYCLE WITHOUT PREFLIGHT GREEN
 

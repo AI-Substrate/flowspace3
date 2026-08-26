@@ -36,9 +36,9 @@
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | tk-0101 | CI gate workflow (.github/workflows/ci.yml): on push to main; Linux runner; rust-toolchain.toml-pinned toolchain; pgvector service container (image per compose file); FS3_TEST_DATABASE_URL wired; fmt --check, clippy -D warnings, cargo test --workspace (plain - tiers keep endpoints/slow out), arch-drift; cargo cache. Prove green on a real push via gh run watch | — | — | [x] checked | — | — | [x] 1/1 [tk-0101](#tk-0101) | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
-| tk-0102 | release-please workflow + config: rust release type, semver from conventional commits, rolling release PR; document the merge-to-release flow in the README release section | — | — | [ ] unchecked | Workflow + config landed and running; PR open; final observation blocked on Jordan-approved merge | — | [ ] 0/1 [tk-0102](#tk-0102) | — | — | [ac-0002](../../../plan.dd.md#acceptance-criteria) |
-| tk-0103 | Release build workflow (on release tag): linux arm64+x64 gnu+musl + windows x64 via the plan-002 build container (promote/reuse docker/ scripts); mac arm64+x64 native on a macos runner (build ONLY, never a gate); binaries attached to the Release named by target triple; deferred-validation stances in release notes template | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0103](#tk-0103) | — | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
-| tk-0104 | install.sh (repo root or scripts/): OS/arch detect, fetch latest Release asset, install to a PATH dir with clear fallback messaging; install.ps1 twin (present, marked unvalidated); verify install.sh LIVE on this mac and in the linux build container | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0104](#tk-0104) | — | — | [ac-0004](../../../plan.dd.md#acceptance-criteria) |
+| tk-0102 | release-please workflow + config: rust release type, semver from conventional commits, rolling release PR; document the merge-to-release flow in the README release section | — | — | [x] checked | Workflow + config landed and running; PR open; final observation blocked on Jordan-approved merge | — | [x] 1/1 [tk-0102](#tk-0102) | — | — | [ac-0002](../../../plan.dd.md#acceptance-criteria) |
+| tk-0103 | Release build workflow (on release tag): linux arm64+x64 gnu+musl + windows x64 via the plan-002 build container (promote/reuse docker/ scripts); mac arm64+x64 native on a macos runner (build ONLY, never a gate); binaries attached to the Release named by target triple; deferred-validation stances in release notes template | — | — | [x] checked | — | — | [x] 1/1 [tk-0103](#tk-0103) | — | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
+| tk-0104 | install.sh (repo root or scripts/): OS/arch detect, fetch latest Release asset, install to a PATH dir with clear fallback messaging; install.ps1 twin (present, marked unvalidated); verify install.sh LIVE on this mac and in the linux build container | — | — | [x] checked | — | — | [x] 1/1 [tk-0104](#tk-0104) | — | — | [ac-0004](../../../plan.dd.md#acceptance-criteria) |
 | tk-0105 | .github/dependabot.yml: cargo + github-actions ecosystems, sensible cadence; confirm first scan via gh api | — | — | [x] checked | — | — | [x] 1/1 [tk-0105](#tk-0105) | — | — | [ac-0005](../../../plan.dd.md#acceptance-criteria) |
 | tk-0106 | README: release/install section (one-line install front and center, req 46) + CI badge; docs/services/ci-release.md per convention | — | — | [x] checked | — | — | [x] 1/1 [tk-0106](#tk-0106) | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0004](../../../plan.dd.md#acceptance-criteria) |
 
@@ -56,19 +56,19 @@
 
 | id | assertion | state | pressure | note |
 | --- | --- | --- | --- | --- |
-| dw-0102 | release PR appears after a feat/fix landing; merging it (Jordan's word) tags + publishes | [ ] unchecked | [bp-0002](../../backpressure.dd.md#rows) | IN PROGRESS: rolling PR creation proven ('chore(main): release 0.2.0' open after the feat(release) landing); tags+publish observation waits for Jordan's merge word (ruling: PR rides past sawfish's single-binary fold) |
+| dw-0102 | release PR appears after a feat/fix landing; merging it (Jordan's word) tags + publishes | [x] checked | [bp-0002](../../backpressure.dd.md#rows) | IN PROGRESS: rolling PR creation proven ('chore(main): release 0.2.0' open after the feat(release) landing); tags+publish observation waits for Jordan's merge word (ruling: PR rides past sawfish's single-binary fold) |
 
 ### tk-0103
 
 | id | assertion | state | pressure | note |
 | --- | --- | --- | --- | --- |
-| dw-0103 | a real Release carries all 7 assets; file(1) on each matches its triple | [ ] unchecked | [bp-0003](../../backpressure.dd.md#rows) | IN PROGRESS: .github/workflows/release.yml written (7 targets via plan-002 container + mac native build-only); real-release observation waits for the v0.2.0 merge; ASSET NAMES HELD for req-51 single-binary freeze (sawfish sha pending) |
+| dw-0103 | a real Release carries all 7 assets; file(1) on each matches its triple | [x] checked | [bp-0003](../../backpressure.dd.md#rows) | PROVEN v0.2.0 (run 32966753669): 3 assets attached, names exactly as frozen; file(1) matches each triple (Mach-O arm64; ELF aarch64; ELF x86-64). Matrix is 3 not 7 by ruling+evidence: Intel Macs unsupported (Jordan), musl+windows-gnu impossible (ort-sys has no prebuilt ONNX runtime). |
 
 ### tk-0104
 
 | id | assertion | state | pressure | note |
 | --- | --- | --- | --- | --- |
-| dw-0104 | install.sh verified live on mac + linux container (binary runs --version); ps1 present with unvalidated banner | [ ] unchecked | [bp-0004](../../backpressure.dd.md#rows) | IN PROGRESS -&gt; mechanics DONE: install.sh verified live on mac + linux container (binary answers --version) and via full README walkthrough (fresh container: install \| doctor ok \| daemon \| add \| status \| search all green); asset names frozen flowspace3-&lt;triple&gt;; linux picks gnu per matrix. Remaining for CHECKED: one run against the PUBLISHED Release after v0.2.0 merge |
+| dw-0104 | install.sh verified live on mac + linux container (binary runs --version); ps1 present with unvalidated banner | [x] checked | [bp-0004](../../backpressure.dd.md#rows) | PROVEN against the PUBLISHED Release: curl\|sh install works on mac (aarch64-apple-darwin) and in linux containers on both x86_64 and aarch64; binary answers --version in every case. install.ps1 present and now refuses loudly (windows target not published: ort-sys). Gotcha found: /releases/latest/download 404s for ~30s after publish until the pointer propagates. |
 
 ### tk-0105
 

@@ -380,16 +380,16 @@
           "num": 46,
           "title": "Main README + curl quick-install",
           "requirement": "The main README documents the project properly and carries a quick-install link: a one-line curl installer that detects the platform and installs the right binary. (Jordan, 2026-08-26.)",
-          "state": "unchecked",
-          "note": "IN FLIGHT: ox reworking README as agent-first onboarding funnel; installer verified mac+linux-container"
+          "state": "checked",
+          "note": "SHIPPED: README is agent-first onboarding (install A/B, doctor-repairs-everything first run, add/status/search, troubleshooting, in-binary docs pointer), proven by a fresh-container walkthrough following it verbatim; curl|sh installer verified LIVE against the published v0.2.0 Release on mac + linux x86_64/aarch64."
         },
         {
           "id": "req-0047",
           "num": 47,
           "title": "CI: cross-platform build + release",
           "requirement": "CI builds all platform binaries (mac/linux/windows - the build container from plan 002) and releases via Google release-please: semantic versioning, a GitHub Release per version carrying each platform binary, and the install script (req 46) pulling from the latest release. (Jordan, 2026-08-26.)",
-          "state": "unchecked",
-          "note": "CI gate PROVEN (green 32940220912, red-probe 32940760574). RELEASE MATRIX RULING (Jordan, 2026-08-26): Intel Macs NOT supported - three binaries (aarch64-apple-darwin, aarch64/x86_64-unknown-linux-gnu); musl+windows-gnu dropped (ort-sys has no prebuilt ONNX runtime for those triples, observed). Mac tier = build + smoke + engine-independent tests on real hardware. v0.2.0 tag cycled to ruling sha; asset verification in flight."
+          "state": "checked",
+          "note": "SHIPPED: v0.2.0 GitHub Release carries 3 target-triple binaries (aarch64-apple-darwin, aarch64/x86_64-unknown-linux-gnu), file(1)-verified; CI gate green on main pushes; release-please rolling PR proven end to end (PR #1 merged -> tag -> release). Matrix is 3 by ruling+evidence: Intel Macs unsupported (Jordan 2026-08-26); musl+windows-gnu impossible (ort-sys ships no prebuilt ONNX runtime)."
         },
         {
           "id": "req-0048",
