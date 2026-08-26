@@ -1,0 +1,26 @@
+.agents/skills/add-provider/SKILL.md
+  s_15d888f4b629c1::t_fc102325561c0f 20
+  s_15d888f4b629c1::t_5204884d07000f 27,36,38,40,50-54
+  s_15d888f4b629c1::t_f8973732fe0711 1-19,21-26,28-35,37,39,42-49,55-58
+  s_15d888f4b629c1::t_f067ca289ea07e 41
+.agents/skills/add-language/SKILL.md
+  s_15d888f4b629c1::t_dcb249b5861808 1-33
+.harness/government/worker-roster.md
+  s_15d888f4b629c1::t_aa3626299d6418 12,26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "86cf04511777f5d9e3706969c797e4e76170a083",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
