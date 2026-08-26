@@ -20,6 +20,10 @@ fs3-testkit = { path = "crates/testkit" }
 anyhow = "1"
 async-trait = "0.1"
 axum = "0.8"
+azure_core = "1"
+# `tokio` turns on the process executor `AzureCliCredential` needs to shell out
+# to `az`; without it the developer-tools chain cannot see an `az login`.
+azure_identity = { version = "1", features = ["tokio"] }
 clap = { version = "4", features = ["derive"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }

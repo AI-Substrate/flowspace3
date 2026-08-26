@@ -56,7 +56,21 @@ external = ["thiserror", "tree-sitter", "tree-sitter-md", "tree-sitter-rust"]
 # harness the fake does, and the fake must not ship inside the provider crate.
 # The `@dev` suffix is what enforces that — it used to be this comment.
 internal = ["fs3-core", "fs3-testkit@dev"]
-external = ["async-trait", "reqwest", "serde", "serde_json", "tokio@dev"]
+# `azure_core` (the `TokenCredential` trait + a redacting `Secret`) and
+# `azure_identity` (the Entra credential chain that reads an `az login`) are the
+# Azure OpenAI adapter's real needs: hand-rolling OAuth here would be the
+# reinvention this list exists to notice. `axum@dev` serves the offline stub
+# HTTP server the Azure tests answer from — a fake, and dev-only by suffix.
+external = [
+  "async-trait",
+  "axum@dev",
+  "azure_core",
+  "azure_identity",
+  "reqwest",
+  "serde",
+  "serde_json",
+  "tokio@dev",
+]
 
 [crates.fs3-store]
 internal = ["fs3-core"]

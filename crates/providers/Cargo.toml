@@ -9,10 +9,15 @@ description = "Real implementations of the fs3 Embedder and Summarizer ports."
 [dependencies]
 fs3-core.workspace = true
 async-trait.workspace = true
+azure_core.workspace = true
+azure_identity.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]
 fs3-testkit.workspace = true
+# The offline stub server the Azure tests answer from: a fake service, not a
+# mocking framework (workshop 001 rule 5).
+axum.workspace = true
 tokio.workspace = true
