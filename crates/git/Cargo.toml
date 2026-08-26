@@ -1,0 +1,18 @@
+[package]
+name = "fs3-git"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The git front door: repo identity and blob-keyed worktree snapshots."
+
+# Concrete infrastructure, the same shape as fs3-store: git is a requirement
+# (PRD req 5), not a variable, so there is no trait here and nothing to fake.
+# `gix` is pure Rust — no libgit2, no C toolchain, no per-platform build story.
+[dependencies]
+fs3-core.workspace = true
+gix.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

@@ -13,6 +13,7 @@ pub mod classify;
 pub mod config;
 pub mod element;
 pub mod error;
+pub mod git;
 pub mod ports;
 
 pub use classify::{category_hint, classify, is_declaration_shaped};
@@ -27,4 +28,5 @@ pub use element::{
     needs_summary,
 };
 pub use error::{Error, Result};
+pub use git::{BlobChange, ChangedSet, FileBlob, IdentitySource, RepoIdentity, TreeSnapshot, diff};
 pub use ports::{Embedder, Summarizer, Summary};

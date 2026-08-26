@@ -23,6 +23,7 @@
 #   crates/parsers/    tree-sitter grammars -> core types. Concrete.        -> core
 #   crates/providers/  OpenAI / local impls of the ports.                   -> core
 #   crates/store/      sqlx repos, migrations, queue table. Concrete.       -> core
+#   crates/git/        gitoxide: repo identity + blob-keyed snapshots.      -> core
 #   crates/testkit/    fakes, contract harnesses. A real shipped crate.     -> core
 #   crates/daemon/     axum HTTP, workers, COMPOSITION ROOT                 -> all above
 #   crates/cli/        `flowspace3` binary - thin HTTP client of daemon.    -> core
@@ -79,8 +80,32 @@ external = [
 ]
 
 [crates.fs3-store]
+# `fs3-testkit@dev`: the store's similarity tests need vectors whose cosine
+# ordering is meaningful, and `FakeEmbedder` already is that. Dev-only by
+# suffix — the fake must never ship inside the store.
+internal = ["fs3-core", "fs3-testkit@dev"]
+# `pgvector` is the wire codec for the `vector` column type; `serde_json` is
+# the typed shape of `jobs.payload`, which is JSONB.
+external = [
+  "anyhow@dev",
+  "pgvector",
+  "serde_json",
+  "sqlx",
+  "thiserror",
+  "tokio@dev",
+]
+
+# The git front door (PRD reqs 5, 35, 41). Concrete infrastructure, the same
+# shape as fs3-store: git is a requirement, not a variable, so there is no port
+# here and nothing to fake. `gix` is gitoxide — pure-Rust git plumbing, chosen
+# over libgit2 because a C dependency puts a compiler between fs3 and every
+# platform it builds on; hand-rolling index parsing, gitignore semantics and
+# blob hashing is exactly the reinvention this list exists to notice.
+# `tempfile@dev` builds the throwaway repositories the tests run real `git`
+# against — dev-only by suffix.
+[crates.fs3-git]
 internal = ["fs3-core"]
-external = ["anyhow@dev", "sqlx", "thiserror", "tokio@dev"]
+external = ["gix", "tempfile@dev", "thiserror"]
 
 [crates.fs3-testkit]
 internal = ["fs3-core"]

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/core", "crates/parsers", "crates/providers", "crates/store", "crates/testkit", "crates/daemon", "crates/cli"]
+members = ["crates/core", "crates/parsers", "crates/providers", "crates/store", "crates/testkit", "crates/git", "crates/daemon", "crates/cli"]
 
 [workspace.package]
 version = "0.1.0"
@@ -12,6 +12,7 @@ repository = "https://github.com/AI-Substrate/flowspace3"
 # `cargo run -p fs3-testkit --bin fs3-arch-check` (see crates/testkit/arch-allowlist.toml).
 [workspace.dependencies]
 fs3-core = { path = "crates/core" }
+fs3-git = { path = "crates/git" }
 fs3-parsers = { path = "crates/parsers" }
 fs3-providers = { path = "crates/providers" }
 fs3-store = { path = "crates/store" }
@@ -35,6 +36,14 @@ gix = { version = "0.87", default-features = false, features = [
   "dirwalk",
   "max-performance-safe",
 ] }
+# ripgrep's walker: gitignore semantics (tracked + untracked-but-not-ignored,
+# nested ignore files, force-include overrides) are a pile of edge cases fs3
+# refuses to re-derive — PRD req 41 is exactly what this crate already does.
+ignore = "0.4"
+# pgvector's own Rust bindings: `vector(1024)` has a wire format, and sqlx has
+# no idea what it is. This crate is the encode/decode for it and nothing else —
+# `default-features = false` keeps the diesel/postgres/serde halves out.
+pgvector = { version = "0.4", default-features = false, features = ["sqlx"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -49,6 +58,9 @@ sqlx = { version = "0.8", default-features = false, features = [
   # directory, never a database, so `cargo build` stays docker-free.
   "macros",
   "migrate",
+  # `jobs.payload` is JSONB. Without this, a payload could only cross the wire
+  # as a string the database casts and hopes about.
+  "json",
 ] }
 tempfile = "3"
 thiserror = "2"

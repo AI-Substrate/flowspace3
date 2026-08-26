@@ -15,6 +15,10 @@ pub enum Error {
     /// A port implementation failed. The string is the adapter's own message.
     #[error("provider failure: {0}")]
     Provider(String),
+
+    /// Two tree snapshots that describe different repositories were diffed.
+    #[error("snapshot mismatch: {old} is not {new}")]
+    SnapshotMismatch { old: String, new: String },
 }
 
 /// Core's result alias. Ports return this so `dyn` seams stay adapter-agnostic.

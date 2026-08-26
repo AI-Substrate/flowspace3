@@ -18,8 +18,8 @@ fn the_live_workspace_has_no_architecture_drift() {
     let graph = arch::workspace_graph().expect("cargo metadata should describe this workspace");
     assert_eq!(
         graph.crates.len(),
-        7,
-        "workshop 001 specifies exactly 7 crates, found: {:?}",
+        8,
+        "workshop 001 specifies exactly 8 crates (amended 2026-08-26: fs3-git), found: {:?}",
         graph.crates.iter().map(|c| &c.name).collect::<Vec<_>>()
     );
 
