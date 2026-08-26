@@ -165,6 +165,14 @@ enum DoctorCommand {
     /// Explicit by design (PRD req-0053): nothing writes these files silently or
     /// by force, and the diagnostic walk only ever reports their state.
     InstallSkill,
+
+    /// Check for a newer release and install it now, whatever the update
+    /// interval says.
+    ///
+    /// The same engine the daemon runs on its own schedule (PRD req 54) — this
+    /// is the force-it-now path, and the one to reach for when the automatic
+    /// one reported that it could not write the install path.
+    Upgrade,
 }
 
 /// Exit codes, per workshop 004: 0 ok, 1 error, 2 usage.
@@ -256,6 +264,17 @@ async fn run(command: Command) -> Result<ExitCode> {
         } => Ok(emit(&skill::install()?)),
         Command::Doctor {
             config_dir,
+            command: Some(DoctorCommand::Upgrade),
+        } => {
+            let dir = match config_dir {
+                Some(dir) => dir,
+                None => settings::config_dir()?,
+            };
+            let effective = settings::load_effective_from(&dir)?;
+            Ok(emit(&fs3_cli::upgrade::upgrade(&effective.config).await))
+        }
+        Command::Doctor {
+            config_dir,
             command: None,
         } => {
             let dir = match config_dir {
@@ -296,10 +315,20 @@ async fn run(command: Command) -> Result<ExitCode> {
 /// stderr to find out what happened. The human-readable rendering of the same
 /// failure goes to stderr, so a person reading a terminal sees the fix without
 /// piping anything.
+///
+/// User messages (PRD req 59) get the same treatment for the same reason: they
+/// are in the JSON for an agent, and on stderr for a person. Standing
+/// conditions print BEFORE the failure, because a message like "a newer binary
+/// is waiting for a restart" is very often the explanation for the failure
+/// underneath it.
 fn emit<T: serde::Serialize>(envelope: &Envelope<T>) -> ExitCode {
     match serde_json::to_string_pretty(envelope) {
         Ok(json) => println!("{json}"),
         Err(error) => eprintln!("flowspace3: cannot render the response: {error}"),
+    }
+
+    for message in &envelope.messages {
+        eprintln!("flowspace3: {}", message.render());
     }
 
     match &envelope.error {

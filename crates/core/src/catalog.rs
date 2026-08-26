@@ -51,6 +51,8 @@ pub enum Area {
     Query,
     /// The daemon process itself, and reaching it.
     Daemon,
+    /// Keeping the installed binary current (PRD req 54).
+    Update,
     /// The caller asked for something that is not a valid request.
     Usage,
 }
@@ -66,6 +68,7 @@ impl Area {
         Area::Queue,
         Area::Query,
         Area::Daemon,
+        Area::Update,
         Area::Usage,
     ];
 
@@ -81,6 +84,7 @@ impl Area {
             Area::Queue => "QUEUE",
             Area::Query => "QUERY",
             Area::Daemon => "DAEMON",
+            Area::Update => "UPDATE",
             Area::Usage => "USAGE",
         }
     }
@@ -371,6 +375,26 @@ pub const DAEMON_UNAVAILABLE: Code = Code::new(
     true,
 );
 
+/// The release could not be read.
+pub const UPDATE_UNREACHABLE: Code = Code::new(
+    "FS3-E-UPDATE-UNREACHABLE",
+    Area::Update,
+    "The published release list could not be read, so there is nothing to compare against.",
+    "check network access to https://github.com/AI-Substrate/flowspace3/releases and try \
+     again; the daemon retries on its own schedule, so a transient outage needs no action.",
+    true,
+);
+
+/// This process cannot work out which file to replace.
+pub const UPDATE_NO_INSTALL_PATH: Code = Code::new(
+    "FS3-E-UPDATE-NO-INSTALL-PATH",
+    Area::Update,
+    "This process cannot resolve its own executable, so there is no binary to replace.",
+    "reinstall instead: `curl -fsSL \
+     https://raw.githubusercontent.com/AI-Substrate/flowspace3/main/install.sh | sh`.",
+    false,
+);
+
 /// The command line itself is wrong.
 pub const USAGE_INVALID: Code = Code::new(
     "FS3-E-USAGE-INVALID",
@@ -413,6 +437,8 @@ pub const ALL: &[Code] = &[
     QUERY_INVALID,
     QUERY_NO_INDEX,
     DAEMON_UNAVAILABLE,
+    UPDATE_UNREACHABLE,
+    UPDATE_NO_INSTALL_PATH,
     USAGE_INVALID,
     USAGE_TOPIC_NOT_FOUND,
 ];

@@ -197,6 +197,27 @@ The fs3 daemon did not answer on its configured URL.
 | --- | --- |
 | true | 503 |
 
+## UPDATE
+
+### `FS3-E-UPDATE-UNREACHABLE`
+
+The published release list could not be read, so there is nothing to compare against.
+
+**Fix**: check network access to https://github.com/AI-Substrate/flowspace3/releases and try again; the daemon retries on its own schedule, so a transient outage needs no action.
+
+| retryable | status |
+| --- | --- |
+| true | 500 |
+### `FS3-E-UPDATE-NO-INSTALL-PATH`
+
+This process cannot resolve its own executable, so there is no binary to replace.
+
+**Fix**: reinstall instead: `curl -fsSL https://raw.githubusercontent.com/AI-Substrate/flowspace3/main/install.sh | sh`.
+
+| retryable | status |
+| --- | --- |
+| false | 500 |
+
 ## USAGE
 
 ### `FS3-E-USAGE-INVALID`
