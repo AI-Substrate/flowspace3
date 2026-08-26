@@ -1,0 +1,16 @@
+docs/plans/prd/providers-roster.md
+  h_9e71e8b09f7cf2 15,19-20
+docs/services/provider-throughput.md
+  h_9e71e8b09f7cf2 1-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a7322cff2283b95577afc4aee7e7a05c32d349ae",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
