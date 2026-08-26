@@ -1,0 +1,24 @@
+.github/workflows/release.yml
+  h_9e71e8b09f7cf2 86-88,146,160
+README.md
+  h_9e71e8b09f7cf2 27-29,32-33
+docs/plans/prd/base-prd.dd.json
+  h_9e71e8b09f7cf2 392
+docs/plans/prd/base-prd.dd.md
+  h_9e71e8b09f7cf2 69
+docs/services/ci-release.md
+  h_9e71e8b09f7cf2 19-21
+install.sh
+  h_9e71e8b09f7cf2 31-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f53838ac9069ee845758d629c3cc6336799bd4d7",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
