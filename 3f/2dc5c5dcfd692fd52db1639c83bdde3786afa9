@@ -1,0 +1,16 @@
+pocs/human-render/LEARNINGS.md
+  h_9e71e8b09f7cf2 1-180
+pocs/human-render/README.md
+  h_9e71e8b09f7cf2 1-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3f2dc5c5dcfd692fd52db1639c83bdde3786afa9",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
