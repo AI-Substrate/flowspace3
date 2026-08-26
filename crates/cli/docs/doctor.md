@@ -63,3 +63,9 @@ Doctor stops there and returns an error envelope, because every later step
 depends on it — probing a schema on a server that is not running produces a
 second, less useful copy of the same failure. The steps that DID pass ride
 along in `meta`, so a failed run still tells you how far it got.
+
+## `install-skill`
+
+`flowspace3 doctor install-skill` installs or updates the bundled agent skill
+into `~/.agents/skills` and `~/.claude/skills`, explicitly: the walk never
+installs, and nothing writes those files silently or by force.

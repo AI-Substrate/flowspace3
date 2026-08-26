@@ -1,5 +1,5 @@
 # Self-teaching CLI
-**Built**: 2026-08-26 (worker pij-broad-sawfish, PRD reqs 44/45) · **Code**: `crates/cli/src/docs.rs`, pages in `crates/cli/docs/*.md`, doctor's providers row in `crates/cli/src/doctor.rs` · **Tests**: `crates/cli/tests/docs_bundle.rs`, `crates/cli/tests/doctor_daemon.rs`
+**Built**: 2026-08-26 (worker pij-broad-sawfish, PRD reqs 44/45) · **Code**: `crates/cli/src/docs.rs`, pages in `crates/cli/docs/*.md`, doctor's providers row in `crates/cli/src/doctor.rs`, the skill bundle in `crates/cli/skills/` and its install command in `crates/cli/src/skill.rs` · **Tests**: `crates/cli/tests/docs_bundle.rs`, `crates/cli/tests/doctor_daemon.rs`
 
 An agent that has just installed fs3 can ask fs3 how to use fs3 — offline, with
 no daemon, no network and no database.
@@ -104,6 +104,25 @@ wins, in walk order, which is dependency order.
 works, and doctor does not know whether that was chosen. Choosing a model and
 supplying credentials is a decision, and a diagnostic command must not make it
 for you — so this row is reported, never repaired.
+
+## Skill distribution
+
+The agent skill that teaches an agent to USE flowspace ships INSIDE the binary
+(`crates/cli/skills/flowspace/SKILL.md`, compiled in) and reaches an agent's
+home directories only through the explicit command
+`flowspace3 doctor install-skill`, which installs or updates it into
+`~/.agents/skills` and `~/.claude/skills`, reporting one outcome per root
+(`installed` / `updated` / `current`). Nothing writes those files silently or
+by force, and doctor's walk only ever reports their state — that report is the
+`info` outcome: a row that asks something without degrading the verdict.
+
+The repository keeps the same skill at `.agents/skills/flowspace/SKILL.md` as a
+relative symlink into the packaged copy, so there is one text and no drift to
+police. **Windows caveat:** a git checkout without symlink privileges
+materialises that symlink as a stub file containing the target path — a
+Windows contributor opening it reads a one-line path, not the skill. Accepted
+because `install-skill` is the real distribution channel and Windows support
+is deferred.
 
 ## The loop this closes
 

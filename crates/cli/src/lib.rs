@@ -9,6 +9,7 @@ pub mod docs;
 pub mod doctor;
 pub mod settings;
 pub mod show;
+pub mod skill;
 
 pub use client::{DaemonClient, HealthReport};
 pub use docs::{TopicList, TopicPage, TopicSummary};

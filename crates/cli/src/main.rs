@@ -11,7 +11,7 @@ use std::process::ExitCode;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use fs3_cli::{DaemonClient, daemon_url, doctor, settings, show};
+use fs3_cli::{DaemonClient, daemon_url, doctor, settings, show, skill};
 use fs3_core::envelope::Envelope;
 
 #[derive(Parser)]
@@ -85,11 +85,20 @@ enum Command {
     /// creating the database and applying migrations as needed. This is the one
     /// command that talks to Postgres directly: it is the verb you run when the
     /// daemon is down, so it cannot be a client of it.
+    ///
+    /// `doctor install-skill` does not diagnose: it installs or updates the
+    /// bundled agent skill into the agent skills roots (PRD req-0053). The
+    /// diagnostic walk never installs — it only reports, so the skill reaches
+    /// an agent's home directories by an explicit ask, never silently or by
+    /// force.
     Doctor {
         /// Read this directory instead of `$FS3_CONFIG_DIR` or
         /// `~/.config/flowspace3`.
         #[arg(long, value_name = "DIR")]
         config_dir: Option<PathBuf>,
+        /// Install or update the bundled agent skill.
+        #[command(subcommand)]
+        command: Option<DoctorCommand>,
     },
     /// Run the fs3 daemon in the foreground.
     ///
@@ -136,6 +145,17 @@ enum ConfigCommand {
         #[arg(long, value_name = "DIR")]
         config_dir: Option<PathBuf>,
     },
+}
+
+/// Subcommands of `doctor` that are not the diagnostic walk.
+#[derive(Subcommand)]
+enum DoctorCommand {
+    /// Install or update the bundled agent skill into `~/.agents/skills` and
+    /// `~/.claude/skills`.
+    ///
+    /// Explicit by design (PRD req-0053): nothing writes these files silently or
+    /// by force, and the diagnostic walk only ever reports their state.
+    InstallSkill,
 }
 
 /// Exit codes, per workshop 004: 0 ok, 1 error, 2 usage.
@@ -221,7 +241,14 @@ async fn run(command: Command) -> Result<ExitCode> {
             push(&mut params, "source", source);
             Ok(emit(&client.search(&params).await))
         }
-        Command::Doctor { config_dir } => {
+        Command::Doctor {
+            config_dir: _,
+            command: Some(DoctorCommand::InstallSkill),
+        } => Ok(emit(&skill::install()?)),
+        Command::Doctor {
+            config_dir,
+            command: None,
+        } => {
             let dir = match config_dir {
                 Some(dir) => dir,
                 None => settings::config_dir()?,

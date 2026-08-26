@@ -24,6 +24,9 @@ fs3-daemon.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 reqwest.workspace = true
+# PRD req-0053: content hash of the bundled skill. Already locked through
+# fs3-core, so this adds no Cargo.lock churn.
+sha2.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
