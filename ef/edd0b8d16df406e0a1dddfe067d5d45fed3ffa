@@ -1,0 +1,21 @@
+.agents/skills/add-provider/SKILL.md
+  s_15d888f4b629c1::t_08f3a118e8b28b 43-100
+crates/providers/tests/local_contract.rs
+  s_15d888f4b629c1::t_5e48da996b7e44 3-13,18,28-30,70,82,110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "efedd0b8d16df406e0a1dddfe067d5d45fed3ffa",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
