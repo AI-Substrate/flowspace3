@@ -1,0 +1,26 @@
+crates/store/tests/pg_round_trip.rs
+  h_9e71e8b09f7cf2 11-14,16,25-45,80-82,130,134-169,171-172,174-178
+crates/testkit/arch-allowlist.toml
+  h_9e71e8b09f7cf2 7-17,55-59,63,67,75
+crates/testkit/fixtures/arch/promoted-dev-edge-metadata.json
+  h_9e71e8b09f7cf2 1-130
+crates/testkit/src/arch.rs
+  h_9e71e8b09f7cf2 72-130,213,216-228,271-282,327-343,388-389,393-419
+crates/testkit/src/contract.rs
+  h_9e71e8b09f7cf2 19-58,64-68,108-124,127,139-145,156-160,162-165,223-340
+crates/testkit/tests/arch_drift.rs
+  h_9e71e8b09f7cf2 132-232
+docs/plans/001-fs3-foundations/assets/tasks/phase-1/execution.log.md
+  h_9e71e8b09f7cf2 103-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8a500d8d42d349b44d8de40678a9b9f9a96a22df",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
