@@ -1,13 +1,24 @@
 # Cross-platform release builds (PRD req 47, plan 004 / plan-002 substrate).
 # Triggered by the semver tag that release-please pushes when its rolling PR
-# merges. Attaches 7 binaries named by target triple to the published Release:
-#   darwin aarch64 + x86_64   — built NATIVELY on macOS runners (Apple SDK
-#                               licensing forbids Darwin builds in Linux
-#                               containers); BUILD ONLY, never a gate
-#   linux  aarch64 + x86_64   — plan-002 build container (gnu + musl)
-#   windows x86_64            — produced-not-run (validation deferred; see
-#                               docs/plans/002-docker-daemon-base/assets/poc/
-#                               cross-platform-strategy.md)
+# merges.
+#
+# ONE shipped binary (req 51): `flowspace3` — built with `-p fs3-cli`; the
+# daemon is its `flowspace3 daemon` subcommand.
+#
+# Matrix:
+#   linux aarch64 + x86_64 gnu — plan-002 build container (docker/scripts/build.sh)
+#   darwin aarch64 + x86_64    — NATIVE on macOS runners (Apple SDK licensing
+#                                forbids Darwin builds in Linux containers);
+#                                per ruling 2026-08-26: built AND validated on
+#                                real hardware — smoke-run (--version, help)
+#                                plus the fast unkeyed test tier (everything
+#                                except fs3-store, which needs the PG stack;
+#                                keyed provider tests are #[ignore] by default)
+#
+# NOT in the matrix, with evidence: musl (aarch64+x86_64) and windows-gnu
+# cannot link — ort-sys ships no prebuilt ONNX runtime for those triples
+# ("no prebuilt binaries available for target …", observed 2026-08-26).
+# Escalated to Jordan; revisit if ort moves to load-dynamic or source builds.
 
 name: release
 
@@ -30,13 +41,10 @@ jobs:
         target:
           - aarch64-unknown-linux-gnu
           - x86_64-unknown-linux-gnu
-          - aarch64-unknown-linux-musl
-          - x86_64-unknown-linux-musl
-          - x86_64-pc-windows-gnu
     steps:
       - uses: actions/checkout@v4
 
-      # The arm64 container instances run under emulation on the x86_64
+      # The arm64 container instance runs under emulation on the x86_64
       # runner; release-only, so the slower build is acceptable.
       - name: Set up QEMU
         if: startsWith(matrix.target, 'aarch64')
@@ -47,15 +55,19 @@ jobs:
           FS3_TARGET: ${{ matrix.target }}
         run: ./docker/scripts/build.sh
 
+      - name: Smoke-run (${{ matrix.target }})
+        if: startsWith(matrix.target, 'x86_64')
+        run: |
+          docker run --rm -v fs3-bin:/bins:ro debian:trixie-slim \
+            /bins/${{ matrix.target }}/release/flowspace3 --version
+
       - name: Collect binary
         shell: bash
         run: |
           mkdir -p dist
-          NAME="fs3-daemon"
-          case "${{ matrix.target }}" in *windows*) NAME="$NAME.exe";; esac
-          SRC="/bins/${{ matrix.target }}/release/$NAME"
           docker run --rm -v fs3-bin:/bins:ro -v "$PWD/dist:/out" \
-            debian:bookworm-slim cp "$SRC" "/out/${{ matrix.target }}$NAME"
+            debian:bookworm-slim cp "/bins/${{ matrix.target }}/release/flowspace3" \
+            "/out/flowspace3-${{ matrix.target }}"
           ls -la dist/
 
       - uses: actions/upload-artifact@v4
@@ -84,13 +96,23 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       # Native mac build (the only legal way to produce Darwin binaries).
-      # Never gated: this job failing blocks the release attachment, not CI.
       - name: Build (${{ matrix.target }})
         run: |
-          ~/.cargo/bin/rustup component add rustfmt clippy --toolchain "$(rustup show active-toolchain | cut -d- -f1)" 2>/dev/null || true
-          cargo build --locked --release --target ${{ matrix.target }} -p fs3-daemon
+          cargo build --locked --release --target ${{ matrix.target }} -p fs3-cli
           mkdir -p dist
-          cp "target/${{ matrix.target }}/release/fs3-daemon" "dist/${{ matrix.target }}fs3-daemon"
+          cp "target/${{ matrix.target }}/release/flowspace3" "dist/flowspace3-${{ matrix.target }}"
+
+      # Ruling 2026-08-26: mac targets are BUILT AND RUN — prove runtime on
+      # real hardware, not just linkage.
+      - name: Smoke-run (${{ matrix.target }})
+        run: |
+          BIN="target/${{ matrix.target }}/release/flowspace3"
+          "$BIN" --version
+          "$BIN" daemon --help >/dev/null
+          "$BIN" doctor --help   >/dev/null
+
+      - name: Fast test tier (${{ matrix.target }})
+        run: cargo test --workspace --exclude fs3-store
 
       - uses: actions/upload-artifact@v4
         with:
@@ -113,7 +135,7 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq file >/dev/null
           file dist/*
-          test "$(ls dist | wc -l)" -eq 7
+          test "$(ls dist | wc -l)" -eq 4
 
       - name: Attach binaries to the release
         env:
@@ -126,6 +148,7 @@ jobs:
 
           ---
           **Validation stances** (plan 004):
-          - Linux/macOS binaries: built and smoke-checked by shape (\`file(1)\`); runtime tiers are proven by CI on Linux only.
-          - Windows binary: **produced-not-run** — no Windows machine in the loop yet; validation procedure: docs/plans/002-docker-daemon-base/assets/poc/cross-platform-strategy.md
-          - macOS runners: build-only, never gated."
+          - Linux binaries: built in the pinned plan-002 container; x86_64 smoke-run (\`--version\`) inside the container. Runtime tiers proven by CI on Linux only.
+          - macOS binaries: **built and run on real hardware** — smoke-run + fast unkeyed test tier on macOS runners (ruling 2026-08-26).
+          - Windows binary: **not shipped yet** — ort-sys has no prebuilt ONNX runtime for windows-gnu/musl triples (observed 2026-08-26); revisit when ort supports them or moves to load-dynamic/source builds.
+          - musl variants: not shipped for the same reason."

@@ -10,7 +10,7 @@ OrbStack live, podman by construction) and `DRY_RUN=1`.
 | `up` / `down` / `status` | compose stack lifecycle (db-only: postgres+pgvector on 127.0.0.1:5433; `down` never deletes volumes) |
 | `logs [-- args…]` | compose logs passthrough |
 | `exec -- <service> <cmd…>` | exec into a compose service |
-| `build` | build fs3-daemon for `FS3_TARGET` inside the pinned build container (linux gnu/musl arm64+x86_64, windows-gnu; darwin targets are refused — those build natively on the mac, Apple SDK licensing) |
+| `build` | build the `flowspace3` single binary (req 51) for `FS3_TARGET` inside the pinned build container (linux gnu arm64+x86_64; darwin targets are refused — those build natively on the mac, Apple SDK licensing; musl/windows-gnu unavailable: ort-sys ships no prebuilt for those triples) |
 | `run [-- cmd…]` | one-shot command in-container, joined to the compose network with `FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@db:5432/flowspace3`; default `cargo test --workspace` |
 | `lint` | FS3_ENGINE coverage + compose-spec validity + no Docker-exclusive features |
 

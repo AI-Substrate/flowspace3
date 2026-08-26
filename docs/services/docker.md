@@ -36,8 +36,9 @@ Strategy + timings: `docs/plans/002-docker-daemon-base/assets/poc/cross-platform
 
 ```bash
 harness docker lint                                   # engine-var coverage + compose spec + no docker-only features
-harness docker build                                  # fs3-daemon ELF aarch64 (warm ≈1s)
-FS3_TARGET=x86_64-pc-windows-gnu harness docker build # PE32+ exe, produce-only
+harness docker build                                  # flowspace3 single binary, ELF aarch64 (warm ≈1s)
+# windows-gnu / musl targets unavailable: ort-sys ships no prebuilt ONNX
+# runtime for those triples (observed 2026-08-26; escalated to Jordan)
 
 harness docker run                                    # cargo test --workspace in-container vs compose db → status ok, 364 passed
 DRY_RUN=1 FS3_ENGINE=podman ./docker/scripts/build.sh # podman-by-construction dry run

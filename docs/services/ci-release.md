@@ -36,6 +36,13 @@ on each Release, a curl installer, Dependabot.
   not 5432.
 - release-please hard-fails on nothing but logs every unparseable legacy
   subject; it still only counts conforming ones for versioning.
+
+> **Named cutover (ruling 2026-08-26-pr-workflow-cutover.md)**: the
+> push-to-main trigger is INTERIM — we have no PR flow yet. When work drains
+> and v0.2.0 ships: main gets branch protection requiring the green `ci`
+> check, workflows move to `pull_request` triggers, and the push trigger is
+> removed. Sequencing: release first, cutover after — deliberately, not by
+> drift. Mechanical change owned by pij-impressive-ox.
 - Repo-level "Dependabot alerts" toggle is an admin setting separate from
   version updates; alerts were off at setup time.
 

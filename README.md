@@ -15,44 +15,53 @@ and the `flowspace3` CLI.
 
 ## Install
 
+**Option A — convenience script** (macOS or Linux):
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/AI-Substrate/flowspace3/main/install.sh | sh
 ```
 
-One binary per platform (mac arm64/x64 · linux arm64/x64 gnu+musl · windows
-x64), attached to every [GitHub Release](https://github.com/AI-Substrate/flowspace3/releases).
-Windows users: `install.ps1` is present but not yet validated.
+Installs to `/usr/local/bin` when permitted, otherwise `~/.local/bin`.
+
+**Option B — direct download**: take `flowspace3-<your-triple>` from the
+[latest release](https://github.com/AI-Substrate/flowspace3/releases/latest),
+`chmod +x` it, and put it on your `PATH`. Published triples:
+`aarch64-apple-darwin`, `x86_64-apple-darwin`, `aarch64-unknown-linux-gnu`,
+`x86_64-unknown-linux-gnu`.
+
+Windows: `install.ps1` ships in the repo but is **not yet validated**.
 
 **Releases**: a rolling release PR (`chore(main): release x.y.z`) is kept up
 to date automatically; merging it tags the semver version and publishes.
 Conventional commit subjects (`feat:`, `fix:`, …) are binding on main — they
 are what drives the version.
 
-## Quick start
+Building from source instead: `cargo build --release -p fs3-cli` (Rust 1.95+,
+edition 2024).
 
-Prerequisites: a Rust toolchain (1.95+, edition 2024) and Docker.
+## First run
+
+One binary does everything: `flowspace3`. No config file, no API keys — the
+default providers are `fake`, which is a **legal offline runtime**, not a
+stub: real embeddings-shaped work, deterministic answers.
 
 ```bash
-# 1. Build the binaries
-cargo build --release -p fs3-cli    # one binary: flowspace3
+# 1. Set up the world. `doctor` walks engine -> stack -> database -> schema
+#    and REPAIRS as it goes: it starts the Docker compose stack, creates the
+#    database, applies migrations. There is no second setup command.
+flowspace3 doctor
 
-# 2. Bring up the store — or skip this and let doctor do it for you.
-#    `doctor` walks engine -> stack -> database -> schema and REPAIRS as it
-#    goes: it starts the compose stack, creates the database, and applies the
-#    migrations. There is no second command.
-./target/release/flowspace3 doctor
+# 2. Start the background daemon (indexing worker + HTTP API).
+flowspace3 daemon &
 
-# 3. Run the daemon — no config file needed, no API keys needed
-./target/release/flowspace3 daemon &
+# 3. Index something. Any directory: a git repo, a worktree, a plain folder.
+flowspace3 add .
 
-# 4. Index something. Any directory: a git repo, a worktree, a plain folder.
-./target/release/flowspace3 add .
+# 4. Watch the queue drain.
+flowspace3 status
 
-# 5. Watch the queue drain
-./target/release/flowspace3 status
-
-# 6. Ask a question
-./target/release/flowspace3 search "how does the queue avoid two workers taking the same job"
+# 5. Ask a question.
+flowspace3 search "how does the queue avoid two workers taking the same job"
 ```
 
 Every command answers one JSON envelope: `{"ok": true, …}` or `{"ok": false,
@@ -61,10 +70,17 @@ every error carries the command or config change that resolves it — the codes
 are documented in [`docs/reference/error-codes.md`](docs/reference/error-codes.md),
 generated from the registry so they cannot drift.
 
-Step 3 works with no configuration because `kind = "fake"` is the default and is
-a **legal runtime provider**, not a test hook: the whole stack runs offline, with
-no keys, deterministically — including real 1024-wide vectors, so search
-genuinely answers.
+**Troubleshooting**: run `flowspace3 doctor` again — it diagnoses and repairs
+the full chain. Error codes and their fixes:
+[`docs/reference/error-codes.md`](docs/reference/error-codes.md).
+
+Providers are **unconfigured out of the box** — everything routes to the
+built-in `fake` until you name real ones. When you are ready:
+`flowspace3 docs get providers`.
+
+**Agent docs ship inside the binary** — the same guidance, offline:
+`flowspace3 docs list` and `flowspace3 docs get <topic>` (topics include
+`install`, `doctor`, `daemon`, `search`, `config`, `agents`).
 
 Re-running `add` on an unchanged tree costs nothing: enrichment is keyed by the
 hash of the text it describes, so a re-scan enqueues zero LLM work. That is not
@@ -74,6 +90,7 @@ Stop the stack with `docker compose down` (add `-v` to delete the data volume).
 
 How the pipeline fits together:
 [`docs/services/first-light.md`](docs/services/first-light.md).
+
 
 ### Configuration
 

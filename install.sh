@@ -20,13 +20,14 @@ arch=$(uname -m)
 
 case "$os" in
   Darwin) os_part="apple-darwin" ;;
-  Linux) os_part="unknown-linux-musl" ;;
+  # gnu is the shipped linux triple (musl dropped: ort-sys has no prebuilt
+  # ONNX runtime for it — see release.yml validation stances).
+  Linux) os_part="unknown-linux-gnu" ;;
   *) echo "unsupported OS: $os (see install.ps1 for Windows)" >&2; exit 1 ;;
 esac
 
 case "$arch" in
   arm64|aarch64) arch_part="aarch64" ;;
-  x86_64)        arch_part="x86_64" ;;
   *) echo "unsupported architecture: $arch" >&2; exit 1 ;;
 esac
 
