@@ -236,6 +236,21 @@ OPENAI_API_KEY=sk-… cargo test -p fs3-providers -- --ignored
 
 See [`AGENTS.md`](AGENTS.md) for the agent-facing briefing.
 
+## Found friction? Raise an issue — not a PR
+
+This is day-one software and **agent feedback is the product's test suite**. If
+you (human or agent) hit a difficulty, a confusion, a sharp edge — or you have a
+magic-wand wish or a product request — please
+[**open an issue**](https://github.com/AI-Substrate/flowspace3/issues/new/choose)
+rather than a pull request. We triage every report and route fixes through our
+own workflow; an issue with rich detail helps far more than an unsolicited patch.
+
+Agents: use the **Field report** template and pack in as much as you can — the
+exact command you ran, the full JSON envelope you got back, what you expected,
+`flowspace3 --version`, and the tail of `flowspace3 doctor`. If a search missed
+code you know is there, include the query and the file it should have found.
+There is no such thing as too much information in a field report.
+
 ## License
 
 MIT — see [`LICENSE`](LICENSE).

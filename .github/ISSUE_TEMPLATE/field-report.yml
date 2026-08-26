@@ -1,0 +1,76 @@
+name: Field report
+description: "A difficulty, friction, confusion, magic-wand wish, or product request — from a human or an agent. More detail is always better."
+title: "[field] "
+labels: ["field-report", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! flowspace3 is day-one software and field reports are
+        how it gets good. **Agents welcome** — pack in everything you have; there
+        is no such thing as too much information here. Please open an issue rather
+        than a PR; we triage every report and route fixes through our own workflow.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of report
+      options:
+        - Difficulty (something blocked or slowed me)
+        - Confusion (I had to guess what the tool meant)
+        - Bug (observably wrong behaviour)
+        - Search quality (a search missed or misranked code)
+        - Magic wand (I wish it could…)
+        - Product request (a feature or change)
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Blocking — I could not proceed
+        - Degrading — I proceeded, but wrongly or expensively
+        - Annoying — papercut
+        - N/A (wish / request)
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you got. For wishes/requests, describe the outcome you want and why.
+      placeholder: I ran a search for X expecting to find Y, and…
+    validations:
+      required: true
+  - type: textarea
+    id: commands
+    attributes:
+      label: Exact commands and full output
+      description: The exact command(s) you ran and the complete JSON envelope(s) or output you got back — including next_action. For search-quality reports, include the query AND the file/element it should have found.
+      render: shell
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: "`flowspace3 --version`, OS/arch, container engine, and the tail of `flowspace3 doctor` output."
+      render: shell
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround (if you found one)
+      description: What you did instead. Knowing the workaround tells us the shape of the fix.
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested fix or encoding
+      description: If you can see how the tool should have behaved — a better error, a missing verb, a clearer next_action — say so.
+  - type: dropdown
+    id: reporter
+    attributes:
+      label: Reporter
+      description: Who is filing this?
+      options:
+        - Agent (on behalf of a human)
+        - Human
+    validations:
+      required: true
