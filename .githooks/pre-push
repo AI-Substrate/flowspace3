@@ -1,0 +1,14 @@
+#!/bin/sh
+# Format gate on exactly the .rs files this push carries (DL: fmt reds reached
+# CI twice on 2026-08-26). Scoped to pushed commits so a sibling's mid-edit
+# file can never block or be swept; full `cargo fmt --all --check` stays CI's job.
+range=$(git rev-parse --abbrev-ref @{push} 2>/dev/null || echo origin/main)
+files=$(git diff --name-only "$range"...HEAD 2>/dev/null | grep '\.rs$')
+[ -z "$files" ] && exit 0
+fail=0
+for f in $files; do
+  [ -f "$f" ] || continue
+  rustfmt --edition 2024 --check "$f" >/dev/null 2>&1 || { echo "fmt: $f needs cargo fmt"; fail=1; }
+done
+[ "$fail" = 1 ] && echo "pre-push: run cargo fmt on the files above, amend, re-push" && exit 1
+exit 0
