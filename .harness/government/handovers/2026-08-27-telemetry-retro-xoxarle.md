@@ -81,3 +81,41 @@ dogfood feedback asks, and the (a)/(b)/(c) first-class classification.
 
 Retention clock: the bash db keeps 30 days; the v0.2.0 window is safe today but
 do not sit on this for a week.
+
+## 4. Where the work is logged (the full map)
+
+- **Who did what**: `.harness/government/worker-roster.md` — every seat, landed
+  commits, revive keys. THE ownership authority (git identity is shared).
+- **Retro records**: `.harness/records/retro/2026-08-26/001-007.md` (earlier
+  drains) and `2026-08-27/008.md` (the big one, 132 entries + raw JSON).
+- **Rulings**: `.harness/government/rulings/` — Jordan's binding decisions
+  (PR-workflow cutover, primes-owe-status-cards, etc.).
+- **How we work**: `.harness/government/how-we-work.md` — the operating manual
+  (briefs, dossiers, packets, worktrees, merges).
+- **Briefs**: `.harness/government/briefs/` — per-worker task briefs.
+- **Design docs**: `docs/plans/prd/*.md` (doctor-design, daemon-worker-architecture
+  with the RULED reconcile-loop doctrine), `docs/plans/` for plan folders.
+
+## 5. The PRD and deterministic documents (ddocs)
+
+**The main PRD — where we keep everything** — is
+`docs/plans/prd/base-prd.dd.json`, rendered to its sibling
+`docs/plans/prd/base-prd.dd.md`. 57 requirements (req-0001..req-0057), each with
+`state` (checked/unchecked) and an evidence `note` naming the landing commits.
+It is the single product source of truth: every feature Jordan rules in gets a
+req; every ship flips its state with evidence.
+
+**Deterministic documents (dd)**: a document is JSON (the `.dd.json` is the
+authority), validated against a schema, and the human-readable `.dd.md` sibling
+is GENERATED — never hand-edited. Every element has a canonical stable address
+(e.g. `docs/plans/prd/base-prd.dd.json#requirements/req-0056/state`), so agents
+cite and edit precise fields instead of prose-matching. The toolchain is the
+`ddocs` CLI:
+
+    ddocs agents-start-here          # orientation (run this once)
+    ddocs validate <path>            # schema + link validation
+    ddocs build <path>               # regenerate the .dd.md sibling
+
+Workflow for ANY PRD change: edit the .dd.json (surgically), `ddocs build`,
+`ddocs validate`, commit BOTH files together via `harness commit`. Never edit
+the .dd.md directly — it is build output.
