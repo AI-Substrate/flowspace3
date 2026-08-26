@@ -1,0 +1,24 @@
+crates/parsers/src/discovery.rs
+  s_15d888f4b629c1::t_b3a2bc3dce8df0 1-679
+  s_15d888f4b629c1::t_b59d035efc5437 680-682
+crates/parsers/Cargo.toml
+  s_15d888f4b629c1::t_ec0e9e38476f1c 14-16
+crates/parsers/tests/discovery_fixtures.rs
+  s_15d888f4b629c1::t_1fad868852eee1 1-285
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ca27e63f3e9f709652bdb541ac0e59ac3f265b6e",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
