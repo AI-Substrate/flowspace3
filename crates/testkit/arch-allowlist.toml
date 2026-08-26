@@ -153,7 +153,17 @@ internal = [
 ]
 external = [
   "anyhow",
+  # The `Reconcile` trait is used as `dyn Reconcile` by the reconcile runner,
+  # and `async fn` in a trait is not object-safe. This is the crate that makes
+  # a one-method async trait dyn-able; core already carries it for the ports.
+  "async-trait",
   "axum",
+  # The live file watcher (ruling 2026-08-26: the daemon is host-native BECAUSE
+  # watching cannot cross a container boundary). It belongs here rather than in
+  # a leaf crate because watching is wiring — the supervisor reads the
+  # `worktrees` table and enqueues jobs, both of which only the composition
+  # root may see.
+  "notify",
   "reqwest@dev",
   # DEV only: the e2e asserts ROW COUNTS the typed API has no verb for
   # ("how many smart vectors exist"), which is a question about the schema

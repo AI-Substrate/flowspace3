@@ -17,7 +17,14 @@ fs3-store.workspace = true
 fs3-testkit.workspace = true
 
 anyhow.workspace = true
+async-trait.workspace = true
 axum.workspace = true
+# The host-native file watcher: FSEvents on macOS, inotify on Linux,
+# ReadDirectoryChangesW on Windows, behind one `RecommendedWatcher`. Ruling
+# 2026-08-26 (daemon-native-on-host) is why this is in-process rather than in a
+# container, and `pocs/daemon-shell/LEARNINGS.md` is why it is trusted as a
+# hint rather than as a ledger.
+notify.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

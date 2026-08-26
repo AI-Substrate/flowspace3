@@ -54,6 +54,12 @@ gix = { version = "0.87", default-features = false, features = [
 # nested ignore files, force-include overrides) are a pile of edge cases fs3
 # refuses to re-derive — PRD req 41 is exactly what this crate already does.
 ignore = "0.4"
+# The host-native file watcher (ruling 2026-08-26: the daemon runs on the host
+# precisely because watching does not survive a container boundary). One
+# `RecommendedWatcher` over FSEvents / inotify / ReadDirectoryChangesW. The
+# default `macos_fsevent` backend is kept rather than `macos_kqueue`, which
+# needs one file descriptor per watched FILE and dies on a real tree.
+notify = "8"
 # pgvector's own Rust bindings: `vector(1024)` has a wire format, and sqlx has
 # no idea what it is. This crate is the encode/decode for it and nothing else —
 # `default-features = false` keeps the diesel/postgres/serde halves out.
