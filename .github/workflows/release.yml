@@ -111,6 +111,11 @@ jobs:
           "$BIN" daemon --help >/dev/null
           "$BIN" doctor --help   >/dev/null
 
+      # doctor probes the container engine (`docker --version`); macOS runners
+      # ship without it, so give them the CLI — no daemon runs here.
+      - name: Install docker CLI
+        run: HOMEBREW_NO_AUTO_UPDATE=1 brew install docker
+
       - name: Fast test tier (${{ matrix.target }})
         run: cargo test --workspace --exclude fs3-store
 
