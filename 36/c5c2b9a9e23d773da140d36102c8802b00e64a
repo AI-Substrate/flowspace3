@@ -1,0 +1,14 @@
+.github/dependabot.yml
+  h_9e71e8b09f7cf2 1-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "36c5c2b9a9e23d773da140d36102c8802b00e64a",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
