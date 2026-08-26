@@ -1,0 +1,192 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "First light: wire scan -> enrich -> query end-to-end",
+        "slug": "first-light",
+        "status": "ready",
+        "summary": "The campfire plan: compose the landed parts (scanner, discovery, fs3-git, store API, config registry, providers) into one working system - scan a real codebase, enrich it, query it."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "\"Everything exists as tested parts on main; this plan is WIRING, deliberately lean (Jordan: 'don't overbake it'). Add a root via the CLI -> daemon snapshots+enqueues -> job runner scans (pure scanner) -> enrichment jobs summarize+embed through the provider registry (fake in CI, Azure live) -> semantic search returns ranked hits in the workshop-004 envelope. Proof: fs3 indexes ITSELF and answers queries. Authorities: workshops 002 (schema, landed), 003 (query surface - v1 slice only), 004 (envelope - v1 slice only); daemon-worker-architecture.md incl. its queued decisions, two of which this plan settles small: retry = 3 attempts with not_before backoff; re-queue-while-running = accept reconciler latency.\""
+    },
+    {
+      "name": "goals",
+      "value": [
+        "One end-to-end path: add path -> scanned -> enriched -> searchable, all through the daemon (single writer, PRD 20).",
+        "Deterministic CI proof with the fake provider; recorded live run with Azure via the registry.",
+        "First slice of the query surface (semantic search + core filters) in the workshop-004 envelope with next_action/fix.",
+        "Idempotence: re-scanning an unchanged repo costs zero enrichment (content-addressing doing its job)."
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "File watcher (daemon plan proper - doctrine locked, not wired here).",
+        "Conversations, text/regex modes, full filter set, MCP, doctor, docs get/list.",
+        "Concurrency combinator crate (inline semaphore/batching is enough for v1; combinator remains a roster row).",
+        "Cross-platform release/CI (reqs 46-48) and s002 phase-2 docker paving (parallel, ox)."
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-0001",
+          "claim": "`flowspace3 add <path>` + `flowspace3 scan` against a real codebase yields elements, smart content, and embeddings rows via daemon-claimed jobs - CLI is a thin envelope client.",
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0001"
+        },
+        {
+          "id": "ac-0002",
+          "claim": "`flowspace3 search \"<question>\"` (semantic, --repo/--path/--limit/--min-score/--source raw|smart) returns ranked hits with addresses, spans, tags, match_field in the workshop-004 envelope.",
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0002"
+        },
+        {
+          "id": "ac-0003",
+          "claim": "A CI-runnable end-to-end test (fake provider, throwaway db) proves scan->enrich->search deterministically, incl. the idempotence claim: second scan of unchanged tree enqueues zero enrichment.",
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0003"
+        },
+        {
+          "id": "ac-0004",
+          "claim": "A recorded LIVE run: the daemon scans an ISOLATED FIXTURE SUBSET (crates/parsers/fixtures corpus - cheap, cents not dollars; Jordan 2026-08-26) through Azure (registry-selected) and answers 3 sample questions sensibly - transcript in plan assets.",
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0004"
+        },
+        {
+          "id": "ac-0005",
+          "claim": "Envelope v1 + error catalog seed live in fs3-core: ok/error shapes, FS3-E codes with mandatory fix, next_action - consumed by every new CLI verb and endpoint.",
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0005"
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-9dcc",
+          "title": "Wire and prove end-to-end",
+          "brief": "One phase: envelope seed, daemon endpoints + job runner, enrichment through the registry, search v1, then the proof runs (CI-fake + live-Azure).",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+        }
+      ]
+    },
+    {
+      "name": "open_questions",
+      "value": []
+    },
+    {
+      "name": "clarifications",
+      "value": [
+        {
+          "session": "2026-08-26",
+          "question": "Scope discipline?",
+          "answer": "Jordan: 'draft up the plan, but don't overbake it... a bit of a campfire for our next step' - lean wiring plan, one phase."
+        },
+        {
+          "session": "2026-08-26",
+          "question": "Retry/re-queue decisions?",
+          "answer": "Settled small in-plan: 3 attempts + backoff; running-job changes ride the reconciler (daemon plan may revisit)."
+        },
+        {
+          "session": "2026-08-26",
+          "question": "Search scope?",
+          "answer": "Workshop 003 v1 slice: semantic only + 5 filters; text/regex/conversations later."
+        }
+      ]
+    },
+    {
+      "name": "gate_matrix",
+      "value": [
+        {
+          "gate": "G1",
+          "check": "Clarify",
+          "status": "PASS",
+          "notes": "3 clarifications; authorities are the landed workshops."
+        },
+        {
+          "gate": "G3",
+          "check": "Architecture",
+          "status": "PASS",
+          "notes": "No new crates/ports; wiring in daemon/cli; arch check enforces."
+        },
+        {
+          "gate": "G5",
+          "check": "Structure",
+          "status": "PASS",
+          "notes": "1 phase, 7 tasks, 8 dw, 5 ACs all claimed."
+        },
+        {
+          "gate": "G6",
+          "check": "Testing",
+          "status": "PASS",
+          "notes": "CI-fake e2e + live recorded run; every dw runnable."
+        }
+      ]
+    },
+    {
+      "name": "execution_guardrails",
+      "value": [
+        "Authorities bind: workshops 002/003/004 + fs3-architecture.md; contradiction = stop-and-ask.",
+        "Only the daemon writes PG (PRD 20); the CLI never opens a pool.",
+        "Enrichment stays keyed by raw_hash (D2) - anything keyed by element id is drift.",
+        "Fake provider for all CI; keyed Azure only for the recorded live run.",
+        "Shared-tree commit discipline per ruling 2026-08-26 (file-scoped adds, push-first, scoped fmt)."
+      ]
+    },
+    {
+      "name": "acceptance_coverage",
+      "value": [
+        {
+          "ac": "ac-0001",
+          "covered_by": [
+            "tk-0102",
+            "tk-0103",
+            "tk-0104",
+            "tk-0107"
+          ],
+          "verified_in": "dw-0102/3/4/8"
+        },
+        {
+          "ac": "ac-0002",
+          "covered_by": [
+            "tk-0105"
+          ],
+          "verified_in": "dw-0105"
+        },
+        {
+          "ac": "ac-0003",
+          "covered_by": [
+            "tk-0106"
+          ],
+          "verified_in": "dw-0106"
+        },
+        {
+          "ac": "ac-0004",
+          "covered_by": [
+            "tk-0104",
+            "tk-0106"
+          ],
+          "verified_in": "dw-0107"
+        },
+        {
+          "ac": "ac-0005",
+          "covered_by": [
+            "tk-0101"
+          ],
+          "verified_in": "dw-0101"
+        }
+      ]
+    }
+  ]
+}

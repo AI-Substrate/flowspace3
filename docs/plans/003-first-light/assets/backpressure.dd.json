@@ -1,0 +1,85 @@
+{
+  "dd": {
+    "schema": "builder/backpressure"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Backpressure - first light",
+        "plan": "../plan.dd.json#meta",
+        "basis_sha": "56aec47c773121f948e07c60d2662a9e936934cf012e4b0596e42c65012456ad",
+        "certainty": "Confident"
+      }
+    },
+    {
+      "name": "rows",
+      "value": [
+        {
+          "id": "bp-0001",
+          "criterion": "ac scan pipeline end-to-end",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN: e2e CI test + curl transcripts",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0002",
+          "criterion": "ac search v1",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN: search test over fixture corpus",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0003",
+          "criterion": "ac CI e2e + idempotence",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN: cargo test e2e (fake provider, throwaway db)",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0004",
+          "criterion": "ac live Azure self-index run",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "human-judgement",
+          "proof": "RUN once, transcript reviewed by o-prime/Jordan",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0005",
+          "criterion": "ac envelope + catalog seed",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN: envelope unit + catalog drift test",
+          "state": "unchecked"
+        }
+      ]
+    },
+    {
+      "name": "sensors",
+      "value": [
+        {
+          "id": "sn-0001",
+          "name": "quality gate",
+          "command": "harness checks",
+          "dimension": "all",
+          "found_in": ".harness/extensions/checks"
+        },
+        {
+          "id": "sn-0002",
+          "name": "e2e",
+          "command": "cargo test -p fs3-daemon --test e2e (name TBD by worker)",
+          "dimension": "behaviour",
+          "found_in": "tk-0106 deliverable"
+        }
+      ]
+    }
+  ]
+}
