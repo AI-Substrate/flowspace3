@@ -1,0 +1,14 @@
+.github/workflows/release.yml
+  h_9e71e8b09f7cf2 114-122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "40a0eefd106be3a4082e78842e2f297944e08bf7",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
