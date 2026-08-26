@@ -1,0 +1,21 @@
+AGENTS.md
+  s_15d888f4b629c1::t_27fb81abc405ff 3-31
+CLAUDE.md
+  s_15d888f4b629c1::t_aec6c493054aca 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b2c30ca86babbcc2955e4f6f56f542b2f61f0b7c",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
