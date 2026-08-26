@@ -329,9 +329,28 @@ async fn files_created_inside_a_brand_new_directory_are_indexed_anyway() {
 
 /// Churn inside `.git` is the loudest thing on a developer's disk and means
 /// nothing to the index. It must not buy a single directory walk.
+///
+/// # Why there is a `.gitignore`, and why that is not weakening the test
+///
+/// The watcher's component filter (`.git`, `target`, `node_modules`) decides
+/// WHEN to walk, never WHAT to index — `discover` owns that, identically for
+/// `add` and for the watcher. Without a `.gitignore`, `discover` accepts
+/// `node_modules/pkg/*.js` because `js` is in its source-extension table, and
+/// it does so for `flowspace3 add` too. The first version of this test omitted
+/// the `.gitignore` and so asserted a guarantee the SYSTEM does not make: it
+/// passed on macOS only because no un-ignored directory happened to settle, and
+/// failed on CI Linux with exactly ten jobs — the ten `.js` files — the moment
+/// one did.
+///
+/// A repository with a `.gitignore` is the real case, and with one the two
+/// mechanisms agree: the filter suppresses the pointless walk, and `discover`
+/// would refuse the files anyway. The root-level write below makes the root
+/// itself settle, so the full-tree walk that exposed this on Linux happens
+/// here deliberately rather than by platform accident.
 #[tokio::test]
 async fn writes_inside_ignored_directories_never_become_work() {
     let stack = Stack::create("watch-ignored").await;
+    stack.write(".gitignore", "target/\nnode_modules/\n");
     stack.write("src/first.rs", "/// One.\npub fn first() -> u8 { 1 }\n");
     stack.add_root().await;
     stack.drain().await;
@@ -344,19 +363,37 @@ async fn writes_inside_ignored_directories_never_become_work() {
         stack.write(&format!("target/debug/b{index}"), "noise");
         stack.write(&format!("node_modules/pkg/m{index}.js"), "noise");
     }
+    // Dirty the ROOT as well, so its whole-tree re-list runs on every platform
+    // rather than only where the backend happens to report it.
+    stack.write("README.md", "# Noise at the root\n");
 
-    // Several passes across more than one debounce window: if the filter
-    // leaked, this is where a job would show up.
-    let deadline = Instant::now() + Duration::from_secs(4);
-    while Instant::now() < deadline {
-        supervisor.reconcile().await.expect("a pass");
-        assert_eq!(
-            stack.pending_scans().await,
-            0,
-            "an ignored directory must never enqueue work"
-        );
-        tokio::time::sleep(Duration::from_millis(200)).await;
-    }
+    // Synchronise on a POSITIVE signal instead of a fixed wait: the canary is
+    // written last, so the pass that enqueues it has already absorbed and swept
+    // everything above. No sleep-race — this is the timing doctrine from
+    // pocs/daemon-shell/LEARNINGS.md.
+    stack.write(
+        "src/canary.rs",
+        "/// Canary.\npub fn canary() -> u8 { 7 }\n",
+    );
+
+    let saw_canary = reconcile_until(&mut supervisor, PATIENCE, async || {
+        stack
+            .queued_scan_paths()
+            .await
+            .contains(&"src/canary.rs".to_string())
+    })
+    .await;
+    assert!(
+        saw_canary,
+        "the canary never settled, so nothing was proved"
+    );
+
+    // Exact, so a leak fails by NAMING the file that leaked.
+    assert_eq!(
+        stack.queued_scan_paths().await,
+        vec!["README.md".to_string(), "src/canary.rs".to_string()],
+        "only the two real files — ignored directories must never enqueue work"
+    );
 
     stack.destroy().await;
 }
