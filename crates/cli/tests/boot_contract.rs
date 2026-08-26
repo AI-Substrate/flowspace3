@@ -37,7 +37,22 @@ fn a_daemon_that_cannot_reach_its_store_exits_non_zero_and_says_how_to_fix_it() 
     )
     .expect("writing the fixture config");
 
-    let mut child = Command::new(FLOWSPACE3)
+    let mut command = Command::new(FLOWSPACE3);
+    // Scrub every `FS3_*` override out of the child's environment before
+    // setting the ones this test means. The config file below is the whole
+    // point of the fixture, and an ambient `FS3_DATABASE__URL` in a
+    // developer's shell silently beats it — the daemon then reaches a store
+    // that IS running, serves happily, and the test hangs until its patience
+    // runs out, reported as "the daemon did not fail fast". Observed live,
+    // 2026-08-27; the config layering doc calls the environment the highest
+    // precedence layer, and a test that ignores that is testing the developer.
+    for (key, _) in std::env::vars() {
+        if key.starts_with("FS3_") {
+            command.env_remove(key);
+        }
+    }
+
+    let mut child = command
         .arg("daemon")
         .env("FS3_CONFIG_DIR", &dir)
         // Deterministic output regardless of the developer's own filter.

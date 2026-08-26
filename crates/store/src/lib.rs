@@ -90,8 +90,16 @@ pub enum StoreError {
     #[error("store query failed: {0}")]
     Query(#[from] sqlx::Error),
     /// Migrations could not be applied.
+    ///
+    /// Carries the underlying message as text rather than as a `#[source]`.
+    /// thiserror's `#[from]` makes a field a source too, and a variant whose
+    /// own `Display` also interpolates it then prints TWICE under any
+    /// chain-walking formatter — which `flowspace3`'s `{error:#}` is. Jordan
+    /// saw exactly that on 2026-08-27: "…migration 8 was previously applied but
+    /// is missing in the resolved migrations: migration 8 was previously
+    /// applied but is missing in the resolved migrations".
     #[error("migrations failed: {0}")]
-    Migrate(#[from] sqlx::migrate::MigrateError),
+    Migrate(String),
     /// A row in the database does not match the domain model.
     #[error("row is not a valid element: {0}")]
     Corrupt(fs3_core::Error),
@@ -118,6 +126,14 @@ pub enum StoreError {
         /// The width the caller offered.
         actual: usize,
     },
+}
+
+/// Hand-written so `?` still works on a `MigrateError` while
+/// [`StoreError::Migrate`] keeps its detail without also carrying a source.
+impl From<sqlx::migrate::MigrateError> for StoreError {
+    fn from(error: sqlx::migrate::MigrateError) -> Self {
+        StoreError::Migrate(error.to_string())
+    }
 }
 
 /// Connect eagerly, proving the store is reachable before anything else starts.

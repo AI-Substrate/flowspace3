@@ -205,8 +205,14 @@ because a person typing it has already decided it is time.
 
 ## Open, and named rather than hidden
 
-- **The queue has one producer.** The shape is designed for more (disk pressure,
-  schema drift, provider misconfig); nothing else pushes yet.
+- **The queue has two producers** (`update` here, `schema` in
+  [`schema-skew.md`](schema-skew.md), added req-0061). The second was chosen
+  deliberately as the seam test, because its lifecycle is the opposite of this
+  one's — the condition arrives from ANOTHER process at any instant and can
+  clear without a restart — and `sync_messages(source, desired)` carried both
+  with no change. `one_producer_declaring_does_not_retract_another_producers_message`
+  is the proof that per-source ownership holds. Disk pressure and provider
+  misconfig are still unwritten.
 - **No `ack` verb on the CLI.** `ack_message` exists in the store and nothing
   calls it, because no message today outlives its cause. The first message that
   needs dismissing brings the verb with it.

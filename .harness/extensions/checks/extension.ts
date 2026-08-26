@@ -12,6 +12,21 @@ const GATES: { name: string; cmd: string; args: string[] }[] = [
   // place and goes green, which is exactly how the w-auto-update packet added
   // two dependencies and landed on main with the lock un-updated (2026-08-27).
   { name: 'lock', cmd: 'cargo', args: ['metadata', '--locked', '--format-version', '1'] },
+  // Before anything compiles, because the `test` gate below WRITES to whatever
+  // database this names — and until 2026-08-27 it named the shipped default,
+  // which on a developer machine is the real store. A `harness checks` run
+  // migrated Jordan's production database that way (ruling:
+  // .harness/government/rulings/2026-08-27-production-database.md).
+  //
+  // The test helpers refuse on their own (fs3_testkit::database), so this gate
+  // changes no outcome — it changes WHEN and HOW LEGIBLY you find out: one line
+  // up front instead of the same refusal repeated inside a test binary three
+  // minutes into a compile.
+  {
+    name: 'testdb',
+    cmd: 'cargo',
+    args: ['run', '--quiet', '-p', 'fs3-testkit', '--bin', 'fs3-test-db-check'],
+  },
   { name: 'fmt', cmd: 'cargo', args: ['fmt', '--all', '--check'] },
   { name: 'clippy', cmd: 'cargo', args: ['clippy', '--all-targets', '--', '-D', 'warnings'] },
   { name: 'test', cmd: 'cargo', args: ['test', '--all'] },

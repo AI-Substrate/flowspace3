@@ -15,9 +15,14 @@ use fs3_cli::doctor;
 /// rather than waiting out its timeout.
 const NOTHING_LISTENING: &str = "http://127.0.0.1:1";
 
+/// The database these tests may write to.
+///
+/// No fallback, and this file is the reason the rule exists: `doctor::run`
+/// below does not merely READ a schema, it MIGRATES it — repairing is doctor's
+/// whole job — so a default here was a production write waiting to happen, and
+/// on 2026-08-27 it was one. See [`fs3_testkit::database`].
 fn database_url() -> String {
-    std::env::var("FS3_TEST_DATABASE_URL")
-        .unwrap_or_else(|_| fs3_core::DatabaseConfig::DEFAULT_URL.to_string())
+    fs3_testkit::test_database_url()
 }
 
 /// A config pointing at the shared store and at `daemon_url`.
