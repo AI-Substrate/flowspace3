@@ -99,10 +99,17 @@ fleet-wide; parallel 3s polls exhausted the API mid-release once already.
 
 ### Queued for the 0.3.0 cycle (not now)
 
-- **Native ARM runners**: evaluate `runs-on: ubuntu-24.04-arm` (free for
+- ~~**Native ARM runners**~~ DONE early (o-prime, Jordan word): evaluate `runs-on: ubuntu-24.04-arm` (free for
   public repos) to replace the QEMU-emulated aarch64 container leg — QEMU
   costs 20–40 min per release, native lands around 5 and removes the last
   slow leg. Preflight leg E (`PREFLIGHT_ARM=1`) maps onto it directly.
+- **Version stitch (wart, seen in preflight)**: the binary reports the
+  workspace version (`0.1.0`) while releases are tagged `v0.2.0` —
+  release-please's `simple` type never touches `Cargo.toml`. Two options:
+  (a) annotate the version line (`# x-release-please-version`) and list
+  `Cargo.toml` under `extra-files` in `release-please-config.json` — boring,
+  no build machinery, keeps `--version` truthful; (b) derive the version at
+  build time from the tag. Recommendation: (a).
 
 ## How to verify
 
