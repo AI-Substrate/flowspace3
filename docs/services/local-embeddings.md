@@ -239,6 +239,39 @@ HF_ENDPOINT=http://127.0.0.1:1 \
 git status --porcelain | grep fastembed   # must print nothing
 ```
 
+### What it costs on a real file
+
+`cargo run --release -p fs3-providers --example embed_file -- <path> [query]`
+points the shipped adapter at any file, chunks it, embeds it, and prints where
+the time went. Measured on an M4 Max against a 57 KB / 7 655-word markdown file
+(29 chunks):
+
+| Phase | Cold cache | Warm cache |
+|---|---|---|
+| read + chunk | 0.9 ms | 0.2 ms |
+| **load model** | **18 221 ms** | **93 ms** |
+| embed 29 chunks | 746 ms | 744 ms |
+| **total** | **18 968 ms** | **838 ms** |
+| load as share of total | 96.1 % | 11.1 % |
+
+Two things that shape how you use it. First, the cold number is a *once per
+machine* 129 MB download, not a per-run cost — after it, loading is 93 ms.
+Second, load amortises away completely: over every markdown file in this repo
+concatenated (1.36 MB, 730 chunks) the same run spends 185 ms loading and
+23.3 s embedding — **0.8 % load**, ~8 400 words/sec sustained. Per-chunk cost
+is flat at ~26–32 ms, so a scan's embedding budget is essentially
+`chunks × 30 ms` on one core, and the model load is a rounding error on
+anything bigger than a single file.
+
+Passing a query ranks the chunks by cosine, which is how you check the vectors
+mean something rather than merely existing:
+
+```text
+query : "how do I score adaptability and operate-today"
+  0.6923  #2   - onboard a repo; - assess repo onboarding difficulty; …
+  0.6844  #9   In addition to the two-axis tuple, v0.2 emits an assessment matrix…
+```
+
 ## Snap-in
 
 Not wired. `crates/providers/src/local.rs` carries the recipe in its module
