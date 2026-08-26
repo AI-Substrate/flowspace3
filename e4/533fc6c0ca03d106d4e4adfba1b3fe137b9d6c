@@ -1,0 +1,14 @@
+crates/cli/src/main.rs
+  h_9e71e8b09f7cf2 110-118,272-283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e4533fc6c0ca03d106d4e4adfba1b3fe137b9d6c",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
