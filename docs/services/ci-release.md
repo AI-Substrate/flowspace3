@@ -23,8 +23,18 @@ on each Release, a curl installer, Dependabot.
   version truth lives in `.release-please-manifest.json` + git tags.
 - **Conventional commit subjects are BINDING on main** (`feat:`/`fix:`/`perf:`
   bump versions; everything else is chore). Non-conforming subjects are simply
+  ignored by release-please.
 - **Single binary per platform** (req 51): one asset per target triple;
   asset names freeze at one constant in `install.sh` / `install.ps1`.
+- **mac tier scope (Jordan ruling 2026-08-26, binding)**: mac jobs prove the
+  BINARY on real hardware — build, smoke (`--version`/help), engine-independent
+  tests. NO docker/compose installs and NO live-engine assertions: macOS
+  runners have no engine and no nested virt, so `doctor_daemon.rs`
+  (engine-present findings semantics) is skipped on that tier only
+  (`-- --skip '^doctor_'`); it stays green in the Linux gate. Simplify, don't
+  accrete — an earlier brew docker + compose attempt was removed.
+
+## Gotchas
 
 
 - **`scratch/**` is shared mutable ground — READ and WRITE sides both count**
