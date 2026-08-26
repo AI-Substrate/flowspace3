@@ -10,3 +10,7 @@
 
 ## When we get to it
 This becomes the daemon plan (with the PG schema workshop deliberately deferred from plan 001). Inputs ready by then: scanner (mollusk), config (egret), migrations (cicada, landed), watcher learnings (sailfish), providers + Azure (kazimir, landed), cross-platform + docker substrate (ox).
+
+## Queued decisions for the daemon plan (from the store landing, sylac 2026-08-26)
+- **Re-queue-while-running**: `enqueue_job` on a RUNNING job pushes `not_before` but cannot un-run it — the change is picked up by the D6 reconciler, not the queue. Decide: is reconciler latency acceptable, or does the daemon need a "re-run after completion" marker?
+- **Retry/backoff policy**: `fail_job` is terminal (last_error on the row; recovery = reconciler). Decide the retry schedule, attempts ceiling, and backoff at the WORKER layer — the store deliberately doesn't invent one. (`retryable` in workshop 004 envelopes feeds this.)

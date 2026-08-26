@@ -28,7 +28,8 @@ Revive a dead seat: `pij revive <id> --print` shows the exact command (Jordan ru
 | pij-surprising-sailfish | daemon shell prototype: watcher+web (w-daemon-shell) | %38 · window `daemon-shell` | 01a03c58-e85e-7000-8a21-4e81b739b51b | ACTIVE. Brief `briefs/w-daemon-shell.md` |
 | pij-devoted-cattle | ignore-aware file discovery (w-discovery) | %39 · window `discovery` | 01a03c5c-d775-7000-8c41-a25729de92af | RELEASED — landed ca27e63+f0912f9 (204x walker) |
 | pij-xenophobic-wren | git/blob layer: identity + snapshot diffing (w-git-blob) | %40 · window `git-blob` | 01a03c5c-d938-7000-bd92-9136895e64c5 | RELEASED — landed c7670cd+b9f5b47 (fs3-git crate, 8-crate amendment) |
-| pij-musical-sylac | schema v1: migrations 0003+ + typed store API (w-schema) | %41 · window `schema` | 01a03c60-310c-7000-b5fb-d6069937b73a | ACTIVE. Brief `briefs/w-schema.md` · authority: workshop 002 |
+| pij-musical-sylac | schema v1: migrations 0003+ + typed store API (w-schema) | %41 · window `schema` | 01a03c60-310c-7000-b5fb-d6069937b73a | RELEASED — landed 2dd5a25+b58173a; first fully-green harness checks |
+| pij-inevitable-hummingbird | local embeddings validate+adapter (w-local-embed) | %42 · window `local-embed` | 01a03c75-6993-7000-a09f-05afc8b1e2c4 | ACTIVE — stage 1 POC. Brief `briefs/w-local-embed.md` |
 
 ## Historical / other
 
