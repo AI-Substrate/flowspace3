@@ -1,0 +1,23 @@
+.harness/government/briefs/w-flowspace-skill.md
+  s_15d888f4b629c1::t_8b5aa9e25e8b99 1-18
+docs/plans/prd/base-prd.dd.json
+  s_15d888f4b629c1::t_9d5830d30f90b8 414-421
+docs/plans/prd/base-prd.dd.md
+  s_15d888f4b629c1::t_9d5830d30f90b8 74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "82728e7f0b53bdf07f9b5eb6cfbee9ca299c682f",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
