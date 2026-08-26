@@ -191,6 +191,7 @@ async fn the_schema_refuses_a_summary_with_too_many_tags() {
         &Summary {
             text: "six tags is one too many".into(),
             tags: (0..6).map(|n| format!("tag{n}")).collect(),
+            ..Summary::default()
         },
     )
     .await

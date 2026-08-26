@@ -665,6 +665,7 @@ async fn a_source_filter_chooses_which_vector_space_is_searched() {
     let summary = Summary {
         text: "Rotates the key ring by one position.".to_string(),
         tags: vec!["keys".to_string(), "rotation".to_string()],
+        ..Summary::default()
     };
     put_smart_content(&pool, &raw_hash, SUMMARIZER, &summary)
         .await

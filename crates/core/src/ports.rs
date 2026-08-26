@@ -17,12 +17,34 @@ use crate::element::Element;
 use crate::error::Result;
 
 /// An LLM summary of one element, plus its concept tags (PRD req 36).
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+///
+/// `text` and `tags` are the typed contract and do not move. Everything a
+/// future prompt learns to extract arrives in [`Summary::extras`] first and is
+/// promoted to a typed field only once it has earned one — so a provider can
+/// start returning a new field today without a core change, a migration, or a
+/// coordinated release.
+//
+// `Eq` is deliberately absent: `serde_json::Value` holds floats, so `extras`
+// cannot be `Eq`. Nothing puts a `Summary` in a hash set, and a summary is
+// content rather than an identity, so the derive was never load-bearing.
+#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Summary {
     /// Natural-language summary; embedded alongside the raw content.
     pub text: String,
     /// 1–5 tags naming the element's most important concepts.
     pub tags: Vec<String>,
+    /// Fields beyond the typed contract, captured rather than discarded.
+    ///
+    /// `#[serde(flatten)]` is what makes this real at runtime: any JSON member
+    /// the provider returns that is not `text` or `tags` lands here instead of
+    /// being silently dropped, so "new fields land in extras first" is a
+    /// property of the wire format and not a convention to remember.
+    #[serde(
+        flatten,
+        default,
+        skip_serializing_if = "std::collections::BTreeMap::is_empty"
+    )]
+    pub extras: std::collections::BTreeMap<String, serde_json::Value>,
 }
 
 impl Summary {
@@ -53,6 +75,22 @@ pub trait Embedder: Send + Sync {
     /// # Errors
     /// [`crate::Error::Provider`] when the backing model or API fails.
     async fn embed(&self, texts: &[String]) -> Result<Vec<Vec<f32>>>;
+
+    /// The enrichment row key for whatever this embedder produces:
+    /// `model@dimensions`.
+    ///
+    /// Enrichment rows are keyed by this string, so a change of model — or of
+    /// width — is never a migration: the new key writes new rows, the
+    /// reconciler re-enriches, and the old rows survive for rollback. The
+    /// width belongs in the key because it changes the *vector space*: the
+    /// same model at 1024 and at 1536 produces vectors that must never be
+    /// compared, and nothing else about an embedder can invalidate a stored
+    /// vector so quietly.
+    ///
+    /// The provider owns this rather than the consumer because only the
+    /// provider knows what actually served the request — on Azure that is a
+    /// deployment name, which no amount of config-reading will reveal.
+    fn key(&self) -> String;
 }
 
 /// Summarises an element into text plus concept tags.
@@ -70,6 +108,17 @@ pub trait Summarizer: Send + Sync {
     /// # Errors
     /// [`crate::Error::Provider`] when the backing model or API fails.
     async fn summarize(&self, element: &Element) -> Result<Summary>;
+
+    /// The enrichment row key for whatever this summarizer produces:
+    /// `model@prompt_version`.
+    ///
+    /// The prompt is part of the key because it is part of the output: a
+    /// reworded instruction or a changed response schema produces different
+    /// summaries from the same model, and those must not be mistaken for the
+    /// old ones. Keying them apart turns every prompt change into new rows the
+    /// reconciler fills, instead of a migration that destroys the evidence of
+    /// what the previous prompt said.
+    fn key(&self) -> String;
 }
 
 #[cfg(test)]
@@ -81,10 +130,61 @@ mod tests {
         let with = |n: usize| Summary {
             text: "s".into(),
             tags: vec!["t".to_string(); n],
+            ..Summary::default()
         };
         assert!(!with(0).has_valid_tags());
         assert!(with(1).has_valid_tags());
         assert!(with(5).has_valid_tags());
         assert!(!with(6).has_valid_tags());
+    }
+
+    /// The point of `extras`: a field the typed contract has never heard of
+    /// survives the boundary instead of being dropped on the floor.
+    #[test]
+    fn an_unknown_field_lands_in_extras_rather_than_being_discarded() {
+        let summary: Summary =
+            serde_json::from_str(r#"{"text":"t","tags":["a"],"complexity":7,"risk":"low"}"#)
+                .expect("unknown members are captured, not rejected");
+
+        assert_eq!(summary.text, "t");
+        assert_eq!(summary.tags, ["a"]);
+        assert_eq!(summary.extras["complexity"], serde_json::json!(7));
+        assert_eq!(summary.extras["risk"], serde_json::json!("low"));
+    }
+
+    /// Extras round-trip at the top level, so a promoted field reads back the
+    /// same whether it was typed when it was written or not.
+    #[test]
+    fn extras_round_trip_flattened() {
+        let mut summary = Summary {
+            text: "t".into(),
+            tags: vec!["a".into()],
+            ..Summary::default()
+        };
+        summary
+            .extras
+            .insert("complexity".into(), serde_json::json!(7));
+
+        let json = serde_json::to_string(&summary).expect("serialisable");
+        assert_eq!(json, r#"{"text":"t","tags":["a"],"complexity":7}"#);
+        assert_eq!(
+            serde_json::from_str::<Summary>(&json).expect("round-trips"),
+            summary
+        );
+    }
+
+    /// An empty map must not add a key, or every stored summary grows a
+    /// meaningless `"extras":{}` the day this landed.
+    #[test]
+    fn empty_extras_serialise_to_nothing() {
+        let summary = Summary {
+            text: "t".into(),
+            tags: vec!["a".into()],
+            ..Summary::default()
+        };
+        assert_eq!(
+            serde_json::to_string(&summary).expect("serialisable"),
+            r#"{"text":"t","tags":["a"]}"#
+        );
     }
 }

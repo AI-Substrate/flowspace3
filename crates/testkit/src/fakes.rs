@@ -125,6 +125,13 @@ impl Embedder for FakeEmbedder {
             .map(|text| hash_vector(text, self.dimensions))
             .collect())
     }
+
+    /// `fake@<width>` — the same `model@dimensions` shape a real embedder
+    /// keys by, so a store keyed on the fake's output looks like a store keyed
+    /// on a real one.
+    fn key(&self) -> String {
+        format!("fake@{}", self.dimensions)
+    }
 }
 
 /// A [`Summarizer`] that produces a stable, readable summary and tags derived
@@ -138,6 +145,11 @@ pub struct FakeSummarizer {
 }
 
 impl FakeSummarizer {
+    /// The fake's answer to a real adapter's `PROMPT_VERSION`. Bump it when
+    /// the fake's text or tags change, for the same reason a real one bumps:
+    /// rows written by the old shape must not be mistaken for the new.
+    pub const PROMPT_VERSION: &'static str = "1";
+
     /// A fake that starts failing after `successes` successful calls.
     pub fn failing_after(successes: usize) -> Self {
         Self {
@@ -183,7 +195,7 @@ impl Summarizer for FakeSummarizer {
                 .take(4),
         );
 
-        Ok(Summary {
+        let mut summary = Summary {
             text: format!(
                 "{} `{}` at {} ({} lines)",
                 element.kind,
@@ -192,7 +204,22 @@ impl Summarizer for FakeSummarizer {
                 element.line_count()
             ),
             tags,
-        })
+            ..Summary::default()
+        };
+        // Deterministic, and derived from the element rather than invented, so
+        // CI exercises the extras shape on every run instead of only on the
+        // day a provider first returns one.
+        summary.extras.insert(
+            "line_count".to_string(),
+            serde_json::json!(element.line_count()),
+        );
+        Ok(summary)
+    }
+
+    /// `fake@<prompt version>` — the same `model@prompt_version` shape a real
+    /// summarizer keys by. The version moves when the fake's text or tags do.
+    fn key(&self) -> String {
+        format!("fake@{}", Self::PROMPT_VERSION)
     }
 }
 

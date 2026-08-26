@@ -70,6 +70,7 @@ pub async fn get_smart_content(
         Ok(Summary {
             text: row.try_get("text")?,
             tags: row.try_get("tags")?,
+            ..Summary::default()
         })
     })
     .transpose()

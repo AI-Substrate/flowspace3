@@ -303,6 +303,10 @@ mod tests {
             }
             Ok(vectors)
         }
+
+        fn key(&self) -> String {
+            "jittery@8".to_string()
+        }
     }
 
     /// Honest vectors, wrong order: the exact defect the slot-by-slot check
@@ -319,6 +323,10 @@ mod tests {
             }
             Ok(vectors)
         }
+
+        fn key(&self) -> String {
+            "swapped-slot@8".to_string()
+        }
     }
 
     /// One vector for every input. Bit-exact and deterministic — which is why
@@ -329,6 +337,10 @@ mod tests {
     impl Embedder for ConstantEmbedder {
         async fn embed(&self, texts: &[String]) -> Result<Vec<Vec<f32>>> {
             Ok(texts.iter().map(|_| vec![0.5_f32; 8]).collect())
+        }
+
+        fn key(&self) -> String {
+            "constant@8".to_string()
         }
     }
 
@@ -356,6 +368,10 @@ mod tests {
                 }
             }
             Ok(vectors)
+        }
+
+        fn key(&self) -> String {
+            "within-response-drift@8".to_string()
         }
     }
 

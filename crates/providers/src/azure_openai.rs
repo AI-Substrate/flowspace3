@@ -256,24 +256,50 @@ impl AzureOpenAiClient {
         route: &str,
         body: &Req,
     ) -> Result<Res> {
+        self.try_post(route, body)
+            .await
+            .map_err(PostFailure::into_error)
+    }
+
+    /// `post`, but keeping a rejection distinguishable from a transport
+    /// failure so a caller can decide whether the *request* was the problem.
+    async fn try_post<Req: Serialize, Res: for<'de> Deserialize<'de>>(
+        &self,
+        route: &str,
+        body: &Req,
+    ) -> std::result::Result<Res, PostFailure> {
         let url = self.url(route);
-        let request = self.authorize(self.http.post(&url).json(body)).await?;
+        let request = self
+            .authorize(self.http.post(&url).json(body))
+            .await
+            .map_err(PostFailure::Fatal)?;
 
         let response = request
             .send()
             .await
-            .map_err(|e| Error::Provider(format!("POST {url}: {e}")))?;
+            .map_err(|e| PostFailure::Fatal(Error::Provider(format!("POST {url}: {e}"))))?;
 
         let status = response.status();
         if !status.is_success() {
             let detail = response.text().await.unwrap_or_default();
-            return Err(self.failure(&url, status, detail.trim()));
+            let detail = detail.trim();
+            return Err(PostFailure::Rejected {
+                status,
+                // Keep the raw body for the structured-output test below, and
+                // the fully explained error for whoever ends up reading it.
+                structured_unsupported: status.is_client_error() && {
+                    let lowered = detail.to_ascii_lowercase();
+                    lowered.contains("response_format") || lowered.contains("json_schema")
+                },
+                error: self.failure(&url, status, detail),
+            });
         }
 
-        response
-            .json::<Res>()
-            .await
-            .map_err(|e| Error::Provider(format!("POST {url}: unreadable response: {e}")))
+        response.json::<Res>().await.map_err(|e| {
+            PostFailure::Fatal(Error::Provider(format!(
+                "POST {url}: unreadable response: {e}"
+            )))
+        })
     }
 
     /// Turn an Azure failure into an error that names the fix.
@@ -314,6 +340,41 @@ impl AzureOpenAiClient {
             _ => "see the response body".to_string(),
         };
         Error::Provider(format!("POST {url}: {status}: {detail} — {hint}"))
+    }
+}
+
+/// Why a POST did not produce a body.
+///
+/// The distinction exists for exactly one caller: the summarizer, which must
+/// tell "this api-version does not understand structured outputs" (retry in
+/// the older shape) from "the deployment does not exist" (do not). Azure says
+/// both with a 400.
+enum PostFailure {
+    Fatal(Error),
+    Rejected {
+        #[allow(dead_code, reason = "kept for the error it explains; read via `error`")]
+        status: reqwest::StatusCode,
+        structured_unsupported: bool,
+        error: Error,
+    },
+}
+
+impl PostFailure {
+    fn into_error(self) -> Error {
+        match self {
+            Self::Fatal(error) | Self::Rejected { error, .. } => error,
+        }
+    }
+
+    /// Whether this rejection means "I do not support that `response_format`".
+    fn rejects_structured_output(&self) -> bool {
+        matches!(
+            self,
+            Self::Rejected {
+                structured_unsupported: true,
+                ..
+            }
+        )
     }
 }
 
@@ -391,6 +452,21 @@ impl Embedder for AzureOpenAiEmbedder {
         }
         Ok(vectors)
     }
+
+    /// `deployment@dimensions`, or the deployment alone at the model's native
+    /// width.
+    ///
+    /// The DEPLOYMENT names this key, not the model: on Azure the deployment
+    /// is what actually served the request, it is the only name the caller
+    /// controls, and two deployments of the same model can differ in version
+    /// and in content filter. The width joins it whenever one was asked for,
+    /// because a narrowed vector lives in a different space from a native one.
+    fn key(&self) -> String {
+        match self.dimensions {
+            Some(dimensions) => format!("{}@{dimensions}", self.client.config.deployment),
+            None => self.client.config.deployment.clone(),
+        }
+    }
 }
 
 /// Place each returned vector at the index the API claims for it.
@@ -436,9 +512,13 @@ fn order_embeddings(data: Vec<EmbeddingDatum>, expected: usize) -> Result<Vec<Ve
 }
 
 /// [`Summarizer`] backed by an Azure OpenAI chat-completions deployment.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct AzureOpenAiSummarizer {
     client: Arc<AzureOpenAiClient>,
+    /// Whether to keep asking for a schema-constrained response. Cleared the
+    /// first time this deployment's `api-version` rejects it — older Azure
+    /// api-versions predate structured outputs entirely.
+    structured: std::sync::atomic::AtomicBool,
 }
 
 impl AzureOpenAiSummarizer {
@@ -446,26 +526,47 @@ impl AzureOpenAiSummarizer {
     pub fn new(config: AzureOpenAiConfig) -> Self {
         Self {
             client: Arc::new(AzureOpenAiClient::new(config)),
+            structured: std::sync::atomic::AtomicBool::new(true),
         }
+    }
+
+    /// One chat round trip in the requested response format.
+    async fn chat(
+        &self,
+        user: &str,
+        response_format: serde_json::Value,
+    ) -> std::result::Result<ChatResponse, PostFailure> {
+        self.client
+            .try_post(
+                "chat/completions",
+                &ChatRequest {
+                    messages: vec![
+                        ChatMessage {
+                            role: "system",
+                            content: OpenAiSummarizer::SYSTEM_PROMPT,
+                        },
+                        ChatMessage {
+                            role: "user",
+                            content: user,
+                        },
+                    ],
+                    response_format,
+                },
+            )
+            .await
     }
 }
 
 #[derive(Serialize)]
 struct ChatRequest<'a> {
     messages: Vec<ChatMessage<'a>>,
-    response_format: ResponseFormat,
+    response_format: serde_json::Value,
 }
 
 #[derive(Serialize)]
 struct ChatMessage<'a> {
     role: &'a str,
     content: &'a str,
-}
-
-#[derive(Serialize)]
-struct ResponseFormat {
-    #[serde(rename = "type")]
-    kind: &'static str,
 }
 
 #[derive(Deserialize)]
@@ -486,40 +587,58 @@ struct ChatResponseMessage {
 #[async_trait]
 impl Summarizer for AzureOpenAiSummarizer {
     async fn summarize(&self, element: &Element) -> Result<Summary> {
-        // Deliberately the OpenAI adapter's prompt, not a second copy of it:
-        // the wire format is identical, PRD req 36's tag band is identical, and
-        // two prompts would drift apart the first time either is tuned.
+        use std::sync::atomic::Ordering;
+
+        // Deliberately the OpenAI adapter's prompt and schema, not a second
+        // copy of them: the wire format is identical, PRD req 36's tag band is
+        // identical, and two copies would drift apart the first time either is
+        // tuned — taking the shared PROMPT_VERSION's honesty with them.
         let user = OpenAiSummarizer::user_prompt(element);
-        let response: ChatResponse = self
-            .client
-            .post(
-                "chat/completions",
-                &ChatRequest {
-                    messages: vec![
-                        ChatMessage {
-                            role: "system",
-                            content: OpenAiSummarizer::SYSTEM_PROMPT,
-                        },
-                        ChatMessage {
-                            role: "user",
-                            content: &user,
-                        },
-                    ],
-                    response_format: ResponseFormat {
-                        kind: "json_object",
-                    },
-                },
-            )
-            .await?;
 
-        let content = response
-            .choices
-            .first()
-            .map(|choice| choice.message.content.as_str())
-            .ok_or_else(|| Error::Provider("chat/completions: no choices returned".into()))?;
+        // Structured outputs arrived in a specific `api-version`; a resource
+        // pinned to an older one answers 400. Downgrade once per process, and
+        // only for that answer.
+        if self.structured.load(Ordering::Relaxed) {
+            match self.chat(&user, OpenAiSummarizer::response_schema()).await {
+                Ok(response) => return summary_from(response, element),
+                Err(failure) if failure.rejects_structured_output() => {
+                    self.structured.store(false, Ordering::Relaxed);
+                }
+                Err(failure) => return Err(failure.into_error()),
+            }
+        }
 
-        parse_summary(content, element.kind.as_str())
+        let response = self
+            .chat(&user, OpenAiSummarizer::json_object_format())
+            .await
+            .map_err(PostFailure::into_error)?;
+        summary_from(response, element)
     }
+
+    /// `deployment@prompt_version` — what served the request, and what it was
+    /// asked. The deployment stands in for the model because on Azure it is
+    /// the only name that is knowable; the version is
+    /// [`OpenAiSummarizer::PROMPT_VERSION`] because the prompt is shared, so a
+    /// prompt change moves both adapters' keys together, which is exactly what
+    /// a shared prompt should do.
+    fn key(&self) -> String {
+        format!(
+            "{}@{}",
+            self.client.config.deployment,
+            OpenAiSummarizer::PROMPT_VERSION
+        )
+    }
+}
+
+/// The first choice, parsed and validated into a [`Summary`].
+fn summary_from(response: ChatResponse, element: &Element) -> Result<Summary> {
+    let content = response
+        .choices
+        .first()
+        .map(|choice| choice.message.content.as_str())
+        .ok_or_else(|| Error::Provider("chat/completions: no choices returned".into()))?;
+
+    parse_summary(content, element.kind.as_str())
 }
 
 /// Turn the model's JSON into a [`Summary`] that satisfies the port contract.

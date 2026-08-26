@@ -437,6 +437,15 @@ impl Embedder for LocalEmbedder {
         .await
         .map_err(|e| Error::Provider(format!("local embeddings: inference task failed: {e}")))?
     }
+
+    /// `model@dimensions`. Added by kazimir with the `key()` port evolution
+    /// (o-prime-approved atomic cutover) so this file kept compiling; the
+    /// width is in the key because it names the vector space, and a model
+    /// swapped for another of a different width must never reuse the old
+    /// model's enrichment rows.
+    fn key(&self) -> String {
+        format!("{}@{}", self.model, self.dimensions)
+    }
 }
 
 #[cfg(test)]

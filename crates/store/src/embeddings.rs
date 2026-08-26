@@ -389,6 +389,7 @@ fn similar_from_row(row: &sqlx::postgres::PgRow) -> Result<SimilarElement, Store
         Some(text) => Some(fs3_core::Summary {
             text,
             tags: row.try_get("smart_tags")?,
+            ..fs3_core::Summary::default()
         }),
         None => None,
     };

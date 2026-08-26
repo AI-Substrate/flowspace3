@@ -14,6 +14,14 @@ Azure serves OpenAI's *response* shapes behind a different address and a differe
 - Errors name **which** of Azure's rejections happened and what to do about it, because the four common ones look alike and have four different remedies (see below).
 - `azure_identity` does the Entra acquisition. Hand-rolling the OAuth flow would have been the reinvention the arch allowlist exists to notice.
 
+### Structured summaries (added 2026-08-26)
+- Chat calls ask for `response_format: json_schema` with `strict: true`, so "the model replied with prose" stops being a failure class rather than being caught after the fact.
+- **Graceful downgrade, not a hard requirement.** An endpoint that rejects the schema (an older `api-version`; any OpenAI-compatible server) gets one retry in `json_object`, and the downgrade is remembered for the life of the process — one wasted round trip per process, not per element. Both paths leave through the same `parse_summary`, which is what makes the fallback safe rather than merely convenient.
+- The 1–5 tag band stays in the **prompt**, because OpenAI's `strict` subset has no `minItems`/`maxItems`. A test asserts the schema still lacks them, so the day that changes, the reminder exists.
+- **The prompt is a versioned artifact.** `OpenAiSummarizer::PROMPT_VERSION` covers the prompt *and* the schema, and the Azure adapter shares the constant because it shares both. Bump it when either changes.
+- **Both ports expose `key()`** — the enrichment row key. Summarizer: `deployment@prompt_version`. Embedder: `deployment@dimensions`, or the deployment alone at native width. The provider owns this because on Azure config cannot tell you what served the request; only the deployment name can. A prompt or model change is therefore never a migration: new key, the reconciler re-enriches, old rows survive for rollback.
+- `Summary` carries `extras` (`serde(flatten)`), so a field a future prompt learns to extract lands there instead of being dropped, and gets promoted to a typed field only once it earns one.
+
 ## Gotchas learned
 - The live resource has **key auth disabled** (403 `AuthenticationTypeDisabled`) — Entra is the only way in. Consequence for this repo: **the api-key leg is proved offline only**; it cannot be exercised against that resource at all.
 - **Auth precedence trap**: an exported stale `AZURE_OPENAI_API_KEY` silently beats `az login`, and the resulting 401 reads like a broken Entra setup. Costly enough to be worth the `env -u` in the verify command below. (It cost one confused run here; the error naming *both* fixes is what made it a one-run diagnosis rather than a hunt.)
