@@ -1,0 +1,25 @@
+docs/plans/prd/base-prd.dd.md
+  s_15d888f4b629c1::t_85e26cd1dea299 72
+docs/plans/prd/base-prd.dd.json
+  s_15d888f4b629c1::t_85e26cd1dea299 383-390
+.harness/government/briefs/w-human-render.md
+  s_15d888f4b629c1::t_b69b02c24316dd 1-19
+.harness/government/worker-roster.md
+  s_15d888f4b629c1::t_0343bc5407f566 33-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "64bee07b95a528ad066591bd9fac9dd7d16ef504",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
