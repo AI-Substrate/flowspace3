@@ -7,6 +7,8 @@ pub mod config;
 pub mod http;
 pub mod wiring;
 
-pub use config::{ConfigError, config_dir, load_config};
+pub use config::{
+    ConfigError, SecretsLoaded, config_dir, load_config, load_effective_from, load_secrets,
+};
 pub use http::{router, serve};
 pub use wiring::AppState;

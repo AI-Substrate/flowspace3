@@ -1,13 +1,20 @@
 //! `fs3-daemon` — the fs3 background service.
 //!
-//! Reads configuration, wires the composition root, migrates the store, serves
-//! HTTP on localhost.
+//! Loads secrets, reads configuration, wires the composition root, migrates the
+//! store, serves HTTP on localhost.
 
 use anyhow::{Context, Result, ensure};
+use fs3_core::{Config, redact_url_password};
 use fs3_daemon::{AppState, config, http, wiring};
 
-#[tokio::main]
-async fn main() -> Result<()> {
+/// Boot is deliberately *not* `#[tokio::main]`.
+///
+/// The secrets chain puts `secrets.env` into the process environment, and
+/// mutating the environment is only sound while the process is
+/// single-threaded. So everything up to and including the environment mutation
+/// happens here, before a runtime — and therefore before any worker thread —
+/// exists.
+fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -16,18 +23,42 @@ async fn main() -> Result<()> {
         .init();
 
     let directory = config::config_dir().context("locating the fs3 config directory")?;
-    let configuration = config::load_config_from(&directory)
+
+    let secrets = config::load_secrets_from(&directory)
+        .with_context(|| format!("loading secrets from {}", directory.display()))?;
+    if secrets.present {
+        // Names only. A value from this file never reaches a log line.
+        tracing::info!(
+            path = %secrets.path.display(),
+            applied = ?secrets.applied,
+            already_set = ?secrets.already_set,
+            "loaded secrets into the environment"
+        );
+    }
+
+    let configuration = config::load_effective_from(&directory)
         .with_context(|| format!("loading configuration from {}", directory.display()))?;
 
-    let address = bind_address(&configuration.daemon.url)?;
+    let address = bind_address(&configuration.config.daemon.url)?;
     tracing::info!(
         config = %directory.display(),
-        embedder = wiring::describe(&configuration.embedder),
-        summarizer = wiring::describe(&configuration.summarizer),
+        daemon = %configuration.layer("daemon"),
+        database = %configuration.layer("database"),
+        embedder = wiring::describe(&configuration.config.embedder),
+        summarizer = wiring::describe(&configuration.config.summarizer),
         "fs3 daemon starting"
     );
 
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .context("starting the Tokio runtime")?
+        .block_on(serve(configuration.config, address))
+}
+
+async fn serve(configuration: Config, address: String) -> Result<()> {
     let state = AppState::from_config(configuration).context("wiring the composition root")?;
+    let database = redact_url_password(&state.config.database.url);
 
     // The daemon is the single writer, so startup is the only migration point.
     // It is also the only moment where refusing to run is cheaper than running:
@@ -35,12 +66,11 @@ async fn main() -> Result<()> {
     // this fails loud rather than starting into a guaranteed error per request.
     fs3_store::migrate(&state.db).await.with_context(|| {
         format!(
-            "applying store migrations to {} — if the store is not running: {}",
-            state.config.database.url,
+            "applying store migrations to {database} — if the store is not running: {}",
             fs3_store::COMPOSE_UP
         )
     })?;
-    tracing::info!(database = %state.config.database.url, "store schema is current");
+    tracing::info!(%database, "store schema is current");
 
     http::serve(state, &address).await
 }
