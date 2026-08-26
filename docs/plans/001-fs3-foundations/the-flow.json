@@ -3,9 +3,9 @@
   "kind": "flight-plan",
   "slug": "fs3-foundations",
   "nav": {
-    "now": "plan",
+    "now": "phase-1",
     "next": null,
-    "intent": "get a base flow in, this is plan 001, fs3 foundations — with the fs3 brief/overview",
+    "intent": "PM s001 driving phase-1 implementation via /pij pair fleet",
     "bag": {
       "mode": "unknown",
       "status": "active"
@@ -181,6 +181,27 @@
         "from": "in_progress",
         "to": "done"
       }
+    },
+    {
+      "id": "CUR-002",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-26T02:07:21.186Z",
+      "details": {
+        "from": "plan",
+        "to": "phase-1"
+      }
+    },
+    {
+      "id": "STA-005",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-26T02:07:36.018Z",
+      "details": {
+        "node": "phase-1",
+        "from": "known",
+        "to": "in_progress"
+      }
     }
   ],
   "nodes": [
@@ -235,7 +256,7 @@
       "type": "phase",
       "phase": 1,
       "label": "P1: Implementation",
-      "status": "known",
+      "status": "in_progress",
       "command": "/builder 6 implement",
       "next": [
         "review-1"
@@ -252,7 +273,8 @@
         "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
         "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
-      ]
+      ],
+      "modified_at": "2026-08-26T02:07:36.018Z"
     },
     {
       "id": "review-1",
