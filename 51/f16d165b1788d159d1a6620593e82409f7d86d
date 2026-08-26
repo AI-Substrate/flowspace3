@@ -1,0 +1,25 @@
+docs/plans/prd/providers-roster.md
+  s_15d888f4b629c1::t_6d2e3f1974c89e 1-7,9-17
+  s_15d888f4b629c1::t_6bcd5842a9a74c 8
+crates/providers/tests/azure_openai_stub.rs
+  s_15d888f4b629c1::t_fa8ba6677df49a 145-146,170-427,455,461-462,471,474,514,517,524-525,532
+  s_15d888f4b629c1::t_af17b4b2446bd4 1-144,147-169,428-454,456-460,463-470,472-473,475-513,515-516,518-523,526-531,533-554
+crates/providers/tests/azure_openai_contract.rs
+  s_15d888f4b629c1::t_ffab708afbcf4c 1-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "51f16d165b1788d159d1a6620593e82409f7d86d",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
