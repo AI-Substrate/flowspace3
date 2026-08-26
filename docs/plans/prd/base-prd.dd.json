@@ -453,7 +453,7 @@
           "title": "agents-start-here verb",
           "requirement": "flowspace3 agents-start-here prints the bundled agents guide (setup from scratch, doctor, provider/config creation, daemon, add, search) — the same harness/ddocs convention: an agent runs one obvious verb and is oriented; effectively a front door onto docs get agents with next_action steering. (Jordan, 2026-08-26.)",
           "state": "unchecked",
-          "note": "dingo unit 3 (cli fence, docs bundle exists); lands with or right after the doctor-row phase; not release-gating"
+          "note": "RELEASE-GATING per Jordan: must be in v0.2.0 — dingo lands it with the doctor-row phase, before the merge"
         }
       ]
     }
