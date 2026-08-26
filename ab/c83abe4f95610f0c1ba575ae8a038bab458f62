@@ -1,0 +1,23 @@
+.harness/extensions/docker/extension.ts
+  s_15d888f4b629c1::t_441e9d42760bd5 1-123
+.harness/extensions/docker/instructions.md
+  s_15d888f4b629c1::t_4f318f5611cbec 1-21
+docs/how/docker.md
+  s_15d888f4b629c1::t_64b6f53c13e3ba 1-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "abc83abe4f95610f0c1ba575ae8a038bab458f62",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
