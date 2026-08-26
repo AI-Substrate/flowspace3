@@ -34,29 +34,30 @@ env:
 
 jobs:
   container-builds:
-    runs-on: ubuntu-latest
+    # Each target builds on ITS OWN architecture's native runner (Jordan ruling
+    # 2026-08-26: no QEMU — emulation turned a ~5min build into 20-40min).
+    # GitHub's arm runners are free for public repos.
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        target:
-          - aarch64-unknown-linux-gnu
-          - x86_64-unknown-linux-gnu
+        include:
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      # The arm64 container instance runs under emulation on the x86_64
-      # runner; release-only, so the slower build is acceptable.
-      - name: Set up QEMU
-        if: startsWith(matrix.target, 'aarch64')
-        uses: docker/setup-qemu-action@v3
 
       - name: Build (${{ matrix.target }})
         env:
           FS3_TARGET: ${{ matrix.target }}
         run: ./docker/scripts/build.sh
 
+      # Native runners on both arches — every target smoke-runs now (the old
+      # x86_64-only guard existed because arm binaries could not execute under
+      # the emulated build's host).
       - name: Smoke-run (${{ matrix.target }})
-        if: startsWith(matrix.target, 'x86_64')
         run: |
           docker run --rm -v fs3-bin:/bins:ro debian:trixie-slim \
             /bins/${{ matrix.target }}/release/flowspace3 --version
