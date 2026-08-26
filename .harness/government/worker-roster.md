@@ -24,7 +24,7 @@ Revive a dead seat: `pij revive <id> --print` shows the exact command (Jordan ru
 | pij-sure-kazimir | Azure OpenAI adapter (w-azure) | %33 | 01a03c3b-469a-7000-9970-95d654d6dea6 | RELEASED — landed 51f16d1, keyed run green. Brief `briefs/w-azure-openai-kazimir.md`. Known phantom alias: pij-shallow-dog |
 | pij-recent-cicada | sqlx migrations + db how-to (w-migrations) | %34 | 01a03c46-3fea-7000-815f-eada7d9e02da | RELEASED — landed 0a75c44. Brief `briefs/w-migrations-cicada.md`. Phantom aliases: pij-likely-mosquito, pij-aggregate-mosquito |
 | pij-plain-mollusk | scanner v1: element tree + pure scan (w-scanner-v1) | %35 · window `scanner` | 01a03c4c-cd34-7000-8879-385defbdbff2 | RELEASED — landed 0962ba8+17878b6+f2f3cc4 (scanner + docs); add-language skill authored from its recipe |
-| pij-technological-egret | global config system (w-config) | %36 · window `config` | 01a03c50-eecb-7000-9378-1992ecdb548c | ACTIVE. Brief `briefs/w-config-egret.md` |
+| pij-technological-egret | global config system (w-config) | %36 · window `config` | 01a03c50-eecb-7000-9378-1992ecdb548c | RELEASED — landed 0d0fb1c+3e33161+5e73135+a99ceed (registry, config show, boot contract) |
 | pij-surprising-sailfish | daemon shell prototype: watcher+web (w-daemon-shell) | %38 · window `daemon-shell` | 01a03c58-e85e-7000-8a21-4e81b739b51b | ACTIVE. Brief `briefs/w-daemon-shell.md` |
 | pij-devoted-cattle | ignore-aware file discovery (w-discovery) | %39 · window `discovery` | 01a03c5c-d775-7000-8c41-a25729de92af | RELEASED — landed ca27e63+f0912f9 (204x walker) |
 | pij-xenophobic-wren | git/blob layer: identity + snapshot diffing (w-git-blob) | %40 · window `git-blob` | 01a03c5c-d938-7000-bd92-9136895e64c5 | RELEASED — landed c7670cd+b9f5b47 (fs3-git crate, 8-crate amendment) |
