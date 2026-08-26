@@ -11,16 +11,18 @@
 
 mod support;
 
-use std::collections::BTreeMap;
-use std::time::Duration;
-
-use fs3_core::{Element, ElementKind, Embedder, Span, Summarizer, Summary, content_hash};
+use fs3_core::{
+    Element, ElementKind, Embedder, RepoIdentity, Span, Summarizer, Summary, content_hash,
+};
 use fs3_store::{
-    EMBEDDING_DIMENSIONS, NewEmbedding, PgPool, SourceKind, StoreError, claim_job, complete_job,
-    enqueue_job, fail_job, get_smart_content, missing_enrichment, put_embeddings,
-    put_smart_content, query_embeddings, upsert_element_tree,
+    EMBEDDING_DIMENSIONS, NewEmbedding, PgPool, SearchFilters, SourceKind, StoreError, claim_job,
+    complete_job, enqueue_job, fail_job, get_smart_content, missing_enrichment, put_embeddings,
+    put_smart_content, query_embeddings, register_worktree, search_elements, sync_worktree_files,
+    upsert_element_tree,
 };
 use fs3_testkit::fakes::{FakeEmbedder, FakeSummarizer};
+use std::collections::BTreeMap;
+use std::time::Duration;
 use support::{FreshDatabase, PARSER_VERSION, unique_blob};
 
 const SUMMARIZER: &str = "fake-summarizer@v1";
@@ -656,6 +658,100 @@ async fn similarity_ranks_nearest_first_and_resolves_back_to_elements() {
          dropped, and the one where nobody would notice"
     );
     assert_eq!(hits[0].parser_version, PARSER_VERSION);
+
+    database.destroy(pool).await;
+}
+
+/// The FILTERED search surface carries extras too — the daemon's `/search` is
+/// this function, not `query_embeddings`.
+///
+/// `search_elements` builds its `Summary` from a different SQL statement with a
+/// different lateral join, so "extras are persisted" being true of
+/// `get_smart_content` says nothing about it. That gap was the live one: the
+/// integrator's surface would have been the one still lying, and nothing in
+/// plan 003 reads extras yet, so nobody would have noticed until something did.
+#[tokio::test]
+async fn the_filtered_search_surface_carries_extras_and_a_live_path() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let blob = unique_blob();
+    let file = file_with(
+        "src/lib.rs",
+        &["pub fn parse(input: &str) -> Document { todo!() }"],
+    );
+    upsert_element_tree(&pool, &blob, PARSER_VERSION, &file, declarations_only)
+        .await
+        .expect("insert elements");
+
+    // The ref layer, so the hit can resolve to somewhere it actually lives.
+    let identity = RepoIdentity::from_remote_parts(Some("github.com"), "AI-Substrate/flowspace3")
+        .expect("a host and a path make an identity");
+    let worktree = register_worktree(&pool, &identity, "/tmp/flowspace3", Some("main"))
+        .await
+        .expect("register");
+    sync_worktree_files(&pool, worktree, &[("src/lib.rs".to_string(), blob.clone())])
+        .await
+        .expect("sync");
+
+    let element = &file.children[0];
+    let summary = FakeSummarizer::default()
+        .summarize(element)
+        .await
+        .expect("the fake does not fail");
+    assert!(
+        !summary.extras.is_empty(),
+        "this test is only worth running while the fake returns a field outside \
+         the typed contract"
+    );
+    put_smart_content(&pool, element.raw_hash(), SUMMARIZER, &summary)
+        .await
+        .expect("write the summary");
+
+    let embedder = FakeEmbedder {
+        dimensions: EMBEDDING_DIMENSIONS,
+        ..FakeEmbedder::default()
+    };
+    let vector = embedder
+        .embed(std::slice::from_ref(&summary.text))
+        .await
+        .expect("the fake does not fail")
+        .remove(0);
+    put_embeddings(
+        &pool,
+        EMBEDDER,
+        &[NewEmbedding {
+            source_hash: &content_hash(summary.text.as_bytes()),
+            source_kind: SourceKind::Smart,
+            vector: &vector,
+        }],
+    )
+    .await
+    .expect("write the summary vector");
+
+    let hits = search_elements(
+        &pool,
+        EMBEDDER,
+        &vector,
+        &SearchFilters {
+            repo: Some(identity.key().to_string()),
+            path: Some("src/%".to_string()),
+            limit: 1,
+            ..SearchFilters::default()
+        },
+    )
+    .await
+    .expect("search");
+
+    let hit = hits.first().expect("the summary vector is an exact match");
+    assert_eq!(
+        hit.similar.smart,
+        Some(summary),
+        "a filtered search hit must carry the WHOLE summary — this is the path \
+         the daemon serves, and it decodes its own row"
+    );
+    assert_eq!(hit.identity.as_deref(), Some(identity.key()));
+    assert_eq!(hit.path.as_deref(), Some("src/lib.rs"));
 
     database.destroy(pool).await;
 }
