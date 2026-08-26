@@ -1,0 +1,14 @@
+docs/services/database-migrations.md
+  h_9e71e8b09f7cf2 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "824bc61e91d8e352e41af9375045634b95cc5dd2",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
