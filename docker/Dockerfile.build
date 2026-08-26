@@ -1,0 +1,33 @@
+# Build container for fs3. Toolchain pinned by exact tag so builds are
+# reproducible; the same image serves the CI cross-platform matrix later.
+# Runtime base for executing produced gnu binaries matches this Debian
+# release (trixie, GCC 14): ort-sys's prebuilt onnxruntime objects require
+# GCC-13+ libstdc++ symbols (_M_replace_cold), absent in bookworm.
+#
+# Cross-platform matrix (see docs/how/docker.md):
+#   - aarch64-unknown-linux-{gnu,musl}  when run on linux/arm64 (native gnu;
+#     musl via musl-tools' host-arch musl-gcc)
+#   - x86_64-unknown-linux-{gnu,musl}   when run on linux/amd64 (--platform
+#     linux/amd64; OrbStack runs it via Rosetta — same Dockerfile, no cross
+#     linker needed)
+#   - x86_64-pc-windows-gnu             cross from either platform via
+#     mingw-w64 (pure-FOSS toolchain, no Microsoft SDK EULA surface)
+# Darwin targets are built NATIVELY on the mac host (Apple SDK licensing
+# forbids Darwin builds inside Linux containers) — never here.
+#
+# Rust std for every target is pre-installed so builds never redownload
+# toolchain bits at dev-loop time.
+FROM rust:1.95.0-slim-trixie
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends musl-tools mingw-w64 file g++ cmake make perl git docker-cli socat \
+ && rm -rf /var/lib/apt/lists/* \
+ && rustup target add \
+      aarch64-unknown-linux-musl \
+      x86_64-unknown-linux-gnu \
+      x86_64-unknown-linux-musl \
+      x86_64-pc-windows-gnu
+
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-musl-gcc \
+    CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=x86_64-linux-musl-gcc \
+    CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc
