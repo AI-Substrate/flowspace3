@@ -1,0 +1,21 @@
+docs/services/azure-openai.md
+  s_15d888f4b629c1::t_56005525077662 1-28
+docs/services/README.md
+  s_15d888f4b629c1::t_f9446fc72f062c 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2b11b0706a772fd201a4b89d6f0369f2f051374b",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
