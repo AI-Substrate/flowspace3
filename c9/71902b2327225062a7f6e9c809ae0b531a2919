@@ -1,0 +1,26 @@
+crates/providers/tests/azure_openai_stub.rs
+  s_15d888f4b629c1::t_ce29d3a0c5dfad 18,26,29
+  s_15d888f4b629c1::t_201d7e4e021a3c 30
+crates/testkit/src/contract.rs
+  s_15d888f4b629c1::t_5370d28c694ae1 306-309,326-329,341-344,371-374
+crates/providers/src/local.rs
+  s_15d888f4b629c1::t_a6409539952a8b 440-448
+crates/testkit/src/fakes.rs
+  s_15d888f4b629c1::t_2ca767cf174324 128-134,148-152,198,207-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c971902b2327225062a7f6e9c809ae0b531a2919",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
