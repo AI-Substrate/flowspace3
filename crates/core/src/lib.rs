@@ -9,13 +9,16 @@
 //! implementation exists or is firmly planned. fs3 v1 has exactly two ports:
 //! [`Embedder`] and [`Summarizer`]. A third is stop-and-ask.
 
+pub mod catalog;
 pub mod classify;
 pub mod config;
 pub mod element;
+pub mod envelope;
 pub mod error;
 pub mod git;
 pub mod ports;
 
+pub use catalog::{Area, Code};
 pub use classify::{category_hint, classify, is_declaration_shaped};
 pub use config::{
     CONFIG_DIR_ENV, CONFIG_FILE_NAME, Config, DEFAULT_CONFIG_SUBDIR, DEFAULT_PROVIDER,
@@ -28,6 +31,7 @@ pub use element::{
     ADDRESS_SEGMENT, BlobRef, Element, ElementKind, ElementTree, PreOrder, Span, content_hash,
     needs_summary,
 };
+pub use envelope::{ENVELOPE_VERSION, Envelope, Failure};
 pub use error::{Error, Result};
 pub use git::{BlobChange, ChangedSet, FileBlob, IdentitySource, RepoIdentity, TreeSnapshot, diff};
 pub use ports::{Embedder, Summarizer, Summary};

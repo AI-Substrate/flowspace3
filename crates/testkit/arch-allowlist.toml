@@ -44,9 +44,16 @@ banned_everywhere = [
 # ---------------------------------------------------------------------------
 # Functional core (rule 2). The forbidden set here is the architecture's spine:
 # no tokio, no sqlx, no HTTP client, no web framework, no parser.
+#
+# `serde_json` is a pure value codec, not IO, and it arrived with the
+# workshop-004 envelope: `data`, `meta` and `error.details` are open by
+# contract — a verb's payload is whatever that verb returns — so the envelope
+# needs a JSON value type. Stringly-typed details would have changed the wire
+# shape the workshop fixed. This edge is a codec; it is not permission for core
+# to speak HTTP.
 [crates.fs3-core]
 internal = []
-external = ["async-trait", "serde", "sha2", "thiserror", "toml"]
+external = ["async-trait", "serde", "serde_json", "sha2", "thiserror", "toml"]
 
 # `ignore` is ripgrep's walker, and it is the ONE piece of IO this crate does
 # (`discovery::discover`). It is here rather than in core because core performs
@@ -73,17 +80,24 @@ internal = ["fs3-core", "fs3-testkit@dev"]
 # `azure_core` (the `TokenCredential` trait + a redacting `Secret`) and
 # `azure_identity` (the Entra credential chain that reads an `az login`) are the
 # Azure OpenAI adapter's real needs: hand-rolling OAuth here would be the
-# reinvention this list exists to notice. `axum@dev` serves the offline stub
-# HTTP server the Azure tests answer from — a fake, and dev-only by suffix.
+# reinvention this list exists to notice. `fastembed` is the local ONNX
+# embedder — it owns the ORT session, tokenizer, model-specific pooling and
+# normalisation, all four of which fs2 hand-rolled. `tokio` is SHIPPED here,
+# and only here among the leaf crates: the local session is CPU-bound and
+# blocking, so `embed` hands it to `spawn_blocking` rather than stalling an
+# async worker thread. Core stays tokio-free, which is the line that matters.
+# `axum@dev` serves the offline stub HTTP server the Azure tests answer from —
+# a fake, and dev-only by suffix.
 external = [
   "async-trait",
   "axum@dev",
   "azure_core",
   "azure_identity",
+  "fastembed",
   "reqwest",
   "serde",
   "serde_json",
-  "tokio@dev",
+  "tokio",
 ]
 
 [crates.fs3-store]
