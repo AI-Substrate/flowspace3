@@ -419,6 +419,14 @@
           "requirement": "A skill in .agents/skills teaches any agent to USE flowspace: detect whether it is installed, install it briefly if not (convenience script / README), read the bundled docs (flowspace3 docs get), search with it (semantic modes, filters, el: addresses), and why semantic search beats grep for meaning-shaped questions. (Jordan, 2026-08-26.)",
           "state": "unchecked",
           "note": "coder being dispatched; more tasks to follow on the same seat per Jordan"
+        },
+        {
+          "id": "req-0053",
+          "num": 53,
+          "title": "Skill distribution: bundled, doctor-aware, never auto-installed",
+          "requirement": "The agent skill ships INSIDE the flowspace3 binary; an explicit command (spelling ~ flowspace3 doctor install-skill) installs/updates it into ~/.agents/skills and ~/.claude/skills. Doctor gains an INFORMATIONAL row (not warn, not degraded): missing -> did-you-know + the install command; hash-stale vs bundled -> out-of-date + the same command. Never install silently or by force. (Jordan, 2026-08-26.)",
+          "state": "unchecked",
+          "note": "dingo unit 2, after skill content lands; coordinate doctor-row shape with sawfish and land AFTER sawfish doctor unit to avoid doctor.rs collision"
         }
       ]
     }

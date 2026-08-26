@@ -26,3 +26,6 @@ Doctor ships with the daemon/integration plan (it needs the daemon to be worth t
 
 ## Provider-config check (Jordan, 2026-08-26 — with sawfish's docs-subcommand unit)
 A fresh install has NO provider configs. Doctor detects "no embedder / no summarizer configured (and no actives)" and WARNS (degraded-style, not error) with fix = `flowspace3 docs get providers`. That topic must make setup self-serve from scratch: Azure registration (endpoint/deployment/api_version/dimensions), BOTH auth modes (Entra via az login AND api-key), embeddings choices (azure_openai / local ONNX / openai-compat LAN), actives global + per-repo. The `docs get agents` guide points here as the explicit first-run step. Intent: an agent runs the CLI and knows exactly how to set it up from scratch.
+
+## Skill-distribution check (Jordan, 2026-08-26 — req-0053, dingo unit 2)
+The agent skill is bundled in the binary with a content hash. Doctor gains an INFORMATIONAL row — explicitly NOT a warn and NOT part of the degraded verdict: skill missing from ~/.agents/skills / ~/.claude/skills -> "did you know you can install the agent skill? run: flowspace3 doctor install-skill"; installed-but-hash-stale -> "your skill is out of date; run the same command". The install command is the ONLY thing that writes (both dirs supported); doctor never installs silently or by force.
