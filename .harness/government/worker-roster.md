@@ -11,6 +11,13 @@
 | pij-bitter-swan | PA sensor/relay | copilot gemini-3.7-flash low | %25 · fs3-pa | (pre-compact canary record) | active; watchdog PAUSED (Jordan) — sweeps only on explicit "SWEEP" |
 | pij-bitter-gibbon | PM s001 fs3-foundations | omp "Ox Alpha" high | %23 · s001-fs3 | 01a03bb8… (canary `canaries/s001-bitter-gibbon.md`) | DEAD (pid gone 2026-08-26) — s001 phase exit ACCEPTED at b7e4230; s001 observations drained at plan close |
 
+## Active workers (PR era)
+
+| Seat | Task | Pane | Harness/model | Status |
+|---|---|---|---|---|
+| pij-strange-edeard | w-auto-update (req-0054/0058/0059): daemon self-update, user messages queue, config reference | %60 · window `auto-update` | omp / github-copilot claude-opus-5 high (spawnId s1787782128553-97893) | COMPLETE 2026-08-27 — PR #13 merged (9905ffe): auto-update engine, user messages queue, SHA256SUMS, doctor upgrade, config reference; 23 tests; caught SHA256SUMS-absence retry-forever bug via live smoke; standing by for review fixes / next packet |
+| pij-squealing-xoxarle | telemetry survey + F1-F6 field report for plan 090 | (Jordan-run claude session) | claude | ACTIVE — ack'd handover packet `handovers/2026-08-27-telemetry-retro-xoxarle.md`; Jordan directing narrative-script work |
+
 ## Closed workers — who did what (2026-08-27)
 
 All revivable. "CLOSED" = pane killed, descriptor dissolved, work fully landed on main.
