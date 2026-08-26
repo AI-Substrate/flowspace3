@@ -111,14 +111,15 @@ jobs:
           "$BIN" --version
           "$BIN" daemon --help >/dev/null
           "$BIN" doctor --help   >/dev/null
-      # Ruling 2026-08-26 (mac tier scope, Jordan binding): the mac tier proves
-      # the BINARY on real hardware — build, smoke, engine-independent tests.
-      # doctor_daemon.rs asserts engine-present semantics (findings need a
-      # docker binary plus `compose up`), unproducible on macOS runners, so it
-      # is skipped on this tier only; stays green in the Linux CI gate.
-      # NOTE: --skip is a SUBSTRING match, not regex — no caret.
+      # Ruling 2026-08-26 (mac tier scope, Jordan binding, final form): the
+      # mac tier proves the BINARY on real hardware — build, smoke, and
+      # LIBRARY UNIT TESTS ONLY. `--lib` runs no integration test binaries at
+      # all, so everything that needs an engine or live Postgres (doctor_daemon,
+      # daemon multi-claim suites, store) is excluded BY CONSTRUCTION — no skip
+      # lists to maintain, future integration tests auto-excluded. Integration
+      # coverage stays in the Linux CI gate.
       - name: Fast test tier (${{ matrix.target }})
-        run: cargo test --workspace --exclude fs3-store -- --skip doctor_
+        run: cargo test --workspace --lib --exclude fs3-store
 
       - uses: actions/upload-artifact@v4
         with:
