@@ -36,7 +36,7 @@ pub use admin::{
 pub use elements::{get_elements, upsert_element_tree};
 pub use embeddings::{
     EMBEDDING_DIMENSIONS, NewEmbedding, SearchFilters, SearchHit, SimilarElement, SourceKind,
-    put_embeddings, query_embeddings, search_elements,
+    existing_embedding_hashes, put_embeddings, query_embeddings, search_elements,
 };
 pub use jobs::{
     Job, QueueDepth, claim_job, complete_job, enqueue_job, fail_job, jobs_remaining, last_failure,

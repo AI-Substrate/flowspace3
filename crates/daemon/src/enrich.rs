@@ -282,7 +282,34 @@ pub async fn embed(state: &AppState, value: serde_json::Value) -> Result<(), Fai
     }
 
     let model_key = state.embedder_key(&job.identity);
-    let texts: Vec<String> = job.items.iter().map(|(_, text)| text.clone()).collect();
+
+    // The dirty-is-a-missing-row doctrine, applied to COST rather than
+    // correctness. Content-addressed work is re-emitted on purpose — a crash
+    // between parse and enrichment must not strand elements with no job — but
+    // re-emission was re-PAYING: measured at 2.9x on a live run (10,559
+    // executions over 3,646 distinct jobs), because this handler called the
+    // provider for its whole batch unconditionally.
+    //
+    // Keeping the re-emission and making re-execution free is the whole fix.
+    let hashes: Vec<&str> = job.items.iter().map(|(hash, _)| hash.as_str()).collect();
+    let stored = fs3_store::existing_embedding_hashes(&state.db, &model_key, source_kind, &hashes)
+        .await
+        .map_err(fail)?;
+
+    let items: Vec<&(String, String)> = job
+        .items
+        .iter()
+        .filter(|(hash, _)| !stored.contains(hash))
+        .collect();
+
+    // Nothing missing: the job succeeded, it simply cost nothing. Returning
+    // before the provider call is the saving — an empty batch that still made
+    // the round trip would have fixed the accounting and not the bill.
+    if items.is_empty() {
+        return Ok(());
+    }
+
+    let texts: Vec<String> = items.iter().map(|(_, text)| text.clone()).collect();
 
     let vectors = state
         .embedder_for(&job.identity)
@@ -294,20 +321,19 @@ pub async fn embed(state: &AppState, value: serde_json::Value) -> Result<(), Fai
     // texts has silently misaligned the batch, and storing it would attach every
     // vector to the wrong hash — a corruption that looks exactly like a working
     // index until somebody searches.
-    if vectors.len() != job.items.len() {
+    if vectors.len() != items.len() {
         return Err(Failure::new(
             &catalog::PROVIDER_FAILED,
             format!(
                 "embedder returned {} vectors for {} texts; the batch cannot be aligned",
                 vectors.len(),
-                job.items.len()
+                items.len()
             ),
         )
         .retryable(false));
     }
 
-    let rows: Vec<NewEmbedding<'_>> = job
-        .items
+    let rows: Vec<NewEmbedding<'_>> = items
         .iter()
         .zip(&vectors)
         .map(|((hash, _), vector)| NewEmbedding {

@@ -14,6 +14,7 @@
 use fs3_core::Element;
 use pgvector::Vector;
 use sqlx::Row;
+use std::collections::HashSet;
 
 use crate::elements::kind_from_str;
 use crate::{PgPool, StoreError};
@@ -63,6 +64,53 @@ pub struct NewEmbedding<'a> {
     pub source_kind: SourceKind,
     /// The vector itself, [`EMBEDDING_DIMENSIONS`] wide.
     pub vector: &'a [f32],
+}
+
+/// Which of these hashes already have a vector, for this model and this kind.
+///
+/// The cost check before an embed call: a re-emitted job whose vectors are all
+/// stored should cost nothing, not a full re-embed. Content-addressed work is
+/// re-emitted deliberately (a crash between parse and enrichment must not
+/// strand elements), and this is what makes RE-EXECUTION free rather than just
+/// re-execution CORRECT.
+///
+/// # Why all three key columns
+///
+/// The primary key is `(source_hash, source_kind, model_key)`. Filtering on
+/// hash and model alone would treat a stored `raw` vector as covering the
+/// `smart` vector for the same hash — the two are different text and different
+/// meaning. That would silently under-embed and leave a permanently incomplete
+/// index that looks exactly like a working one, which is the same failure
+/// class as a misaligned batch and just as undetectable after the fact.
+///
+/// # Errors
+/// [`StoreError::Query`] when the lookup fails.
+pub async fn existing_embedding_hashes(
+    pool: &PgPool,
+    model_key: &str,
+    source_kind: SourceKind,
+    hashes: &[&str],
+) -> Result<HashSet<String>, StoreError> {
+    if hashes.is_empty() {
+        return Ok(HashSet::new());
+    }
+
+    // ANY($3) over the primary key: one round trip whatever the batch size,
+    // and an index lookup rather than a scan of the settled history.
+    let owned: Vec<String> = hashes.iter().map(|hash| (*hash).to_string()).collect();
+    let rows = sqlx::query(
+        "SELECT source_hash FROM embeddings_1024
+          WHERE model_key = $1 AND source_kind = $2 AND source_hash = ANY($3)",
+    )
+    .bind(model_key)
+    .bind(source_kind.as_str())
+    .bind(&owned)
+    .fetch_all(pool)
+    .await?;
+
+    rows.iter()
+        .map(|row| Ok(row.try_get("source_hash")?))
+        .collect()
 }
 
 /// Store a batch of vectors under one embedding model, atomically.
