@@ -1,0 +1,59 @@
+crates/testkit/src/contract.rs
+  s_15d888f4b629c1::t_d580be877d3a7c 253-260
+Cargo.toml
+  s_15d888f4b629c1::t_65ff92c4b8d374 3,15,29-42,46-48,58,66
+crates/store/tests/pg_round_trip.rs
+  s_15d888f4b629c1::t_485d51cf6911ac 15,61-77,80-88,92-96,111-113,121-126,129-131,141-180,185,187,190,213
+  s_15d888f4b629c1::t_465c8487defbc8 181-184
+  s_15d888f4b629c1::t_a3a7a96b961251 186
+  s_15d888f4b629c1::t_707a5b812fa695 188-189
+  s_15d888f4b629c1::t_35a4662355c200 214
+Cargo.lock
+  s_15d888f4b629c1::t_9da6cdc959cab3 294-303,503-521,726,756,760,946-958,1233-1248,2919-2928
+crates/core/Cargo.toml
+  s_15d888f4b629c1::t_b6556ea7af87dd 14
+crates/core/src/classify.rs
+  s_15d888f4b629c1::t_43520c9450583d 16-20,25,34-40,51-52,67,69,91,93-94,113,122-123,142,145,147-161,170-184,193-194,196,199,201,203,227-229,233-237,240,245-246,254,258
+crates/parsers/Cargo.toml
+  s_15d888f4b629c1::t_a51ef9e4f2e425 14-16,20
+crates/parsers/fixtures/sample.md
+  s_15d888f4b629c1::t_fd2d5134a80879 21-30
+crates/parsers/fixtures/sample.rs
+  s_15d888f4b629c1::t_049c336192d3a1 35-41
+crates/parsers/src/lib.rs
+  s_15d888f4b629c1::t_4dcd2b2ac79abb 1-2,4-8,10-14,19-21,28-29,34-39,43-48,52,59-60,63,67,71-79,82-87,89,93,100-104,107-135,137-153,156-162,166-186,195-219,222-223,225-231,233-235,237-252
+crates/parsers/src/markdown.rs
+  s_15d888f4b629c1::t_3c46ec778f32cd 6-7,14-15,22-23,27-28,31-36,38-50,52-53,55-65,67-94,98-101,110-111,136,193-199,201-205,207-216,246,258-277
+crates/parsers/src/source.rs
+  s_15d888f4b629c1::t_10a83600862f94 2-7,9-10,20-24,27-39,42-45,49-50,52-64,66-85,87,90,92,95,104-105,132-136,153-158,166,175-176,178,180,183,185,191,193-196,199-204,207-215,219,221-222,224-226,229-240
+crates/parsers/tests/fixture_elements.rs
+  s_15d888f4b629c1::t_0d91c2e59adc9d 3-17,19-21,23-28,31-48,50-52,55-56,59-64,66-67,69,71-73,76-85,87-91,97-98,101-102,111-112,115,117-136,140-141,143-169,171-172,174,176-187,193,197-201,203,205-207,210,212-213,221-279,281-289,291-335
+crates/providers/src/openai.rs
+  s_15d888f4b629c1::t_9b27c1393abdc9 219-220,338,341-348,354-355
+crates/providers/tests/azure_openai_stub.rs
+  s_15d888f4b629c1::t_1a259932a38505 29,478-485,526
+crates/store/migrations/0002_element_kinds.sql
+  s_15d888f4b629c1::t_3ad5b754af4a90 1-21
+crates/store/src/lib.rs
+  s_15d888f4b629c1::t_ffbe62882b137d 12,106-116,120-124,137-140,142-145,151,158,167-170,173-179,181-201,206-208,223-225,230-233,237-243
+crates/testkit/arch-allowlist.toml
+  s_15d888f4b629c1::t_aff77334bd1995 48,52-58
+crates/testkit/src/fakes.rs
+  s_15d888f4b629c1::t_d11840397a5f9e 6,160,171-173,177-179,188,190-191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0962ba8e2b1fb6116cff8277d288290caa18dae9",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
