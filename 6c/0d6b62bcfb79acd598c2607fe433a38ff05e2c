@@ -1,0 +1,21 @@
+README.md
+  s_15d888f4b629c1::t_74e23db8012c9f 239-253
+.github/ISSUE_TEMPLATE/field-report.yml
+  s_15d888f4b629c1::t_ddc5e2d035f659 1-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6c0d6b62bcfb79acd598c2607fe433a38ff05e2c",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
