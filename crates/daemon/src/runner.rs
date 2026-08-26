@@ -109,6 +109,11 @@ pub async fn drain(state: &AppState, workers: usize) -> Drained {
     let mut total = Drained::default();
     let mut tasks = JoinSet::new();
     let workers = workers.max(1);
+    // The cadence lives HERE, not in the caller's loop. A busy queue never
+    // leaves this function — `drain` returns only when nothing is ready — so
+    // reporting between drains meant that during a long index run, the one
+    // case the summary exists for, it never printed at all.
+    let mut last_report: Option<std::time::Instant> = None;
 
     loop {
         while tasks.len() < workers {
@@ -139,6 +144,11 @@ pub async fn drain(state: &AppState, workers: usize) -> Drained {
                 Err(error) => tracing::error!(%error, "a job handler panicked"),
             }
         }
+
+        if last_report.is_none_or(|at| at.elapsed() >= PROGRESS_EVERY) {
+            report_progress(state, "working").await;
+            last_report = Some(std::time::Instant::now());
+        }
     }
 }
 
@@ -147,29 +157,21 @@ pub async fn drain(state: &AppState, workers: usize) -> Drained {
 /// Sleeps only when it finds nothing, so a busy queue is never delayed by a
 /// timer.
 pub async fn run_forever(state: AppState, workers: usize) {
-    // Only-when-active, in both directions: nothing is printed while the queue
-    // is empty, and the FIRST line after work appears is not delayed by a timer
-    // that has been ticking through the idle period.
-    let mut last_report: Option<std::time::Instant> = None;
+    // `drain` reports its own progress while it works. All this loop owns is
+    // the CLOSING summary, so a run ends with its own totals rather than
+    // trailing off mid-progress — and only when there was a run to close, so
+    // an idle daemon still prints nothing at all.
+    let mut worked = false;
 
     loop {
-        let drained = drain(&state, workers).await;
-
-        if drained.total() == 0 {
-            // Print a final summary if work just finished, so a run ends with
-            // its own totals rather than trailing off mid-progress.
-            if last_report.take().is_some() {
+        if drain(&state, workers).await.total() == 0 {
+            if std::mem::take(&mut worked) {
                 report_progress(&state, "idle").await;
             }
             tokio::time::sleep(IDLE_POLL).await;
             continue;
         }
-
-        let due = last_report.is_none_or(|at| at.elapsed() >= PROGRESS_EVERY);
-        if due {
-            report_progress(&state, "working").await;
-            last_report = Some(std::time::Instant::now());
-        }
+        worked = true;
     }
 }
 
@@ -235,10 +237,18 @@ async fn settle(state: &AppState, job: Job) -> Drained {
             // print NOTHING at the default filter — the only calls in this
             // crate were error! and warn!, so a working daemon and a wedged one
             // looked identical from the outside (Jordan, live, 2026-08-26).
+            // `left` is what turns a stream of lines into a position: without
+            // it a watcher can see work happening but not how much of it is
+            // left, which is the question they actually have (Jordan, live,
+            // 2026-08-26). Counted after settling, so it reads as "still to
+            // go, not counting this one", and taken from the queue so it stays
+            // true as the backlog grows during scan.
+            let left = fs3_store::jobs_remaining(&state.db).await.ok();
             tracing::info!(
                 kind = %kind,
                 subject = %subject,
                 ms = started.elapsed().as_millis() as u64,
+                left,
                 "done"
             );
             Drained {

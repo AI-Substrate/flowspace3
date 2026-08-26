@@ -171,22 +171,36 @@ At the default filter the daemon streams one line per job and a progress
 summary every five seconds while work is in flight:
 
 ```text
-INFO fs3_daemon::runner: done kind=scan_file subject=src/auth.rs ms=91
-INFO fs3_daemon::runner: done kind=summarize subject=src/admin.rs::schema_current ms=612
-INFO fs3_daemon::runner: done kind=embed subject=16 x raw ms=104
+INFO fs3_daemon::runner: done kind=scan_file subject=src/auth.rs ms=91 left=1214
+INFO fs3_daemon::runner: done kind=summarize subject=src/admin.rs::schema_current ms=612 left=1213
+INFO fs3_daemon::runner: done kind=embed subject=16 x raw ms=104 left=1212
 INFO fs3_daemon::runner: progress phase="working" scanned=18 scan_left=0 \
      summarized=54 summarize_left=44 embedded=61 embed_left=57 failed=0
 ```
 
-Two decisions behind that shape:
+Three decisions behind that shape:
 
 - **The subject is the human key, not the dedupe key.** A dedupe key is an
   idempotence token — `embed:git:github.com/x:9f2c…` — and says nothing about
   what is happening to your repository. The path, the element address and the
   batch size do.
+- **`left` is what makes a stream of lines a POSITION.** Every line was true
+  without it and you still could not tell how far through you were; a run of
+  facts with no denominator is not progress. It counts `pending` + `running`
+  and excludes the job the line is reporting, so the last line reads `left=0`.
+  Counted at the source per completion rather than kept as a counter, because
+  the backlog GROWS while it drains — each `scan_file` enqueues the summarize
+  and embed work it finds, so a decrementing counter would march to zero while
+  the real backlog was still climbing.
 - **Progress is derived from the QUEUE, not from counters in the loop.** A
   counter in the process would reset on restart and would not see a sibling
   worker's rows. The cost is one grouped aggregate every few seconds.
+
+The five-second summary is emitted by the drain loop itself, not between
+drains. It was between drains until 2026-08-26, and `drain` returns only when
+nothing is READY — so a busy queue never left it, and the summary that exists
+to narrate a long run was the one thing a long run never printed. It looked
+correct in every test, because short queues empty.
 
 Payloads are never logged. An `embed` payload carries the texts being embedded,
 so dumping it would put the indexed source itself into the log, at volume, once

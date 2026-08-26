@@ -39,8 +39,8 @@ pub use embeddings::{
     put_embeddings, query_embeddings, search_elements,
 };
 pub use jobs::{
-    Job, QueueDepth, claim_job, complete_job, enqueue_job, fail_job, last_failure, queue_depth,
-    requeue_running, retry_job,
+    Job, QueueDepth, claim_job, complete_job, enqueue_job, fail_job, jobs_remaining, last_failure,
+    queue_depth, requeue_running, retry_job,
 };
 pub use refs::{
     RegisteredWorktree, WorktreePath, find_worktree, list_worktrees, register_worktree,

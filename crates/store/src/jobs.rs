@@ -250,6 +250,29 @@ pub async fn requeue_running(pool: &PgPool) -> Result<u64, StoreError> {
 ///
 /// # Errors
 /// [`StoreError::Query`] when the read fails.
+/// How many jobs are still to do — `pending` plus `running`, every kind.
+///
+/// One number, for the per-job streaming line, where the grouped
+/// [`queue_depth`] would be both too much detail and too much work to take
+/// thousands of times.
+///
+/// Counted at the source rather than tracked as a counter in the worker,
+/// because the backlog GROWS while it drains: each `scan_file` enqueues the
+/// `summarize` and `embed` work it discovers. A decrementing counter would
+/// march confidently to zero while the real backlog was still climbing, which
+/// is worse than no number at all — it reads as "nearly done" at the exact
+/// moment it is not.
+///
+/// `jobs_claim_idx` leads on `state`, so this is an index scan of the live
+/// rows and never touches the settled history.
+pub async fn jobs_remaining(pool: &PgPool) -> Result<i64, StoreError> {
+    let row =
+        sqlx::query("SELECT count(*) AS left FROM jobs WHERE state IN ('pending', 'running')")
+            .fetch_one(pool)
+            .await?;
+    Ok(row.try_get("left")?)
+}
+
 pub async fn queue_depth(pool: &PgPool) -> Result<Vec<QueueDepth>, StoreError> {
     let rows = sqlx::query(
         "SELECT kind, state, count(*) AS depth,
