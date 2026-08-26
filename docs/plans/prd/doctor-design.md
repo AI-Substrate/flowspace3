@@ -3,7 +3,7 @@
 
 ## Doctrine
 
-Doctor is the diagnosis half of the actionable-error doctrine (workshop 004): every check emits the standard envelope row — `ok/warn/fail · code · what was checked · found · fix`. It never mutates by default; `doctor --fix` may run the named fix for fixable rows (compose up, create config from template). JSON-only like everything (D5). Checks run in dependency order and keep going past failures (collect-all).
+Doctor is the repair-as-it-goes half of the actionable-error doctrine: it walks the dependency chain (engine → stack → database → schema → providers → daemon) and FIXES what it can automatically, reporting each move as an envelope row; it errors only where it genuinely cannot act. It is the diagnosis half (workshop 004): every check emits the standard envelope row — `ok/warn/fail · code · what was checked · found · fix`. It never mutates by default; `doctor --fix` may run the named fix for fixable rows (compose up, create config from template). JSON-only like everything (D5). Checks run in dependency order and keep going past failures (collect-all).
 
 ## Check catalog (grows as capabilities land — the "follow along" contract)
 
@@ -12,7 +12,7 @@ Doctor is the diagnosis half of the actionable-error doctrine (workshop 004): ev
 | config | file parses; unknown keys warned | named key + example line | egret in flight |
 | config | **registry sane**: every `active` pointer resolves to a `[providers.*]` instance; every instance validates its `kind` shape; per-repo overrides point at real instances AND real repo identities | "summarizer.active = 'azure-lna' — no such provider; configured: azure-luna, ollama-local" | egret (delta) |
 | config | secrets chain: named env vars actually resolve (existence only — never print values) | "AZURE_OPENAI_API_KEY named in providers.azure-luna but unset — export it or edit secrets.env" | egret |
-| stack | engine present (`FS3_ENGINE`), compose file valid | "no docker/podman on PATH → install OrbStack or set FS3_ENGINE" | ox territory |
+| stack | engine present (`FS3_ENGINE`), compose file valid; **stack running — doctor STARTS it when down** (compose up -d + healthcheck wait; Jordan 2026-08-26: no manual compose step) | "no docker/podman on PATH → install OrbStack or set FS3_ENGINE" / "db container was down → started, healthy in 4.1s ✓" | tk-0108 (plan 003) |
 | stack | PG reachable; `vector` present; **migrations current** — and doctor APPLIES missing migrations itself (Jordan 2026-08-26: automatic, no second command); every db-touching command runs the fast check and rejects stale with FS3-E-STORE-SCHEMA-STALE naming doctor | "schema behind → doctor applied 0006-0007 ✓" | tk-0108 (plan 003) — doctor v1 ships EARLY, schema slice first |
 | providers | **live probe per ACTIVE instance** (fs2 `doctor llm` heritage): summarizer round-trip (HEALTH_CHECK_OK-style), embedder round-trip + dimension check vs config/store tables | distinguishes the confusable rejections (Azure 401/403/404 mapping is the exemplar); names role/deployment fixes | adapters landed; probe = contract-suite lite |
 | providers | per-repo overrides: probe each DISTINCT instance actually referenced | as above, prefixed with which repo selects it | after registry lands |
