@@ -6,6 +6,32 @@
 #
 # The tag push triggers .github/workflows/release.yml, which attaches the
 # cross-platform binaries to the freshly published Release.
+#
+# # Why this workflow bumps Cargo.toml by ANNOTATION, and Cargo.lock by hand
+#
+# release-please's `simple` strategy updates a changelog and a version file and
+# nothing else — it never touched the Rust manifests, which is why v0.2.0
+# shipped a binary that reported 0.1.0 (req-0060). Two mechanisms were checked
+# against release-please's own source (v17.11.2) before choosing:
+#
+#   * `release-type: rust` is NOT usable here. `src/updaters/rust/cargo-toml.ts`
+#     throws on any manifest without a `[package]` table — our root is a VIRTUAL
+#     workspace with `[workspace.package]` — so it would fail at the worst
+#     possible moment, mid-release.
+#   * `extra-files` with the `x-release-please-version` annotation works:
+#     `src/updaters/generic.ts` matches the annotation anywhere on a line and
+#     rewrites the semver on it. The entry is the TYPED `{type: generic}` form
+#     on purpose — a bare `"Cargo.toml"` string additionally runs
+#     `GenericToml('$.version')`, which targets a TOP-LEVEL `version` we do not
+#     have.
+#
+# The generic updater cannot regenerate `Cargo.lock`, and the lock carries a
+# `[[package]] version` for all eight workspace members. Annotating THOSE is not
+# an option: cargo rewrites the lock from scratch whenever resolution changes
+# and drops every comment, so the annotations would vanish silently and the
+# bumping would stop without anyone noticing. Hence the explicit sync step
+# below — the boring mechanism that cannot silently stop working, because it
+# asserts `--locked` afterwards and fails the job if it did not take.
 
 name: release-please
 
@@ -22,7 +48,43 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@v4
+        id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      # Only when there is a release PR to fix up. `prs` is a JSON array; the
+      # branch name is what we need to push back onto.
+      - uses: actions/checkout@v4
+        if: ${{ steps.release.outputs.prs }}
+        with:
+          fetch-depth: 0
+
+      - name: Sync Cargo.lock with the bumped workspace version
+        if: ${{ steps.release.outputs.prs }}
+        env:
+          PRS: ${{ steps.release.outputs.prs }}
+        run: |
+          set -euo pipefail
+          BRANCH=$(printf '%s' "$PRS" | jq -r '.[0].headBranchName')
+          test -n "$BRANCH" && test "$BRANCH" != "null"
+          git fetch origin "$BRANCH"
+          git checkout "$BRANCH"
+
+          # Path members only — this must never become a dependency update.
+          cargo update --workspace
+
+          if git diff --quiet Cargo.lock; then
+            echo "Cargo.lock already matches the bumped version"
+          else
+            git config user.name  "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add Cargo.lock
+            git commit -m "chore: sync Cargo.lock with the release version"
+            git push origin "$BRANCH"
+          fi
+
+          # The assertion that makes this step honest: if the sync did not take,
+          # fail HERE, where someone is looking, rather than at the tag.
+          cargo metadata --locked --format-version 1 > /dev/null

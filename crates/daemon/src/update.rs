@@ -207,7 +207,36 @@ impl Updater {
             }
         };
 
-        swap(&self.install_path, &bytes)?;
+        // The staged binary exists, is executable, and is not installed. This
+        // is the only moment it can be asked what it is — see `staged_version`
+        // for why a binary that lies about its version is a permanent update
+        // loop rather than a cosmetic bug.
+        let staged = stage(&self.install_path, &bytes)?;
+        let claimed = match staged_version(&staged) {
+            Ok(claimed) => claimed,
+            Err(error) => {
+                return Ok(Outcome::Blocked {
+                    latest,
+                    reason: format!(
+                        "the downloaded {asset} could not be run to confirm its version \
+                         ({error}) — refusing to install it"
+                    ),
+                });
+            }
+        };
+
+        if Version::parse(&claimed) != Some(latest) {
+            return Ok(Outcome::Blocked {
+                latest,
+                reason: format!(
+                    "release v{latest}'s {asset} reports itself as {claimed:?} — refusing to \
+                     install a binary that disagrees with its own release, because an updater \
+                     that trusted it would reinstall it on every check forever"
+                ),
+            });
+        }
+
+        commit(staged, &self.install_path)?;
         Ok(Outcome::Installed(latest))
     }
 
@@ -375,18 +404,37 @@ pub fn not_writable(directory: &Path) -> Option<String> {
     }
 }
 
-/// Replace `target` with `bytes`, atomically.
+/// Write `bytes` into a temp file beside `target`, executable and CLOSED.
+///
+/// In the install directory, NOT in `/tmp`: `rename` across filesystems is
+/// `EXDEV`, and `/tmp` is a different filesystem often enough that the bug
+/// would only appear on other people's machines.
+///
+/// Separate from [`commit`] so there is a moment where the new binary exists on
+/// the real filesystem, executable, and is still not installed — which is the
+/// only place [`staged_version`] can ask it what it is.
+///
+/// # Why this returns a `TempPath` rather than a `NamedTempFile`
+///
+/// Because `NamedTempFile` holds the file OPEN FOR WRITING, and on Linux
+/// `execve` refuses a file that any process has open for writing: `ETXTBSY`,
+/// "Text file busy". macOS permits it, so a probe that worked on a developer's
+/// mac failed every test on the CI runner — the guard refusing its own
+/// perfectly good download.
+///
+/// [`tempfile::TempPath`] is exactly the shape needed: the handle is closed,
+/// the path survives, deletion on drop survives, and `persist` still does the
+/// rename. Note the irony worth keeping: `ETXTBSY` is the failure mode this
+/// whole module is built to avoid on the INSTALL path, and it reappeared on the
+/// staging path the moment we started executing what we downloaded.
 ///
 /// # Errors
-/// When the temp file cannot be written, made executable, or renamed.
-pub fn swap(target: &Path, bytes: &[u8]) -> Result<()> {
+/// When the temp file cannot be created, written, synced, or made executable.
+pub fn stage(target: &Path, bytes: &[u8]) -> Result<tempfile::TempPath> {
     let directory = target
         .parent()
         .ok_or_else(|| anyhow!("{} has no parent directory", target.display()))?;
 
-    // In the install directory, NOT in /tmp: `rename` across filesystems is
-    // EXDEV, and /tmp is a different filesystem often enough that the bug
-    // would only appear on other people's machines.
     let mut staged = tempfile::NamedTempFile::new_in(directory)
         .with_context(|| format!("staging a new binary in {}", directory.display()))?;
 
@@ -412,12 +460,77 @@ pub fn swap(target: &Path, bytes: &[u8]) -> Result<()> {
             .context("making the new binary executable")?;
     }
 
+    // Closes the write handle. Everything above needed it; nothing below may
+    // have it (see the ETXTBSY note).
+    Ok(staged.into_temp_path())
+}
+
+/// Ask the staged binary what version it is, by running it.
+///
+/// The guard against a binary that LIES about its own version (req-0060). The
+/// updater compares `env!("CARGO_PKG_VERSION")` against the published tag, so a
+/// build whose compiled-in version is stale is permanently "older" than every
+/// release: it would download and swap once per interval, forever, and raise a
+/// restart message that restarting cannot clear. That is not hypothetical —
+/// v0.2.0 shipped reporting 0.1.0, because release-please bumped its manifest
+/// and not the workspace `Cargo.toml`.
+///
+/// Asked BEFORE the swap rather than after, deliberately. Detecting it
+/// afterwards means the bad binary is already installed and the daemon has to
+/// argue with itself about what it is; refusing beforehand means the install
+/// never happens and the user gets one actionable message.
+///
+/// Executing it is not extra trust: its sha256 has already been checked against
+/// the release's own `SHA256SUMS`, and running `--version` is strictly less
+/// dangerous than installing it. The probe also catches two classes a version
+/// comparison never would — an asset built for the wrong triple, and a binary
+/// that cannot `exec` at all.
+///
+/// # Errors
+/// When the binary cannot be executed, exits non-zero, or prints something with
+/// no version in it.
+pub fn staged_version(path: &Path) -> Result<String> {
+    let output = std::process::Command::new(path)
+        .arg("--version")
+        .output()
+        .with_context(|| format!("running {} --version", path.display()))?;
+
+    if !output.status.success() {
+        bail!(
+            "{} --version exited {}",
+            path.display(),
+            output.status.code().unwrap_or(-1)
+        );
+    }
+
+    // clap prints `flowspace3 1.2.3`. The last whitespace-separated token is
+    // the version, which stays true if the product name ever grows a word.
+    let text = String::from_utf8_lossy(&output.stdout);
+    text.split_whitespace()
+        .next_back()
+        .map(str::to_string)
+        .ok_or_else(|| anyhow!("{} --version printed nothing", path.display()))
+}
+
+/// Move a staged binary onto `target`, atomically.
+///
+/// # Errors
+/// When the rename fails.
+pub fn commit(staged: tempfile::TempPath, target: &Path) -> Result<()> {
     staged
         .persist(target)
         .map_err(|error| error.error)
         .with_context(|| format!("replacing {}", target.display()))?;
-
     Ok(())
+}
+
+/// Stage and commit in one step — the whole swap, for callers with nothing to
+/// check in between.
+///
+/// # Errors
+/// When staging or the rename fails.
+pub fn swap(target: &Path, bytes: &[u8]) -> Result<()> {
+    commit(stage(target, bytes)?, target)
 }
 
 /// Whoever holds this file is mid-swap.

@@ -1061,7 +1061,7 @@ dependencies = [
 
 [[package]]
 name = "fs3-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -1080,7 +1080,7 @@ dependencies = [
 
 [[package]]
 name = "fs3-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "serde",
@@ -1092,7 +1092,7 @@ dependencies = [
 
 [[package]]
 name = "fs3-daemon"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1120,7 +1120,7 @@ dependencies = [
 
 [[package]]
 name = "fs3-git"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "fs3-core",
  "gix",
@@ -1130,7 +1130,7 @@ dependencies = [
 
 [[package]]
 name = "fs3-parsers"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "fs3-core",
  "fs3-testkit",
@@ -1144,7 +1144,7 @@ dependencies = [
 
 [[package]]
 name = "fs3-providers"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "axum",
@@ -1161,7 +1161,7 @@ dependencies = [
 
 [[package]]
 name = "fs3-store"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "fs3-core",
@@ -1175,7 +1175,7 @@ dependencies = [
 
 [[package]]
 name = "fs3-testkit"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "fs3-core",
