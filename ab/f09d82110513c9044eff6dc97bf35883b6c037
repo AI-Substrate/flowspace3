@@ -1,0 +1,14 @@
+docs/services/auto-update.md
+  h_9e71e8b09f7cf2 35-38,40,43,82-107,198,203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "abf09d82110513c9044eff6dc97bf35883b6c037",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
