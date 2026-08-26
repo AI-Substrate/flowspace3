@@ -1,0 +1,23 @@
+# .github/dependabot.yml (PRD req 48): keep cargo deps and GitHub Actions
+# patched. Weekly cadence; groups patch/minor bumps to keep the queue small.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      cargo-minor-patch:
+        update-types:
+          - "patch"
+          - "minor"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions-minor-patch:
+        update-types:
+          - "patch"
+          - "minor"
