@@ -1,0 +1,14 @@
+docs/services/ci-release.md
+  h_9e71e8b09f7cf2 30-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c3293a3fd68061a9d74237dd93c8a82cf8bb9838",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
