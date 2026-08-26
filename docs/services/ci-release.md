@@ -97,6 +97,13 @@ git push origin :refs/tags/vX.Y.Z && git tag -f vX.Y.Z <sha> && git push origin 
 Single-watcher rule (shared gh auth): ONE `gh run watch -i 60` per run,
 fleet-wide; parallel 3s polls exhausted the API mid-release once already.
 
+### Queued for the 0.3.0 cycle (not now)
+
+- **Native ARM runners**: evaluate `runs-on: ubuntu-24.04-arm` (free for
+  public repos) to replace the QEMU-emulated aarch64 container leg — QEMU
+  costs 20–40 min per release, native lands around 5 and removes the last
+  slow leg. Preflight leg E (`PREFLIGHT_ARM=1`) maps onto it directly.
+
 ## How to verify
 
 ```bash
