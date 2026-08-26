@@ -68,6 +68,35 @@ on each Release, a curl installer, Dependabot.
 - Repo-level "Dependabot alerts" toggle is an admin setting separate from
   version updates; alerts were off at setup time.
 
+## Release runbook — NO TAG CYCLE WITHOUT PREFLIGHT GREEN
+
+Jordan, 2026-08-26, after 8 tag cycles in one day (at least 5 locally
+catchable): every release-job command is reproducible on this machine, so
+reproduce it BEFORE spending a cycle.
+
+```bash
+./docker/scripts/release-preflight.sh      # ~13s warm; PREFLIGHT_ARM=1 adds the emulated arm64 leg
+```
+
+It replicates, verbatim and mapped 1:1 onto the release job names:
+
+| leg | replicates | catches (real incidents) |
+| --- | --- | --- |
+| A | `cargo build --locked --release -p fs3-cli` | v1: lock not resolvable under `--locked` |
+| B | the smoke block | binary that builds but will not run |
+| C1 | mac fast tier, normal env | ordinary test breakage |
+| C2 | mac fast tier, **runner simulation** (docker masked out of PATH, db pointed at a dead port) | v2–v4 docker-absence, v6 skip-filter (`--skip` is substring, not regex), v7 live-Postgres integration tests |
+| D | linux x86_64 via the plan-002 build container + smoke | container-leg breakage; wrong-loader mistakes |
+
+Only when it prints **GREEN** do you cycle the tag:
+
+```bash
+git push origin :refs/tags/vX.Y.Z && git tag -f vX.Y.Z <sha> && git push origin vX.Y.Z
+```
+
+Single-watcher rule (shared gh auth): ONE `gh run watch -i 60` per run,
+fleet-wide; parallel 3s polls exhausted the API mid-release once already.
+
 ## How to verify
 
 ```bash
