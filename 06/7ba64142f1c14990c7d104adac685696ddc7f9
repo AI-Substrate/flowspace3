@@ -1,0 +1,20 @@
+README.md
+  h_9e71e8b09f7cf2 3,16-30,37,46
+docs/services/ci-release.md
+  h_9e71e8b09f7cf2 1-58
+install.ps1
+  h_9e71e8b09f7cf2 1-29
+install.sh
+  h_9e71e8b09f7cf2 1-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "067ba64142f1c14990c7d104adac685696ddc7f9",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
