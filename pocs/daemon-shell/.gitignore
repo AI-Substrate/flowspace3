@@ -1,0 +1,7 @@
+# This prototype is its own cargo workspace, so it has its own build directory
+# that the repo-root .gitignore's bare `target` entry already covers — but it is
+# spelled out here so the fence is legible from inside the prototype.
+#
+# Cargo.lock is NOT ignored: this is a binary, and the whole value of a
+# prototype is that someone can re-run it later and get the same build.
+/target

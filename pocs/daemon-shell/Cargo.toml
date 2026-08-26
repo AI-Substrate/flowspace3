@@ -1,0 +1,36 @@
+# daemon-shell — a standalone PROTOTYPE, deliberately NOT a member of the
+# flowspace3 workspace.
+#
+# The empty `[workspace]` table below is load-bearing: without it, cargo walks
+# up the directory tree, finds the root `Cargo.toml`, and refuses to build
+# because this package is not in its `members` list. Adding it to `members`
+# instead would break `fs3-arch-check`, which asserts exactly 7 workspace
+# crates. So: own workspace, own lockfile, own target/ (see .gitignore).
+[workspace]
+
+[package]
+name = "daemon-shell"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Prototype: host-native file watcher + local web service, the shape the fs3 daemon needs."
+
+[dependencies]
+anyhow = "1"
+axum = "0.8"
+clap = { version = "4", features = ["derive"] }
+# `notify` is the whole point of the prototype: FSEvents on macOS, inotify on
+# Linux, ReadDirectoryChangesW on Windows, behind one `RecommendedWatcher`.
+# `macos_fsevent` (the default) is chosen over `macos_kqueue` because kqueue
+# needs one file descriptor per watched FILE and dies on large trees.
+notify = "8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["json"] }
+tempfile = "3"
