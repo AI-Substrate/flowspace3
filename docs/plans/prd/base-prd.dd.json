@@ -28,7 +28,7 @@
           "title": "Rust implementation",
           "requirement": "The tool is a single Rust binary; tree-sitter is used directly (native bindings) for AST parsing across languages, with no per-language configuration.",
           "state": "unchecked",
-          "note": "tree-sitter direct proven; NOTE for Jordan: currently TWO binaries (flowspace3 CLI + fs3-daemon) — req says 'single Rust binary'; either amend the req or fold the daemon into a `flowspace3 daemon` subcommand later"
+          "note": "tree-sitter direct proven; single-binary deviation RESOLVED by req 51 (flowspace3 daemon subcommand, in flight)"
         },
         {
           "id": "req-0003",
@@ -403,6 +403,14 @@
           "requirement": "A human presentation layer renders the SAME envelopes as rich terminal output (python-rich-class aesthetics: tables, color, checklists) - a pure renderer over the frozen envelope contract, TTY-autodetected with --json always forcing the envelope; agents see no change. Prototyped ahead of need. (Jordan, 2026-08-26.)",
           "state": "unchecked",
           "note": "prototype in flight (skunk, pocs/human-render)"
+        },
+        {
+          "id": "req-0051",
+          "num": 51,
+          "title": "Single binary: flowspace3 daemon subcommand",
+          "requirement": "The daemon ships INSIDE the flowspace3 binary as `flowspace3 daemon` (no separate fs3-daemon artifact) - one file to install, one version, req 2 literally true. (Jordan, 2026-08-26.)",
+          "state": "unchecked",
+          "note": "sawfish re-opened; must land BEFORE ship-it bakes artifact names into the release workflow"
         }
       ]
     }
