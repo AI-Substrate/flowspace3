@@ -8,8 +8,8 @@
       "value": {
         "title": "Backpressure - first light",
         "plan": "../plan.dd.json#meta",
-        "basis_sha": "bf7063c83430820c86c0e56987cb5fbff11130221d1e596f2ac8a54011edbf33",
-        "certainty": "Confident"
+        "basis_sha": "0ec890e28431044dab2a992c57ee3982982269d98e5db683b2da279a766e8fb4",
+        "certainty": "Proven"
       }
     },
     {

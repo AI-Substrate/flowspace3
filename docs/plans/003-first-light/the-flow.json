@@ -397,6 +397,47 @@
         "from": "phase-1",
         "to": "post-flight"
       }
+    },
+    {
+      "id": "NOD-004",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-26T06:33:37.517Z",
+      "details": {
+        "node": "backpressure-0ec890e28431",
+        "type": "backpressure",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
+    },
+    {
+      "id": "UPD-013",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-26T06:33:37.641Z",
+      "details": {
+        "node": "backpressure-0ec890e28431",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-013",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-26T06:33:37.771Z",
+      "details": {
+        "node": "backpressure-0ec890e28431",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
     }
   ],
   "nodes": [
@@ -786,6 +827,32 @@
         }
       ],
       "ran_at": "2026-08-26T05:20:38.734Z"
+    },
+    {
+      "id": "backpressure-0ec890e28431",
+      "type": "backpressure",
+      "label": "Backpressure (final: all receipts in, certainty Proven)",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-08-26T06:33:37.517Z",
+      "modified_at": "2026-08-26T06:33:37.771Z",
+      "command": "run /eng-harness-flow --hook pre-coding --json",
+      "chore": {
+        "kind": "command",
+        "importance": "optional"
+      },
+      "branch_of": "plan",
+      "comments": [
+        {
+          "at": "2026-08-26T06:33:37.641Z",
+          "text": "verdict:final reason:all 5 rows checked with receipts; certainty Proven (live run + CI e2e + critic pass). basis_sha256:0ec890e28431044dab2a992c57ee3982982269d98e5db683b2da279a766e8fb4",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-26T06:33:37.771Z"
     }
   ],
   "plan_dir": "docs/plans/003-first-light"
