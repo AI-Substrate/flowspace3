@@ -1,0 +1,19 @@
+.harness/government/rulings/2026-08-26-pr-workflow-cutover.md
+  s_15d888f4b629c1::t_28378dec7921ef 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ac1db274dff13d669c60c2382a79af55689a3226",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
