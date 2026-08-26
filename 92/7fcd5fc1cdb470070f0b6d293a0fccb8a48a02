@@ -1,0 +1,24 @@
+docs/plans/prd/base-prd.dd.json
+  s_15d888f4b629c1::t_f62ef949b6411b 447-448,479-480,487-488
+.harness/government/worker-roster.md
+  s_15d888f4b629c1::t_63c1fc84190f8f 18
+  s_15d888f4b629c1::t_cdd2e19923b03b 14-17,19-20
+docs/plans/prd/base-prd.dd.md
+  s_15d888f4b629c1::t_f62ef949b6411b 76,80-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "927fcd5fc1cdb470070f0b6d293a0fccb8a48a02",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
