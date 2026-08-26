@@ -1,0 +1,21 @@
+crates/core/src/config.rs
+  s_15d888f4b629c1::t_96fa9eccede116 1-2,6-27,30,41-44,48-61,63-83,97-98,101-110,112,115-117,119-138,144,146-150,152-163,168-172,183-198,210-214,227-243,260-269,294-305,309-331,342-347,357-368,378-871,876-892,901,950-952,961-1170
+crates/core/src/lib.rs
+  s_15d888f4b629c1::t_44a7002cec508d 21-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0d0fb1cafd4fe9ddb2945dddb699dc681234fa58",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
