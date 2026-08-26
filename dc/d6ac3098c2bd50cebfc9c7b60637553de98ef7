@@ -1,0 +1,20 @@
+crates/cli/src/upgrade.rs
+  h_9e71e8b09f7cf2 127-141,143,148-156,159-168
+crates/cli/tests/doctor_daemon.rs
+  h_9e71e8b09f7cf2 119-125,131
+crates/daemon/src/update.rs
+  h_9e71e8b09f7cf2 171-184,188-190,254-273,275-282,285-287,300-302,307-313,567-570
+crates/daemon/tests/auto_update.rs
+  h_9e71e8b09f7cf2 206-211,213,221-256,260-261,263-269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "dcd6ac3098c2bd50cebfc9c7b60637553de98ef7",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
