@@ -1,0 +1,72 @@
+{
+ "dd_schema": 1,
+ "description": "An implementation guide (impl-suggestion): prime's architecture-level instruction to the pm on HOW this plan's work decomposes — the composable-service units, their interfaces, which can run in parallel, how they compose, and whether the pm codes solo or fans out to coders. Seeded from the pij-team skill's template, iterated by prime before the pm is spawned.",
+ "sections": {
+  "meta": {
+   "required": true,
+   "shape": { "type": "object", "required": ["title", "plan"],
+    "fields": {
+     "title": {"type": "string"},
+     "plan": {"type": "string"},
+     "mode": {"type": "string"},
+     "updated": {"type": "string"} } }
+  },
+  "architecture": {
+   "required": true,
+   "shape": {"type": "text"}
+  },
+  "fan_out": {
+   "required": true,
+   "shape": { "type": "object", "required": ["decision", "rationale"],
+    "fields": {
+     "decision": {"type": "string"},
+     "rationale": {"type": "text"} } }
+  },
+  "units": {
+   "required": true,
+   "shape": { "type": "array",
+    "items": { "type": "object", "required": ["id", "name", "responsibility", "interface", "test_strategy", "wave"],
+     "fields": {
+      "id": {"type": "string"},
+      "name": {"type": "string"},
+      "paths": {"type": "string"},
+      "responsibility": {"type": "text"},
+      "interface": {"type": "text"},
+      "test_strategy": {"type": "text"},
+      "depends_on": {"type": "string"},
+      "wave": {"type": "number"},
+      "note": {"type": "string"} } } }
+  },
+  "isolation": {
+   "required": true,
+   "shape": { "type": "object", "required": ["mode", "note"],
+    "fields": {
+     "mode": {"type": "string"},
+     "note": {"type": "text"} } }
+  },
+  "composition": {
+   "required": true,
+   "shape": { "type": "object", "required": ["composer", "steps", "integration_proof"],
+    "fields": {
+     "composer": {"type": "string"},
+     "steps": {"type": "text"},
+     "integration_proof": {"type": "text"} } }
+  },
+  "review": {
+   "required": true,
+   "shape": { "type": "object", "required": ["when", "inputs"],
+    "fields": {
+     "when": {"type": "string"},
+     "inputs": {"type": "text"},
+     "model_override": {"type": "string"} } }
+  },
+  "risks": {
+   "required": false,
+   "shape": { "type": "array",
+    "items": { "type": "object", "required": ["id", "text"],
+     "fields": {
+      "id": {"type": "string"},
+      "text": {"type": "text"} } } }
+  }
+ }
+}

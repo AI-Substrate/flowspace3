@@ -1,0 +1,62 @@
+{
+ "dd_schema": 1,
+ "description": "A pij-team handover packet: the document a seat (pm, coder, or reviewer) is dispatched with. One schema for all three roles — the role field selects which template seeded it. Copied from the pij-team skill's templates/ into the plan folder, edited via ddocs, then delivered by path pointer in the pij send.",
+ "sections": {
+  "meta": {
+   "required": true,
+   "shape": { "type": "object", "required": ["title", "role", "plan"],
+    "fields": {
+     "title": {"type": "string"},
+     "role": {"type": "string"},
+     "plan": {"type": "string"},
+     "seat": {"type": "string"},
+     "updated": {"type": "string"} } }
+  },
+  "mission": {
+   "required": true,
+   "shape": {"type": "text"}
+  },
+  "instructions": {
+   "required": true,
+   "shape": { "type": "array",
+    "items": { "type": "object", "required": ["id", "text"],
+     "fields": {
+      "id": {"type": "string"},
+      "text": {"type": "text"} } } }
+  },
+  "working_with": {
+   "required": true,
+   "shape": { "type": "array",
+    "items": { "type": "object", "required": ["id", "text"],
+     "fields": {
+      "id": {"type": "string"},
+      "text": {"type": "text"} } } }
+  },
+  "scope": {
+   "required": true,
+   "shape": { "type": "object", "required": ["worktree", "branch"],
+    "fields": {
+     "worktree": {"type": "string"},
+     "branch": {"type": "string"},
+     "fence": {"type": "string"},
+     "forbidden_note": {"type": "text"} } }
+  },
+  "done_bar": {
+   "required": true,
+   "shape": { "type": "array",
+    "items": { "type": "object", "required": ["id", "text"],
+     "fields": {
+      "id": {"type": "string"},
+      "text": {"type": "text"} } } }
+  },
+  "refs": {
+   "required": false,
+   "shape": { "type": "array",
+    "items": { "type": "object", "required": ["id", "path"],
+     "fields": {
+      "id": {"type": "string"},
+      "path": {"type": "string"},
+      "note": {"type": "string"} } } }
+  }
+ }
+}

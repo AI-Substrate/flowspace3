@@ -1,0 +1,72 @@
+{
+  "dd": {
+    "schema": "pij-team/impl-guide"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Implementation guide — <plan slug>",
+        "plan": "docs/plans/<ord>-<slug>/plan.dd.json",
+        "mode": "<build | investigate — investigate reinterprets the sections: a unit is a PROBE varying exactly one variable, its interface is the frozen EVIDENCE CONTRACT every probe returns, its done is the receipt (carrying observed toolchain versions), and composition is the decision matrix the composer assembles>",
+        "updated": "<date>"
+      }
+    },
+    {
+      "name": "architecture",
+      "value": "Doctrine: .agents/skills/pij-team/TENETS.md — tenets 1-6 govern this document (architecture is the multiplier; frozen seams; one-line collision surface; snap-in recipe; mechanical done; additive change). The doctrine is TECH-AGNOSTIC; this section instantiates it in THIS repo's stack. Requirements in any stack: composable units each seat can WRITE AND TEST IN ISOLATION behind a settled interface · one composition root where wiring happens (units are constructed with the narrow config/deps they need, never look things up) · dependency boundaries mechanically enforced (undeclared dependency = build/CI error, and a fence extension is one deliberate granted line, never improvised) · fakes over mocks so every unit's suite runs offline standalone. INTERFACES ARE SETTLED HERE, BEFORE FAN-OUT: each unit row below carries its contract; a coder who thinks a contract is wrong stops and asks the PM — parallel seats never negotiate interfaces with each other.\n\n<Name this repo's binding architecture doc + local mechanisms here. Rust example (this repo): docs/rules-idioms-architecture/fs3-architecture.md — boundaries are crates (arch-allowlist.toml, checked in `harness checks`); functional core / imperative shell; a port trait only with a second real impl; composition root = the daemon's config match; testkit fakes; tier rule for placement (pure logic → core · world→types → parsers · port impl → providers · PG → store · wiring → daemon). Then: which units/modules this plan touches, schema/migration ownership, and any workshop decisions authoritative for this plan.>"
+    },
+    {
+      "name": "fan_out",
+      "value": {
+        "decision": "<solo-pm | coders>",
+        "rationale": "<Why. Rules: SOLO-PM when the work has no parallelizable seams or is small — the PM codes it itself, then runs the reviewer. CODERS when units below can proceed in parallel (or it is multi-phase): 1-n coders per wave, PM composes after each wave, reviewer after composition. The units table is the argument for this decision — if you cannot write independent unit rows with clean interfaces, the answer is solo-pm. Dispatch overhead counts: a unit cheaper than its own dispatch (spawn+canary+ack+review) is not a unit - fold it into a sibling.>"
+      }
+    },
+    {
+      "name": "units",
+      "value": [
+        {
+          "id": "u1",
+          "name": "<unit/service name>",
+          "paths": "<exact fence: crates/<x>/**, docs/services/<name>.md — nothing else>",
+          "responsibility": "<one bounded thing this unit does; one domain = one unit = one service page>",
+          "interface": "<the SETTLED contract: pub fns/types/trait it exposes, the config section it is constructed with, the envelope/schema it emits. Coders implement this verbatim; changes are a PM ruling.>",
+          "test_strategy": "<how this unit proves its contract STANDALONE with fakes, and the exact scoped test command (Rust example: `cargo test -p <crate>` + testkit fakes); name the specific cases that must exist. Fix-tests must be mutation-checked (break the code, watch the test fail).>",
+          "depends_on": "<unit ids or 'none'>",
+          "wave": 1,
+          "note": "<sibling hazards, allow-list rows granted, parked debt folded in>"
+        }
+      ]
+    },
+    {
+      "name": "isolation",
+      "value": {
+        "mode": "worktree-per-coder",
+        "note": "Default: each coder gets its own worktree, branching off the PM's plan branch; unit lands back onto the plan branch (PM merges — coders never merge). Shared-tree work is the retro-proven #1 hazard (staged sweeps, untrustworthy greens) — only choose it for trivially disjoint single-wave work, and then file-scoped `git add` only, never -A. REMEMBER: fences partition WRITE intent, not the build — a mid-refactor sibling can still break your compile, so waves must respect build dependencies, and a broken workspace build is a PM composition concern, not a coder's to fix cross-fence."
+      }
+    },
+    {
+      "name": "composition",
+      "value": {
+        "composer": "pm",
+        "steps": "<Composition is an explicit, separate step — the first-light pattern: everything already exists as tested parts; this is the wiring that makes them one system. Read order = each unit's service page / done report. Steps: merge unit branches in dependency order onto the plan branch → wire at the composition root → make `harness checks` green on the composed tree → run the integration proof. Known composition failure modes to check deliberately: mis-wiring (right parts, wrong plumbing), interface drift from this doc, envelope/schema drift between units, stale doc-comments across fence boundaries. RULE: composition is wiring, not building — if a unit needs INTERNAL rework at compose time, that is a defect in the contracts phase, not a composition task: stop, record it (harness observe + the skill EXPERIENCES.md), and have it ruled before touching the unit.>",
+        "integration_proof": "<the named end-to-end evidence: integration test file(s) and/or a live run transcript captured as the plan's exit evidence>"
+      }
+    },
+    {
+      "name": "review",
+      "value": {
+        "when": "after composition (or after solo-pm coding), before the PR into main",
+        "inputs": "plan.dd.md + this impl-guide + full branch diff; priority = plan promises, composition seams, interface drift, correctness, contract-test gaps",
+        "model_override": ""
+      }
+    },
+    {
+      "name": "risks",
+      "value": [
+        { "id": "r1", "text": "<known risk + the check that retires it>" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+ "dd_schema": 1,
+ "description": "Team settings held in government: the default model/harness per role (pm, coder, reviewer) that pij-team spawns use unless a plan's impl-guide overrides them. Single-writer: o-prime edits via ddocs; everyone else reads.",
+ "sections": {
+  "meta": {
+   "required": true,
+   "shape": { "type": "object", "required": ["title", "updated"],
+    "fields": {
+     "title": {"type": "string"},
+     "updated": {"type": "string"},
+     "source": {"type": "string"} } }
+  },
+  "model_defaults": {
+   "required": true,
+   "shape": { "type": "array",
+    "items": { "type": "object", "required": ["role", "harness", "bin", "model", "effort"],
+     "fields": {
+      "role": {"type": "string"},
+      "harness": {"type": "string"},
+      "bin": {"type": "string"},
+      "model": {"type": "string"},
+      "effort": {"type": "string"},
+      "note": {"type": "string"} } } }
+  }
+ }
+}

@@ -1,0 +1,44 @@
+{
+  "dd": {
+    "schema": "pij-team/settings"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Team settings — default models per role",
+        "updated": "2026-08-28",
+        "source": "Jordan's ruling 2026-08-28: pms are omp github-copilot claude-opus-5 high; coders the same; reviewers gpt-5.6-sol"
+      }
+    },
+    {
+      "name": "model_defaults",
+      "value": [
+        {
+          "role": "pm",
+          "harness": "pi",
+          "bin": "omp",
+          "model": "github-copilot/claude-opus-5",
+          "effort": "high",
+          "note": "PMs orchestrate and compose; they only code solo when no fan-out is needed. Prime is product owner and has final say."
+        },
+        {
+          "role": "coder",
+          "harness": "pi",
+          "bin": "omp",
+          "model": "github-copilot/claude-opus-5",
+          "effort": "high",
+          "note": "Coders work one unit each per the impl-guide; isolation shape (own worktree vs pm's branch) is set per-plan in the impl-guide."
+        },
+        {
+          "role": "reviewer",
+          "harness": "pi",
+          "bin": "omp",
+          "model": "github-copilot/gpt-5.6-sol",
+          "effort": "high",
+          "note": "Cross-model review after composition (or after solo-pm coding). Verified against `pij models` 2026-08-28."
+        }
+      ]
+    }
+  ]
+}
