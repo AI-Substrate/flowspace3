@@ -1,0 +1,19 @@
+crates/store/src/updates.rs
+  s_15d888f4b629c1::t_e411d35fb32b89 1-2,7-11,14-31,39,42,51-55,58-65,67-72,74,82-94,98-117,119,121-122,125-131,133,145-158,162-168,172,175,178-183,185,187-212,214,220,227,229-237,246-254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d878a34c20ce549f9bd5e798703cea9d0f961af8",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
