@@ -53,3 +53,16 @@ tracing-subscriber.workspace = true
 fs3-cli.workspace = true
 sqlx.workspace = true
 
+# The `prodguard` gate in `harness checks`: snapshots the schema version of the
+# CONFIGURED (production) database either side of `cargo test --all`, so a test
+# run that writes to it fails the gate instead of being found by a user.
+#
+# It lives in this crate rather than in fs3-testkit beside the other two gate
+# binaries because it needs to reach a database, and testkit ships no sqlx
+# (arch-allowlist). Here it can ask the question through fs3-store's typed API,
+# which is the same question boot asks. Release builds `-p fs3-cli`, so this
+# target costs nothing at ship time.
+[[bin]]
+name = "fs3-migration-guard"
+path = "src/bin/migration_guard.rs"
+

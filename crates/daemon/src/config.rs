@@ -16,8 +16,8 @@
 use std::path::{Path, PathBuf};
 
 use fs3_core::{
-    CONFIG_DIR_ENV, CONFIG_FILE_NAME, Config, DEFAULT_CONFIG_SUBDIR, Effective, SECRETS_FILE_NAME,
-    Sources, env_overrides, parse_env_file, resolve,
+    CONFIG_DIR_ENV, CONFIG_FILE_NAME, Config, Effective, SECRETS_FILE_NAME, Sources, env_overrides,
+    parse_env_file, resolve,
 };
 
 /// Why configuration could not be loaded.
@@ -56,15 +56,11 @@ pub enum ConfigError {
 /// # Errors
 /// [`ConfigError::NoConfigDir`] when neither the override nor `HOME` is set.
 pub fn config_dir() -> Result<PathBuf, ConfigError> {
-    if let Some(dir) = std::env::var_os(CONFIG_DIR_ENV)
-        && !dir.is_empty()
-    {
-        return Ok(PathBuf::from(dir));
-    }
-    let home = std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .ok_or(ConfigError::NoConfigDir)?;
-    Ok(home.join(".config").join(DEFAULT_CONFIG_SUBDIR))
+    fs3_core::resolve_config_dir(
+        std::env::var_os(CONFIG_DIR_ENV).as_deref(),
+        std::env::var_os("HOME").map(PathBuf::from).as_deref(),
+    )
+    .map_err(|_| ConfigError::NoConfigDir)
 }
 
 /// Load the effective configuration from a specific directory: the file merged

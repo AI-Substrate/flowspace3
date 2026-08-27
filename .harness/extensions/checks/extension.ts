@@ -3,7 +3,7 @@ import { dirname, join, resolve } from 'node:path';
 import { defineExtension } from '@ai-substrate/engineering-harness/contract';
 
 /** The quality gate: every command an agent must see green before calling work done. */
-const GATES: { name: string; cmd: string; args: string[] }[] = [
+const GATES: { name: string; cmd: string; args: string[]; guarded?: boolean }[] = [
   // First, because it is two seconds and needs no compilation — and because a
   // stale lock makes every gate below it a statement about a dependency set
   // that is not the one `release.yml` will build. That workflow uses
@@ -29,7 +29,10 @@ const GATES: { name: string; cmd: string; args: string[] }[] = [
   },
   { name: 'fmt', cmd: 'cargo', args: ['fmt', '--all', '--check'] },
   { name: 'clippy', cmd: 'cargo', args: ['clippy', '--all-targets', '--', '-D', 'warnings'] },
-  { name: 'test', cmd: 'cargo', args: ['test', '--all'] },
+  // `guarded`: this is the gate that WRITES. The production database's schema
+  // version is snapshotted either side of it and any change fails the run —
+  // see `productionSchema` below.
+  { name: 'test', cmd: 'cargo', args: ['test', '--all'], guarded: true },
   // Architecture drift: the crate graph judged against testkit/arch-allowlist.toml.
   // Cargo stops undeclared imports and cycles; this stops declared-but-refused
   // edges (sqlx in the functional core, a mocking framework anywhere).
@@ -114,12 +117,55 @@ function docsGate(cwd: string): { ok: boolean; checked: number; problems: string
 
 const tail = (s: string, n = 20) => s.trimEnd().split('\n').slice(-n).join('\n');
 
+/** Just the slice of the extension context this helper needs. */
+type Runner = {
+  exec(
+    cmd: string,
+    args: string[],
+    options?: { timeoutMs?: number },
+  ): Promise<{ ok: boolean; stdout?: string; stderr?: string; code?: number }>;
+};
+
+/**
+ * The schema version of the database this machine calls PRODUCTION.
+ *
+ * Read either side of the `test` gate: `cargo test --all` is the only thing in
+ * this pipeline that writes, and twice now it has written to the wrong
+ * database. Migrations 0008/0009 went in through the test helpers (closed by
+ * the `testdb` gate above); migration 0012 went in on 2026-08-27 through a test
+ * that spawns the real daemon and never calls those helpers at all — sixteen
+ * seconds after the test database got it — and took Jordan's installed CLI down
+ * on schema skew.
+ *
+ * Every OTHER defence is a rule about a leak path somebody already knows about.
+ * This one compares a number before against a number after, so the breach class
+ * is caught even through a path nobody has thought of yet. That is the
+ * difference between un-repeated and un-shippable.
+ *
+ * The probe reports; this decides. See `crates/daemon/src/bin/migration_guard.rs`
+ * for why `absent` and `same-as-test` are passing answers rather than skips.
+ */
+async function productionSchema(
+  ctx: Runner,
+): Promise<{ ok: boolean; value: string; details: string }> {
+  const r = await ctx.exec(
+    'cargo',
+    ['run', '--quiet', '-p', 'fs3-daemon', '--bin', 'fs3-migration-guard'],
+    { timeoutMs: 300_000 },
+  );
+  return {
+    ok: r.ok,
+    value: (r.stdout ?? '').trim(),
+    details: tail(`${r.stdout}\n${r.stderr}`, 20),
+  };
+}
+
 export default defineExtension({
   name: 'checks',
-  summary: 'The mandated quality gate — docs links, cargo fmt, clippy, tests, and architecture drift.',
+  summary: 'The mandated quality gate — docs links, cargo fmt, clippy, tests, architecture drift, and the production-database guard.',
   verbs: {
     checks: {
-      summary: 'Run the quality gate (docs links, cargo fmt --check, clippy -D warnings, cargo test, arch drift).',
+      summary: 'Run the quality gate (docs links, cargo fmt --check, clippy -D warnings, cargo test under the production migration guard, arch drift).',
       async run(ctx) {
         if (!existsSync(join(ctx.cwd, 'Cargo.toml'))) {
           return ctx.degraded(
@@ -147,9 +193,54 @@ export default defineExtension({
         }
 
         for (const gate of GATES) {
+          // Snapshot BEFORE the gate that writes. A failed probe is a broken
+          // gate, not a caught incident, so it stops the run on its own terms.
+          let before: { ok: boolean; value: string; details: string } | null = null;
+          if (gate.guarded) {
+            before = await productionSchema(ctx);
+            results.push({
+              gate: 'prodguard:before',
+              command: 'cargo run -p fs3-daemon --bin fs3-migration-guard',
+              ok: before.ok,
+              code: before.ok ? 0 : 1,
+            });
+            if (!before.ok) {
+              return ctx.error('E_CHECKS_FAILED', 'the production migration guard could not read a schema version', {
+                details: before.details,
+                data: { gate: 'prodguard:before', results },
+                next_action:
+                  'The guard reports; it never repairs. Fix the probe (crates/daemon/src/bin/migration_guard.rs) or the configuration it reads, then re-run `harness checks`. Do not skip it: it is the only check that catches a leak through a path nobody has named yet.',
+              });
+            }
+          }
+
           const r = await ctx.exec(gate.cmd, gate.args, { timeoutMs: 600_000 });
           const command = `${gate.cmd} ${gate.args.join(' ')}`;
           results.push({ gate: gate.name, command, ok: r.ok, code: r.code ?? -1 });
+
+          // Snapshot AFTER, and BEFORE reporting any test failure. A run that
+          // failed can still have migrated production on its way down — that is
+          // the more serious finding of the two, so it is checked first and
+          // reported first.
+          if (before) {
+            const after = await productionSchema(ctx);
+            const changed = !after.ok || after.value !== before.value;
+            results.push({
+              gate: 'prodguard:after',
+              command: 'cargo run -p fs3-daemon --bin fs3-migration-guard',
+              ok: !changed,
+              code: changed ? 1 : 0,
+            });
+            if (changed) {
+              return ctx.error('E_CHECKS_FAILED', `a test run changed the PRODUCTION database (${before.value} -> ${after.value})`, {
+                details: `before: ${before.value}\nafter:  ${after.value}\n\n${after.details}`,
+                data: { gate: 'prodguard:after', before: before.value, after: after.value, results },
+                next_action:
+                  'STOP — this is the 2026-08-27 incident happening again. Something under `cargo test --all` reached the database this machine calls production. Find which test: it either opens a pool without `fs3_testkit::test_database_url()`, or spawns `flowspace3` without `fs3_testkit::sealed()`. Read `.harness/government/rulings/2026-08-27-production-database.md`. Do not re-run the gate to see if it clears — it will not, and each run may migrate further.',
+              });
+            }
+          }
+
           if (!r.ok) {
             return ctx.error('E_CHECKS_FAILED', `${command} failed (exit ${r.code})`, {
               details: tail(`${r.stdout}\n${r.stderr}`, 40),

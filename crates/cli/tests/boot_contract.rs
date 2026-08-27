@@ -14,7 +14,8 @@
 //! one.
 
 use std::io::Read;
-use std::process::{Command, Stdio};
+use std::path::Path;
+use std::process::Stdio;
 use std::time::{Duration, Instant};
 
 /// The binary under test, built by cargo for this integration test.
@@ -37,30 +38,30 @@ fn a_daemon_that_cannot_reach_its_store_exits_non_zero_and_says_how_to_fix_it() 
     )
     .expect("writing the fixture config");
 
-    let mut command = Command::new(FLOWSPACE3);
-    // Scrub every `FS3_*` override out of the child's environment before
-    // setting the ones this test means. The config file below is the whole
-    // point of the fixture, and an ambient `FS3_DATABASE__URL` in a
-    // developer's shell silently beats it — the daemon then reaches a store
-    // that IS running, serves happily, and the test hangs until its patience
-    // runs out, reported as "the daemon did not fail fast". Observed live,
-    // 2026-08-27; the config layering doc calls the environment the highest
-    // precedence layer, and a test that ignores that is testing the developer.
-    for (key, _) in std::env::vars() {
-        if key.starts_with("FS3_") {
-            command.env_remove(key);
-        }
-    }
-
-    let mut child = command
-        .arg("daemon")
-        .env("FS3_CONFIG_DIR", &dir)
-        // Deterministic output regardless of the developer's own filter.
-        .env("RUST_LOG", "fs3_daemon=info")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("the daemon binary should start");
+    // `FromConfigFile`: the fixture written above IS the thing under test, so
+    // pinning `FS3_DATABASE__URL` here would beat it and prove nothing — the
+    // environment is the highest precedence layer (fs3_core::config). The seal
+    // still scrubs every inherited `FS3_*`, and it refuses outright unless the
+    // fixture really does set `[database].url`, which is what makes "this arm
+    // sets no URL" safe rather than a hole.
+    //
+    // The scrub is not hypothetical: an ambient `FS3_DATABASE__URL` in a
+    // developer's shell silently beat this fixture, the daemon reached a store
+    // that IS running, served happily, and the test hung until its patience ran
+    // out — reported as "the daemon did not fail fast". Observed live,
+    // 2026-08-27.
+    let mut child = fs3_testkit::sealed(
+        Path::new(FLOWSPACE3),
+        &dir,
+        fs3_testkit::TestDatabase::FromConfigFile,
+    )
+    .arg("daemon")
+    // Deterministic output regardless of the developer's own filter.
+    .env("RUST_LOG", "fs3_daemon=info")
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .spawn()
+    .expect("the daemon binary should start");
 
     let status = wait_for(&mut child);
 
@@ -91,6 +92,74 @@ fn a_daemon_that_cannot_reach_its_store_exits_non_zero_and_says_how_to_fix_it() 
     assert!(
         !stderr.contains("hunter2"),
         "the database password must never reach a log line:\n{stderr}"
+    );
+
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+/// The blast-radius backstop, from the outside: a test that spawns this daemon
+/// without choosing a database must not get a daemon.
+///
+/// This is the 2026-08-27 incident reconstructed exactly — marker env present
+/// (a test run), no `[database]` anywhere, so the child would resolve
+/// `DatabaseConfig::DEFAULT_URL` and MIGRATE it. On Jordan's machine that URL
+/// is the production store; migration 0012 reached it this way.
+///
+/// The command is deliberately built by taking a sealed spawn and REMOVING the
+/// pin. That is what makes this a real test of the backstop rather than of the
+/// seal: the shape under test is the one `spawn_isolation.rs` forbids, and
+/// starting from `sealed` is how it gets constructed without hand-rolling the
+/// forbidden `Command::new` the scan would (correctly) reject.
+#[test]
+fn a_daemon_spawned_by_a_test_refuses_to_boot_against_a_defaulted_store() {
+    let dir = temp_dir("defaulted-store");
+    // No config.toml at all: `[database]` comes from nowhere, which is the
+    // whole point.
+
+    let mut command = fs3_testkit::sealed(
+        Path::new(FLOWSPACE3),
+        &dir,
+        fs3_testkit::TestDatabase::Unreachable,
+    );
+    command
+        .env_remove("FS3_DATABASE__URL")
+        .env(fs3_testkit::TEST_DATABASE_ENV, UNREACHABLE)
+        .env("RUST_LOG", "fs3_daemon=info");
+
+    let mut child = command
+        .arg("daemon")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("the daemon binary should start");
+
+    let status = wait_for(&mut child);
+
+    let mut stderr = String::new();
+    child
+        .stderr
+        .take()
+        .expect("stderr was piped")
+        .read_to_string(&mut stderr)
+        .expect("reading the daemon's stderr");
+
+    assert!(
+        !status.success(),
+        "a daemon spawned by a test with no database chosen must refuse to boot, \
+         because booting means MIGRATING whatever it defaulted to:\n{stderr}"
+    );
+    assert!(
+        stderr.contains("refusing to boot"),
+        "the refusal has to say it is refusing:\n{stderr}"
+    );
+    assert!(
+        stderr.contains(fs3_testkit::TEST_DATABASE_ENV),
+        "the refusal must name the marker that identified this as a test run, so \
+         the reader can tell it apart from a real misconfiguration:\n{stderr}"
+    );
+    assert!(
+        stderr.contains("fs3_testkit::sealed"),
+        "a refusal that does not name the fix is a puzzle:\n{stderr}"
     );
 
     std::fs::remove_dir_all(&dir).ok();

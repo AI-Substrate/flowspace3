@@ -1123,6 +1123,37 @@ fn render(problems: &[Problem]) -> String {
     out
 }
 
+/// Which directory fs3 reads configuration from, from the two environment
+/// facts that decide it (PRD req 28).
+///
+/// [`CONFIG_DIR_ENV`] wins when set and non-empty — that is how tests and
+/// throwaway environments get an isolated config without touching the user's.
+/// Otherwise it is `$HOME/.config/`[`DEFAULT_CONFIG_SUBDIR`].
+///
+/// Pure, and shaped like [`crate::logging::resolve_log_dir`]: the caller reads
+/// the environment, this decides what it means. That is what lets three
+/// different processes — the CLI, the daemon, and the migration-guard probe —
+/// share one answer instead of three copies of it. They cannot afford to
+/// disagree: the probe exists to snapshot the database the daemon would
+/// migrate, and a probe looking at a different config guards the wrong store.
+///
+/// # Errors
+/// When neither is available, with a message written to be shown as-is.
+pub fn resolve_config_dir(
+    configured: Option<&std::ffi::OsStr>,
+    home: Option<&std::path::Path>,
+) -> std::result::Result<std::path::PathBuf, String> {
+    if let Some(dir) = configured
+        && !dir.is_empty()
+    {
+        return Ok(std::path::PathBuf::from(dir));
+    }
+    let home = home.ok_or_else(|| {
+        format!("cannot determine the config directory: neither {CONFIG_DIR_ENV} nor HOME is set")
+    })?;
+    Ok(home.join(".config").join(DEFAULT_CONFIG_SUBDIR))
+}
+
 /// Keep only the environment variables that are fs3 config overrides:
 /// [`ENV_PREFIX`] *and* [`ENV_NESTING`], e.g. `FS3_DATABASE__URL`.
 ///

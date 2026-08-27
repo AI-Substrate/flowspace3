@@ -10,12 +10,26 @@
 //! thing that could rot is checked mechanically rather than remembered.
 
 use std::collections::BTreeSet;
+use std::path::Path;
 use std::process::Command;
 
 use fs3_cli::docs;
 
-/// The binary under test, built by cargo for this integration test.
-const FLOWSPACE3: &str = env!("CARGO_BIN_EXE_flowspace3");
+/// A `flowspace3` sealed against the production store.
+///
+/// `docs` and `--help` open no pool, so nothing here needs a database — which
+/// is precisely why the pin is not optional. "This verb reads no database" is
+/// a claim about today's startup path, and the 2026-08-27 incident is what one
+/// change to a startup path costs (see `fs3_testkit::spawn`). The config
+/// directory is a fresh temp dir rather than the user's real one so the child
+/// reads neither their `config.toml` nor their `secrets.env`.
+fn flowspace3(config_dir: &Path) -> Command {
+    fs3_testkit::sealed(
+        Path::new(env!("CARGO_BIN_EXE_flowspace3")),
+        config_dir,
+        fs3_testkit::TestDatabase::Unreachable,
+    )
+}
 
 /// Every `flowspace3 <verb>` mentioned anywhere in the bundle.
 ///
@@ -48,7 +62,8 @@ fn commands_mentioned() -> BTreeSet<String> {
 /// would be a third place to keep in sync, and it would happily agree with docs
 /// that are both wrong.
 fn commands_offered() -> BTreeSet<String> {
-    let help = Command::new(FLOWSPACE3)
+    let config = tempfile::tempdir().expect("a temp config directory");
+    let help = flowspace3(config.path())
         .arg("--help")
         .output()
         .expect("the binary should run");
@@ -104,12 +119,11 @@ fn the_operating_loop_is_documented() {
 /// and no database — that is the whole promise of bundling.
 #[test]
 fn docs_answer_from_the_binary_with_nothing_else_running() {
-    let output = Command::new(FLOWSPACE3)
+    let config = tempfile::tempdir().expect("a temp config directory");
+    let output = flowspace3(config.path())
         .args(["docs", "get", "agents"])
-        // A config directory that does not exist, and a database URL nothing
-        // serves: if either mattered, this would fail.
-        .env("FS3_CONFIG_DIR", "/nonexistent/fs3-docs-test")
-        .env("FS3_DATABASE__URL", "postgres://nobody@127.0.0.1:1/nothing")
+        // An empty config directory and a database URL nothing serves: if
+        // either mattered, this would fail.
         .output()
         .expect("the binary should run");
 
@@ -136,7 +150,8 @@ fn docs_answer_from_the_binary_with_nothing_else_running() {
 
 #[test]
 fn an_unknown_topic_exits_non_zero_and_names_the_real_ones() {
-    let output = Command::new(FLOWSPACE3)
+    let config = tempfile::tempdir().expect("a temp config directory");
+    let output = flowspace3(config.path())
         .args(["docs", "get", "embeddings"])
         .output()
         .expect("the binary should run");

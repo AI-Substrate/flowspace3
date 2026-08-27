@@ -7,10 +7,23 @@
 
 use std::io::{Read, Write};
 use std::net::TcpListener;
+use std::path::Path;
 use std::process::Command;
 
-/// The binary under test, built by cargo for this integration test.
-const FLOWSPACE3: &str = env!("CARGO_BIN_EXE_flowspace3");
+/// A `flowspace3` sealed against the production store.
+///
+/// Every test here passes `--daemon-url` and talks to a hand-rolled stub, so
+/// none of them opens a pool. That is not a reason to leave the environment
+/// alone: unsealed, these spawns read the developer's real `config.toml` AND
+/// their real `secrets.env`, and they are one change to a startup path away
+/// from being the 2026-08-27 incident again (see `fs3_testkit::spawn`).
+fn flowspace3(config_dir: &Path) -> Command {
+    fs3_testkit::sealed(
+        Path::new(env!("CARGO_BIN_EXE_flowspace3")),
+        config_dir,
+        fs3_testkit::TestDatabase::Unreachable,
+    )
+}
 
 /// A one-shot HTTP server that answers a single request with `body`.
 ///
@@ -51,7 +64,8 @@ fn ping_reports_a_healthy_daemon() {
     let (url, server) =
         serve_once(r#"{"status":"ok","version":"0.1.0","embedder":"fake","summarizer":"fake"}"#);
 
-    let output = Command::new(FLOWSPACE3)
+    let config = tempfile::tempdir().expect("a temp config directory");
+    let output = flowspace3(config.path())
         .args(["ping", "--daemon-url", &url])
         .output()
         .expect("the flowspace3 binary should run");
@@ -77,7 +91,8 @@ fn ping_reports_a_healthy_daemon() {
 fn ping_without_a_daemon_exits_non_zero_and_suggests_doctor() {
     let url = unused_url();
 
-    let output = Command::new(FLOWSPACE3)
+    let config = tempfile::tempdir().expect("a temp config directory");
+    let output = flowspace3(config.path())
         .args(["ping", "--daemon-url", &url])
         .output()
         .expect("the flowspace3 binary should run");
@@ -104,7 +119,8 @@ fn ping_without_a_daemon_exits_non_zero_and_suggests_doctor() {
 fn ping_refuses_a_daemon_that_reports_a_bad_status() {
     let (url, server) = serve_once(r#"{"status":"degraded"}"#);
 
-    let output = Command::new(FLOWSPACE3)
+    let config = tempfile::tempdir().expect("a temp config directory");
+    let output = flowspace3(config.path())
         .args(["ping", "--daemon-url", &url])
         .output()
         .expect("the flowspace3 binary should run");
@@ -133,7 +149,8 @@ fn the_client_sends_a_get_to_health() {
         request
     });
 
-    let _ = Command::new(FLOWSPACE3)
+    let config = tempfile::tempdir().expect("a temp config directory");
+    let _ = flowspace3(config.path())
         .args(["ping", "--daemon-url", &format!("http://{address}")])
         .output();
 
@@ -149,7 +166,8 @@ fn the_client_sends_a_get_to_health() {
 fn a_trailing_slash_in_the_url_is_tolerated() {
     let (url, server) = serve_once(r#"{"status":"ok","version":"0.1.0"}"#);
 
-    let output = Command::new(FLOWSPACE3)
+    let config = tempfile::tempdir().expect("a temp config directory");
+    let output = flowspace3(config.path())
         .args(["ping", "--daemon-url", &format!("{url}/")])
         .output()
         .expect("the flowspace3 binary should run");
