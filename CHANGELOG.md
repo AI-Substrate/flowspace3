@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/AI-Substrate/flowspace3/compare/v0.3.0...v0.3.1) (2026-08-27)
+
+
+### Bug Fixes
+
+* **release:** draft-first releases so latest never resolves to an assetless release ([#22](https://github.com/AI-Substrate/flowspace3/issues/22)) ([c5a86a6](https://github.com/AI-Substrate/flowspace3/commit/c5a86a61791a137d829a02bdaa9d581772a5f99c))
+
 ## [0.3.0](https://github.com/AI-Substrate/flowspace3/compare/v0.2.0...v0.3.0) (2026-08-27)
 
 
