@@ -1,0 +1,65 @@
+README.md
+  s_15d888f4b629c1::t_ec5d327b1c4c31 68,70-74
+crates/cli/docs/agents.md
+  s_15d888f4b629c1::t_f91b4f9672afe8 16-18,21-25,127-132,155
+crates/cli/docs/read.md
+  s_15d888f4b629c1::t_e5f5e10b2b9d0a 1-115
+crates/cli/docs/search.md
+  s_15d888f4b629c1::t_f6122988995c31 70-86
+crates/cli/skills/flowspace/SKILL.md
+  s_15d888f4b629c1::t_84a7f3568913e2 47,99-103,108-122
+crates/cli/src/client.rs
+  s_15d888f4b629c1::t_fa6a74587dfa75 154,159,162-172
+crates/cli/src/docs.rs
+  s_15d888f4b629c1::t_9420e3600d170a 58,84-89
+crates/cli/src/main.rs
+  s_15d888f4b629c1::t_f72609bfcfd30d 105-148,332,335-365,466-482
+crates/cli/tests/docs_bundle.rs
+  s_15d888f4b629c1::t_0f27a04274d339 93-95
+crates/core/src/address.rs
+  s_15d888f4b629c1::t_9a68ccad4ab4ab 1-411
+crates/core/src/catalog.rs
+  s_15d888f4b629c1::t_8e3e1d72d7b86b 173-180,185-186,375-419,492-495
+crates/core/src/lib.rs
+  s_15d888f4b629c1::t_c74d7eaf88b55c 12,28-31
+crates/daemon/src/http.rs
+  s_15d888f4b629c1::t_499b8bb8abc583 28,64-65,218-227,240-241,246-282,286-321
+crates/daemon/src/lib.rs
+  s_15d888f4b629c1::t_48b41d90c169f7 16,23
+crates/daemon/src/read.rs
+  s_15d888f4b629c1::t_f07fbe27333d99 1-1112
+crates/daemon/src/scope.rs
+  s_15d888f4b629c1::t_4a4bc58eedf3c5 1-224
+crates/daemon/src/search.rs
+  s_15d888f4b629c1::t_edcddbebd92363 31,39-40,43-46,114-118,161-164,180,282-286,288
+crates/daemon/tests/read_surface.rs
+  s_15d888f4b629c1::t_49b0d58dcb2a1e 1-675
+crates/daemon/tests/search_empty.rs
+  s_15d888f4b629c1::t_2ff54095ccc221 18,71,96,128
+crates/store/src/lib.rs
+  s_15d888f4b629c1::t_ee65e0bda633bc 31,55-58
+crates/store/src/read.rs
+  s_15d888f4b629c1::t_6aa7b90fda8a95 1-258
+crates/store/tests/pg_read.rs
+  s_15d888f4b629c1::t_f777aa2561116a 1-257
+docs/reference/error-codes.md
+  s_15d888f4b629c1::t_7def726ee8037b 187-222
+docs/services/read-surface.md
+  s_15d888f4b629c1::t_856f1b46ce22be 1-217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ecd15a88e74b3bb85d0fd74e1b695c77acf4326f",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
