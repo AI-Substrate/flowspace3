@@ -407,13 +407,21 @@ pub const QUERY_INVALID_AMBIGUOUS: Code = Code::new(
     false,
 );
 
-/// The address names a corpus this build cannot read yet.
+/// The request is understood and names something this build cannot answer yet.
+///
+/// Deliberately kept after conversations landed and stopped being its only
+/// user. It is the code — and the 501 arm in [`Code::http_status`] — that any
+/// future surface reaches for when an address or a verb is real in the design
+/// and absent from the binary: the MCP tools, the corpora after conversations.
+/// Retiring it would mean the next such case either invents a code or lies
+/// with a 500, and a retired code can never be reused.
 pub const QUERY_NOT_IMPLEMENTED: Code = Code::new(
     "FS3-E-QUERY-NOT-IMPLEMENTED",
     Area::Query,
-    "The address is valid but names a corpus this build does not store yet — conversations.",
-    "nothing to fix: conversation storage is not in this version. Element addresses (`el:…`) \
-     work today — `flowspace3 search \"<question>\"` returns them.",
+    "The request is valid but names something this build does not implement yet.",
+    "nothing to fix in your request — the message names what is missing. \
+     `flowspace3 docs list` describes what this version does answer, and \
+     `flowspace3 doctor upgrade` installs a newer one.",
     false,
 );
 

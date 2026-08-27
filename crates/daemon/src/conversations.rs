@@ -579,11 +579,11 @@ mod tests {
     fn the_reserved_identity_is_a_namespace_repo_identities_cannot_mint() {
         // `RepoIdentity` only ever produces `git:` or `path:` keys, so this
         // cannot collide with a repository — structurally, not by luck.
-        assert!(UNANCHORED.starts_with(fs3_core::conversation::ADDRESS_PREFIX));
+        assert!(UNANCHORED.starts_with(fs3_core::address::CONVERSATION_SCHEME));
         assert!(
             !fs3_core::RepoIdentity::from_path(std::path::Path::new("/srv/anything"))
                 .key()
-                .starts_with(fs3_core::conversation::ADDRESS_PREFIX)
+                .starts_with(fs3_core::address::CONVERSATION_SCHEME)
         );
     }
 }

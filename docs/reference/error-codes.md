@@ -213,9 +213,9 @@ The address matches more than one element or repository, so there is no single a
 | false | 400 |
 ### `FS3-E-QUERY-NOT-IMPLEMENTED`
 
-The address is valid but names a corpus this build does not store yet — conversations.
+The request is valid but names something this build does not implement yet.
 
-**Fix**: nothing to fix: conversation storage is not in this version. Element addresses (`el:…`) work today — `flowspace3 search "<question>"` returns them.
+**Fix**: nothing to fix in your request — the message names what is missing. `flowspace3 docs list` describes what this version does answer, and `flowspace3 doctor upgrade` installs a newer one.
 
 | retryable | status |
 | --- | --- |

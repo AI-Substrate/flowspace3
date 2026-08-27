@@ -693,3 +693,41 @@ async fn a_repo_less_address_resolves_in_the_repository_the_caller_is_in() {
     assert_eq!(data(&envelope)["name"], "area");
     stack.destroy().await;
 }
+
+/// `get` resolves a repo-less address wherever it can — including from a
+/// directory fs3 has never indexed. When it does, the answer came from
+/// somebody else's repository, and that has to reach a consumer reading only
+/// `data` and `next_action`: a warning that lives in `meta` alone is a warning
+/// an agent never sees.
+#[tokio::test]
+async fn a_get_from_an_unindexed_directory_leads_its_steer_with_the_warning() {
+    let stack = Stack::create("read_get_unscoped_steer").await;
+    let indexed = Fixture::create("read-get-steer-indexed", None);
+    stack.index(&indexed.path()).await;
+
+    let elsewhere = Fixture::create("read-get-steer-elsewhere", None);
+    let here = elsewhere.path();
+    let envelope = stack
+        .get(&[
+            ("address", "el:src/geometry.rs::Rect::area"),
+            ("cwd", here.as_str()),
+        ])
+        .await;
+
+    assert!(
+        envelope.ok,
+        "the address still resolves: {:?}",
+        envelope.error
+    );
+
+    let warning = envelope.meta.as_ref().expect("meta carries the scope")["scope"]["warnings"][0]
+        .as_str()
+        .expect("an unindexed directory is worth saying out loud");
+    let steer = envelope.next_action.as_deref().expect("a steer");
+    assert!(
+        steer.starts_with(warning),
+        "the warning must LEAD the steer, the way search and tree do:\n  steer: {steer}\n  \
+         warning: {warning}"
+    );
+    stack.destroy().await;
+}
