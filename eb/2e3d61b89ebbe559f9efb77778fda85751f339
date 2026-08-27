@@ -1,0 +1,32 @@
+Cargo.lock
+  h_9e71e8b09f7cf2 1077
+crates/cli/Cargo.toml
+  h_9e71e8b09f7cf2 49-51
+crates/cli/src/doctor.rs
+  h_9e71e8b09f7cf2 336-340,342-344,947-962,977,1094-1177
+crates/cli/tests/daemon_logging.rs
+  h_9e71e8b09f7cf2 1-69
+crates/daemon/src/boot.rs
+  h_9e71e8b09f7cf2 165-170
+crates/daemon/src/logging.rs
+  h_9e71e8b09f7cf2 236-239,244-247,400-406,517-520
+crates/daemon/tests/logging_degraded.rs
+  h_9e71e8b09f7cf2 1-56
+crates/daemon/tests/logging_file.rs
+  h_9e71e8b09f7cf2 1-74
+crates/testkit/arch-allowlist.toml
+  h_9e71e8b09f7cf2 233-235
+docs/services/daemon-logs.md
+  h_9e71e8b09f7cf2 1-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "eb2e3d61b89ebbe559f9efb77778fda85751f339",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
