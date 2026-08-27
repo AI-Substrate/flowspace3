@@ -287,10 +287,10 @@ mod tests {
     /// where no file lives.
     #[test]
     fn the_repo_half_is_the_longest_identity_that_matches() {
-        let Address::Element(element) =
-            Address::parse("el:git:github.com/AI-Substrate/flowspace3/crates/store/src/lib.rs::migrate")
-                .expect("an element address")
-        else {
+        let Address::Element(element) = Address::parse(
+            "el:git:github.com/AI-Substrate/flowspace3/crates/store/src/lib.rs::migrate",
+        )
+        .expect("an element address") else {
             panic!("that is an element address");
         };
         let parts = element.split(IDENTITIES);

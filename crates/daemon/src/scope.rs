@@ -31,6 +31,7 @@
 
 use std::path::Path;
 
+use fs3_core::IdentitySource;
 use serde::Serialize;
 
 use crate::wiring::AppState;
@@ -120,7 +121,9 @@ pub fn steer(scope: &Scope, next: &str) -> String {
 /// the unscoped behaviour plus a warning, because refusing a search over a
 /// scoping question would trade a working answer for a broken one.
 pub async fn resolve(state: &AppState, repo: Option<&str>, cwd: Option<&str>) -> Scope {
-    let identities = fs3_store::repo_identities(&state.db).await.unwrap_or_default();
+    let identities = fs3_store::repo_identities(&state.db)
+        .await
+        .unwrap_or_default();
 
     if let Some(named) = repo.map(str::trim).filter(|value| !value.is_empty()) {
         if named.eq_ignore_ascii_case(ALL) {
@@ -175,10 +178,18 @@ pub async fn resolve(state: &AppState, repo: Option<&str>, cwd: Option<&str>) ->
     };
     let key = identity.key().to_string();
 
-    if !identities.iter().any(|known| *known == key) {
+    if !identities.contains(&key) {
+        // A folder with no remote gets a PATH identity, and calling that "a
+        // checkout of path:/tmp/thing" is a sentence that teaches nobody
+        // anything. Only a remote-derived identity is worth naming, because
+        // only that one could plausibly be indexed from somewhere else.
+        let what = match identity.source() {
+            IdentitySource::Remote => format!("{cwd} is a checkout of {key}, which is not indexed"),
+            IdentitySource::Path => format!("{cwd} is not indexed"),
+        };
         return Scope::everything(Some(cwd)).warn(format!(
-            "{cwd} is a checkout of {key}, which is NOT indexed, so this searched every other \
-             indexed repository — index it with `flowspace3 add {cwd}`"
+            "{what}, so this answered from every OTHER indexed repository — index it with \
+             `flowspace3 add {cwd}`"
         ));
     }
 

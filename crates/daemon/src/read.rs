@@ -225,9 +225,7 @@ pub async fn get(
     let element = element_address(&request.address)?;
     let depth = depth_of(request.depth, DEFAULT_GET_DEPTH)?;
 
-    let identities = fs3_store::repo_identities(&state.db)
-        .await
-        .map_err(fail)?;
+    let identities = fs3_store::repo_identities(&state.db).await.map_err(fail)?;
     let parts = element.split(&identities);
     let repo = parts.repo.clone().or_else(|| scope.repo.clone());
 
@@ -294,9 +292,7 @@ pub async fn tree(
         }
     };
 
-    let identities = fs3_store::repo_identities(&state.db)
-        .await
-        .map_err(fail)?;
+    let identities = fs3_store::repo_identities(&state.db).await.map_err(fail)?;
 
     // A target may be an address, a repo-relative path, or an absolute path on
     // this machine — `tree $(pwd)/crates` is the obvious thing to type, so it
@@ -431,7 +427,10 @@ async fn file_tree(
 }
 
 /// Resolve an absolute host path to the repository and prefix it names.
-async fn absolute_target(state: &AppState, target: &str) -> Result<(Option<String>, String), Failure> {
+async fn absolute_target(
+    state: &AppState,
+    target: &str,
+) -> Result<(Option<String>, String), Failure> {
     let target = target.trim_end_matches('/');
     let worktree = fs3_store::worktree_containing(&state.db, target)
         .await
@@ -496,20 +495,15 @@ async fn locate(
 /// thing, so the first is the answer. Different bytes ARE a choice, and the
 /// only non-arbitrary tiebreak is where the caller is standing; failing that,
 /// the candidates are reported rather than one being picked silently.
-fn choose_file(
-    files: Vec<IndexedFile>,
-    path: &str,
-    scope: &Scope,
-) -> Result<IndexedFile, Failure> {
+fn choose_file(files: Vec<IndexedFile>, path: &str, scope: &Scope) -> Result<IndexedFile, Failure> {
     let mut blobs: Vec<&str> = files.iter().map(|file| file.blob_sha.as_str()).collect();
     blobs.sort_unstable();
     blobs.dedup();
 
     if blobs.len() <= 1 {
-        return files
-            .into_iter()
-            .next()
-            .ok_or_else(|| Failure::new(&catalog::QUERY_NOT_FOUND, format!("{path} is not indexed")));
+        return files.into_iter().next().ok_or_else(|| {
+            Failure::new(&catalog::QUERY_NOT_FOUND, format!("{path} is not indexed"))
+        });
     }
 
     if let Some(root) = scope.worktree.as_deref()
@@ -568,7 +562,10 @@ async fn parse_tree(state: &AppState, file: &IndexedFile) -> Result<(String, Ele
     let blob = fs3_core::BlobRef::new(&file.blob_sha).map_err(|error| {
         Failure::new(
             &catalog::QUERY_NOT_FOUND,
-            format!("the stored content key for {} is unreadable: {error}", file.path),
+            format!(
+                "the stored content key for {} is unreadable: {error}",
+                file.path
+            ),
         )
     })?;
 
@@ -595,7 +592,13 @@ fn pick<'a>(
 ) -> Result<(Vec<&'a Element>, &'a Element), Failure> {
     let mut matches = Vec::new();
     let mut chain = Vec::new();
-    collect(&located.root, &parts.element, span, &mut chain, &mut matches);
+    collect(
+        &located.root,
+        &parts.element,
+        span,
+        &mut chain,
+        &mut matches,
+    );
 
     match matches.len() {
         1 => Ok(matches.remove(0)),
@@ -771,11 +774,10 @@ fn element_address(text: &str) -> Result<fs3_core::ElementAddress, Failure> {
         )
         .with_detail("address", conversation.to_string())
         .with_detail("guid", conversation.guid)),
-        Err(error) => Err(Failure::new(
-            &catalog::QUERY_INVALID_ADDRESS,
-            error.to_string(),
-        )
-        .with_detail("address", text)),
+        Err(error) => Err(
+            Failure::new(&catalog::QUERY_INVALID_ADDRESS, error.to_string())
+                .with_detail("address", text),
+        ),
     }
 }
 
@@ -862,10 +864,7 @@ fn directory_entries(
                 files: None,
                 children: Vec::new(),
             }),
-            Some((head, _)) => directories
-                .entry(head.to_string())
-                .or_default()
-                .push(file),
+            Some((head, _)) => directories.entry(head.to_string()).or_default().push(file),
         }
     }
 
@@ -914,7 +913,7 @@ fn target_label(repo: Option<&str>, prefix: &str) -> String {
 pub fn next_after_get(result: &GetResult) -> String {
     if result.children.is_empty() {
         format!(
-            "that is the whole element — open it at {}:{} , or browse its file with `flowspace3 \
+            "that is the whole element — open it at {}:{}, or browse its file with `flowspace3 \
              tree {}`",
             result.path,
             result.span[0],
@@ -964,7 +963,14 @@ mod tests {
     }
 
     fn element(kind: ElementKind, name: &str, address: &str, span: (u32, u32)) -> Element {
-        Element::new(kind, "item", name, address, Span::new(span.0, span.1), "body")
+        Element::new(
+            kind,
+            "item",
+            name,
+            address,
+            Span::new(span.0, span.1),
+            "body",
+        )
     }
 
     /// The shape that makes ambiguity real: two elements, one address.
@@ -976,7 +982,13 @@ mod tests {
         ]);
 
         let mut matches = Vec::new();
-        collect(&root, "src/lib.rs::Rect", None, &mut Vec::new(), &mut matches);
+        collect(
+            &root,
+            "src/lib.rs::Rect",
+            None,
+            &mut Vec::new(),
+            &mut matches,
+        );
         assert_eq!(matches.len(), 2);
 
         // and --span picks exactly one of them
@@ -1025,7 +1037,7 @@ mod tests {
     /// Directories are derived from the paths that exist, and only those.
     #[test]
     fn a_flat_path_list_folds_into_directories_and_files() {
-        let files = vec![
+        let files = [
             file("crates/store/src/lib.rs"),
             file("crates/store/src/read.rs"),
             file("crates/cli/src/main.rs"),
@@ -1049,7 +1061,7 @@ mod tests {
 
     #[test]
     fn depth_two_descends_one_directory_further() {
-        let files = vec![
+        let files = [
             file("crates/store/src/lib.rs"),
             file("crates/cli/src/main.rs"),
         ];
@@ -1067,7 +1079,7 @@ mod tests {
     /// A prefix already consumed must not be repeated in the names below it.
     #[test]
     fn a_prefixed_listing_names_only_what_is_below_the_prefix() {
-        let files = vec![
+        let files = [
             file("crates/store/src/lib.rs"),
             file("crates/store/migrations/0001.sql"),
         ];

@@ -90,7 +90,9 @@ fn every_command_the_bundle_teaches_actually_exists() {
 #[test]
 fn the_operating_loop_is_documented() {
     let mentioned = commands_mentioned();
-    for verb in ["doctor", "daemon", "add", "status", "search", "docs"] {
+    for verb in [
+        "doctor", "daemon", "add", "status", "search", "get", "tree", "docs",
+    ] {
         assert!(
             mentioned.contains(verb),
             "`{verb}` is part of the operating loop but no bundled page mentions it"

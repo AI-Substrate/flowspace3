@@ -197,7 +197,8 @@ async fn search(
     // standing in. The scope rides in `meta` on BOTH outcomes, because "no
     // index for the active model" and "the wrong repository answered" look
     // identical to a caller who cannot see which repository was asked.
-    let scope = crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
+    let scope =
+        crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
     let meta = serde_json::json!({ "scope": scope });
 
     match crate::search::search(&state, &request, &scope).await {
@@ -240,7 +241,8 @@ async fn get_address(
         return failed(&state, COMMAND, failure).await;
     }
 
-    let scope = crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
+    let scope =
+        crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
     match crate::read::get(&state, &request, &scope).await {
         Ok((result, parser_version)) => {
             let next = crate::read::next_after_get(&result);
@@ -275,7 +277,8 @@ async fn tree(
         return failed(&state, COMMAND, failure).await;
     }
 
-    let scope = crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
+    let scope =
+        crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
     let meta = serde_json::json!({ "scope": scope });
 
     match crate::read::tree(&state, &request, &scope).await {

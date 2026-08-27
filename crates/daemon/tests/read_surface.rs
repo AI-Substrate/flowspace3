@@ -127,7 +127,12 @@ impl Stack {
     /// Register a root and drain everything it queued.
     async fn index(&self, path: &str) {
         let envelope = self
-            .call("POST", "/roots", Some(serde_json::json!({ "path": path })), &[])
+            .call(
+                "POST",
+                "/roots",
+                Some(serde_json::json!({ "path": path })),
+                &[],
+            )
             .await;
         assert!(envelope.ok, "adding {path} failed: {:?}", envelope.error);
 
@@ -381,7 +386,9 @@ async fn an_unknown_path_is_a_not_found_with_neighbours() {
 async fn a_conversation_address_is_not_yet_rather_than_malformed() {
     let stack = Stack::create("read_get_conv").await;
 
-    let envelope = stack.get(&[("address", "conv:2f1c-not-a-real-conversation")]).await;
+    let envelope = stack
+        .get(&[("address", "conv:2f1c-not-a-real-conversation")])
+        .await;
 
     assert_eq!(code(&envelope), "FS3-E-QUERY-NOT-IMPLEMENTED");
     assert_eq!(envelope.http_status(), 501);
@@ -455,9 +462,9 @@ async fn tree_on_a_file_lists_its_declarations() {
         "the declarations in the file: {entries:#?}"
     );
     assert!(
-        entries
-            .iter()
-            .all(|entry| entry["address"].as_str().is_some_and(|a| a.starts_with("el:"))),
+        entries.iter().all(|entry| entry["address"]
+            .as_str()
+            .is_some_and(|a| a.starts_with("el:"))),
         "and every row carries the address to get it with"
     );
     stack.destroy().await;

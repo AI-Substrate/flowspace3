@@ -42,7 +42,9 @@ pub async fn repo_identities(pool: &PgPool) -> Result<Vec<String>, StoreError> {
     let rows = sqlx::query("SELECT identity FROM repos ORDER BY length(identity) DESC, identity")
         .fetch_all(pool)
         .await?;
-    rows.iter().map(|row| Ok(row.try_get("identity")?)).collect()
+    rows.iter()
+        .map(|row| Ok(row.try_get("identity")?))
+        .collect()
 }
 
 /// Every indexed file at exactly `path`, optionally within one repository.
@@ -188,10 +190,7 @@ pub async fn parser_versions_for_blob(
 ///
 /// # Errors
 /// [`StoreError::Query`] when the read fails.
-pub async fn latest_summary(
-    pool: &PgPool,
-    raw_hash: &str,
-) -> Result<Option<Summary>, StoreError> {
+pub async fn latest_summary(pool: &PgPool, raw_hash: &str) -> Result<Option<Summary>, StoreError> {
     let row = sqlx::query(
         "SELECT text, tags, extras
            FROM smart_content

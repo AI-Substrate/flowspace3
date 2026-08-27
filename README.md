@@ -65,8 +65,13 @@ flowspace3 add .
 # 4. Watch the queue drain.
 flowspace3 status
 
-# 5. Ask a question.
+# 5. Ask a question. Every hit carries an `el:` address.
 flowspace3 search "how does the queue avoid two workers taking the same job"
+
+# 6. Read what you found, out of the index — not by guessing which checkout
+#    on disk the hit came from.
+flowspace3 get el:<repo>/<path>::<name>
+flowspace3 tree el:<repo>/<path>
 ```
 
 Every command answers one JSON envelope: `{"ok": true, …}` or `{"ok": false,
