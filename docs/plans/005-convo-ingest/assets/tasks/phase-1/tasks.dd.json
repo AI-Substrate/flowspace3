@@ -1,0 +1,35 @@
+{
+ "dd": {
+  "schema": "builder/plan"
+ },
+ "sections": [
+  {
+   "name": "meta",
+   "value": {
+    "title": "Phase 1: Contracts + fixtures",
+    "slug": "phase-1",
+    "status": "draft",
+    "summary": "Freeze the seams: trait, types, fixtures, contract suite."
+   }
+  },
+  {
+   "name": "summary",
+   "value": "Everything the fan-out depends on. When this phase closes, six coders can start in parallel with mechanical done-bars and never negotiate an interface."
+  },
+  {
+   "name": "tasks",
+   "value": [
+    { "id": "tk-c101", "title": "Core types: IngestInput (PijId{id,folder} | NativeSession{session_id, harness, folder}), SourceCursor (per-store variants: byte-offset {path, inode, offset} / ledger seq / db rowid), RawRecord, and the normalized ConversationTurn payload type mirroring the measured spec (scratch/conversations-telemetry-sample.md).", "state": "unchecked", "success": "Types compile in the placement the impl-guide names; no provider or store deps.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0007"] },
+    { "id": "tk-c102", "title": "Freeze the ConversationSource trait: resolve(&IngestInput) -> Vec<SessionFile>; read_incremental(&SessionFile, Option<SourceCursor>) -> (Vec<RawRecord>, SourceCursor). Doc comment carries the tenet-2 stop-and-ask rule: coders fill this contract, never widen it.", "state": "unchecked", "success": "Trait merged with rustdoc stating the contract and the four planned impls.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0007"] },
+    { "id": "tk-c103", "title": "Golden fixtures: sanitized real samples for all four stores (claude main jsonl + subagent sidecar + spilled tool-result; omp jsonl incl. xd:// writes and a compaction turn; pij events.ndjson incl. receipts; metrics-db rows in both dialects incl. a copilot session) harvested per the recipe (scratch/reconstruct/09-ingestion-recipe.md) into testkit fixture data.", "state": "unchecked", "success": "Fixtures committed, personal content scrubbed, provenance noted per file.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0007"] },
+    { "id": "tk-c104", "title": "Shared contract suite in testkit: one parameterized suite every ConversationSource impl must pass over its fixtures — resolve finds the files; read from None yields all records + a cursor; re-read from that cursor yields empty; appended fixture bytes yield only the delta; mid-line partial write yields no torn record.", "state": "unchecked", "success": "Suite compiles against a fake impl; the delta and torn-record cases are mutation-checked.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0007", "../../../plan.dd.json#acceptance_criteria/ac-0003"] },
+    { "id": "tk-c105", "title": "Pin reconvo.py as reference oracle: record its version/sha and the fixture->expected-output snapshots the Rust readers must reproduce (turn counts, kinds, dedup behaviour) as committed expectation files.", "state": "unchecked", "success": "Expectation files exist per store fixture; divergence from oracle is a failing test, not an opinion.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0007"] }
+   ]
+  },
+  {
+   "name": "done_when",
+   "value": {}
+  }
+ ],
+ "references": []
+}
