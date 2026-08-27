@@ -1,0 +1,27 @@
+.github/workflows/release-please.yml
+  s_15d888f4b629c1::t_065d2952696d3a 35-65
+.github/workflows/release.yml
+  s_15d888f4b629c1::t_fb79d440edd553 182-215
+install.ps1
+  s_15d888f4b629c1::t_26f5ab58eeabe7 48-76
+install.sh
+  s_15d888f4b629c1::t_b94588d4674eb7 57-91
+release-please-config.json
+  s_15d888f4b629c1::t_6040481a919dbf 8-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0aff8aaff6e624ced579f955644b8af7baf33d35",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
