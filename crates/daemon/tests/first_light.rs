@@ -42,6 +42,7 @@ fn doctor_config(database_url: &str) -> Config {
         },
         daemon: fs3_core::DaemonConfig {
             url: NO_DAEMON.to_string(),
+            ..fs3_core::DaemonConfig::default()
         },
         ..Config::default()
     }

@@ -138,6 +138,7 @@ mod tests {
         Effective {
             config: Config::default(),
             layers,
+            has_file: true,
         }
     }
 

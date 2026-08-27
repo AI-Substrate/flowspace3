@@ -16,6 +16,7 @@ pub mod element;
 pub mod envelope;
 pub mod error;
 pub mod git;
+pub mod logging;
 pub mod messages;
 pub mod ports;
 pub mod skew;
@@ -37,6 +38,9 @@ pub use element::{
 pub use envelope::{ENVELOPE_VERSION, Envelope, Failure};
 pub use error::{Error, Result};
 pub use git::{BlobChange, ChangedSet, FileBlob, IdentitySource, RepoIdentity, TreeSnapshot, diff};
+pub use logging::{
+    LOG_FILE_NAME, LOGGING_SOURCE, resolve_log_dir, rolled_name, unwritable_message,
+};
 pub use messages::{Severity, UserMessage};
 pub use ports::{Embedder, Summarizer, Summary};
 pub use skew::{SCHEMA_SOURCE, SchemaSkew};

@@ -31,8 +31,6 @@ serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
 toml.workspace = true
-# The daemon subcommand installs the log subscriber before handing off.
-tracing-subscriber.workspace = true
 
 # The binary is `flowspace3` (PRD req 28), not the package name.
 [[bin]]
@@ -48,3 +46,6 @@ axum.workspace = true
 # because there were THREE copies of that decision and one of them wrote to
 # production — see the 2026-08-27 ruling.
 fs3-testkit.workspace = true
+# DEV only: the daemon log-file test needs a throwaway config directory and a
+# throwaway log directory, and must never write to the user's real ones.
+tempfile.workspace = true

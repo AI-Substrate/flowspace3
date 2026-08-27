@@ -19,8 +19,9 @@ use std::time::Duration;
 use anyhow::{Context, Result, bail, ensure};
 use fs3_core::{Config, Port, redact_url_password};
 
+use crate::logging::Logging;
 use crate::wiring::AppState;
-use crate::{config, http};
+use crate::{config, http, logging};
 
 /// How often the reconcile runner compares desired state against actual.
 ///
@@ -48,9 +49,22 @@ pub fn run() -> Result<()> {
     let configuration = config::load_effective_from(&directory)
         .with_context(|| format!("loading configuration from {}", directory.display()))?;
 
+    // FIRST use of the configuration, before anything is logged: the log file's
+    // path, its caps and its filter are all configuration, so a subscriber
+    // installed any earlier could honour none of them. Everything above this
+    // line therefore reports through `Result`, not through `tracing`.
+    let logging = logging::init(&configuration.config.daemon);
+
     let address = bind_address(&configuration.config.daemon.url)?;
     tracing::info!(
         config = %directory.display(),
+        // Named once, at startup, so "where are the logs" is answerable from
+        // the logs themselves — and from the scrollback, when the file could
+        // not be opened at all.
+        log = %logging
+            .file
+            .as_ref()
+            .map_or_else(|| "stdout only".to_string(), |path| path.display().to_string()),
         daemon = %configuration.layer("daemon"),
         database = %configuration.layer("database"),
         embedder = %configuration.config.selected(Port::Embedder, None),
@@ -59,14 +73,31 @@ pub fn run() -> Result<()> {
         "fs3 daemon starting"
     );
 
+    if let Some(problem) = &logging.problem {
+        tracing::warn!(
+            directory = %logging.directory,
+            %problem,
+            "no log file: this process is logging to stdout only, so nothing survives it"
+        );
+    }
+
+    // The notice the config loader can no longer give itself: it runs before
+    // the subscriber exists, so the fact travels as data and is said here.
+    if !configuration.has_file {
+        tracing::info!(
+            path = %directory.join(fs3_core::CONFIG_FILE_NAME).display(),
+            "no config file: running on defaults. Create that file to change anything."
+        );
+    }
+
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .context("starting the Tokio runtime")?
-        .block_on(serve(configuration.config, address))
+        .block_on(serve(configuration.config, address, logging))
 }
 
-async fn serve(configuration: Config, address: String) -> Result<()> {
+async fn serve(configuration: Config, address: String, logging: Logging) -> Result<()> {
     let state = AppState::from_config(configuration).context("wiring the composition root")?;
     let database = redact_url_password(&state.config.database.url);
 
@@ -117,6 +148,28 @@ async fn serve(configuration: Config, address: String) -> Result<()> {
             "requeued jobs left running by a previous process — it did not shut down cleanly"
         ),
         Err(error) => tracing::error!(%error, "cannot requeue jobs left running"),
+    }
+
+    // What logging managed to do, told to the person driving (req-0059).
+    //
+    // Declared ONCE rather than from a reconcile pass, because unlike schema
+    // skew or a pending update this condition cannot change while the process
+    // runs: the log file is opened at startup and never reopened. The
+    // declaration is still level-triggered — a daemon that CAN write its log
+    // declares an empty set, which is what retracts the previous run's
+    // complaint.
+    //
+    // A store that will not take the message is not worth failing the boot
+    // over: the same news is already on stdout and in the `logs` row of
+    // `flowspace3 doctor`.
+    if let Err(error) = fs3_store::sync_messages(
+        &state.db,
+        fs3_core::LOGGING_SOURCE,
+        &logging.desired_messages(),
+    )
+    .await
+    {
+        tracing::warn!(%error, "cannot record the state of logging in the messages queue");
     }
 
     // The worker loop is a background task rather than a second process: it

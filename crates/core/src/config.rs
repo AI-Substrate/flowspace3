@@ -303,22 +303,69 @@ impl Config {
     }
 }
 
-/// Daemon transport settings. Only localhost HTTP in v1 (PRD req 33).
+/// Daemon transport and logging settings. Only localhost HTTP in v1 (PRD req
+/// 33).
 ///
 /// ```toml
 /// [daemon]
 /// url = "http://127.0.0.1:7373"
+/// log_dir = "~/.local/state/flowspace3/logs"
+/// log_level = "fs3_daemon=info,tower_http=info"
+/// log_max_bytes = 8000000
+/// log_max_files = 5
 /// ```
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct DaemonConfig {
     /// Base URL the daemon serves and the CLI calls.
     pub url: String,
+    /// Directory the daemon writes its rolling log files into.
+    ///
+    /// A leading `~/` means the user's home. The default follows the same
+    /// hand-rolled convention as the config directory (`~/.config/flowspace3`)
+    /// rather than a platform-dirs crate, so fs3 has ONE path convention
+    /// instead of two that disagree on macOS.
+    pub log_dir: String,
+    /// `EnvFilter` directives for both log destinations.
+    ///
+    /// `RUST_LOG` still wins when it is set: an operator debugging one run
+    /// should not have to edit a config file to do it.
+    pub log_level: String,
+    /// Roll the active log file once it passes this many bytes.
+    pub log_max_bytes: u64,
+    /// How many log files to keep, the active one included.
+    ///
+    /// With [`DaemonConfig::log_max_bytes`] this is the whole disk story:
+    /// `log_max_bytes * log_max_files` is a hard ceiling, and the oldest file
+    /// is deleted rather than allowed to accumulate.
+    pub log_max_files: u32,
 }
 
 impl DaemonConfig {
     /// The default daemon endpoint, shared by daemon and CLI.
     pub const DEFAULT_URL: &'static str = "http://127.0.0.1:7373";
+
+    /// Where logs go when nothing says otherwise.
+    ///
+    /// `~/.local/state` is the XDG state home — the right place for logs
+    /// (data a program keeps across restarts but which is not precious), and
+    /// the same tilde-relative shape the config directory already uses.
+    pub const DEFAULT_LOG_DIR: &'static str = "~/.local/state/flowspace3/logs";
+
+    /// The filter the daemon ran on before it had a log file, kept verbatim so
+    /// making logging configurable did not quietly change what is logged.
+    pub const DEFAULT_LOG_LEVEL: &'static str = "fs3_daemon=info,tower_http=info";
+
+    /// 8 MB: large enough that an incident's context is in ONE file, small
+    /// enough to open in an editor and to paste a tail of into a report.
+    pub const DEFAULT_LOG_MAX_BYTES: u64 = 8_000_000;
+
+    /// Five files — the active one plus four rolled — so the default ceiling is
+    /// 40 MB. Chosen over "7 dailies" because the incident this exists for
+    /// (a lane dying under load) produces bytes in bursts rather than by the
+    /// clock: a size cap bounds the disk on a busy day, where a day cap does
+    /// not.
+    pub const DEFAULT_LOG_MAX_FILES: u32 = 5;
 
     fn collect(&self, problems: &mut Vec<Problem>) {
         if self.url.trim().is_empty() {
@@ -334,6 +381,41 @@ impl DaemonConfig {
                 format!("url = \"{}\"", Self::DEFAULT_URL),
             ));
         }
+
+        if self.log_dir.trim().is_empty() {
+            problems.push(Problem::file(
+                "daemon.log_dir",
+                "must not be empty — logging to a file is not optional",
+                format!("log_dir = \"{}\"", Self::DEFAULT_LOG_DIR),
+            ));
+        }
+
+        if self.log_level.trim().is_empty() {
+            problems.push(Problem::file(
+                "daemon.log_level",
+                "must not be empty",
+                format!("log_level = \"{}\"", Self::DEFAULT_LOG_LEVEL),
+            ));
+        }
+
+        // Both caps are refused at zero rather than clamped: a zero here means
+        // somebody meant to turn something off, and silently substituting a
+        // default would leave them believing they had.
+        if self.log_max_bytes == 0 {
+            problems.push(Problem::file(
+                "daemon.log_max_bytes",
+                "must be greater than zero — a file that rolls at 0 bytes holds no evidence",
+                format!("log_max_bytes = {}", Self::DEFAULT_LOG_MAX_BYTES),
+            ));
+        }
+
+        if self.log_max_files == 0 {
+            problems.push(Problem::file(
+                "daemon.log_max_files",
+                "must be at least 1 — one file is the active one",
+                format!("log_max_files = {}", Self::DEFAULT_LOG_MAX_FILES),
+            ));
+        }
     }
 }
 
@@ -341,6 +423,10 @@ impl Default for DaemonConfig {
     fn default() -> Self {
         Self {
             url: Self::DEFAULT_URL.to_string(),
+            log_dir: Self::DEFAULT_LOG_DIR.to_string(),
+            log_level: Self::DEFAULT_LOG_LEVEL.to_string(),
+            log_max_bytes: Self::DEFAULT_LOG_MAX_BYTES,
+            log_max_files: Self::DEFAULT_LOG_MAX_FILES,
         }
     }
 }
@@ -954,6 +1040,16 @@ pub struct Effective {
     pub config: Config,
     /// Highest layer that touched each top-level section.
     pub layers: BTreeMap<String, Layer>,
+    /// Whether there was a config FILE at all.
+    ///
+    /// Distinct from every section reading [`Layer::Defaults`]: a file that
+    /// exists and sets nothing this shape recognises is not the same situation
+    /// as no file, and only the second one is worth telling a user about.
+    ///
+    /// It travels as data because the daemon cannot LOG it at the moment it is
+    /// discovered — the subscriber is built from this configuration, so
+    /// nothing logged during the load has anywhere to go.
+    pub has_file: bool,
 }
 
 impl Effective {
@@ -1109,7 +1205,11 @@ pub fn resolve(sources: Sources<'_>) -> Result<Effective> {
         layers.insert((*section).to_string(), layer);
     }
 
-    Ok(Effective { config, layers })
+    Ok(Effective {
+        config,
+        layers,
+        has_file: sources.file_text.is_some(),
+    })
 }
 
 /// The defaults as a TOML table — the bottom layer, and the type oracle the
@@ -1635,6 +1735,79 @@ summary_min_lines = 0
         let effective = resolved("[daemon]\nurl = \"http://127.0.0.1:9999\"\n", &[]).unwrap();
         assert_eq!(effective.config.daemon.url, "http://127.0.0.1:9999");
         assert_eq!(effective.layer("daemon"), Layer::File);
+    }
+
+    /// Every log knob has to be reachable from BOTH layers: the file for a
+    /// machine somebody administers, the environment for a container nobody
+    /// edits a file inside.
+    #[test]
+    fn the_log_destination_is_configurable_from_the_file_and_the_environment() {
+        let from_file = resolved(
+            "[daemon]\nlog_dir = \"/var/log/fs3\"\nlog_level = \"debug\"\n\
+             log_max_bytes = 1024\nlog_max_files = 2\n",
+            &[],
+        )
+        .unwrap();
+        assert_eq!(from_file.config.daemon.log_dir, "/var/log/fs3");
+        assert_eq!(from_file.config.daemon.log_level, "debug");
+        assert_eq!(from_file.config.daemon.log_max_bytes, 1024);
+        assert_eq!(from_file.config.daemon.log_max_files, 2);
+
+        let from_env = resolved(
+            "[daemon]\nlog_dir = \"/var/log/fs3\"\n",
+            &[
+                ("FS3_DAEMON__LOG_DIR", "/srv/logs"),
+                // Typed against the default, so this must arrive as an integer
+                // rather than the string "512".
+                ("FS3_DAEMON__LOG_MAX_BYTES", "512"),
+                ("FS3_DAEMON__LOG_MAX_FILES", "9"),
+            ],
+        )
+        .unwrap();
+        assert_eq!(from_env.config.daemon.log_dir, "/srv/logs");
+        assert_eq!(from_env.config.daemon.log_max_bytes, 512);
+        assert_eq!(from_env.config.daemon.log_max_files, 9);
+        assert_eq!(from_env.layer("daemon"), Layer::Env);
+    }
+
+    /// Both caps are refused at zero rather than clamped: a zero means somebody
+    /// meant to turn something off, and a silent default would leave them
+    /// believing they had.
+    #[test]
+    fn a_zero_log_cap_is_refused_rather_than_clamped() {
+        let bytes = Config::from_toml_str("[daemon]\nlog_max_bytes = 0\n").unwrap_err();
+        assert!(
+            format!("{bytes}").contains("log_max_bytes"),
+            "the problem must name the key: {bytes}"
+        );
+
+        let files = Config::from_toml_str("[daemon]\nlog_max_files = 0\n").unwrap_err();
+        assert!(
+            format!("{files}").contains("log_max_files"),
+            "the problem must name the key: {files}"
+        );
+    }
+
+    /// `has_file` is provenance the daemon needs after the fact: it builds its
+    /// subscriber from this configuration, so it cannot log "no config file"
+    /// at the moment it finds out.
+    #[test]
+    fn whether_there_was_a_file_at_all_survives_the_merge() {
+        let with_file = resolved("[daemon]\nurl = \"http://127.0.0.1:9999\"\n", &[]).unwrap();
+        assert!(with_file.has_file);
+
+        let without = resolve(Sources {
+            file_label: "/tmp/fs3/config.toml",
+            file_text: None,
+            env: &[],
+        })
+        .unwrap();
+        assert!(!without.has_file);
+        // Distinct from "every section is on defaults", which is also true
+        // when a file exists and sets nothing.
+        let empty_file = resolved("", &[]).unwrap();
+        assert!(empty_file.has_file);
+        assert_eq!(empty_file.layer("daemon"), Layer::Defaults);
     }
 
     #[test]
