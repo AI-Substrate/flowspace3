@@ -11,6 +11,7 @@ pub mod debounce;
 pub mod enrich;
 pub mod gc;
 pub mod http;
+pub mod logging;
 pub mod reconcile;
 pub mod remove;
 pub mod roots;
@@ -31,6 +32,7 @@ pub use config::{
 };
 pub use gc::GcSupervisor;
 pub use http::{router, serve};
+pub use logging::{Logging, Roller, RollingWriter};
 pub use reconcile::{Pass, Reconcile};
 pub use runner::{drain, run_forever};
 pub use skew::SchemaSupervisor;

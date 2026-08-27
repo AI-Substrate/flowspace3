@@ -303,22 +303,69 @@ impl Config {
     }
 }
 
-/// Daemon transport settings. Only localhost HTTP in v1 (PRD req 33).
+/// Daemon transport and logging settings. Only localhost HTTP in v1 (PRD req
+/// 33).
 ///
 /// ```toml
 /// [daemon]
 /// url = "http://127.0.0.1:7373"
+/// log_dir = "~/.local/state/flowspace3/logs"
+/// log_level = "fs3_daemon=info,tower_http=info"
+/// log_max_bytes = 8000000
+/// log_max_files = 5
 /// ```
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct DaemonConfig {
     /// Base URL the daemon serves and the CLI calls.
     pub url: String,
+    /// Directory the daemon writes its rolling log files into.
+    ///
+    /// A leading `~/` means the user's home. The default follows the same
+    /// hand-rolled convention as the config directory (`~/.config/flowspace3`)
+    /// rather than a platform-dirs crate, so fs3 has ONE path convention
+    /// instead of two that disagree on macOS.
+    pub log_dir: String,
+    /// `EnvFilter` directives for both log destinations.
+    ///
+    /// `RUST_LOG` still wins when it is set: an operator debugging one run
+    /// should not have to edit a config file to do it.
+    pub log_level: String,
+    /// Roll the active log file once it passes this many bytes.
+    pub log_max_bytes: u64,
+    /// How many log files to keep, the active one included.
+    ///
+    /// With [`DaemonConfig::log_max_bytes`] this is the whole disk story:
+    /// `log_max_bytes * log_max_files` is a hard ceiling, and the oldest file
+    /// is deleted rather than allowed to accumulate.
+    pub log_max_files: u32,
 }
 
 impl DaemonConfig {
     /// The default daemon endpoint, shared by daemon and CLI.
     pub const DEFAULT_URL: &'static str = "http://127.0.0.1:7373";
+
+    /// Where logs go when nothing says otherwise.
+    ///
+    /// `~/.local/state` is the XDG state home — the right place for logs
+    /// (data a program keeps across restarts but which is not precious), and
+    /// the same tilde-relative shape the config directory already uses.
+    pub const DEFAULT_LOG_DIR: &'static str = "~/.local/state/flowspace3/logs";
+
+    /// The filter the daemon ran on before it had a log file, kept verbatim so
+    /// making logging configurable did not quietly change what is logged.
+    pub const DEFAULT_LOG_LEVEL: &'static str = "fs3_daemon=info,tower_http=info";
+
+    /// 8 MB: large enough that an incident's context is in ONE file, small
+    /// enough to open in an editor and to paste a tail of into a report.
+    pub const DEFAULT_LOG_MAX_BYTES: u64 = 8_000_000;
+
+    /// Five files — the active one plus four rolled — so the default ceiling is
+    /// 40 MB. Chosen over "7 dailies" because the incident this exists for
+    /// (a lane dying under load) produces bytes in bursts rather than by the
+    /// clock: a size cap bounds the disk on a busy day, where a day cap does
+    /// not.
+    pub const DEFAULT_LOG_MAX_FILES: u32 = 5;
 
     fn collect(&self, problems: &mut Vec<Problem>) {
         if self.url.trim().is_empty() {
@@ -334,6 +381,41 @@ impl DaemonConfig {
                 format!("url = \"{}\"", Self::DEFAULT_URL),
             ));
         }
+
+        if self.log_dir.trim().is_empty() {
+            problems.push(Problem::file(
+                "daemon.log_dir",
+                "must not be empty — logging to a file is not optional",
+                format!("log_dir = \"{}\"", Self::DEFAULT_LOG_DIR),
+            ));
+        }
+
+        if self.log_level.trim().is_empty() {
+            problems.push(Problem::file(
+                "daemon.log_level",
+                "must not be empty",
+                format!("log_level = \"{}\"", Self::DEFAULT_LOG_LEVEL),
+            ));
+        }
+
+        // Both caps are refused at zero rather than clamped: a zero here means
+        // somebody meant to turn something off, and silently substituting a
+        // default would leave them believing they had.
+        if self.log_max_bytes == 0 {
+            problems.push(Problem::file(
+                "daemon.log_max_bytes",
+                "must be greater than zero — a file that rolls at 0 bytes holds no evidence",
+                format!("log_max_bytes = {}", Self::DEFAULT_LOG_MAX_BYTES),
+            ));
+        }
+
+        if self.log_max_files == 0 {
+            problems.push(Problem::file(
+                "daemon.log_max_files",
+                "must be at least 1 — one file is the active one",
+                format!("log_max_files = {}", Self::DEFAULT_LOG_MAX_FILES),
+            ));
+        }
     }
 }
 
@@ -341,6 +423,10 @@ impl Default for DaemonConfig {
     fn default() -> Self {
         Self {
             url: Self::DEFAULT_URL.to_string(),
+            log_dir: Self::DEFAULT_LOG_DIR.to_string(),
+            log_level: Self::DEFAULT_LOG_LEVEL.to_string(),
+            log_max_bytes: Self::DEFAULT_LOG_MAX_BYTES,
+            log_max_files: Self::DEFAULT_LOG_MAX_FILES,
         }
     }
 }
