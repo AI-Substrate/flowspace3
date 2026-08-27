@@ -1,0 +1,20 @@
+docs/plans/conversations/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 25-26,31-32,37-38,43-44,49-50,55-56
+docs/plans/conversations/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 38-43
+docs/plans/conversations/plan.dd.json
+  h_9e71e8b09f7cf2 63-64,90-92
+docs/plans/conversations/plan.dd.md
+  h_9e71e8b09f7cf2 56,67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4073b7ff569355c79b42c2ff3ceee6aee254a5fe",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
