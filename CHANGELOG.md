@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.0](https://github.com/AI-Substrate/flowspace3/compare/v0.2.0...v0.3.0) (2026-08-27)
+
+
+### Features
+
+* daemon auto-update + user messages queue + config reference (req-0054/0058/0059) ([#13](https://github.com/AI-Substrate/flowspace3/issues/13)) ([9905ffe](https://github.com/AI-Substrate/flowspace3/commit/9905ffe1001f5e37333cb1e690470a23ec2b1dd2))
+* **daemon:** rolling log files with real rotation, ANSI discipline, and panic capture ([#20](https://github.com/AI-Substrate/flowspace3/issues/20)) ([8f6eff2](https://github.com/AI-Substrate/flowspace3/commit/8f6eff23efa53779f3628b6423c9a21d63927e5c))
+* **remove,gc:** the remove verb, mid-scan-safe, with a three-level garbage collector (req-0057) ([#19](https://github.com/AI-Substrate/flowspace3/issues/19)) ([99d0010](https://github.com/AI-Substrate/flowspace3/commit/99d00103db22ed6b7ede4da4feea2fc9cf6d8c28))
+
+
+### Bug Fixes
+
+* **deps:** commit the Cargo.lock the auto-update packet needed, and gate it ([#15](https://github.com/AI-Substrate/flowspace3/issues/15)) ([67e9a2e](https://github.com/AI-Substrate/flowspace3/commit/67e9a2e9721649a77237a7f3e82b00174dd277e3))
+* **install:** windows script refuses loudly with WSL2 guidance instead of 404ing on an unpublished target ([1ae1427](https://github.com/AI-Substrate/flowspace3/commit/1ae142707dbf3502971052c54c246e51a6655a3d))
+* **release:** stitch the version through to the binary, and guard the update loop (req-0060) ([#16](https://github.com/AI-Substrate/flowspace3/issues/16)) ([f6cf582](https://github.com/AI-Substrate/flowspace3/commit/f6cf5824e5f72cd1ac51313fa34b083e2fdb0f04))
+* **schema:** name the binary-older-than-database case, and stop tests choosing production (req-0061) ([#18](https://github.com/AI-Substrate/flowspace3/issues/18)) ([f0707c8](https://github.com/AI-Substrate/flowspace3/commit/f0707c8d476552e30613ebceb08457d4b946b592))
+
 ## [0.2.0](https://github.com/AI-Substrate/flowspace3/compare/v0.1.0...v0.2.0) (2026-08-26)
 
 
