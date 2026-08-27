@@ -19,6 +19,7 @@
 //!    whole merged call, and without solo retry the innocent jobs beside it
 //!    inherit the failure and burn their attempts on somebody else's bad data.
 
+use fs3_core::estimate_tokens;
 use fs3_store::Job;
 
 use crate::enrich::EmbedJob;
@@ -28,29 +29,15 @@ use crate::enrich::EmbedJob;
 /// Azure's documented ceiling is 300k. This sits a third under it, because the
 /// number we compare against is an ESTIMATE and being wrong here costs a whole
 /// merged batch — every job in it fails together, and the retry is the same
-/// expensive call again.
+/// expensive call again. [`fs3_core::fit_to_cap`] takes the same third against
+/// the per-input cap, for the same reason.
 pub const TOKEN_BUDGET: usize = 200_000;
-
-/// Bytes per token, for the estimate.
-///
-/// The usual rule of thumb is four, derived from prose. Code tokenizes worse —
-/// punctuation, identifiers and indentation all fragment — so three is the
-/// pessimistic direction, and pessimistic is the safe direction: overestimating
-/// splits a batch that would have fitted, underestimating gets the request
-/// rejected.
-const BYTES_PER_TOKEN: usize = 3;
 
 /// Attempts at which a job stops being allowed to travel with others.
 ///
 /// The first attempt merges. A job that has already failed once is a suspect,
 /// and a suspect must not be able to take a batch of innocents down with it.
 pub const SOLO_FROM_ATTEMPT: i32 = 2;
-
-/// A pessimistic token estimate for one text.
-#[must_use]
-pub fn estimate_tokens(text: &str) -> usize {
-    text.len().div_ceil(BYTES_PER_TOKEN)
-}
 
 /// One provider call's worth of work: the items, and the jobs they came from.
 #[derive(Debug)]
@@ -196,6 +183,7 @@ fn split_to_budget(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use fs3_core::BYTES_PER_TOKEN;
     use serde_json::json;
 
     fn job(id: i64, attempts: i32, identity: &str, source: &str, items: usize) -> Job {

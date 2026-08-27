@@ -70,6 +70,11 @@ impl Embedder for ConcurrencyProbe {
     fn concurrency_ceiling(&self) -> usize {
         self.ceiling
     }
+
+    /// This probe measures concurrency, not size: it accepts anything.
+    fn max_input_tokens(&self) -> usize {
+        usize::MAX
+    }
 }
 
 async fn stack(

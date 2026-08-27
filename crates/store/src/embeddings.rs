@@ -64,6 +64,13 @@ pub struct NewEmbedding<'a> {
     pub source_kind: SourceKind,
     /// The vector itself, [`EMBEDDING_DIMENSIONS`] wide.
     pub vector: &'a [f32],
+    /// Whether the text embedded was a PREFIX of the content `source_hash`
+    /// names, because the whole of it exceeded the model's per-input cap.
+    ///
+    /// The row is still keyed by the original hash — a truncated embedding is
+    /// THE embedding for that content — so this flag is the only thing that
+    /// distinguishes complete coverage from partial. See migration 0010.
+    pub truncated: bool,
 }
 
 /// Which of these hashes already have a vector, for this model and this kind.
@@ -172,15 +179,17 @@ pub async fn put_embeddings(
     let mut tx = pool.begin().await?;
     for row in embeddings {
         sqlx::query(
-            "INSERT INTO embeddings_1024 (source_hash, source_kind, model_key, vector)
-             VALUES ($1, $2, $3, $4)
+            "INSERT INTO embeddings_1024 (source_hash, source_kind, model_key, vector, truncated)
+             VALUES ($1, $2, $3, $4, $5)
              ON CONFLICT (source_hash, source_kind, model_key) DO UPDATE SET
-               vector = EXCLUDED.vector",
+               vector = EXCLUDED.vector,
+               truncated = EXCLUDED.truncated",
         )
         .bind(row.source_hash)
         .bind(row.source_kind.as_str())
         .bind(model_key)
         .bind(Vector::from(row.vector.to_vec()))
+        .bind(row.truncated)
         .execute(&mut *tx)
         .await?;
     }

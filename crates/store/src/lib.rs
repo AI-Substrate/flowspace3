@@ -43,7 +43,7 @@ pub use embeddings::{
 };
 pub use jobs::{
     Job, QueueDepth, claim_job, claim_jobs, complete_job, enqueue_job, fail_job, jobs_remaining,
-    last_failure, park_job, queue_depth, requeue_running, retry_job,
+    last_failure, park_job, queue_depth, requeue_failed, requeue_running, retry_job,
 };
 pub use messages::{ack_message, live_messages, sync_messages};
 pub use refs::{

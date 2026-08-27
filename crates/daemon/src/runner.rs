@@ -312,9 +312,10 @@ async fn drain_embed(state: &AppState) -> Drained {
     let mut total = Drained::default();
 
     // An unreadable payload is a defect in whoever enqueued it. It can never
-    // succeed, so it fails terminally rather than costing three attempts.
+    // succeed, so it fails terminally rather than costing three attempts —
+    // and terminally here means for good: no boot-time requeue will wake it.
     for bad in unreadable {
-        if let Err(error) = fs3_store::fail_job(&state.db, bad.job_id, &bad.reason).await {
+        if let Err(error) = fs3_store::fail_job(&state.db, bad.job_id, &bad.reason, true).await {
             tracing::error!(%error, id = bad.job_id, "cannot fail an unreadable embed job");
         }
         tracing::warn!(id = bad.job_id, kind = EMBED, "{}", bad.reason);
@@ -444,7 +445,9 @@ async fn drain_embed(state: &AppState) -> Drained {
                     }
                     Verdict::Fail => {
                         tracing::warn!(id, kind = EMBED, attempt, retrying = false, "{message}");
-                        if let Err(error) = fs3_store::fail_job(&state.db, id, &message).await {
+                        if let Err(error) =
+                            fs3_store::fail_job(&state.db, id, &message, !failure.retryable).await
+                        {
                             tracing::error!(%error, id, "cannot settle a failed embed job");
                         }
                         total.failed += 1;
@@ -586,7 +589,13 @@ async fn settle(state: &AppState, job: Job) -> Drained {
                 }
                 Verdict::Fail => {
                     tracing::warn!(id, %kind, %key, attempts, retrying = false, "{message}");
-                    if let Err(error) = fs3_store::fail_job(&state.db, id, &message).await {
+                    // Terminal exactly when the failure was never retryable.
+                    // A job that spent its attempts against a provider is a
+                    // job whose work is still wanted, and `requeue_failed`
+                    // is what brings that kind back once a fix lands.
+                    if let Err(error) =
+                        fs3_store::fail_job(&state.db, id, &message, !failure.retryable).await
+                    {
                         tracing::error!(%error, id, "cannot settle a failed job");
                     }
                     Drained {

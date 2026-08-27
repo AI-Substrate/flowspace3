@@ -150,6 +150,36 @@ async fn serve(configuration: Config, address: String, logging: Logging) -> Resu
         Err(error) => tracing::error!(%error, "cannot requeue jobs left running"),
     }
 
+    // Give work that ran out of attempts one more life, also BEFORE the runner
+    // starts. Enrichment failures have no other way back: `summarize` and
+    // `embed` jobs are minted by a scan, and a scan of an unchanged tree
+    // enqueues nothing, so a failed one is the end of the line for that
+    // element's vector or summary — permanently unsearchable content that the
+    // queue's own memory records as finished business.
+    //
+    // That is not hypothetical. Fifty-nine elements of a live index sat exactly
+    // there, killed three attempts at a time by the embedding model's
+    // per-input token cap, until the guard in `enrich::embed_items` gave them a
+    // request that can succeed. This sweep is how the fix reaches the rows the
+    // bug already claimed — and it is why the fix arriving as a new binary is
+    // enough, with no repair command to discover and no SQL to write.
+    //
+    // Cheap by construction: a requeued job whose vectors already exist settles
+    // on its own pre-check without a provider call, and jobs that failed for a
+    // reason no rerun can fix are marked `terminal` and never woken (migration
+    // 0011).
+    match fs3_store::requeue_failed(&state.db, &[crate::enrich::SUMMARIZE, crate::enrich::EMBED])
+        .await
+    {
+        Ok(0) => {}
+        Ok(swept) => tracing::info!(
+            swept,
+            "requeued enrichment jobs that had run out of attempts; a fix in this binary may \
+             cover them"
+        ),
+        Err(error) => tracing::error!(%error, "cannot requeue failed enrichment jobs"),
+    }
+
     // What logging managed to do, told to the person driving (req-0059).
     //
     // Declared ONCE rather than from a reconcile pass, because unlike schema

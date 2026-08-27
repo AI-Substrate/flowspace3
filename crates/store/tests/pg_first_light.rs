@@ -92,6 +92,7 @@ async fn index_file(pool: &PgPool, worktree_id: i64, path: &str, bodies: &[&str]
             source_hash: hash,
             source_kind: SourceKind::Raw,
             vector,
+            truncated: false,
         })
         .collect();
     put_embeddings(pool, EMBEDDER, &rows)
@@ -635,6 +636,7 @@ async fn a_path_filter_narrows_to_a_subtree_and_hits_carry_their_live_path() {
             source_hash: &hash,
             source_kind: SourceKind::Raw,
             vector: &vector,
+            truncated: false,
         }],
     )
     .await
@@ -739,11 +741,13 @@ async fn a_source_filter_chooses_which_vector_space_is_searched() {
                 source_hash: &raw_hash,
                 source_kind: SourceKind::Raw,
                 vector: &raw_vector,
+                truncated: false,
             },
             NewEmbedding {
                 source_hash: &smart_hash,
                 source_kind: SourceKind::Smart,
                 vector: &smart_vector,
+                truncated: false,
             },
         ],
     )

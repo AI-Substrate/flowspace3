@@ -211,20 +211,32 @@ pub async fn claim_jobs(pool: &PgPool, kind: &str, limit: i64) -> Result<Vec<Job
 /// # Errors
 /// [`StoreError::Query`] when the statement fails.
 pub async fn complete_job(pool: &PgPool, id: i64) -> Result<(), StoreError> {
-    settle(pool, id, "done", None).await
+    settle(pool, id, "done", None, false).await
 }
 
-/// Mark a claimed job failed, recording why.
+/// Mark a claimed job failed, recording why and whether it can ever succeed.
 ///
-/// Terminal, deliberately: there is no retry schedule here. A failed job's work
-/// comes back through the decision-D6 reconciler sweep, which derives what is
-/// missing from the schema instead of trusting the queue's own memory — and
-/// `last_error` stays on the row as the record of what went wrong.
+/// Terminal in the sense that matters here: this module still invents no retry
+/// SCHEDULE, and a failed row is not coming back on its own.
+///
+/// `terminal` says which kind of ending it was. `true` means no run will ever
+/// succeed — an unreadable payload, an unknown kind, a vector of the wrong
+/// width — and the row is left alone for good. `false` means the work is still
+/// wanted and the attempts simply ran out, which is what
+/// [`requeue_failed`] looks for after a fix lands. The caller decides,
+/// because the caller is the layer that knows whether a failure was
+/// retryable; guessing it from `last_error` text would be a parser of
+/// sentences.
 ///
 /// # Errors
 /// [`StoreError::Query`] when the statement fails.
-pub async fn fail_job(pool: &PgPool, id: i64, error: &str) -> Result<(), StoreError> {
-    settle(pool, id, "failed", Some(error)).await
+pub async fn fail_job(
+    pool: &PgPool,
+    id: i64,
+    error: &str,
+    terminal: bool,
+) -> Result<(), StoreError> {
+    settle(pool, id, "failed", Some(error), terminal).await
 }
 
 /// Park a claimed job for provider congestion, WITHOUT spending an attempt.
@@ -344,6 +356,66 @@ pub async fn requeue_running(pool: &PgPool) -> Result<u64, StoreError> {
     Ok(swept)
 }
 
+/// Return non-terminal `failed` jobs of `kinds` to `pending`. Returns how many.
+///
+/// The path back for work that was wanted, was attempted, and lost — and whose
+/// reason for losing has since been fixed. A binary that fixes a whole class of
+/// provider failure has no way to tell WHICH rows that class killed, and it
+/// does not need to: a requeued job whose work is already done settles on its
+/// own pre-check without a provider call, so the sweep costs one claim per row
+/// and buys nothing it should not.
+///
+/// Terminal rows are left alone. That is the difference migration 0011 exists
+/// to record: an unreadable payload requeued on every boot would be an
+/// unbounded, permanent trickle of claims that can never succeed.
+///
+/// Rows whose `dedupe_key` is already held by a LIVE job are skipped rather
+/// than moved. The live-dedupe index is unique over `pending`/`running`, so
+/// waking a duplicate would abort the whole statement — and the live row is
+/// the one that is going to do the work anyway.
+///
+/// # Why the caller names the kinds
+///
+/// Not every failure needs this. A failed `scan_file` has an ordinary way
+/// back: the file is on disk, and touching it or re-running `add` enqueues a
+/// new job. Enrichment has none — `summarize` and `embed` jobs are minted by a
+/// scan that will not run again while the tree is unchanged, so a failed one
+/// is the end of the line for that content. The kinds with no other path are
+/// the kinds worth sweeping.
+///
+/// # Errors
+/// [`StoreError::Query`] when the statement fails.
+pub async fn requeue_failed(pool: &PgPool, kinds: &[&str]) -> Result<u64, StoreError> {
+    if kinds.is_empty() {
+        return Ok(0);
+    }
+
+    let owned: Vec<String> = kinds.iter().map(|kind| (*kind).to_string()).collect();
+    let swept = sqlx::query(
+        "UPDATE jobs
+            SET state      = 'pending',
+                attempts   = 0,
+                parks      = 0,
+                not_before = now(),
+                last_error = 'requeued at daemon boot: this failed before a fix that may cover \
+                              it',
+                updated_at = now()
+          WHERE state = 'failed'
+            AND NOT terminal
+            AND kind = ANY($1)
+            AND NOT EXISTS (
+                  SELECT 1 FROM jobs live
+                   WHERE live.dedupe_key = jobs.dedupe_key
+                     AND live.state IN ('pending', 'running')
+            )",
+    )
+    .bind(&owned)
+    .execute(pool)
+    .await?
+    .rows_affected();
+    Ok(swept)
+}
+
 /// How many jobs sit in each state, by kind — what `flowspace3 status` reports.
 ///
 /// Grouped rather than totalled: "142 pending" answers nothing useful, while
@@ -422,12 +494,17 @@ async fn settle(
     id: i64,
     state: &str,
     error: Option<&str>,
+    terminal: bool,
 ) -> Result<(), StoreError> {
-    sqlx::query("UPDATE jobs SET state = $2, last_error = $3, updated_at = now() WHERE id = $1")
-        .bind(id)
-        .bind(state)
-        .bind(error)
-        .execute(pool)
-        .await?;
+    sqlx::query(
+        "UPDATE jobs SET state = $2, last_error = $3, terminal = $4, updated_at = now()
+          WHERE id = $1",
+    )
+    .bind(id)
+    .bind(state)
+    .bind(error)
+    .bind(terminal)
+    .execute(pool)
+    .await?;
     Ok(())
 }
