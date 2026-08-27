@@ -60,7 +60,8 @@
         {
           "id": "ac-0007",
           "claim": "remove/gc leave conversations intact (anchors are pointers not ownership) and conversation-derived content participates in the three-level GC rules unchanged",
-          "state": "unchecked"
+          "state": "unchecked",
+          "note": "Store half proven in phase 1: removing_the_anchored_repo_leaves_the_conversation_intact and a_conversation_no_worktree_holds_survives_a_full_gc_sweep (mutation-checked). Daemon/CLI half follows in phases 2-3."
         },
         {
           "id": "ac-0008",
@@ -86,8 +87,9 @@
           "id": "ph-4793",
           "title": "Store: conversation tables + turn payload + windowed reads",
           "brief": "Everything below the daemon: the conversations migration (take the NEXT FREE number on freshly-pulled main at implementation time -- 0010/0011 landed in PR 24 and w-update-truth takes 0012), the two ref-layer tables, the elements bridge that makes turns first-class content, and the second reference leg so conversation content survives the spend guard and GC.",
-          "state": "unchecked",
-          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+          "state": "checked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks",
+          "note": "Landed in PR #30 (7a2dd8a, 4ca5421) on b3a5889. Gate: fmt + clippy -D warnings clean, pg_conversations 13/13, one seal-caused config_loading failure accounted for (env override wins over a config FILE by design; passes 10/10 unsealed). Mutation-checked GC survival. Production database verified untouched at migration 12. Two plan corrections landed with it: the anchor is TEXT with no FK (ruled), and turn elements need the reserved parser_version conversation/1."
         },
         {
           "id": "ph-4ec8",

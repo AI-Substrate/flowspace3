@@ -40,6 +40,13 @@ pub enum ElementKind {
     Function,
     /// A document section — a markdown heading and its body (PRD req 22).
     Section,
+    /// One turn of a conversation (workshop 005).
+    ///
+    /// The fourth content type, and it earns a place in a CLOSED enum for the
+    /// same reason the other three do: it is a retrieval unit. Search, the
+    /// spend guard and GC all root at `elements`, so a turn that is not an
+    /// element is a turn nothing can find, enrich or collect.
+    Turn,
 }
 
 impl ElementKind {
@@ -50,6 +57,7 @@ impl ElementKind {
             ElementKind::Container => "container",
             ElementKind::Function => "function",
             ElementKind::Section => "section",
+            ElementKind::Turn => "turn",
         }
     }
 }

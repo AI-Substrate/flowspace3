@@ -206,8 +206,29 @@ pub async fn worktree_exists(pool: &PgPool, worktree_id: i64) -> Result<bool, St
     )
 }
 
+/// The reference predicate, written once because it appears in FIVE statements
+/// and a copy that drifts deletes paid LLM output for content that is still
+/// live.
+///
+/// Content is held while a registered worktree maps the blob an element came
+/// from, OR while a stored turn carries it. The second leg is what makes a
+/// conversation a ROOT of reference (workshop 005): an imported conversation
+/// has no worktree and never will, so without it the very first GC pass
+/// reclaims every turn element and every summary and vector the import paid
+/// for — silently, because an empty search result looks like "no match".
+///
+/// A macro rather than a `const`: `concat!` splices literals at compile time
+/// and cannot take a `const`, and building these statements at runtime would
+/// trade a compile-time guarantee for a `LazyLock`.
+macro_rules! held_by_a_live_root {
+    () => {
+        "(EXISTS (SELECT 1 FROM worktree_files wf WHERE wf.blob_sha = e.blob_sha)
+             OR EXISTS (SELECT 1 FROM turns t WHERE t.blob_sha = e.blob_sha))"
+    };
+}
+
 /// Whether `raw_hash` still belongs to any element of a blob a registered
-/// worktree holds.
+/// worktree holds, or that a stored turn carries.
 ///
 /// The guard at the point of spend, and deliberately the SAME predicate GC
 /// uses at level two. `summarize` and `embed` are keyed by `raw_hash`, not by
@@ -223,12 +244,13 @@ pub async fn worktree_exists(pool: &PgPool, worktree_id: i64) -> Result<bool, St
 /// # Errors
 /// [`StoreError::Query`] when the read fails.
 pub async fn raw_hash_is_referenced(pool: &PgPool, raw_hash: &str) -> Result<bool, StoreError> {
-    Ok(sqlx::query_scalar::<_, i64>(
+    Ok(sqlx::query_scalar::<_, i64>(concat!(
         "SELECT count(*)
            FROM elements e
           WHERE e.raw_hash = $1
-            AND EXISTS (SELECT 1 FROM worktree_files wf WHERE wf.blob_sha = e.blob_sha)",
-    )
+            AND ",
+        held_by_a_live_root!()
+    ))
     .bind(raw_hash)
     .fetch_one(pool)
     .await?
@@ -350,15 +372,20 @@ async fn count(pool: &PgPool, predicate: &str) -> Result<i64, StoreError> {
 ///
 /// Pending only: a `running` job is a worker's business, and it has its own
 /// check at the point of spend ([`raw_hash_is_referenced`]).
-const UNREFERENCED_JOBS: &str = "SELECT count(*) FROM jobs j
+const UNREFERENCED_JOBS: &str = concat!(
+    "SELECT count(*) FROM jobs j
   WHERE j.kind IN ('summarize', 'embed')
     AND j.state = 'pending'
     AND NOT EXISTS (
           SELECT 1 FROM elements e
            WHERE e.raw_hash = j.payload->>'raw_hash'
-             AND EXISTS (SELECT 1 FROM worktree_files wf WHERE wf.blob_sha = e.blob_sha))";
+             AND ",
+    held_by_a_live_root!(),
+    ")"
+);
 
-const DELETE_UNREFERENCED_JOBS: &str = "DELETE FROM jobs
+const DELETE_UNREFERENCED_JOBS: &str = concat!(
+    "DELETE FROM jobs
   WHERE ctid IN (
         SELECT j.ctid FROM jobs j
          WHERE j.kind IN ('summarize', 'embed')
@@ -366,21 +393,31 @@ const DELETE_UNREFERENCED_JOBS: &str = "DELETE FROM jobs
            AND NOT EXISTS (
                  SELECT 1 FROM elements e
                   WHERE e.raw_hash = j.payload->>'raw_hash'
-                    AND EXISTS (SELECT 1 FROM worktree_files wf WHERE wf.blob_sha = e.blob_sha))
-         LIMIT $1)";
+                    AND ",
+    held_by_a_live_root!(),
+    ")
+         LIMIT $1)"
+);
 
-/// Level 1 — parse trees for blobs no worktree maps.
-const UNREFERENCED_ELEMENTS: &str = "SELECT count(*) FROM elements e
-  WHERE NOT EXISTS (SELECT 1 FROM worktree_files wf WHERE wf.blob_sha = e.blob_sha)";
+/// Level 1 — parse trees for blobs no worktree maps and no turn carries.
+const UNREFERENCED_ELEMENTS: &str = concat!(
+    "SELECT count(*) FROM elements e
+  WHERE NOT ",
+    held_by_a_live_root!()
+);
 
 /// Children go with their parents by `ON DELETE CASCADE`, so a batch may
 /// remove more rows than it names — which is why the loop trusts
 /// `rows_affected` rather than assuming `BATCH`.
-const DELETE_UNREFERENCED_ELEMENTS: &str = "DELETE FROM elements
+const DELETE_UNREFERENCED_ELEMENTS: &str = concat!(
+    "DELETE FROM elements
   WHERE ctid IN (
         SELECT e.ctid FROM elements e
-         WHERE NOT EXISTS (SELECT 1 FROM worktree_files wf WHERE wf.blob_sha = e.blob_sha)
-         LIMIT $1)";
+         WHERE NOT ",
+    held_by_a_live_root!(),
+    "
+         LIMIT $1)"
+);
 
 /// Level 2 — summaries no REMAINING element still points at.
 ///

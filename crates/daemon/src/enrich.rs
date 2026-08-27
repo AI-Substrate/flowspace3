@@ -652,4 +652,59 @@ mod tests {
             .expect_err("that space does not exist yet");
         assert!(!failure.retryable);
     }
+
+    /// A turn is a content type, not a second pipeline (workshop 005, C1): the
+    /// SAME `SummarizeJob` carries it, with no field added and no lane
+    /// configured. This is the end of the `ElementKind::Turn` wiring — the
+    /// widened CHECK constraint in migration 0013 is unreachable from Rust
+    /// unless a turn element can actually reach the queue and come back whole.
+    #[test]
+    fn a_turn_element_rides_the_ordinary_summarize_job() {
+        let conversation = fs3_core::ConversationId::new("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
+            .expect("a canonical uuid");
+        let turn = fs3_core::Turn {
+            turn_no: 42,
+            role: fs3_core::TurnRole::Agent,
+            source: fs3_core::TurnSource::Peer,
+            head_sha: None,
+            at: "2026-08-27T09:00:00Z".to_string(),
+            body: "the gate is green, opening the PR".to_string(),
+            items: Vec::new(),
+        };
+        let element = turn.element(&conversation);
+
+        let job = SummarizeJob {
+            identity: "git:github.com/AI-Substrate/flowspace3".to_string(),
+            raw_hash: turn.blob_sha(),
+            element: element.clone(),
+        };
+
+        let wire = serde_json::to_value(&job).expect("a turn job serialises");
+        let back: SummarizeJob = serde_json::from_value(wire).expect("and comes back");
+        assert_eq!(back, job, "the payload survives the queue unchanged");
+        assert_eq!(back.element.kind, fs3_core::ElementKind::Turn);
+        assert_eq!(
+            back.element.address,
+            "conv:6ba7b810-9dad-11d1-80b4-00c04fd430c8#t42"
+        );
+        assert_eq!(
+            back.raw_hash,
+            back.element.raw_hash(),
+            "the turn's content address IS the element's dirtiness key"
+        );
+
+        // And it dedupes on content like every other body: the same words in
+        // another conversation are one piece of paid work, not two.
+        let elsewhere = fs3_core::ConversationId::new("6ba7b810-9dad-11d1-80b4-00c04fd430c9")
+            .expect("a canonical uuid");
+        let twin = SummarizeJob {
+            element: turn.element(&elsewhere),
+            ..job.clone()
+        };
+        assert_eq!(job.dedupe_key(), twin.dedupe_key());
+
+        // A turn earns a raw vector on its own terms — the file-element
+        // exception is about parsed children, which a turn never has.
+        assert!(earns_raw_vector(&element));
+    }
 }
