@@ -415,7 +415,11 @@ pub async fn tree(
             let text = if target.starts_with(fs3_core::address::ELEMENT_SCHEME) {
                 target.to_string()
             } else {
-                format!("el:{target}")
+                // A bare path is an element address that has not been spelled
+                // as one yet, so it is completed with the parser's own scheme
+                // rather than a literal — there is one spelling of `el:` in
+                // this system and it lives in `fs3_core::address`.
+                format!("{}{target}", fs3_core::address::ELEMENT_SCHEME)
             };
             let element = element_address(&text)?;
             let parts = element.split(&identities);
@@ -1259,7 +1263,7 @@ pub fn next_after_tree(result: &TreeResult) -> String {
             result.showing,
             result.total,
             match &result.repo {
-                Some(identity) => format!("el:{identity}/"),
+                Some(identity) => fs3_core::element_address(Some(identity), ""),
                 None => String::new(),
             }
         )

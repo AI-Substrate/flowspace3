@@ -331,7 +331,11 @@ async fn get_address(
                     "parser_version": parser_version,
                     "parser_version_current": parser_version == crate::scan::PARSER_VERSION,
                 }))
-                .with_next_action(next)
+                // Through `steer`, like search and tree: a scope warning is
+                // invisible in `data`, so a consumer reading only `data` and
+                // `next_action` would never learn that the address it just
+                // read was resolved in a repository it is not standing in.
+                .with_next_action(crate::scope::steer(&scope, &next))
                 .into()
         }
         Err(failure) => failed::<GetPayload>(&state, COMMAND, failure)

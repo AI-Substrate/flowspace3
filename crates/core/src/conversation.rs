@@ -18,13 +18,9 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::address::{CONVERSATION_SCHEME, TURN_SEPARATOR};
 use crate::element::{Element, ElementKind, Span, content_hash};
 use crate::error::{Error, Result};
-
-/// Workshop 003's conversation address scheme: `conv:<guid>#t<ord>`.
-pub const ADDRESS_PREFIX: &str = "conv:";
-/// Separator between a conversation address and one of its turns.
-pub const TURN_SEGMENT: &str = "#t";
 
 /// The `parser_version` every turn element is written under.
 ///
@@ -86,10 +82,15 @@ impl ConversationId {
     }
 
     /// Workshop 003's address for the conversation itself: `conv:<guid>`.
+    ///
+    /// Spelled with [`crate::address`]'s own constants, which is the point:
+    /// that module PARSES these addresses, and a renderer carrying its own
+    /// copy of the scheme could drift from the parser with every test still
+    /// green. One spelling, both directions.
     #[must_use]
     pub fn address(&self) -> String {
-        let mut address = String::with_capacity(ADDRESS_PREFIX.len() + self.0.len());
-        address.push_str(ADDRESS_PREFIX);
+        let mut address = String::with_capacity(CONVERSATION_SCHEME.len() + self.0.len());
+        address.push_str(CONVERSATION_SCHEME);
         address.push_str(&self.0);
         address
     }
@@ -98,7 +99,7 @@ impl ConversationId {
     #[must_use]
     pub fn turn_address(&self, turn_no: u32) -> String {
         let mut address = self.address();
-        address.push_str(TURN_SEGMENT);
+        address.push_str(TURN_SEPARATOR);
         address.push_str(itoa(turn_no).as_str());
         address
     }
@@ -543,6 +544,35 @@ mod tests {
             id().turn_address(42),
             "conv:6ba7b810-9dad-11d1-80b4-00c04fd430c8#t42"
         );
+    }
+
+    /// The invariant the literals above cannot carry on their own: what this
+    /// module RENDERS is what [`crate::address`] PARSES.
+    ///
+    /// Before the sweep the two modules held separate copies of `conv:` and
+    /// `#t`, so a change to the scheme in one of them would have left the
+    /// renderer and the parser disagreeing with every test still green — the
+    /// literals above would have been "corrected" alongside the renderer and
+    /// gone on passing. This asserts the round trip instead of the spelling,
+    /// so it fails on divergence rather than on rewording.
+    #[test]
+    fn a_rendered_address_parses_back_to_the_same_conversation_and_turn() {
+        let id = id();
+
+        let Ok(crate::Address::Conversation(whole)) = crate::Address::parse(&id.address()) else {
+            panic!("a rendered conversation address must parse as one");
+        };
+        assert_eq!(whole.guid, id.as_str());
+        assert_eq!(whole.turn, None);
+        assert_eq!(whole.to_string(), id.address());
+
+        let Ok(crate::Address::Conversation(turn)) = crate::Address::parse(&id.turn_address(42))
+        else {
+            panic!("a rendered turn address must parse as one");
+        };
+        assert_eq!(turn.guid, id.as_str());
+        assert_eq!(turn.turn, Some(42));
+        assert_eq!(turn.to_string(), id.turn_address(42));
     }
 
     /// The dedupe property the whole spend story rests on: same content, same
