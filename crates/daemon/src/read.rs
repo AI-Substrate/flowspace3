@@ -40,7 +40,7 @@ use std::collections::BTreeMap;
 use fs3_core::catalog;
 use fs3_core::element::Element;
 use fs3_core::envelope::Failure;
-use fs3_core::{Address, ElementParts};
+use fs3_core::{Address, ConversationAddress, ConversationId, ElementParts, TurnItem};
 use fs3_store::IndexedFile;
 use serde::{Deserialize, Serialize};
 
@@ -85,6 +85,12 @@ pub struct GetRequest {
     /// The first line of the element to pick, when several share an address.
     #[serde(default)]
     pub span: Option<u32>,
+    /// How many turns before the addressed one a conversation window carries.
+    #[serde(default)]
+    pub before: Option<u32>,
+    /// How many after it.
+    #[serde(default)]
+    pub after: Option<u32>,
     /// Restrict a repo-less address to one repository identity, or `all`.
     #[serde(default)]
     pub repo: Option<String>,
@@ -122,6 +128,64 @@ pub struct GetResult {
     pub parents: Vec<Outline>,
     /// What is declared inside it, to the requested depth.
     pub children: Vec<Outline>,
+}
+
+/// What `get` answers with — an element, or a window of turns.
+///
+/// Untagged, so the envelope's `data` IS the payload rather than a wrapper a
+/// consumer has to unwrap. The two shapes are told apart by their `address`
+/// scheme, which is the discriminator workshop 003 already gave every caller,
+/// so adding a tag would be a second one to keep in step.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(untagged)]
+pub enum GetPayload {
+    /// An `el:` address: one element, with its content and neighbours.
+    Element(Box<GetResult>),
+    /// A `conv:` address: a contiguous run of turns.
+    Conversation(ConversationWindow),
+}
+
+/// A contiguous run of turns around one ordinal.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct ConversationWindow {
+    /// `conv:<guid>` — the conversation itself.
+    pub address: String,
+    /// The anchor repository identity, when the conversation has one.
+    pub repo: Option<String>,
+    /// The anchor checkout path.
+    pub worktree: Option<String>,
+    /// The commit the conversation started from.
+    pub base_sha: Option<String>,
+    /// The conversation's title, when it has one.
+    pub title: Option<String>,
+    /// How many turns the conversation holds in total.
+    pub turns: i64,
+    /// The ordinal the window is centred on.
+    pub around: u32,
+    /// The turns themselves, in order.
+    pub window: Vec<TurnView>,
+}
+
+/// One turn, as `get` returns it.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct TurnView {
+    /// `conv:<guid>#t<ord>` — addressable on its own.
+    pub address: String,
+    /// Position in the conversation.
+    pub turn_no: u32,
+    /// `human` or `agent`.
+    pub role: String,
+    /// `human`, `peer` or `system` — where the turn came from, which is not the
+    /// same question as who wrote it (workshop 005, C8).
+    pub source: String,
+    /// Repo HEAD at time-of-turn, when there was one.
+    pub head_sha: Option<String>,
+    /// When it happened, RFC 3339 in UTC.
+    pub at: String,
+    /// The turn's prose, verbatim.
+    pub body: String,
+    /// Its typed sub-items, already shaped by the intake policy.
+    pub items: Vec<TurnItem>,
 }
 
 /// A structural row: an address and enough to recognise it, with no content.
@@ -198,6 +262,16 @@ pub struct TreeEntry {
     /// How many files this row contains, for directories and repositories.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub files: Option<i64>,
+    /// Who spoke, for a turn row (workshop 005's outline: role, source, time,
+    /// first line). Absent on every code row, because a function has no role.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub role: Option<String>,
+    /// Where the turn came from — `human`, `peer` or `system`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+    /// When it happened, RFC 3339 in UTC.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub at: Option<String>,
     /// Nested structure, to the requested depth.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<TreeEntry>,
@@ -212,17 +286,33 @@ struct Located {
 
 /// Fetch one address.
 ///
+/// Two shapes answer here, because two things have addresses. An `el:` address
+/// returns an element with its content, parents and children; a `conv:` address
+/// returns a WINDOW of turns around one ordinal — the caller picks how far
+/// either way and pays for exactly what it asked for (workshop 003).
+///
 /// # Errors
 /// [`catalog::QUERY_INVALID_ADDRESS`] for something that is not an address,
-/// [`catalog::QUERY_NOT_FOUND`] when nothing answers to it,
-/// [`catalog::QUERY_INVALID_AMBIGUOUS`] when several things do, and
-/// [`catalog::QUERY_NOT_IMPLEMENTED`] for a conversation address.
+/// [`catalog::QUERY_NOT_FOUND`] when nothing answers to it, and
+/// [`catalog::QUERY_INVALID_AMBIGUOUS`] when several things do.
 pub async fn get(
     state: &AppState,
     request: &GetRequest,
     scope: &Scope,
-) -> Result<(GetResult, String), Failure> {
-    let element = element_address(&request.address)?;
+) -> Result<(GetPayload, String), Failure> {
+    let element = match address_of(&request.address)? {
+        Address::Conversation(conversation) => {
+            let window = conversation_window(state, &conversation, request).await?;
+            // A conversation has no parse tree, so there is no parser version
+            // to report. Saying so beats reporting a code parser's version for
+            // content it never touched.
+            return Ok((
+                GetPayload::Conversation(window),
+                CONVERSATION_SOURCE.to_string(),
+            ));
+        }
+        Address::Element(element) => element,
+    };
     let depth = depth_of(request.depth, DEFAULT_GET_DEPTH)?;
 
     let identities = fs3_store::repo_identities(&state.db).await.map_err(fail)?;
@@ -269,7 +359,10 @@ pub async fn get(
         },
     };
 
-    Ok((result, located.parser_version))
+    Ok((
+        GetPayload::Element(Box::new(result)),
+        located.parser_version,
+    ))
 }
 
 /// Browse structure under a path, a repository, or the whole index.
@@ -292,6 +385,16 @@ pub async fn tree(
         }
     };
 
+    // A conversation is browsed by its own shape — a sequence, not a
+    // hierarchy — so it is answered before the path machinery below, which has
+    // no notion of a turn.
+    if let Some(target) = request.address.as_deref().map(str::trim)
+        && target.starts_with(fs3_core::address::CONVERSATION_SCHEME)
+        && let Address::Conversation(conversation) = address_of(target)?
+    {
+        return conversation_outline(state, &conversation).await;
+    }
+
     let identities = fs3_store::repo_identities(&state.db).await.map_err(fail)?;
 
     // A target may be an address, a repo-relative path, or an absolute path on
@@ -309,7 +412,7 @@ pub async fn tree(
             absolute_target(state, target).await?
         }
         Some(target) => {
-            let text = if target.starts_with("el:") || target.starts_with("conv:") {
+            let text = if target.starts_with(fs3_core::address::ELEMENT_SCHEME) {
                 target.to_string()
             } else {
                 format!("el:{target}")
@@ -384,6 +487,9 @@ async fn index_tree(state: &AppState, limit: i64) -> Result<TreeResult, Failure>
             path: None,
             span: None,
             files: Some(files),
+            role: None,
+            source: None,
+            at: None,
             children: Vec::new(),
         })
         .collect();
@@ -761,24 +867,206 @@ async fn missing_path(state: &AppState, repo: Option<&str>, path: &str, scope: &
     failure
 }
 
+/// Parse the requested address, or say why it is not one.
+fn address_of(text: &str) -> Result<Address, Failure> {
+    Address::parse(text).map_err(|error| {
+        Failure::new(&catalog::QUERY_INVALID_ADDRESS, error.to_string())
+            .with_detail("address", text)
+    })
+}
+
 /// Turn the requested address into an element address, or say why not.
 fn element_address(text: &str) -> Result<fs3_core::ElementAddress, Failure> {
-    match Address::parse(text) {
-        Ok(Address::Element(element)) => Ok(element),
-        Ok(Address::Conversation(conversation)) => Err(Failure::new(
-            &catalog::QUERY_NOT_IMPLEMENTED,
+    match address_of(text)? {
+        Address::Element(element) => Ok(element),
+        Address::Conversation(conversation) => Err(Failure::new(
+            &catalog::QUERY_INVALID,
+            format!("{conversation} is a conversation address, and this verb browses code"),
+        )
+        .with_fix(format!(
+            "`flowspace3 tree {conversation}` outlines a conversation; \
+             `flowspace3 get {conversation}#t1` reads it"
+        ))
+        .with_detail("address", conversation.to_string())),
+    }
+}
+
+/// The `parser_version` a conversation answer reports.
+///
+/// A conversation has no parse tree, so there is no version to name. Saying
+/// where the answer came from beats reporting a code parser's version for
+/// content it never touched.
+const CONVERSATION_SOURCE: &str = fs3_core::conversation::PARSER_VERSION;
+
+/// How far either way a window reaches when the caller says nothing.
+///
+/// Workshop 003's own example is `--before 10 --after 20`, and the asymmetry is
+/// the point: what came BEFORE a turn is context, what came AFTER it is what
+/// happened next, and the second is usually what a reader wanted.
+const DEFAULT_BEFORE: u32 = 10;
+const DEFAULT_AFTER: u32 = 20;
+
+/// The furthest a single window may reach.
+///
+/// Turns carry whole tool results; a window of a thousand is a scrollback dump
+/// billed to the caller's context, which is the cost `get` exists to let them
+/// control rather than accidentally pay.
+const MAX_WINDOW: u32 = 200;
+
+/// Read a window of turns around one ordinal.
+///
+/// A bare `conv:<guid>` with no ordinal is not an error: it is "show me the
+/// start", so the window centres on turn 1 and reaches forward. Refusing it
+/// would make the address workshop 003 defines for a whole conversation the one
+/// address `get` cannot take.
+async fn conversation_window(
+    state: &AppState,
+    address: &ConversationAddress,
+    request: &GetRequest,
+) -> Result<ConversationWindow, Failure> {
+    let guid = ConversationId::new(address.guid.clone()).map_err(|error| {
+        Failure::new(&catalog::QUERY_INVALID_ADDRESS, error.to_string())
+            .with_detail("address", address.to_string())
+    })?;
+
+    let before = window_reach(request.before, DEFAULT_BEFORE)?;
+    let after = window_reach(request.after, DEFAULT_AFTER)?;
+    let around = address.turn.unwrap_or(1);
+
+    let summary = fs3_store::list_conversations(
+        &state.db,
+        fs3_store::AnchorFilter {
+            guid: Some(guid.as_str()),
+            ..fs3_store::AnchorFilter::default()
+        },
+    )
+    .await
+    .map_err(fail)?
+    .pop()
+    .ok_or_else(|| unknown_conversation(&guid))?;
+
+    let turns = fs3_store::window(&state.db, &guid, around, before, after)
+        .await
+        .map_err(fail)?;
+
+    // An empty window inside a conversation that EXISTS means the ordinal is
+    // past the end, and the honest answer names the range that does exist —
+    // "not found" alone would read as "this conversation is empty".
+    if turns.is_empty() {
+        return Err(Failure::new(
+            &catalog::QUERY_NOT_FOUND,
             format!(
-                "{conversation} is a conversation address, and this build does not store \
-                 conversations yet"
+                "conversation {guid} has {} turn(s); nothing sits within -{before}/+{after} of turn {around}",
+                summary.turns
             ),
         )
-        .with_detail("address", conversation.to_string())
-        .with_detail("guid", conversation.guid)),
-        Err(error) => Err(
-            Failure::new(&catalog::QUERY_INVALID_ADDRESS, error.to_string())
-                .with_detail("address", text),
-        ),
+        .with_fix(format!(
+            "`flowspace3 tree conv:{guid}` lists the turns that exist"
+        ))
+        .with_detail("turns", summary.turns));
     }
+
+    Ok(ConversationWindow {
+        address: guid.address(),
+        repo: summary.repo_identity,
+        worktree: summary.worktree,
+        base_sha: summary.base_sha,
+        title: summary.title,
+        turns: summary.turns,
+        around,
+        window: turns
+            .into_iter()
+            .map(|turn| TurnView {
+                address: guid.turn_address(turn.turn_no),
+                turn_no: turn.turn_no,
+                role: turn.role.as_str().to_string(),
+                source: turn.source.as_str().to_string(),
+                head_sha: turn.head_sha,
+                at: turn.at,
+                body: turn.body,
+                items: turn.items,
+            })
+            .collect(),
+    })
+}
+
+/// Validate one half of a window against the ceiling.
+fn window_reach(requested: Option<u32>, default: u32) -> Result<u32, Failure> {
+    match requested.unwrap_or(default) {
+        reach if reach <= MAX_WINDOW => Ok(reach),
+        reach => Err(Failure::new(
+            &catalog::QUERY_INVALID,
+            format!("--before/--after must be between 0 and {MAX_WINDOW}, got {reach}"),
+        )),
+    }
+}
+
+/// A conversation guid nothing answers to.
+fn unknown_conversation(guid: &ConversationId) -> Failure {
+    Failure::new(
+        &catalog::QUERY_NOT_FOUND,
+        format!("no conversation {guid} is indexed"),
+    )
+    .with_fix(
+        "`flowspace3 conversation list` shows what is indexed; \
+         `flowspace3 conversation import <file>` adds one",
+    )
+    .with_detail("guid", guid.as_str())
+}
+
+/// The turn outline of one conversation — role, source, time, first line.
+///
+/// `tree`'s answer for a sequence. Deliberately lean, and for the same reason
+/// the code outline is: this exists so a caller can decide WHICH turns to pay
+/// for, and a row carrying a whole turn has already spent the tokens the
+/// outline was meant to save.
+async fn conversation_outline(
+    state: &AppState,
+    address: &ConversationAddress,
+) -> Result<TreeResult, Failure> {
+    let guid = ConversationId::new(address.guid.clone()).map_err(|error| {
+        Failure::new(&catalog::QUERY_INVALID_ADDRESS, error.to_string())
+            .with_detail("address", address.to_string())
+    })?;
+
+    let summary = fs3_store::list_conversations(
+        &state.db,
+        fs3_store::AnchorFilter {
+            guid: Some(guid.as_str()),
+            ..fs3_store::AnchorFilter::default()
+        },
+    )
+    .await
+    .map_err(fail)?
+    .pop()
+    .ok_or_else(|| unknown_conversation(&guid))?;
+
+    let rows = fs3_store::outline(&state.db, &guid).await.map_err(fail)?;
+
+    Ok(TreeResult {
+        target: summary.title.clone().unwrap_or_else(|| guid.address()),
+        repo: summary.repo_identity,
+        kind: "conversation".to_string(),
+        total: summary.turns,
+        showing: rows.len(),
+        entries: rows
+            .into_iter()
+            .map(|row| TreeEntry {
+                kind: fs3_core::ElementKind::Turn.as_str().to_string(),
+                // The first line IS the name here: it is what a reader
+                // recognises a turn by, the way a declaration's name is.
+                name: row.first_line,
+                address: Some(guid.turn_address(row.turn_no)),
+                path: None,
+                span: Some([row.turn_no, row.turn_no]),
+                files: None,
+                role: Some(row.role.as_str().to_string()),
+                source: Some(row.source.as_str().to_string()),
+                at: Some(row.at),
+                children: Vec::new(),
+            })
+            .collect(),
+    })
 }
 
 /// Validate a depth against the ceiling.
@@ -820,6 +1108,9 @@ fn element_entry(element: &Element, repo: &str, depth: u32) -> TreeEntry {
         path: None,
         span: Some([element.span.start_line, element.span.end_line]),
         files: None,
+        role: None,
+        source: None,
+        at: None,
         children: if depth == 0 {
             Vec::new()
         } else {
@@ -862,6 +1153,9 @@ fn directory_entries(
                 path: Some(file.path.clone()),
                 span: None,
                 files: None,
+                role: None,
+                source: None,
+                at: None,
                 children: Vec::new(),
             }),
             Some((head, _)) => directories.entry(head.to_string()).or_default().push(file),
@@ -888,6 +1182,9 @@ fn directory_entries(
                 path: Some(child_prefix),
                 span: None,
                 files: Some(group.len() as i64),
+                role: None,
+                source: None,
+                at: None,
                 children,
             }
         })
@@ -910,7 +1207,28 @@ fn target_label(repo: Option<&str>, prefix: &str) -> String {
 
 /// What a caller typically does after a `get`.
 #[must_use]
-pub fn next_after_get(result: &GetResult) -> String {
+pub fn next_after_get(payload: &GetPayload) -> String {
+    let result = match payload {
+        GetPayload::Conversation(window) => {
+            let first = window.window.first().map_or(1, |turn| turn.turn_no);
+            let last = window.window.last().map_or(1, |turn| turn.turn_no);
+            return if last as i64 >= window.turns {
+                format!(
+                    "turns {first}–{last} of {} — that is the end of the conversation; \
+                     `flowspace3 tree {}` outlines the whole thing",
+                    window.turns, window.address
+                )
+            } else {
+                format!(
+                    "turns {first}–{last} of {}; `flowspace3 get {}#t{last} --after 20` reads on \
+                     from here",
+                    window.turns, window.address
+                )
+            };
+        }
+        GetPayload::Element(element) => element,
+    };
+
     if result.children.is_empty() {
         format!(
             "that is the whole element — open it at {}:{}, or browse its file with `flowspace3 \
@@ -1090,11 +1408,33 @@ mod tests {
         assert_eq!(entries[0].path.as_deref(), Some("crates/store/migrations"));
     }
 
+    /// A conversation address is a real address now, so the CODE path has to
+    /// refuse it as the wrong shape rather than as an unimplemented feature —
+    /// and the refusal has to point at the verb that does answer it.
     #[test]
-    fn a_conversation_address_is_not_yet_rather_than_malformed() {
-        let failure = element_address("conv:abc-123").expect_err("conversations do not exist yet");
-        assert_eq!(failure.code, catalog::QUERY_NOT_IMPLEMENTED.as_str());
-        assert_eq!(failure.http_status(), 501);
+    fn a_conversation_address_is_the_wrong_shape_for_the_code_path() {
+        let failure = element_address("conv:6ba7b810-9dad-11d1-80b4-00c04fd430c8")
+            .expect_err("this path browses code");
+        assert_eq!(failure.code, catalog::QUERY_INVALID.as_str());
+        assert!(
+            failure.fix.contains("tree conv:"),
+            "the fix must name the verb that does answer: {}",
+            failure.fix
+        );
+    }
+
+    /// And the dispatcher above it takes both schemes, which is what makes the
+    /// conversation arm reachable at all.
+    #[test]
+    fn the_dispatcher_parses_both_address_schemes() {
+        assert!(matches!(
+            address_of("conv:6ba7b810-9dad-11d1-80b4-00c04fd430c8#t42"),
+            Ok(Address::Conversation(_))
+        ));
+        assert!(matches!(
+            address_of("el:crates/store/src/lib.rs::migrate"),
+            Ok(Address::Element(_))
+        ));
     }
 
     #[test]

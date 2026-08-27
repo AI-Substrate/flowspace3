@@ -5,6 +5,7 @@
 //! (PRD req 37: fail fast, `flowspace3 doctor` heals).
 
 pub mod client;
+pub mod conversation;
 pub mod docs;
 pub mod doctor;
 pub mod settings;

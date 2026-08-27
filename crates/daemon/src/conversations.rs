@@ -182,6 +182,134 @@ pub async fn intake(state: &AppState, request: IntakeRequest) -> Result<IntakeRe
     })
 }
 
+/// What `GET /conversations` was asked for.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+pub struct ListRequest {
+    /// Only conversations anchored to this repository identity.
+    #[serde(default)]
+    pub repo: Option<String>,
+    /// Only conversations whose anchor checkout starts with this path.
+    #[serde(default)]
+    pub path: Option<String>,
+}
+
+/// One row of `conversation list`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct ConversationRow {
+    /// `conv:<guid>` — feed it straight to `tree` or `get`.
+    pub address: String,
+    /// The guid on its own, for `conversation remove`.
+    pub guid: String,
+    /// The title, when it has one.
+    pub title: Option<String>,
+    /// The anchor repository identity.
+    pub repo: Option<String>,
+    /// The anchor checkout path.
+    pub worktree: Option<String>,
+    /// How many turns are stored.
+    pub turns: i64,
+    /// When it began, RFC 3339 in UTC.
+    pub started_at: String,
+}
+
+/// What `conversation list` answers with.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct ConversationList {
+    /// The conversations, newest first.
+    pub conversations: Vec<ConversationRow>,
+}
+
+/// What `POST /conversations/remove` was asked for.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+pub struct RemoveRequest {
+    /// The conversation to forget.
+    pub guid: String,
+}
+
+/// What removing a conversation reclaimed directly.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
+pub struct RemoveReport {
+    /// The conversation asked about.
+    pub guid: String,
+    /// Whether there was one to remove.
+    pub existed: bool,
+    /// Turn rows deleted.
+    pub turns: i64,
+    /// Turn element rows deleted.
+    pub elements: i64,
+}
+
+/// List indexed conversations, newest first.
+///
+/// # Errors
+/// Store failures mapped by their own codes.
+pub async fn list(state: &AppState, request: &ListRequest) -> Result<ConversationList, Failure> {
+    let rows = fs3_store::list_conversations(
+        &state.db,
+        fs3_store::AnchorFilter {
+            repo: request.repo.as_deref(),
+            path_prefix: request.path.as_deref(),
+            guid: None,
+        },
+    )
+    .await
+    .map_err(fail)?;
+
+    Ok(ConversationList {
+        conversations: rows
+            .into_iter()
+            .map(|row| ConversationRow {
+                address: row.guid.address(),
+                guid: row.guid.as_str().to_string(),
+                title: row.title,
+                repo: row.repo_identity,
+                worktree: row.worktree,
+                turns: row.turns,
+                started_at: row.started_at,
+            })
+            .collect(),
+    })
+}
+
+/// Forget one conversation, its turns and its turn elements.
+///
+/// # Errors
+/// [`catalog::QUERY_INVALID`] for a guid that is not a conversation id; store
+/// failures mapped by their own codes.
+pub async fn remove(state: &AppState, request: &RemoveRequest) -> Result<RemoveReport, Failure> {
+    let guid = ConversationId::new(request.guid.clone()).map_err(|error| {
+        Failure::new(&catalog::QUERY_INVALID, error.to_string())
+            .with_fix("`flowspace3 conversation list` prints the guid of everything indexed")
+            .retryable(false)
+    })?;
+
+    let removed = fs3_store::delete_conversation(&state.db, &guid)
+        .await
+        .map_err(fail)?;
+
+    Ok(RemoveReport {
+        guid: guid.as_str().to_string(),
+        existed: removed.existed,
+        turns: removed.turns,
+        elements: removed.elements,
+    })
+}
+
+/// What a caller typically does after removing a conversation.
+#[must_use]
+pub fn next_after_remove(report: &RemoveReport) -> String {
+    if !report.existed {
+        return "no conversation with that guid was indexed — `flowspace3 conversation list` \
+                shows what is"
+            .to_string();
+    }
+    format!(
+        "{} turn(s) forgotten. Their summaries and vectors are keyed by content and may still be \
+         shared, so `flowspace3 gc` decides those — it reclaims whatever nothing else carries.",
+        report.turns
+    )
+}
+
 /// What a caller typically does after posting a batch.
 #[must_use]
 pub fn next_after_intake(report: &IntakeReport) -> String {

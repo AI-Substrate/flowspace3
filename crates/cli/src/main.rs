@@ -96,7 +96,7 @@ enum Command {
         #[arg(long, value_name = "SCORE")]
         min_score: Option<f64>,
         /// Which vector space to search.
-        #[arg(long, value_name = "SOURCE", value_parser = ["raw", "smart", "all"])]
+        #[arg(long, value_name = "SOURCE", value_parser = ["raw", "smart", "conversation", "all"])]
         source: Option<String>,
         /// Override the daemon URL from configuration.
         #[arg(long, value_name = "URL")]
@@ -118,6 +118,14 @@ enum Command {
         /// elements).
         #[arg(long, value_name = "LINE")]
         span: Option<u32>,
+        /// How many turns before the addressed one to show, for a `conv:`
+        /// address. Default 10.
+        #[arg(long, value_name = "N")]
+        before: Option<u32>,
+        /// How many after it. Default 20 — what happened NEXT is usually what
+        /// the reader wanted.
+        #[arg(long, value_name = "N")]
+        after: Option<u32>,
         /// Resolve a repo-less address in this repository, or `all`.
         #[arg(long, value_name = "IDENTITY")]
         repo: Option<String>,
@@ -145,6 +153,17 @@ enum Command {
         /// Override the daemon URL from configuration.
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
+    },
+    /// Store, list and remove indexed conversations (workshop 005).
+    ///
+    /// Conversations carry the WHY that code cannot: the rejected
+    /// alternatives, the rulings, the debugging trail. `import` is the intake
+    /// endpoint's first client — hand it a transcript and its turns become
+    /// searchable content like any other, findable with
+    /// `search --source conversation` and readable with `get conv:<guid>#t<n>`.
+    Conversation {
+        #[command(subcommand)]
+        command: ConversationCommand,
     },
     /// Diagnose the stack and repair what can be repaired.
     ///
@@ -195,6 +214,60 @@ enum Command {
     Config {
         #[command(subcommand)]
         command: ConfigCommand,
+    },
+}
+
+#[derive(Subcommand)]
+enum ConversationCommand {
+    /// Store a conversation from a JSONL transcript, or `-` for stdin.
+    ///
+    /// Append-friendly: re-importing a file that has GROWN stores only the
+    /// turns that are new and enqueues enrichment only for those, so the
+    /// obvious loop — import as you go — costs what it should.
+    Import {
+        /// The transcript, or `-` to read stdin.
+        file: String,
+        /// Reuse this conversation guid instead of minting one. Required to
+        /// grow a conversation whose file does not name its own guid.
+        #[arg(long, value_name = "UUID")]
+        guid: Option<String>,
+        /// Anchor the conversation to this repository identity, overriding
+        /// what the working directory says.
+        #[arg(long, value_name = "IDENTITY")]
+        repo: Option<String>,
+        /// Anchor it to this checkout path.
+        #[arg(long, value_name = "PATH")]
+        worktree: Option<String>,
+        /// A title, when the transcript does not carry one.
+        #[arg(long, value_name = "TEXT")]
+        title: Option<String>,
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
+    /// List indexed conversations, newest first.
+    List {
+        /// Only conversations anchored to this repository identity.
+        #[arg(long, value_name = "IDENTITY")]
+        repo: Option<String>,
+        /// Only conversations whose anchor checkout starts with this path.
+        #[arg(long, value_name = "PREFIX")]
+        path: Option<String>,
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
+    /// Forget one conversation: its turns and their indexed content.
+    ///
+    /// Symmetric with `remove` for a root, and it stops in the same place: the
+    /// summaries and vectors its turns paid for are keyed by content and may
+    /// still be shared, so `gc` decides those on its own cadence.
+    Remove {
+        /// The conversation's guid.
+        guid: String,
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
     },
 }
 
@@ -336,6 +409,8 @@ async fn run(command: Command) -> Result<ExitCode> {
             address,
             depth,
             span,
+            before,
+            after,
             repo,
             daemon_url,
         } => {
@@ -343,6 +418,8 @@ async fn run(command: Command) -> Result<ExitCode> {
             let mut params = vec![("address".to_string(), address)];
             push(&mut params, "depth", depth.map(|v| v.to_string()));
             push(&mut params, "span", span.map(|v| v.to_string()));
+            push(&mut params, "before", before.map(|v| v.to_string()));
+            push(&mut params, "after", after.map(|v| v.to_string()));
             push(&mut params, "repo", repo);
             push(&mut params, "cwd", here());
             Ok(emit(&client.get(&params).await))
@@ -362,6 +439,46 @@ async fn run(command: Command) -> Result<ExitCode> {
             push(&mut params, "repo", repo);
             push(&mut params, "cwd", here());
             Ok(emit(&client.tree(&params).await))
+        }
+        Command::Conversation {
+            command:
+                ConversationCommand::Import {
+                    file,
+                    guid,
+                    repo,
+                    worktree,
+                    title,
+                    daemon_url,
+                },
+        } => {
+            let client = client_for(daemon_url)?;
+            // The anchor defaults to where the caller is standing, which is
+            // almost always the repository the conversation was about. An
+            // explicit `--worktree` beats it, because the flag is the more
+            // recent decision.
+            let import =
+                fs3_cli::conversation::read(&file, guid, repo, worktree.or_else(here), title)?;
+            Ok(emit(&client.conversation_import(&import.body).await))
+        }
+        Command::Conversation {
+            command:
+                ConversationCommand::List {
+                    repo,
+                    path,
+                    daemon_url,
+                },
+        } => {
+            let client = client_for(daemon_url)?;
+            let mut params = Vec::new();
+            push(&mut params, "repo", repo);
+            push(&mut params, "path", path);
+            Ok(emit(&client.conversation_list(&params).await))
+        }
+        Command::Conversation {
+            command: ConversationCommand::Remove { guid, daemon_url },
+        } => {
+            let client = client_for(daemon_url)?;
+            Ok(emit(&client.conversation_remove(&guid).await))
         }
         Command::Doctor {
             config_dir: _,

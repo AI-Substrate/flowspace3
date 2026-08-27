@@ -22,6 +22,7 @@
 //! so `--min-score 0.7` is a number a human can reason about rather than a
 //! ceiling they have to invert in their head.
 
+use fs3_core::ElementKind;
 use fs3_core::catalog;
 use fs3_core::envelope::Failure;
 use fs3_store::{SearchFilters, SearchHit, SourceKind};
@@ -65,6 +66,18 @@ pub struct SearchRequest {
 /// way a filter would do better. The ceiling makes that a conversation rather
 /// than a slow query.
 pub const MAX_LIMIT: i64 = 100;
+
+/// The element kinds that answer a CODE search.
+///
+/// Named exhaustively rather than as "everything except a turn", so that adding
+/// a content type is a decision someone makes here rather than an accident that
+/// silently starts blending it into code results.
+const CODE_KINDS: [ElementKind; 4] = [
+    ElementKind::File,
+    ElementKind::Container,
+    ElementKind::Function,
+    ElementKind::Section,
+];
 
 /// One hit, in the workshop-003 row shape.
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -133,14 +146,31 @@ pub async fn search(
         ));
     }
 
-    let source = match request.source.as_deref() {
-        None | Some("all") => None,
-        Some("raw") => Some(SourceKind::Raw),
-        Some("smart") => Some(SourceKind::Smart),
+    // Workshop 003's ONE user-facing `--source` axis, resolved into the two
+    // axes it is really made of (its open question 1). `raw` and `smart` are
+    // the VECTOR SPACE — a column on `embeddings_1024` with a check
+    // constraint. `conversation` is not a third value there and could not be:
+    // a turn has a raw vector and a smart vector exactly like a function does.
+    // What makes a turn a turn is its element KIND, so this maps to the
+    // content-type filter instead, and the two compose rather than competing.
+    //
+    // `all` and the absent default mean all CODE spaces. Conversations stay
+    // opt-in, as 003 D3 reserved and workshop 005 kept: conversations are
+    // opinions at a point in time and code is current truth, so blending them
+    // by default would answer "how does auth work" with somebody's guess about
+    // it from three weeks ago.
+    let (source, kinds) = match request.source.as_deref() {
+        None | Some("all") => (None, Some(CODE_KINDS.to_vec())),
+        Some("raw") => (Some(SourceKind::Raw), Some(CODE_KINDS.to_vec())),
+        Some("smart") => (Some(SourceKind::Smart), Some(CODE_KINDS.to_vec())),
+        Some("conversation") => (None, Some(vec![ElementKind::Turn])),
         Some(other) => {
             return Err(Failure::new(
                 &catalog::QUERY_INVALID,
-                format!("--source must be raw, smart or all, got {other:?}"),
+                format!("--source must be raw, smart, conversation or all, got {other:?}"),
+            )
+            .with_fix(
+                "use `--source conversation` to search indexed turns, or omit it to search code",
             ));
         }
     };
@@ -180,6 +210,7 @@ pub async fn search(
         repo: scope.repo.clone(),
         path: request.path.as_deref().map(glob_to_like),
         source,
+        kinds,
         max_distance,
         limit,
     };
@@ -277,15 +308,25 @@ fn render(hit: &SearchHit) -> Hit {
     }
 }
 
-/// `el:<repo>/<address>` — workshop 003's element address.
+/// The address a hit is printed with, in the right scheme for what it is.
 ///
-/// Rendered by `fs3_core::element_address`, the same function `get` and `tree`
-/// resolve against, so what search PRINTS and what the read surface ACCEPTS
-/// cannot drift apart. A hit with no live path keeps a bare `el:<address>`:
-/// the content is real even when the checkout that held it is gone, and
-/// inventing a repository for it would be a lie.
+/// A turn element ALREADY carries its `conv:<guid>#t<ord>` address — that is
+/// what the store wrote — so it is returned verbatim. Passing it through
+/// `element_address` would prefix a repository onto a conversation and produce
+/// `el:git:…/conv:…`, an address nothing can parse and `get` would reject.
+///
+/// Everything else is `el:<repo>/<address>`, rendered by
+/// `fs3_core::element_address` — the same function `get` and `tree` resolve
+/// against, so what search PRINTS and what the read surface ACCEPTS cannot
+/// drift apart. A hit with no live path keeps a bare `el:<address>`: the
+/// content is real even when the checkout that held it is gone, and inventing a
+/// repository for it would be a lie.
 fn address_of(hit: &SearchHit) -> String {
-    fs3_core::element_address(hit.identity.as_deref(), &hit.similar.element.address)
+    let element = &hit.similar.element;
+    if element.kind == ElementKind::Turn {
+        return element.address.clone();
+    }
+    fs3_core::element_address(hit.identity.as_deref(), &element.address)
 }
 
 /// The first few lines of an element's text.
