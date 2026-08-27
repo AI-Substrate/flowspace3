@@ -79,6 +79,13 @@ pub struct FakeEmbedder {
     pub fail_after: Option<usize>,
     /// Width of the vectors produced.
     pub dimensions: usize,
+    /// The per-input cap this fake declares AND enforces.
+    ///
+    /// [`usize::MAX`] by default, which is the shape of a provider that never
+    /// rejects. Set it — via [`FakeEmbedder::capped`] — to make the fake
+    /// behave like a hosted embeddings API, which answers an oversized input
+    /// with a 400 rather than a short vector.
+    pub max_input_tokens: usize,
 }
 
 impl Default for FakeEmbedder {
@@ -87,6 +94,7 @@ impl Default for FakeEmbedder {
             calls: Mutex::new(Vec::new()),
             fail_after: None,
             dimensions: FAKE_DIMENSIONS,
+            max_input_tokens: usize::MAX,
         }
     }
 }
@@ -100,9 +108,36 @@ impl FakeEmbedder {
         }
     }
 
+    /// A fake that refuses any single input over `max_input_tokens`, the way
+    /// Azure and OpenAI do.
+    ///
+    /// This is what makes a per-input guard testable without a network: the
+    /// refusal below is modelled on the real message, and a caller that does
+    /// not truncate gets it.
+    pub fn capped(max_input_tokens: usize) -> Self {
+        Self {
+            max_input_tokens,
+            ..Self::default()
+        }
+    }
+
     /// How many times [`Embedder::embed`] has been called.
     pub fn call_count(&self) -> usize {
         self.calls.lock().expect("fake embedder lock").len()
+    }
+
+    /// Every text this fake has been handed, flattened across calls.
+    ///
+    /// The surface a guard test asserts against: what ARRIVED at the provider,
+    /// not what the caller believed it sent.
+    pub fn received(&self) -> Vec<String> {
+        self.calls
+            .lock()
+            .expect("fake embedder lock")
+            .iter()
+            .flatten()
+            .cloned()
+            .collect()
     }
 }
 
@@ -120,6 +155,25 @@ impl Embedder for FakeEmbedder {
                 call_index + 1
             )));
         }
+
+        // The hosted providers' actual behaviour: one oversized member fails
+        // the WHOLE request, naming the offending index, and says nothing
+        // about the others. Counted with `fs3_core`'s convention because the
+        // guard truncates with that same convention — a fake that measured
+        // differently would be testing the disagreement instead of the guard.
+        if let Some((index, text)) = texts
+            .iter()
+            .enumerate()
+            .find(|(_, text)| fs3_core::estimate_tokens(text) > self.max_input_tokens)
+        {
+            return Err(Error::Provider(format!(
+                "FakeEmbedder: Invalid 'input[{index}]': maximum input length is {} tokens, \
+                 got about {}",
+                self.max_input_tokens,
+                fs3_core::estimate_tokens(text)
+            )));
+        }
+
         Ok(texts
             .iter()
             .map(|text| hash_vector(text, self.dimensions))
@@ -138,16 +192,42 @@ impl Embedder for FakeEmbedder {
     fn concurrency_ceiling(&self) -> usize {
         64
     }
+
+    /// Whatever the fake was built with: [`usize::MAX`] unless
+    /// [`FakeEmbedder::capped`] said otherwise.
+    fn max_input_tokens(&self) -> usize {
+        self.max_input_tokens
+    }
 }
 
 /// A [`Summarizer`] that produces a stable, readable summary and tags derived
 /// from the element's own address — no network, no keys, no model.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct FakeSummarizer {
     /// Qualified names passed to [`Summarizer::summarize`], in call order.
     pub calls: Mutex<Vec<String>>,
+    /// The element BODIES passed in, in call order.
+    ///
+    /// Separate from `calls` because an address says which element was
+    /// summarised and only the body says how much of it actually travelled —
+    /// which is the question a truncation guard has to answer.
+    pub bodies: Mutex<Vec<String>>,
     /// Fail every call after this many successful ones. `None` never fails.
     pub fail_after: Option<usize>,
+    /// The prompt cap this fake declares AND enforces. See
+    /// [`FakeEmbedder::max_input_tokens`].
+    pub max_input_tokens: usize,
+}
+
+impl Default for FakeSummarizer {
+    fn default() -> Self {
+        Self {
+            calls: Mutex::new(Vec::new()),
+            bodies: Mutex::new(Vec::new()),
+            fail_after: None,
+            max_input_tokens: usize::MAX,
+        }
+    }
 }
 
 impl FakeSummarizer {
@@ -164,9 +244,22 @@ impl FakeSummarizer {
         }
     }
 
+    /// A fake that refuses any prompt over `max_input_tokens`.
+    pub fn capped(max_input_tokens: usize) -> Self {
+        Self {
+            max_input_tokens,
+            ..Self::default()
+        }
+    }
+
     /// How many times [`Summarizer::summarize`] has been called.
     pub fn call_count(&self) -> usize {
         self.calls.lock().expect("fake summarizer lock").len()
+    }
+
+    /// Every element body this fake has been handed, in call order.
+    pub fn received(&self) -> Vec<String> {
+        self.bodies.lock().expect("fake summarizer lock").clone()
     }
 }
 
@@ -176,12 +269,28 @@ impl Summarizer for FakeSummarizer {
         let call_index = {
             let mut calls = self.calls.lock().expect("fake summarizer lock");
             calls.push(element.address.clone());
+            self.bodies
+                .lock()
+                .expect("fake summarizer lock")
+                .push(element.raw_text.clone());
             calls.len() - 1
         };
         if self.fail_after.is_some_and(|limit| call_index >= limit) {
             return Err(Error::Provider(format!(
                 "FakeSummarizer: injected failure on call {}",
                 call_index + 1
+            )));
+        }
+
+        // A chat endpoint out of context refuses the call. See
+        // [`FakeEmbedder::embed`] for why the fake counts the way the guard
+        // counts.
+        let tokens = fs3_core::estimate_tokens(&element.raw_text);
+        if tokens > self.max_input_tokens {
+            return Err(Error::Provider(format!(
+                "FakeSummarizer: prompt of about {tokens} tokens exceeds the {} this model \
+                 accepts",
+                self.max_input_tokens
             )));
         }
 
@@ -231,6 +340,12 @@ impl Summarizer for FakeSummarizer {
     /// See [`FakeEmbedder::concurrency_ceiling`]: no network, no lock, no cost.
     fn concurrency_ceiling(&self) -> usize {
         64
+    }
+
+    /// Whatever the fake was built with: [`usize::MAX`] unless
+    /// [`FakeSummarizer::capped`] said otherwise.
+    fn max_input_tokens(&self) -> usize {
+        self.max_input_tokens
     }
 }
 

@@ -365,6 +365,11 @@ mod tests {
         fn concurrency_ceiling(&self) -> usize {
             1
         }
+
+        /// A fixture embeds whatever it is handed.
+        fn max_input_tokens(&self) -> usize {
+            usize::MAX
+        }
     }
 
     /// Honest vectors, wrong order: the exact defect the slot-by-slot check
@@ -389,6 +394,11 @@ mod tests {
         fn concurrency_ceiling(&self) -> usize {
             1
         }
+
+        /// A fixture embeds whatever it is handed.
+        fn max_input_tokens(&self) -> usize {
+            usize::MAX
+        }
     }
 
     /// One vector for every input. Bit-exact and deterministic — which is why
@@ -407,6 +417,11 @@ mod tests {
 
         fn concurrency_ceiling(&self) -> usize {
             1
+        }
+
+        /// A fixture embeds whatever it is handed.
+        fn max_input_tokens(&self) -> usize {
+            usize::MAX
         }
     }
 
@@ -448,6 +463,11 @@ mod tests {
 
         fn concurrency_ceiling(&self) -> usize {
             1
+        }
+
+        /// A fixture embeds whatever it is handed.
+        fn max_input_tokens(&self) -> usize {
+            usize::MAX
         }
     }
 
@@ -541,6 +561,11 @@ mod tests {
 
             fn concurrency_ceiling(&self) -> usize {
                 1
+            }
+
+            /// A fixture embeds whatever it is handed.
+            fn max_input_tokens(&self) -> usize {
+                usize::MAX
             }
         }
 

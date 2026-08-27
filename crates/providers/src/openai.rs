@@ -112,6 +112,19 @@ pub struct OpenAiEmbedder {
 }
 
 impl OpenAiEmbedder {
+    /// The per-input cap of the `text-embedding-3-*` family, and of `ada-002`
+    /// before them: 8192 tokens.
+    ///
+    /// One number for the family because the family shares it — every OpenAI
+    /// embedding model since 2022 has had this cap, and a model that changes
+    /// it will be a new adapter constant rather than a surprise. Exceeding it
+    /// is a 400 naming the offending index
+    /// (`Invalid 'input[0]': maximum input length is 8192 tokens`), which no
+    /// retry can change.
+    ///
+    /// Shared with the Azure adapter, which serves the same models.
+    pub const MAX_INPUT_TOKENS: usize = 8192;
+
     /// Build an embedder for `model`.
     ///
     /// `api_base` overrides [`DEFAULT_API_BASE`]. The key is passed in, never
@@ -177,6 +190,11 @@ impl Embedder for OpenAiEmbedder {
     /// at once and prices the rest as 429s, which the retry loop absorbs.
     fn concurrency_ceiling(&self) -> usize {
         16
+    }
+
+    /// [`OpenAiEmbedder::MAX_INPUT_TOKENS`].
+    fn max_input_tokens(&self) -> usize {
+        Self::MAX_INPUT_TOKENS
     }
 }
 
@@ -264,6 +282,25 @@ impl OpenAiSummarizer {
     /// the schema — one prompt, one version, or the two drift and the keys
     /// lie about it.
     pub const PROMPT_VERSION: &'static str = "1";
+
+    /// The most tokens this adapter will put in one prompt.
+    ///
+    /// The chat models fs3 summarises with hold 128k tokens of context, and
+    /// this is deliberately a quarter of that rather than all of it. Three
+    /// reasons, in order of how expensive getting them wrong is:
+    ///
+    /// 1. The context is shared with the REPLY. A prompt that fills the window
+    ///    leaves the model nowhere to answer, which is a 400 rather than a
+    ///    short summary.
+    /// 2. Not every deployment behind an OpenAI-shaped endpoint has 128k. A
+    ///    self-hosted compat server commonly has 8k or 32k, and this adapter
+    ///    cannot ask.
+    /// 3. A summary of an element this large is already at the edge of
+    ///    usefulness. Three sentences about 32k tokens of code is a different
+    ///    and much weaker claim than three sentences about a function, and
+    ///    paying four times as much to make it weaker still is not a trade
+    ///    worth having.
+    pub const MAX_INPUT_TOKENS: usize = 32_000;
 
     /// Build a summarizer for `model`.
     pub fn new(
@@ -418,6 +455,11 @@ impl Summarizer for OpenAiSummarizer {
     /// See [`OpenAiEmbedder::concurrency_ceiling`].
     fn concurrency_ceiling(&self) -> usize {
         16
+    }
+
+    /// [`OpenAiSummarizer::MAX_INPUT_TOKENS`].
+    fn max_input_tokens(&self) -> usize {
+        Self::MAX_INPUT_TOKENS
     }
 }
 

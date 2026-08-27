@@ -20,6 +20,7 @@ pub mod logging;
 pub mod messages;
 pub mod ports;
 pub mod skew;
+pub mod tokens;
 pub mod update;
 
 pub use catalog::{Area, Code};
@@ -44,4 +45,5 @@ pub use logging::{
 pub use messages::{Severity, UserMessage};
 pub use ports::{Embedder, Summarizer, Summary};
 pub use skew::{SCHEMA_SOURCE, SchemaSkew};
+pub use tokens::{BYTES_PER_TOKEN, estimate_tokens, fit_to_cap};
 pub use update::{UPDATE_SOURCE, UpdateState, Version, is_upgrade};

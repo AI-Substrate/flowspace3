@@ -110,6 +110,38 @@ pub trait Embedder: Send + Sync {
     /// capacity, and neither surfaces as an error — only as throughput that
     /// nobody can explain.
     fn concurrency_ceiling(&self) -> usize;
+
+    /// The most tokens this provider accepts in ONE input before it REJECTS
+    /// the call.
+    ///
+    /// A **declaration**, like [`Embedder::concurrency_ceiling`], and for the
+    /// same reason: only the provider knows which model is actually deployed
+    /// behind it. On Azure that is a deployment name that reveals nothing from
+    /// config.
+    ///
+    /// This is the cap on a SINGLE text, not on a request. A batching caller
+    /// already limits the sum; this limits the largest member, and the two
+    /// failure modes are different — an over-budget request can be split,
+    /// while an over-cap input cannot be split by any amount of batching and
+    /// is rejected forever. Azure answers such an input with
+    /// `400 Invalid 'input[0]': maximum input length is 8192 tokens`, which
+    /// retries reproduce exactly, so an element bigger than the cap stays
+    /// unvectorised until somebody shortens it.
+    ///
+    /// Callers are expected to truncate to fit rather than skip: a vector of a
+    /// long element's prefix is worth far more than no vector at all.
+    ///
+    /// A provider that TRUNCATES an oversized input instead of rejecting it
+    /// declares [`usize::MAX`] and says so in its own documentation. The
+    /// distinction is the whole point of the method: there is nothing for a
+    /// caller to prevent, and a smaller number would only make the caller cut
+    /// earlier than the model itself would, throwing away content for no gain.
+    ///
+    /// Deliberately **required**, with no default, for the reason above it: a
+    /// default is a number nobody chose, and being wrong is silent in both
+    /// directions — too high fails every oversized input, too low throws away
+    /// content the model would happily have read.
+    fn max_input_tokens(&self) -> usize;
 }
 
 /// Summarises an element into text plus concept tags.
@@ -157,6 +189,25 @@ pub trait Summarizer: Send + Sync {
     /// capacity, and neither surfaces as an error — only as throughput that
     /// nobody can explain.
     fn concurrency_ceiling(&self) -> usize;
+
+    /// The most tokens this model accepts in the PROMPT of one call.
+    ///
+    /// The same declaration [`Embedder::max_input_tokens`] makes, against a
+    /// much larger number: a chat model's context is measured in tens or
+    /// hundreds of thousands of tokens rather than thousands. It is a cliff
+    /// all the same. A generated file, a vendored bundle or a data table that
+    /// tree-sitter hands back as ONE element can be hundreds of kilobytes, and
+    /// a prompt built around it is rejected on arrival, retried identically,
+    /// and fails for good.
+    ///
+    /// This is the budget for everything the caller sends, so a caller must
+    /// leave room for its own instructions and for the reply: the element body
+    /// is the part that is truncated, because it is the only part whose size
+    /// the caller does not control.
+    ///
+    /// Required, with no default, for the reason
+    /// [`Summarizer::concurrency_ceiling`] gives.
+    fn max_input_tokens(&self) -> usize;
 }
 
 #[cfg(test)]

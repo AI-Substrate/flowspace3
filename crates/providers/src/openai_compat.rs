@@ -408,6 +408,26 @@ impl Summarizer for OpenAiCompatSummarizer {
     fn concurrency_ceiling(&self) -> usize {
         1
     }
+
+    /// Much smaller than the hosted adapters declare, because the box behind
+    /// this config is much smaller than a hosted deployment.
+    ///
+    /// A self-hosted OpenAI-compatible server typically serves one open-weight
+    /// model with an 8k or 32k context, and the adapter cannot ask which — the
+    /// endpoint reports a model id, not a window. So the number has to fit the
+    /// SMALLEST of them: six thousand, which the caller's two-thirds fill
+    /// margin turns into about four thousand tokens of element body, leaving
+    /// the [`DEFAULT_MAX_TOKENS`] the reply may spend comfortably inside an
+    /// 8k window.
+    ///
+    /// Overrun here is not the clean 400 the embeddings endpoints answer with.
+    /// A server out of context truncates the prompt silently or refuses the
+    /// generation, and a summary of a silently truncated prompt is a summary
+    /// nobody can tell is wrong — which is why the conservative number is the
+    /// useful one.
+    fn max_input_tokens(&self) -> usize {
+        6_000
+    }
 }
 
 impl OpenAiCompatSummarizer {

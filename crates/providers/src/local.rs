@@ -454,6 +454,30 @@ impl Embedder for LocalEmbedder {
     fn concurrency_ceiling(&self) -> usize {
         1
     }
+
+    /// **No cap the caller must enforce**, because this provider never rejects
+    /// an oversized input — and that is not the same as having no limit.
+    ///
+    /// `fastembed` configures its tokenizer with
+    /// `TruncationParams { max_length: min(options.max_length, model_max_length) }`,
+    /// so a text longer than the model's window is silently cut at load time
+    /// rather than refused. Every embedding of a long element here already
+    /// covers a prefix, and has since this adapter landed.
+    ///
+    /// Declaring a smaller number would not fix that; it would make it worse.
+    /// The caller's guard applies a safety margin (the token count is an
+    /// estimate), so any figure put here gets cut BELOW the window the model
+    /// would have read — trading real content for a marker. And the figure
+    /// would be a guess: `fastembed`'s catalogue reports a model's width and
+    /// its files, never its context window, so this adapter cannot ask.
+    ///
+    /// The honest consequence, stated rather than hidden: a local index does
+    /// not mark its truncations. Fixing that needs the window, which needs
+    /// either `fastembed` to expose it or this adapter to read the model's
+    /// `tokenizer_config.json` itself. Neither is this packet.
+    fn max_input_tokens(&self) -> usize {
+        usize::MAX
+    }
 }
 
 #[cfg(test)]

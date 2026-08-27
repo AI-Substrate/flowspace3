@@ -54,6 +54,7 @@ async fn seed_under(state: &AppState, model_key: &str) {
             source_hash: &"a".repeat(64),
             source_kind: SourceKind::Raw,
             vector: &vector,
+            truncated: false,
         }],
     )
     .await

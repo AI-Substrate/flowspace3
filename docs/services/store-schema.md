@@ -21,9 +21,13 @@ CONTENT LAYER (shared by every branch and repo that holds the bytes)
       └──> embeddings_1024 (source_hash, source_kind, model_key) → vector(1024)
              source_kind='raw'   → source_hash = elements.raw_hash
              source_kind='smart' → source_hash = smart_content.text_hash
+             truncated           → the vector covers a PREFIX (migration 0010)
 
 JOB BACKLOG
-  jobs (kind, dedupe_key, payload, state, priority, not_before, attempts)
+  jobs (kind, dedupe_key, payload, state, priority, not_before, attempts,
+        terminal)
+        terminal = this failure can never succeed, so no requeue wakes it
+                   (migration 0011; see services/enrichment.md)
 ```
 
 Nothing in the content layer points at the ref layer, and nothing in the ref

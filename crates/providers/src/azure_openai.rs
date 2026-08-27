@@ -65,7 +65,7 @@ use fs3_core::{Element, Embedder, Error, Result, Summarizer, Summary};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    OpenAiSummarizer,
+    OpenAiEmbedder, OpenAiSummarizer,
     retry::{self, PostFailure, Rejection, RetryPolicy},
 };
 
@@ -449,6 +449,17 @@ impl Embedder for AzureOpenAiEmbedder {
     fn concurrency_ceiling(&self) -> usize {
         32
     }
+
+    /// [`OpenAiEmbedder::MAX_INPUT_TOKENS`] — the deployment serves an OpenAI
+    /// embedding model, so it has that family's per-input cap.
+    ///
+    /// This is the cap the live index actually hit: 59 elements of a real repo
+    /// were answered with
+    /// `400 Invalid 'input[0]': maximum input length is 8192 tokens`, three
+    /// times each, and then failed for good.
+    fn max_input_tokens(&self) -> usize {
+        OpenAiEmbedder::MAX_INPUT_TOKENS
+    }
 }
 
 /// Place each returned vector at the index the API claims for it.
@@ -633,6 +644,12 @@ impl Summarizer for AzureOpenAiSummarizer {
     /// See [`AzureOpenAiEmbedder::concurrency_ceiling`].
     fn concurrency_ceiling(&self) -> usize {
         32
+    }
+
+    /// [`OpenAiSummarizer::MAX_INPUT_TOKENS`] — same models, same prompt, so
+    /// the same prompt budget.
+    fn max_input_tokens(&self) -> usize {
+        OpenAiSummarizer::MAX_INPUT_TOKENS
     }
 }
 

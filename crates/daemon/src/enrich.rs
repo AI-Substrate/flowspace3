@@ -263,11 +263,52 @@ pub async fn summarize(state: &AppState, value: serde_json::Value) -> Result<(),
         .await;
     }
 
-    let summary = state
-        .summarizer_for(&job.identity)
-        .summarize(&job.element)
-        .await
-        .map_err(fail)?;
+    let summarizer = state.summarizer_for(&job.identity);
+
+    // THE SAME GUARD, on the other provider.
+    //
+    // A chat model's window is one to two orders of magnitude larger than an
+    // embedding model's per-input cap, so this fires far more rarely — but it
+    // is a cliff of exactly the same shape, and "larger" is not "absent". A
+    // generated file, a vendored bundle or a data table that the scanner hands
+    // back as ONE element is measured in hundreds of kilobytes, and a prompt
+    // built around it is refused on arrival and refused identically on every
+    // retry.
+    //
+    // The failure mode is WORSE here than on the embed side, which is why this
+    // is not left to the provider. An embeddings endpoint answers an oversized
+    // input with a 400 naming the cap. A chat endpoint may instead truncate
+    // the prompt itself and answer anyway — and a summary of a silently
+    // truncated prompt is indistinguishable, in the store and in search
+    // results, from a summary of the whole element. Cutting it here is what
+    // makes the shortfall knowable.
+    let element = match fs3_core::fit_to_cap(&job.element.raw_text, summarizer.max_input_tokens()) {
+        None => std::borrow::Cow::Borrowed(&job.element),
+        Some(prefix) => {
+            tracing::warn!(
+                address = %job.element.address,
+                cap = summarizer.max_input_tokens(),
+                from_bytes = job.element.raw_text.len(),
+                to_bytes = prefix.len(),
+                "element exceeds the summarizer's prompt budget; summarising a prefix of it"
+            );
+            let mut shortened = job.element.clone();
+            shortened.raw_text = prefix.to_string();
+            std::borrow::Cow::Owned(shortened)
+        }
+    };
+
+    let mut summary = summarizer.summarize(&element).await.map_err(fail)?;
+
+    // Recorded through `extras`, the staging area migration 0006 created for
+    // exactly this: a fact worth persisting that has not earned a column. It
+    // is deliberately NOT part of `text_hash` — the hash addresses the summary
+    // TEXT, and folding a flag into it would re-key every smart vector.
+    if matches!(element, std::borrow::Cow::Owned(_)) {
+        summary
+            .extras
+            .insert("truncated_input".to_string(), serde_json::json!(true));
+    }
 
     // PRD req 36's band is a database CHECK, so a provider that ignored the
     // instruction would fail the insert with a constraint error naming nothing
@@ -364,13 +405,55 @@ pub async fn embed_items(
         return Ok(());
     }
 
-    let texts: Vec<String> = items.iter().map(|(_, text)| text.clone()).collect();
+    let embedder = state.embedder_for(identity);
 
-    let vectors = state
-        .embedder_for(identity)
-        .embed(&texts)
-        .await
-        .map_err(fail)?;
+    // THE PER-INPUT GUARD.
+    //
+    // The batch planner budgets the SUM of a request; nothing budgeted any
+    // single member of it, and an embeddings API caps both. An input over the
+    // cap is not a slow or an expensive call — it is
+    // `400 Invalid 'input[0]': maximum input length is 8192 tokens`, which the
+    // retry ladder reproduces exactly three times before failing the job for
+    // good. Fifty-nine elements of a real repository sat in that state,
+    // unsearchable, with the queue's own memory saying the work was finished.
+    //
+    // Truncate rather than skip: the head of a large element is most of what a
+    // search wants from it, and a vector of the head beats no vector at all.
+    // Splitting one element into several vectors is the better answer and is
+    // deliberately NOT here — it changes what a `source_hash` addresses (one
+    // hash would own an ordered set of vectors, and every consumer that treats
+    // "has a vector" as a boolean would need to learn about partial sets). It
+    // slots in exactly at this loop, where one item currently becomes one
+    // text.
+    let cap = embedder.max_input_tokens();
+    let mut texts: Vec<String> = Vec::with_capacity(items.len());
+    let mut shortened: Vec<bool> = Vec::with_capacity(items.len());
+    for (hash, text) in &items {
+        match fs3_core::fit_to_cap(text, cap) {
+            None => {
+                texts.push(text.clone());
+                shortened.push(false);
+            }
+            Some(prefix) => {
+                // WARN rather than DEBUG: this is a permanent, invisible
+                // reduction in what the index knows about one element. It is
+                // the right trade and it is still a loss, and a loss nobody is
+                // told about is how an index quietly stops being trustworthy.
+                tracing::warn!(
+                    source_hash = %hash,
+                    kind = source_kind.as_str(),
+                    cap,
+                    from_bytes = text.len(),
+                    to_bytes = prefix.len(),
+                    "input exceeds the model's per-input cap; embedding a prefix of it"
+                );
+                texts.push(prefix.to_string());
+                shortened.push(true);
+            }
+        }
+    }
+
+    let vectors = embedder.embed(&texts).await.map_err(fail)?;
 
     // A provider that returns a different number of vectors than it was given
     // texts has silently misaligned the batch, and storing it would attach every
@@ -388,13 +471,19 @@ pub async fn embed_items(
         .retryable(false));
     }
 
+    // Keyed by the ORIGINAL hash, deliberately. A truncated embedding is THE
+    // embedding for that content: keying it by the prefix's hash would make
+    // the dedupe pre-check above answer "not embedded" for ever, and every
+    // scan would buy the same vector again.
     let rows: Vec<NewEmbedding<'_>> = items
         .iter()
         .zip(&vectors)
-        .map(|((hash, _), vector)| NewEmbedding {
+        .zip(&shortened)
+        .map(|(((hash, _), vector), truncated)| NewEmbedding {
             source_hash: hash,
             source_kind,
             vector,
+            truncated: *truncated,
         })
         .collect();
 
