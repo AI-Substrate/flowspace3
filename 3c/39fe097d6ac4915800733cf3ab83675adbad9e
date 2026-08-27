@@ -1,0 +1,33 @@
+docs/plans/conversations/assets/tasks/phase-1/tasks.dd.json
+  s_15d888f4b629c1::t_e43958e530e10a 21-52
+docs/plans/conversations/assets/tasks/phase-1/tasks.dd.md
+  s_15d888f4b629c1::t_0786d55211bc1e 36-43
+docs/plans/conversations/assets/tasks/phase-2/tasks.dd.json
+  s_15d888f4b629c1::t_641686a7306d26 21-47
+docs/plans/conversations/assets/tasks/phase-2/tasks.dd.md
+  s_15d888f4b629c1::t_fa79704e77bf38 36-42
+docs/plans/conversations/assets/tasks/phase-3/tasks.dd.json
+  s_15d888f4b629c1::t_16d2cc54f09892 21-52
+docs/plans/conversations/assets/tasks/phase-3/tasks.dd.md
+  s_15d888f4b629c1::t_2313c0ad6eb42c 36-43
+docs/plans/conversations/plan.dd.json
+  s_15d888f4b629c1::t_9a5f7c392fe973 69-78
+docs/plans/conversations/plan.dd.md
+  s_15d888f4b629c1::t_6948c3f019fdf7 58-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3c39fe097d6ac4915800733cf3ab83675adbad9e",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
