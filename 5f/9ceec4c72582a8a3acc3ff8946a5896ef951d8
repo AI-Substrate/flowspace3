@@ -1,0 +1,52 @@
+crates/core/src/element.rs
+  s_15d888f4b629c1::t_c1f4f5ca23e60b 43-49,60
+crates/core/src/error.rs
+  s_15d888f4b629c1::t_540dc38e028d3c 11-19
+crates/daemon/src/enrich.rs
+  h_9e71e8b09f7cf2 211-333,778-832
+docs/plans/conversations/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 25-26,31-32,37-38,43-44,49-50,55-56
+docs/plans/conversations/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 38-43
+docs/plans/conversations/plan.dd.json
+  h_9e71e8b09f7cf2 63-64,90-92
+docs/plans/conversations/plan.dd.md
+  h_9e71e8b09f7cf2 56,67
+crates/daemon/src/boot.rs
+  h_9e71e8b09f7cf2 37-46,248-276
+crates/daemon/tests/vector_recovery.rs
+  h_9e71e8b09f7cf2 1-187
+crates/store/src/embeddings.rs
+  h_9e71e8b09f7cf2 43
+crates/store/src/lib.rs
+  h_9e71e8b09f7cf2 67-70
+crates/store/src/roots.rs
+  h_9e71e8b09f7cf2 371-417,426-427,436-438
+crates/store/src/smart.rs
+  h_9e71e8b09f7cf2 163-251
+crates/store/tests/pg_remove_and_gc.rs
+  h_9e71e8b09f7cf2 356-513
+crates/store/tests/pg_store_flows.rs
+  h_9e71e8b09f7cf2 19-21,191-304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5f9ceec4c72582a8a3acc3ff8946a5896ef951d8",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
