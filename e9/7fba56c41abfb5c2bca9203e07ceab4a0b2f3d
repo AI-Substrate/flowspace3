@@ -1,0 +1,48 @@
+.harness/extensions/checks/extension.ts
+  h_9e71e8b09f7cf2 6,32-35,120-162,165,168,196-216,220-243
+.harness/extensions/checks/instructions.md
+  h_9e71e8b09f7cf2 8-9,29-46
+crates/cli/src/settings.rs
+  h_9e71e8b09f7cf2 13-14,23-27
+crates/cli/tests/boot_contract.rs
+  h_9e71e8b09f7cf2 17-18,41-64,100-167
+crates/cli/tests/daemon_logging.rs
+  h_9e71e8b09f7cf2 10-18,20,23-31,39
+crates/cli/tests/docs_bundle.rs
+  h_9e71e8b09f7cf2 13,18-32,65-66,122-123,125-126,153-154
+crates/cli/tests/ping.rs
+  h_9e71e8b09f7cf2 10,13-26,67-68,94-95,122-123,152-153,169-170
+crates/core/src/config.rs
+  h_9e71e8b09f7cf2 1126-1156
+crates/core/src/lib.rs
+  h_9e71e8b09f7cf2 38
+crates/daemon/Cargo.toml
+  h_9e71e8b09f7cf2 56-68
+crates/daemon/src/bin/migration_guard.rs
+  h_9e71e8b09f7cf2 1-143
+crates/daemon/src/boot.rs
+  h_9e71e8b09f7cf2 52-53,102-154
+crates/daemon/src/config.rs
+  h_9e71e8b09f7cf2 19-20,59-63
+crates/daemon/tests/health.rs
+  h_9e71e8b09f7cf2 106-119,135-144,176-186
+crates/testkit/src/lib.rs
+  h_9e71e8b09f7cf2 3-4,12-15,31,36
+crates/testkit/src/spawn.rs
+  h_9e71e8b09f7cf2 1-300
+crates/testkit/tests/spawn_isolation.rs
+  h_9e71e8b09f7cf2 1-213
+docs/how/database.md
+  h_9e71e8b09f7cf2 108-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e97fba56c41abfb5c2bca9203e07ceab4a0b2f3d",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
