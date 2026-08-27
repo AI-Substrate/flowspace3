@@ -1,0 +1,31 @@
+crates/cli/src/main.rs
+  s_45ab8c3ee5081b::t_11ca9e4c18ada7 53-75,258-265
+crates/daemon/src/gc.rs
+  s_45ab8c3ee5081b::t_4e6fff3ffb80fb 1-90
+crates/daemon/src/http.rs
+  s_45ab8c3ee5081b::t_6de33afb3e7f28 58-59,64-110
+crates/daemon/src/remove.rs
+  s_45ab8c3ee5081b::t_92f004d39d3571 1-190
+crates/daemon/src/watch.rs
+  s_45ab8c3ee5081b::t_e99ad45e896eea 138-149
+crates/daemon/tests/remove_root.rs
+  s_45ab8c3ee5081b::t_04fa2b942ea105 1-353
+crates/store/src/roots.rs
+  s_45ab8c3ee5081b::t_d7412ab8a8f6a1 116-124,129-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "14df3b53d8df77c9ecd5ee502d31fdeffde5d7e6",
+  "prompts": {},
+  "sessions": {
+    "s_45ab8c3ee5081b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2268876-eef3-40bd-a9c2-6dc9f274f37f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
