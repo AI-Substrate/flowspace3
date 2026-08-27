@@ -368,6 +368,53 @@ async fn count(pool: &PgPool, predicate: &str) -> Result<i64, StoreError> {
     Ok(sqlx::query_scalar(predicate).fetch_one(pool).await?)
 }
 
+/// Whether a queued enrichment job is still work worth doing.
+///
+/// The two job kinds do NOT carry the same payload, and reading only one shape
+/// is how a level-0 sweep silently deletes live work. A `summarize` job names
+/// one `raw_hash`. An `embed` job carries a BATCH, as `items`, because an
+/// embeddings API charges per call as much as per token — it has no `raw_hash`
+/// field at all, so a predicate asking for one reads NULL, concludes nothing
+/// references it, and reaps it.
+///
+/// The consequence is the silent kind: elements stay, summaries stay, nothing
+/// fails and nothing logs, but the vectors are never bought — so the content is
+/// permanently invisible to semantic search while `status` looks healthy.
+///
+/// The item hashes live in two different spaces, and both have to be asked
+/// about. A `raw` batch's hashes are element `raw_hash`es. A `smart` batch's
+/// are `smart_content.text_hash`es — the hash of the SUMMARY text, which is
+/// what lets a smart hit resolve back to what it describes — so those reach an
+/// element only through the summary row. Asking only the first would reap
+/// every summary vector still waiting to be bought.
+macro_rules! job_is_still_wanted {
+    () => {
+        concat!(
+            "(EXISTS (
+             SELECT 1 FROM elements e
+              WHERE e.raw_hash = j.payload->>'raw_hash'
+                AND ",
+            held_by_a_live_root!(),
+            ")
+       OR EXISTS (
+             SELECT 1
+               FROM jsonb_array_elements(coalesce(j.payload->'items', '[]'::jsonb)) AS item
+               JOIN elements e ON e.raw_hash = item->>0
+              WHERE ",
+            held_by_a_live_root!(),
+            ")
+       OR EXISTS (
+             SELECT 1
+               FROM jsonb_array_elements(coalesce(j.payload->'items', '[]'::jsonb)) AS item
+               JOIN smart_content s ON s.text_hash = item->>0
+               JOIN elements e      ON e.raw_hash = s.raw_hash
+              WHERE ",
+            held_by_a_live_root!(),
+            "))"
+        )
+    };
+}
+
 /// Level 0 — enrichment queued for content nothing holds.
 ///
 /// Pending only: a `running` job is a worker's business, and it has its own
@@ -376,12 +423,8 @@ const UNREFERENCED_JOBS: &str = concat!(
     "SELECT count(*) FROM jobs j
   WHERE j.kind IN ('summarize', 'embed')
     AND j.state = 'pending'
-    AND NOT EXISTS (
-          SELECT 1 FROM elements e
-           WHERE e.raw_hash = j.payload->>'raw_hash'
-             AND ",
-    held_by_a_live_root!(),
-    ")"
+    AND NOT ",
+    job_is_still_wanted!()
 );
 
 const DELETE_UNREFERENCED_JOBS: &str = concat!(
@@ -390,12 +433,9 @@ const DELETE_UNREFERENCED_JOBS: &str = concat!(
         SELECT j.ctid FROM jobs j
          WHERE j.kind IN ('summarize', 'embed')
            AND j.state = 'pending'
-           AND NOT EXISTS (
-                 SELECT 1 FROM elements e
-                  WHERE e.raw_hash = j.payload->>'raw_hash'
-                    AND ",
-    held_by_a_live_root!(),
-    ")
+           AND NOT ",
+    job_is_still_wanted!(),
+    "
          LIMIT $1)"
 );
 

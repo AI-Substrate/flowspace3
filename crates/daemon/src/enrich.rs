@@ -208,6 +208,129 @@ pub async fn enqueue_for_tree(
     Ok(())
 }
 
+/// Queue the enrichment a batch of newly-stored turns earns.
+///
+/// The conversation twin of [`enqueue_for_tree`], and deliberately the SAME
+/// two job kinds with the same shapes, dedupe keys and lanes: a conversation
+/// rides the existing engine, it does not get one of its own (workshop 005,
+/// C1). Nothing here is configured per conversation, because there is nothing
+/// new to configure.
+///
+/// Two differences from a code tree, both of them about shape rather than
+/// policy. Turns are flat, so there is no "covered by its children" exception —
+/// every turn earns its raw vector. And the summary gate is a BYTE floor
+/// (workshop 005) rather than a line floor: a turn is one position in a
+/// sequence, so lines cannot tell a five-word "ship it" from the same turn
+/// carrying a 4KB tool result.
+///
+/// Takes ONLY the turns the store actually accepted, which is what makes a
+/// re-post of an overlapping batch free: an already-stored turn never reaches
+/// here, so nobody is paid twice.
+///
+/// Returns how many turns earned their own summary.
+///
+/// # Errors
+/// Store failures while enqueueing.
+pub async fn enqueue_for_turns(
+    state: &AppState,
+    identity: &str,
+    turns: &[Element],
+    summary_floor_bytes: usize,
+) -> Result<usize, Failure> {
+    let mut raw_batch: Vec<(String, String)> = Vec::with_capacity(EMBED_BATCH.min(turns.len()));
+    let mut summarized = 0;
+
+    for element in turns {
+        raw_batch.push((element.raw_hash().to_string(), element.raw_text.clone()));
+        if raw_batch.len() == EMBED_BATCH {
+            enqueue_embed(
+                state,
+                identity,
+                SourceKind::Raw,
+                std::mem::take(&mut raw_batch),
+            )
+            .await?;
+        }
+
+        if fs3_core::conversation::earns_summary(&element.raw_text, summary_floor_bytes) {
+            let summarize = SummarizeJob {
+                identity: identity.to_string(),
+                raw_hash: element.raw_hash().to_string(),
+                element: element.clone(),
+            };
+            enqueue(state, SUMMARIZE, &summarize.dedupe_key(), &summarize).await?;
+            summarized += 1;
+        }
+    }
+
+    if !raw_batch.is_empty() {
+        enqueue_embed(state, identity, SourceKind::Raw, raw_batch).await?;
+    }
+    Ok(summarized)
+}
+
+/// Re-queue vectors the content layer is missing, up to `limit` texts.
+///
+/// The recovery path for a level-0 GC defect that has already run: an `embed`
+/// job carries a BATCH as `items` and has no `raw_hash` field, so until this
+/// binary the unreferenced-jobs predicate read every one of them as garbage
+/// and deleted any batch still pending when a pass landed. Nothing failed;
+/// the content simply never became searchable, and the queue's own memory
+/// recorded no work outstanding.
+///
+/// Derives its backlog from the SCHEMA — content with no vector row — rather
+/// than from the queue, which is what makes it self-healing across a defect
+/// that destroyed the queue rows. Cheap when there is nothing to do: one
+/// indexed read per space returning nothing.
+///
+/// Uses the DEFAULT embedder's model key. A per-repo embedder writes into its
+/// own vector space and its rows are not missing from that space, so sweeping
+/// them here under the default key would re-queue work that exists; the repo's
+/// own scans remain their path back.
+///
+/// Returns how many texts were queued.
+///
+/// # Errors
+/// Store failures while reading the backlog or enqueueing.
+pub async fn requeue_missing_vectors(state: &AppState, limit: i64) -> Result<usize, Failure> {
+    let model_key = state.embedder.key();
+    let missing = fs3_store::missing_embeddings(&state.db, &model_key, limit)
+        .await
+        .map_err(fail)?;
+    if missing.is_empty() {
+        return Ok(0);
+    }
+
+    // Grouped by space, because one job embeds one space: `source_kind` is part
+    // of the vector row's primary key, and a batch that mixed them would write
+    // half its vectors under the wrong one.
+    let queued = missing.len();
+    for kind in [SourceKind::Raw, SourceKind::Smart] {
+        let mut batch: Vec<(String, String)> = Vec::with_capacity(EMBED_BATCH);
+        for item in missing.iter().filter(|item| item.source_kind == kind) {
+            batch.push((item.source_hash.clone(), item.text.clone()));
+            if batch.len() == EMBED_BATCH {
+                enqueue_embed(state, DEFAULT_IDENTITY, kind, std::mem::take(&mut batch)).await?;
+            }
+        }
+        if !batch.is_empty() {
+            enqueue_embed(state, DEFAULT_IDENTITY, kind, batch).await?;
+        }
+    }
+
+    Ok(queued)
+}
+
+/// The identity a recovery batch is charged to.
+///
+/// The sweep reads the DEFAULT embedder's space and cannot know which
+/// repository each orphaned text came from — content is keyed by hash, and one
+/// hash belongs to elements of many blobs in many repos, which is the whole
+/// point of decision D2. An identity nothing configured resolves to the default
+/// provider, which is the space the backlog was read from, so the vector lands
+/// exactly where the sweep decided it was missing.
+const DEFAULT_IDENTITY: &str = "conv:recovery";
+
 /// Run one `summarize` job: call the repo's summariser, store the answer, and
 /// queue the summary's own vector.
 ///

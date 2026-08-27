@@ -16,9 +16,9 @@ use fs3_core::{
 };
 use fs3_store::{
     EMBEDDING_DIMENSIONS, NewEmbedding, PgPool, SearchFilters, SourceKind, StoreError, claim_job,
-    complete_job, enqueue_job, fail_job, get_smart_content, missing_enrichment, put_embeddings,
-    put_smart_content, query_embeddings, register_worktree, search_elements, sync_worktree_files,
-    upsert_element_tree,
+    complete_job, enqueue_job, fail_job, get_smart_content, missing_embeddings, missing_enrichment,
+    put_embeddings, put_smart_content, query_embeddings, register_worktree, search_elements,
+    sync_worktree_files, upsert_element_tree,
 };
 use fs3_testkit::fakes::{FakeEmbedder, FakeSummarizer};
 use std::collections::BTreeMap;
@@ -183,6 +183,120 @@ async fn one_body_in_two_blobs_is_one_smart_row_and_one_piece_of_work() {
             .len(),
         1,
         "changing the model must resurface the work without erasing the old answer"
+    );
+
+    database.destroy(pool).await;
+}
+
+/// The recovery sweep: content with no vector is found in BOTH spaces, and
+/// stops being found the moment the vector lands.
+///
+/// This is what heals an index whose `embed` jobs a GC pass reaped before they
+/// ran — a defect that left elements, summaries and an empty queue all looking
+/// healthy while the content was absent from every semantic search. Nothing
+/// stored recorded the loss, so the backlog has to be derived from the absence
+/// of a vector row, exactly as `missing_enrichment` derives from the absence of
+/// a summary.
+#[tokio::test]
+async fn the_vector_sweep_finds_both_spaces_and_forgets_what_lands() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let body = "fn unvectored() { never_bought() }";
+    let raw_hash = content_hash(body.as_bytes());
+    upsert_element_tree(
+        &pool,
+        &unique_blob(),
+        PARSER_VERSION,
+        &file_with("src/a.rs", &[body]),
+        declarations_only,
+    )
+    .await
+    .expect("insert");
+
+    let summary_text = "buys nothing";
+    put_smart_content(
+        &pool,
+        &raw_hash,
+        SUMMARIZER,
+        &Summary {
+            text: summary_text.to_string(),
+            tags: vec!["unvectored".to_string()],
+            extras: BTreeMap::new(),
+        },
+    )
+    .await
+    .expect("write the summary");
+
+    let missing = missing_embeddings(&pool, EMBEDDER, 50)
+        .await
+        .expect("sweep");
+
+    // The declaration's raw text and the summary's text, and NOT the file root:
+    // a file element with parsed children does not earn a vector, because its
+    // text is the concatenation of texts already indexed one by one.
+    let raw: Vec<&str> = missing
+        .iter()
+        .filter(|item| item.source_kind == SourceKind::Raw)
+        .map(|item| item.text.as_str())
+        .collect();
+    assert_eq!(
+        raw,
+        vec![body],
+        "the file root must not be swept: it would compete with its own parts"
+    );
+
+    let smart: Vec<&str> = missing
+        .iter()
+        .filter(|item| item.source_kind == SourceKind::Smart)
+        .map(|item| item.text.as_str())
+        .collect();
+    assert_eq!(
+        smart,
+        vec![summary_text],
+        "a summary with no vector is unreachable by semantic search — the whole \
+         point of having paid for it"
+    );
+
+    // Buy the raw vector. Only that one stops being missing.
+    let vector = FakeEmbedder {
+        dimensions: EMBEDDING_DIMENSIONS,
+        ..FakeEmbedder::default()
+    }
+    .embed(&[body.to_string()])
+    .await
+    .expect("the fake embedder does not fail");
+    put_embeddings(
+        &pool,
+        EMBEDDER,
+        &[NewEmbedding {
+            source_hash: &raw_hash,
+            source_kind: SourceKind::Raw,
+            vector: &vector[0],
+            truncated: false,
+        }],
+    )
+    .await
+    .expect("write the vector");
+
+    let missing = missing_embeddings(&pool, EMBEDDER, 50)
+        .await
+        .expect("sweep");
+    assert_eq!(
+        missing.len(),
+        1,
+        "a stored vector is what makes content clean — there is no flag to set"
+    );
+    assert_eq!(missing[0].source_kind, SourceKind::Smart);
+
+    // A model bump is a new space, so the work reappears under the new key
+    // without erasing the old answer — the same property the summary sweep has.
+    assert_eq!(
+        missing_embeddings(&pool, "fake-embedder@v2", 50)
+            .await
+            .expect("sweep")
+            .len(),
+        2
     );
 
     database.destroy(pool).await;

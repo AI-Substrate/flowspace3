@@ -353,3 +353,161 @@ async fn an_unshared_root_is_reclaimed_through_every_level_and_then_settles() {
 
     database.destroy(pool).await;
 }
+
+/// Level 0 must not reap an `embed` job whose content a REGISTERED root holds.
+///
+/// Nothing here is about conversations — this is the ordinary code path, one
+/// live worktree, one parse, one queued batch — which is what makes the
+/// defect it pins a pre-existing one.
+///
+/// The two job kinds do not carry the same payload. A `summarize` job names
+/// one `raw_hash`; an `embed` job carries a BATCH, as `items`, because an
+/// embeddings API charges per call as much as per token. A level-0 predicate
+/// that only knows how to read `payload->>'raw_hash'` therefore reads NULL for
+/// every embed job, concludes that nothing references it, and deletes it.
+///
+/// The consequence is the silent kind. The elements stay, the summaries stay,
+/// nothing fails and nothing is logged — but the vectors are never bought, so
+/// the content is permanently invisible to semantic search while looking
+/// completely healthy in `status`. GC runs on a cadence, so any batch still
+/// pending when a pass lands is lost.
+#[tokio::test]
+async fn a_queued_embed_batch_for_live_content_is_not_garbage() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let body = "fn still_here() { and_registered() }";
+    let raw_hash = content_hash(body.as_bytes());
+    let blob = unique_blob();
+    add_root_holding(&pool, "/srv/live", "src/live.rs", &blob, body).await;
+
+    // Exactly the payload `enrich::EmbedJob` serialises: a batch of
+    // `(source_hash, text)` pairs, and no `raw_hash` field at all.
+    enqueue_job(
+        &pool,
+        "embed",
+        "embed:github.com/x/live:raw:batch",
+        &serde_json::json!({
+            "identity": "github.com/x/live",
+            "source": "raw",
+            "items": [[raw_hash, body]],
+        }),
+        Duration::ZERO,
+    )
+    .await
+    .expect("queueing the batch");
+
+    let reclaimed = collect_garbage(&pool).await.expect("collecting");
+
+    assert_eq!(
+        reclaimed.jobs, 0,
+        "the root is REGISTERED — its queued vectors are not garbage: {reclaimed:?}"
+    );
+    let surviving: i64 = sqlx::query_scalar("SELECT count(*) FROM jobs WHERE kind = 'embed'")
+        .fetch_one(&pool)
+        .await
+        .expect("counting");
+    assert_eq!(
+        surviving, 1,
+        "a reaped embed batch is content that silently never becomes searchable"
+    );
+
+    database.destroy(pool).await;
+}
+
+/// And the other half: an embed batch for content nothing holds any more MUST
+/// still be reaped, or the fix above would just be "never collect embeds".
+#[tokio::test]
+async fn a_queued_embed_batch_for_departed_content_is_still_reaped() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let body = "fn doomed() { about_to_go() }";
+    let raw_hash = content_hash(body.as_bytes());
+    let blob = unique_blob();
+    add_root_holding(&pool, "/srv/doomed", "src/d.rs", &blob, body).await;
+
+    enqueue_job(
+        &pool,
+        "embed",
+        "embed:github.com/x/doomed:raw:batch",
+        &serde_json::json!({
+            "identity": "github.com/x/doomed",
+            "source": "raw",
+            "items": [[raw_hash, body]],
+        }),
+        Duration::ZERO,
+    )
+    .await
+    .expect("queueing the batch");
+
+    remove_root(&pool, "/srv/doomed").await.expect("removing");
+    let reclaimed = collect_garbage(&pool).await.expect("collecting");
+
+    assert!(
+        reclaimed.jobs > 0,
+        "paying for vectors nobody can search is the thing level 0 exists to \
+         prevent: {reclaimed:?}"
+    );
+
+    database.destroy(pool).await;
+}
+
+/// The OTHER space, and the one a raw-only fix would still silently reap.
+///
+/// A `smart` embed batch's item hashes are `smart_content.text_hash`es — the
+/// hash of the SUMMARY text, which is what lets a smart hit resolve back to
+/// what it describes — not element `raw_hash`es. They reach an element only
+/// THROUGH the summary row, so a predicate that only joins `elements` reads
+/// them as unreferenced and deletes every summary vector still waiting to be
+/// bought.
+#[tokio::test]
+async fn a_queued_smart_embed_batch_for_live_content_is_not_garbage() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let body = "fn described() { by_a_summary() }";
+    let raw_hash = content_hash(body.as_bytes());
+    let blob = unique_blob();
+    add_root_holding(&pool, "/srv/summarised", "src/s.rs", &blob, body).await;
+
+    let summary_text = "does the described thing";
+    put_smart_content(
+        &pool,
+        &raw_hash,
+        SUMMARIZER,
+        &Summary {
+            text: summary_text.to_string(),
+            tags: vec!["described".to_string()],
+            extras: BTreeMap::new(),
+        },
+    )
+    .await
+    .expect("storing the summary");
+
+    // A smart batch is keyed by the hash of the SUMMARY text.
+    let text_hash = content_hash(summary_text.as_bytes());
+    enqueue_job(
+        &pool,
+        "embed",
+        "embed:github.com/x/summarised:smart:batch",
+        &serde_json::json!({
+            "identity": "github.com/x/summarised",
+            "source": "smart",
+            "items": [[text_hash, summary_text]],
+        }),
+        Duration::ZERO,
+    )
+    .await
+    .expect("queueing the batch");
+
+    let reclaimed = collect_garbage(&pool).await.expect("collecting");
+
+    assert_eq!(
+        reclaimed.jobs, 0,
+        "the summary was paid for and its element is live; its vector is not \
+         garbage: {reclaimed:?}"
+    );
+
+    database.destroy(pool).await;
+}
