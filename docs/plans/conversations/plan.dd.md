@@ -55,6 +55,8 @@ _No entries._
 | ac-0006 | Every turn carries source (human\|peer\|system) and head_sha; the conversation carries repo/worktree/base_sha anchor; both are visible in query output | [ ] unchecked | — | — | — | — |
 | ac-0007 | remove/gc leave conversations intact (anchors are pointers not ownership) and conversation-derived content participates in the three-level GC rules unchanged | [ ] unchecked | — | — | — | — |
 | ac-0008 | End-to-end dogfood proof: a real fleet transcript imported, searched, and windowed -- transcript of the run recorded as the plan exit evidence | [ ] unchecked | — | — | — | — |
+| ac-0009 | A conversation grows iteratively: posting/importing new turns to an existing conversation appends only the delta, enqueues enrichment only for new turns, and never disturbs stored ones | [ ] unchecked | — | — | — | — |
+| ac-000a | conversation list (with --repo/--path anchor filters) and conversation remove &lt;guid&gt; exist as JSON-envelope verbs; remove deletes the conversation, its turns and elements, and a following gc reclaims its unshared enrichment | [ ] unchecked | — | — | — | — |
 
 <a id="phases"></a>
 

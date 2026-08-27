@@ -18,7 +18,38 @@
     },
     {
       "name": "tasks",
-      "value": []
+      "value": [
+        {
+          "id": "tk-0001",
+          "title": "flowspace3 conversation import <file|-> : our JSONL shape (documented); mints/accepts GUID; anchor from cwd git context or flags; RE-IMPORT of a grown file appends only new turns (the iterative contract, proven in a test); claude/omp dialect adapters live in the importer only",
+          "state": "unchecked"
+        },
+        {
+          "id": "tk-0002",
+          "title": "conversation list + remove verbs (Jordan 2026-08-27): list with anchor filters (--repo, --path prefix) showing guid, title, turn count, started_at, anchor; remove <guid> deletes conversation + turns + element rows and normal gc reclaims the chain -- symmetric with repo remove; both JSON envelopes",
+          "state": "unchecked"
+        },
+        {
+          "id": "tk-0003",
+          "title": "search --source conversation: accepts it, maps to a content-type filter -- SearchFilters gains kind (embeddings.rs:292), predicate bound in BOTH the nearest CTE and the element-resolution LATERAL (critic finding 4: resolver picks lowest-id element per raw_hash, so a deduped turn can resolve to a code element without the second predicate); default source=all keeps EXCLUDING turns; conv: arm in address_of (search.rs:274); recency-leaning rank for turns; test: hit on shared turn text resolves to a turn element",
+          "state": "unchecked"
+        },
+        {
+          "id": "tk-0004",
+          "title": "Windowed fetch + outline: fill the conv: arm (get conv:<guid>#t<ord> --before N --after M) if w-get-verb landed, else flowspace3 conversation show with the same contract; tree conv:<guid> returns the outline",
+          "state": "unchecked"
+        },
+        {
+          "id": "tk-0005",
+          "title": "Docs + register: docs/services/conversations.md; bundled docs + agents-start-here gain the conversation loop; configuration.md rows for the size gate; PRD req-0024/0025/0026 checked with evidence via ddocs, req-0027 note updated (surface shipped, capture deferred)",
+          "state": "unchecked"
+        },
+        {
+          "id": "tk-0006",
+          "title": "DOGFOOD EXIT PROOF: import a real fleet transcript, grow it with a second import (iterative), semantic-search a known moment, window around the hit; run transcript recorded in the plan folder as exit evidence",
+          "state": "unchecked"
+        }
+      ]
     },
     {
       "name": "done_when",

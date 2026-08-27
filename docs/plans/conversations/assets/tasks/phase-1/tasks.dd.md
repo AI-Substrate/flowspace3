@@ -33,7 +33,14 @@ Store layer for conversations: two ref-layer tables per workshop 005, elements a
 
 ## Tasks
 
-_No entries._
+| id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| tk-0001 | Migration (NEXT FREE number on freshly-pulled main; 0012 taken by w-update-truth): conversations + turns tables per workshop 005 DDL (anchor columns, source, head_sha, items JSONB, blob_sha bridge); DROP + re-add elements_kind_known CHECK adding turn (0004_content_layer.sql:77 names the constraint) | — | — | [ ] unchecked | — | — | — | — | — | — |
+| tk-0002 | ElementKind::Turn end to end: core/src/element.rs:33 enum + as_str, store/src/elements.rs:208 kind_from_str (currently Corrupt on unknown), and prove SummarizeJob (daemon/src/enrich.rs:59) round-trips a turn element -- without this the CHECK widening is unreachable from Rust | — | — | [ ] unchecked | — | — | — | — | — | — |
+| tk-0003 | Canonical stored form: deterministic serialisation of one turn (body + shaped items) whose content_hash IS the turn blob_sha; identical turns across conversations hash identically so dedupe shares enrichment; elements unique key safe because address differs (0004:70) | — | — | [ ] unchecked | — | — | — | — | — | — |
+| tk-0004 | Turn-to-element write: inserting turns creates elements rows (kind=turn, address conv:&lt;guid&gt;#t&lt;ord&gt;, span = ordinal, raw_text = canonical form, enrich by size gate); idempotent with the turn append | — | — | [ ] unchecked | — | — | — | — | — | — |
+| tk-0005 | Second reference leg, ALL FIVE SITES: raw_hash_is_referenced (store/src/roots.rs:225), UNREFERENCED_JOBS (:353), DELETE_UNREFERENCED_JOBS (:361), UNREFERENCED_ELEMENTS (:373), DELETE_UNREFERENCED_ELEMENTS (:379) each gain OR EXISTS against turns.blob_sha; mutation-checked gc test: imported conversation with NO registered worktree survives a full sweep intact | — | — | [ ] unchecked | — | — | — | — | — | — |
+| tk-0006 | Store read/manage fns: window(conversation_id, turn_no, before, after) ordered + honest at edges; outline(conversation_id); list_conversations(filter by anchor repo/path prefix, with turn counts + started_at); delete_conversation(guid) removing conversation + turns + their elements rows (chain then reclaimed by normal gc); conversation upsert + idempotent turn append | — | — | [ ] unchecked | — | — | — | — | — | — |
 
 <a id="done-when"></a>
 

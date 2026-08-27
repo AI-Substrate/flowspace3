@@ -33,7 +33,13 @@ Daemon intake + enrichment. Research facts that shape this: a new POST endpoint 
 
 ## Tasks
 
-_No entries._
+| id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| tk-0001 | POST /conversations: daemon/src/conversations.rs module + route in http.rs; schema::guard first; envelope via answer::ok/failed so user messages ride; ITERATIVE APPEND is the contract (Jordan 2026-08-27): a conversation grows across many posts -- header upsert + turn batch, idempotent on (conversation_id, turn_no), re-post of overlap returns unchanged counts, only new turns enqueue enrichment | — | — | [ ] unchecked | — | — | — | — | — | — |
+| tk-0002 | Payload policy ENFORCED at intake (importer shapes, intake enforces): tool outputs cut to 512B head + total_bytes + truncated flag; write-family inputs to path+length; oversize bodies covered by the w-embed-oversize per-input guard | — | — | [ ] unchecked | — | — | — | — | — | — |
+| tk-0003 | Enrichment enqueue on NEWLY accepted turns only: below size gate (config, sketch 256B) raw embed only; at/above gate summarize + both embeddings; same SummarizeJob/EmbedJob shapes, dedupe keys and lanes | — | — | [ ] unchecked | — | — | — | — | — | — |
+| tk-0004 | Identity ruling (critic finding 5): SummarizeJob/EmbedJob identity is non-optional and provider selection is per-repo -- decide + document identity for anchored conversations (anchor repo identity) AND unanchored/orphaned ones (reserved identity with documented provider fallback); orphaned-anchor case tested | — | — | [ ] unchecked | — | — | — | — | — | — |
+| tk-0005 | Fake-provider tests: both gate paths; iterative append enqueues only the delta; identical turns across two conversations = ONE enrichment spend; remove of the anchored repo + gc leaves conversation and chain intact | — | — | [ ] unchecked | — | — | — | — | — | — |
 
 <a id="done-when"></a>
 

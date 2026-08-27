@@ -18,7 +18,33 @@
     },
     {
       "name": "tasks",
-      "value": []
+      "value": [
+        {
+          "id": "tk-0001",
+          "title": "POST /conversations: daemon/src/conversations.rs module + route in http.rs; schema::guard first; envelope via answer::ok/failed so user messages ride; ITERATIVE APPEND is the contract (Jordan 2026-08-27): a conversation grows across many posts -- header upsert + turn batch, idempotent on (conversation_id, turn_no), re-post of overlap returns unchanged counts, only new turns enqueue enrichment",
+          "state": "unchecked"
+        },
+        {
+          "id": "tk-0002",
+          "title": "Payload policy ENFORCED at intake (importer shapes, intake enforces): tool outputs cut to 512B head + total_bytes + truncated flag; write-family inputs to path+length; oversize bodies covered by the w-embed-oversize per-input guard",
+          "state": "unchecked"
+        },
+        {
+          "id": "tk-0003",
+          "title": "Enrichment enqueue on NEWLY accepted turns only: below size gate (config, sketch 256B) raw embed only; at/above gate summarize + both embeddings; same SummarizeJob/EmbedJob shapes, dedupe keys and lanes",
+          "state": "unchecked"
+        },
+        {
+          "id": "tk-0004",
+          "title": "Identity ruling (critic finding 5): SummarizeJob/EmbedJob identity is non-optional and provider selection is per-repo -- decide + document identity for anchored conversations (anchor repo identity) AND unanchored/orphaned ones (reserved identity with documented provider fallback); orphaned-anchor case tested",
+          "state": "unchecked"
+        },
+        {
+          "id": "tk-0005",
+          "title": "Fake-provider tests: both gate paths; iterative append enqueues only the delta; identical turns across two conversations = ONE enrichment spend; remove of the anchored repo + gc leaves conversation and chain intact",
+          "state": "unchecked"
+        }
+      ]
     },
     {
       "name": "done_when",

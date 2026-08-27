@@ -66,6 +66,16 @@
           "id": "ac-0008",
           "claim": "End-to-end dogfood proof: a real fleet transcript imported, searched, and windowed -- transcript of the run recorded as the plan exit evidence",
           "state": "unchecked"
+        },
+        {
+          "id": "ac-0009",
+          "claim": "A conversation grows iteratively: posting/importing new turns to an existing conversation appends only the delta, enqueues enrichment only for new turns, and never disturbs stored ones",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-000a",
+          "claim": "conversation list (with --repo/--path anchor filters) and conversation remove <guid> exist as JSON-envelope verbs; remove deletes the conversation, its turns and elements, and a following gc reclaims its unshared enrichment",
+          "state": "unchecked"
         }
       ]
     },
