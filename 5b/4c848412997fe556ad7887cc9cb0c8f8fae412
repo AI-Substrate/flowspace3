@@ -1,0 +1,30 @@
+crates/cli/src/doctor.rs
+  h_9e71e8b09f7cf2 339-343,910-1012
+crates/cli/src/main.rs
+  h_9e71e8b09f7cf2 214-217
+crates/cli/src/show.rs
+  h_9e71e8b09f7cf2 141
+crates/cli/tests/doctor_daemon.rs
+  h_9e71e8b09f7cf2 36
+crates/core/src/config.rs
+  h_9e71e8b09f7cf2 1043-1052,1208-1212,1740-1812
+crates/daemon/src/boot.rs
+  h_9e71e8b09f7cf2 22,24,52-57,61-67,76-92,97,100,153-171
+crates/daemon/src/config.rs
+  h_9e71e8b09f7cf2 75-86,94
+crates/daemon/tests/first_light.rs
+  h_9e71e8b09f7cf2 45
+docs/reference/configuration.md
+  h_9e71e8b09f7cf2 33-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5b4c848412997fe556ad7887cc9cb0c8f8fae412",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
