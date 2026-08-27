@@ -1,0 +1,33 @@
+crates/daemon/tests/search_empty.rs
+  s_15d888f4b629c1::t_c6ccfe2a2172d3 57
+crates/store/tests/pg_first_light.rs
+  s_15d888f4b629c1::t_6b732fc77a63f0 95,639,744,750
+crates/core/src/ports.rs
+  s_15d888f4b629c1::t_1c898d25b3150e 113-144,192-210
+crates/providers/src/local.rs
+  s_15d888f4b629c1::t_63ae78f264f610 457-480
+crates/store/migrations/0010_embedding_truncation.sql
+  s_15d888f4b629c1::t_77f4fba87a0475 1-49
+crates/store/src/embeddings.rs
+  s_15d888f4b629c1::t_8e29e3c7a2b49c 67-73,182-183,185-186,192
+crates/testkit/src/fakes.rs
+  s_15d888f4b629c1::t_e2eed3b6917b52 82-88,97,111-123,128-141,158-176,195-200,205,209-214,217-230,247-254,259-263,272-275,285-296,344-349
+docs/services/store-schema.md
+  s_15d888f4b629c1::t_710b6696bdad88 24,27-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b76b13adbc173a4495747beaf202aa53c9ffeb03",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
