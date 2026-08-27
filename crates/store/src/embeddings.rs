@@ -11,7 +11,7 @@
 //! which. That pair is what [`query_embeddings`] follows back to the element a
 //! hit is about.
 
-use fs3_core::Element;
+use fs3_core::{Element, ElementKind};
 use pgvector::Vector;
 use sqlx::Row;
 use std::collections::HashSet;
@@ -303,6 +303,20 @@ pub struct SearchFilters {
     pub repo: Option<String>,
     /// Only content held by a live path matching this SQL `LIKE` pattern.
     pub path: Option<String>,
+    /// Which element kinds may answer — the CONTENT-TYPE axis.
+    ///
+    /// Orthogonal to [`SearchFilters::source`], and the distinction is the one
+    /// workshop 003's open question 1 was really about. `source` is the
+    /// VECTOR-SPACE axis: raw text or summary, a column on `embeddings_1024`
+    /// with a check constraint, and conversations are not a third value on it —
+    /// a turn has a raw vector and a smart vector exactly like a function does.
+    /// What makes a turn a turn is its element KIND, which is this.
+    ///
+    /// `None` places no restriction. A caller that wants code says so by
+    /// naming the code kinds; there is no implicit default here, because "which
+    /// content types answer by default" is a surface policy and the store is
+    /// not the place to keep it.
+    pub kinds: Option<Vec<ElementKind>>,
     /// Which vector space to search: raw text, summaries, or both.
     pub source: Option<SourceKind>,
     /// Cosine DISTANCE ceiling — a hit further than this is not returned.
@@ -319,6 +333,7 @@ impl Default for SearchFilters {
             path: None,
             source: None,
             max_distance: None,
+            kinds: None,
             limit: 10,
         }
     }
@@ -380,21 +395,53 @@ pub async fn search_elements(
               WHERE model_key = $2
                 AND ($4::text IS NULL OR source_kind = $4)
                 AND ($5::float8 IS NULL OR (vector <=> $1) <= $5)
-                AND ($6::text IS NULL AND $7::text IS NULL
+                -- The CONTENT-TYPE gate, and it is unconditional: a caller that
+                -- names kinds must not be answered with another kind, whether
+                -- or not it also named a repository.
+                AND ($8::text[] IS NULL
                      OR EXISTS (
                           SELECT 1
                             FROM elements el
-                            JOIN worktree_files f ON f.blob_sha = el.blob_sha
-                            JOIN worktrees w     ON w.id = f.worktree_id
-                            JOIN repos r         ON r.id = w.repo_id
                            WHERE el.raw_hash = COALESCE(
                                    (SELECT sc.raw_hash FROM smart_content sc
                                      WHERE e.source_kind = 'smart'
                                        AND sc.text_hash = e.source_hash
                                      LIMIT 1),
                                    e.source_hash)
-                             AND ($6::text IS NULL OR r.identity = $6)
-                             AND ($7::text IS NULL OR f.path LIKE $7)))
+                             AND el.kind = ANY($8)))
+                -- The ANCHOR gate, conditional so that content which outlived
+                -- its checkout is still findable when nobody asked to narrow
+                -- (decision D7). Two legs, because content reaches a repository
+                -- two ways: code through the live path holding its blob, and a
+                -- turn through the conversation ANCHORED to that repository.
+                -- Without the second leg `--repo` would answer every
+                -- conversation query with nothing, silently, while workshop 005
+                -- promises the anchor filters compose.
+                AND ($6::text IS NULL AND $7::text IS NULL
+                     OR EXISTS (
+                          SELECT 1
+                            FROM elements el
+                           WHERE el.raw_hash = COALESCE(
+                                   (SELECT sc.raw_hash FROM smart_content sc
+                                     WHERE e.source_kind = 'smart'
+                                       AND sc.text_hash = e.source_hash
+                                     LIMIT 1),
+                                   e.source_hash)
+                             AND (EXISTS (
+                                    SELECT 1
+                                      FROM worktree_files f
+                                      JOIN worktrees w ON w.id = f.worktree_id
+                                      JOIN repos r     ON r.id = w.repo_id
+                                     WHERE f.blob_sha = el.blob_sha
+                                       AND ($6::text IS NULL OR r.identity = $6)
+                                       AND ($7::text IS NULL OR f.path LIKE $7))
+                                  OR EXISTS (
+                                    SELECT 1
+                                      FROM turns t
+                                      JOIN conversations c ON c.guid = t.conversation_id
+                                     WHERE t.blob_sha = el.blob_sha
+                                       AND ($6::text IS NULL OR c.repo_identity = $6)
+                                       AND ($7::text IS NULL OR c.worktree LIKE $7)))))
               ORDER BY vector <=> $1
               LIMIT $3
          )
@@ -417,6 +464,13 @@ pub async fn search_elements(
                        el.sibling_order, el.raw_text, el.raw_hash
                   FROM elements el
                  WHERE el.raw_hash = COALESCE(s.raw_hash, n.source_hash)
+                   -- Critic finding 4, and it is not belt-and-braces: this
+                   -- resolver takes the LOWEST-id element carrying the hash, so
+                   -- a turn that shares its text with code — which is exactly
+                   -- what the dedupe makes common — would resolve to the code
+                   -- element and be rendered with an `el:` address. The kind
+                   -- has to be pinned on BOTH sides of the query.
+                   AND ($8::text[] IS NULL OR el.kind = ANY($8))
                  ORDER BY el.id
                  LIMIT 1
            ) e ON TRUE
@@ -440,6 +494,12 @@ pub async fn search_elements(
     .bind(filters.max_distance)
     .bind(filters.repo.as_deref())
     .bind(filters.path.as_deref())
+    .bind(
+        filters
+            .kinds
+            .as_ref()
+            .map(|kinds| kinds.iter().map(|kind| kind.as_str()).collect::<Vec<_>>()),
+    )
     .fetch_all(pool)
     .await?;
 

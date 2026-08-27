@@ -149,6 +149,32 @@ impl DaemonClient {
         self.post("gc", "/gc", &serde_json::json!({})).await
     }
 
+    /// Store a conversation header and a batch of turns.
+    ///
+    /// Append-friendly: the daemon is idempotent on `(conversation_id,
+    /// turn_no)`, so posting a batch that overlaps what is already stored is
+    /// safe and free rather than a duplicate.
+    pub async fn conversation_import(&self, body: &Value) -> Envelope {
+        self.post("conversation import", "/conversations", body)
+            .await
+    }
+
+    /// List indexed conversations.
+    pub async fn conversation_list(&self, query: &[(String, String)]) -> Envelope {
+        self.get_json("conversation list", "/conversations", query)
+            .await
+    }
+
+    /// Forget one conversation and its turns.
+    pub async fn conversation_remove(&self, guid: &str) -> Envelope {
+        self.post(
+            "conversation remove",
+            "/conversations/remove",
+            &serde_json::json!({ "guid": guid }),
+        )
+        .await
+    }
+
     /// Read roots and queue depth.
     pub async fn status(&self) -> Envelope {
         self.get_json("status", "/status", &[]).await

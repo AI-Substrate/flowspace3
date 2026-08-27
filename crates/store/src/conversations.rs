@@ -102,6 +102,10 @@ pub struct AnchorFilter<'a> {
     pub repo: Option<&'a str>,
     /// Only conversations whose anchor worktree starts with this path.
     pub path_prefix: Option<&'a str>,
+    /// Only the conversation with this guid — the "read one header" case,
+    /// spelled as a filter so there is one listing query rather than two that
+    /// can disagree about what a conversation row looks like.
+    pub guid: Option<&'a str>,
 }
 
 /// One row of a conversation's turn outline.
@@ -439,10 +443,12 @@ pub async fn list_conversations(
            FROM conversations c
           WHERE ($1::text IS NULL OR c.repo_identity = $1)
             AND ($2::text IS NULL OR strpos(coalesce(c.worktree, ''), $2) = 1)
+            AND ($3::text IS NULL OR c.guid = $3::uuid)
           ORDER BY c.started_at DESC, c.guid"
     ))
     .bind(filter.repo)
     .bind(filter.path_prefix)
+    .bind(filter.guid)
     .fetch_all(pool)
     .await?;
 

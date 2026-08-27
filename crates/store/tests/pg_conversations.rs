@@ -561,6 +561,7 @@ async fn listing_narrows_by_anchor() {
         AnchorFilter {
             repo: Some("github.com/x/here"),
             path_prefix: None,
+            guid: None,
         },
     )
     .await
@@ -573,6 +574,7 @@ async fn listing_narrows_by_anchor() {
         AnchorFilter {
             repo: None,
             path_prefix: Some("/srv/a_b"),
+            guid: None,
         },
     )
     .await

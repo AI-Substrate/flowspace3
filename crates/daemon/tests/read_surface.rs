@@ -379,24 +379,44 @@ async fn an_unknown_path_is_a_not_found_with_neighbours() {
     stack.destroy().await;
 }
 
-/// The dispatch arm the conversations plan will fill in: a `conv:` address is
-/// understood and refused as NOT YET, never as a parse error. 501, not 500 —
-/// this build lacking a feature is not this build being broken.
+/// The dispatch arm the conversations plan reserved is now FILLED, so a `conv:`
+/// address reaches the conversation store rather than a 501. A guid nothing
+/// answers to is an ordinary not-found — the same answer an unknown element
+/// address gets, because it is the same kind of mistake.
 #[tokio::test]
-async fn a_conversation_address_is_not_yet_rather_than_malformed() {
+async fn an_unknown_conversation_is_a_not_found_with_a_way_forward() {
     let stack = Stack::create("read_get_conv").await;
 
     let envelope = stack
-        .get(&[("address", "conv:2f1c-not-a-real-conversation")])
+        .get(&[("address", "conv:6ba7b810-9dad-11d1-80b4-00c04fd430c8")])
         .await;
 
-    assert_eq!(code(&envelope), "FS3-E-QUERY-NOT-IMPLEMENTED");
-    assert_eq!(envelope.http_status(), 501);
+    assert_eq!(code(&envelope), "FS3-E-QUERY-NOT-FOUND");
+    assert_eq!(envelope.http_status(), 404);
     let failure = envelope.error.as_ref().expect("a failure");
     assert!(
         failure.details.contains_key("guid"),
         "the address is understood well enough to name its parts: {failure:?}"
     );
+    assert!(
+        failure.fix.contains("conversation list"),
+        "and the fix names how to find one that exists: {failure:?}"
+    );
+    stack.destroy().await;
+}
+
+/// A guid that is not a uuid is a different mistake from one that is simply not
+/// indexed, and it gets the address-shaped code rather than not-found.
+#[tokio::test]
+async fn a_malformed_conversation_guid_is_an_address_error() {
+    let stack = Stack::create("read_get_badconv").await;
+
+    let envelope = stack
+        .get(&[("address", "conv:2f1c-not-a-real-conversation")])
+        .await;
+
+    assert_eq!(code(&envelope), "FS3-E-QUERY-INVALID-ADDRESS");
+    assert_eq!(envelope.http_status(), 400);
     stack.destroy().await;
 }
 

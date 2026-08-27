@@ -23,6 +23,24 @@ address; `get` returns that element's whole text (or a whole file, for a file
 address) out of the index, so you never have to guess which checkout on disk
 the hit came from. `flowspace3 docs get read` is the detail.
 
+## Storing what you learned
+
+```bash
+flowspace3 conversation import ./session.jsonl        # turns become content
+flowspace3 search "why did we drop it" --source conversation
+flowspace3 get conv:<guid>#t42 --before 10 --after 20 # read around the hit
+```
+
+Code records WHAT was decided; a conversation records why, what was rejected,
+and how the bug was actually found. Import a transcript and its turns are
+indexed like any other content — summarised, embedded, searchable by meaning.
+Re-import the same file as it grows and only the new turns land.
+
+Conversations are OPT-IN on search, and that is deliberate: they are opinions
+at a point in time and code is current truth, so `search` without
+`--source conversation` never blends them in. `flowspace3 docs get
+conversations` is the detail.
+
 `doctor` is repair-as-it-goes: it starts the container stack, creates the
 database and applies migrations. There is no separate setup step, and you never
 need to run `docker compose` yourself.

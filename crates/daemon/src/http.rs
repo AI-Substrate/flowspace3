@@ -25,7 +25,7 @@ use fs3_core::Port;
 
 use crate::answer::{Answer, IntoFailure, failed, ok};
 use crate::conversations::{IntakeReport, IntakeRequest};
-use crate::read::{GetRequest, GetResult, TreeRequest, TreeResult};
+use crate::read::{GetPayload, GetRequest, TreeRequest, TreeResult};
 use crate::roots::{RootReport, RootRequest};
 use crate::search::{SearchRequest, SearchResults};
 use crate::status::StatusReport;
@@ -59,7 +59,8 @@ pub fn router(state: AppState) -> Router {
         .route("/scan", post(scan))
         .route("/remove", post(remove))
         .route("/gc", post(gc))
-        .route("/conversations", post(conversations))
+        .route("/conversations", post(conversations).get(conversation_list))
+        .route("/conversations/remove", post(conversation_remove))
         .route("/search", get(search))
         .route("/get", get(get_address))
         .route("/tree", get(tree))
@@ -85,6 +86,56 @@ async fn remove(
     match crate::remove::remove(&state, &request.path).await {
         Ok(report) => {
             let next = crate::remove::next_after_remove(&report);
+            ok(&state, COMMAND, report)
+                .await
+                .0
+                .with_next_action(next)
+                .into()
+        }
+        Err(failure) => failed(&state, COMMAND, failure).await,
+    }
+}
+
+async fn conversation_list(
+    State(state): State<AppState>,
+    Query(request): Query<crate::conversations::ListRequest>,
+) -> Answer<crate::conversations::ConversationList> {
+    const COMMAND: &str = "conversation list";
+    if let Err(failure) = crate::schema::guard(&state.db).await {
+        return failed(&state, COMMAND, failure).await;
+    }
+    match crate::conversations::list(&state, &request).await {
+        Ok(list) => {
+            let next = if list.conversations.is_empty() {
+                "nothing is indexed yet — `flowspace3 conversation import <file>` stores a \
+                 transcript"
+                    .to_string()
+            } else {
+                "`flowspace3 tree <address>` outlines any of them; \
+                 `flowspace3 search \"<question>\" --source conversation` searches their turns"
+                    .to_string()
+            };
+            ok(&state, COMMAND, list)
+                .await
+                .0
+                .with_next_action(next)
+                .into()
+        }
+        Err(failure) => failed(&state, COMMAND, failure).await,
+    }
+}
+
+async fn conversation_remove(
+    State(state): State<AppState>,
+    Json(request): Json<crate::conversations::RemoveRequest>,
+) -> Answer<crate::conversations::RemoveReport> {
+    const COMMAND: &str = "conversation remove";
+    if let Err(failure) = crate::schema::guard(&state.db).await {
+        return failed(&state, COMMAND, failure).await;
+    }
+    match crate::conversations::remove(&state, &request).await {
+        Ok(report) => {
+            let next = crate::conversations::next_after_remove(&report);
             ok(&state, COMMAND, report)
                 .await
                 .0
@@ -258,7 +309,7 @@ async fn search(
 async fn get_address(
     State(state): State<AppState>,
     Query(request): Query<GetRequest>,
-) -> Answer<GetResult> {
+) -> Answer<GetPayload> {
     const COMMAND: &str = "get";
     if let Err(failure) = crate::schema::guard(&state.db).await {
         return failed(&state, COMMAND, failure).await;
@@ -283,7 +334,7 @@ async fn get_address(
                 .with_next_action(next)
                 .into()
         }
-        Err(failure) => failed::<GetResult>(&state, COMMAND, failure)
+        Err(failure) => failed::<GetPayload>(&state, COMMAND, failure)
             .await
             .0
             .with_meta(serde_json::json!({ "scope": scope }))
