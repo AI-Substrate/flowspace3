@@ -1,0 +1,110 @@
+.harness/government/briefs/w-test-blast-radius.md
+  s_15d888f4b629c1::t_a1aff3112c34f9 1-60
+.harness/government/briefs/w-conversations.md
+  s_15d888f4b629c1::t_740f66b131243d 1-43
+.harness/government/settings.dd.json
+  s_15d888f4b629c1::t_0f2f5b1f9e2738 1-30,32-44
+  s_15d888f4b629c1::t_0c133519dce5d3 31
+.agents/skills/pij-team/templates/packet-pm.dd.json
+  s_15d888f4b629c1::t_e6ff10847fccb0 1-22,24-25,27-29,32-64,66-73
+  s_15d888f4b629c1::t_3bedda32756e16 26
+  s_15d888f4b629c1::t_c46ea78746b216 65
+  s_15d888f4b629c1::t_114487bdb8b6e1 23
+  s_15d888f4b629c1::t_af430979f915db 30-31
+.harness/government/briefs/w-daemon-churn.md
+  s_15d888f4b629c1::t_e57e6e4667fe74 1-48
+.agents/skills/pij-team/TENETS.md
+  s_15d888f4b629c1::t_bc14cd679eb416 8-13
+  s_15d888f4b629c1::t_5d4a97392111d8 70-73
+  s_15d888f4b629c1::t_39e49ee37f12f9 87-94
+  s_15d888f4b629c1::t_a455d31edd0a7c 1-2,14-39,44,49,52-55,61-69,74-86,95-107
+  s_15d888f4b629c1::t_555b1395969ff3 45-48
+  s_15d888f4b629c1::t_cb964142523e45 3-7
+  s_15d888f4b629c1::t_d5ab5f954f09e1 40-43
+  s_15d888f4b629c1::t_7bbe592c9ced3f 50-51
+  s_15d888f4b629c1::t_44d9c2f467f392 56-60
+.agents/skills/pij-team/templates/impl-guide.dd.json
+  s_15d888f4b629c1::t_6393fa7e3a33a5 53
+  s_15d888f4b629c1::t_81ae1211f8f108 17
+  s_15d888f4b629c1::t_1fe2fe57261759 11
+  s_15d888f4b629c1::t_1d6f3aaca50f00 1-10,12-16,18-22,24-34,36-52,54-72
+  s_15d888f4b629c1::t_732785d9a5feac 23
+  s_15d888f4b629c1::t_98e8e9d636cb4f 35
+.dd/schemas/reconstruct/conversation/schema.json
+  s_d7258b08ae7e66::t_5ecbd9b8121145 1-29
+.dd/schemas/pij-team/settings/schema.json
+  s_15d888f4b629c1::t_509cf360493f84 1-26
+.harness/government/briefs/w-embed-oversize.md
+  s_15d888f4b629c1::t_1ef595c38382e9 1-63
+.dd/schemas/pij-team/impl-guide/schema.json
+  s_15d888f4b629c1::t_c7442990213774 11
+  s_15d888f4b629c1::t_1cca2c9d9784bd 40-46
+  s_15d888f4b629c1::t_f64c973e912756 1-10,12-39,47-72
+.dd/schemas/reconstruct/spine/schema.json
+  s_d7258b08ae7e66::t_2e7547f6d76abe 1-27,40-55
+  s_d7258b08ae7e66::t_60791b2d2c4e60 28-39
+.harness/government/briefs/w-daemon-logs.md
+  s_15d888f4b629c1::t_71b858b0568f36 1-55
+.agents/skills/pij-team/templates/packet-coder.dd.json
+  s_15d888f4b629c1::t_2bc827250325d3 1-22,24-54,57-61,63-68
+  s_15d888f4b629c1::t_7eefe6c9cad3bb 62
+  s_15d888f4b629c1::t_d03eeaaf220dc9 23
+  s_15d888f4b629c1::t_6d36c5ff38ac25 55-56
+.agents/skills/pij-team/templates/packet-reviewer.dd.json
+  s_15d888f4b629c1::t_b2906da5d30c52 57
+  s_15d888f4b629c1::t_b80231d550200f 23
+  s_15d888f4b629c1::t_a2e2798647e8c7 1-22,24-56,58-63
+.agents/skills/pij-team/EXPERIENCES.md
+  s_15d888f4b629c1::t_762b72728b167e 28-32
+  s_15d888f4b629c1::t_92e0978e7eb3e8 33-39
+  s_15d888f4b629c1::t_bf86ed0a9f5e62 42-52
+  s_15d888f4b629c1::t_c7f1fa8e463f38 1-22,40-41,53-56
+  s_15d888f4b629c1::t_dc60cb7920cba6 23-27
+.harness/government/briefs/w-team-new-poc.md
+  s_15d888f4b629c1::t_a74dd012b9d8ce 1-67
+.harness/government/briefs/w-get-verb.md
+  s_15d888f4b629c1::t_d4da3f34399c3d 1-66
+.harness/government/briefs/w-update-truth.md
+  s_15d888f4b629c1::t_e0ae9e1058acec 1-85
+.dd/schemas/pij-team/packet/schema.json
+  s_15d888f4b629c1::t_cd91ba798c2157 1-62
+.harness/government/settings.dd.md
+  s_15d888f4b629c1::t_10c501eba97f19 1-24
+.agents/skills/pij-team/SKILL.md
+  s_15d888f4b629c1::t_b1a5a90142a44b 10-12
+  s_15d888f4b629c1::t_a4047c4a4863de 65-70
+  s_15d888f4b629c1::t_bbd10766167af3 72-76
+  s_15d888f4b629c1::t_1cd2deaf690b4f 8-9,13-16
+  s_15d888f4b629c1::t_f3132008c1ecb4 1-7,17,30-64,71,77-104
+  s_15d888f4b629c1::t_12cdc076ae15a2 18-24
+  s_15d888f4b629c1::t_e78c50f710b75f 25-29
+.harness/government/briefs/w-remove-root.md
+  s_15d888f4b629c1::t_13b3486a3c7b90 1-44,57-60
+  s_15d888f4b629c1::t_a5102e3bd79f9d 45-56,61-63
+.harness/government/briefs/w-release-window.md
+  s_15d888f4b629c1::t_684af3cac4a2b9 1-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "65724b9152cd962dae9685fb7db662f0fe778085",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_d7258b08ae7e66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a1fa7b8-f64d-477e-8483-9149e697ae12",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
