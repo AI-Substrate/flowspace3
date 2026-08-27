@@ -115,6 +115,7 @@ file. Both keys are optional; an absent one falls back to the port's `active`.
 | Key | Type | Default | Effect | Env override |
 |---|---|---|---|---|
 | `summary_min_lines` | integer | `10` | Size floor, in lines, for per-element LLM summaries (PRD req 32). Must be at least 1. | `FS3_INDEXING__SUMMARY_MIN_LINES` |
+| `turn_summary_min_bytes` | integer | `256` | Size floor, in BYTES, for per-turn LLM summaries (workshop 005). Bytes rather than lines because a turn occupies one position in a sequence, so a line floor cannot tell a five-word "ship it" from the same turn carrying a 4KB tool result. Below the floor a turn is embedded raw and never summarised. Must be at least 1. | `FS3_INDEXING__TURN_SUMMARY_MIN_BYTES` |
 | `debounce_seconds` | integer | `10` | How long a dirty file must settle before it is processed (PRD req 29). Enforced by the job row's `not_before`, not by a timer — a re-fire pushes the deadline out. | `FS3_INDEXING__DEBOUNCE_SECONDS` |
 | `worker_concurrency` | integer | `4` | How many jobs the runner claims at once. This is the QUEUE's width, not provider parallelism: `SKIP LOCKED` hands N workers N different jobs. Must be at least 1. | `FS3_INDEXING__WORKER_CONCURRENCY` |
 | `summarize_lane` | integer | `32` | How many `summarize` jobs may be in flight. Its own number because a summarize is one chat call per element. Clamped per instance by the summarizer's own concurrency ceiling. Must be at least 1. | `FS3_INDEXING__SUMMARIZE_LANE` |
