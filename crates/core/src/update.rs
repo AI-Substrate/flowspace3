@@ -21,17 +21,38 @@ pub const UPDATE_SOURCE: &str = "update";
 pub const REINSTALL_COMMAND: &str =
     "curl -fsSL https://raw.githubusercontent.com/AI-Substrate/flowspace3/main/install.sh | sh";
 
-/// What the updater knows right now, as the store holds it.
+/// What the updater knows right now, as the store holds it, for ONE
+/// installation.
+///
+/// Keyed by [`UpdateState::install_path`], because a store is shared and an
+/// **install is a path**. One row per store was wrong in a way that only
+/// showed up on a machine with two installs: `install.sh` picks
+/// `/usr/local/bin` or `~/.local/bin` depending on permissions, so anyone who
+/// has ever installed both ways has two installs against one database, and a
+/// single row thrashed last-writer-wins between them. Root ended up carrying
+/// another user's "not writable" message about a path root does not use — on
+/// a surface whose `next_action` is NOT NULL precisely to guarantee it is
+/// actionable (Jordan ruled per-install truth, 2026-08-27).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct UpdateState {
+    /// WHICH installation this is the state of: a daemon's own resolved
+    /// binary path, canonicalised. The row's identity rather than a payload
+    /// field, which is the whole of the per-install fix.
+    pub install_path: String,
     /// The newest version the probe has seen, installed or not.
     pub latest_seen: Option<String>,
-    /// The version sitting at [`UpdateState::install_path`] because the daemon
-    /// put it there. `Some`, plus a running process of a different version, is
-    /// exactly the restart-me condition.
+    /// What the binary at [`UpdateState::install_path`] said it was when it
+    /// was last asked — a **cache of disk**, not a memory of what the updater
+    /// did.
+    ///
+    /// That distinction is the fix for a real defect. The old field recorded
+    /// "we swapped 0.3.1 in" and nothing could ever unset it, so a pinned
+    /// reinstall at an older tag left a permanently false "restart to pick up
+    /// 0.3.1" against a path holding 0.3.0. Re-read from the file on every
+    /// check, a swap and an out-of-band change produce the same answer,
+    /// because both are read from the same place. `None` means the path holds
+    /// nothing that can be asked what it is.
     pub installed_version: Option<String>,
-    /// Where the swap happened, canonicalised.
-    pub install_path: Option<String>,
     /// Why the last attempt did not install, when it did not.
     pub blocked_reason: Option<String>,
     /// When a daemon last asked GitHub, RFC 3339 UTC. `None` means never.
@@ -47,10 +68,20 @@ impl UpdateState {
     /// true now, and the queue retracts the rest. An update that succeeds
     /// stops declaring "restart me" the moment the running version matches,
     /// so the message disappears without anything having evaluated a rule.
+    ///
+    /// # Every key names the install it is about
+    ///
+    /// `user_messages.key` is the PRIMARY KEY, so two installs sharing a
+    /// store could not otherwise both hold `update:blocked` — one would
+    /// silently overwrite the other, which is the same last-writer-wins
+    /// defect one level up. The path in the key is what keeps them distinct
+    /// rows. Scoping *ownership* and *visibility* is a different job, done by
+    /// the queue's own `install_path` column: string-matching a key is not a
+    /// mechanism.
     #[must_use]
     pub fn desired_messages(&self, running_version: &str) -> Vec<UserMessage> {
         let mut messages = Vec::new();
-        let path = self.install_path.as_deref().unwrap_or("the install path");
+        let path = self.install_path.as_str();
 
         // A newer binary is on disk that this process is not running. Warning
         // rather than info: the user turned auto-update on and is not yet
@@ -59,7 +90,7 @@ impl UpdateState {
             && installed != running_version
         {
             messages.push(UserMessage::new(
-                format!("update:installed:{installed}"),
+                format!("update:installed:{installed}:{path}"),
                 UPDATE_SOURCE,
                 Severity::Warning,
                 format!(
@@ -79,7 +110,7 @@ impl UpdateState {
                 .as_deref()
                 .map_or(String::new(), |latest| format!(" ({latest} is available)"));
             messages.push(UserMessage::new(
-                "update:blocked",
+                format!("update:blocked:{path}"),
                 UPDATE_SOURCE,
                 Severity::Warning,
                 format!("update not possible at {path}: {reason}{newer}"),
@@ -170,13 +201,16 @@ mod tests {
     fn an_installed_binary_the_daemon_is_not_running_asks_for_a_restart() {
         let state = UpdateState {
             installed_version: Some("0.3.0".into()),
-            install_path: Some("/usr/local/bin/flowspace3".into()),
+            install_path: "/usr/local/bin/flowspace3".into(),
             ..UpdateState::default()
         };
 
         let messages = state.desired_messages("0.2.0");
         assert_eq!(messages.len(), 1);
-        assert_eq!(messages[0].key, "update:installed:0.3.0");
+        assert_eq!(
+            messages[0].key,
+            "update:installed:0.3.0:/usr/local/bin/flowspace3"
+        );
         assert_eq!(
             messages[0].next_action,
             "restart the fs3 daemon to pick it up"
@@ -194,11 +228,46 @@ mod tests {
         assert!(state.desired_messages("0.3.0").is_empty());
     }
 
+    /// The per-install fix, in the domain: the same situation at two paths is
+    /// two messages, not one row two installs fight over. `key` is the queue's
+    /// PRIMARY KEY, so a shared key here would mean root's daemon silently
+    /// overwriting a message about a path root does not use.
+    #[test]
+    fn the_same_condition_at_two_install_paths_produces_two_distinct_keys() {
+        let at = |path: &str| UpdateState {
+            latest_seen: Some("0.3.0".into()),
+            installed_version: Some("0.3.0".into()),
+            install_path: path.into(),
+            blocked_reason: Some("not writable".into()),
+            ..UpdateState::default()
+        };
+
+        let root: Vec<String> = at("/usr/local/bin/flowspace3")
+            .desired_messages("0.2.0")
+            .into_iter()
+            .map(|message| message.key)
+            .collect();
+        let alice: Vec<String> = at("/home/alice/.local/bin/flowspace3")
+            .desired_messages("0.2.0")
+            .into_iter()
+            .map(|message| message.key)
+            .collect();
+
+        assert_eq!(root.len(), 2);
+        assert_eq!(alice.len(), 2);
+        for key in &root {
+            assert!(
+                !alice.contains(key),
+                "{key} is claimed by both installs — one would overwrite the other"
+            );
+        }
+    }
+
     #[test]
     fn a_blocked_update_names_the_path_the_reason_and_both_ways_out() {
         let state = UpdateState {
             latest_seen: Some("0.3.0".into()),
-            install_path: Some("/usr/local/bin/flowspace3".into()),
+            install_path: "/usr/local/bin/flowspace3".into(),
             blocked_reason: Some("/usr/local/bin is not writable by this user".into()),
             ..UpdateState::default()
         };
@@ -206,7 +275,7 @@ mod tests {
         let messages = state.desired_messages("0.2.0");
         assert_eq!(messages.len(), 1);
         let message = &messages[0];
-        assert_eq!(message.key, "update:blocked");
+        assert_eq!(message.key, "update:blocked:/usr/local/bin/flowspace3");
         assert!(message.text.contains("/usr/local/bin/flowspace3"));
         assert!(message.text.contains("not writable"));
         assert!(message.text.contains("0.3.0 is available"));
@@ -219,7 +288,7 @@ mod tests {
         let state = UpdateState {
             latest_seen: Some("0.4.0".into()),
             installed_version: Some("0.3.0".into()),
-            install_path: Some("/usr/local/bin/flowspace3".into()),
+            install_path: "/usr/local/bin/flowspace3".into(),
             blocked_reason: Some("checksum mismatch".into()),
             ..UpdateState::default()
         };
@@ -229,7 +298,13 @@ mod tests {
             .into_iter()
             .map(|message| message.key)
             .collect();
-        assert_eq!(keys, ["update:installed:0.3.0", "update:blocked"]);
+        assert_eq!(
+            keys,
+            [
+                "update:installed:0.3.0:/usr/local/bin/flowspace3",
+                "update:blocked:/usr/local/bin/flowspace3"
+            ]
+        );
     }
 
     #[test]

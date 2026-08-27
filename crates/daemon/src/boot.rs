@@ -192,9 +192,13 @@ async fn serve(configuration: Config, address: String, logging: Logging) -> Resu
     // A store that will not take the message is not worth failing the boot
     // over: the same news is already on stdout and in the `logs` row of
     // `flowspace3 doctor`.
+    // `None` scope: an unwritable log directory is a fact about this HOST, not
+    // about one install path, so every installation sharing the store should
+    // hear it.
     if let Err(error) = fs3_store::sync_messages(
         &state.db,
         fs3_core::LOGGING_SOURCE,
+        None,
         &logging.desired_messages(),
     )
     .await

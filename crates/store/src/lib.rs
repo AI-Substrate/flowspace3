@@ -56,7 +56,8 @@ pub use roots::{
 };
 pub use smart::{MissingEnrichment, get_smart_content, missing_enrichment, put_smart_content};
 pub use updates::{
-    claim_check, record_blocked, record_clear, record_installed, record_seen, update_state,
+    claim_check, claim_check_now, record_blocked, record_clear, record_on_disk, record_seen,
+    record_swapped, update_state,
 };
 
 // The store owns the sqlx edge, so every other crate speaks to Postgres through
