@@ -1,0 +1,42 @@
+README.md
+  h_9e71e8b09f7cf2 68,70-74
+crates/cli/docs/agents.md
+  h_9e71e8b09f7cf2 16-18,21-25,127-132,155
+crates/cli/docs/read.md
+  h_9e71e8b09f7cf2 1-115
+crates/cli/docs/search.md
+  h_9e71e8b09f7cf2 70-86
+crates/cli/skills/flowspace/SKILL.md
+  h_9e71e8b09f7cf2 47,99-103,108-122
+crates/cli/src/docs.rs
+  h_9e71e8b09f7cf2 58,84-89
+crates/cli/tests/docs_bundle.rs
+  h_9e71e8b09f7cf2 93-95
+crates/core/src/address.rs
+  h_9e71e8b09f7cf2 290-293
+crates/daemon/src/http.rs
+  h_9e71e8b09f7cf2 200-201,244-245,280-281
+crates/daemon/src/read.rs
+  h_9e71e8b09f7cf2 228,295,430-433,498,504-506,565-568,595-601,777-780,867,916,966-973,985-991,1040,1064,1082
+crates/daemon/src/scope.rs
+  h_9e71e8b09f7cf2 34,124-126,181-189,191-192
+crates/daemon/tests/read_surface.rs
+  h_9e71e8b09f7cf2 130-135,389-391,465-467
+crates/store/src/read.rs
+  h_9e71e8b09f7cf2 45-47,193
+crates/store/tests/pg_read.rs
+  h_9e71e8b09f7cf2 1-257
+docs/services/read-surface.md
+  h_9e71e8b09f7cf2 1-217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f966b4e56757e4ce376990319492f68db53d99d3",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
