@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/AI-Substrate/flowspace3/compare/v0.3.1...v0.3.2) (2026-08-27)
+
+
+### Bug Fixes
+
+* oversized inputs must embed, not fail forever ([#24](https://github.com/AI-Substrate/flowspace3/issues/24)) ([76df138](https://github.com/AI-Substrate/flowspace3/commit/76df1388530b67e114b419250ff4c65f4183be48))
+
 ## [0.3.1](https://github.com/AI-Substrate/flowspace3/compare/v0.3.0...v0.3.1) (2026-08-27)
 
 
