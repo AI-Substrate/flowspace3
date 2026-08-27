@@ -184,6 +184,42 @@ No embeddings exist for the active model, so a semantic search has nothing to ra
 | retryable | status |
 | --- | --- |
 | false | 500 |
+### `FS3-E-QUERY-NOT-FOUND`
+
+No repository, file or element in the index answers to the address that was asked for.
+
+**Fix**: check the address against a search hit — `flowspace3 search "<question>"` prints the address of everything it returns, and `flowspace3 tree <repo-or-path>` lists what is actually indexed under a path.
+
+| retryable | status |
+| --- | --- |
+| false | 404 |
+### `FS3-E-QUERY-INVALID-ADDRESS`
+
+The address does not parse: it must be `el:<repo>/<path>::<name>` or `conv:<guid>`.
+
+**Fix**: copy the `address` field from a search hit rather than composing one by hand; `flowspace3 search "<question>"` prints it for every result.
+
+| retryable | status |
+| --- | --- |
+| false | 400 |
+### `FS3-E-QUERY-INVALID-AMBIGUOUS`
+
+The address matches more than one element or repository, so there is no single answer.
+
+**Fix**: narrow it: `--span <line>` picks one of several elements sharing an address (the candidates are listed in `details`), and `--repo <identity>` picks one repository.
+
+| retryable | status |
+| --- | --- |
+| false | 400 |
+### `FS3-E-QUERY-NOT-IMPLEMENTED`
+
+The address is valid but names a corpus this build does not store yet — conversations.
+
+**Fix**: nothing to fix: conversation storage is not in this version. Element addresses (`el:…`) work today — `flowspace3 search "<question>"` returns them.
+
+| retryable | status |
+| --- | --- |
+| false | 501 |
 
 ## DAEMON
 

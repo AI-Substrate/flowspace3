@@ -24,6 +24,7 @@ use serde::{Deserialize, Serialize};
 use fs3_core::Port;
 
 use crate::answer::{Answer, IntoFailure, failed, ok};
+use crate::read::{GetRequest, GetResult, TreeRequest, TreeResult};
 use crate::roots::{RootReport, RootRequest};
 use crate::search::{SearchRequest, SearchResults};
 use crate::status::StatusReport;
@@ -58,6 +59,8 @@ pub fn router(state: AppState) -> Router {
         .route("/remove", post(remove))
         .route("/gc", post(gc))
         .route("/search", get(search))
+        .route("/get", get(get_address))
+        .route("/tree", get(tree))
         .with_state(state)
 }
 
@@ -189,7 +192,16 @@ async fn search(
     if let Err(failure) = crate::schema::guard(&state.db).await {
         return failed(&state, COMMAND, failure).await;
     }
-    match crate::search::search(&state, &request).await {
+
+    // Workshop 003 D6: a bare search is about the repository the caller is
+    // standing in. The scope rides in `meta` on BOTH outcomes, because "no
+    // index for the active model" and "the wrong repository answered" look
+    // identical to a caller who cannot see which repository was asked.
+    let scope =
+        crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
+    let meta = serde_json::json!({ "scope": scope });
+
+    match crate::search::search(&state, &request, &scope).await {
         Ok(results) => {
             let next = if results.results.is_empty() {
                 // The third cause is the one nobody guesses: vectors are only
@@ -202,15 +214,88 @@ async fn search(
                  doctor`: a search only reads vectors written by the ACTIVE embedder, so a \
                  provider change since indexing returns nothing from a full index"
             } else {
-                "open a hit at its path and span, or narrow with --path/--repo"
+                "read a hit in full with `flowspace3 get <address>`, browse its file with \
+                 `flowspace3 tree <address>`, or narrow with --path/--repo"
             };
             ok(&state, COMMAND, results)
                 .await
                 .0
+                .with_meta(meta)
+                .with_next_action(crate::scope::steer(&scope, next))
+                .into()
+        }
+        Err(failure) => failed::<SearchResults>(&state, COMMAND, failure)
+            .await
+            .0
+            .with_meta(meta)
+            .into(),
+    }
+}
+
+async fn get_address(
+    State(state): State<AppState>,
+    Query(request): Query<GetRequest>,
+) -> Answer<GetResult> {
+    const COMMAND: &str = "get";
+    if let Err(failure) = crate::schema::guard(&state.db).await {
+        return failed(&state, COMMAND, failure).await;
+    }
+
+    let scope =
+        crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
+    match crate::read::get(&state, &request, &scope).await {
+        Ok((result, parser_version)) => {
+            let next = crate::read::next_after_get(&result);
+            ok(&state, COMMAND, result)
+                .await
+                .0
+                .with_meta(serde_json::json!({
+                    "scope": scope,
+                    // Which parse answered. A bumped parser leaves the previous
+                    // version's rows in place until a re-scan, so this is the
+                    // difference between "current" and "what is still stored".
+                    "parser_version": parser_version,
+                    "parser_version_current": parser_version == crate::scan::PARSER_VERSION,
+                }))
                 .with_next_action(next)
                 .into()
         }
-        Err(failure) => failed(&state, COMMAND, failure).await,
+        Err(failure) => failed::<GetResult>(&state, COMMAND, failure)
+            .await
+            .0
+            .with_meta(serde_json::json!({ "scope": scope }))
+            .into(),
+    }
+}
+
+async fn tree(
+    State(state): State<AppState>,
+    Query(request): Query<TreeRequest>,
+) -> Answer<TreeResult> {
+    const COMMAND: &str = "tree";
+    if let Err(failure) = crate::schema::guard(&state.db).await {
+        return failed(&state, COMMAND, failure).await;
+    }
+
+    let scope =
+        crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
+    let meta = serde_json::json!({ "scope": scope });
+
+    match crate::read::tree(&state, &request, &scope).await {
+        Ok(result) => {
+            let next = crate::read::next_after_tree(&result);
+            ok(&state, COMMAND, result)
+                .await
+                .0
+                .with_meta(meta)
+                .with_next_action(crate::scope::steer(&scope, &next))
+                .into()
+        }
+        Err(failure) => failed::<TreeResult>(&state, COMMAND, failure)
+            .await
+            .0
+            .with_meta(meta)
+            .into(),
     }
 }
 

@@ -27,6 +27,7 @@ pub mod elements;
 pub mod embeddings;
 pub mod jobs;
 pub mod messages;
+pub mod read;
 pub mod refs;
 pub mod roots;
 pub mod smart;
@@ -46,6 +47,10 @@ pub use jobs::{
     last_failure, park_job, queue_depth, requeue_failed, requeue_running, retry_job,
 };
 pub use messages::{ack_message, live_messages, sync_messages};
+pub use read::{
+    IndexedFile, count_files_under, files_at_path, files_under, latest_summary,
+    parser_versions_for_blob, repo_identities, worktree_containing,
+};
 pub use refs::{
     RegisteredWorktree, WorktreePath, find_worktree, list_worktrees, register_worktree,
     sync_worktree_files, worktree_file_map, worktree_paths_for_blob,

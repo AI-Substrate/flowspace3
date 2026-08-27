@@ -67,4 +67,20 @@ says.
   model means a new `model_key`; old rows survive but are not searched by the
   new one. Re-index to move them.
 
-Not in this version: text and regex modes, hybrid ranking, `get` and `tree`.
+## Scope: a bare search is about where you are
+
+The CLI sends your working directory, and a search with no `--repo` narrows to
+the repository that directory belongs to (workshop 003 D6). `meta.scope` says
+which repository answered and how it was chosen; `--repo all` widens back to
+every indexed repository. Standing somewhere fs3 has never indexed puts a
+warning in `scope.warnings` and at the front of `next_action`, naming
+`flowspace3 add <path>` — rather than answering from an unrelated repository
+and letting you believe it was yours.
+
+## Depth comes from `get`
+
+Hits are lean on purpose. `flowspace3 get <address>` returns the whole element
+(or whole file), and `flowspace3 tree <address-or-path>` browses the structure
+around it: `flowspace3 docs get read`.
+
+Not in this version: text and regex modes, hybrid ranking.

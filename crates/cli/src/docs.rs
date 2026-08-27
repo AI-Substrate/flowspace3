@@ -55,7 +55,7 @@ pub const TOPICS: &[Topic] = &[
         name: "agents",
         title: "The agent operating guide: the loop, the envelope, the gotchas",
         text: include_str!("../docs/agents.md"),
-        related: &["search", "doctor", "config"],
+        related: &["search", "read", "doctor", "config"],
     },
     Topic {
         name: "install",
@@ -80,6 +80,12 @@ pub const TOPICS: &[Topic] = &[
         title: "The query surface: flags, hit shape, and how ranking works",
         text: include_str!("../docs/search.md"),
         related: &["agents", "providers"],
+    },
+    Topic {
+        name: "read",
+        title: "Fetch by address: get, tree, and what scoping means",
+        text: include_str!("../docs/read.md"),
+        related: &["search", "agents"],
     },
     Topic {
         name: "config",

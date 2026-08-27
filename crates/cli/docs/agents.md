@@ -13,8 +13,15 @@ flowspace3 doctor                  # starts the stack, creates the db, migrates
 flowspace3 daemon &                # the indexer; keep it running
 flowspace3 add /path/to/repo       # walk, hash, queue
 flowspace3 status                  # poll until the queue is empty
-flowspace3 search "how does X work"
+flowspace3 search "how does X work"      # find an address
+flowspace3 get <address>                 # read what is at it, in full
+flowspace3 tree <address-or-path>        # browse what is around it
 ```
+
+**Search then get** — not search then `cat`. A hit is a lean row with an
+address; `get` returns that element's whole text (or a whole file, for a file
+address) out of the index, so you never have to guess which checkout on disk
+the hit came from. `flowspace3 docs get read` is the detail.
 
 `doctor` is repair-as-it-goes: it starts the container stack, creates the
 database and applies migrations. There is no separate setup step, and you never
@@ -117,6 +124,12 @@ Exit codes: `0` ok, `1` error, `2` usage.
 Useful filters: `--repo <identity>`, `--path <glob>`, `--limit N`,
 `--min-score 0.0-1.0`, `--source raw|smart|all`.
 
+**A bare search is about the repository you are standing in** (the CLI sends
+your working directory). `meta.scope` reports which repository answered and
+why; `--repo all` widens. If you are somewhere that is not indexed,
+`scope.warnings` and `next_action` say so and name `flowspace3 add <path>` —
+rather than answering, silently, from an unrelated repository.
+
 ## Things that will save you a wrong turn
 
 - **Indexing is asynchronous.** `add` returns as soon as the walk is done; the
@@ -139,6 +152,7 @@ Useful filters: `--repo <identity>`, `--path <glob>`, `--limit N`,
 
 `flowspace3 docs list` — every bundled topic.
 `flowspace3 docs get search` — the query surface in detail.
+`flowspace3 docs get read` — `get`/`tree`, addresses, and scoping.
 `flowspace3 docs get doctor` — what doctor checks and repairs.
 `flowspace3 docs get providers` — registering a real model, from scratch.
 `flowspace3 docs get config` — configuration and its layers.

@@ -44,6 +44,7 @@ The binary carries its own guides, offline and version-locked to the binary:
 flowspace3 docs list           # every bundled topic
 flowspace3 docs get agents     # the operating guide: the loop, the envelope, the gotchas
 flowspace3 docs get search     # the query surface: flags, hit shape, ranking
+flowspace3 docs get read       # get/tree: addresses, depth, and what scoping means
 flowspace3 docs get providers  # registering a real model, from scratch
 ```
 
@@ -95,12 +96,29 @@ Reading it:
   was found by MEANING, your words may appear nowhere in the code. `tags` ride along
   on smart elements.
 - `address` (`el:<repo>/<path>::<name>`) is stable across re-parses — the currency
-  for follow-ups. Prefer it over line numbers when referring to something later:
-  re-query narrower, or `--path` the hit's directory. (`get`/`tree` are not in this
-  version — open the file at its span.)
+  for follow-ups, and what `get`/`tree` take.
+- **A bare search is about the repository you are standing in.** `meta.scope` says
+  which one answered; `--repo all` widens. If your directory is not indexed, the
+  warning leads `next_action` and names `flowspace3 add <path>` — do not treat hits
+  from another repository as yours.
 - Empty results are `ok: true` with `"results": []` and a `next_action` steer (widen
   the query, drop `--min-score`, check `status`). Low scores under a real embedder
   are the same answer with numbers attached.
+
+## 4b. Get and tree — read what you found
+
+```bash
+flowspace3 get el:<repo>/<path>::<name>   # that element, in full, with its children outlined
+flowspace3 get el:<repo>/<path>           # the whole file, as indexed
+flowspace3 tree el:<repo>/<path>          # what that file declares
+flowspace3 tree                            # where you are standing, or the index
+```
+
+**Search then get, not search then `cat`.** The hit's `address` reads back as real
+content out of the index, so you never guess which checkout on disk it came from.
+`--depth N` controls the children outline; `--span <line>` picks one element when an
+address matches several (`struct Rect` and `impl Rect` share one address by design —
+the error lists the candidates and the span to pass).
 
 ## 5. Why semantic — the judgment
 

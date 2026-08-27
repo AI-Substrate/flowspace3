@@ -15,6 +15,7 @@ mod support;
 use std::sync::Arc;
 
 use fs3_core::{Config, DatabaseConfig};
+use fs3_daemon::scope::Scope;
 use fs3_daemon::search::{SearchRequest, search};
 use fs3_daemon::wiring::AppState;
 use fs3_store::{NewEmbedding, SourceKind};
@@ -67,7 +68,7 @@ async fn seed_under(state: &AppState, model_key: &str) {
 async fn an_unindexed_store_says_so_instead_of_answering_nothing() {
     let (database, state) = stack("empty_no_index").await;
 
-    let failure = search(&state, &ask("parser"))
+    let failure = search(&state, &ask("parser"), &Scope::unscoped())
         .await
         .expect_err("an empty store is not an answer");
 
@@ -92,7 +93,7 @@ async fn an_index_under_another_model_is_named_rather_than_hidden() {
     let (database, state) = stack("empty_other_model").await;
     seed_under(&state, "text-embedding-3-small@1024").await;
 
-    let failure = search(&state, &ask("parser"))
+    let failure = search(&state, &ask("parser"), &Scope::unscoped())
         .await
         .expect_err("an unreachable index is not an empty answer");
 
@@ -124,7 +125,7 @@ async fn a_genuine_no_match_stays_an_empty_answer() {
     let model_key = state.embedder_key("git:whatever");
     seed_under(&state, &model_key).await;
 
-    let results = search(&state, &ask("something absent"))
+    let results = search(&state, &ask("something absent"), &Scope::unscoped())
         .await
         .expect("an indexed store answers");
     assert!(
