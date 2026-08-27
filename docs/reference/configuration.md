@@ -30,6 +30,21 @@ out of files, and how to add a new option.
 | Key | Type | Default | Effect | Env override |
 |---|---|---|---|---|
 | `url` | string | `http://127.0.0.1:7373` | Base URL the daemon serves on and the CLI calls. Must be `http://` or `https://`. The daemon additionally refuses to BIND anything that is not loopback: the surface is unauthenticated and fronts an index of every repo on the machine (PRD req 17). | `FS3_DAEMON__URL` |
+| `log_dir` | string | `~/.local/state/flowspace3/logs` | Directory the daemon writes its rolling log file into. A leading `~/` is your home; anything else is taken as given. `~/.local/state` is the XDG state home, and the tilde-relative shape is the same convention `~/.config/flowspace3` already uses — fs3 deliberately has ONE path convention rather than a platform-dirs crate for logs and a hand-rolled path for config. | `FS3_DAEMON__LOG_DIR` |
+| `log_level` | string | `fs3_daemon=info,tower_http=info` | `EnvFilter` directives for both destinations (file and stdout). `RUST_LOG` still wins when set, so debugging one run never means editing a config file. | `FS3_DAEMON__LOG_LEVEL` |
+| `log_max_bytes` | integer | `8000000` | Roll the active log file once it passes this many bytes. 8 MB keeps an incident's context in one file that still opens in an editor. Must be greater than zero. | `FS3_DAEMON__LOG_MAX_BYTES` |
+| `log_max_files` | integer | `5` | How many log files to keep, the active one included — `flowspace3.log`, then `flowspace3.log.1` … `flowspace3.log.4`, oldest highest. The oldest is DELETED on each roll, so `log_max_bytes × log_max_files` (40 MB by default) is a hard ceiling on disk. Must be at least 1; a cap of 1 keeps no history. | `FS3_DAEMON__LOG_MAX_FILES` |
+
+The daemon logs to the file **and** to stdout. The file is never coloured, and
+stdout is coloured only when it is a terminal, so a redirected run produces a
+clean file rather than one full of escape sequences. Panics — including panics
+inside spawned tasks — are routed through the log, which is the whole reason
+the file exists: on 2026-08-27 a worker lane died and the only copy of the
+evidence was a terminal's scrollback.
+
+A log directory that cannot be written is not a startup failure. The daemon
+logs to stdout alone, says so on its first line, and raises a user message;
+`flowspace3 doctor` names the active path in its `logs` row.
 
 ## `[database]`
 

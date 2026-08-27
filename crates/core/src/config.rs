@@ -1040,6 +1040,16 @@ pub struct Effective {
     pub config: Config,
     /// Highest layer that touched each top-level section.
     pub layers: BTreeMap<String, Layer>,
+    /// Whether there was a config FILE at all.
+    ///
+    /// Distinct from every section reading [`Layer::Defaults`]: a file that
+    /// exists and sets nothing this shape recognises is not the same situation
+    /// as no file, and only the second one is worth telling a user about.
+    ///
+    /// It travels as data because the daemon cannot LOG it at the moment it is
+    /// discovered — the subscriber is built from this configuration, so
+    /// nothing logged during the load has anywhere to go.
+    pub has_file: bool,
 }
 
 impl Effective {
@@ -1195,7 +1205,11 @@ pub fn resolve(sources: Sources<'_>) -> Result<Effective> {
         layers.insert((*section).to_string(), layer);
     }
 
-    Ok(Effective { config, layers })
+    Ok(Effective {
+        config,
+        layers,
+        has_file: sources.file_text.is_some(),
+    })
 }
 
 /// The defaults as a TOML table — the bottom layer, and the type oracle the
@@ -1721,6 +1735,79 @@ summary_min_lines = 0
         let effective = resolved("[daemon]\nurl = \"http://127.0.0.1:9999\"\n", &[]).unwrap();
         assert_eq!(effective.config.daemon.url, "http://127.0.0.1:9999");
         assert_eq!(effective.layer("daemon"), Layer::File);
+    }
+
+    /// Every log knob has to be reachable from BOTH layers: the file for a
+    /// machine somebody administers, the environment for a container nobody
+    /// edits a file inside.
+    #[test]
+    fn the_log_destination_is_configurable_from_the_file_and_the_environment() {
+        let from_file = resolved(
+            "[daemon]\nlog_dir = \"/var/log/fs3\"\nlog_level = \"debug\"\n\
+             log_max_bytes = 1024\nlog_max_files = 2\n",
+            &[],
+        )
+        .unwrap();
+        assert_eq!(from_file.config.daemon.log_dir, "/var/log/fs3");
+        assert_eq!(from_file.config.daemon.log_level, "debug");
+        assert_eq!(from_file.config.daemon.log_max_bytes, 1024);
+        assert_eq!(from_file.config.daemon.log_max_files, 2);
+
+        let from_env = resolved(
+            "[daemon]\nlog_dir = \"/var/log/fs3\"\n",
+            &[
+                ("FS3_DAEMON__LOG_DIR", "/srv/logs"),
+                // Typed against the default, so this must arrive as an integer
+                // rather than the string "512".
+                ("FS3_DAEMON__LOG_MAX_BYTES", "512"),
+                ("FS3_DAEMON__LOG_MAX_FILES", "9"),
+            ],
+        )
+        .unwrap();
+        assert_eq!(from_env.config.daemon.log_dir, "/srv/logs");
+        assert_eq!(from_env.config.daemon.log_max_bytes, 512);
+        assert_eq!(from_env.config.daemon.log_max_files, 9);
+        assert_eq!(from_env.layer("daemon"), Layer::Env);
+    }
+
+    /// Both caps are refused at zero rather than clamped: a zero means somebody
+    /// meant to turn something off, and a silent default would leave them
+    /// believing they had.
+    #[test]
+    fn a_zero_log_cap_is_refused_rather_than_clamped() {
+        let bytes = Config::from_toml_str("[daemon]\nlog_max_bytes = 0\n").unwrap_err();
+        assert!(
+            format!("{bytes}").contains("log_max_bytes"),
+            "the problem must name the key: {bytes}"
+        );
+
+        let files = Config::from_toml_str("[daemon]\nlog_max_files = 0\n").unwrap_err();
+        assert!(
+            format!("{files}").contains("log_max_files"),
+            "the problem must name the key: {files}"
+        );
+    }
+
+    /// `has_file` is provenance the daemon needs after the fact: it builds its
+    /// subscriber from this configuration, so it cannot log "no config file"
+    /// at the moment it finds out.
+    #[test]
+    fn whether_there_was_a_file_at_all_survives_the_merge() {
+        let with_file = resolved("[daemon]\nurl = \"http://127.0.0.1:9999\"\n", &[]).unwrap();
+        assert!(with_file.has_file);
+
+        let without = resolve(Sources {
+            file_label: "/tmp/fs3/config.toml",
+            file_text: None,
+            env: &[],
+        })
+        .unwrap();
+        assert!(!without.has_file);
+        // Distinct from "every section is on defaults", which is also true
+        // when a file exists and sets nothing.
+        let empty_file = resolved("", &[]).unwrap();
+        assert!(empty_file.has_file);
+        assert_eq!(empty_file.layer("daemon"), Layer::Defaults);
     }
 
     #[test]

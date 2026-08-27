@@ -72,10 +72,18 @@ pub fn config_dir() -> Result<PathBuf, ConfigError> {
 /// from.
 ///
 /// A missing file is not an error: it means "all defaults", which is a fully
-/// working offline stack (`provider = "fake"`). It is logged at INFO naming the
-/// path to create, because "nothing happened" should still say where to look. A
-/// malformed file *is* an error — silently falling back to defaults would hide
-/// a typo behind a working daemon.
+/// working offline stack (`provider = "fake"`). A malformed file *is* an error
+/// — silently falling back to defaults would hide a typo behind a working
+/// daemon.
+///
+/// # Logging, and why there is none here
+///
+/// This used to log the missing-file case at INFO. It cannot any more, and the
+/// reason is ordering: the daemon's subscriber is built FROM this
+/// configuration ([`crate::logging::init`]), so anything logged here happens
+/// before a subscriber exists and goes nowhere. [`Effective::has_file`] is
+/// what it became — the fact travels as data, and [`crate::boot::run`] says it
+/// out loud once logging is up.
 ///
 /// # Errors
 /// [`ConfigError::Unreadable`] or [`ConfigError::Invalid`].
@@ -83,13 +91,7 @@ pub fn load_effective_from(dir: &Path) -> Result<Effective, ConfigError> {
     let path = dir.join(CONFIG_FILE_NAME);
     let text = match std::fs::read_to_string(&path) {
         Ok(text) => Some(text),
-        Err(source) if source.kind() == std::io::ErrorKind::NotFound => {
-            tracing::info!(
-                path = %path.display(),
-                "no config file: running on defaults. Create that file to change anything."
-            );
-            None
-        }
+        Err(source) if source.kind() == std::io::ErrorKind::NotFound => None,
         Err(source) => return Err(ConfigError::Unreadable { path, source }),
     };
 

@@ -336,6 +336,11 @@ async fn walk(
     // req-0053: the skills row walks LAST — informational, never degrading, and
     // the one row reporting state doctor will never itself change.
     steps.push(check_skills());
+    // The daemon's log destination (2026-08-27). Walked here because it is
+    // about the daemon rather than the store, and because the question it
+    // answers — "where do I look for what happened" — is the one asked right
+    // after something has gone wrong somewhere above.
+    steps.push(check_logs(config));
     Ok(messages)
 }
 
@@ -900,6 +905,109 @@ fn check_skills() -> Step {
         )
         .with_steer(SKILL_MISSING_STEER),
     }
+}
+
+/// The name doctor writes and deletes to prove a log directory is writable.
+///
+/// Not the log file itself: doctor reports, and creating an empty
+/// `flowspace3.log` on a machine where no daemon has ever run would be doctor
+/// inventing the very thing it was asked to look for.
+const LOG_WRITE_PROBE: &str = ".fs3-log-probe";
+
+/// The daemon's log destination — where evidence goes, and whether it can get
+/// there.
+///
+/// This row exists because of a specific incident: on 2026-08-27 the summarize
+/// lane panicked and the only copy of the evidence was a terminal's
+/// scrollback. "Where are the logs" now has an answer you can read off a
+/// command rather than infer from source.
+///
+/// Never repaired, and deliberately: the daemon creates its own log directory
+/// at startup, so a doctor that created one would be reporting on its own
+/// handiwork rather than on what the daemon will find.
+fn check_logs(config: &Config) -> Step {
+    let started = Instant::now();
+    let home = std::env::var_os("HOME").map(std::path::PathBuf::from);
+
+    let directory = match fs3_core::resolve_log_dir(&config.daemon.log_dir, home.as_deref()) {
+        Ok(directory) => directory,
+        Err(reason) => {
+            let steer = "set `[daemon] log_dir` to an absolute path — the configured one needs a \
+                         home directory and this environment has none";
+            return Step::warn("logs", reason, steer, started).with_steer(steer);
+        }
+    };
+
+    let file = directory.join(fs3_core::LOG_FILE_NAME);
+    let ceiling = config.daemon.log_max_bytes * u64::from(config.daemon.log_max_files);
+
+    if !directory.is_dir() {
+        return Step::info(
+            "logs",
+            format!("{} does not exist yet", directory.display()),
+            format!(
+                "the daemon creates it at startup and logs to {} (at most {} files, {ceiling} \
+                 bytes in total)",
+                file.display(),
+                config.daemon.log_max_files
+            ),
+            started,
+        );
+    }
+
+    if let Err(error) = probe_writable(&directory) {
+        const STEER: &str =
+            "point `[daemon] log_dir` at a writable directory (or fix its permissions): the \
+             daemon will log to stdout only, and nothing will survive the process";
+        return Step::warn(
+            "logs",
+            format!("{} is not writable ({error})", directory.display()),
+            STEER,
+            started,
+        )
+        .with_steer(STEER);
+    }
+
+    let kept = kept_log_files(&directory, config.daemon.log_max_files);
+    let found = match std::fs::metadata(&file) {
+        Ok(metadata) => format!(
+            "{} ({} bytes, {kept} of at most {} files)",
+            file.display(),
+            metadata.len(),
+            config.daemon.log_max_files
+        ),
+        // The directory is there and writable but nothing has been written:
+        // a machine where the daemon has not run since logging was configured.
+        Err(_) => format!("{} (not written yet)", file.display()),
+    };
+
+    Step::ok("logs", found, started)
+}
+
+/// Prove a directory is writable by writing in it, then clean up.
+///
+/// A permissions bit is not proof — a directory can be mode 755 and owned by
+/// root, or sit on a read-only mount — so this does the only thing that
+/// actually answers the question.
+fn probe_writable(directory: &std::path::Path) -> std::io::Result<()> {
+    let probe = directory.join(LOG_WRITE_PROBE);
+    std::fs::write(&probe, b"")?;
+    // A probe that cannot be removed is not a failure of the thing being
+    // tested: the write succeeded, which is what was asked.
+    let _ = std::fs::remove_file(&probe);
+    Ok(())
+}
+
+/// How many of the daemon's log files are on disk right now.
+///
+/// Counted by NAME rather than by listing the directory, so an unrelated file
+/// somebody parked beside the logs is never counted as one.
+fn kept_log_files(directory: &std::path::Path, max_files: u32) -> u32 {
+    (0..max_files)
+        .filter(|generation| directory.join(fs3_core::rolled_name(*generation)).exists())
+        .count()
+        .try_into()
+        .unwrap_or(max_files)
 }
 
 /// The engine to drive.

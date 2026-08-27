@@ -33,6 +33,7 @@ fn config_for(daemon_url: &str) -> fs3_core::Config {
         },
         daemon: fs3_core::DaemonConfig {
             url: daemon_url.to_string(),
+            ..fs3_core::DaemonConfig::default()
         },
         ..fs3_core::Config::default()
     }

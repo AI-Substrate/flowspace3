@@ -227,8 +227,6 @@ external = [
   "serde_json",
   "tokio",
   "toml",
-  # The daemon subcommand installs the log subscriber before handing off.
-  "tracing-subscriber",
   # DEV only: doctor's daemon row is probed against a stub /health server — a
   # fake, not a mock (workshop 001 rule 5).
   "axum@dev",

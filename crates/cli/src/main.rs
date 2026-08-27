@@ -211,12 +211,10 @@ fn main() -> ExitCode {
         // one request, and it never returns. Routing it here rather than in
         // `run` is what keeps that true.
         if matches!(command, Command::Daemon) {
-            tracing_subscriber::fmt()
-                .with_env_filter(
-                    tracing_subscriber::EnvFilter::try_from_default_env()
-                        .unwrap_or_else(|_| "fs3_daemon=info,tower_http=info".into()),
-                )
-                .init();
+            // The subscriber used to be built HERE, on stdout with a hardcoded
+            // filter. It moved into `fs3_daemon::boot`, which is the first
+            // place that has read the configuration — and the log file's path,
+            // its size caps and its filter are all configuration.
             return fs3_daemon::run().map(|()| ExitCode::SUCCESS);
         }
 
