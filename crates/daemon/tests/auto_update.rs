@@ -116,6 +116,44 @@ fn throwaway_binary(label: &str, contents: &[u8]) -> (PathBuf, PathBuf) {
     (directory, path)
 }
 
+/// A throwaway binary that ANSWERS `--version`, so the disk reconciliation has
+/// something truthful to read at the install path.
+///
+/// `b"the old binary"` was fine when the row remembered what the updater did;
+/// it is not fine now that the row is a reading of the file, because a pile of
+/// bytes that cannot exec is indistinguishable from an empty install path.
+fn throwaway_install(label: &str, version: &str) -> (PathBuf, PathBuf) {
+    let (directory, path) = throwaway_binary(label, b"");
+    write_install(&path, version);
+    (directory, path)
+}
+
+/// Replace what is AT `path` with a binary reporting `version` — somebody
+/// reinstalling out of band, which is the case the state row used to be unable
+/// to notice.
+fn write_install(path: &std::path::Path, version: &str) {
+    std::fs::write(path, binary_reporting(version)).expect("writing the stand-in binary");
+    make_executable(path);
+}
+
+#[cfg(unix)]
+fn make_executable(path: &std::path::Path) {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755))
+        .expect("making the stand-in binary executable");
+}
+
+#[cfg(not(unix))]
+fn make_executable(_path: &std::path::Path) {}
+
+/// What the queue says TO the installation at `path` — the same scoped read a
+/// daemon at that path performs when it builds an envelope.
+async fn queue_for(pool: &fs3_store::PgPool, path: &std::path::Path) -> Vec<fs3_core::UserMessage> {
+    fs3_store::live_messages(pool, &path.display().to_string())
+        .await
+        .expect("the queue")
+}
+
 #[tokio::test]
 async fn a_newer_release_is_downloaded_verified_and_swapped_in() {
     let base = spawn_release_server("v9.9.9", published(&binary_reporting("9.9.9"))).await;
@@ -468,7 +506,7 @@ async fn a_reconcile_pass_installs_and_then_steers_through_the_message_queue() {
     fs3_store::migrate(&pool).await.expect("migrations");
 
     let base = spawn_release_server("v9.9.9", published(&binary_reporting("9.9.9"))).await;
-    let (_directory, installed) = throwaway_binary("update-reconcile", b"the old binary");
+    let (_directory, installed) = throwaway_install("update-reconcile", "0.1.0");
 
     let mut supervisor = UpdateSupervisor::new(pool.clone(), &UpdateConfig::default(), "0.1.0")
         .expect("building the supervisor")
@@ -482,9 +520,14 @@ async fn a_reconcile_pass_installs_and_then_steers_through_the_message_queue() {
         binary_reporting("9.9.9")
     );
 
-    let messages = fs3_store::live_messages(&pool).await.expect("the queue");
+    let messages = queue_for(&pool, &installed).await;
     assert_eq!(messages.len(), 1, "expected one steer, got {messages:?}");
-    assert_eq!(messages[0].key, "update:installed:9.9.9");
+    assert_eq!(
+        messages[0].key,
+        format!("update:installed:9.9.9:{}", installed.display()),
+        "the key names the install it is about — `key` is the queue's primary \
+         key, so a shared one would be two installs overwriting each other"
+    );
     assert_eq!(messages[0].source, "update");
     assert!(messages[0].text.contains("9.9.9"));
     assert!(messages[0].next_action.contains("restart"));
@@ -499,10 +542,7 @@ async fn a_reconcile_pass_installs_and_then_steers_through_the_message_queue() {
     let second = supervisor.reconcile().await.expect("the second pass");
     assert_eq!(second.changed, 0, "the interval must suppress a re-check");
     assert_eq!(
-        fs3_store::live_messages(&pool)
-            .await
-            .expect("the queue")
-            .len(),
+        queue_for(&pool, &installed).await.len(),
         1,
         "re-declaring the same message must not duplicate it"
     );
@@ -520,7 +560,7 @@ async fn the_restart_steer_clears_once_the_daemon_runs_the_installed_version() {
     fs3_store::migrate(&pool).await.expect("migrations");
 
     let base = spawn_release_server("v9.9.9", published(&binary_reporting("9.9.9"))).await;
-    let (_directory, installed) = throwaway_binary("update-clear", b"the old binary");
+    let (_directory, installed) = throwaway_install("update-clear", "0.1.0");
 
     UpdateSupervisor::new(pool.clone(), &UpdateConfig::default(), "0.1.0")
         .expect("building the supervisor")
@@ -530,26 +570,17 @@ async fn the_restart_steer_clears_once_the_daemon_runs_the_installed_version() {
         .await
         .expect("the installing pass");
 
-    assert_eq!(
-        fs3_store::live_messages(&pool)
-            .await
-            .expect("the queue")
-            .len(),
-        1
-    );
+    assert_eq!(queue_for(&pool, &installed).await.len(), 1);
 
     // The restarted daemon: same state row, new running version.
     let mut restarted = UpdateSupervisor::new(pool.clone(), &UpdateConfig::default(), "9.9.9")
         .expect("building the supervisor")
-        .against(&base, installed)
+        .against(&base, installed.clone())
         .expect("pointing it at the stub");
     restarted.reconcile().await.expect("the post-restart pass");
 
     assert!(
-        fs3_store::live_messages(&pool)
-            .await
-            .expect("the queue")
-            .is_empty(),
+        queue_for(&pool, &installed).await.is_empty(),
         "the steer must clear itself once the daemon is running that version"
     );
 
@@ -565,7 +596,7 @@ async fn auto_update_off_never_installs() {
     fs3_store::migrate(&pool).await.expect("migrations");
 
     let base = spawn_release_server("v9.9.9", published(&binary_reporting("9.9.9"))).await;
-    let (_directory, installed) = throwaway_binary("update-off", b"the old binary");
+    let (_directory, installed) = throwaway_install("update-off", "0.1.0");
 
     let configuration = UpdateConfig {
         auto: false,
@@ -581,14 +612,239 @@ async fn auto_update_off_never_installs() {
     assert_eq!(pass.changed, 0);
     assert_eq!(
         std::fs::read(&installed).expect("reading back"),
-        b"the old binary",
+        binary_reporting("0.1.0"),
         "auto = false must never swap a binary"
     );
+    assert!(queue_for(&pool, &installed).await.is_empty());
+
+    database.destroy(pool).await;
+}
+
+/// Defect A, reproduced on Jordan's own production envelope on 2026-08-27: a
+/// debug daemon run from a dev worktree the day before wrote `update:blocked`
+/// naming its own `target/debug` path, and the production daemon restarted the
+/// next morning on a current binary and went on carrying it.
+///
+/// The message was level-triggered all along; the level was only ever re-read
+/// on the producer's 24h cadence, and BOOT DID NOT TICK IT. So the interval a
+/// previous process had already claimed silently suppressed the one pass that
+/// would have retracted the lie.
+///
+/// Two claims here, and both matter: a booting supervisor checks even though
+/// the interval was claimed seconds ago, and the standing message that has
+/// stopped being true is gone within that first pass.
+#[tokio::test]
+async fn a_booting_supervisor_checks_immediately_and_retracts_what_stopped_being_true() {
+    let database = support::FreshDatabase::create("updateboot").await;
+    let pool = database.pool().await;
+    fs3_store::migrate(&pool).await.expect("migrations");
+
+    // Nothing newer exists, so every pass here is a pure check: no download, no
+    // swap, nothing but the truth about this install.
+    let base = spawn_release_server("v0.1.0", published(&binary_reporting("0.1.0"))).await;
+    let (_directory, installed) = throwaway_install("update-boot", "0.1.0");
+    let scope = installed.display().to_string();
+
+    let supervisor = || {
+        UpdateSupervisor::new(pool.clone(), &UpdateConfig::default(), "0.1.0")
+            .expect("building the supervisor")
+            .against(&base, installed.clone())
+            .expect("pointing it at the stub")
+    };
+
+    let mut running = supervisor();
+    assert_eq!(
+        running.reconcile().await.expect("the first pass").changed,
+        1,
+        "a fresh install must check rather than wait out an interval it never served"
+    );
+    assert_eq!(
+        running.reconcile().await.expect("the second pass").changed,
+        0,
+        "the interval must still suppress a re-check within one process"
+    );
+
+    // A previous process left a standing message behind. This is the fossil,
+    // in the shape the queue holds it.
+    fs3_store::sync_messages(
+        &pool,
+        fs3_core::UPDATE_SOURCE,
+        Some(&scope),
+        &[fs3_core::UserMessage::new(
+            format!("update:blocked:{scope}"),
+            fs3_core::UPDATE_SOURCE,
+            fs3_core::Severity::Warning,
+            "update not possible: seeded by a process that is no longer running",
+            "this is exactly what must not survive a restart",
+        )],
+    )
+    .await
+    .expect("seeding the fossil");
+    assert_eq!(queue_for(&pool, &installed).await.len(), 1);
+
+    // The daemon restarts. `last_checked_at` is seconds old and the interval is
+    // 24h, so before this packet the boot pass did nothing at all.
+    let mut rebooted = supervisor();
+    assert_eq!(
+        rebooted.reconcile().await.expect("the boot pass").changed,
+        1,
+        "every boot must re-evaluate, whatever the interval says"
+    );
     assert!(
-        fs3_store::live_messages(&pool)
+        queue_for(&pool, &installed).await.is_empty(),
+        "a message whose cause is gone must not survive the boot that could see it"
+    );
+
+    database.destroy(pool).await;
+}
+
+/// Defect B (standing Linux tester, finding 12): update state was keyed to the
+/// STORE, and an install is keyed to a PATH.
+///
+/// Not exotic — `install.sh` itself picks `/usr/local/bin` or `~/.local/bin`
+/// depending on permissions, so one person who has ever installed both ways has
+/// two installs against one database. They thrashed one row last-writer-wins,
+/// and root's daemon ended up advertising another user's blocked update about a
+/// path root does not use.
+///
+/// Both halves are proven: one install's message is invisible to the other, and
+/// the other declaring its own state does not RETRACT it.
+#[tokio::test]
+async fn two_installs_sharing_a_store_neither_see_nor_retract_each_others_messages() {
+    let database = support::FreshDatabase::create("updatepaths").await;
+    let pool = database.pool().await;
+    fs3_store::migrate(&pool).await.expect("migrations");
+
+    let base = spawn_release_server("v9.9.9", published(&binary_reporting("9.9.9"))).await;
+    // Root's install is stale and gets the new binary; alice's is already
+    // current, and her daemon has nothing whatever to say.
+    let (_root_dir, root) = throwaway_install("update-root", "0.1.0");
+    let (_alice_dir, alice) = throwaway_install("update-alice", "9.9.9");
+
+    UpdateSupervisor::new(pool.clone(), &UpdateConfig::default(), "0.1.0")
+        .expect("building root's supervisor")
+        .against(&base, root.clone())
+        .expect("pointing it at the stub")
+        .reconcile()
+        .await
+        .expect("root's pass");
+
+    let at_root = queue_for(&pool, &root).await;
+    assert_eq!(
+        at_root.len(),
+        1,
+        "root is waiting on a restart: {at_root:?}"
+    );
+    assert!(at_root[0].text.contains(&root.display().to_string()));
+
+    assert!(
+        queue_for(&pool, &alice).await.is_empty(),
+        "alice's install must not be told to restart a daemon that is not hers"
+    );
+
+    // Alice's daemon runs a full pass of its own. Under one shared row this is
+    // the write that clobbered root; under per-source-only ownership it is the
+    // declaration that retracted root's message.
+    UpdateSupervisor::new(pool.clone(), &UpdateConfig::default(), "9.9.9")
+        .expect("building alice's supervisor")
+        .against(&base, alice.clone())
+        .expect("pointing it at the stub")
+        .reconcile()
+        .await
+        .expect("alice's pass");
+
+    assert!(
+        queue_for(&pool, &alice).await.is_empty(),
+        "alice is current and must stay silent"
+    );
+    assert_eq!(
+        queue_for(&pool, &root).await.len(),
+        1,
+        "one install declaring its own state must not retract another's"
+    );
+
+    database.destroy(pool).await;
+}
+
+/// Defect C (finding 12's tail): the row claimed 0.3.1 was installed at a path
+/// that held 0.3.0, after a pinned reinstall at an older tag.
+///
+/// `record_installed` wrote what the updater DID and `record_clear` only ever
+/// cleared the block, so nothing in the old code could unset `installed_version`
+/// — the false "restart to pick up X" was permanent, and combined with no
+/// rollback verb the only escape was hand-written SQL. Asking the file instead
+/// makes the claim self-correcting: a swap and somebody else's reinstall are the
+/// same question with the same answer.
+#[tokio::test]
+async fn an_out_of_band_change_at_the_install_path_corrects_the_claim_rather_than_outliving_it() {
+    let database = support::FreshDatabase::create("updatedisk").await;
+    let pool = database.pool().await;
+    fs3_store::migrate(&pool).await.expect("migrations");
+
+    // Nothing newer is published, so nothing here downloads or swaps: every
+    // change to the install path is made behind the daemon's back, which is the
+    // whole point.
+    let base = spawn_release_server("v0.1.0", published(&binary_reporting("0.1.0"))).await;
+    let (_directory, installed) = throwaway_install("update-disk", "0.3.1");
+
+    let boot = || async {
+        UpdateSupervisor::new(pool.clone(), &UpdateConfig::default(), "0.1.0")
+            .expect("building the supervisor")
+            .against(&base, installed.clone())
+            .expect("pointing it at the stub")
+            .reconcile()
             .await
-            .expect("the queue")
-            .is_empty()
+            .expect("a boot pass");
+    };
+
+    boot().await;
+    let waiting = queue_for(&pool, &installed).await;
+    assert_eq!(waiting.len(), 1);
+    assert_eq!(
+        waiting[0].key,
+        format!("update:installed:0.3.1:{}", installed.display())
+    );
+
+    // Somebody reinstalls at an older pinned tag.
+    write_install(&installed, "0.3.0");
+    boot().await;
+
+    let corrected = queue_for(&pool, &installed).await;
+    assert_eq!(
+        corrected.len(),
+        1,
+        "still one message, not two: {corrected:?}"
+    );
+    assert_eq!(
+        corrected[0].key,
+        format!("update:installed:0.3.0:{}", installed.display()),
+        "the claim must be rewritten to what is actually there"
+    );
+    assert!(
+        corrected[0].text.contains("0.3.0") && !corrected[0].text.contains("0.3.1"),
+        "the user must not be told to restart for a version no longer on disk: {}",
+        corrected[0].text
+    );
+
+    // The install path comes to hold what this process is already running.
+    write_install(&installed, "0.1.0");
+    boot().await;
+    assert!(
+        queue_for(&pool, &installed).await.is_empty(),
+        "matching disk and running version is the cleared condition"
+    );
+
+    // And the path stops holding anything at all. `None` is a real answer: a
+    // binary somebody deleted cannot be restarted into.
+    write_install(&installed, "0.3.2");
+    boot().await;
+    assert_eq!(queue_for(&pool, &installed).await.len(), 1);
+
+    std::fs::remove_file(&installed).expect("removing the installed binary");
+    boot().await;
+    assert!(
+        queue_for(&pool, &installed).await.is_empty(),
+        "an install path that holds nothing must retract its restart steer"
     );
 
     database.destroy(pool).await;

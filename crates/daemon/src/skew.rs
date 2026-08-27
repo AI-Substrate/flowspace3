@@ -74,7 +74,9 @@ impl Reconcile for SchemaSupervisor {
             );
         }
 
-        fs3_store::sync_messages(&self.pool, fs3_core::SCHEMA_SOURCE, &desired).await?;
+        // `None` scope: schema skew is a property of the STORE, so it is news
+        // for every installation pointed at it, not for one install path.
+        fs3_store::sync_messages(&self.pool, fs3_core::SCHEMA_SOURCE, None, &desired).await?;
         Ok(Pass::changed(changed))
     }
 }

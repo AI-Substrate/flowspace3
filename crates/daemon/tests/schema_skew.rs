@@ -26,6 +26,11 @@ async fn pretend_a_newer_binary_migrated(pool: &fs3_store::PgPool, version: i64)
     .expect("seeding a migration this binary does not carry");
 }
 
+/// Any installation reading the queue. Schema messages are scoped to no
+/// install — they are a fact about the STORE — so which path asks is exactly
+/// the thing that must not matter here.
+const ANY_INSTALL: &str = "/usr/local/bin/flowspace3";
+
 /// The producer's whole contract in one test: it appears when the database gets
 /// ahead, it does not duplicate, and it RETRACTS itself when the condition
 /// clears — with no clear-condition machinery anywhere.
@@ -42,7 +47,7 @@ async fn the_schema_producer_raises_and_then_retracts_as_the_database_moves() {
     let pass = supervisor.reconcile().await.expect("the healthy pass");
     assert_eq!(pass.changed, 0);
     assert!(
-        fs3_store::live_messages(&pool)
+        fs3_store::live_messages(&pool, ANY_INSTALL)
             .await
             .expect("the queue")
             .is_empty(),
@@ -55,7 +60,9 @@ async fn the_schema_producer_raises_and_then_retracts_as_the_database_moves() {
     let pass = supervisor.reconcile().await.expect("the skewed pass");
     assert_eq!(pass.changed, 1);
 
-    let messages = fs3_store::live_messages(&pool).await.expect("the queue");
+    let messages = fs3_store::live_messages(&pool, ANY_INSTALL)
+        .await
+        .expect("the queue");
     assert_eq!(messages.len(), 1, "expected one message, got {messages:?}");
     let message = &messages[0];
     assert_eq!(message.key, "schema:ahead:9001");
@@ -79,7 +86,7 @@ async fn the_schema_producer_raises_and_then_retracts_as_the_database_moves() {
     // Declaring the same thing again is not a second message.
     supervisor.reconcile().await.expect("the repeat pass");
     assert_eq!(
-        fs3_store::live_messages(&pool)
+        fs3_store::live_messages(&pool, ANY_INSTALL)
             .await
             .expect("the queue")
             .len(),
@@ -97,7 +104,7 @@ async fn the_schema_producer_raises_and_then_retracts_as_the_database_moves() {
 
     supervisor.reconcile().await.expect("the recovered pass");
     assert!(
-        fs3_store::live_messages(&pool)
+        fs3_store::live_messages(&pool, ANY_INSTALL)
             .await
             .expect("the queue")
             .is_empty(),
@@ -109,6 +116,12 @@ async fn the_schema_producer_raises_and_then_retracts_as_the_database_moves() {
 
 /// Two producers, two sources, one queue. The seam test: the update producer
 /// must not retract the schema producer's message when it declares its own.
+///
+/// Now also a SCOPE test. The schema producer speaks for the whole store and
+/// scopes its messages `None`; the update producer speaks for one install path.
+/// A reader at that path must see both — a store-wide condition is news for
+/// every installation pointed at it, and scoping must narrow who owns a row,
+/// not who is allowed to hear about the store they are using.
 #[tokio::test]
 async fn one_producer_declaring_does_not_retract_another_producers_message() {
     let database = support::FreshDatabase::create("twosources").await;
@@ -121,22 +134,25 @@ async fn one_producer_declaring_does_not_retract_another_producers_message() {
         .await
         .expect("the schema pass");
 
-    // The update feature declares its own, unrelated, state.
+    // The update feature declares its own, unrelated, state, for one install.
     let update = fs3_core::UpdateState {
         installed_version: Some("0.3.0".to_string()),
-        install_path: Some("/usr/local/bin/flowspace3".to_string()),
+        install_path: "/usr/local/bin/flowspace3".to_string(),
         ..fs3_core::UpdateState::default()
     };
     fs3_store::sync_messages(
         &pool,
         fs3_core::UPDATE_SOURCE,
+        Some(&update.install_path),
         &update.desired_messages("0.2.0"),
     )
     .await
     .expect("the update pass");
 
     let sources: Vec<&str> = {
-        let messages = fs3_store::live_messages(&pool).await.expect("the queue");
+        let messages = fs3_store::live_messages(&pool, &update.install_path)
+            .await
+            .expect("the queue");
         assert_eq!(messages.len(), 2, "both must survive: {messages:?}");
         messages
             .iter()
@@ -145,6 +161,19 @@ async fn one_producer_declaring_does_not_retract_another_producers_message() {
     };
     assert!(sources.contains(&"schema"));
     assert!(sources.contains(&"update"));
+
+    // A DIFFERENT install hears the store-wide news and none of the other
+    // install's. This is the half that makes the scope worth having: a schema
+    // skew is everyone's problem, a binary at somebody else's path is not.
+    let elsewhere = fs3_store::live_messages(&pool, "/home/alice/.local/bin/flowspace3")
+        .await
+        .expect("the queue");
+    assert_eq!(
+        elsewhere.len(),
+        1,
+        "only the store-wide message crosses installs: {elsewhere:?}"
+    );
+    assert_eq!(elsewhere[0].source, "schema");
 
     database.destroy(pool).await;
 }

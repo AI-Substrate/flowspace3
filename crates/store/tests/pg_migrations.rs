@@ -171,3 +171,112 @@ async fn migrating_twice_changes_nothing() {
 
     database.destroy(pool).await;
 }
+
+/// Apply the embedded migrations in `versions`, in order, without touching
+/// `_sqlx_migrations`.
+///
+/// The point is to stand a database up in a genuinely PRE-migration state so
+/// the next migration can be run AT it. Nothing here reimplements a migration:
+/// the SQL is the embedded text, so a migration edited tomorrow is the SQL this
+/// runs tomorrow. A RANGE rather than a ceiling because these are not
+/// idempotent — 0004 replaces 0001's `elements`, so re-running from the start
+/// fails on a schema the earlier migration no longer describes.
+async fn apply_migrations(pool: &PgPool, versions: std::ops::RangeInclusive<i64>) {
+    for migration in MIGRATOR
+        .iter()
+        .filter(|entry| versions.contains(&entry.version))
+    {
+        sqlx::raw_sql(&migration.sql)
+            .execute(pool)
+            .await
+            .unwrap_or_else(|error| {
+                panic!("migration {} should apply: {error}", migration.version)
+            });
+    }
+}
+
+/// The migration that had to double as a RECOVERY (Jordan, 2026-08-27).
+///
+/// A daemon run from a throwaway dev worktree wrote `update:blocked` naming its
+/// own `target/debug` path into a shared store. The production daemon restarted
+/// the next day on a current binary and went on serving that fossil to every
+/// envelope, because update state was keyed to the STORE and there was nothing
+/// to re-evaluate it against.
+///
+/// The fix arrives as a new binary, and a new binary migrates at boot — so the
+/// migration is where the fossil dies. No repair verb, no hand-written SQL for
+/// a user to find in a doc. What it must NOT do is take the other producers'
+/// messages with it: a schema skew is exactly as true after this statement as
+/// before it.
+#[tokio::test]
+async fn migrating_to_per_install_update_state_kills_the_store_keyed_fossils() {
+    let database = FreshDatabase::create().await;
+    let pool = database.pool().await;
+
+    apply_migrations(&pool, 1..=11).await;
+
+    // The world as a pre-fix binary left it: one singleton row describing a
+    // path that only ever existed in somebody's build tree, and the standing
+    // message it produced.
+    sqlx::query(
+        "UPDATE update_state
+            SET installed_version = '0.2.0',
+                install_path      = '/tmp/worktree/target/debug/flowspace3',
+                blocked_reason    = 'the install directory is not writable'
+          WHERE singleton",
+    )
+    .execute(&pool)
+    .await
+    .expect("seeding the pre-fix update row");
+
+    for (key, source) in [
+        ("update:blocked", "update"),
+        ("update:installed:0.2.0", "update"),
+        ("schema:ahead:9001", "schema"),
+    ] {
+        sqlx::query(
+            "INSERT INTO user_messages (key, source, severity, text, next_action)
+                  VALUES ($1, $2, 'warning', 'seeded', 'do the thing')",
+        )
+        .bind(key)
+        .bind(source)
+        .execute(&pool)
+        .await
+        .expect("seeding a pre-fix message");
+    }
+
+    apply_migrations(&pool, 12..=12).await;
+
+    let survivors: Vec<(String, String)> =
+        sqlx::query_as("SELECT key, source FROM user_messages ORDER BY key")
+            .fetch_all(&pool)
+            .await
+            .expect("reading the queue back");
+    assert_eq!(
+        survivors,
+        vec![("schema:ahead:9001".to_string(), "schema".to_string())],
+        "every store-keyed update message must die, and nobody else's may"
+    );
+
+    // The state row goes with them: it is keyed to a store, so there is no
+    // honest install to re-home it onto, and one check re-derives all of it.
+    let rows: i64 = sqlx::query_scalar("SELECT count(*) FROM update_state")
+        .fetch_one(&pool)
+        .await
+        .expect("counting update rows");
+    assert_eq!(rows, 0, "the singleton row must not survive its own schema");
+
+    // And the shape it left behind is the per-install one.
+    let key_column: String = sqlx::query_scalar(
+        "SELECT a.attname
+           FROM pg_index i
+           JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+          WHERE i.indrelid = 'update_state'::regclass AND i.indisprimary",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("reading the primary key");
+    assert_eq!(key_column, "install_path");
+
+    database.destroy(pool).await;
+}

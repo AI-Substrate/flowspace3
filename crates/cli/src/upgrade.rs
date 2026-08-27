@@ -124,8 +124,8 @@ pub async fn upgrade(config: &Config) -> Envelope<UpgradeReport> {
     }
 }
 
-/// Write the outcome into the shared update state AND re-declare the update
-/// source's messages from it.
+/// Write the outcome into THIS INSTALL's update state AND re-declare the
+/// update source's messages for it.
 ///
 /// Both halves, not just the first. The daemon's loop does the same two things
 /// in one pass, but `doctor upgrade` is precisely the verb you reach for when
@@ -138,6 +138,12 @@ pub async fn upgrade(config: &Config) -> Envelope<UpgradeReport> {
 /// disagree and a manual upgrade that SUCCEEDS clears the message a previous
 /// failure left behind.
 ///
+/// Everything here is scoped to `install_path`, which is THIS binary's own
+/// resolved path. That is the write half of the per-install fix: an unprivileged
+/// user running `doctor upgrade` against `~/.local/bin` used to overwrite the
+/// row describing root's `/usr/local/bin`, so root's daemon then advertised a
+/// blocked update for a path root does not use.
+///
 /// [`UpdateState::desired_messages`]: fs3_core::update::UpdateState::desired_messages
 async fn record(config: &Config, outcome: &Outcome, install_path: &str) -> Result<(), String> {
     let running = env!("CARGO_PKG_VERSION");
@@ -147,20 +153,28 @@ async fn record(config: &Config, outcome: &Outcome, install_path: &str) -> Resul
 
     let written = async {
         match outcome {
-            Outcome::Current => fs3_store::record_clear(&pool).await?,
+            Outcome::Current => fs3_store::record_clear(&pool, install_path).await?,
             Outcome::Installed(version) => {
-                fs3_store::record_installed(&pool, &version.to_string(), install_path).await?;
+                fs3_store::record_swapped(&pool, install_path, &version.to_string()).await?;
             }
             Outcome::Blocked { latest, reason } => {
-                fs3_store::record_seen(&pool, &latest.to_string()).await?;
-                fs3_store::record_blocked(&pool, reason, install_path).await?;
+                fs3_store::record_seen(&pool, install_path, &latest.to_string()).await?;
+                fs3_store::record_blocked(&pool, install_path, reason).await?;
             }
         }
 
-        let state = fs3_store::update_state(&pool).await?;
+        // What is on disk, asked of the disk — the same reconciliation the
+        // daemon does on every check. A manual upgrade is exactly when the
+        // stored claim is most likely to be stale, and it is also the verb a
+        // user reaches for after reinstalling by hand.
+        let found = fs3_daemon::update::on_disk_version(std::path::Path::new(install_path));
+        fs3_store::record_on_disk(&pool, install_path, found.as_deref()).await?;
+
+        let state = fs3_store::update_state(&pool, install_path).await?;
         fs3_store::sync_messages(
             &pool,
             fs3_core::UPDATE_SOURCE,
+            Some(install_path),
             &state.desired_messages(running),
         )
         .await

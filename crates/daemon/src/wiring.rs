@@ -67,6 +67,20 @@ pub struct AppState {
     pub db: PgPool,
     /// The configuration these were wired from.
     pub config: Config,
+    /// This daemon's own resolved binary path — WHICH installation it is.
+    ///
+    /// Resolved once here rather than per response, like every other wiring
+    /// decision. It is the scope of the user messages this daemon carries: the
+    /// queue is shared by every install pointed at the store, and a message
+    /// about somebody else's path is unactionable on a surface whose
+    /// `next_action` is mandatory (Jordan, per-install update truth,
+    /// 2026-08-27).
+    ///
+    /// Empty when this process cannot resolve its own executable — vanishingly
+    /// rare, and it degrades honestly: an empty scope matches no install, so
+    /// the daemon carries only the messages that concern every installation
+    /// rather than guessing at somebody else's.
+    pub install_path: String,
 }
 
 impl std::fmt::Debug for AppState {
@@ -126,6 +140,16 @@ impl AppState {
 
         let db = build_store(&config.database)?;
 
+        // Not an error worth refusing to serve over: a daemon that cannot name
+        // its own binary can still index, search and answer. It just has no
+        // install to speak for, so it carries only store-wide messages.
+        let install_path = crate::update::install_path()
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|error| {
+                tracing::warn!(%error, "cannot resolve this daemon's own binary path");
+                String::new()
+            });
+
         Ok(Self {
             embedder,
             summarizer,
@@ -133,6 +157,7 @@ impl AppState {
             repo_summarizers,
             db,
             config,
+            install_path,
         })
     }
 
@@ -182,7 +207,13 @@ impl AppState {
             .map_or("unknown", ProviderInstance::kind)
     }
 
-    /// The live user messages every envelope carries (PRD req 59).
+    /// The live user messages every envelope carries, for THIS installation
+    /// (PRD req 59).
+    ///
+    /// Scoped to [`AppState::install_path`] plus everything that concerns the
+    /// whole store. A daemon must not repeat another install's news: the queue
+    /// is shared, `next_action` is mandatory, and "restart the daemon" is
+    /// unactionable advice for a user whose daemon is not the one that said it.
     ///
     /// Best-effort by design: a store that cannot answer this must not turn a
     /// working command into a failing one, and the failure the user actually
@@ -195,7 +226,7 @@ impl AppState {
     /// embedding call beside it — and a cache would buy staleness plus an
     /// invalidation rule for no gain.
     pub async fn messages(&self) -> Vec<fs3_core::messages::UserMessage> {
-        match fs3_store::live_messages(&self.db).await {
+        match fs3_store::live_messages(&self.db, &self.install_path).await {
             Ok(messages) => messages,
             Err(error) => {
                 tracing::debug!(%error, "could not read the user messages queue");

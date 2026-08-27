@@ -107,10 +107,17 @@ It was chosen as the seam test for the queue, and it earns that by having the
 | condition clears | when this daemon restarts into the new binary | when the skew goes away, possibly without restarting |
 | steady state | nothing to say | nothing to say |
 
-Both drop out of the same `sync_messages(source, desired)` contract with no
-clear-condition machinery, and
+Both drop out of the same `sync_messages(source, scope, desired)` contract with
+no clear-condition machinery, and
 `one_producer_declaring_does_not_retract_another_producers_message` proves the
-per-source ownership actually holds.
+ownership actually holds.
+
+The `scope` is where they differ, and it is the right difference: a schema skew
+is a fact about the STORE, so this producer scopes its messages to no install
+(`None`) and every installation pointed at the database hears them. `update`
+scopes to one install path, because a binary waiting at `/usr/local/bin` is not
+news for somebody running `~/.local/bin`. See
+[`auto-update.md`](auto-update.md) for that ruling.
 
 ## Related: tests may not choose their own database
 

@@ -346,6 +346,23 @@ async fn walk(
     Ok(messages)
 }
 
+/// This CLI's own resolved binary path — WHICH installation `doctor` speaks
+/// for.
+///
+/// `doctor` is the one verb holding its own pool, so unlike a daemon-served
+/// envelope it reports on the binary the user just typed rather than on the
+/// binary answering them. That is deliberate and it is the answer to "why does
+/// my `add` not mention the update my `doctor` does": on a machine with two
+/// installs they are two installations with two truths (Jordan, 2026-08-27).
+///
+/// Empty when the executable cannot be resolved, which matches no install and
+/// so degrades to the store-wide messages only.
+fn this_install() -> String {
+    fs3_daemon::update::install_path()
+        .map(|path| path.display().to_string())
+        .unwrap_or_default()
+}
+
 /// Step 7: what does the auto-updater think the situation is (req-0054)?
 ///
 /// Three states worth telling apart, because the reader's next move differs in
@@ -364,7 +381,7 @@ async fn check_update(database_url: &str, config: &Config) -> Step {
             started,
         );
     };
-    let state = fs3_store::update_state(&pool).await;
+    let state = fs3_store::update_state(&pool, &this_install()).await;
     pool.close().await;
 
     let Ok(state) = state else {
@@ -396,7 +413,7 @@ async fn check_update(database_url: &str, config: &Config) -> Step {
         .as_deref()
         .filter(|installed| *installed != running)
     {
-        let path = state.install_path.as_deref().unwrap_or("the install path");
+        let path = &state.install_path;
         return Step::warn(
             "update",
             format!("{installed} is installed at {path}; this CLI is {running} ({cadence})"),
@@ -408,7 +425,7 @@ async fn check_update(database_url: &str, config: &Config) -> Step {
 
     // Something newer exists and this machine could not take it.
     if let Some(reason) = state.blocked_reason.as_deref() {
-        let path = state.install_path.as_deref().unwrap_or("the install path");
+        let path = &state.install_path;
         let latest = state
             .latest_seen
             .as_deref()
@@ -461,7 +478,7 @@ async fn check_messages(database_url: &str) -> (Step, Vec<fs3_core::UserMessage>
     let Ok(pool) = fs3_store::connect(database_url).await else {
         return unreadable("cannot read the user messages queue — the store is not answering");
     };
-    let messages = fs3_store::live_messages(&pool).await;
+    let messages = fs3_store::live_messages(&pool, &this_install()).await;
     pool.close().await;
 
     let Ok(messages) = messages else {

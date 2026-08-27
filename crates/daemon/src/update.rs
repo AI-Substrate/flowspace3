@@ -532,6 +532,48 @@ pub fn staged_version(path: &Path) -> Result<String> {
         .ok_or_else(|| anyhow!("{} --version printed nothing", path.display()))
 }
 
+/// What the binary at `path` says it is right now, or `None` when the path
+/// holds nothing that can be asked.
+///
+/// The same interrogation [`staged_version`] performs, pointed at the INSTALL
+/// path instead of the staging file, and it exists because the state row used
+/// to be a memory rather than a reading. `record_installed` wrote "we swapped
+/// 0.3.1 in" and nothing could ever unset it — `record_clear` only ever
+/// cleared the block — so a pinned reinstall at an older tag left a permanent,
+/// false "flowspace3 0.3.1 is installed at <path>, restart to pick it up"
+/// against a path holding 0.3.0. The user's only escape was a hand-written
+/// UPDATE.
+///
+/// Asking the file closes that off structurally: a swap this daemon performed
+/// and a change somebody made behind its back are the same question with the
+/// same answer, because both are read from the same place.
+///
+/// Every failure collapses to `None`, deliberately. Absent, not executable,
+/// exits non-zero, prints nothing a version can be read out of — all of them
+/// mean the same thing to a message producer: there is nothing here worth
+/// telling a user to restart for. `None` therefore RETRACTS a standing restart
+/// message rather than leaving it to outlive its cause, which is what a binary
+/// somebody deleted should do.
+///
+/// One `fork`/`exec` per release check — at boot and then on the configured
+/// cadence — against a process whose `--version` is a `clap` string. That is
+/// cheaper than the HTTP probe standing beside it, and it is the mechanism the
+/// pre-swap guard already trusts.
+#[must_use]
+pub fn on_disk_version(path: &Path) -> Option<String> {
+    match staged_version(path) {
+        Ok(version) => Some(version),
+        Err(error) => {
+            tracing::debug!(
+                path = %path.display(),
+                %error,
+                "the install path holds nothing that reports a version"
+            );
+            None
+        }
+    }
+}
+
 /// How long to keep retrying an `ETXTBSY` before believing it.
 ///
 /// Bounded by the length of somebody else's fork-to-exec, which is
@@ -694,8 +736,29 @@ pub fn checksum_for(sums: &str, asset: &str) -> Option<String> {
 /// `update_state.last_checked_at` in Postgres: [`fs3_store::claim_check`] is a
 /// conditional `UPDATE`, so a pass that is early is a no-op, a daemon
 /// restarted every ten minutes still checks once a day, and two daemons
-/// sharing a store cannot both win the same check. (O-prime approved this
+/// sharing an install cannot both win the same check. (O-prime approved this
 /// shape over a trait change, 2026-08-27.)
+///
+/// # Why boot is a tick, and why it is TWO ticks
+///
+/// A standing message is level-triggered, but the level was only re-read on
+/// the producer's cadence — and boot did not tick it. Observed: a daemon run
+/// from a throwaway dev worktree wrote `update:blocked` naming its own
+/// `target/debug` path; the production daemon restarted the next day on a
+/// current binary and went on serving that fossil, because nothing
+/// re-evaluated it and so nothing retracted it.
+///
+/// The fix is deliberately two clocks rather than one, because they need
+/// different permission:
+///
+/// * The **release check** reaches the network and may install, so it stays
+///   behind `auto`. At boot it is claimed unconditionally
+///   ([`fs3_store::claim_check_now`]), then falls back to the interval.
+/// * The **disk reconcile** and the **message re-declaration** run at boot
+///   whatever `auto` says. Neither needs the network and neither installs
+///   anything — and hanging them off `auto` would have left exactly the users
+///   who opted OUT of unattended updates carrying fossils forever, which is
+///   the same defect wearing a different hat.
 pub struct UpdateSupervisor {
     pool: fs3_store::PgPool,
     updater: Updater,
@@ -705,6 +768,9 @@ pub struct UpdateSupervisor {
     auto: bool,
     interval_hours: u64,
     running: String,
+    /// False until the first pass has run. Boot is a level change like any
+    /// other; this is the only thing that remembers it happened.
+    booted: bool,
 }
 
 impl UpdateSupervisor {
@@ -723,6 +789,7 @@ impl UpdateSupervisor {
             auto: config.auto,
             interval_hours: config.check_interval_hours,
             running: running.to_string(),
+            booted: false,
         })
     }
 
@@ -736,6 +803,19 @@ impl UpdateSupervisor {
         self.updater = Updater::against(base, &self.running)?.at_path(install_path);
         Ok(self)
     }
+
+    /// Whether this pass gets to ask GitHub: always at boot, then on the
+    /// interval, and never with `auto = false`.
+    async fn may_check(&self, install_path: &str, first_pass: bool) -> Result<bool> {
+        if !self.auto {
+            return Ok(false);
+        }
+        if first_pass {
+            fs3_store::claim_check_now(&self.pool, install_path).await?;
+            return Ok(true);
+        }
+        Ok(fs3_store::claim_check(&self.pool, install_path, self.interval_hours).await?)
+    }
 }
 
 #[async_trait::async_trait]
@@ -746,36 +826,34 @@ impl crate::reconcile::Reconcile for UpdateSupervisor {
 
     async fn reconcile(&mut self) -> Result<crate::reconcile::Pass> {
         let mut changed = 0;
+        // This daemon speaks for exactly one installation: its own resolved
+        // binary path. It declares and retracts messages for that path and
+        // touches nobody else's row — "the path is gone HERE" is not "the path
+        // is gone everywhere" when one store serves several hosts.
+        let install_path = self.updater.install_path().display().to_string();
+        let first_pass = !std::mem::replace(&mut self.booted, true);
 
-        if self.auto && fs3_store::claim_check(&self.pool, self.interval_hours).await? {
+        let checking = self.may_check(&install_path, first_pass).await?;
+        if checking {
             changed += 1;
             match self.updater.run_once().await {
                 Ok(Outcome::Current) => {
                     tracing::debug!(version = %self.running, "already the newest release");
-                    fs3_store::record_clear(&self.pool).await?;
+                    fs3_store::record_clear(&self.pool, &install_path).await?;
                 }
                 Ok(Outcome::Installed(version)) => {
                     tracing::info!(
                         %version,
-                        path = %self.updater.install_path().display(),
+                        path = %install_path,
                         "installed a newer flowspace3 — restart the daemon to run it"
                     );
-                    fs3_store::record_installed(
-                        &self.pool,
-                        &version.to_string(),
-                        &self.updater.install_path().display().to_string(),
-                    )
-                    .await?;
+                    fs3_store::record_swapped(&self.pool, &install_path, &version.to_string())
+                        .await?;
                 }
                 Ok(Outcome::Blocked { latest, reason }) => {
                     tracing::warn!(%latest, %reason, "cannot install the newest release");
-                    fs3_store::record_seen(&self.pool, &latest.to_string()).await?;
-                    fs3_store::record_blocked(
-                        &self.pool,
-                        &reason,
-                        &self.updater.install_path().display().to_string(),
-                    )
-                    .await?;
+                    fs3_store::record_seen(&self.pool, &install_path, &latest.to_string()).await?;
+                    fs3_store::record_blocked(&self.pool, &install_path, &reason).await?;
                 }
                 // A probe that could not reach the network says nothing about
                 // the installation, so it must not overwrite what the last
@@ -786,13 +864,24 @@ impl crate::reconcile::Reconcile for UpdateSupervisor {
             }
         }
 
+        // What is ACTUALLY at our install path. Deliberately outside the match:
+        // a probe that never reached GitHub still knows what is on this disk,
+        // and a swap someone performed out of band is exactly the case a
+        // network answer cannot see. At boot regardless of `auto`, because a
+        // false "restart to pick up X" is not a thing you opt out of.
+        if checking || first_pass {
+            let found = on_disk_version(self.updater.install_path());
+            fs3_store::record_on_disk(&self.pool, &install_path, found.as_deref()).await?;
+        }
+
         // Every pass, whether or not it checked: the queue is a projection of
         // the state row, so a message that should have cleared clears here
         // even if the pass that cleared the state died before syncing.
-        let state = fs3_store::update_state(&self.pool).await?;
+        let state = fs3_store::update_state(&self.pool, &install_path).await?;
         fs3_store::sync_messages(
             &self.pool,
             fs3_core::UPDATE_SOURCE,
+            Some(&install_path),
             &state.desired_messages(&self.running),
         )
         .await?;
