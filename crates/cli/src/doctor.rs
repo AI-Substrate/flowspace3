@@ -333,14 +333,16 @@ async fn walk(
     steps.push(check_update(database_url, config).await);
     let (messages_row, messages) = check_messages(database_url).await;
     steps.push(messages_row);
-    // req-0053: the skills row walks LAST — informational, never degrading, and
-    // the one row reporting state doctor will never itself change.
-    steps.push(check_skills());
-    // The daemon's log destination (2026-08-27). Walked here because it is
-    // about the daemon rather than the store, and because the question it
-    // answers — "where do I look for what happened" — is the one asked right
-    // after something has gone wrong somewhere above.
+    // The daemon's log destination (2026-08-27). After the store rows because
+    // it asks nothing of them, and after `daemon` so the steer order stays
+    // right: a reader with no daemon running is told to start one before being
+    // told where it would have written its logs.
     steps.push(check_logs(config));
+    // req-0053: the skills row walks LAST — informational, never degrading, and
+    // the one row reporting state doctor will never itself change. Anything new
+    // goes ABOVE it; `doctor_walks_the_skills_row_last_and_informationally`
+    // holds the line.
+    steps.push(check_skills());
     Ok(messages)
 }
 
@@ -942,6 +944,22 @@ fn check_logs(config: &Config) -> Step {
     let ceiling = config.daemon.log_max_bytes * u64::from(config.daemon.log_max_files);
 
     if !directory.is_dir() {
+        // "Does not exist yet" would be a lie about a path that exists and is
+        // a FILE — and that is a real typo, not a hypothetical: the daemon
+        // cannot create a directory under it and will log to stdout alone.
+        if directory.exists() {
+            const STEER: &str = "point `[daemon] log_dir` at a directory: the configured path \
+                                 exists and is not one, so the daemon cannot create its log \
+                                 directory there";
+            return Step::warn(
+                "logs",
+                format!("{} exists and is not a directory", directory.display()),
+                STEER,
+                started,
+            )
+            .with_steer(STEER);
+        }
+
         return Step::info(
             "logs",
             format!("{} does not exist yet", directory.display()),
@@ -956,8 +974,7 @@ fn check_logs(config: &Config) -> Step {
     }
 
     if let Err(error) = probe_writable(&directory) {
-        const STEER: &str =
-            "point `[daemon] log_dir` at a writable directory (or fix its permissions): the \
+        const STEER: &str = "point `[daemon] log_dir` at a writable directory (or fix its permissions): the \
              daemon will log to stdout only, and nothing will survive the process";
         return Step::warn(
             "logs",
@@ -1072,6 +1089,90 @@ mod tests {
             fine.action.is_none(),
             "nothing was done, so nothing is claimed"
         );
+    }
+
+    /// A config whose log directory is `path`, and nothing else unusual.
+    fn config_logging_to(path: &std::path::Path) -> Config {
+        Config {
+            daemon: fs3_core::DaemonConfig {
+                log_dir: path.display().to_string(),
+                ..fs3_core::DaemonConfig::default()
+            },
+            ..Config::default()
+        }
+    }
+
+    /// The row a user reads on a machine where the daemon has already run: the
+    /// active path, named, so "where do I look" needs no source-reading.
+    #[test]
+    fn the_logs_row_names_the_active_file_when_it_can_be_written() {
+        let directory = tempfile::tempdir().expect("a temp dir");
+        std::fs::write(directory.path().join("flowspace3.log"), b"an event\n").expect("a log");
+
+        let row = check_logs(&config_logging_to(directory.path()));
+
+        assert_eq!(row.check, "logs");
+        assert_eq!(row.outcome, "ok");
+        assert!(
+            row.found.contains("flowspace3.log"),
+            "the row must name the file: {row:?}"
+        );
+        assert!(!row.degrades(), "a healthy log is not a degraded stack");
+    }
+
+    /// Doctor reports; it does not create. A machine where the daemon has never
+    /// run must still learn where the logs WILL be, and must not come back
+    /// from a diagnostic command with a new empty directory on disk.
+    #[test]
+    fn a_log_directory_that_does_not_exist_yet_is_reported_not_created() {
+        let directory = tempfile::tempdir().expect("a temp dir");
+        let planned = directory.path().join("not-yet");
+
+        let row = check_logs(&config_logging_to(&planned));
+
+        assert_eq!(row.outcome, "info", "nothing is wrong yet: {row:?}");
+        assert!(!row.degrades());
+        assert!(row.found.contains("not-yet"), "{row:?}");
+        assert!(
+            !planned.exists(),
+            "doctor must not create the directory it is reporting on"
+        );
+    }
+
+    /// The unwritable case is the one the packet exists for: it has to be
+    /// visible, it has to degrade, and it has to steer.
+    #[test]
+    fn an_unwritable_log_directory_warns_and_steers() {
+        let directory = tempfile::tempdir().expect("a temp dir");
+        let blocked = directory.path().join("blocked");
+        std::fs::create_dir(&blocked).expect("the directory");
+        let mut permissions = std::fs::metadata(&blocked).expect("stat").permissions();
+        permissions.set_readonly(true);
+        std::fs::set_permissions(&blocked, permissions).expect("making it read-only");
+
+        let row = check_logs(&config_logging_to(&blocked));
+
+        assert_eq!(row.outcome, "warn", "{row:?}");
+        assert!(row.degrades(), "evidence going nowhere is a degraded stack");
+        assert!(
+            row.steer.is_some_and(|steer| steer.contains("log_dir")),
+            "the steer must name the key to change"
+        );
+    }
+
+    /// A `log_dir` that names an existing FILE is a typo with a specific
+    /// consequence, and the row must say which one rather than reporting the
+    /// path as merely absent.
+    #[test]
+    fn a_log_dir_that_is_a_file_says_so_rather_than_calling_it_missing() {
+        let directory = tempfile::tempdir().expect("a temp dir");
+        let occupied = directory.path().join("logs");
+        std::fs::write(&occupied, b"not a directory").expect("the blocker");
+
+        let row = check_logs(&config_logging_to(&occupied));
+
+        assert_eq!(row.outcome, "warn", "{row:?}");
+        assert!(row.found.contains("not a directory"), "{row:?}");
     }
 
     /// req-0053: the skills row's asks are spec-verbatim; mixed states take the

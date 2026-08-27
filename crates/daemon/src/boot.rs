@@ -162,9 +162,12 @@ async fn serve(configuration: Config, address: String, logging: Logging) -> Resu
     // A store that will not take the message is not worth failing the boot
     // over: the same news is already on stdout and in the `logs` row of
     // `flowspace3 doctor`.
-    if let Err(error) =
-        fs3_store::sync_messages(&state.db, fs3_core::LOGGING_SOURCE, &logging.desired_messages())
-            .await
+    if let Err(error) = fs3_store::sync_messages(
+        &state.db,
+        fs3_core::LOGGING_SOURCE,
+        &logging.desired_messages(),
+    )
+    .await
     {
         tracing::warn!(%error, "cannot record the state of logging in the messages queue");
     }

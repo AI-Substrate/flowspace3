@@ -233,12 +233,18 @@ impl Write for &RollingWriter {
         // poisoned precisely when a thread panicked while logging, and that is
         // the moment the log matters most. Refusing to write then would lose
         // the panic that the hook above is trying to record.
-        let mut roller = self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut roller = self
+            .0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         roller.write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        let mut roller = self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut roller = self
+            .0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         roller.flush()
     }
 }
@@ -391,7 +397,13 @@ mod tests {
     fn files(directory: &Path) -> Vec<String> {
         let mut names: Vec<String> = fs::read_dir(directory)
             .expect("the log directory")
-            .map(|entry| entry.expect("a dir entry").file_name().display().to_string())
+            .map(|entry| {
+                entry
+                    .expect("a dir entry")
+                    .file_name()
+                    .display()
+                    .to_string()
+            })
             .collect();
         names.sort();
         names
@@ -502,7 +514,10 @@ mod tests {
 
         let messages = degraded.desired_messages();
         assert_eq!(messages.len(), 1);
-        assert!(messages[0].text.contains("permission denied"), "{messages:?}");
+        assert!(
+            messages[0].text.contains("permission denied"),
+            "{messages:?}"
+        );
         assert!(messages[0].text.contains("/proc/nope/logs"), "{messages:?}");
     }
 

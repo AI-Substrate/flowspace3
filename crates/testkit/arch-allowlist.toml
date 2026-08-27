@@ -230,4 +230,7 @@ external = [
   # DEV only: doctor's daemon row is probed against a stub /health server — a
   # fake, not a mock (workshop 001 rule 5).
   "axum@dev",
+  # DEV only: throwaway config and log directories for the daemon log-file
+  # test, so it can never write to the user's real ones.
+  "tempfile@dev",
 ]
