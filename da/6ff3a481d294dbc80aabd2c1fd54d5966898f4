@@ -1,0 +1,23 @@
+crates/daemon/tests/streaming.rs
+  s_15d888f4b629c1::t_237938b76d7fbe 231
+crates/store/migrations/0011_job_terminal.sql
+  s_15d888f4b629c1::t_12f1ad7a107c81 1-37
+crates/store/tests/pg_store_flows.rs
+  s_15d888f4b629c1::t_85c1ebbab375eb 420,433-441,590,650,738,786
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "da6ff3a481d294dbc80aabd2c1fd54d5966898f4",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
