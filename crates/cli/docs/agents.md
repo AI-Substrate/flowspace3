@@ -24,6 +24,29 @@ need to run `docker compose` yourself.
 store at boot, and drains the job queue. `doctor` reports whether it is running
 but never starts one — a diagnostic command must not leave a process behind.
 
+## Finished with a repo
+
+```bash
+flowspace3 remove /path/to/repo    # unregister: stop watching, forget its files
+flowspace3 gc                      # reclaim what nothing references, now
+```
+
+`remove` unregisters a root and kills its queued scans, even mid-index. It does
+NOT delete indexed content, and that is deliberate: parses, summaries and
+vectors are keyed by CONTENT, so the same file in another registered repo
+shares them. Deleting them because one root left would throw away work another
+root is still using — and, for summaries, work somebody paid a model for.
+
+What becomes genuinely unreferenced is reclaimed by garbage collection, which
+the daemon runs on a slow schedule. `flowspace3 gc` runs a pass now and tells
+you what it freed. The `remove` envelope reports what is *reclaimable*, which
+is a floor rather than a total — deeper levels only come into view once the
+level above is actually collected.
+
+Removing a root you never added is an answer, not an error: the envelope says
+so and lists the roots that ARE registered, because paths are stored as the
+daemon resolved them (on macOS `/tmp/x` is registered as `/private/tmp/x`).
+
 ## First run: you will have no real provider
 
 A fresh install ships ONE provider — a deterministic offline `fake` — and both

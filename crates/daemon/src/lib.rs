@@ -9,8 +9,10 @@ pub mod boot;
 pub mod config;
 pub mod debounce;
 pub mod enrich;
+pub mod gc;
 pub mod http;
 pub mod reconcile;
+pub mod remove;
 pub mod roots;
 pub mod runner;
 pub mod scan;
@@ -27,6 +29,7 @@ pub use boot::run;
 pub use config::{
     ConfigError, SecretsLoaded, config_dir, load_config, load_effective_from, load_secrets,
 };
+pub use gc::GcSupervisor;
 pub use http::{router, serve};
 pub use reconcile::{Pass, Reconcile};
 pub use runner::{drain, run_forever};

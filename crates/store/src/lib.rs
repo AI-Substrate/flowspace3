@@ -28,6 +28,7 @@ pub mod embeddings;
 pub mod jobs;
 pub mod messages;
 pub mod refs;
+pub mod roots;
 pub mod smart;
 pub mod updates;
 
@@ -48,6 +49,10 @@ pub use messages::{ack_message, live_messages, sync_messages};
 pub use refs::{
     RegisteredWorktree, WorktreePath, find_worktree, list_worktrees, register_worktree,
     sync_worktree_files, worktree_file_map, worktree_paths_for_blob,
+};
+pub use roots::{
+    Reclaimed, Removal, collect_garbage, raw_hash_is_referenced, reclaimable, remove_root,
+    worktree_exists,
 };
 pub use smart::{MissingEnrichment, get_smart_content, missing_enrichment, put_smart_content};
 pub use updates::{
