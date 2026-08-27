@@ -49,6 +49,8 @@ pub fn run() -> Result<()> {
     let configuration = config::load_effective_from(&directory)
         .with_context(|| format!("loading configuration from {}", directory.display()))?;
 
+    refuse_a_defaulted_store_under_test(&configuration)?;
+
     // FIRST use of the configuration, before anything is logged: the log file's
     // path, its caps and its filter are all configuration, so a subscriber
     // installed any earlier could honour none of them. Everything above this
@@ -95,6 +97,59 @@ pub fn run() -> Result<()> {
         .build()
         .context("starting the Tokio runtime")?
         .block_on(serve(configuration.config, address, logging))
+}
+
+/// Refuse to boot when a TEST spawned us and nobody said which store to use.
+///
+/// # The hole this stands in
+///
+/// `fs3_testkit::spawn::sealed` is how a test hands this binary an
+/// environment, and `crates/testkit/tests/spawn_isolation.rs` makes it the only
+/// way — but that is a scan of source text, and it can only refuse the shapes
+/// it knows. This is the same rule enforced from inside, where the shape does
+/// not matter: whatever spawned us, if a test marker is present and nothing
+/// chose a database, we do not touch one. Boot MIGRATES (see `serve`), so
+/// "touch one" means "write to it".
+///
+/// # Why provenance and not the URL
+///
+/// The obvious rule — refuse [`fs3_core::DatabaseConfig::DEFAULT_URL`] — is
+/// wrong for exactly the reason `fs3_testkit::database` gives: CI legitimately
+/// sets that same string, where it names a disposable service container. The
+/// same characters mean "throwaway" there and "production" on Jordan's laptop,
+/// so the URL cannot be the discriminator.
+///
+/// [`fs3_core::Layer`] can. `Layer::Defaults` means no config file and no
+/// environment override named a database — nobody DECIDED, which is the actual
+/// defect. A CI daemon pinned to the service container reads `Layer::Env` and
+/// boots normally.
+///
+/// # Cost to real users
+///
+/// None. `FS3_TEST_DATABASE_URL` is a test-run marker; production never sets
+/// it, so this returns `Ok` before it looks at anything else. `DEFAULT_URL`
+/// keeps meaning exactly what it means today for everyone who is not a test.
+fn refuse_a_defaulted_store_under_test(configuration: &fs3_core::Effective) -> Result<()> {
+    let under_test = std::env::var_os(fs3_testkit::TEST_DATABASE_ENV)
+        .is_some_and(|value| !value.is_empty() && value != "0");
+    if !under_test || configuration.layer("database") != fs3_core::Layer::Defaults {
+        return Ok(());
+    }
+
+    bail!(
+        "refusing to boot: {} is set — so a TEST spawned this daemon — and no \
+         config file or environment override chose a database, so the store \
+         would be {}.\n\n\
+         That address is the SHIPPED default. On a developer machine it is the \
+         real store, and boot MIGRATES before it serves: this is exactly how \
+         migration 0012 reached Jordan's production database on 2026-08-27 and \
+         took the installed CLI down on schema skew.\n\n\
+         Spawn through `fs3_testkit::sealed(binary, config_dir, TestDatabase::…)`, \
+         which scrubs every inherited FS3_* and pins both the config directory \
+         and the database.",
+        fs3_testkit::TEST_DATABASE_ENV,
+        redact_url_password(&configuration.config.database.url),
+    )
 }
 
 async fn serve(configuration: Config, address: String, logging: Logging) -> Result<()> {

@@ -10,8 +10,8 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use fs3_core::{
-    CONFIG_DIR_ENV, CONFIG_FILE_NAME, DEFAULT_CONFIG_SUBDIR, Effective, SECRETS_FILE_NAME, Sources,
-    env_overrides, parse_env_file, resolve,
+    CONFIG_DIR_ENV, CONFIG_FILE_NAME, Effective, SECRETS_FILE_NAME, Sources, env_overrides,
+    parse_env_file, resolve, resolve_config_dir,
 };
 
 /// The directory the CLI reads configuration from — identical rules to the
@@ -20,15 +20,11 @@ use fs3_core::{
 /// # Errors
 /// When neither `FS3_CONFIG_DIR` nor `HOME` is set.
 pub fn config_dir() -> Result<PathBuf> {
-    if let Some(dir) = std::env::var_os(CONFIG_DIR_ENV)
-        && !dir.is_empty()
-    {
-        return Ok(PathBuf::from(dir));
-    }
-    let home = std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .context("cannot determine the config directory: neither FS3_CONFIG_DIR nor HOME is set")?;
-    Ok(home.join(".config").join(DEFAULT_CONFIG_SUBDIR))
+    resolve_config_dir(
+        std::env::var_os(CONFIG_DIR_ENV).as_deref(),
+        std::env::var_os("HOME").map(PathBuf::from).as_deref(),
+    )
+    .map_err(|message| anyhow::anyhow!(message))
 }
 
 /// Where the config file is, whether or not it exists.

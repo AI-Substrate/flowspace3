@@ -35,7 +35,7 @@ pub use config::{
     DaemonConfig, DatabaseConfig, ENV_NESTING, ENV_PREFIX, Effective, IndexingConfig, Layer,
     Origin, Port, PortSelection, Problem, ProviderInstance, REDACTED, RepoSelection,
     SECRETS_FILE_NAME, SECTIONS, ScanConfig, Sources, UpdateConfig, env_overrides, parse_env_file,
-    redact_url_password, resolve,
+    redact_url_password, resolve, resolve_config_dir,
 };
 pub use element::{
     ADDRESS_SEGMENT, BlobRef, Element, ElementKind, ElementTree, PreOrder, Span, content_hash,

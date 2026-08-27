@@ -7,15 +7,28 @@
 //!
 //! It needs no database. The daemon is pointed at a port nothing listens on,
 //! so it boots, says where its log is, and then fails on the store — and every
-//! assertion here is about what it wrote BEFORE that. Deliberately no
-//! `fs3_testkit::database` gate: this test cannot reach a database, which is
-//! the strongest form of "it will never write to the wrong one".
+//! assertion here is about what it wrote BEFORE that. It takes the
+//! `Unreachable` seal rather than `fs3_testkit::database`'s scratch database
+//! for that reason: a test that CANNOT reach a database is the strongest form
+//! of "it will never write to the wrong one".
+//!
+//! It did not always scrub, though. Pinning without scrubbing was one of the
+//! two half-patterns that let the 2026-08-27 incident through (see
+//! `fs3_testkit::spawn`), so the pin and the scrub now arrive together or not
+//! at all.
 
+use std::path::Path;
 use std::process::Command;
 
-/// A store address that is refused immediately rather than one that hangs:
-/// port 1 is privileged, unbound, and answers `ECONNREFUSED` at once.
-const NOTHING_LISTENING: &str = "postgres://nobody:nobody@127.0.0.1:1/none";
+/// A `flowspace3` that boots far enough to log and then dies on a store it
+/// cannot reach — which is what every assertion below is about.
+fn flowspace3(config_dir: &Path) -> Command {
+    fs3_testkit::sealed(
+        Path::new(env!("CARGO_BIN_EXE_flowspace3")),
+        config_dir,
+        fs3_testkit::TestDatabase::Unreachable,
+    )
+}
 
 #[test]
 fn the_daemon_writes_a_log_file_and_names_it_on_its_first_line() {
@@ -23,11 +36,9 @@ fn the_daemon_writes_a_log_file_and_names_it_on_its_first_line() {
     let config_dir = temporary.path().join("config");
     let log_dir = temporary.path().join("logs");
 
-    let run = Command::new(env!("CARGO_BIN_EXE_flowspace3"))
+    let run = flowspace3(&config_dir)
         .arg("daemon")
-        .env("FS3_CONFIG_DIR", &config_dir)
         .env("FS3_DAEMON__LOG_DIR", &log_dir)
-        .env("FS3_DATABASE__URL", NOTHING_LISTENING)
         // The config layer is what is under test; an inherited RUST_LOG would
         // silently take over the filter.
         .env_remove("RUST_LOG")

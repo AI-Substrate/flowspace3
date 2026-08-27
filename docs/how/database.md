@@ -105,3 +105,33 @@ cargo run -p fs3-daemon       # migrates, then serves
 
 Store tests run against that same stack and **fail rather than skip** when it is
 down, naming the command. `FS3_TEST_DATABASE_URL` points them elsewhere.
+
+## Which database a test may touch
+
+Two rules, because the production database has been written to by a test run
+twice (ruling: `.harness/government/rulings/2026-08-27-production-database.md`).
+Both refuse by default; neither has a fallback.
+
+1. **A test that opens a pool** gets its URL from
+   `fs3_testkit::test_database_url()`, which panics unless
+   `FS3_TEST_DATABASE_URL` says so out loud. The URL cannot be the
+   discriminator — CI sets it to the shipped default, where that address names
+   a disposable service container — so what is asked for is that somebody
+   decided on purpose.
+2. **A test that spawns `flowspace3`** builds its command with
+   `fs3_testkit::sealed(binary, config_dir, TestDatabase::…)`, which scrubs
+   every inherited `FS3_*` and pins both the config directory and the database.
+   Rule 1 does not cover this: a subprocess opens its own pool, from its own
+   configuration, and with no `[database]` section to find it resolves
+   `DatabaseConfig::DEFAULT_URL` — the shipped address, which on a developer
+   machine is the real store. Daemon boot migrates before it serves, so that is
+   a production write. `crates/testkit/tests/spawn_isolation.rs` fails the build
+   if a test constructs such a command by hand.
+
+Three things enforce this without being asked: the `testdb` and `prodguard`
+gates in `harness checks`, and the daemon's own refusal to boot when a test
+marker is present and no layer chose a database.
+
+Use a scratch database nobody else shares. A second worktree's unmerged
+migration will otherwise put the shared one AHEAD of your tree, and `doctor`
+then reports schema skew that has nothing to do with your change.
