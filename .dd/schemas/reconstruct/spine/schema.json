@@ -1,0 +1,55 @@
+{
+ "dd_schema": 1,
+ "description": "A semantic reconstruction spine: the phases and beats of an orchestrated build, each beat typed by mode (conversation / plan / straight / swarm) and kind (ask / ruling / architecture / dispatch / milestone / incident / release / retro), with evidence pointers. Authored from telemetry reconstruction; edit via ddocs or edit-json-then-build.",
+ "sections": {
+  "meta": {
+   "required": true,
+   "shape": { "type": "object", "required": ["title", "window", "sources"],
+    "fields": {
+     "title": {"type": "string"},
+     "window": {"type": "string"},
+     "sources": {"type": "text"},
+     "thesis": {"type": "text"},
+     "note": {"type": "string"} } }
+  },
+  "phases": {
+   "required": true,
+   "shape": { "type": "array",
+    "items": { "type": "object", "required": ["id", "title", "start", "end", "mode", "narrative"],
+     "fields": {
+      "id": {"type": "string"},
+      "title": {"type": "string"},
+      "start": {"type": "string"},
+      "end": {"type": "string"},
+      "mode": {"type": "string"},
+      "narrative": {"type": "text"},
+      "seats": {"type": "string"} } } }
+  },
+  "features": {
+   "required": false,
+   "shape": { "type": "array",
+    "items": { "type": "object", "required": ["id", "area", "title", "seat"],
+     "fields": {
+      "id": {"type": "string"},
+      "area": {"type": "string"},
+      "title": {"type": "string"},
+      "detail": {"type": "text"},
+      "seat": {"type": "string"},
+      "evidence": {"type": "string"} } } }
+  },
+  "beats": {
+   "required": true,
+   "shape": { "type": "array",
+    "items": { "type": "object", "required": ["id", "ts", "phase", "kind", "title"],
+     "fields": {
+      "id": {"type": "string"},
+      "ts": {"type": "string"},
+      "phase": {"type": "string"},
+      "kind": {"type": "string"},
+      "title": {"type": "string"},
+      "detail": {"type": "text"},
+      "quote": {"type": "text"},
+      "evidence": {"type": "string"} } } }
+  }
+ }
+}
