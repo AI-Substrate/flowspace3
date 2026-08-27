@@ -113,11 +113,21 @@ impl Removal {
 pub async fn remove_root(pool: &PgPool, root_path: &str) -> Result<Removal, StoreError> {
     let mut transaction = pool.begin().await?;
 
+    // `FOR UPDATE OF w` serialises two removals of the same root. Without it
+    // both transactions read the row before either deletes, and the loser
+    // reports `was_registered: true` having deleted nothing — a truthful set of
+    // counts wrapped around a misleading headline. With it the loser blocks,
+    // re-checks, finds the row gone, and says so.
+    //
+    // `OF w` rather than a bare `FOR UPDATE`: locking the joined `repos` row
+    // as well would make two removals of DIFFERENT worktrees of one repository
+    // contend for no reason.
     let Some(found) = sqlx::query(
         "SELECT w.id, w.repo_id, r.identity
            FROM worktrees w
            JOIN repos r ON r.id = w.repo_id
-          WHERE w.root_path = $1",
+          WHERE w.root_path = $1
+            FOR UPDATE OF w",
     )
     .bind(root_path)
     .fetch_optional(&mut *transaction)

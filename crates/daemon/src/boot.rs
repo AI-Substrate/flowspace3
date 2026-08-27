@@ -186,6 +186,11 @@ async fn serve(configuration: Config, address: String) -> Result<()> {
         state.db.clone(),
         env!("CARGO_PKG_VERSION"),
     )));
+
+    // Fourth implementor, and the slowest. It counts ticks rather than growing
+    // the trait a per-loop cadence — the same shape the update supervisor's
+    // clock takes, for the same reason (req-0057).
+    reconcilers.push(Box::new(crate::gc::GcSupervisor::new(state.db.clone())));
     tokio::spawn(crate::reconcile::run_forever(reconcilers, cadence));
 
     http::serve(state, &address).await

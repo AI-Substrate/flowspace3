@@ -55,8 +55,57 @@ pub fn router(state: AppState) -> Router {
         .route("/roots", post(add_root).get(status))
         .route("/status", get(status))
         .route("/scan", post(scan))
+        .route("/remove", post(remove))
+        .route("/gc", post(gc))
         .route("/search", get(search))
         .with_state(state)
+}
+
+async fn remove(
+    State(state): State<AppState>,
+    Json(request): Json<RootRequest>,
+) -> Answer<crate::remove::RemoveReport> {
+    const COMMAND: &str = "remove";
+    if let Err(failure) = crate::schema::guard(&state.db).await {
+        return failed(&state, COMMAND, failure).await;
+    }
+    if !std::path::Path::new(&request.path).is_absolute() {
+        return failed(
+            &state,
+            COMMAND,
+            crate::remove::must_be_absolute(&request.path),
+        )
+        .await;
+    }
+    match crate::remove::remove(&state, &request.path).await {
+        Ok(report) => {
+            let next = crate::remove::next_after_remove(&report);
+            ok(&state, COMMAND, report)
+                .await
+                .0
+                .with_next_action(next)
+                .into()
+        }
+        Err(failure) => failed(&state, COMMAND, failure).await,
+    }
+}
+
+async fn gc(State(state): State<AppState>) -> Answer<crate::remove::GcCounts> {
+    const COMMAND: &str = "gc";
+    if let Err(failure) = crate::schema::guard(&state.db).await {
+        return failed(&state, COMMAND, failure).await;
+    }
+    match crate::remove::collect(&state).await {
+        Ok(counts) => {
+            let next = crate::remove::next_after_gc(&counts);
+            ok(&state, COMMAND, counts)
+                .await
+                .0
+                .with_next_action(next)
+                .into()
+        }
+        Err(failure) => failed(&state, COMMAND, failure).await,
+    }
 }
 
 async fn health(State(state): State<AppState>) -> Json<Health> {

@@ -50,6 +50,29 @@ enum Command {
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
     },
+    /// Unregister a root: stop watching it, forget its files, and kill its
+    /// queued scans.
+    ///
+    /// Indexed CONTENT is not deleted here. It is content-addressed and may be
+    /// shared with another registered root, so what becomes unreferenced is
+    /// reclaimed by garbage collection — on its own schedule, or now with
+    /// `flowspace3 gc`.
+    Remove {
+        /// The registered directory to unregister.
+        path: PathBuf,
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
+    /// Reclaim stored rows that no registered root references any more.
+    ///
+    /// The daemon does this on a slow schedule by itself; this runs a pass now
+    /// and reports what it freed.
+    Gc {
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
     /// Report registered roots and what is left in the queue.
     Status {
         /// Override the daemon URL from configuration.
@@ -231,6 +254,14 @@ async fn run(command: Command) -> Result<ExitCode> {
         Command::Add { path, daemon_url } => {
             let client = client_for(daemon_url)?;
             Ok(emit(&client.add(&display(&path)).await))
+        }
+        Command::Remove { path, daemon_url } => {
+            let client = client_for(daemon_url)?;
+            Ok(emit(&client.remove(&display(&path)).await))
+        }
+        Command::Gc { daemon_url } => {
+            let client = client_for(daemon_url)?;
+            Ok(emit(&client.gc().await))
         }
         Command::Scan { path, daemon_url } => {
             let client = client_for(daemon_url)?;

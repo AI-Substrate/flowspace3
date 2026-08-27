@@ -215,6 +215,27 @@ pub async fn enqueue_for_tree(
 /// A provider failure (retryable — a rate limit clears) or a store failure.
 pub async fn summarize(state: &AppState, value: serde_json::Value) -> Result<(), Failure> {
     let job: SummarizeJob = payload(value)?;
+
+    // The point of spend (req-0057). A root removed while this sat in the
+    // queue leaves work for content nothing maps any more, and summarising it
+    // pays a provider for something nobody can ever search. GC reaps such jobs
+    // on its own cadence, but the queue drains faster than GC runs — and a job
+    // CLAIMED before the removal landed is one GC can never reach.
+    //
+    // Keyed by raw_hash rather than by blob deliberately: one raw hash can
+    // belong to elements of many blobs, so it stays worth paying for while ANY
+    // of them is still referenced. Same predicate GC uses at level two.
+    if !fs3_store::raw_hash_is_referenced(&state.db, &job.raw_hash)
+        .await
+        .map_err(fail)?
+    {
+        tracing::debug!(
+            raw_hash = %job.raw_hash,
+            "skipping enrichment for content no registered root holds"
+        );
+        return Ok(());
+    }
+
     let model_key = state.summarizer_key(&job.identity);
 
     // Content-addressed skip: another branch, or an earlier attempt of this

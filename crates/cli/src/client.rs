@@ -135,6 +135,20 @@ impl DaemonClient {
             .await
     }
 
+    /// Unregister a root and kill its queued scans (PRD req 57).
+    pub async fn remove(&self, path: &str) -> Envelope {
+        self.post("remove", "/remove", &serde_json::json!({ "path": path }))
+            .await
+    }
+
+    /// Reclaim rows nothing references, now.
+    ///
+    /// The same engine the daemon runs on its own cadence — this is the
+    /// force-it-now entry point, like `doctor upgrade` beside auto-update.
+    pub async fn gc(&self) -> Envelope {
+        self.post("gc", "/gc", &serde_json::json!({})).await
+    }
+
     /// Read roots and queue depth.
     pub async fn status(&self) -> Envelope {
         self.get("status", "/status", &[]).await

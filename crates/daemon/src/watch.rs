@@ -135,6 +135,18 @@ impl WatcherSupervisor {
         }
     }
 
+    /// The roots this supervisor currently holds an OS watcher for.
+    ///
+    /// Exists so a test can assert that a removed root stops being watched
+    /// (PRD req 57) without reaching into private state or waiting on
+    /// filesystem events. Reading it is the only way to observe the diff's
+    /// effect: the plan itself is pure and already tested, but "the plan was
+    /// applied" is a different claim.
+    #[must_use]
+    pub fn watched_roots(&self) -> Vec<PathBuf> {
+        self.watched.keys().cloned().collect()
+    }
+
     /// Milliseconds since the supervisor started — the one monotonic clock the
     /// pure core is driven by.
     fn now_ms(&self) -> u64 {
