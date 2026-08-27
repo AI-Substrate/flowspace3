@@ -1,0 +1,24 @@
+crates/daemon/src/boot.rs
+  h_9e71e8b09f7cf2 47-54,230-250
+crates/daemon/src/enrich.rs
+  h_9e71e8b09f7cf2 313,317,326,330,332-370
+crates/daemon/tests/enrichment_recovery.rs
+  h_9e71e8b09f7cf2 1,13-14,16-18,189-261
+crates/store/src/elements.rs
+  h_9e71e8b09f7cf2 192
+crates/store/src/smart.rs
+  h_9e71e8b09f7cf2 15,105-109,114,116-119,125-127,134-135,142-143,162
+crates/store/tests/pg_store_flows.rs
+  h_9e71e8b09f7cf2 136-138,140-141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "dbaaa0a88c2b0a7794efe508716360d831045629",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
