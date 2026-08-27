@@ -1,0 +1,55 @@
+docs/plans/005-convo-ingest/plan.dd.json
+  s_15d888f4b629c1::t_d8505fb76d33fc 2-78
+  s_15d888f4b629c1::t_21f81291197063 1
+  s_15d888f4b629c1::t_02d2ea360eeffe 79
+docs/plans/005-convo-ingest/assets/tasks/phase-1/tasks.dd.json
+  s_15d888f4b629c1::t_327fc386167e3d 2-34
+  s_15d888f4b629c1::t_ca22f4016e40fd 1,35
+docs/plans/005-convo-ingest/assets/tasks/phase-2/tasks.dd.json
+  s_15d888f4b629c1::t_0c2d7da80ba410 1-36
+docs/plans/005-convo-ingest/assets/tasks/phase-3/tasks.dd.json
+  s_15d888f4b629c1::t_456b2defb62ea7 1-36
+docs/plans/005-convo-ingest/impl-guide.dd.json
+  s_15d888f4b629c1::t_bcc132d64d309e 9-66
+  s_15d888f4b629c1::t_58e411b732d46c 6-8
+  s_15d888f4b629c1::t_88a06b9da8bee7 67-69
+  s_15d888f4b629c1::t_9ebc10570586b6 1-5,70
+docs/plans/005-convo-ingest/assets/tasks/phase-1/tasks.dd.md
+  s_15d888f4b629c1::t_624ac672937440 1-48
+docs/plans/005-convo-ingest/assets/tasks/phase-2/tasks.dd.md
+  s_15d888f4b629c1::t_943ae9547b4248 1-49
+docs/plans/005-convo-ingest/assets/tasks/phase-3/tasks.dd.md
+  s_15d888f4b629c1::t_45aab72cd846ae 1-49
+docs/plans/005-convo-ingest/impl-guide.dd.md
+  s_15d888f4b629c1::t_22e6c9339e84a3 1-87
+docs/plans/005-convo-ingest/packet-coder.dd.json
+  s_15d888f4b629c1::t_d691a24a83868f 1-68
+docs/plans/005-convo-ingest/packet-coder.dd.md
+  s_15d888f4b629c1::t_b5b4fbd904c3b3 1-79
+docs/plans/005-convo-ingest/packet-pm.dd.json
+  s_15d888f4b629c1::t_2831904e2956b7 1-73
+docs/plans/005-convo-ingest/packet-pm.dd.md
+  s_15d888f4b629c1::t_bafc09a10d5fcf 1-84
+docs/plans/005-convo-ingest/packet-reviewer.dd.json
+  s_15d888f4b629c1::t_ded3d91ab2ca75 1-63
+docs/plans/005-convo-ingest/packet-reviewer.dd.md
+  s_15d888f4b629c1::t_edbd1da518f8ab 1-74
+docs/plans/005-convo-ingest/plan.dd.md
+  s_15d888f4b629c1::t_e3cdb352f317fb 1-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1becc09ba1135ddd735b0bfd4f4664d8be7015ec",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
