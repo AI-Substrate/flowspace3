@@ -1,4 +1,4 @@
-//! Recovery: an index whose `embed` jobs were reaped before they ran.
+//! Recovery: enrichment the content layer is missing, on both shelves.
 //!
 //! Until the level-0 fix in this binary, GC read every `embed` job as
 //! unreferenced — an embed job carries a BATCH as `items` and has no `raw_hash`
@@ -10,11 +10,12 @@
 //! are there, the summaries are there, `status` reports an empty queue, and the
 //! content is simply absent from every semantic search. So recovery cannot be
 //! driven from the queue, which no longer remembers, or from a stored flag,
-//! which nothing set. It is derived from the schema — content with no vector.
+//! which nothing set. It is derived from the schema — content with no vector,
+//! and elements with no summary.
 //!
-//! These tests reproduce the damage rather than describing it: they queue a
-//! batch, let a GC pass of the OLD shape take it, and then assert the sweep
-//! puts it back.
+//! The summary half had a second cause worth stating: `missing_enrichment`, the
+//! decision-D6 sweep written for exactly this, had NO production caller. It
+//! existed, and only tests ever ran it.
 
 mod support;
 
@@ -182,6 +183,79 @@ async fn a_swept_batch_for_departed_content_does_not_survive_collection() {
         "a re-queued batch for departed content is still garbage: {reclaimed:?}"
     );
     assert_eq!(embed_jobs(&state.db).await, 0);
+
+    database.destroy(state.db).await;
+}
+
+/// The summary shelf: an element marked for enrichment with no summary is
+/// re-queued, and the job carries the ELEMENT — a summariser reads a
+/// declaration's kind, name, address and span, not just its text.
+#[tokio::test]
+async fn a_boot_requeues_summaries_the_content_layer_is_missing() {
+    let (database, state) = stack("recover-summaries").await;
+    live_content(&state).await;
+
+    let queued = enrich::requeue_missing_summaries(&state, 500)
+        .await
+        .expect("the sweep runs");
+    assert_eq!(
+        queued, 1,
+        "one element is marked for enrichment and has no summary"
+    );
+
+    let payload: serde_json::Value =
+        sqlx::query_scalar("SELECT payload FROM jobs WHERE kind = 'summarize'")
+            .fetch_one(&state.db)
+            .await
+            .expect("reading the job back");
+
+    assert_eq!(payload["raw_hash"], content_hash(BODY.as_bytes()));
+    assert_eq!(
+        payload["element"]["address"], "src/s.rs::stranded",
+        "the job carries the real element, not an invented one"
+    );
+    assert_eq!(payload["element"]["kind"], "function");
+    assert_eq!(payload["element"]["raw_text"], BODY);
+
+    // Keyed by content, so a boot loop does not multiply the backlog.
+    enrich::requeue_missing_summaries(&state, 500)
+        .await
+        .expect("second sweep");
+    let jobs: i64 = sqlx::query_scalar("SELECT count(*) FROM jobs WHERE kind = 'summarize'")
+        .fetch_one(&state.db)
+        .await
+        .expect("counting");
+    assert_eq!(jobs, 1);
+
+    database.destroy(state.db).await;
+}
+
+/// And it goes quiet once the summary lands — there is no flag to clear.
+#[tokio::test]
+async fn a_summarised_index_sweeps_to_nothing() {
+    let (database, state) = stack("recover-summarised").await;
+    live_content(&state).await;
+
+    fs3_store::put_smart_content(
+        &state.db,
+        &content_hash(BODY.as_bytes()),
+        &state.summarizer.key(),
+        &fs3_core::Summary {
+            text: "strands nothing".to_string(),
+            tags: vec!["stranded".to_string()],
+            extras: std::collections::BTreeMap::new(),
+        },
+    )
+    .await
+    .expect("writing the summary");
+
+    assert_eq!(
+        enrich::requeue_missing_summaries(&state, 500)
+            .await
+            .expect("the sweep runs"),
+        0,
+        "a stored summary is what makes an element clean"
+    );
 
     database.destroy(state.db).await;
 }

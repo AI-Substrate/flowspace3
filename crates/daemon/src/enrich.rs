@@ -310,11 +310,11 @@ pub async fn requeue_missing_vectors(state: &AppState, limit: i64) -> Result<usi
         for item in missing.iter().filter(|item| item.source_kind == kind) {
             batch.push((item.source_hash.clone(), item.text.clone()));
             if batch.len() == EMBED_BATCH {
-                enqueue_embed(state, DEFAULT_IDENTITY, kind, std::mem::take(&mut batch)).await?;
+                enqueue_embed(state, RECOVERY_IDENTITY, kind, std::mem::take(&mut batch)).await?;
             }
         }
         if !batch.is_empty() {
-            enqueue_embed(state, DEFAULT_IDENTITY, kind, batch).await?;
+            enqueue_embed(state, RECOVERY_IDENTITY, kind, batch).await?;
         }
     }
 
@@ -323,13 +323,51 @@ pub async fn requeue_missing_vectors(state: &AppState, limit: i64) -> Result<usi
 
 /// The identity a recovery batch is charged to.
 ///
-/// The sweep reads the DEFAULT embedder's space and cannot know which
+/// A recovery sweep reads the DEFAULT provider's space and cannot know which
 /// repository each orphaned text came from — content is keyed by hash, and one
 /// hash belongs to elements of many blobs in many repos, which is the whole
 /// point of decision D2. An identity nothing configured resolves to the default
-/// provider, which is the space the backlog was read from, so the vector lands
+/// provider, which is the space the backlog was read from, so the answer lands
 /// exactly where the sweep decided it was missing.
-const DEFAULT_IDENTITY: &str = "conv:recovery";
+///
+/// `conv:` because it is a namespace [`fs3_core::RepoIdentity`] structurally
+/// cannot mint, so this can never shadow a real repository's selection.
+const RECOVERY_IDENTITY: &str = "conv:recovery";
+
+/// Re-queue summaries the content layer is missing, up to `limit` elements.
+///
+/// The same hole one shelf up from [`requeue_missing_vectors`], and it had the
+/// same two causes: the level-0 defect this binary fixes reaped `summarize`
+/// jobs whose batch-shaped siblings it could not read, and
+/// [`fs3_store::missing_enrichment`] — the decision-D6 sweep written for
+/// exactly this — had no production caller at all. It existed, and only tests
+/// ever ran it.
+///
+/// An element with no summary is not broken, only thinner: it still has its raw
+/// vector, so search can still reach it. That is why this is a quiet
+/// reconciliation rather than an alarm — but it is real spend that was
+/// authorised and never delivered, and nothing else would ever notice, because
+/// a scan of an unchanged tree enqueues nothing.
+///
+/// # Errors
+/// Store failures while reading the backlog or enqueueing.
+pub async fn requeue_missing_summaries(state: &AppState, limit: i64) -> Result<usize, Failure> {
+    let model_key = state.summarizer.key();
+    let missing = fs3_store::missing_enrichment(&state.db, &model_key, limit)
+        .await
+        .map_err(fail)?;
+
+    for item in &missing {
+        let job = SummarizeJob {
+            identity: RECOVERY_IDENTITY.to_string(),
+            raw_hash: item.raw_hash.clone(),
+            element: item.element.clone(),
+        };
+        enqueue(state, SUMMARIZE, &job.dedupe_key(), &job).await?;
+    }
+
+    Ok(missing.len())
+}
 
 /// Run one `summarize` job: call the repo's summariser, store the answer, and
 /// queue the summary's own vector.

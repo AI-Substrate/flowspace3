@@ -133,9 +133,12 @@ async fn one_body_in_two_blobs_is_one_smart_row_and_one_piece_of_work() {
     );
     assert_eq!(missing[0].raw_hash, raw_hash);
     assert_eq!(
-        missing[0].raw_text, shared,
-        "the sweep carries the text to summarise"
+        missing[0].element.raw_text, shared,
+        "the sweep carries the element to summarise, not just its hash: the \
+         summariser reads a declaration's kind, name, address and span too"
     );
+    assert_eq!(missing[0].element.kind, ElementKind::Function);
+    assert_eq!(missing[0].element.address, "src/alpha.rs::f0");
 
     let summary = FakeSummarizer::default()
         .summarize(&alpha.children[0])
