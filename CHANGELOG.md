@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.0](https://github.com/AI-Substrate/flowspace3/compare/v0.3.2...v0.4.0) (2026-08-27)
+
+
+### Features
+
+* **daemon:** conversations v1 phase 2 — intake endpoint, enrichment, and a gc fix ([#31](https://github.com/AI-Substrate/flowspace3/issues/31)) ([3bf19d1](https://github.com/AI-Substrate/flowspace3/commit/3bf19d1183612b573bff43eae51c76c219102580))
+* **query:** conversations v1 phase 3 — import, search, window, outline ([#33](https://github.com/AI-Substrate/flowspace3/issues/33)) ([1890d3c](https://github.com/AI-Substrate/flowspace3/commit/1890d3c32716fb47ea6ed7de49a5bcaf17e16ca8))
+* **query:** get/tree read surface and D6 cwd scoping ([#29](https://github.com/AI-Substrate/flowspace3/issues/29)) ([ad6a6ac](https://github.com/AI-Substrate/flowspace3/commit/ad6a6ac74d3cf2badbadbc03c6fd51e0eb1b8ed3))
+* **store:** conversations v1 phase 1 — tables, turn elements, second reference leg ([#30](https://github.com/AI-Substrate/flowspace3/issues/30)) ([7618de1](https://github.com/AI-Substrate/flowspace3/commit/7618de174d8dd48d0383300151f430b60fa5524a))
+
+
+### Bug Fixes
+
+* **query:** one spelling per address scheme, generic 501 code, get steers its warnings ([#34](https://github.com/AI-Substrate/flowspace3/issues/34)) ([fcf28fb](https://github.com/AI-Substrate/flowspace3/commit/fcf28fb912099de4082fdc610f9b2b0b90863ecf))
+* **test:** no test may reach the production database ([#32](https://github.com/AI-Substrate/flowspace3/issues/32)) ([50455b6](https://github.com/AI-Substrate/flowspace3/commit/50455b641873dba17ccbb13cd61744230f76961f))
+* update state is per-install-path, boot-fresh and disk-reconciled ([#27](https://github.com/AI-Substrate/flowspace3/issues/27)) ([b3a5889](https://github.com/AI-Substrate/flowspace3/commit/b3a5889a35f7ac1a264561eaf86a63dad9bb1596))
+
 ## [0.3.2](https://github.com/AI-Substrate/flowspace3/compare/v0.3.1...v0.3.2) (2026-08-27)
 
 
