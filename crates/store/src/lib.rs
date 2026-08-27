@@ -23,6 +23,7 @@
 use sqlx::postgres::PgPoolOptions;
 
 pub mod admin;
+pub mod conversations;
 pub mod elements;
 pub mod embeddings;
 pub mod jobs;
@@ -35,6 +36,10 @@ pub mod updates;
 pub use admin::{
     SchemaStatus, create_database, database_exists, is_missing_database, maintenance_url,
     schema_current,
+};
+pub use conversations::{
+    AnchorFilter, Appended, ConversationSummary, Removed, TurnOutline, append_turns,
+    delete_conversation, list_conversations, outline, upsert_conversation, window,
 };
 pub use elements::{get_elements, upsert_element_tree};
 pub use embeddings::{

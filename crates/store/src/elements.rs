@@ -211,6 +211,7 @@ pub(crate) fn kind_from_str(value: &str) -> Result<ElementKind, StoreError> {
         "container" => Ok(ElementKind::Container),
         "function" => Ok(ElementKind::Function),
         "section" => Ok(ElementKind::Section),
+        "turn" => Ok(ElementKind::Turn),
         other => Err(StoreError::Corrupt(fs3_core::Error::InvalidConfig(
             format!("unknown element kind {other:?}"),
         ))),
@@ -228,6 +229,7 @@ mod tests {
             ElementKind::Container,
             ElementKind::Function,
             ElementKind::Section,
+            ElementKind::Turn,
         ] {
             assert_eq!(kind_from_str(kind.as_str()).unwrap(), kind);
         }

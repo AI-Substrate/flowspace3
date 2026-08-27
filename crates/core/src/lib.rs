@@ -12,6 +12,7 @@
 pub mod catalog;
 pub mod classify;
 pub mod config;
+pub mod conversation;
 pub mod element;
 pub mod envelope;
 pub mod error;
@@ -31,6 +32,9 @@ pub use config::{
     Origin, Port, PortSelection, Problem, ProviderInstance, REDACTED, RepoSelection,
     SECRETS_FILE_NAME, SECTIONS, ScanConfig, Sources, UpdateConfig, env_overrides, parse_env_file,
     redact_url_password, resolve,
+};
+pub use conversation::{
+    Conversation, ConversationId, ToolInput, Turn, TurnItem, TurnRole, TurnSource, earns_summary,
 };
 pub use element::{
     ADDRESS_SEGMENT, BlobRef, Element, ElementKind, ElementTree, PreOrder, Span, content_hash,

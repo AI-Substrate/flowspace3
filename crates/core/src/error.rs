@@ -8,6 +8,15 @@ pub enum Error {
     #[error("invalid blob reference {value:?}: {reason}")]
     InvalidBlobRef { value: String, reason: &'static str },
 
+    /// A conversation guid that is not a canonical UUID.
+    #[error("invalid conversation id {value:?}: {reason}")]
+    InvalidConversationId {
+        /// The value as supplied.
+        value: String,
+        /// Why it cannot be a conversation id.
+        reason: &'static str,
+    },
+
     /// Configuration that parsed as TOML but does not describe a usable system.
     #[error("invalid config: {0}")]
     InvalidConfig(String),
