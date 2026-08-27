@@ -1,0 +1,72 @@
+crates/core/src/element.rs
+  s_15d888f4b629c1::t_c1f4f5ca23e60b 43-49,60
+crates/core/src/error.rs
+  s_15d888f4b629c1::t_540dc38e028d3c 11-19
+crates/daemon/src/enrich.rs
+  h_9e71e8b09f7cf2 211-312,313,314-316,317,318-325,326,327-329,330,331,332-370,371,816-870
+docs/plans/conversations/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 25-26,31-32,37-38,43-44,49-50,55-56
+docs/plans/conversations/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 38-43
+docs/plans/conversations/plan.dd.json
+  h_9e71e8b09f7cf2 63-64,90-92,98,102-103
+docs/plans/conversations/plan.dd.md
+  h_9e71e8b09f7cf2 56,67,68
+crates/daemon/src/boot.rs
+  h_9e71e8b09f7cf2 37-46,47-54,256-284,285-305
+crates/daemon/tests/enrichment_recovery.rs
+  h_9e71e8b09f7cf2 1,2-12,13-14,15,16-18,19-188,189-261
+crates/store/src/embeddings.rs
+  h_9e71e8b09f7cf2 43
+crates/store/src/lib.rs
+  h_9e71e8b09f7cf2 67-70
+crates/store/src/roots.rs
+  h_9e71e8b09f7cf2 371-417,426-427,436-438
+crates/store/src/smart.rs
+  h_9e71e8b09f7cf2 15,105-109,114,116-119,125-127,134-135,142-143,162,167-255
+crates/store/tests/pg_remove_and_gc.rs
+  h_9e71e8b09f7cf2 356-513
+crates/store/tests/pg_store_flows.rs
+  h_9e71e8b09f7cf2 19-21,136-138,140-141,194-307
+crates/core/src/config.rs
+  h_9e71e8b09f7cf2 763,773-787,859-865,893
+crates/daemon/src/conversations.rs
+  h_9e71e8b09f7cf2 1-184,313-589
+crates/daemon/src/http.rs
+  h_9e71e8b09f7cf2 27,90-98,149-160
+crates/daemon/src/lib.rs
+  h_9e71e8b09f7cf2 10
+crates/daemon/tests/conversation_intake.rs
+  h_9e71e8b09f7cf2 1-412
+docs/reference/configuration.md
+  h_9e71e8b09f7cf2 118
+docs/plans/conversations/assets/tasks/phase-2/tasks.dd.json
+  h_9e71e8b09f7cf2 25-26,31-32,37-38,43-44,49-50
+docs/plans/conversations/assets/tasks/phase-2/tasks.dd.md
+  h_9e71e8b09f7cf2 38-42
+crates/store/src/elements.rs
+  h_9e71e8b09f7cf2 192
+crates/daemon/src/search.rs
+  s_15d888f4b629c1::t_9668cf66f1fbc7 25,70-81,149-166,170-173,213,311,313-323,325-329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "39e2126045062a42c8f127cda0e6475154c595c1",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
