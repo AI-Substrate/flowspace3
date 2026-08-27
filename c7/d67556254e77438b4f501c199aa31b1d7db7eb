@@ -1,0 +1,30 @@
+docs/plans/conversations/assets/evidence/dogfood-exit-proof.md
+  h_9e71e8b09f7cf2 1-157
+docs/plans/conversations/assets/evidence/w-conversations-session.jsonl
+  h_9e71e8b09f7cf2 1-16
+docs/plans/conversations/assets/tasks/phase-3/tasks.dd.json
+  h_9e71e8b09f7cf2 25-26,31-32,37-38,43-44,49-50,55-56
+docs/plans/conversations/assets/tasks/phase-3/tasks.dd.md
+  h_9e71e8b09f7cf2 38-43
+docs/plans/conversations/plan.dd.json
+  h_9e71e8b09f7cf2 11,33-34,39-40,45-46,51-52,57-58,63-64,69-70,75-76,81-82,87-88,118
+docs/plans/conversations/plan.dd.md
+  h_9e71e8b09f7cf2 15,50-59,69
+docs/plans/prd/base-prd.dd.json
+  h_9e71e8b09f7cf2 9-10,22,38,46,57,63,73,82,90,106,112,147,152-153,161,177,183,190,192,206-208,214-216,222-224,230-232,238,248,254,257,263,265,273,288,290,296,304,307,313,329,345,354,362,370,378,436,458,505
+docs/plans/prd/base-prd.dd.md
+  h_9e71e8b09f7cf2 46-49
+docs/services/conversations.md
+  h_9e71e8b09f7cf2 1-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c7d67556254e77438b4f501c199aa31b1d7db7eb",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
