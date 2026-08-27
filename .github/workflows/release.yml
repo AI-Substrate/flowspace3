@@ -179,3 +179,37 @@ jobs:
           - macOS binaries (Apple Silicon only — **Intel Macs are not supported**, Jordan 2026-08-26): **built and run on real hardware** — smoke-run + engine-independent test tier on a macOS runner.
           - Windows binary: **not shipped yet** — ort-sys has no prebuilt ONNX runtime for windows-gnu/musl triples (observed 2026-08-26); revisit when ort supports them or moves to load-dynamic/source builds.
           - musl variants: not shipped for the same reason."
+
+      # THE WINDOW-CLOSING STEP — must stay LAST in this job.
+      #
+      # release-please creates the release as a DRAFT (`draft` +
+      # `force-tag-creation` in release-please-config.json). Drafts are
+      # invisible to `releases/latest`, so for the whole ~6 minutes this
+      # workflow spends building, `latest` still resolves to the PREVIOUS
+      # release — which has its assets — instead of an empty new one. Before
+      # this step existed, the README's `install.sh` one-liner 404'd (curl exit
+      # 22) for every user during that window; the v0.2.0 campaign opened it
+      # nine times.
+      #
+      # Undrafting here, and only here, is what makes that true: every step
+      # above is a precondition (the file(1) shapes check, the 3-binary count,
+      # SHA256SUMS, the upload itself). If any of them fails the job stops and
+      # the release STAYS a draft — a failed release is invisible rather than
+      # broken-and-latest. Do not move this step earlier, and do not add asset
+      # steps after it.
+      #
+      # Tag cycles are compatible BY DESIGN. Deleting and re-pushing a tag
+      # flips its release back to draft (observed on v0.2.0, and it looks
+      # identical from outside to a 404). Under draft-first that is now the
+      # CORRECT behaviour rather than the bug it used to be: the re-triggered
+      # run rebuilds, re-uploads, and re-undrafts here at the end. `gh`
+      # resolves a draft release by its pending tag name, so the upload and
+      # edit steps above address it exactly as they would a published one.
+      - name: Publish the release (undraft — assets are attached)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release edit "$TAG" --draft=false --latest
+          gh release view "$TAG" --json isDraft,assets \
+            -q '{draft: .isDraft, assets: [.assets[].name]}'

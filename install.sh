@@ -54,7 +54,41 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 echo "fetching $ASSET ..."
-curl -fsSL "$BASE/$ASSET" -o "$TMP/flowspace3"
+
+# Honest failure (w-release-window, 2026-08-27). A bare `curl -f` on a missing
+# asset prints ONE line of curl noise — observed: "curl: (56) The requested URL
+# returned error: 404" — and then `set -e` kills the script with no explanation
+# at all. That was the entire user-facing output when `releases/latest` pointed
+# at a release whose binaries had not finished uploading.
+#
+# The exit STATUS is not a usable signal: GitHub redirects asset downloads to
+# object storage, so a 404 surfaces as curl 56 (recv failure), not the 22 that
+# `-f` documents. `%{http_code}` is written even on a failed transfer and IS
+# reliable, so that is what we branch on.
+rc=0
+code=$(curl -fsSL -w '%{http_code}' -o "$TMP/flowspace3" "$BASE/$ASSET" 2>/dev/null) || rc=$?
+
+if [ "$rc" -ne 0 ]; then
+  if [ "${code:-000}" = "404" ]; then
+    echo "error: no flowspace3 binary at $BASE/$ASSET (HTTP 404)" >&2
+    echo "" >&2
+    echo "Most likely a release is publishing right now: the binaries are built" >&2
+    echo "and attached a few minutes after the release itself appears. Wait a" >&2
+    echo "few minutes and run this installer again." >&2
+    echo "" >&2
+    echo "If it keeps failing, check that a release carries an asset for your" >&2
+    echo "platform ($TRIPLE):" >&2
+    echo "  https://github.com/$REPO/releases" >&2
+  else
+    echo "error: download failed for $ASSET (curl exit $rc, HTTP ${code:-none})" >&2
+    echo "  url: $BASE/$ASSET" >&2
+    echo "This looks like a network or proxy problem rather than a missing" >&2
+    echo "release. Check connectivity and retry; releases are listed at" >&2
+    echo "  https://github.com/$REPO/releases" >&2
+  fi
+  exit 1
+fi
+
 chmod +x "$TMP/flowspace3"
 
 mv "$TMP/flowspace3" "$DEST/flowspace3"

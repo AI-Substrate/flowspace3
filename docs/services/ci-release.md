@@ -1,6 +1,7 @@
 # ci-release — CI gate + release machinery
 
-**Status**: live (plan 004). **Owner**: pij-impressive-ox.
+**Status**: live (plan 004). **Owner**: pij-relieved-goat (release engineering;
+inherited from pij-impressive-ox, closed 2026-08-27).
 
 ## What it is
 
@@ -27,6 +28,18 @@ on each Release, a curl installer, Dependabot.
   ignored by release-please.
 - **Single binary per platform** (req 51): one asset per target triple;
   asset names freeze at one constant in `install.sh` / `install.ps1`.
+- **Draft-first releases (w-release-window, 2026-08-27)**: release-please
+  creates the Release as a DRAFT and `release.yml` undrafts it as its FINAL
+  step, after the binaries and SHA256SUMS are attached. Drafts are invisible to
+  `releases/latest`, so `latest` can never resolve to an assetless release —
+  which is what the documented `install.sh` one-liner was 404-ing on for ~6
+  minutes of every release (nine times during the v0.2.0 campaign). A failed
+  release now stays a draft: invisible, rather than broken-and-latest.
+  `force-tag-creation` rides with it and is load-bearing — GitHub does not
+  create a draft release's git ref until publish, so without it there would be
+  no tag push, no `release.yml` run, and no release at all. Both options were
+  verified against the version the action ACTUALLY bundles: `@v4` is action
+  4.4.1, whose package-lock pins release-please **17.3.0**, not the newest.
 - **mac tier scope (Jordan ruling 2026-08-26, binding)**: mac jobs prove the
   BINARY on real hardware — build, smoke (`--version`/help), engine-independent
   tests. NO docker/compose installs and NO live-engine assertions: macOS
@@ -71,11 +84,17 @@ on each Release, a curl installer, Dependabot.
   publishes** until GitHub's latest-pointer propagates — an installer run in
   the same minute as the release can fail spuriously. Retry before believing
   it; the tagged URL (`/releases/download/<tag>/<asset>`) works immediately.
-- **Cycling a tag flips the published release back to DRAFT** (different bug
-  from the propagation delay above, and it looks identical from the outside:
-  a 404). After ANY tag cycle, verify before calling it shipped:
-  `gh release view <tag> --json isDraft,assets`; re-publish with
-  `gh release edit <tag> --draft=false --latest`.
+  Since draft-first, this is the only installer-facing 404 window left, and it
+  opens AFTER the assets exist. `install.sh` no longer dies on it silently: it
+  branches on `%{http_code}` and prints a mid-publish message plus the releases
+  URL. Note the status code is the ONLY usable signal — asset downloads redirect
+  to object storage, so a 404 surfaces as curl exit **56**, not the 22 that
+  `-f` documents.
+- **Cycling a tag flips the release back to DRAFT.** Still true; since
+  draft-first it is CORRECT rather than a defect. The re-triggered release run
+  rebuilds, re-uploads and re-undrafts at the end, so a cycle needs no manual
+  repair. Previously this looked identical from outside to the propagation
+  delay above (a 404) and had to be repaired by hand.
 - **The shipped binary can lie about its version, and v0.2.0 did** (req-0060,
   fixed 2026-08-27). release-please's `simple` strategy bumps
   `.release-please-manifest.json` and the changelog and *nothing in the Rust
@@ -133,16 +152,39 @@ It replicates, verbatim and mapped 1:1 onto the release job names:
 | C2 | mac fast tier, **runner simulation** (docker masked out of PATH, db pointed at a dead port) | v2–v4 docker-absence, v6 skip-filter (`--skip` is substring, not regex), v7 live-Postgres integration tests |
 | D | linux x86_64 via the plan-002 build container + smoke | container-leg breakage; wrong-loader mistakes |
 
-Only when it prints **GREEN** do you cycle the tag — and always re-check the
-release state afterwards, because a cycle re-drafts the release:
+Only when it prints **GREEN** do you cycle the tag:
 
 ```bash
 git push origin :refs/tags/vX.Y.Z && git tag -f vX.Y.Z <sha> && git push origin vX.Y.Z
-
-# after the release run attaches assets:
-gh release view vX.Y.Z --json isDraft,assets -q '{draft: .isDraft, assets: [.assets[].name]}'
-gh release edit vX.Y.Z --draft=false --latest    # if draft came back true
 ```
+
+### Canonical release flow (draft-first, since w-release-window 2026-08-27)
+
+1. **Merge the release PR.** release-please creates `refs/tags/vX.Y.Z`
+   (`force-tag-creation`) and the Release as a **DRAFT**. The draft is invisible
+   to `releases/latest`, so `latest` still resolves to the PREVIOUS release,
+   with its assets. Installer users are unaffected from this moment on.
+2. **The tag push does not trigger `release.yml`.** The ref was written with
+   GITHUB_TOKEN, and GitHub's recursion guard suppresses workflow triggers for
+   token-pushed refs. This is unchanged by draft-first and is why the cycle
+   below is manual; fixing the guard itself is a separate job.
+3. **Cycle the tag** (command above, preflight GREEN first). This is the push
+   that starts the build. The cycle re-drafts the release — harmless now.
+4. **`release.yml` builds (~6 min)**, verifies the artifact shapes and the
+   3-binary count, generates SHA256SUMS, uploads, and **undrafts as its final
+   step** (`gh release edit "$TAG" --draft=false --latest`). If any earlier
+   step fails, the release stays a draft and `latest` never moves.
+5. **Verify** — the check below is no longer a repair step, it is the
+   post-release proof that the automated undraft ran:
+
+```bash
+gh release view vX.Y.Z --json isDraft,assets -q '{draft: .isDraft, assets: [.assets[].name]}'
+```
+
+Expected: `draft: false` with four asset names (three binaries + SHA256SUMS).
+A release still showing `isDraft: true` means the build did not reach its last
+step — read the run, do not hand-publish it, because hand-publishing a release
+whose assets never attached recreates exactly the defect this design removed.
 
 Single-watcher rule (shared gh auth): ONE `gh run watch -i 60` per run,
 fleet-wide; parallel 3s polls exhausted the API mid-release once already.
@@ -173,6 +215,14 @@ gh run view <run-id> -q '.headSha + " " + .workflowName'   # quote both with the
 gh pr list --state open            # rolling release PR ("chore(main): release …")
 gh run list --workflow=release     # release builds after a tag lands
 gh api repos/AI-Substrate/flowspace3/releases/latest -q .assets[].name   # 4 triple-named assets
+
+# Draft-first acceptance, run DURING a build window (the negative check first):
+#   latest must still be the PREVIOUS release, and still downloadable.
+gh api repos/AI-Substrate/flowspace3/releases/latest -q .tag_name
+curl -sIL -o /dev/null -w '%{http_code}\n' \
+  https://github.com/AI-Substrate/flowspace3/releases/latest/download/flowspace3-aarch64-apple-darwin
+# expect: the previous tag, and 200 — never the tag being built, never 404.
+gh release view vX.Y.Z --json isDraft -q .isDraft   # expect true while building
 curl -fsSL https://raw.githubusercontent.com/AI-Substrate/flowspace3/main/install.sh | sh
 flowspace3 --version
 ```

@@ -5,7 +5,8 @@
       "release-type": "simple",
       "include-component-in-tag": false,
       "include-v-in-tag": true,
-      "draft": false,
+      "draft": true,
+      "force-tag-creation": true,
       "prerelease": false,
       "extra-files": [
         {

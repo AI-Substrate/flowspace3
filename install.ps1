@@ -45,7 +45,35 @@ New-Item -ItemType Directory -Force -Path $DestDir | Out-Null
 $Tmp = New-Item -ItemType Directory -Force -Path ([System.IO.Path]::GetTempPath() + [System.Guid]::NewGuid())
 try {
     Write-Host "fetching $Asset ..."
-    Invoke-WebRequest -Uri "$Base/$Asset" -OutFile "$Tmp/flowspace3.exe"
+    # Twin of install.sh's honest-failure branch (w-release-window): a missing
+    # asset must say WHY, not surface a raw web exception. Reachable only once
+    # $WindowsPublished flips, but it flips with the message already correct.
+    try {
+        Invoke-WebRequest -Uri "$Base/$Asset" -OutFile "$Tmp/flowspace3.exe"
+    } catch {
+        $status = $_.Exception.Response.StatusCode
+        if ("$status" -eq 'NotFound' -or "$($status.value__)" -eq '404') {
+            Write-Error @"
+No flowspace3 binary at $Base/$Asset (HTTP 404).
+
+Most likely a release is publishing right now: the binaries are built and
+attached a few minutes after the release itself appears. Wait a few minutes
+and run this installer again.
+
+If it keeps failing, check that a release carries an asset for $Triple:
+  https://github.com/$Repo/releases
+"@
+        } else {
+            Write-Error @"
+Download failed for $Asset : $($_.Exception.Message)
+  url: $Base/$Asset
+
+This looks like a network or proxy problem rather than a missing release.
+Releases are listed at https://github.com/$Repo/releases
+"@
+        }
+        exit 1
+    }
     Move-Item -Force "$Tmp/flowspace3.exe" "$DestDir/flowspace3.exe"
     Write-Host "installed: $DestDir\flowspace3.exe"
     Write-Host "note: add $DestDir to your PATH to use it from any shell."
