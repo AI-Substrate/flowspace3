@@ -760,6 +760,7 @@ fn unknown_instance(
 /// [indexing]
 /// summary_min_lines = 10
 /// debounce_seconds = 10
+/// turn_summary_min_bytes = 256
 /// worker_concurrency = 4
 /// summarize_lane = 32
 /// embed_lane = 10
@@ -769,6 +770,21 @@ fn unknown_instance(
 pub struct IndexingConfig {
     /// Size floor for per-element LLM summaries, in lines (PRD req 32).
     pub summary_min_lines: u32,
+
+    /// Size floor for per-TURN LLM summaries, in bytes (workshop 005).
+    ///
+    /// Bytes, not lines, and that is not an inconsistency with
+    /// `summary_min_lines` above — it is the same question asked of a different
+    /// shape. Code is laid out in lines and a ten-line function is a real unit
+    /// of meaning. A turn occupies exactly one position in a sequence, so a
+    /// line floor could not tell a five-word "yes, ship it" from the same turn
+    /// carrying a 4KB tool result. Bytes can.
+    ///
+    /// Below the floor a turn is embedded raw and never summarised: a five-word
+    /// turn does not earn an LLM call, and its raw text is already its own
+    /// display form. 256 is workshop 005's sketch, kept until something
+    /// measures better.
+    pub turn_summary_min_bytes: usize,
     /// How long a dirty file must settle before processing (PRD req 29).
     pub debounce_seconds: u64,
     /// How many jobs the runner claims at once.
@@ -840,6 +856,13 @@ impl IndexingConfig {
                 "summary_min_lines = 10",
             ));
         }
+        if self.turn_summary_min_bytes == 0 {
+            problems.push(Problem::file(
+                "indexing.turn_summary_min_bytes",
+                "must be at least 1 — a floor of zero would summarise every \"ok\" ever typed",
+                "turn_summary_min_bytes = 256",
+            ));
+        }
         if self.worker_concurrency == 0 {
             problems.push(Problem::file(
                 "indexing.worker_concurrency",
@@ -867,6 +890,7 @@ impl IndexingConfig {
 impl Default for IndexingConfig {
     fn default() -> Self {
         Self {
+            turn_summary_min_bytes: 256,
             summary_min_lines: 10,
             debounce_seconds: 10,
             worker_concurrency: 4,

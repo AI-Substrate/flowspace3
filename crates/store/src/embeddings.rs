@@ -40,7 +40,7 @@ impl SourceKind {
         }
     }
 
-    fn from_str(value: &str) -> Result<Self, StoreError> {
+    pub(crate) fn from_str(value: &str) -> Result<Self, StoreError> {
         match value {
             "raw" => Ok(SourceKind::Raw),
             "smart" => Ok(SourceKind::Smart),

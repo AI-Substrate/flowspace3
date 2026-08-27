@@ -95,11 +95,12 @@
           "id": "ph-4ec8",
           "title": "Daemon: intake endpoint + enrichment through existing lanes",
           "brief": "The daemon half: a POST /conversations intake endpoint (append-friendly, idempotent on conversation_id+turn_no, payload policy ENFORCED at intake -- 512B output heads, write-family path+length, per workshop 005), enrichment enqueue through the EXISTING summarize/embed lanes with the size gate, and proof that remove/gc leave conversations intact while conversation content follows normal three-level GC.",
-          "state": "unchecked",
+          "state": "checked",
           "depends_on": [
             "ph-4793"
           ],
-          "tasks": "assets/tasks/phase-2/tasks.dd.json#tasks"
+          "tasks": "assets/tasks/phase-2/tasks.dd.json#tasks",
+          "note": "Landed in PR #31 (310ac0e, ed0d660) stacked on phase 1. Gate green except the known seal-caused config_loading failure. Carried an unplanned production fix: a phase-2 test exposed that level-0 GC deleted every pending embed job (payload->>raw_hash is NULL for a batch job), silently leaving content unsearchable; fixed across both vector spaces with a schema-derived boot recovery sweep, ruled in by o-prime as belonging to this PR."
         },
         {
           "id": "ph-2a45",

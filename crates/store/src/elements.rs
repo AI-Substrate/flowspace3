@@ -189,7 +189,7 @@ fn assemble(
 /// it from `raw_text`, and deriving it is what makes "the hash changed" mean
 /// "the text changed". Reading the stored copy instead would let a wrong row
 /// pass itself off as right.
-fn element_from_row(row: &PgRow) -> Result<Element, StoreError> {
+pub(crate) fn element_from_row(row: &PgRow) -> Result<Element, StoreError> {
     let kind: String = row.try_get("kind")?;
     Ok(Element::new(
         kind_from_str(&kind)?,

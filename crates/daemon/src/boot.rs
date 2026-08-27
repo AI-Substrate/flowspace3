@@ -34,6 +34,24 @@ use crate::{config, http, logging};
 /// being true.
 const RECONCILE_EVERY_SECONDS: u64 = 5;
 
+/// How much missing-vector backlog one boot re-queues.
+///
+/// A ceiling rather than "everything", because the sweep derives its backlog
+/// from the whole content layer: an index that has been running without this
+/// fix could answer with tens of thousands of rows, and turning a daemon start
+/// into a queue flood is its own outage. Two thousand is a few minutes of
+/// batched embedding work, and the sweep runs at EVERY boot — so a large
+/// backlog heals across restarts instead of in one alarming burst.
+const MISSING_VECTOR_SWEEP: i64 = 2_000;
+
+/// How much missing-summary backlog one boot re-queues.
+///
+/// Smaller than the vector ceiling, because these are LLM calls rather than
+/// batched embeddings: one job is one chat request, and a boot that queued
+/// thousands would turn a restart into a bill. Five hundred is a slow, honest
+/// trickle, and the sweep runs at every boot.
+const MISSING_SUMMARY_SWEEP: i64 = 500;
+
 /// Run the daemon until it is asked to stop.
 ///
 /// Must be called from OUTSIDE a Tokio runtime: it builds its own, because the
@@ -233,6 +251,56 @@ async fn serve(configuration: Config, address: String, logging: Logging) -> Resu
              cover them"
         ),
         Err(error) => tracing::error!(%error, "cannot requeue failed enrichment jobs"),
+    }
+
+    // Re-enqueue vectors that were never bought, also BEFORE the runner starts.
+    //
+    // The recovery half of this binary's level-0 GC fix. Until it, the
+    // unreferenced-jobs predicate read every `embed` job as garbage — an embed
+    // job carries a BATCH as `items` and has no `raw_hash` field for the
+    // predicate to find — so any batch still pending when a pass landed was
+    // deleted. GC runs at boot and on a cadence, so a daemon restarted mid-scan
+    // with a full queue lost exactly the work it had not finished.
+    //
+    // Nothing recorded the loss. The elements are there, the summaries are
+    // there, `status` reports an empty queue, and the content is simply absent
+    // from every semantic search. The jobs cannot come back on their own
+    // either: a scan of an unchanged tree enqueues nothing.
+    //
+    // So the backlog is re-derived from the SCHEMA — content with no vector row
+    // — which is the same self-healing shape decision D6 gives summaries, and
+    // why the fix arriving as a binary is enough with no repair verb to find.
+    // Bounded per boot: a long-neglected index heals over several starts rather
+    // than queueing its whole content layer at once.
+    match crate::enrich::requeue_missing_vectors(&state, MISSING_VECTOR_SWEEP).await {
+        Ok(0) => {}
+        Ok(queued) => tracing::warn!(
+            queued,
+            "re-queued embeddings that were never bought — a previous GC pass reaped their \
+             jobs before they ran; this content was not searchable until now"
+        ),
+        Err(error) => tracing::error!(%error, "cannot re-queue missing embeddings"),
+    }
+
+    // And the same reconciliation one shelf up. `missing_enrichment` — the
+    // decision-D6 sweep written for exactly this — existed with NO production
+    // caller: only tests ever ran it, so a summary lost to the reaped-jobs
+    // defect, to a crash between parse and enrichment, or to a policy change
+    // had no way back at all.
+    //
+    // Quieter than the vector sweep by design, and the difference is real: an
+    // element with no summary still has its raw vector, so search can still
+    // reach it — it is thinner, not invisible. It is still spend that was
+    // authorised and never delivered, and nothing else would ever notice,
+    // because a scan of an unchanged tree enqueues nothing.
+    match crate::enrich::requeue_missing_summaries(&state, MISSING_SUMMARY_SWEEP).await {
+        Ok(0) => {}
+        Ok(queued) => tracing::info!(
+            queued,
+            "re-queued summaries the content layer was missing; enrichment is derived from \
+             the schema, so this settles on its own once they land"
+        ),
+        Err(error) => tracing::error!(%error, "cannot re-queue missing summaries"),
     }
 
     // What logging managed to do, told to the person driving (req-0059).

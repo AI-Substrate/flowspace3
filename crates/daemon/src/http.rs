@@ -24,6 +24,7 @@ use serde::{Deserialize, Serialize};
 use fs3_core::Port;
 
 use crate::answer::{Answer, IntoFailure, failed, ok};
+use crate::conversations::{IntakeReport, IntakeRequest};
 use crate::read::{GetRequest, GetResult, TreeRequest, TreeResult};
 use crate::roots::{RootReport, RootRequest};
 use crate::search::{SearchRequest, SearchResults};
@@ -58,6 +59,7 @@ pub fn router(state: AppState) -> Router {
         .route("/scan", post(scan))
         .route("/remove", post(remove))
         .route("/gc", post(gc))
+        .route("/conversations", post(conversations))
         .route("/search", get(search))
         .route("/get", get(get_address))
         .route("/tree", get(tree))
@@ -83,6 +85,27 @@ async fn remove(
     match crate::remove::remove(&state, &request.path).await {
         Ok(report) => {
             let next = crate::remove::next_after_remove(&report);
+            ok(&state, COMMAND, report)
+                .await
+                .0
+                .with_next_action(next)
+                .into()
+        }
+        Err(failure) => failed(&state, COMMAND, failure).await,
+    }
+}
+
+async fn conversations(
+    State(state): State<AppState>,
+    Json(request): Json<IntakeRequest>,
+) -> Answer<IntakeReport> {
+    const COMMAND: &str = "conversation import";
+    if let Err(failure) = crate::schema::guard(&state.db).await {
+        return failed(&state, COMMAND, failure).await;
+    }
+    match crate::conversations::intake(&state, request).await {
+        Ok(report) => {
+            let next = crate::conversations::next_after_intake(&report);
             ok(&state, COMMAND, report)
                 .await
                 .0
