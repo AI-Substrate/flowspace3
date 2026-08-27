@@ -1,0 +1,28 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "CLI: import verb + conversation query surface",
+        "slug": "phase-3",
+        "status": "draft",
+        "summary": ""
+      }
+    },
+    {
+      "name": "summary",
+      "value": "The user surface. Key research fact: source_kind is the VECTOR-SPACE axis (raw|smart, CHECK-constrained, job-parsed) -- conversation is NOT a third value on it but an orthogonal content-type filter on elements.kind. The CLI keeps workshop 003s one user-facing --source axis by MAPPING conversation to that filter. Coordinate with w-get-verb (in flight): it builds the conv: dispatch arm returning NOT-IMPLEMENTED; this phase replaces that arm."
+    },
+    {
+      "name": "tasks",
+      "value": []
+    },
+    {
+      "name": "done_when",
+      "value": {}
+    }
+  ]
+}

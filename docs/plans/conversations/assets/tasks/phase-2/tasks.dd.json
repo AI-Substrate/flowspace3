@@ -1,0 +1,28 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Daemon: intake endpoint + enrichment through existing lanes",
+        "slug": "phase-2",
+        "status": "draft",
+        "summary": ""
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Daemon intake + enrichment. Research facts that shape this: a new POST endpoint is four files (http.rs route+handler, domain module, cli client, cli main); SummarizeJob/EmbedJob carry text inline and lanes are provider-keyed so conversation jobs ride with ZERO lane config; EmbedJob.source stays raw|smart (vector-space axis untouched)."
+    },
+    {
+      "name": "tasks",
+      "value": []
+    },
+    {
+      "name": "done_when",
+      "value": {}
+    }
+  ]
+}

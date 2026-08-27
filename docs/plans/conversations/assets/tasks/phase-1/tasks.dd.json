@@ -1,0 +1,28 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Store: conversation tables + turn payload + windowed reads",
+        "slug": "phase-1",
+        "status": "draft",
+        "summary": ""
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Store layer for conversations: two ref-layer tables per workshop 005, elements as the retrieval entry point (research-proven mandatory: search, spend guard and GC all root at elements), and the reference predicates taught that a conversation is a root of reference."
+    },
+    {
+      "name": "tasks",
+      "value": []
+    },
+    {
+      "name": "done_when",
+      "value": {}
+    }
+  ]
+}
