@@ -102,6 +102,50 @@ enum Command {
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
     },
+    /// Read one address in full: an element with its children, or a whole file.
+    ///
+    /// The other half of the query surface (workshop 003). `search` finds an
+    /// address; this reads what is at it — from the INDEX, so it answers for
+    /// every registered repository, not only the one you are standing in.
+    Get {
+        /// `el:<repo>/<path>::<name>`, as printed by every search hit.
+        address: String,
+        /// How many levels of children to outline. Default 1.
+        #[arg(long, value_name = "N")]
+        depth: Option<u32>,
+        /// The first line of the element to read, when several share an
+        /// address (`struct Rect` and `impl Rect` are one address, two
+        /// elements).
+        #[arg(long, value_name = "LINE")]
+        span: Option<u32>,
+        /// Resolve a repo-less address in this repository, or `all`.
+        #[arg(long, value_name = "IDENTITY")]
+        repo: Option<String>,
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
+    /// Browse what is indexed: repositories, directories, files, or one file's
+    /// declarations.
+    ///
+    /// The navigation companion to `get`. With no target it shows where you
+    /// are standing; with a path or an address it shows what is under it.
+    Tree {
+        /// An `el:` address, a repo-relative path, or an absolute path.
+        target: Option<String>,
+        /// How many levels to show. Default 2.
+        #[arg(long, value_name = "N")]
+        depth: Option<u32>,
+        /// How many files to list before reporting a count instead.
+        #[arg(long, value_name = "N")]
+        limit: Option<i64>,
+        /// Browse this repository, or `all`.
+        #[arg(long, value_name = "IDENTITY")]
+        repo: Option<String>,
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
     /// Diagnose the stack and repair what can be repaired.
     ///
     /// Walks engine -> stack -> database -> schema, starting the compose stack,
@@ -285,7 +329,39 @@ async fn run(command: Command) -> Result<ExitCode> {
             push(&mut params, "limit", limit.map(|v| v.to_string()));
             push(&mut params, "min_score", min_score.map(|v| v.to_string()));
             push(&mut params, "source", source);
+            push(&mut params, "cwd", here());
             Ok(emit(&client.search(&params).await))
+        }
+        Command::Get {
+            address,
+            depth,
+            span,
+            repo,
+            daemon_url,
+        } => {
+            let client = client_for(daemon_url)?;
+            let mut params = vec![("address".to_string(), address)];
+            push(&mut params, "depth", depth.map(|v| v.to_string()));
+            push(&mut params, "span", span.map(|v| v.to_string()));
+            push(&mut params, "repo", repo);
+            push(&mut params, "cwd", here());
+            Ok(emit(&client.get(&params).await))
+        }
+        Command::Tree {
+            target,
+            depth,
+            limit,
+            repo,
+            daemon_url,
+        } => {
+            let client = client_for(daemon_url)?;
+            let mut params = Vec::new();
+            push(&mut params, "address", target);
+            push(&mut params, "depth", depth.map(|v| v.to_string()));
+            push(&mut params, "limit", limit.map(|v| v.to_string()));
+            push(&mut params, "repo", repo);
+            push(&mut params, "cwd", here());
+            Ok(emit(&client.tree(&params).await))
         }
         Command::Doctor {
             config_dir: _,
@@ -385,6 +461,23 @@ fn display(path: &PathBuf) -> String {
         .unwrap_or_else(|_| path.clone())
         .to_string_lossy()
         .to_string()
+}
+
+/// Where the caller is standing, absolute, for workshop 003's D6 scoping.
+///
+/// The daemon has a working directory of its own and it is never the user's,
+/// so a query that means "this repository" has to carry the directory with it.
+/// Sent on every query verb; a directory that cannot be read (deleted out from
+/// under the shell) simply omits it, and the query answers unscoped rather
+/// than failing over a detail it can live without.
+fn here() -> Option<String> {
+    let cwd = std::env::current_dir().ok()?;
+    Some(
+        std::fs::canonicalize(&cwd)
+            .unwrap_or(cwd)
+            .to_string_lossy()
+            .to_string(),
+    )
 }
 
 fn client_for(override_url: Option<String>) -> Result<DaemonClient> {

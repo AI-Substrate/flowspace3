@@ -170,12 +170,20 @@ impl Code {
     ///
     /// Mechanical, from the code's own spelling, so an endpoint author makes
     /// zero judgment calls: `*-INVALID*` is the caller's fault (400), a
-    /// `*-NOT-FOUND` is missing (404), an `*-UNAVAILABLE` is a dependency that
-    /// may come back (503), and anything else is ours (500).
+    /// `*-NOT-FOUND` is missing (404), a `*-NOT-IMPLEMENTED` is a feature this
+    /// build does not have (501), an `*-UNAVAILABLE` is a dependency that may
+    /// come back (503), and anything else is ours (500).
+    ///
+    /// The 501 arm exists because the alternative was worse than untidy: a
+    /// valid `conv:` address answered with 500 tells a caller that fs3 broke,
+    /// when what actually happened is that the feature is not built yet. One
+    /// arm keeps the mapping mechanical AND keeps the answer honest.
     #[must_use]
     pub fn http_status(&self) -> u16 {
         if self.code.ends_with("-NOT-FOUND") {
             404
+        } else if self.code.ends_with("-NOT-IMPLEMENTED") {
+            501
         } else if self.code.ends_with("-UNAVAILABLE") {
             503
         } else if self.code.contains("-INVALID") {
@@ -364,6 +372,51 @@ pub const QUERY_NO_INDEX: Code = Code::new(
     false,
 );
 
+/// The address is well formed but nothing in the index answers to it.
+pub const QUERY_NOT_FOUND: Code = Code::new(
+    "FS3-E-QUERY-NOT-FOUND",
+    Area::Query,
+    "No repository, file or element in the index answers to the address that was asked for.",
+    "check the address against a search hit — `flowspace3 search \"<question>\"` prints the \
+     address of everything it returns, and `flowspace3 tree <repo-or-path>` lists what is \
+     actually indexed under a path.",
+    false,
+);
+
+/// The address cannot be read as an address at all.
+pub const QUERY_INVALID_ADDRESS: Code = Code::new(
+    "FS3-E-QUERY-INVALID-ADDRESS",
+    Area::Query,
+    "The address does not parse: it must be `el:<repo>/<path>::<name>` or `conv:<guid>`.",
+    "copy the `address` field from a search hit rather than composing one by hand; \
+     `flowspace3 search \"<question>\"` prints it for every result.",
+    false,
+);
+
+/// The address is real and matches more than one thing.
+///
+/// Not a defect: `struct Rect` and `impl Rect` are two elements at ONE address
+/// by design (workshop 002 — `(address, span_start)` is what identifies an
+/// element), and a path that exists in two repositories is two files.
+pub const QUERY_INVALID_AMBIGUOUS: Code = Code::new(
+    "FS3-E-QUERY-INVALID-AMBIGUOUS",
+    Area::Query,
+    "The address matches more than one element or repository, so there is no single answer.",
+    "narrow it: `--span <line>` picks one of several elements sharing an address (the \
+     candidates are listed in `details`), and `--repo <identity>` picks one repository.",
+    false,
+);
+
+/// The address names a corpus this build cannot read yet.
+pub const QUERY_NOT_IMPLEMENTED: Code = Code::new(
+    "FS3-E-QUERY-NOT-IMPLEMENTED",
+    Area::Query,
+    "The address is valid but names a corpus this build does not store yet — conversations.",
+    "nothing to fix: conversation storage is not in this version. Element addresses (`el:…`) \
+     work today — `flowspace3 search \"<question>\"` returns them.",
+    false,
+);
+
 /// The daemon is not answering.
 pub const DAEMON_UNAVAILABLE: Code = Code::new(
     "FS3-E-DAEMON-UNAVAILABLE",
@@ -436,6 +489,10 @@ pub const ALL: &[Code] = &[
     QUEUE_JOB_FAILED,
     QUERY_INVALID,
     QUERY_NO_INDEX,
+    QUERY_NOT_FOUND,
+    QUERY_INVALID_ADDRESS,
+    QUERY_INVALID_AMBIGUOUS,
+    QUERY_NOT_IMPLEMENTED,
     DAEMON_UNAVAILABLE,
     UPDATE_UNREACHABLE,
     UPDATE_NO_INSTALL_PATH,

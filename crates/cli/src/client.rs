@@ -151,15 +151,25 @@ impl DaemonClient {
 
     /// Read roots and queue depth.
     pub async fn status(&self) -> Envelope {
-        self.get("status", "/status", &[]).await
+        self.get_json("status", "/status", &[]).await
     }
 
     /// Ask a question.
     pub async fn search(&self, query: &[(String, String)]) -> Envelope {
-        self.get("search", "/search", query).await
+        self.get_json("search", "/search", query).await
     }
 
-    async fn get(&self, command: &str, path: &str, query: &[(String, String)]) -> Envelope {
+    /// Read one address in full.
+    pub async fn get(&self, query: &[(String, String)]) -> Envelope {
+        self.get_json("get", "/get", query).await
+    }
+
+    /// Browse indexed structure.
+    pub async fn tree(&self, query: &[(String, String)]) -> Envelope {
+        self.get_json("tree", "/tree", query).await
+    }
+
+    async fn get_json(&self, command: &str, path: &str, query: &[(String, String)]) -> Envelope {
         let url = format!("{}{path}", self.base_url);
         let response = self.http.get(&url).query(query).send().await;
         self.envelope(command, response).await

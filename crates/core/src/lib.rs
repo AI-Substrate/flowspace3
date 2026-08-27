@@ -9,6 +9,7 @@
 //! implementation exists or is firmly planned. fs3 v1 has exactly two ports:
 //! [`Embedder`] and [`Summarizer`]. A third is stop-and-ask.
 
+pub mod address;
 pub mod catalog;
 pub mod classify;
 pub mod config;
@@ -23,6 +24,10 @@ pub mod skew;
 pub mod tokens;
 pub mod update;
 
+pub use address::{
+    Address, AddressError, ConversationAddress, ElementAddress, ElementParts, element_address,
+    element_path,
+};
 pub use catalog::{Area, Code};
 pub use classify::{category_hint, classify, is_declaration_shaped};
 pub use config::{

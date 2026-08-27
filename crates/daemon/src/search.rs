@@ -28,6 +28,7 @@ use fs3_store::{SearchFilters, SearchHit, SourceKind};
 use serde::{Deserialize, Serialize};
 
 use crate::runner::fail;
+use crate::scope::Scope;
 use crate::wiring::AppState;
 
 /// What a caller asks for.
@@ -35,9 +36,14 @@ use crate::wiring::AppState;
 pub struct SearchRequest {
     /// The question.
     pub q: String,
-    /// Restrict to one repository identity.
+    /// Restrict to one repository identity, or `all` to widen back to every
+    /// repository. Absent means "wherever the caller is standing" (D6).
     #[serde(default)]
     pub repo: Option<String>,
+    /// The caller's working directory, which is what D6 scopes by. The daemon
+    /// has one of its own and it is never the caller's, so it has to be sent.
+    #[serde(default)]
+    pub cwd: Option<String>,
     /// Restrict to paths matching this glob.
     #[serde(default)]
     pub path: Option<String>,
@@ -105,7 +111,11 @@ const SNIPPET_LINES: usize = 5;
 /// [`catalog::QUERY_INVALID`] for a request that cannot be answered as asked,
 /// [`catalog::PROVIDER_FAILED`] when the query cannot be embedded, and store
 /// failures mapped by their own codes.
-pub async fn search(state: &AppState, request: &SearchRequest) -> Result<SearchResults, Failure> {
+pub async fn search(
+    state: &AppState,
+    request: &SearchRequest,
+    scope: &Scope,
+) -> Result<SearchResults, Failure> {
     let query = request.q.trim();
     if query.is_empty() {
         return Err(Failure::new(
@@ -148,8 +158,10 @@ pub async fn search(state: &AppState, request: &SearchRequest) -> Result<SearchR
 
     // The repo filter selects the model as well as the rows: a vector from
     // another model's space is not a nearer or further hit, it is a meaningless
-    // comparison.
-    let repo_key = request.repo.clone().unwrap_or_default();
+    // comparison. It comes from the SCOPE rather than the request, so a search
+    // run inside a repository with its own embedder is answered by that
+    // embedder — the same rule whether the repository was named or inferred.
+    let repo_key = scope.repo.clone().unwrap_or_default();
     let model_key = state.embedder_key(&repo_key);
     let vector = state
         .embedder_for(&repo_key)
@@ -165,7 +177,7 @@ pub async fn search(state: &AppState, request: &SearchRequest) -> Result<SearchR
         })?;
 
     let filters = SearchFilters {
-        repo: request.repo.clone(),
+        repo: scope.repo.clone(),
         path: request.path.as_deref().map(glob_to_like),
         source,
         max_distance,
@@ -267,15 +279,13 @@ fn render(hit: &SearchHit) -> Hit {
 
 /// `el:<repo>/<address>` — workshop 003's element address.
 ///
-/// The element's own `address` already begins with its repo-relative path, so
-/// the repo identity is the only thing prepended. A hit with no live path keeps
-/// a bare `el:<address>`: the content is real even when the checkout that held
-/// it is gone, and inventing a repository for it would be a lie.
+/// Rendered by `fs3_core::element_address`, the same function `get` and `tree`
+/// resolve against, so what search PRINTS and what the read surface ACCEPTS
+/// cannot drift apart. A hit with no live path keeps a bare `el:<address>`:
+/// the content is real even when the checkout that held it is gone, and
+/// inventing a repository for it would be a lie.
 fn address_of(hit: &SearchHit) -> String {
-    match &hit.identity {
-        Some(identity) => format!("el:{identity}/{}", hit.similar.element.address),
-        None => format!("el:{}", hit.similar.element.address),
-    }
+    fs3_core::element_address(hit.identity.as_deref(), &hit.similar.element.address)
 }
 
 /// The first few lines of an element's text.
