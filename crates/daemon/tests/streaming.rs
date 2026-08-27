@@ -228,7 +228,7 @@ async fn remaining_counts_live_work_and_ignores_settled_history() {
         .await
         .expect("claims")
         .expect("a job is ready");
-    fs3_store::fail_job(&state.db, job.id, "no")
+    fs3_store::fail_job(&state.db, job.id, "no", true)
         .await
         .expect("fails");
     assert_eq!(

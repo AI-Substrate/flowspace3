@@ -417,7 +417,7 @@ async fn failing_a_job_records_why() {
         .expect("claim")
         .expect("ready");
 
-    fail_job(&pool, job.id, "provider returned 429")
+    fail_job(&pool, job.id, "provider returned 429", false)
         .await
         .expect("fail");
 
@@ -429,6 +429,15 @@ async fn failing_a_job_records_why() {
             .expect("read the settled row");
     assert_eq!(state, "failed");
     assert_eq!(last_error.as_deref(), Some("provider returned 429"));
+
+    // A 429 is not the job's fault and not a defect in it, so the row stays
+    // revivable: `requeue_failed` is allowed to wake it after a fix.
+    let terminal: bool = sqlx::query_scalar("SELECT terminal FROM jobs WHERE id = $1")
+        .bind(job.id)
+        .fetch_one(&pool)
+        .await
+        .expect("read the terminal flag");
+    assert!(!terminal, "a retryable failure must stay revivable");
 
     database.destroy(pool).await;
 }
@@ -578,6 +587,7 @@ async fn similarity_ranks_nearest_first_and_resolves_back_to_elements() {
             source_hash: element.raw_hash(),
             source_kind: SourceKind::Raw,
             vector,
+            truncated: false,
         })
         .collect();
     put_embeddings(&pool, EMBEDDER, &raw)
@@ -637,6 +647,7 @@ async fn similarity_ranks_nearest_first_and_resolves_back_to_elements() {
             source_hash: &content_hash(summary.text.as_bytes()),
             source_kind: SourceKind::Smart,
             vector: &summary_vector,
+            truncated: false,
         }],
     )
     .await
@@ -724,6 +735,7 @@ async fn the_filtered_search_surface_carries_extras_and_a_live_path() {
             source_hash: &content_hash(summary.text.as_bytes()),
             source_kind: SourceKind::Smart,
             vector: &vector,
+            truncated: false,
         }],
     )
     .await
@@ -771,6 +783,7 @@ async fn a_vector_of_the_wrong_width_is_refused_by_name() {
             source_hash: &content_hash(b"anything"),
             source_kind: SourceKind::Raw,
             vector: &narrow,
+            truncated: false,
         }],
     )
     .await
