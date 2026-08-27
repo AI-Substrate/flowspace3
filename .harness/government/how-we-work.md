@@ -135,6 +135,42 @@ at packet end. Section 8's shared-tree discipline is HISTORICAL — the swept-st
 class died with the shared tree — but its non-tree rules survive (secrets/`.claude/` never
 committed, file-scoped adds remain good hygiene).
 
+## 9b. Orchestrating pij coder seats — the exact mechanics (o-prime's core craft)
+
+The lifecycle every packet follows; skipping a step has bitten us every time it was tried.
+
+1. **Spawn** (Jordan's chosen shape): `pij spawn --harness pi --bin omp --model
+   github-copilot/claude-opus-5 --effort high --task "<packet>: <one line>"` — then
+   IMMEDIATELY `tmux break-pane -s %<pane> -n <packet-name>` (own window, named for the
+   WORK). Jordan ruled 2026-08-27 to SPREAD work: new domains get NEW seats; re-open a
+   seat only for work inside its established domain (context-single-responsibility).
+2. **Canary before anything**: the ready-ping arrives as a pij message with
+   `{spawnId, model, cwd}`; reply demanding id/spawnId/model/cwd/CANARY-OK back, verify
+   every field. The pij#19 phantom-alias defect mints extra registry ids off one
+   process — address ONLY the canaried id, never message or close an alias, and treat
+   post-close alias tombstones as noise.
+3. **Roster** the seat (worker-roster.md, o-prime single-writer) — the ownership
+   authority, since every seat commits under Jordan's git identity.
+4. **Dispatch = brief file + pointer message.** Brief anatomy: what Jordan RULED
+   (dated) · current state written to be FALSIFIABLE in one read · constraints WITH
+   reasons · numbered deliverables · PR-era done-bar · out of scope. End the dispatch
+   with "ack with your read before coding."
+5. **The ack is the control point.** Strong seats correct the brief at ack time with
+   evidence (source-reads, schema-reads); rule on each point by number, fast. A brief
+   correction backed by evidence outranks the brief.
+6. **Edges + evidence**: workers report at work edges and stop-and-ask on surprises;
+   "gate green" claims require BOTH the check-suite existing for the head sha AND the
+   verdict (a never-fired CI run reads as "pending" forever). One watcher per CI run,
+   60s interval, in a background task — never foreground sleep chains.
+7. **Merge is o-prime's**: read the diff against the brief (green is necessary,
+   merged is a decision), squash-merge, verify main, then have the seat tidy its
+   worktree and stand down adopted-idle with successor context recorded in its
+   roster row. Governance edits (roster/PRD/rulings) ride their own oprime/* branch PRs.
+8. **Wire discipline**: pointer delivery for anything long; single-quote message
+   sends (backticks and $() in double quotes are EATEN by the shell — it has damaged
+   commits on main); `pij report now` at your own edges; `harness observe` every
+   friction the moment it bites; the observe drain is o-prime-owned, always.
+
 ## 10. What a new agent should expect, in one paragraph
 
 You'll get a brief with a fence and a report-back contract; read the named doctrine first; ack
