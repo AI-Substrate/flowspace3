@@ -1,0 +1,14 @@
+crates/daemon/src/update.rs
+  h_9e71e8b09f7cf2 489-511,516,535-565
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "52732f9cd08cf0dc9cb2041f33dccfa39dca23ee",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
