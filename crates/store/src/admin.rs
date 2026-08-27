@@ -78,6 +78,21 @@ impl SchemaStatus {
             [first, .., last] => format!("{first:04}-{last:04}"),
         }
     }
+
+    /// This status as the domain's skew type, for a binary reporting
+    /// `binary_version`.
+    ///
+    /// The decision and the words live in [`fs3_core::skew`]; this is the
+    /// adapter that fills them in, so boot, doctor and the message producer
+    /// cannot phrase the same finding three different ways.
+    #[must_use]
+    pub fn skew(&self, binary_version: &str) -> fs3_core::SchemaSkew {
+        fs3_core::SchemaSkew {
+            binary_version: binary_version.to_string(),
+            bundled_highest: self.embedded.last().copied(),
+            extra: self.ahead(),
+        }
+    }
 }
 
 /// Compare the embedded migrations against what the database has applied.
@@ -256,6 +271,56 @@ pub fn is_missing_database(error: &StoreError) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn status(embedded: &[i64], applied: &[i64]) -> SchemaStatus {
+        SchemaStatus {
+            embedded: embedded.to_vec(),
+            applied: applied.to_vec(),
+            missing: embedded
+                .iter()
+                .filter(|version| !applied.contains(version))
+                .copied()
+                .collect(),
+        }
+    }
+
+    /// The mapping the whole binary-older-than-database story rests on
+    /// (req-0061): the store measures, `fs3_core::SchemaSkew` decides and
+    /// speaks.
+    #[test]
+    fn a_database_ahead_of_the_binary_becomes_a_skew_carrying_both_sides() {
+        let skew = status(&[1, 2, 3], &[1, 2, 3, 8, 9]).skew("0.1.0");
+
+        assert!(skew.is_skewed());
+        assert_eq!(skew.extra, vec![8, 9]);
+        assert_eq!(skew.bundled_highest, Some(3));
+        assert_eq!(skew.binary_version, "0.1.0");
+    }
+
+    /// The trap this ordering exists to close: a database that is AHEAD has
+    /// nothing missing, so `is_current` is true and every caller that asked
+    /// only that question reported a healthy schema.
+    #[test]
+    fn an_ahead_database_looks_current_which_is_why_skew_is_asked_first() {
+        let ahead = status(&[1, 2], &[1, 2, 8]);
+
+        assert!(ahead.is_current(), "this is the misleading part, not a bug");
+        assert!(
+            ahead.skew("0.1.0").is_skewed(),
+            "and this is what catches it"
+        );
+    }
+
+    #[test]
+    fn a_database_merely_behind_is_not_skewed() {
+        let behind = status(&[1, 2, 3], &[1]);
+
+        assert!(!behind.is_current());
+        assert!(
+            !behind.skew("0.3.0").is_skewed(),
+            "behind is the ordinary case — migrating fixes it"
+        );
+    }
 
     #[test]
     fn maintenance_url_keeps_the_authority_and_swaps_the_database() {

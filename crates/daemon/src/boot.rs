@@ -16,7 +16,7 @@
 
 use std::time::Duration;
 
-use anyhow::{Context, Result, ensure};
+use anyhow::{Context, Result, bail, ensure};
 use fs3_core::{Config, Port, redact_url_password};
 
 use crate::wiring::AppState;
@@ -69,6 +69,25 @@ pub fn run() -> Result<()> {
 async fn serve(configuration: Config, address: String) -> Result<()> {
     let state = AppState::from_config(configuration).context("wiring the composition root")?;
     let database = redact_url_password(&state.config.database.url);
+
+    // BEFORE migrating, ask which direction the disagreement runs. Behind is
+    // the ordinary case and migrating fixes it; AHEAD is not fixable at all by
+    // this process, and sqlx's refusal for it — "migration N was previously
+    // applied but is missing in the resolved migrations" — is its sentence
+    // rather than ours, wrapped below in a `docker compose up -d` steer that is
+    // actively wrong. The store is healthy; the binary is stale (req-0061).
+    match fs3_store::schema_current(&state.db).await {
+        Ok(status) => {
+            let skew = status.skew(env!("CARGO_PKG_VERSION"));
+            if skew.is_skewed() {
+                bail!("{}", skew.explain());
+            }
+        }
+        // Not fatal on its own: the read can fail for the same reasons the
+        // migration below is about to, and that path already reports them with
+        // the connection advice this one must not give.
+        Err(error) => tracing::debug!(%error, "could not compare schema versions before migrating"),
+    }
 
     // The daemon is the single writer, so startup is the only migration point.
     // It is also the only moment where refusing to run is cheaper than running:
@@ -156,6 +175,17 @@ async fn serve(configuration: Config, address: String) -> Result<()> {
         }
         Err(error) => tracing::warn!(%error, "auto-update is unavailable in this process"),
     }
+
+    // Third implementor. Boot already refused a database that was ahead of us,
+    // so this one exists for the case boot cannot see: the store getting ahead
+    // AFTER we started, when a newer `doctor` or a colleague's daemon migrates
+    // it out from under this process (req-0061). Level-triggered, so it says
+    // nothing on a healthy daemon and retracts itself if the situation
+    // resolves.
+    reconcilers.push(Box::new(crate::skew::SchemaSupervisor::new(
+        state.db.clone(),
+        env!("CARGO_PKG_VERSION"),
+    )));
     tokio::spawn(crate::reconcile::run_forever(reconcilers, cadence));
 
     http::serve(state, &address).await

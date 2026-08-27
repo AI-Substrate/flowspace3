@@ -486,14 +486,34 @@ pub fn stage(target: &Path, bytes: &[u8]) -> Result<tempfile::TempPath> {
 /// comparison never would — an asset built for the wrong triple, and a binary
 /// that cannot `exec` at all.
 ///
+/// # `ETXTBSY` is retried, and the mechanism is NOT established
+///
+/// OBSERVED: closing our own write handle (`stage` returns a `TempPath`, not a
+/// `NamedTempFile`) fixed the reproducible case, but a residual one remains on
+/// Linux CI — twelve of thirteen update tests pass and the thirteenth reports
+/// "text file busy" on a file this process has already closed. It has not
+/// recurred on macOS.
+///
+/// SUSPECTED, and deliberately not asserted: `O_CLOEXEC` clears an inherited
+/// descriptor at `exec` rather than at `fork`, so another process forking in
+/// the window where our handle was open would hold a copy until its own `exec`
+/// completes — and Linux refuses `execve` on a file ANY process has open for
+/// writing. A containerised reproduction built to demonstrate exactly that
+/// (400 stage-and-exec cycles against four threads forking continuously)
+/// produced ZERO failures, so the theory is unconfirmed and this comment says
+/// so rather than dressing a guess as a cause.
+///
+/// What IS certain is that the failure is transient: the same bytes at the same
+/// path run correctly moments later. So the probe waits it out rather than
+/// condemning a download it may simply have looked at too early. If the true
+/// mechanism turns out to be something that does NOT clear, this retry costs
+/// one second before reporting exactly what it reports today.
+///
 /// # Errors
 /// When the binary cannot be executed, exits non-zero, or prints something with
 /// no version in it.
 pub fn staged_version(path: &Path) -> Result<String> {
-    let output = std::process::Command::new(path)
-        .arg("--version")
-        .output()
-        .with_context(|| format!("running {} --version", path.display()))?;
+    let output = run_version(path)?;
 
     if !output.status.success() {
         bail!(
@@ -510,6 +530,37 @@ pub fn staged_version(path: &Path) -> Result<String> {
         .next_back()
         .map(str::to_string)
         .ok_or_else(|| anyhow!("{} --version printed nothing", path.display()))
+}
+
+/// How long to keep retrying an `ETXTBSY` before believing it.
+///
+/// Bounded by the length of somebody else's fork-to-exec, which is
+/// microseconds. A second is three orders of magnitude of headroom and still
+/// short enough that a genuinely unrunnable asset is reported promptly.
+const EXEC_PATIENCE: Duration = Duration::from_secs(1);
+
+/// Run `--version`, waiting out a transient "text file busy".
+fn run_version(path: &Path) -> Result<std::process::Output> {
+    let deadline = std::time::Instant::now() + EXEC_PATIENCE;
+    loop {
+        match std::process::Command::new(path).arg("--version").output() {
+            Ok(output) => return Ok(output),
+            Err(error) if is_text_file_busy(&error) && std::time::Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(20));
+            }
+            Err(error) => {
+                return Err(anyhow::Error::new(error)
+                    .context(format!("running {} --version", path.display())));
+            }
+        }
+    }
+}
+
+/// `ETXTBSY` — somebody still has this file open for writing.
+fn is_text_file_busy(error: &std::io::Error) -> bool {
+    // `ErrorKind::ExecutableFileBusy` is unstable, so this asks the raw code.
+    // 26 on both Linux and macOS.
+    error.raw_os_error() == Some(26)
 }
 
 /// Move a staged binary onto `target`, atomically.

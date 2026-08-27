@@ -1069,6 +1069,7 @@ dependencies = [
  "fs3-core",
  "fs3-daemon",
  "fs3-store",
+ "fs3-testkit",
  "reqwest 0.12.28",
  "serde",
  "serde_json",

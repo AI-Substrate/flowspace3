@@ -24,3 +24,10 @@ tokio.workspace = true
 [[bin]]
 name = "fs3-arch-check"
 path = "src/bin/arch_check.rs"
+
+# The `testdb` gate in `harness checks`: refuses a test run that has not been
+# told which database it may write to. A binary rather than a shell one-liner so
+# the refusal text has exactly ONE source (fs3_testkit::refusal).
+[[bin]]
+name = "fs3-test-db-check"
+path = "src/bin/test_db_check.rs"

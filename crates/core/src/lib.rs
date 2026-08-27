@@ -18,6 +18,7 @@ pub mod error;
 pub mod git;
 pub mod messages;
 pub mod ports;
+pub mod skew;
 pub mod update;
 
 pub use catalog::{Area, Code};
@@ -38,4 +39,5 @@ pub use error::{Error, Result};
 pub use git::{BlobChange, ChangedSet, FileBlob, IdentitySource, RepoIdentity, TreeSnapshot, diff};
 pub use messages::{Severity, UserMessage};
 pub use ports::{Embedder, Summarizer, Summary};
+pub use skew::{SCHEMA_SOURCE, SchemaSkew};
 pub use update::{UPDATE_SOURCE, UpdateState, Version, is_upgrade};

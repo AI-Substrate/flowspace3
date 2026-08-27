@@ -212,7 +212,11 @@ external = [
 # you run when the daemon is DOWN, so it cannot be a client of it. Ruled by
 # o-prime 2026-08-26. Every other verb still opens no pool.
 [crates.fs3-cli]
-internal = ["fs3-core", "fs3-daemon", "fs3-store"]
+# `fs3-testkit@dev` is the single gate deciding which database a test may write
+# to. Dev-only by suffix, and centralised for a reason: that decision used to be
+# copy-pasted into three test-support files, and one copy migrated a production
+# database (ruling 2026-08-27).
+internal = ["fs3-core", "fs3-daemon", "fs3-store", "fs3-testkit@dev"]
 external = [
   "anyhow",
   "clap",

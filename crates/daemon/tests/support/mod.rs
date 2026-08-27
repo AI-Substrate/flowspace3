@@ -41,10 +41,13 @@ pub fn temp_dir(label: &str) -> std::path::PathBuf {
     path
 }
 
-/// Override with `FS3_TEST_DATABASE_URL` to point at another instance.
+/// The database these tests may write to.
+///
+/// No fallback: `FS3_TEST_DATABASE_URL` must be set explicitly, or the run
+/// refuses. See [`fs3_testkit::database`] for the ruling and why the default
+/// was the defect.
 pub fn database_url() -> String {
-    std::env::var("FS3_TEST_DATABASE_URL")
-        .unwrap_or_else(|_| fs3_core::DatabaseConfig::DEFAULT_URL.to_string())
+    fs3_testkit::test_database_url()
 }
 
 /// The same server, a different database name.

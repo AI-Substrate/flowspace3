@@ -637,6 +637,23 @@ async fn check_schema(database_url: &str) -> Result<Step, Failure> {
     let pool = fs3_store::connect(database_url).await.map_err(map_store)?;
 
     let status = fs3_store::schema_current(&pool).await.map_err(map_store)?;
+
+    // AHEAD is checked BEFORE `is_current`, and that ordering is the whole fix
+    // (req-0061). `is_current` is `missing.is_empty()`, so a database carrying
+    // migrations this binary has never heard of satisfies it — doctor reported
+    // a cheerful green on exactly the machine Jordan could not start a daemon
+    // on. Migrating cannot repair it either: there is nothing to apply.
+    let skew = status.skew(env!("CARGO_PKG_VERSION"));
+    if skew.is_skewed() {
+        pool.close().await;
+        return Ok(
+            Step::warn("schema", skew.summary(), skew.fix(), started).with_steer(
+                "upgrade this flowspace3 — the database is NEWER than this binary, so migrating \
+             cannot help: `flowspace3 doctor upgrade`",
+            ),
+        );
+    }
+
     if status.is_current() {
         let found = format!("{} migrations applied", status.applied.len());
         pool.close().await;

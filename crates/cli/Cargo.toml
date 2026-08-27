@@ -43,3 +43,8 @@ path = "src/main.rs"
 # The doctor daemon-row test stands up a stub /health to probe — a fake, not a
 # mock (workshop 001 rule 5).
 axum.workspace = true
+# DEV only: the one gate deciding which database a test may write to
+# (fs3_testkit::database). It lives in testkit rather than being repeated here
+# because there were THREE copies of that decision and one of them wrote to
+# production — see the 2026-08-27 ruling.
+fs3-testkit.workspace = true

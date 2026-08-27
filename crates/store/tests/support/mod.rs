@@ -22,10 +22,13 @@ use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 /// deliberate choices rather than incidental ones.
 pub const PARSER_VERSION: &str = "test-parser@1";
 
-/// Override with `FS3_TEST_DATABASE_URL` to point at another instance.
+/// The database these tests may write to.
+///
+/// No fallback: `FS3_TEST_DATABASE_URL` must be set explicitly, or the run
+/// refuses. See [`fs3_testkit::database`] for the ruling and why the default
+/// was the defect.
 pub fn database_url() -> String {
-    std::env::var("FS3_TEST_DATABASE_URL")
-        .unwrap_or_else(|_| fs3_core::DatabaseConfig::DEFAULT_URL.to_string())
+    fs3_testkit::test_database_url()
 }
 
 /// A value nobody else in this process, or any concurrent run, is using.

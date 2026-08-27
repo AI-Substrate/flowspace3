@@ -16,6 +16,7 @@ pub mod runner;
 pub mod scan;
 pub mod schema;
 pub mod search;
+pub mod skew;
 pub mod status;
 pub mod update;
 pub mod watch;
@@ -29,6 +30,7 @@ pub use config::{
 pub use http::{router, serve};
 pub use reconcile::{Pass, Reconcile};
 pub use runner::{drain, run_forever};
+pub use skew::SchemaSupervisor;
 pub use update::{Outcome, UpdateSupervisor, Updater};
 pub use watch::WatcherSupervisor;
 pub use wiring::AppState;

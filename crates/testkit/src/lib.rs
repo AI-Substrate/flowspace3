@@ -20,8 +20,10 @@
 
 pub mod arch;
 pub mod contract;
+pub mod database;
 pub mod discovery_filter;
 pub mod fakes;
 
 pub use contract::{embedder_contract, sample_element, summarizer_contract};
+pub use database::{TEST_DATABASE_ENV, refusal, test_database_url};
 pub use fakes::{FakeEmbedder, FakeSummarizer};
