@@ -32,6 +32,37 @@
 # bumping would stop without anyone noticing. Hence the explicit sync step
 # below — the boring mechanism that cannot silently stop working, because it
 # asserts `--locked` afterwards and fails the job if it did not take.
+#
+# # Why the release is created as a DRAFT (`draft` + `force-tag-creation`)
+#
+# release-please publishes the GitHub Release at TAG time, but release.yml needs
+# ~6 minutes to build and attach the binaries. Published-then-empty means
+# `releases/latest` resolves to an ASSETLESS release for that whole window, and
+# the README's `install.sh` one-liner 404s for every user who runs it (curl exit
+# 22). The v0.2.0 campaign's nine tag cycles opened that window nine times.
+#
+# So the release is born a DRAFT: drafts are invisible to `releases/latest`, and
+# release.yml's upload job undrafts it as its FINAL step, after the binaries and
+# SHA256SUMS are attached. `latest` therefore can never point at a release with
+# no assets.
+#
+# `force-tag-creation` is NOT optional alongside it, and both were verified
+# against the version this action actually bundles — which is NOT the newest:
+# `googleapis/release-please-action@v4` is 4.4.1 and its package-lock pins
+# release-please EXACTLY 17.3.0. In that source:
+#
+#   * `draft` reaches `octokit.repos.createRelease({draft})` (`src/github.ts`).
+#   * GitHub does not create the git ref for a draft release until it is
+#     published ("lazy tag creation"). Without a ref there is no `push: tags`
+#     event, so release.yml would never run — the release could never undraft
+#     itself — and release-please would also fail to find the previous release
+#     when computing the next changelog.
+#   * `force-tag-creation` (`src/manifest.ts` -> `forceTag` -> `src/github.ts`)
+#     creates `refs/tags/<tag>` via the API BEFORE creating the release,
+#     tolerating 422 when it already exists. The ref is written with
+#     GITHUB_TOKEN, which by GitHub's recursion guard does NOT trigger
+#     release.yml — the same reason o-prime hand-cycles tags today. The manual
+#     cycle is therefore unchanged by draft-first, which is the point.
 
 name: release-please
 
