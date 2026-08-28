@@ -1,0 +1,14 @@
+docs/plans/007-human-interface/assets/run/process-feedback.md
+  h_9e71e8b09f7cf2 77-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f89cac4f86bbedcb1dd823a10ce34207701673d1",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
