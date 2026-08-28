@@ -1,0 +1,22 @@
+{
+ "dd": {
+  "schema": "builder/plan"
+ },
+ "sections": [
+  {
+   "name": "meta",
+   "value": { "title": "Phase 2: Three parallel units", "slug": "phase-2", "status": "draft", "summary": "Renderer promotion, event stream, tui verb — one coder each." }
+  },
+  { "name": "summary", "value": "Each unit SRP behind phase-1 seams; assumptions sections in done reports; absolute paths always." },
+  {
+   "name": "tasks",
+   "value": [
+    { "id": "tk-a201", "title": "u-r renderer promotion: port pocs/human-render into the CLI behind the phase-1 seam — search, doctor, error, status, add, get, tree, remove covered; TTY strategy per the decision function; POC fixtures as goldens; agent-path doc updates (CLAUDE.md, flowspace skill, agents-start-here, self-teaching CLI) in the same unit.", "state": "unchecked", "success": "All four ac-0001 cases green per verb; ac-0002 byte-stability green; docs updated.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0001", "../../../plan.dd.json#acceptance_criteria/ac-0005"] },
+    { "id": "tk-a202", "title": "u-w daemon event stream: emit events at work-completion points (scan done, enrich done, queue transitions, root add/remove) and serve status --watch as NDJSON per the frozen wire types; multi-subscriber safe; heartbeat line so consumers detect liveness.", "state": "unchecked", "success": "Two concurrent watchers receive identical streams during a live scan; contract tests over the frozen types.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0004"] },
+    { "id": "tk-a203", "title": "u-t the tui verb: ratatui dashboard per scratch/tui-poc (reference, not vendored) — roots, operations with history, activity from the REAL --watch stream (no mock anywhere), in-pane search with results-dominant focus mode; degrades gracefully when the daemon is down (says so, retries).", "state": "unchecked", "success": "Runs over ssh in a plain terminal against the live daemon; activity pane driven by u-w's stream.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0003"] }
+   ]
+  },
+  { "name": "done_when", "value": {} }
+ ],
+ "references": []
+}

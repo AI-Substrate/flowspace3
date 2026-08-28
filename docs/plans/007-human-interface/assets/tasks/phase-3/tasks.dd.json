@@ -1,0 +1,22 @@
+{
+ "dd": {
+  "schema": "builder/plan"
+ },
+ "sections": [
+  {
+   "name": "meta",
+   "value": { "title": "Phase 3: Composition + first light", "slug": "phase-3", "status": "draft", "summary": "Compose, prove live, review, PR held." }
+  },
+  { "name": "summary", "value": "Ask-assumptions before wiring; composition is wiring not building." },
+  {
+   "name": "tasks",
+   "value": [
+    { "id": "tk-a301", "title": "Compose the three units; harness checks green on the composed tree; allowlist reconciled.", "state": "unchecked", "success": "Gate green.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0006"] },
+    { "id": "tk-a302", "title": "First light transcript: human-default output across covered verbs in a TTY, piped byte-check against goldens, then tui live with the real event stream while a scan runs — one session, committed as exit evidence.", "state": "unchecked", "success": "Transcript committed; ac-0001..0004 receipts cite it.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0001", "../../../plan.dd.json#acceptance_criteria/ac-0003", "../../../plan.dd.json#acceptance_criteria/ac-0004"] },
+    { "id": "tk-a303", "title": "Reviewer pass (settings default); findings fixed or refuted with evidence; PR into main held unmerged for prime.", "state": "unchecked", "success": "Review record + verdict; PR open.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0006"] }
+   ]
+  },
+  { "name": "done_when", "value": {} }
+ ],
+ "references": []
+}
