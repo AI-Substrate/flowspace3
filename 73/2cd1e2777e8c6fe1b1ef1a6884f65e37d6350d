@@ -1,0 +1,34 @@
+crates/daemon/src/enrich.rs
+  h_9e71e8b09f7cf2 569-619
+crates/daemon/src/scan.rs
+  h_9e71e8b09f7cf2 16-23
+crates/daemon/src/watch.rs
+  h_9e71e8b09f7cf2 276-302,304-307,320,330-331,342,401-403,524-525,634
+crates/daemon/tests/embed_batch.rs
+  h_9e71e8b09f7cf2 47-51,53,61,93,136,162
+crates/daemon/tests/embed_dedupe.rs
+  h_9e71e8b09f7cf2 1-2,11-18,33,72,110-115,162-181,208-291
+crates/daemon/tests/support/mod.rs
+  h_9e71e8b09f7cf2 171-241
+crates/daemon/tests/watcher.rs
+  h_9e71e8b09f7cf2 401-492
+crates/parsers/src/discovery.rs
+  h_9e71e8b09f7cf2 433-546,567-571,576,595,738-785,791,795,797,833-843,858,880-881,883-894
+crates/parsers/tests/discovery_subtree.rs
+  h_9e71e8b09f7cf2 1-232
+crates/store/src/lib.rs
+  h_9e71e8b09f7cf2 64-65
+crates/store/src/roots.rs
+  h_9e71e8b09f7cf2 260-315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "732cd1e2777e8c6fe1b1ef1a6884f65e37d6350d",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
