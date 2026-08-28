@@ -435,11 +435,22 @@ IDENTITY=$(sql "select r.identity from repos r join worktrees w on w.repo_id = r
 FILE_ADDRESS="el:$IDENTITY/$VERSION_FILE"
 echo "version_file_address=$FILE_ADDRESS" >> "$OUT/receipt.env"
 
+# A REFUSAL IS DATA HERE, NOT A FAILURE — and this is what killed the first five
+# go-live attempts. `flowspace3 get` exits non-zero when it refuses, and under
+# `set -e` that ended the run before a single p3_* predicate was written. The
+# refusal it kept hitting is honest and useful: "…is registered but has not been
+# parsed yet, so it has no elements to read" — the worktree's edits were queued
+# behind a starved scan lane, so the caller's version genuinely did not exist
+# yet. The CLI was right, the probe was wrong to die of it.
+#
+# These predicates read the ENVELOPES, never the exit codes; an ok:false
+# envelope is a measurement. So capture the envelope and carry on, and let the
+# gate below decide what it means.
 for cwd in "$MAIN_ROOT" "$WT"; do
   tag=main; [[ "$cwd" == "$WT" ]] && tag=worktree
-  ( cd "$cwd" && fs3 search "$Q_MARKER" --limit 5 --source raw ) > "$OUT/p3-marker-from-$tag.json" 2>&1
-  ( cd "$cwd" && fs3 search "$Q_SHARED" --limit 5 ) > "$OUT/p3-shared-from-$tag.json" 2>&1
-  ( cd "$cwd" && fs3 get "$FILE_ADDRESS" ) > "$OUT/p3-get-from-$tag.json" 2>&1
+  ( cd "$cwd" && fs3 search "$Q_MARKER" --limit 5 --source raw ) > "$OUT/p3-marker-from-$tag.json" 2>&1 || true
+  ( cd "$cwd" && fs3 search "$Q_SHARED" --limit 5 ) > "$OUT/p3-shared-from-$tag.json" 2>&1 || true
+  ( cd "$cwd" && fs3 get "$FILE_ADDRESS" ) > "$OUT/p3-get-from-$tag.json" 2>&1 || true
   note "from $tag — divergent-content query (the function exists ONLY in the worktree):"
   jq -r '.data.results[]? | "      \(.score|tostring[0:6])  \(.path)  \(.name)"' "$OUT/p3-marker-from-$tag.json" || true
   note "from $tag — meta.scope the daemon resolved: $(jq -c '.meta.scope // "none"' "$OUT/p3-marker-from-$tag.json")"
@@ -541,8 +552,20 @@ else
   echo "p3_wrong_version_leak_to_main=$P3_LEAK" >> "$OUT/receipt.env"
   echo "p3_marker_found_from_worktree=$P3_FOUND" >> "$OUT/receipt.env"
 fi
-if diff -q <(jq -S '.data' "$OUT/p3-get-from-main.json") \
-          <(jq -S '.data' "$OUT/p3-get-from-worktree.json") >/dev/null; then
+# Same discipline as the embedder gate: refuse a verdict the evidence cannot
+# support. If EITHER checkout's `get` was refused — most often "registered but
+# not parsed yet", which means the caller's version does not exist in the index
+# at this instant — then a difference between the two answers is a difference
+# between an answer and an error, not between two versions.
+GET_MAIN_OK=$(jq -r '.ok // false' "$OUT/p3-get-from-main.json" 2>/dev/null || echo false)
+GET_WT_OK=$(jq -r '.ok // false' "$OUT/p3-get-from-worktree.json" 2>/dev/null || echo false)
+if [[ "$GET_MAIN_OK" != "true" || "$GET_WT_OK" != "true" ]]; then
+  why=$(jq -r '.error.message // "refused"' "$OUT/p3-get-from-worktree.json" 2>/dev/null || echo refused)
+  note "ANSWER P3b: NOT MEASURABLE — a get was refused (main ok=$GET_MAIN_OK, worktree ok=$GET_WT_OK): $why"
+  echo "p3_get_context_sensitive=unmeasurable-get-refused" >> "$OUT/receipt.env"
+  echo "p3_get_refusal=$why" >> "$OUT/receipt.env"
+elif diff -q <(jq -S '.data' "$OUT/p3-get-from-main.json") \
+            <(jq -S '.data' "$OUT/p3-get-from-worktree.json") >/dev/null; then
   note "ANSWER P3b: get returns the SAME version to both checkouts"
   echo "p3_get_context_sensitive=0" >> "$OUT/receipt.env"
 else
