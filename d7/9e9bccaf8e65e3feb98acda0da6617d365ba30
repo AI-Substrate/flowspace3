@@ -1,0 +1,21 @@
+crates/parsers/src/ddoc.rs
+  s_a9ba6ef9f4b595::t_6665017711e679 279-299,302
+crates/parsers/src/discovery.rs
+  s_a9ba6ef9f4b595::t_64cb6e517bdf27 310-311,332,734-736,738
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d79e9bccaf8e65e3feb98acda0da6617d365ba30",
+  "prompts": {},
+  "sessions": {
+    "s_a9ba6ef9f4b595": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "1b9d68b2-34b8-4b25-80a5-e5a7a844462f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
