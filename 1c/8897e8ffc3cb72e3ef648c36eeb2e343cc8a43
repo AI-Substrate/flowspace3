@@ -1,0 +1,78 @@
+.agents/skills/pij-team/templates/packet-pm.dd.md
+  s_15d888f4b629c1::t_a145e96bcdd1dc 75
+  s_15d888f4b629c1::t_03ede1e52a5c99 40
+  s_15d888f4b629c1::t_74504b95b90ca9 1-39,41-74,76-87
+.agents/skills/pij-team/EXPERIENCES.md
+  s_15d888f4b629c1::t_07eeb359afd677 538-547
+  s_15d888f4b629c1::t_1f3dd640b781ae 619-626
+  s_15d888f4b629c1::t_3a794929d860a6 575-589
+  s_15d888f4b629c1::t_45b2a21ded166b 548-561
+  s_15d888f4b629c1::t_cac48e0b38161a 466-476
+  s_15d888f4b629c1::t_0beb6d96b9f8e9 490-497
+  s_15d888f4b629c1::t_6dd3a7a9bf19ee 510-525
+  s_15d888f4b629c1::t_a4f1b9a1fa8557 477-489
+  s_15d888f4b629c1::t_7acfcea914e4e7 434-447
+  s_15d888f4b629c1::t_9ef2ae4adbeafd 562-574
+  s_15d888f4b629c1::t_fe8b67283ff2ed 607-618
+  s_15d888f4b629c1::t_01276abfbe994a 498-509
+  s_15d888f4b629c1::t_a51c55543130df 448-465,526-537,590-606
+.harness/government/briefs/w-openrouter.md
+  s_15d888f4b629c1::t_4e699f8c3819f8 1-58
+.harness/records/retro/2026-08-28/002-drain-2026-08-28-evening.md
+  s_15d888f4b629c1::t_117bfc2329320f 7,10-13,15-329,332,334-337
+  s_15d888f4b629c1::t_ed98b1ad6849b1 1-6,8-9,14,330-331,333
+.agents/skills/pij-team/templates/packet-coder.dd.md
+  s_15d888f4b629c1::t_fcd2c5416c50b1 1-39,41-83
+  s_15d888f4b629c1::t_74504b95b90ca9 40
+.harness/government/briefs/w-daemon-shutdown.md
+  s_15d888f4b629c1::t_bf3809208b4653 1-57
+.agents/skills/pij-team/templates/packet-pm.dd.json
+  s_15d888f4b629c1::t_03ede1e52a5c99 65
+  s_15d888f4b629c1::t_a145e96bcdd1dc 121-124
+  s_15d888f4b629c1::t_74504b95b90ca9 23-61,63,66,72-87,102-120,125,131-155,159
+  s_15d888f4b629c1::t_04b6b3451a9b26 62,64
+.agents/skills/pij-team/templates/packet-coder.dd.json
+  s_15d888f4b629c1::t_74504b95b90ca9 62-65
+  s_15d888f4b629c1::t_fcd2c5416c50b1 23-61,66,72-83,98-117,123-137,141
+.harness/government/briefs/backlog.md
+  s_15d888f4b629c1::t_03ede1e52a5c99 350-359
+  s_15d888f4b629c1::t_a698dd3fed0520 384-393
+  s_15d888f4b629c1::t_dc33600c94d6bb 360-372
+  s_15d888f4b629c1::t_f7c72b8fb13240 238-252
+  s_15d888f4b629c1::t_6c90bbfb33e135 285-296
+  s_15d888f4b629c1::t_b62c0ba7013892 373-383
+  s_15d888f4b629c1::t_52f094f2360391 230-237
+  s_15d888f4b629c1::t_d20f7517a53c19 297-308
+  s_15d888f4b629c1::t_e9d368ed462b7e 221-229
+  s_15d888f4b629c1::t_799ff3ed237cb8 208-220
+  s_15d888f4b629c1::t_8734df1fb78248 329-334,342-349
+  s_15d888f4b629c1::t_a0adc0e1a47a9c 188-198
+  s_15d888f4b629c1::t_3a3f8a23e291e2 316-328
+  s_15d888f4b629c1::t_8710fe370aa281 335-341
+  s_15d888f4b629c1::t_136541dabb64e7 407-422
+  s_15d888f4b629c1::t_d703c6dd28957a 394-406
+  s_15d888f4b629c1::t_b005c74a82f735 199-207
+  s_15d888f4b629c1::t_499f281616ad96 253-284,309-315
+.harness/government/briefs/w-ask-eval.md
+  s_15d888f4b629c1::t_fe8b67283ff2ed 78-87
+  s_15d888f4b629c1::t_c81135a642781f 53-77
+.agents/skills/pij-team/TENETS.md
+  s_15d888f4b629c1::t_26c8513787ba1d 126-140
+  s_15d888f4b629c1::t_a145e96bcdd1dc 141-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1c8897e8ffc3cb72e3ef648c36eeb2e343cc8a43",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
