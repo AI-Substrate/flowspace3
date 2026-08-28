@@ -29,7 +29,7 @@ use crate::auth::Auth;
 use crate::conversations::{IntakeReport, IntakeRequest};
 use crate::read::{GetPayload, GetRequest, TreeRequest, TreeResult};
 use crate::roots::{RootReport, RootRequest};
-use crate::search::{SearchRequest, SearchResults};
+use crate::search::{SearchOutcome, SearchRequest, SearchResults};
 use crate::status::StatusReport;
 use crate::wiring::AppState;
 
@@ -353,19 +353,7 @@ async fn search(
             // that, and the steer says the known thing instead of listing
             // suspects: guessing out loud next to a fact we hold is how a user
             // ends up rephrasing a query that was never the problem.
-            let next = match (&outcome.empty_because, outcome.results.is_empty()) {
-                (Some(reason), _) => reason.detail.as_str(),
-                (None, true) => {
-                    "nothing matched — widen with a shorter query, drop --min-score, check \
-                     `flowspace3 status` in case indexing has not finished, or run `flowspace3 \
-                     doctor`: a search only reads vectors written by the ACTIVE embedder, so a \
-                     provider change since indexing returns nothing from a full index"
-                }
-                (None, false) => {
-                    "read a hit in full with `flowspace3 get <address>`, browse its file with \
-                     `flowspace3 tree <address>`, or narrow with --path/--repo"
-                }
-            };
+            let next = next_after_search(&outcome);
             let meta = serde_json::json!({
                 "scope": scope,
                 "empty_because": outcome.empty_because,
@@ -373,7 +361,7 @@ async fn search(
             let results = SearchResults {
                 results: outcome.results,
             };
-            let next = crate::scope::steer(&scope, next);
+            let next = crate::scope::steer(&scope, &next);
             let next = if crate::ask_hint::looks_like_question(&request.q) {
                 format!("{next} — {}", crate::ask_hint::HINT)
             } else {
@@ -392,6 +380,31 @@ async fn search(
             .with_meta(serde_json::json!({ "scope": scope }))
             .into(),
     }
+}
+fn next_after_search(outcome: &SearchOutcome) -> String {
+    if let Some(reason) = &outcome.empty_because {
+        return reason.detail.clone();
+    }
+    if outcome.results.is_empty() {
+        return "nothing matched — widen with a shorter query, drop --min-score, check \
+                `flowspace3 status` in case indexing has not finished, or run `flowspace3 \
+                doctor`: a search only reads vectors written by the ACTIVE embedder, so a \
+                provider change since indexing returns nothing from a full index"
+            .to_string();
+    }
+    if outcome.results.iter().any(|hit| {
+        hit.ddoc
+            .as_ref()
+            .is_some_and(|ddoc| ddoc.state_derived.is_none() && ddoc.gate_terminal.is_none())
+    }) {
+        return "the ddoc row is indexed, but its derived state and gate are unavailable — \
+                ensure the `ddocs` binary is installed and the document schema resolves; \
+                the stored state is not authoritative"
+            .to_string();
+    }
+    "read a hit in full with `flowspace3 get <address>`, browse its file with \
+     `flowspace3 tree <address>`, or narrow with --path/--repo"
+        .to_string()
 }
 
 async fn get_address(
@@ -513,5 +526,52 @@ pub(crate) async fn serve_listener(
 async fn shutdown_signal() {
     if let Err(error) = tokio::signal::ctrl_c().await {
         tracing::error!(%error, "cannot listen for shutdown signal");
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::search::{DdocHit, Hit};
+
+    #[test]
+    fn degraded_ddoc_search_names_the_missing_binary() {
+        let outcome = SearchOutcome {
+            results: vec![Hit {
+                address: "docs/plan.dd.json#acceptance_criteria/ac-0001".to_string(),
+                score: 1.0,
+                match_field: "raw".to_string(),
+                kind: "row".to_string(),
+                subkind: "ddoc_row".to_string(),
+                name: "ac-0001".to_string(),
+                span: [1, 1],
+                snippet: "criterion".to_string(),
+                smart: None,
+                tags: Vec::new(),
+                repo: Some("git:host/org/repo".to_string()),
+                path: Some("docs/plan.dd.json".to_string()),
+                ddoc: Some(DdocHit {
+                    address: "docs/plan.dd.json#acceptance_criteria/ac-0001".to_string(),
+                    schema: "builder/plan".to_string(),
+                    section: "acceptance_criteria".to_string(),
+                    id: "ac-0001".to_string(),
+                    id_kind: Some("ac".to_string()),
+                    trail: vec!["acceptance_criteria".to_string(), "ac-0001".to_string()],
+                    doc_title: Some("Plan".to_string()),
+                    state_stored: Some("unchecked".to_string()),
+                    state_derived: None,
+                    gate_terminal: None,
+                    rels: Vec::new(),
+                    findings: Vec::new(),
+                }),
+            }],
+            empty_because: None,
+        };
+
+        let next = next_after_search(&outcome);
+        assert!(
+            next.contains("`ddocs` binary"),
+            "degradation must name the missing tool: {next}"
+        );
+        assert!(next.contains("stored state is not authoritative"));
     }
 }

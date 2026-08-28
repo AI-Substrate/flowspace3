@@ -143,6 +143,42 @@ impl Stack {
         }
     }
 
+    /// Store the exact tree produced by the pure ddoc parser, without relying
+    /// on the composition-owned scan dispatch.
+    async fn index_ddoc(&self, path: &str, source: &str) -> String {
+        let tree = fs3_parsers::scan_ddoc(Path::new(path), source.as_bytes(), None)
+            .expect("the ddoc fixture parses");
+        let address = tree
+            .root
+            .iter()
+            .find(|element| element.kind == fs3_core::ElementKind::Row)
+            .expect("the fixture contains a row")
+            .address
+            .clone();
+        let identity = fs3_core::RepoIdentity::from_path(Path::new("/srv/read-ddoc"));
+        let worktree =
+            fs3_store::register_worktree(&self.state.db, &identity, "/srv/read-ddoc", Some("main"))
+                .await
+                .expect("registering ddoc fixture root");
+        fs3_store::sync_worktree_files(
+            &self.state.db,
+            worktree,
+            &[(path.to_string(), tree.blob.clone())],
+        )
+        .await
+        .expect("mapping ddoc fixture path");
+        fs3_store::upsert_element_tree(
+            &self.state.db,
+            &tree.blob,
+            fs3_daemon::scan::PARSER_VERSION,
+            &tree.root,
+            |_| false,
+        )
+        .await
+        .expect("storing parsed ddoc tree");
+        address
+    }
+
     async fn call(
         &self,
         method: &str,
@@ -251,6 +287,41 @@ async fn get_reads_one_element_with_its_children_and_parents() {
     assert!(
         envelope.next_action.is_some(),
         "every envelope steers (PRD req 44)"
+    );
+    stack.destroy().await;
+}
+
+#[tokio::test]
+async fn get_by_dd_address_resolves_the_same_row_the_parser_produced() {
+    let stack = Stack::create("read_get_ddoc_row").await;
+    let address = stack
+        .index_ddoc(
+            "docs/plan.dd.json",
+            r#"{
+                "dd": {"schema": "builder/plan"},
+                "sections": [{
+                    "name": "acceptance_criteria",
+                    "value": [{
+                        "id": "ac-0001",
+                        "claim": "Agents can resolve this row",
+                        "state": "unchecked"
+                    }]
+                }]
+            }"#,
+        )
+        .await;
+    assert_eq!(address, "docs/plan.dd.json#acceptance_criteria/ac-0001");
+
+    let envelope = stack.get(&[("address", address.as_str())]).await;
+    let row = data(&envelope);
+    assert_eq!(row["address"], address);
+    assert_eq!(row["kind"], "row");
+    assert_eq!(row["name"], "ac-0001");
+    assert!(
+        row["raw_text"]
+            .as_str()
+            .expect("row text")
+            .contains("Agents can resolve this row")
     );
     stack.destroy().await;
 }

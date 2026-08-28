@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "suite": "ddoc-search",
+  "purpose": "Exit evidence for the three highest-value deterministic-document query shapes.",
+  "scenarios": [
+    "scenarios/open-acceptance-criteria/scenario.json",
+    "scenarios/tasks-claiming-criterion/scenario.json",
+    "scenarios/criteria-touching-source/scenario.json"
+  ]
+}

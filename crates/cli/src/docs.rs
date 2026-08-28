@@ -82,6 +82,12 @@ pub const TOPICS: &[Topic] = &[
         related: &["agents", "providers"],
     },
     Topic {
+        name: "ddocs",
+        title: "Deterministic-document rows: filters, addresses, and state truth",
+        text: include_str!("../docs/ddocs.md"),
+        related: &["search", "read", "agents"],
+    },
+    Topic {
         name: "read",
         title: "Fetch by address: get, tree, and what scoping means",
         text: include_str!("../docs/read.md"),

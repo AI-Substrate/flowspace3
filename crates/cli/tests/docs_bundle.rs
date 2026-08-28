@@ -149,6 +149,24 @@ fn docs_answer_from_the_binary_with_nothing_else_running() {
 }
 
 #[test]
+fn ddoc_page_teaches_rows_citations_and_state_truth() {
+    let envelope = docs::get("ddocs");
+    let page = envelope.data.expect("ddocs is a bundled topic");
+    for required in [
+        "`kind: \"row\"`",
+        "pastes directly into `ddocs get`",
+        "`ddoc.state_derived`",
+        "Believe this one",
+        "`ddoc.state_stored`",
+    ] {
+        assert!(
+            page.text.contains(required),
+            "the ddocs page must teach {required:?}"
+        );
+    }
+}
+
+#[test]
 fn an_unknown_topic_exits_non_zero_and_names_the_real_ones() {
     let config = tempfile::tempdir().expect("a temp config directory");
     let output = flowspace3(config.path())

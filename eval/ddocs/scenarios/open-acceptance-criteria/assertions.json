@@ -1,0 +1,9 @@
+{
+  "scenario": "open-acceptance-criteria",
+  "rows": [
+    {"id":"R1","axis":"contract","type":"field-equals","params":{"field":"ok","value":true},"on_unavailable":"fail"},
+    {"id":"R2","axis":"contract","type":"results-all-field-equals","params":{"field":"kind","value":"row"},"on_unavailable":"fail"},
+    {"id":"R3","axis":"groundedness","type":"result-addresses-include-ground-truth","params":{},"on_unavailable":"fail"},
+    {"id":"R4","axis":"state","type":"results-all-field-equals","params":{"field":"ddoc.gate_terminal","value":false},"on_unavailable":"fail"}
+  ]
+}
