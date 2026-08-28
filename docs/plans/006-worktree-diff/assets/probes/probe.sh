@@ -483,6 +483,40 @@ fi
 jq -r '.data.results[0] // {} | keys | join(", ")' "$OUT/p3-marker-from-worktree.json" > "$OUT/p3-result-fields.txt" 2>&1 || true
 note "result envelope fields: $(cat "$OUT/p3-result-fields.txt")"
 
+# RESOLVED-ROW INVARIANT — measurable under ANY embedder, because it checks
+# resolution rather than ranking.
+#
+# Every returned hit must name the checkout that served it and the path it lives
+# at. A row with a null path is a row the query admitted and then failed to
+# resolve, and it reaches the caller as a hit with no file behind it.
+#
+# This exists because the composed build shipped exactly that (2026-08-28):
+# the candidate gate proved a caller-anchored element carried the vector's
+# raw_hash, but the representative resolver then picked the globally lowest-id
+# element with that hash WITHOUT re-applying the caller scope — so with one
+# body embedded in several blobs, which is what content-addressed enrichment
+# exists to produce, it chose a foreign blob, the provenance LEFT JOINs found
+# nothing, and the row survived with identity, path and root all null.
+# Neither unit's tests could see it: it needs many checkouts of ONE repo, which
+# only became the normal shape once worktrees were auto-registered.
+#
+# The general rule it encodes: a scope filter over content-addressed storage
+# must be applied at every step that CHOOSES a row, not only where one is
+# ADMITTED.
+NULL_ROWS=0
+for f in "$OUT"/p3-marker-from-*.json "$OUT"/p3-shared-from-*.json; do
+  [[ -f "$f" ]] || continue
+  n=$(jq '[.data.results[]? | select(.path == null or .worktree == null)] | length' "$f" 2>/dev/null || echo 0)
+  NULL_ROWS=$((NULL_ROWS + n))
+done
+note "ANSWER P3c: hits returned without a resolved path/checkout = $NULL_ROWS (MUST be 0)"
+echo "p3_unresolved_rows=$NULL_ROWS" >> "$OUT/receipt.env"
+if (( NULL_ROWS > 0 )); then
+  note "  ^ these are hits with no file behind them — see the resolved-row invariant note in this script"
+  jq -c '.data.results[]? | select(.path == null or .worktree == null)' "$OUT"/p3-*-from-*.json \
+    > "$OUT/p3-unresolved-rows.json" 2>/dev/null || true
+fi
+
 # The store's own answer.
 sqlt "select left(e.blob_sha,8) as blob, e.address, left(e.raw_text, 50) as raw_head
         from elements e where e.name like '${MARKER}%' order by e.address" > "$OUT/p3-elements-by-blob.txt"
