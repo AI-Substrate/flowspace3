@@ -1,0 +1,18 @@
+crates/daemon/src/roots.rs
+  h_9e71e8b09f7cf2 185-193
+crates/daemon/src/scan.rs
+  h_9e71e8b09f7cf2 149-156,159
+crates/daemon/src/wiring.rs
+  h_9e71e8b09f7cf2 49,91-105,196,215-236
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "fd470a2d10bb56474360e83b2014a4ca0a805e73",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
