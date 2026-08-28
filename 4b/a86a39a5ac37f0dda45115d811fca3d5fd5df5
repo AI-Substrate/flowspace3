@@ -1,0 +1,37 @@
+docs/plans/008-ddocs-scan/assets/brief-ddocs-scan.md
+  s_15d888f4b629c1::t_d2fd866b05b5ac 1-67
+docs/plans/008-ddocs-scan/assets/tasks/phase-1/tasks.dd.json
+  s_15d888f4b629c1::t_d8469f9ecd7d4d 1-29
+docs/plans/008-ddocs-scan/assets/tasks/phase-1/tasks.dd.md
+  s_15d888f4b629c1::t_ca62af2b2c7c6c 1-42
+docs/plans/008-ddocs-scan/packet-coder.dd.json
+  s_15d888f4b629c1::t_af2eab9075da1d 1-69
+docs/plans/008-ddocs-scan/packet-coder.dd.md
+  s_15d888f4b629c1::t_40a2605a18d8c7 1-80
+docs/plans/008-ddocs-scan/packet-pm.dd.json
+  s_15d888f4b629c1::t_9fe13ac190fcdf 1-73
+docs/plans/008-ddocs-scan/packet-pm.dd.md
+  s_15d888f4b629c1::t_74957123112837 1-84
+docs/plans/008-ddocs-scan/packet-reviewer.dd.json
+  s_15d888f4b629c1::t_c55e05c8218e0e 1-65
+docs/plans/008-ddocs-scan/packet-reviewer.dd.md
+  s_15d888f4b629c1::t_eb326e2378d961 1-76
+docs/plans/008-ddocs-scan/plan.dd.json
+  s_15d888f4b629c1::t_b5d6d78060b697 1-224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4ba86a39a5ac37f0dda45115d811fca3d5fd5df5",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
