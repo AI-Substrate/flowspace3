@@ -1,6 +1,7 @@
 {
   "dd": {
-    "schema": "custom/reference"
+    "schema": "custom/reference",
+    "sweep_exclude": true
   },
   "sections": [
     {
