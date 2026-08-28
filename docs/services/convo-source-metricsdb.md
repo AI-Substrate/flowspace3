@@ -39,17 +39,45 @@ the rule that decides group membership. Two of the four readers are like this;
 the other two key on a single record and carry strictly less risk. The frozen
 rule, in full:
 
-- Only `tool = 'claude'` rows of type `user` or `assistant` are emitted at all.
-  Every other record type is dropped.
+- **The row-selection predicate**: only rows matching `event_kind = 5` **and**
+  the repo scope exist to be grouped at all. The scope is applied *per row*, so
+  it is part of the grouping rule, not a filter that happens before one.
+- Of the rows that survive, only `tool = 'claude'` records of type `user` or
+  `assistant` are emitted. Every other record type is dropped.
 - Of those, rows carrying `message.id` merge into **one** record per distinct
   `message.id`. Rows without one — every `user` row — never merge.
 - The record's ordinal is the smallest `id` in its group.
 
-Widen the emit allowlist, let a new type join a merge, or start including a row
-that is skipped today, and the **first element of an existing group can change
-even though the datum did not**. Every stored record then looks new and the
-conversation doubles — the same silent failure as changing the derivation,
-reached by touching what looks like an unrelated list.
+All four bullets are the frozen rule. Widen the emit allowlist, let a new type
+join a merge, start including a row that is skipped today, **or change
+`event_kind` or the scope expression**, and the **first element of an existing
+group can change even though the datum did not**. Every stored record then looks
+new and the conversation doubles — the same silent failure as changing the
+derivation, reached by touching something that does not look like the derivation
+at all.
+
+The predicate bullet is the one that surprises people, so here is the measured
+state of the risk it guards.
+
+**Can one session's rows differ in scope?** Not in the committed fixture: all
+six sessions carry exactly one distinct `$.a."1"` value each, with no NULL and
+no empty string in 100 rows.
+
+```sql
+select external_session_id,
+       count(distinct json_extract(event_json,'$.a."1"')) as distinct_repos
+from metrics group by external_session_id;   -- every row: 1
+```
+
+That is a measurement of a 100-row sample, **not a guarantee**. `$.a."1"` is
+stamped per event by git-ai, not per session, so nothing structural stops a
+long-lived session from spanning a `git remote set-url` or a working directory
+change. And the fixture cannot speak to the `event_kind` half at all: the
+harvest selected `event_kind = 5`, so all 100 rows carry it by construction.
+
+So treat the freeze as load-bearing rather than hygiene. If scope ever does vary
+within a session, a change to the scope expression moves which row opens a
+group, and the failure is silent.
 
 ### The `id` column survives a VACUUM — here is why that is safe
 
@@ -70,6 +98,8 @@ The queries name `id` explicitly rather than the bare `rowid` keyword. They are
 the same value here; naming the aliased column is what makes the stability
 visible to whoever reads the query next.
 
+### A message that straddles a poll boundary is stored as two turns, permanently
+
 The store writes one row per content block, so one assistant message can arrive
 as four rows sharing a `message.id`. This reader merges them — but it **emits
 what it can see** rather than holding a group back to check whether more blocks
@@ -77,22 +107,32 @@ are coming.
 
 The consequence, traced, because the permanence is the part that matters:
 
-1. Poll N sees blocks 1–2 and stores a turn under the first `rowid`.
-2. Poll N+1 sees block 3 and stores it under its own `rowid`.
-3. The ledger deduplicates any later rescan against the first `rowid`, so the
-   turn stored at poll N **keeps only blocks 1–2 forever** and is never
-   backfilled.
+1. Poll N sees blocks 1–2 and stores a turn under the first `id`.
+2. Poll N+1 sees block 3 and stores it under its own `id`.
+3. The ledger deduplicates any later rescan against the first `id`, so the turn
+   stored at poll N **keeps only blocks 1–2 forever** and is never backfilled.
 
 Nothing is lost, nothing duplicates, and one assistant message reads as two
 turns.
 
-This was ruled deliberately (PM, 2026-08-28) against the alternative of holding
-the trailing group back until a later `message.id` appears. That alternative
-buys "complete records only" and pays with a worse failure: **a session that
-ENDS on a group never emits its final turn at all** — not late, never — and the
-conversation most likely to end on an assistant group is the one someone is
-watching live. The claude-native reader was ruled the same way on the identical
-phenomenon, so the two readers do not diverge.
+**A rescan does not heal it, and that is worth knowing before you try one.** A
+prune-triggered rescan regroups from zero and re-emits the whole message as a
+single record under its *original* first `id` — which the ledger has already
+seen, so it is dropped as a duplicate. The split survives the one operation that
+looks like it should repair it. This is correct behaviour, not a gap: the
+alternative is a rescan that rewrites stored turns, which is how a dedupe key
+stops being a dedupe key.
+
+If you are looking at two turns where the store holds one message, this is why.
+It is by design.
+
+The design was ruled deliberately (PM, 2026-08-28) against the alternative of
+holding the trailing group back until a later `message.id` appears. That
+alternative buys "complete records only" and pays with a worse failure: **a
+session that ENDS on a group never emits its final turn at all** — not late,
+never — and the conversation most likely to end on an assistant group is the one
+someone is watching live. The claude-native reader was ruled the same way on the
+identical phenomenon, so the two readers do not diverge.
 
 ### The copilot mapping is PM-derived, not oracle-backed
 

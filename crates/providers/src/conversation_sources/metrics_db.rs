@@ -85,17 +85,30 @@
 //! the other two key on a record and carry strictly less risk. The frozen rule
 //! here, in full:
 //!
-//! * Only `tool = 'claude'` rows of type `user` or `assistant` are emitted at
-//!   all. Every other record type is dropped.
+//! * THE ROW-SELECTION PREDICATE: only rows matching `event_kind = 5` AND the
+//!   repo scope exist to be grouped at all. The scope is applied PER ROW, so it
+//!   is part of the grouping rule rather than a filter that happens before one.
+//! * Of the rows that survive, only `tool = 'claude'` records of type `user` or
+//!   `assistant` are emitted. Every other record type is dropped.
 //! * Of those, rows carrying `message.id` merge into ONE record per distinct
 //!   `message.id`. Rows without one — every `user` row — never merge.
 //! * The record's ordinal is the smallest `id` in its group.
 //!
-//! Widen the emit allowlist, let a new type join a merge, or start including a
-//! row that is skipped today, and the FIRST element of an existing group can
-//! change even though the datum did not. Every stored record then looks new and
-//! the conversation doubles — the same silent failure as changing the
-//! derivation, reached by touching what looks like an unrelated list.
+//! All four are the frozen rule. Widen the emit allowlist, let a new type join
+//! a merge, start including a row that is skipped today, OR CHANGE
+//! `event_kind` OR THE SCOPE EXPRESSION, and the FIRST element of an existing
+//! group can change even though the datum did not. Every stored record then
+//! looks new and the conversation doubles — the same silent failure as changing
+//! the derivation, reached by touching something that does not look like the
+//! derivation at all.
+//!
+//! Measured, so the risk is sized rather than asserted: in the committed
+//! fixture every one of the six sessions carries exactly ONE distinct
+//! `$.a."1"`, with no NULL and no empty string in 100 rows. That is a sample,
+//! not a guarantee — git-ai stamps the repo PER EVENT, so nothing structural
+//! stops a long-lived session spanning a `git remote set-url` — and the fixture
+//! cannot speak to `event_kind` at all, because the harvest selected
+//! `event_kind = 5`. Treat the freeze as load-bearing.
 //!
 //! If you have a reason to change either, that is a conversation with the
 //! plan's owner, not an edit.
