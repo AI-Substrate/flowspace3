@@ -28,3 +28,17 @@
 | Noteworthy | `/builder implement` asks for an in-progress dd state, but `builder/plan` permits only `unchecked`, `checked`, `blocked`, `human-skipped`, or `na`. | `tk-e203` remained honestly `unchecked` while active and was set `checked` only after final proof; PM carried the doctrine/schema mismatch upward. |
 | Noteworthy | Shared `flowspace3_test` is not safe for a daemon because it contains fleet roots/jobs and ambient config can select paid providers. | No daemon was booted. Focused tests used unique `FreshDatabase` children with in-process `Config::default` fakes; final checks used a unique seat base database plus an empty config directory, then both were removed. |
 | Noteworthy | The path filter was reported as potentially post-LIMIT. | Verified it already sits inside the nearest-neighbour CTE before `ORDER BY … LIMIT`; this unit does not change that behavior. The daemon also converts `?` and escapes literal `_` before SQL LIKE. Character classes remain unsupported and were left untouched per PM ruling. |
+
+## Composition correction — scoped representative resolution
+
+Composition exposed scoped hits with `repo`, `path`, and `worktree` all null. The nearest-candidate gate admitted a raw hash because some caller-anchored element carried it, but the later representative resolver independently chose the globally lowest-id element with that hash. When the same element body appeared in several file blobs, that representative could belong only to another checkout; the provenance LEFT JOINs then resolved nothing while preserving the row.
+
+The representative resolver now repeats the caller anchor before its `ORDER BY … LIMIT`, so shared content reports the caller-held path and address. A daemon-side hard guard drops and WARN-logs any scoped row that still resolves without provenance, including the raw hash and caller scope; the guard is diagnostic defence, not the primary fix, because using it alone would under-fill a page.
+
+### Regression evidence
+
+- RED before fix: `scoped_search_resolves_the_element_held_by_the_caller` failed with `identity: None, root_path: None, path: None` for the foreign lowest-id blob.
+- GREEN after fix: the same test passed; its minimal fixture puts one raw element in two file blobs, indexes foreign main first so it wins the broken lowest-id race, then scopes to the later feature blob held by the caller.
+- Full affected suites: store `pg_first_light` 18/18, daemon `first_light` 14/14, daemon `conversation_query` 7/7.
+- Mutation proof on the minimal fixture: removing only the representative anchor made the test fail with the null provenance triplet; restoring it made the test pass.
+- Independent reviewer evidence found 227 raw hashes where the caller passed the candidate gate while the global lowest-id element belonged to a blob the caller did not hold (`assets/reviews/runtime/uc-resolver-mismatch.json`).

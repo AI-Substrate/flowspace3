@@ -47,7 +47,7 @@
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
           ],
-          "receipt": "Store pg_first_light 17 passed; daemon first_light 14 passed; daemon search unit 4 passed; isolated harness checks 9/9 passed with CARGO_INCREMENTAL=0 and seat test DB. PM owns probe.sh P3 composition proof."
+          "receipt": "Initial unit eeb5b0e plus scoped representative correction: mutation test failed without the anchor and passed with it; store pg_first_light 18/18, daemon first_light 14/14, conversation_query 7/7; final isolated harness checks 9/9. PM owns composed p3_unresolved_rows probe."
         },
         {
           "id": "tk-e204",

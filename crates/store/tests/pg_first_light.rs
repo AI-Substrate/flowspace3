@@ -733,6 +733,73 @@ async fn a_worktree_filter_excludes_versions_the_caller_cannot_open() {
     database.destroy(pool).await;
 }
 
+/// The same element body can sit inside two different file blobs. The foreign
+/// blob is indexed FIRST so its element gets the lower id; the feature blob is
+/// indexed SECOND and is the caller. Without a scoped representative resolver,
+/// the candidate gate admits the caller-held raw hash and the later global
+/// lowest-id pick detaches it from the caller, yielding null provenance.
+///
+/// The existing divergent functions have different raw hashes, while the
+/// existing shared function uses one file blob in both roots. Neither creates
+/// the load-bearing shape here: one raw hash, two blobs, caller holds only the
+/// later blob.
+#[tokio::test]
+async fn scoped_search_resolves_the_element_held_by_the_caller() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let identity =
+        RepoIdentity::from_remote_parts(Some("github.com"), "AI-Substrate/flowspace3").unwrap();
+    let main_root = "/srv/fs3-main";
+    let feature_root = "/srv/fs3-feature";
+    let main = register_worktree(&pool, &identity, main_root, Some("main"))
+        .await
+        .unwrap();
+    let feature = register_worktree(&pool, &identity, feature_root, Some("feature"))
+        .await
+        .unwrap();
+
+    let body = "mod tests { fn discovers_languages() {} }";
+    // Insertion order is the reproduction: the foreign main element must win
+    // the unscoped `ORDER BY el.id LIMIT 1` race in the broken query.
+    let main_blob = index_file(&pool, main, "src/discovery.rs", &[body]).await;
+    let feature_blob = index_file(&pool, feature, "src/discovery.rs", &[body]).await;
+    assert_ne!(
+        main_blob, feature_blob,
+        "one element hash must occur in two distinct file blobs"
+    );
+
+    let query = vector_for("discovers languages tests").await;
+    let hits = search_elements(
+        &pool,
+        EMBEDDER,
+        &query,
+        &SearchFilters {
+            repo: Some(identity.key().to_string()),
+            worktree: Some(feature_root.to_string()),
+            ..SearchFilters::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert!(
+        !hits.is_empty(),
+        "the caller-held element remains searchable"
+    );
+    assert!(
+        hits.iter().all(|hit| {
+            hit.identity.as_deref() == Some(identity.key())
+                && hit.root_path.as_deref() == Some(feature_root)
+                && hit.path.as_deref() == Some("src/discovery.rs")
+                && hit.similar.blob_sha == feature_blob.as_str()
+        }),
+        "the representative must be the later caller-held blob: {hits:#?}"
+    );
+
+    database.destroy(pool).await;
+}
+
 /// `--path` narrows to a subtree, and the hit carries the live path back — a
 /// content-layer answer is not usable until the ref layer says where it is.
 #[tokio::test]

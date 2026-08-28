@@ -266,9 +266,28 @@ pub async fn search(
         limit: limit + 1,
     };
 
-    let hits = fs3_store::search_elements(&state.db, &model_key, &vector, &filters)
+    let mut hits = fs3_store::search_elements(&state.db, &model_key, &vector, &filters)
         .await
         .map_err(fail)?;
+
+    // The store scopes both candidate eligibility and representative
+    // resolution. If a future query shape defeats that invariant, never emit a
+    // repo-less address for a scoped search: drop it loudly so the missing
+    // provenance is diagnosable rather than becoming another checkout leak.
+    let scoped = scope.repo.is_some() || scope.worktree.is_some() || request.path.is_some();
+    hits.retain(|hit| {
+        let resolved = hit.identity.is_some() || hit.root_path.is_some() || hit.path.is_some();
+        if scoped && !resolved {
+            tracing::warn!(
+                raw_hash = %hit.similar.element.raw_hash(),
+                repo = ?scope.repo,
+                path = ?request.path,
+                worktree = ?scope.worktree,
+                "scoped search representative resolved without live provenance; dropping hit"
+            );
+        }
+        !scoped || resolved
+    });
 
     // An empty result is the most misread signal we have: "not indexed yet",
     // "indexed under a model this search cannot see", and "genuinely no match"
