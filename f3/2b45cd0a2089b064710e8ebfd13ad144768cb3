@@ -1,0 +1,24 @@
+docs/plans/005-convo-ingest/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 2-3,5-79
+docs/plans/005-convo-ingest/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 38-42
+docs/plans/005-convo-ingest/impl-guide.dd.json
+  h_9e71e8b09f7cf2 17
+docs/plans/005-convo-ingest/impl-guide.dd.md
+  h_9e71e8b09f7cf2 37-38
+docs/plans/005-convo-ingest/plan.dd.json
+  h_9e71e8b09f7cf2 2-3,5-28,30-36,39-81,84-108,110
+docs/plans/005-convo-ingest/plan.dd.md
+  h_9e71e8b09f7cf2 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f32b45cd0a2089b064710e8ebfd13ad144768cb3",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
