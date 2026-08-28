@@ -1,0 +1,16 @@
+docs/plans/007-human-interface/plan.dd.json
+  h_9e71e8b09f7cf2 57-58,69-70,75-76
+docs/plans/007-human-interface/plan.dd.md
+  h_9e71e8b09f7cf2 57,59-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4397cd071e4e14dd550a4a012c5eb0bc455a3a5f",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
