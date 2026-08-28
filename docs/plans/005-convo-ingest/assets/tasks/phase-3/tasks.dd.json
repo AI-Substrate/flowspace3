@@ -1,36 +1,89 @@
 {
- "dd": {
-  "schema": "builder/plan"
- },
- "sections": [
-  {
-   "name": "meta",
-   "value": {
-    "title": "Phase 3: Composition + surface",
-    "slug": "phase-3",
-    "status": "draft",
-    "summary": "Wiring, not building: join, orchestrator, CLI, extension, first light."
-   }
+  "dd": {
+    "schema": "builder/plan"
   },
-  {
-   "name": "summary",
-   "value": "The composer (PM) pastes the six snap-in recipes; anything needing unit-internal rework here is a phase-1 contract defect and stops for a ruling (impl-guide composition rule)."
-  },
-  {
-   "name": "tasks",
-   "value": [
-    { "id": "tk-c301", "title": "Join resolver: (pij_id) -> (session uuid, harness) via pij sessions output; uuid SHAPE routes the store (v4 -> claude/copilot, v7 01a0 -> omp); fallbacks per recipe §2 (roster canary ids; time-window+cwd last resort).", "state": "unchecked", "success": "Unit tests over recorded pij sessions fixtures; both uuid shapes route correctly.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0001"] },
-    { "id": "tk-c302", "title": "Ingest orchestrator wired at the composition root: input -> resolve -> route to reader -> pump read_incremental through cursor-state -> normalize -> append via the existing idempotent conversations import (conversation_id, turn_no); child conversations linked to parents.", "state": "unchecked", "success": "Integration test: fixture-backed end-to-end ingest, re-run appends only the delta, children linked.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0001", "../../../plan.dd.json#acceptance_criteria/ac-0002", "../../../plan.dd.json#acceptance_criteria/ac-0003", "../../../plan.dd.json#acceptance_criteria/ac-0004"] },
-    { "id": "tk-c303", "title": "CLI surface: flowspace3 conversations ingest (--pij <id> | --session <uuid> --harness <h>) [--folder <path>] with the standard JSON envelope (counts: turns_new, turns_total, conversations, next_action).", "state": "unchecked", "success": "Envelope documented and asserted in CLI tests; both input routes exercised.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0001", "../../../plan.dd.json#acceptance_criteria/ac-0002"] },
-    { "id": "tk-c304", "title": "Thin harness extension (.harness/extensions/convo/): `harness convo ingest` forwarding to the flowspace3 CLI with the same args; instructions.md states it is plumbing pending harness-native absorption.", "state": "unchecked", "success": "Extension loads in harness doctor; forwards and surfaces the envelope verbatim.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0001"] },
-    { "id": "tk-c305", "title": "First light: ingest a REAL live session by pij id (o-prime's own), let enrichment drain, search it via --source conversation, then re-poll after new turns and capture the append-only delta transcript as exit evidence.", "state": "unchecked", "success": "Transcript committed as the plan's exit evidence; search returns the ingested turn.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0003", "../../../plan.dd.json#acceptance_criteria/ac-0006"] },
-    { "id": "tk-c306", "title": "Gate + fences: harness checks green on the composed branch; arch-allowlist rows reconciled against the impl-guide grants; service pages written per unit.", "state": "unchecked", "success": "harness checks green; allowlist diff matches grants exactly.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0008"] }
-   ]
-  },
-  {
-   "name": "done_when",
-   "value": {}
-  }
- ],
- "references": []
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 3: Composition + surface",
+        "slug": "phase-3",
+        "status": "draft",
+        "summary": "Wiring, not building: join, orchestrator, CLI, extension, first light."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "The composer (PM) pastes the six snap-in recipes; anything needing unit-internal rework here is a phase-1 contract defect and stops for a ruling (impl-guide composition rule)."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-c301",
+          "title": "Join resolver: (pij_id) -> (session uuid, harness) via pij sessions output; uuid SHAPE routes the store (v4 -> claude/copilot, v7 01a0 -> omp); fallbacks per recipe §2 (roster canary ids; time-window+cwd last resort).",
+          "state": "checked",
+          "success": "Unit tests over recorded pij sessions fixtures; both uuid shapes route correctly.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ],
+          "receipt": "crates/core/src/conversation_join.rs @ c9a05d4. Pure resolver: parse_rows / resolve_seat / store_for / uuid_version, exported from fs3_core. 9 unit tests over a recorded pij-sessions payload, both uuid shapes routing correctly. MEASURED CORRECTION to recipe section 2, which says the uuid SHAPE routes the store: against the live registry (908 rows, pi 800 / claude 65 / copilot 41 / codex 2) shape is NOT sufficient — claude and copilot are both v4 and live in different stores, and copilot exists only in metrics-db. So the registry harness FIELD routes and the shape is a consistency check; a row whose shape contradicts its harness is refused rather than guessed at. Two further measured facts pinned by tests: pij spells omp as pi, which an implementation trusting Harness::as_str() to round-trip would silently miss; and the version nibble is read from the uuid format rather than by matching the recipe 01a0 prefix, which is an artefact of when these v7 ids were minted and ages out. SMOKE-TESTED AGAINST THE LIVE REGISTRY before commit, with the throwaway test removed after: 910 rows parse, this PM seat resolves to Omp with the correct uuid and folder, 907 route, and the 3 refusals are exactly the two named failure modes — two codex seats (no v1 reader) and one seat that never bound. The subprocess call itself is composition-root wiring and mints no new port."
+        },
+        {
+          "id": "tk-c302",
+          "title": "Ingest orchestrator wired at the composition root: input -> resolve -> route to reader -> pump read_incremental through cursor-state -> normalize -> append via the existing idempotent conversations import (conversation_id, turn_no); child conversations linked to parents.",
+          "state": "unchecked",
+          "success": "Integration test: fixture-backed end-to-end ingest, re-run appends only the delta, children linked.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0002",
+            "../../../plan.dd.json#acceptance_criteria/ac-0003",
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ]
+        },
+        {
+          "id": "tk-c303",
+          "title": "CLI surface: flowspace3 conversations ingest (--pij <id> | --session <uuid> --harness <h>) [--folder <path>] with the standard JSON envelope (counts: turns_new, turns_total, conversations, next_action).",
+          "state": "unchecked",
+          "success": "Envelope documented and asserted in CLI tests; both input routes exercised.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0002"
+          ]
+        },
+        {
+          "id": "tk-c304",
+          "title": "Thin harness extension (.harness/extensions/convo/): `harness convo ingest` forwarding to the flowspace3 CLI with the same args; instructions.md states it is plumbing pending harness-native absorption.",
+          "state": "unchecked",
+          "success": "Extension loads in harness doctor; forwards and surfaces the envelope verbatim.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ]
+        },
+        {
+          "id": "tk-c305",
+          "title": "First light: ingest a REAL live session by pij id (o-prime's own), let enrichment drain, search it via --source conversation, then re-poll after new turns and capture the append-only delta transcript as exit evidence.",
+          "state": "unchecked",
+          "success": "Transcript committed as the plan's exit evidence; search returns the ingested turn.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003",
+            "../../../plan.dd.json#acceptance_criteria/ac-0006"
+          ]
+        },
+        {
+          "id": "tk-c306",
+          "title": "Gate + fences: harness checks green on the composed branch; arch-allowlist rows reconciled against the impl-guide grants; service pages written per unit.",
+          "state": "unchecked",
+          "success": "harness checks green; allowlist diff matches grants exactly.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0008"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {}
+    }
+  ]
 }
