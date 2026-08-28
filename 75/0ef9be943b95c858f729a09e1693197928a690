@@ -1,0 +1,41 @@
+crates/daemon/src/roots.rs
+  s_17c9cbb1047fec::t_ee1e37912d1274 152-163,210,216
+crates/daemon/src/worktrees.rs
+  s_283bc926196bf8::t_6c734f972e615c 82-87
+crates/daemon/tests/worktree_lifecycle.rs
+  s_17c9cbb1047fec::t_6fbb65fdb72b5c 72-82,88-99
+crates/store/src/jobs.rs
+  s_b668fefb3076c7::t_c4d75d7a5d21fc 20-38,103-120,123-124,128,135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "750ef9be943b95c858f729a09e1693197928a690",
+  "prompts": {},
+  "sessions": {
+    "s_17c9cbb1047fec": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "72fa9d94-05ae-4606-ae8b-7ed3a337cb6e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_283bc926196bf8": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "061ad401-755f-47b8-a2a8-433080d036f3",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_b668fefb3076c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0e0064-8d84-48e6-b499-eca0c65baafc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
