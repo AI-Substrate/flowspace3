@@ -1,0 +1,105 @@
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T075726Z/teardown-remove.json
+  s_4e3ef5f086a696::t_955d328eeba0ea 1-21
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T083322Z/p1-worktree-add.txt
+  s_15d888f4b629c1::t_6907956cb4b92a 1-3
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T083322Z/ping.json
+  s_15d888f4b629c1::t_0475b586cba6bd 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T083322Z/snap-00-baseline.env
+  s_15d888f4b629c1::t_34d124bbb974e5 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T083322Z/status-before.json
+  s_15d888f4b629c1::t_2ef7981d4352c2 1-275
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T075726Z/p1-worktree-add.txt
+  s_15d888f4b629c1::t_da7a7410627184 1-3
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T075726Z/ping.json
+  s_15d888f4b629c1::t_7a3d9727be7f47 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T075726Z/snap-00-baseline.env
+  s_15d888f4b629c1::t_41f441a27fe535 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T075726Z/status-before.json
+  s_15d888f4b629c1::t_a3bae47d307d7a 1-281
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T083322Z/daemon-p2a.log
+  s_15d888f4b629c1::t_42093e128a50ad 1-1082
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T083322Z/p2a-deltas.txt
+  s_15d888f4b629c1::t_8470a642e0cf30 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T083322Z/p2a-jobs.txt
+  s_15d888f4b629c1::t_f9c0abb81cfe1a 1-8
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T083322Z/p2a-paid.txt
+  s_15d888f4b629c1::t_45ce75e1b413bc 1-24
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T083322Z/p2b-edited-files.txt
+  s_15d888f4b629c1::t_96c78baa889aed 1-8
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T083322Z/p3-version-file.txt
+  s_15d888f4b629c1::t_7506c9eb4dabe0 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T083322Z/snap-03-after-add.env
+  s_15d888f4b629c1::t_eeddc94f0f1324 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T083322Z/snap-04-before-edits.env
+  s_15d888f4b629c1::t_ddc1e50a580cad 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T093346Z/transcript.log
+  s_15d888f4b629c1::t_877ed8da1cd73e 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T095159Z/p1-worktree-add.txt
+  s_15d888f4b629c1::t_2d8415d568595c 1-2
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T095159Z/ping.json
+  s_15d888f4b629c1::t_2438d16c934b0f 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T095159Z/snap-00-baseline.env
+  s_15d888f4b629c1::t_2ebdaa01050089 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T095159Z/status-before.json
+  s_15d888f4b629c1::t_a17c598420df7b 1-285
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T101440Z/daemon-p1.log
+  s_15d888f4b629c1::t_ef5f64220385b3 1-1139
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T101440Z/p1-deltas.txt
+  s_15d888f4b629c1::t_973c9e4b671ad7 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T101440Z/p1-jobs.txt
+  s_15d888f4b629c1::t_bebdd63a0350b7 1-8
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T101440Z/p1-status.json
+  s_15d888f4b629c1::t_24824f72bddb33 1-296
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T101440Z/p1-worktree-add.txt
+  s_15d888f4b629c1::t_08de3c73073c5c 1-3
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T101440Z/ping.json
+  s_15d888f4b629c1::t_4236ede9e199cf 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T101440Z/snap-00-baseline.env
+  s_15d888f4b629c1::t_763cac669b4451 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T101440Z/snap-01-after-worktree-create.env
+  s_15d888f4b629c1::t_86dcfb48fcb371 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T101440Z/status-before.json
+  s_15d888f4b629c1::t_507ec4f5d2aaa1 1-285
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T103458Z/daemon-p1.log
+  s_15d888f4b629c1::t_bc9cebb3c162e7 1-1398
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T103458Z/p1-deltas.txt
+  s_15d888f4b629c1::t_806d17d5e0f063 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T103458Z/p1-jobs.txt
+  s_15d888f4b629c1::t_3a5b123d01c644 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T103458Z/p1-status.json
+  s_15d888f4b629c1::t_9115bf7e06b9cd 1-296
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T103458Z/p1-worktree-add.txt
+  s_15d888f4b629c1::t_3fec9a7e8eaff5 1-3
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T103458Z/ping.json
+  s_15d888f4b629c1::t_86360b25f4b209 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T103458Z/snap-00-baseline.env
+  s_15d888f4b629c1::t_3691bb3cc4d0cf 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T103458Z/snap-01-after-worktree-create.env
+  s_15d888f4b629c1::t_8a364578dca85c 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T103458Z/status-before.json
+  s_15d888f4b629c1::t_33578cdd704afc 1-297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cdf399d93cf42135c63abb70b7ee3d4c54cf5ce7",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_4e3ef5f086a696": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "293c5b07-c11f-4af9-bcf4-a2b6dce0f46e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
