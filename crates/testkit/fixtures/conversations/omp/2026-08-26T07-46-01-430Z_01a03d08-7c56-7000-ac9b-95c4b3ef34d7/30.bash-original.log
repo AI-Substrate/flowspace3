@@ -1,0 +1,15 @@
+commit 7975adc405f09448d942831326477f6635f0fbc8
+Author: Jordan Knight <jakkaj@gmail.com>
+Date:   Wed Aug 26 17:50:17 2026 +1000
+
+    docs(prd): req-0053 skill distribution + doctor informational row
+
+diff --git a/docs/plans/prd/base-prd.dd.md b/docs/plans/prd/base-prd.dd.md
+index d419fa5..d8c4a79 100644
+--- a/docs/plans/prd/base-prd.dd.md
++++ b/docs/plans/prd/base-prd.dd.md
+@@ -72,3 +72,4 @@
+ | req-0050 | 50 | Human-readable CLI rendering (fast-follow) | A human presentation layer renders the SAME envelopes as rich terminal output (python-rich-class aesthetics: tables, color, checklists) - a pure renderer over the frozen envelope contract, TTY-autodetected with --json always forcing the envelope; agents see no change. Prototyped ahead of need. (Jordan, 2026-08-26.) | [ ] unchecked | — | prototype in flight (skunk, pocs/human-render) |
+ | req-0051 | 51 | Single binary: flowspace3 daemon subcommand | The daemon ships INSIDE the flowspace3 binary as `flowspace3 daemon` (no separate fs3-daemon artifact) - one file to install, one version, req 2 literally true. (Jordan, 2026-08-26.) | [ ] unchecked | — | sawfish re-opened; must land BEFORE ship-it bakes artifact names into the release workflow |
+ | req-0052 | 52 | Agent-facing flowspace skill (.agents/skills) | A skill in .agents/skills teaches any agent to USE flowspace: detect whether it is installed, install it briefly if not (convenience script / README), read the bundled docs (flowspace3 docs get), search with it (semantic modes, filters, el: addresses), and why semantic search beats grep for meaning-shaped questions. (Jordan, 2026-08-26.) | [ ] unchecked | — | coder being dispatched; more tasks to follow on the same seat per Jordan |
++| req-0053 | 53 | Skill distribution: bundled, doctor-aware, never auto-installed | The agent skill ships INSIDE the flowspace3 binary; an explicit command (spelling ~ flowspace3 doctor install-skill) installs/updates it into ~/.agents/skills and ~/.claude/skills. Doctor gains an INFORMATIONAL row (not warn, not degraded): mi…[fixture-truncated]

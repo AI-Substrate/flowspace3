@@ -1,14 +1,24 @@
-//! The only two ports in fs3 v1.
+//! The two ENRICHMENT ports of fs3.
 //!
 //! Workshop 001 rule 3: a trait earns its existence only when a second real
 //! implementation exists or is firmly planned. Embedding and summarisation each
 //! have two — online API and local model (PRD req 8) — so each gets a port.
 //! Everything else is concrete: the parser (tree-sitter direct *is* the point),
 //! git ops, the queue, and the store (Postgres is a requirement, not a
-//! variable). **A third port is stop-and-ask.**
+//! variable).
 //!
-//! Both traits are `#[async_trait]` rather than native `async fn`: native async
-//! fns in traits are still not object-safe, and these seams are used as
+//! The rule admitted a THIRD port on 2026-08-28, ruled by prime for plan 005:
+//! [`crate::ConversationSource`], which reads conversations out of the native
+//! agent-session stores and shipped FOUR real implementations on day one —
+//! claude, omp, the pij ledger and git-ai's metrics database. It lives in
+//! [`crate::conversation_source`] rather than here because it arrives with a
+//! family of types (input, session file, cursor, record) that would swamp this
+//! module, and because it is blocking rather than async: its implementations do
+//! file and sqlite IO and the composition root hands them to `spawn_blocking`.
+//! **A fourth port is stop-and-ask.**
+//!
+//! Both traits here are `#[async_trait]` rather than native `async fn`: native
+//! async fns in traits are still not object-safe, and these seams are used as
 //! `Arc<dyn Port>` by the composition root.
 
 use async_trait::async_trait;

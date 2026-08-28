@@ -1,0 +1,2322 @@
+{
+ "store": "omp",
+ "claims": [
+  "structural",
+  "subset"
+ ],
+ "prose_kinds": [
+  "assistant",
+  "human",
+  "pij_in"
+ ],
+ "generated_by": "docs/plans/005-convo-ingest/assets/inputs/tools/oracle_expectations.py",
+ "regenerate": "python3 docs/plans/005-convo-ingest/assets/inputs/tools/oracle_expectations.py",
+ "oracle": {
+  "script": "docs/plans/005-convo-ingest/assets/inputs/reconvo.py",
+  "sha256": "62b89a89f7035bd8ba077375ffe3e91ae5aa76e650e9cf54b092832302ad82c1",
+  "entrypoint": "read_omp"
+ },
+ "grade_of_proof": "read_omp handles only type=='message', so the title slot, the session header, model_change, thinking_level_change and the first-class compaction record are absent from the subset section BY CONSTRUCTION. The Rust reader must still emit the compaction record (ac-0005); the structural section is what holds it to that.",
+ "sessions": [
+  {
+   "key": "01a03d08-7c56-7000-ac9b-95c4b3ef34d7",
+   "files": [
+    "omp/2026-08-26T07-46-01-430Z_01a03d08-7c56-7000-ac9b-95c4b3ef34d7.jsonl"
+   ],
+   "record_count": 193,
+   "by_type": {
+    "compaction": 1,
+    "custom": 72,
+    "custom_message": 2,
+    "message": 114,
+    "model_change": 1,
+    "session": 1,
+    "thinking_level_change": 1,
+    "title": 1
+   },
+   "oracle_turns": 87,
+   "oracle_by_kind": {
+    "assistant": 4,
+    "human": 1,
+    "pij_in": 10,
+    "pij_out": 7,
+    "tool_call": 65
+   },
+   "extras": {
+    "spilled_tool_results": [
+     "omp/2026-08-26T07-46-01-430Z_01a03d08-7c56-7000-ac9b-95c4b3ef34d7/30.bash-original.log"
+    ]
+   }
+  }
+ ],
+ "structural": {
+  "01a03d08-7c56-7000-ac9b-95c4b3ef34d7": {
+   "main": {
+    "file": "omp/2026-08-26T07-46-01-430Z_01a03d08-7c56-7000-ac9b-95c4b3ef34d7.jsonl",
+    "record_count": 193,
+    "by_type": {
+     "compaction": 1,
+     "custom": 72,
+     "custom_message": 2,
+     "message": 114,
+     "model_change": 1,
+     "session": 1,
+     "thinking_level_change": 1,
+     "title": 1
+    },
+    "records": [
+     {
+      "n": 1,
+      "type": "title",
+      "ts": null,
+      "id": null,
+      "parent": null,
+      "record_sha256": "c6e3b8218c1f77e3cbf3538a2b42f7dea114542e4a429a7e6feb3686c33dc6cf"
+     },
+     {
+      "n": 2,
+      "type": "session",
+      "ts": "2026-08-26T07:46:01.430Z",
+      "id": "01a03d08-7c56-7000-ac9b-95c4b3ef34d7",
+      "parent": null,
+      "record_sha256": "b8f6ec5496a80cb95b5440d62aeeabd94baf77bc883e1e8c0e62643aadc6c9be"
+     },
+     {
+      "n": 3,
+      "type": "model_change",
+      "ts": "2026-08-26T07:46:01.597Z",
+      "id": "880e7147",
+      "parent": null,
+      "record_sha256": "c52519254a7d2ab577d3dc793650d5707f18daa2852a85071c2b81a027eeb4b4"
+     },
+     {
+      "n": 4,
+      "type": "thinking_level_change",
+      "ts": "2026-08-26T07:46:01.597Z",
+      "id": "bec0e25d",
+      "parent": "880e7147",
+      "record_sha256": "90aa5683c609fdcb6c34610bf420de660b73da61ce40dbd1e3945036977292aa"
+     },
+     {
+      "n": 5,
+      "type": "message",
+      "ts": "2026-08-26T07:46:03.290Z",
+      "id": "d137117f",
+      "parent": "bec0e25d",
+      "record_sha256": "48937a8505dc5d793962074216de0ab84e2a8ba4a2fe231082e7ae7ad9656dcb"
+     },
+     {
+      "n": 6,
+      "type": "custom",
+      "ts": "2026-08-26T07:46:19.526Z",
+      "id": "da3c3e2c",
+      "parent": "d137117f",
+      "record_sha256": "9a45b67a805c3f62c67bc6f1ebac564ca1f365e50241e668d9fc58a486629fec"
+     },
+     {
+      "n": 7,
+      "type": "custom",
+      "ts": "2026-08-26T07:46:19.527Z",
+      "id": "b60511fe",
+      "parent": "da3c3e2c",
+      "record_sha256": "8557f02129ec235a19f8656a7a020021c692f6fde166e2cad018e214a8ed6aca"
+     },
+     {
+      "n": 8,
+      "type": "message",
+      "ts": "2026-08-26T07:46:19.529Z",
+      "id": "30f3582f",
+      "parent": "b60511fe",
+      "record_sha256": "b80c4b44beb8c624e960c4916e562d288e042b73aa975e826a043b7b2020c2f7"
+     },
+     {
+      "n": 9,
+      "type": "message",
+      "ts": "2026-08-26T07:46:19.587Z",
+      "id": "3978a92d",
+      "parent": "30f3582f",
+      "record_sha256": "08a24a3713c774fe8f9c41b9b1bf19790770647ccf674e561941775d03b7ea78"
+     },
+     {
+      "n": 10,
+      "type": "message",
+      "ts": "2026-08-26T07:46:19.644Z",
+      "id": "f02deeed",
+      "parent": "3978a92d",
+      "record_sha256": "d9ebb89b6a50adcac79cf9049834675fae12d550ccc99abfe4e3f6cbf6b9be30"
+     },
+     {
+      "n": 11,
+      "type": "message",
+      "ts": "2026-08-26T07:46:19.713Z",
+      "id": "66727091",
+      "parent": "f02deeed",
+      "record_sha256": "b2aa2b6056038329389f8d44c6fa62abe89fda6550c04ba2e6cd418124cc0d4e"
+     },
+     {
+      "n": 12,
+      "type": "custom",
+      "ts": "2026-08-26T07:46:38.740Z",
+      "id": "238c0fcb",
+      "parent": "66727091",
+      "record_sha256": "08faff992dc3df11f22364682f89b20df823972b01face841b0641cda76323bf"
+     },
+     {
+      "n": 13,
+      "type": "message",
+      "ts": "2026-08-26T07:46:38.741Z",
+      "id": "6f66456e",
+      "parent": "238c0fcb",
+      "record_sha256": "c31123878fd09711fa5618dd36e65e2b1768d74f161c865e3b242efe9c28dc3e"
+     },
+     {
+      "n": 14,
+      "type": "message",
+      "ts": "2026-08-26T07:46:38.845Z",
+      "id": "6b556213",
+      "parent": "6f66456e",
+      "record_sha256": "c07a3fa8ac5e1ba1aa2ee62f630105ae637db0adbdb31359c02fe695ee56528f"
+     },
+     {
+      "n": 15,
+      "type": "message",
+      "ts": "2026-08-26T07:46:39.016Z",
+      "id": "df8b1eac",
+      "parent": "6b556213",
+      "record_sha256": "3f6914f1299f142530ef7eba0efcde83d8352aaac2677f058caaf881c3a12f3a"
+     },
+     {
+      "n": 16,
+      "type": "custom",
+      "ts": "2026-08-26T07:46:42.570Z",
+      "id": "253015dc",
+      "parent": "df8b1eac",
+      "record_sha256": "306738d7a2e8d3eb60cec1026626401f333c08f68fb0b4f94906018353de98b0"
+     },
+     {
+      "n": 17,
+      "type": "message",
+      "ts": "2026-08-26T07:46:42.571Z",
+      "id": "0cb09c5d",
+      "parent": "253015dc",
+      "record_sha256": "6df22e35ebc83ada1e759dc721e61aec0c73f31d7eb7d01f91fd09d6dd300ad0"
+     },
+     {
+      "n": 18,
+      "type": "message",
+      "ts": "2026-08-26T07:46:42.597Z",
+      "id": "68773d34",
+      "parent": "0cb09c5d",
+      "record_sha256": "a7a5ac68ac13438717b3a992e2bd31674e93b4094f2602443c0fc6a372e79803"
+     },
+     {
+      "n": 19,
+      "type": "custom",
+      "ts": "2026-08-26T07:46:50.870Z",
+      "id": "74d3dad4",
+      "parent": "68773d34",
+      "record_sha256": "071ae37ea09e46d9ebdda3402e54cd9a6a3539a117a23260a9736a85c9ed8783"
+     },
+     {
+      "n": 20,
+      "type": "custom",
+      "ts": "2026-08-26T07:46:50.870Z",
+      "id": "3c3f6be8",
+      "parent": "74d3dad4",
+      "record_sha256": "9e419ef4636022699335182b86ae8b6eff39414bf5425d667b9bcd1bc8e19fef"
+     },
+     {
+      "n": 21,
+      "type": "message",
+      "ts": "2026-08-26T07:46:50.872Z",
+      "id": "e4f9564f",
+      "parent": "3c3f6be8",
+      "record_sha256": "163065599eff3fd9caa0d32eeab3fbf7e41a5ac73633cc69ac85cdfb1fab572c"
+     },
+     {
+      "n": 22,
+      "type": "message",
+      "ts": "2026-08-26T07:46:51.734Z",
+      "id": "b4c64760",
+      "parent": "e4f9564f",
+      "record_sha256": "3846107ef68556676f967d9fe9ff7c8cb83858d14f5c1c59b985bccc5075df23"
+     },
+     {
+      "n": 23,
+      "type": "message",
+      "ts": "2026-08-26T07:46:52.027Z",
+      "id": "3e164d2f",
+      "parent": "b4c64760",
+      "record_sha256": "6d3f6ca500a8452b2a484dd0e3c66f14033064a71e3c8295bd23be681ff5baaa"
+     },
+     {
+      "n": 24,
+      "type": "custom",
+      "ts": "2026-08-26T07:47:10.634Z",
+      "id": "650bda5c",
+      "parent": "3e164d2f",
+      "record_sha256": "9ea4535f474071be7ff0e438357d60e1a997257816728132011319c3d7198aca"
+     },
+     {
+      "n": 25,
+      "type": "custom",
+      "ts": "2026-08-26T07:47:10.635Z",
+      "id": "f6b99c34",
+      "parent": "650bda5c",
+      "record_sha256": "7cbd387aabaa3836aa80d77c69a0bec1803f8fb9b20e7d897698c8548cbac43c"
+     },
+     {
+      "n": 26,
+      "type": "custom",
+      "ts": "2026-08-26T07:47:10.636Z",
+      "id": "6f957bad",
+      "parent": "f6b99c34",
+      "record_sha256": "270ad388252c5fe5554a32dc94dc92f7893a4019e79fd14848a22cb72c09d12c"
+     },
+     {
+      "n": 27,
+      "type": "message",
+      "ts": "2026-08-26T07:47:10.636Z",
+      "id": "ab6bc517",
+      "parent": "6f957bad",
+      "record_sha256": "bcfcfb727d63baea39d88a3b34f5fbfdc5b81868a91112de42a5424e9f685824"
+     },
+     {
+      "n": 28,
+      "type": "message",
+      "ts": "2026-08-26T07:47:10.676Z",
+      "id": "6860978a",
+      "parent": "ab6bc517",
+      "record_sha256": "5294345651ace82d88e9b55188bc099ab7db9eef43033817599f7b64472a3a6a"
+     },
+     {
+      "n": 29,
+      "type": "message",
+      "ts": "2026-08-26T07:47:10.699Z",
+      "id": "ca35a3c1",
+      "parent": "6860978a",
+      "record_sha256": "1fa91611c203f5a1b93df8e8c86bc334cfbce2381bc8395ccf35880742b2a05d"
+     },
+     {
+      "n": 30,
+      "type": "message",
+      "ts": "2026-08-26T07:47:10.723Z",
+      "id": "444ac9a0",
+      "parent": "ca35a3c1",
+      "record_sha256": "5afb36ecd79dba8e4f93dc7862921ee4cf4340ffcae5e186eb5038f3f889d638"
+     },
+     {
+      "n": 31,
+      "type": "message",
+      "ts": "2026-08-26T07:47:10.780Z",
+      "id": "8ad3a06f",
+      "parent": "444ac9a0",
+      "record_sha256": "ac1da17f473e8a633a63b780c619841a953d36e6f44555fcdcffd56d68e24023"
+     },
+     {
+      "n": 32,
+      "type": "custom",
+      "ts": "2026-08-26T07:47:15.475Z",
+      "id": "21e89813",
+      "parent": "8ad3a06f",
+      "record_sha256": "843b3c1e7644e108d914e1da4a43566504218aebd021bb43411d6de0bb8d63af"
+     },
+     {
+      "n": 33,
+      "type": "message",
+      "ts": "2026-08-26T07:47:15.476Z",
+      "id": "ae26425e",
+      "parent": "21e89813",
+      "record_sha256": "6ce974d29f9d934352672108e7a8d9c82069565a9747a6b5048c90aa5bef790a"
+     },
+     {
+      "n": 34,
+      "type": "message",
+      "ts": "2026-08-26T07:47:15.497Z",
+      "id": "7b952207",
+      "parent": "ae26425e",
+      "record_sha256": "eccfb677afc8e2fdbe70a83fb3bfddddcb2141f14f8f3d658e253879a062d5bb"
+     },
+     {
+      "n": 35,
+      "type": "custom",
+      "ts": "2026-08-26T07:47:32.585Z",
+      "id": "e9a9330e",
+      "parent": "7b952207",
+      "record_sha256": "479e51acd377aa89cdd074c799a6c4a5c86ce7fdb222a884b89a3b5e91659825"
+     },
+     {
+      "n": 36,
+      "type": "custom",
+      "ts": "2026-08-26T07:47:32.588Z",
+      "id": "f97e977b",
+      "parent": "e9a9330e",
+      "record_sha256": "07f412b362bf1778ab5aa3b4b8b025ac088e73bbce9d1ee6b5996920ae5a79a6"
+     },
+     {
+      "n": 37,
+      "type": "custom",
+      "ts": "2026-08-26T07:47:32.590Z",
+      "id": "28afbfdd",
+      "parent": "f97e977b",
+      "record_sha256": "48351041a73564826295654d827fbb100ca1e14b0032448abb921dbf34644c12"
+     },
+     {
+      "n": 38,
+      "type": "message",
+      "ts": "2026-08-26T07:47:32.593Z",
+      "id": "6019f47e",
+      "parent": "28afbfdd",
+      "record_sha256": "e36ba45f94d491df5b6de5c8c5052ca2137146f1c3c6ed8cc33e8e21bf6e4ebf"
+     },
+     {
+      "n": 39,
+      "type": "message",
+      "ts": "2026-08-26T07:47:32.697Z",
+      "id": "a9d2a7a4",
+      "parent": "6019f47e",
+      "record_sha256": "a2549c0d6c05108afe48b1f5f30e57600e7892cb976f4a00bf002f27454c690c"
+     },
+     {
+      "n": 40,
+      "type": "message",
+      "ts": "2026-08-26T07:47:32.771Z",
+      "id": "deaa5fcb",
+      "parent": "a9d2a7a4",
+      "record_sha256": "58c7fd68725e88e76d96c52964521a71cb0d1247bf4372c63df49e5c8e6292a2"
+     },
+     {
+      "n": 41,
+      "type": "message",
+      "ts": "2026-08-26T07:47:33.340Z",
+      "id": "a91a8a20",
+      "parent": "deaa5fcb",
+      "record_sha256": "693f3384ae5de7993bdfb833e9023ac208517a66c069932a9027c226ebe7e6dd"
+     },
+     {
+      "n": 42,
+      "type": "custom",
+      "ts": "2026-08-26T07:47:40.952Z",
+      "id": "4b717251",
+      "parent": "a91a8a20",
+      "record_sha256": "2a2e7be0e73ff37d426c6fca10878fbed4511cc0f52d23c38b130239f0fd6b1b"
+     },
+     {
+      "n": 43,
+      "type": "custom",
+      "ts": "2026-08-26T07:47:40.953Z",
+      "id": "adaa510b",
+      "parent": "4b717251",
+      "record_sha256": "1401487e9aa58cebca1214354bf98fb92ad12aef690405e2bace825ae27d5b34"
+     },
+     {
+      "n": 44,
+      "type": "custom",
+      "ts": "2026-08-26T07:47:40.953Z",
+      "id": "1b0cd377",
+      "parent": "adaa510b",
+      "record_sha256": "6fee91a7011b6d68be5424bfcad4d90c3abf50dae3c03a6d859f8bcd930daf8b"
+     },
+     {
+      "n": 45,
+      "type": "message",
+      "ts": "2026-08-26T07:47:40.953Z",
+      "id": "c26f8c54",
+      "parent": "1b0cd377",
+      "record_sha256": "c1d0684aef669d6cacd7f63bbec5acff6e0c4ada95537c29ed620d47de12ef92"
+     },
+     {
+      "n": 46,
+      "type": "message",
+      "ts": "2026-08-26T07:47:41.052Z",
+      "id": "42fedfda",
+      "parent": "c26f8c54",
+      "record_sha256": "95d9f3d5613f31c8cd5068fc2294bf41f2ba94c3fc04ee252c35ee47c404b0a5"
+     },
+     {
+      "n": 47,
+      "type": "message",
+      "ts": "2026-08-26T07:47:41.075Z",
+      "id": "d79dbb05",
+      "parent": "42fedfda",
+      "record_sha256": "064e48847355d0d9916b0ea59e7ead00e1b98334177ee8757b2c2663985bb84c"
+     },
+     {
+      "n": 48,
+      "type": "message",
+      "ts": "2026-08-26T07:47:41.109Z",
+      "id": "6f88000d",
+      "parent": "d79dbb05",
+      "record_sha256": "78841fc2baf3c30a01d9ef31570f10d1b983855ac159dc5ca160ac2e150231e9"
+     },
+     {
+      "n": 49,
+      "type": "custom",
+      "ts": "2026-08-26T07:47:52.675Z",
+      "id": "863d19ec",
+      "parent": "6f88000d",
+      "record_sha256": "7be7b7e51bfb756974c67e090cbb9a96c0fb1f4dd872f61c4b3d48a5a2d4f73a"
+     },
+     {
+      "n": 50,
+      "type": "custom",
+      "ts": "2026-08-26T07:47:52.675Z",
+      "id": "d85e4731",
+      "parent": "863d19ec",
+      "record_sha256": "6b2a8ddc8b5a29652d94daa3c4583f6414abdb5beaddc4b2f37632cabc9edc8e"
+     },
+     {
+      "n": 51,
+      "type": "custom",
+      "ts": "2026-08-26T07:47:52.675Z",
+      "id": "5d359a34",
+      "parent": "d85e4731",
+      "record_sha256": "bce9d5047bea8d3f537927854987d858e3d082860a5717dfd78aeecba546b9ce"
+     },
+     {
+      "n": 52,
+      "type": "message",
+      "ts": "2026-08-26T07:47:52.676Z",
+      "id": "f3211eb5",
+      "parent": "5d359a34",
+      "record_sha256": "a1acce63b0e94f3d0d3d2d017eef4cdf7b20087440c4f1c6901d6ef739da875f"
+     },
+     {
+      "n": 53,
+      "type": "message",
+      "ts": "2026-08-26T07:47:52.764Z",
+      "id": "6f394bc5",
+      "parent": "f3211eb5",
+      "record_sha256": "d646fa6bc458e8fc24b3c0e94ed28ecd7c782cdde6af36b74f501e6541d8216c"
+     },
+     {
+      "n": 54,
+      "type": "message",
+      "ts": "2026-08-26T07:47:52.786Z",
+      "id": "94937490",
+      "parent": "6f394bc5",
+      "record_sha256": "b52abc4dc27026aa236bea26f1c0df164d0dbc5aa72755472cf5d1dc55795cb6"
+     },
+     {
+      "n": 55,
+      "type": "message",
+      "ts": "2026-08-26T07:47:52.809Z",
+      "id": "58e91d8f",
+      "parent": "94937490",
+      "record_sha256": "307f34c492e664590e02cd153dc56eaad4eaa9b7eb37688ff4fe26cd4d9f3de0"
+     },
+     {
+      "n": 56,
+      "type": "custom",
+      "ts": "2026-08-26T07:48:23.208Z",
+      "id": "4a6acbb7",
+      "parent": "58e91d8f",
+      "record_sha256": "e3f00c7a78d0d919227c1b311b50d90845ddce05a1a94cbbe169ad012dd4d88b"
+     },
+     {
+      "n": 57,
+      "type": "custom",
+      "ts": "2026-08-26T07:48:23.209Z",
+      "id": "5b3d8c03",
+      "parent": "4a6acbb7",
+      "record_sha256": "e1a2117c8b706b3362a5ac17ebbd120f1afdcc6c619d863748c49de0a528a77a"
+     },
+     {
+      "n": 58,
+      "type": "custom",
+      "ts": "2026-08-26T07:48:23.210Z",
+      "id": "a3d0b58f",
+      "parent": "5b3d8c03",
+      "record_sha256": "fc893a9137c03690e0330854507a702c56bbd521d791b3fabcbddbf59c710047"
+     },
+     {
+      "n": 59,
+      "type": "message",
+      "ts": "2026-08-26T07:48:23.210Z",
+      "id": "1ac97d80",
+      "parent": "a3d0b58f",
+      "record_sha256": "f26b0e89c4bc75bbed69ec19b08da41f52389dddb4d5d27793c146c791b6d6e2"
+     },
+     {
+      "n": 60,
+      "type": "message",
+      "ts": "2026-08-26T07:48:23.255Z",
+      "id": "f38b1b41",
+      "parent": "1ac97d80",
+      "record_sha256": "86c28f7b3e8b67f311dbc04019bf9ae6f416ab1e91c2d40f8911a3fdb77c2e5e"
+     },
+     {
+      "n": 61,
+      "type": "message",
+      "ts": "2026-08-26T07:48:23.278Z",
+      "id": "1739c8f6",
+      "parent": "f38b1b41",
+      "record_sha256": "36fbd9715430c8cb0bc66ce6966c7fdc3356ea15efb2857e3a32cb45d419a4af"
+     },
+     {
+      "n": 62,
+      "type": "message",
+      "ts": "2026-08-26T07:48:23.388Z",
+      "id": "cc50f0ca",
+      "parent": "1739c8f6",
+      "record_sha256": "ed1b1cd80f3aebbb12a155d78f2886f11fcfe1d4a5fe1a1ab8cac408a78b4f52"
+     },
+     {
+      "n": 63,
+      "type": "custom",
+      "ts": "2026-08-26T07:48:33.373Z",
+      "id": "931dd797",
+      "parent": "cc50f0ca",
+      "record_sha256": "20164f890803c96d9587cbb029937c10ff2383c18a3a6d465425104092a56dc2"
+     },
+     {
+      "n": 64,
+      "type": "custom",
+      "ts": "2026-08-26T07:48:33.376Z",
+      "id": "f244f505",
+      "parent": "931dd797",
+      "record_sha256": "f4db35d8b8a1c913fc8816302efaf12a1ac1d785c7ec6a5f91ed586dc844f3ca"
+     },
+     {
+      "n": 65,
+      "type": "custom",
+      "ts": "2026-08-26T07:48:33.377Z",
+      "id": "63ae5249",
+      "parent": "f244f505",
+      "record_sha256": "90b283edc88470a47b4d014217e5cc33870f9fbaf0e01c62a5dd93bf2f723281"
+     },
+     {
+      "n": 66,
+      "type": "custom",
+      "ts": "2026-08-26T07:48:33.378Z",
+      "id": "ed85d014",
+      "parent": "63ae5249",
+      "record_sha256": "58ac7126923bb372774279bcfa6143c03f7b36d01b9a2416be92a669176ada7b"
+     },
+     {
+      "n": 67,
+      "type": "message",
+      "ts": "2026-08-26T07:48:33.378Z",
+      "id": "808ec5f8",
+      "parent": "ed85d014",
+      "record_sha256": "28f833f49ef0668f2a15a53342aa837938aa24a98435aeedad77c6235b45bf7e"
+     },
+     {
+      "n": 68,
+      "type": "message",
+      "ts": "2026-08-26T07:48:33.467Z",
+      "id": "c84ffac2",
+      "parent": "808ec5f8",
+      "record_sha256": "adbc60ec6268ccca9ecfeb3e762207d639439ded6db9f6dfe9409c5ec1ebecde"
+     },
+     {
+      "n": 69,
+      "type": "message",
+      "ts": "2026-08-26T07:48:33.529Z",
+      "id": "71995b5e",
+      "parent": "c84ffac2",
+      "record_sha256": "746771cb1cf06756e32f9772d6d501924f2bd9df6718e3abb804d3f4b5fcdc63"
+     },
+     {
+      "n": 70,
+      "type": "message",
+      "ts": "2026-08-26T07:48:33.595Z",
+      "id": "5d0d1b85",
+      "parent": "71995b5e",
+      "record_sha256": "220819f62ba59d6c71f73701fe4f7d91053de3172181006cbf929aea3e800439"
+     },
+     {
+      "n": 71,
+      "type": "message",
+      "ts": "2026-08-26T07:48:33.697Z",
+      "id": "eeda7500",
+      "parent": "5d0d1b85",
+      "record_sha256": "ae0d32993d619928ed5acfdb87ae63d4e07c60f837379d7614b7836c59f3c6e9"
+     },
+     {
+      "n": 72,
+      "type": "custom",
+      "ts": "2026-08-26T07:48:58.656Z",
+      "id": "6ee624e3",
+      "parent": "eeda7500",
+      "record_sha256": "d008ee08ab673d3a24cbca5869326f99eca55a70c93a6e1ca84ae5e413f8e1e8"
+     },
+     {
+      "n": 73,
+      "type": "custom",
+      "ts": "2026-08-26T07:48:58.656Z",
+      "id": "15e0b261",
+      "parent": "6ee624e3",
+      "record_sha256": "c60eace3f5303aedc6676a69e51e004b172d415216bd1a05dbdbb742e69c8284"
+     },
+     {
+      "n": 74,
+      "type": "custom",
+      "ts": "2026-08-26T07:48:58.657Z",
+      "id": "c7bb488d",
+      "parent": "15e0b261",
+      "record_sha256": "f2e707eaafe4207d70e787e73cf3971050d4ea1b80af161b39dacd9b8d8b6e58"
+     },
+     {
+      "n": 75,
+      "type": "message",
+      "ts": "2026-08-26T07:48:58.657Z",
+      "id": "67ac7bc6",
+      "parent": "c7bb488d",
+      "record_sha256": "3effafb5e3d4deb78bdd25f01583aa1762f860f3383d022eb050f81e95d3a8fd"
+     },
+     {
+      "n": 76,
+      "type": "message",
+      "ts": "2026-08-26T07:48:59.436Z",
+      "id": "0bee1106",
+      "parent": "67ac7bc6",
+      "record_sha256": "4c47f92f073debda787df628f8ed342dc0d5d27d44533b6f433f905053ef149b"
+     },
+     {
+      "n": 77,
+      "type": "message",
+      "ts": "2026-08-26T07:48:59.495Z",
+      "id": "976b0577",
+      "parent": "0bee1106",
+      "record_sha256": "1c2aa09d883f335118ec9dd28a75fdc5d5cfcb637f5a1d9dece722c2e32e6d4d"
+     },
+     {
+      "n": 78,
+      "type": "message",
+      "ts": "2026-08-26T07:48:59.602Z",
+      "id": "a9e4e75f",
+      "parent": "976b0577",
+      "record_sha256": "c583180cd9fec71e7765d72db2b284964c93d81b405a4a82ac4eda980edd1fb8"
+     },
+     {
+      "n": 79,
+      "type": "custom",
+      "ts": "2026-08-26T07:49:18.502Z",
+      "id": "133e2980",
+      "parent": "a9e4e75f",
+      "record_sha256": "2e52ee9a8ecbc91620f537734eba7346a844a3d9edf82306c18bc21431dc49b2"
+     },
+     {
+      "n": 80,
+      "type": "custom",
+      "ts": "2026-08-26T07:49:18.505Z",
+      "id": "22647e41",
+      "parent": "133e2980",
+      "record_sha256": "d69d498a93b4b30b4c6388722f5eb26b625fb166395c58adae07a0ad4e40e5a2"
+     },
+     {
+      "n": 81,
+      "type": "message",
+      "ts": "2026-08-26T07:49:18.506Z",
+      "id": "fed6b076",
+      "parent": "22647e41",
+      "record_sha256": "8a037e11dd2c251c94e94cc84b5b2ff9539af6f4f0526d405f2f1f1283df67b4"
+     },
+     {
+      "n": 82,
+      "type": "message",
+      "ts": "2026-08-26T07:49:18.632Z",
+      "id": "ace6ce29",
+      "parent": "fed6b076",
+      "record_sha256": "239bac1e7239d9f132cb78946ae7d1da0a8d3d4986dce7fefce281decda2a18e"
+     },
+     {
+      "n": 83,
+      "type": "message",
+      "ts": "2026-08-26T07:49:18.726Z",
+      "id": "eb13dff8",
+      "parent": "ace6ce29",
+      "record_sha256": "887477df0683f0dd6a62ff54545c0a63f68dde9cc69f1eb33186a89cda346a6f"
+     },
+     {
+      "n": 84,
+      "type": "custom",
+      "ts": "2026-08-26T07:51:21.166Z",
+      "id": "95e4cf7a",
+      "parent": "eb13dff8",
+      "record_sha256": "41ff3ed1531f502e662523a9d13cf0c280a70bc09f86250e2ce4201ccc3bf809"
+     },
+     {
+      "n": 85,
+      "type": "custom",
+      "ts": "2026-08-26T07:51:21.166Z",
+      "id": "3e15f0ef",
+      "parent": "95e4cf7a",
+      "record_sha256": "35fe989179a84e9822e5df069dd3c63dc90aba5c2763ffc0a410591b85f8430a"
+     },
+     {
+      "n": 86,
+      "type": "message",
+      "ts": "2026-08-26T07:51:21.167Z",
+      "id": "69cb093f",
+      "parent": "3e15f0ef",
+      "record_sha256": "25faea0f6f0e079629c60009ce2ad8e7d345b4a7636603f720e86a9c78f38a2a"
+     },
+     {
+      "n": 87,
+      "type": "message",
+      "ts": "2026-08-26T07:51:21.196Z",
+      "id": "67f83397",
+      "parent": "69cb093f",
+      "record_sha256": "285568dc9ff84d79519c8751a5b6b349b82a030d3d93e709a134799b50ce6587"
+     },
+     {
+      "n": 88,
+      "type": "message",
+      "ts": "2026-08-26T07:51:21.215Z",
+      "id": "b69ae743",
+      "parent": "67f83397",
+      "record_sha256": "d67555365f2f0631aca962c60d1e499122716dc0e50d989ce468ab37a28df9bd"
+     },
+     {
+      "n": 89,
+      "type": "message",
+      "ts": "2026-08-26T07:51:21.291Z",
+      "id": "a2534f3e",
+      "parent": "b69ae743",
+      "record_sha256": "a745ec83a27a79186d2eb4f447f9b4e5bda654659bdbb0c50aed135fa61abe44"
+     },
+     {
+      "n": 90,
+      "type": "message",
+      "ts": "2026-08-26T07:51:21.291Z",
+      "id": "ba96c7f8",
+      "parent": "a2534f3e",
+      "record_sha256": "a98cba93cc627ba21e19673ac4b28cd8673af257df28f0de4430b24b5ef71e09"
+     },
+     {
+      "n": 91,
+      "type": "custom",
+      "ts": "2026-08-26T07:52:43.257Z",
+      "id": "3798588e",
+      "parent": "ba96c7f8",
+      "record_sha256": "78971db58fbf112c3217cd7bf5e507fd2e75014cb8749a093c4c9f8c5683e447"
+     },
+     {
+      "n": 92,
+      "type": "custom",
+      "ts": "2026-08-26T07:52:43.257Z",
+      "id": "32a403cd",
+      "parent": "3798588e",
+      "record_sha256": "30684a6493029017dd215946f26c99d3020c1518fbc492c8cb158aa7caacc356"
+     },
+     {
+      "n": 93,
+      "type": "custom",
+      "ts": "2026-08-26T07:52:43.258Z",
+      "id": "6601982f",
+      "parent": "32a403cd",
+      "record_sha256": "759086e3b371e5a1ef3bc339d4047b43bd2ffa24c53b6f593d51e68b21deec34"
+     },
+     {
+      "n": 94,
+      "type": "message",
+      "ts": "2026-08-26T07:52:43.268Z",
+      "id": "53c5b223",
+      "parent": "6601982f",
+      "record_sha256": "f5557ce88d51721f519e4f9a4a5ca0f80eda30fe4988ffd14a35acc113ee956e"
+     },
+     {
+      "n": 95,
+      "type": "message",
+      "ts": "2026-08-26T07:52:43.278Z",
+      "id": "77db6af2",
+      "parent": "53c5b223",
+      "record_sha256": "bf69fe961fa2c18078973408fffa6d29edf59f56ae37af4ed8217a32d2393499"
+     },
+     {
+      "n": 96,
+      "type": "message",
+      "ts": "2026-08-26T07:52:43.340Z",
+      "id": "c549b7b1",
+      "parent": "77db6af2",
+      "record_sha256": "06f9d3d8daf473ce7dbc4eeba34ad51674ef24403a02ad2daf02bdd129c3450e"
+     },
+     {
+      "n": 97,
+      "type": "message",
+      "ts": "2026-08-26T07:52:43.368Z",
+      "id": "3f66cb15",
+      "parent": "c549b7b1",
+      "record_sha256": "dd274108f0e219b238e4659f7c0eb90de2dea1118b80c2aa2c998cd8bbc4e060"
+     },
+     {
+      "n": 98,
+      "type": "custom",
+      "ts": "2026-08-26T07:56:03.329Z",
+      "id": "e77913ff",
+      "parent": "3f66cb15",
+      "record_sha256": "cc5f094c1d6f4a5a37f8b291bde9924bfad0ade26548d9fdfa0b6f59c4be5644"
+     },
+     {
+      "n": 99,
+      "type": "message",
+      "ts": "2026-08-26T07:56:03.330Z",
+      "id": "0668167c",
+      "parent": "e77913ff",
+      "record_sha256": "2192c9ebc74001dbf55c149fd3c5ead22a7c9ae226b28dacd6be78aff9a0adeb"
+     },
+     {
+      "n": 100,
+      "type": "custom",
+      "ts": "2026-08-26T07:56:03.379Z",
+      "id": "706ecc23",
+      "parent": "0668167c",
+      "record_sha256": "29f2923baa538b93f9e86ef920a08a66cdd33060e1535166fa8f6694f1451c1f"
+     },
+     {
+      "n": 101,
+      "type": "custom",
+      "ts": "2026-08-26T07:56:03.380Z",
+      "id": "ccbda5a8",
+      "parent": "706ecc23",
+      "record_sha256": "a558c633de634c0efd71361abfb69843fb310df9b2e90631266e33bd03423a53"
+     },
+     {
+      "n": 102,
+      "type": "message",
+      "ts": "2026-08-26T07:56:03.380Z",
+      "id": "80dc5155",
+      "parent": "ccbda5a8",
+      "record_sha256": "a60ef0ae59cb42854f8d7f544050de2d5973cc8ea0f8117c623be5937fda4921"
+     },
+     {
+      "n": 103,
+      "type": "message",
+      "ts": "2026-08-26T07:56:03.403Z",
+      "id": "7d02eb48",
+      "parent": "80dc5155",
+      "record_sha256": "d7f4a2543bdf43c809a01a38c24b821f8fb9bbe46e7b96cb7fea2317f146a6ce"
+     },
+     {
+      "n": 104,
+      "type": "message",
+      "ts": "2026-08-26T07:56:03.530Z",
+      "id": "e924194c",
+      "parent": "7d02eb48",
+      "record_sha256": "d6b45f5d83bef8d6ea8c67b2ffb899928752087c8d764adf418280477629cfee"
+     },
+     {
+      "n": 105,
+      "type": "custom",
+      "ts": "2026-08-26T07:56:45.087Z",
+      "id": "de4a252e",
+      "parent": "e924194c",
+      "record_sha256": "b862c06c2cbd0f539622e07673e7ce936cd1cefe3a6f3e23e078bb6e514248b0"
+     },
+     {
+      "n": 106,
+      "type": "message",
+      "ts": "2026-08-26T07:56:45.100Z",
+      "id": "769645cf",
+      "parent": "de4a252e",
+      "record_sha256": "8c1fcea7e14893d778b73db2a073c62b878a849364bb97076847c9479e4a8b30"
+     },
+     {
+      "n": 107,
+      "type": "custom",
+      "ts": "2026-08-26T07:56:45.143Z",
+      "id": "7fdf4a14",
+      "parent": "769645cf",
+      "record_sha256": "b5863cf64c33f1f43f9b6eba9d4709d421ea7c8bd1dee9fb014ad273676492d4"
+     },
+     {
+      "n": 108,
+      "type": "message",
+      "ts": "2026-08-26T07:56:45.164Z",
+      "id": "6d88f09c",
+      "parent": "7fdf4a14",
+      "record_sha256": "ba65a7e7ff610f34cddae0297a737a24b689b74a820ef758ee4abf23bf184e8c"
+     },
+     {
+      "n": 109,
+      "type": "message",
+      "ts": "2026-08-26T07:56:45.181Z",
+      "id": "9fc2c365",
+      "parent": "6d88f09c",
+      "record_sha256": "1883758baf50769a1169e2d40798394d50c12815673ddde0d10d9061e1719115"
+     },
+     {
+      "n": 110,
+      "type": "custom_message",
+      "ts": "2026-08-26T07:56:45.236Z",
+      "id": "41d37e62",
+      "parent": "9fc2c365",
+      "record_sha256": "ab66e14fa9ecfb23ccaaaa3dd3123fd594ec02a3bd11c889c746081fe6cb6423"
+     },
+     {
+      "n": 111,
+      "type": "custom",
+      "ts": "2026-08-26T07:57:14.109Z",
+      "id": "3996a634",
+      "parent": "41d37e62",
+      "record_sha256": "fda6bf8a7e218e5e08b951a720da80af84fb1ed4cf17b242ae96a280c59682fb"
+     },
+     {
+      "n": 112,
+      "type": "custom",
+      "ts": "2026-08-26T07:57:14.110Z",
+      "id": "8101e3d9",
+      "parent": "3996a634",
+      "record_sha256": "ad4ccb71d2e2e336e9cf23f9256b2061fe3e90bdd6f6597107d8ffbbe813e910"
+     },
+     {
+      "n": 113,
+      "type": "custom",
+      "ts": "2026-08-26T07:57:14.111Z",
+      "id": "107d26b6",
+      "parent": "8101e3d9",
+      "record_sha256": "356ff2fd9bfca164a5d86b25848a3c0a6da32b64b02660794303b3d46a8d4089"
+     },
+     {
+      "n": 114,
+      "type": "message",
+      "ts": "2026-08-26T07:57:14.113Z",
+      "id": "a0254ccd",
+      "parent": "107d26b6",
+      "record_sha256": "badc61ae13256bc278b99cf1e86c905cdc734c2d21e4ea86752f391949f6ddaf"
+     },
+     {
+      "n": 115,
+      "type": "message",
+      "ts": "2026-08-26T07:57:14.223Z",
+      "id": "a52d5a26",
+      "parent": "a0254ccd",
+      "record_sha256": "8a5edfd478f094ed5008d2542619a3ee2ac346fb88a71a899da6dd35a03aadd9"
+     },
+     {
+      "n": 116,
+      "type": "message",
+      "ts": "2026-08-26T07:57:14.801Z",
+      "id": "66de536e",
+      "parent": "a52d5a26",
+      "record_sha256": "82cc996358dc164da149d855774c202bdbac47f253a00952273a9a0c64792308"
+     },
+     {
+      "n": 117,
+      "type": "message",
+      "ts": "2026-08-26T07:57:14.908Z",
+      "id": "0e07c9b1",
+      "parent": "66de536e",
+      "record_sha256": "ddab8f1d2cfe7d2f8b1cb48d44c5916fcd961a73e7336d02ffa423afea811cac"
+     },
+     {
+      "n": 118,
+      "type": "custom",
+      "ts": "2026-08-26T07:57:48.088Z",
+      "id": "edb74fc9",
+      "parent": "0e07c9b1",
+      "record_sha256": "f5ca0381adf1573256c59a82bd6ee2c35105b07b820626c3056c4a356c8fb7b7"
+     },
+     {
+      "n": 119,
+      "type": "message",
+      "ts": "2026-08-26T07:57:48.090Z",
+      "id": "5e8b99a3",
+      "parent": "edb74fc9",
+      "record_sha256": "169a329450630a917a92d2b714a225aa0dc4f1041a3ac104945c122474214634"
+     },
+     {
+      "n": 120,
+      "type": "message",
+      "ts": "2026-08-26T07:57:50.704Z",
+      "id": "50bc9c42",
+      "parent": "5e8b99a3",
+      "record_sha256": "4c550e76bb0aad205ba47d833f01361357ad72f81e693521b5ec73b43f7d434e"
+     },
+     {
+      "n": 121,
+      "type": "message",
+      "ts": "2026-08-26T07:57:50.771Z",
+      "id": "f51e5dd8",
+      "parent": "50bc9c42",
+      "record_sha256": "1fec26007d43eadf80a9d1d7f8f2e7108da6903b0a6ce4116d358e58aba2a879"
+     },
+     {
+      "n": 122,
+      "type": "custom",
+      "ts": "2026-08-26T07:57:55.405Z",
+      "id": "0a8beb97",
+      "parent": "f51e5dd8",
+      "record_sha256": "40f75fe1c9a45ff78f4d7046583a5c831189f6603ae7abca973020844dd1b094"
+     },
+     {
+      "n": 123,
+      "type": "message",
+      "ts": "2026-08-26T07:57:55.405Z",
+      "id": "d871e120",
+      "parent": "0a8beb97",
+      "record_sha256": "ad3267ec5f7997471bef3f11f2452b97eb2ec4b3464e9d260f87b72c9d8a0c50"
+     },
+     {
+      "n": 124,
+      "type": "message",
+      "ts": "2026-08-26T07:57:57.286Z",
+      "id": "0ebcce56",
+      "parent": "d871e120",
+      "record_sha256": "cc3b765ec27148a8c0cc7de642e10284100233efa8dcea4455aca369f27caaa6"
+     },
+     {
+      "n": 125,
+      "type": "custom",
+      "ts": "2026-08-26T07:58:19.799Z",
+      "id": "59671b2f",
+      "parent": "0ebcce56",
+      "record_sha256": "30c29d0b10a0e588cfeeb12a496ed0df0fdfc0d59d7acf2364f4b09f4b32d2d0"
+     },
+     {
+      "n": 126,
+      "type": "message",
+      "ts": "2026-08-26T07:58:19.897Z",
+      "id": "3ae038cc",
+      "parent": "59671b2f",
+      "record_sha256": "42a5832d3f91abfd3a20f725a467a6e8bc1af8b8e9c73f1891be8f5f230d3af8"
+     },
+     {
+      "n": 127,
+      "type": "message",
+      "ts": "2026-08-26T07:58:20.061Z",
+      "id": "702dcf35",
+      "parent": "3ae038cc",
+      "record_sha256": "702260f803245f386d518072127658076a39b0025d296f40e05301126295eb71"
+     },
+     {
+      "n": 128,
+      "type": "message",
+      "ts": "2026-08-26T07:58:36.383Z",
+      "id": "6f217442",
+      "parent": "702dcf35",
+      "record_sha256": "cf67afb76415ce99963556a58fc44fee93e25db0ec6e6ad07c96334578301d7c"
+     },
+     {
+      "n": 129,
+      "type": "message",
+      "ts": "2026-08-26T07:59:25.945Z",
+      "id": "60b76bd2",
+      "parent": "6f217442",
+      "record_sha256": "9a37a38509b2e0460fcd6b01fe5af4cb5bebd6348ea2bcb0e428441d1145219a"
+     },
+     {
+      "n": 130,
+      "type": "custom",
+      "ts": "2026-08-26T08:00:04.901Z",
+      "id": "c499ddfb",
+      "parent": "60b76bd2",
+      "record_sha256": "7ca8e5d2ac1bff8df880aee4d0e61758ba856408d94c40dc205b179e438f6d6a"
+     },
+     {
+      "n": 131,
+      "type": "custom",
+      "ts": "2026-08-26T08:00:04.901Z",
+      "id": "499d82ab",
+      "parent": "c499ddfb",
+      "record_sha256": "89fb751860342fa1e1da56e7d26116d56d533629fc3c065e504ce5062ae7aa28"
+     },
+     {
+      "n": 132,
+      "type": "message",
+      "ts": "2026-08-26T08:00:04.902Z",
+      "id": "dee41e94",
+      "parent": "499d82ab",
+      "record_sha256": "779332db1a98947099600c1fe4f7db9847810ab5ba00b73b4a482ab584139568"
+     },
+     {
+      "n": 133,
+      "type": "message",
+      "ts": "2026-08-26T08:00:04.927Z",
+      "id": "b5adb7d1",
+      "parent": "dee41e94",
+      "record_sha256": "5fb474ba35916de913992b2a79238a87dbf0122adc635b51012421ac16e8b792"
+     },
+     {
+      "n": 134,
+      "type": "message",
+      "ts": "2026-08-26T08:00:04.987Z",
+      "id": "7a10c342",
+      "parent": "b5adb7d1",
+      "record_sha256": "553256c2222b42d0a5cd1644f93a463916ecb91c1370fcc71fda75dadb4317ce"
+     },
+     {
+      "n": 135,
+      "type": "custom",
+      "ts": "2026-08-26T08:00:13.819Z",
+      "id": "fb3610bc",
+      "parent": "7a10c342",
+      "record_sha256": "e0906d8d89288c98f947210547dfe5cfee925fecd4257b6aab5515f244d8657d"
+     },
+     {
+      "n": 136,
+      "type": "custom",
+      "ts": "2026-08-26T08:00:13.819Z",
+      "id": "64d08f5a",
+      "parent": "fb3610bc",
+      "record_sha256": "fc5c18092fb7caa6c16ca65248d63c2691572be0576a3f9b1a22a62738354836"
+     },
+     {
+      "n": 137,
+      "type": "message",
+      "ts": "2026-08-26T08:00:13.820Z",
+      "id": "42e9bc8c",
+      "parent": "64d08f5a",
+      "record_sha256": "1548ae131ca582d2e4ada26ddeb833b247079886bda04d89406f75d28d7f151f"
+     },
+     {
+      "n": 138,
+      "type": "message",
+      "ts": "2026-08-26T08:00:13.866Z",
+      "id": "e9323539",
+      "parent": "42e9bc8c",
+      "record_sha256": "ef2b5942ba592852ecc65a2295b0165f735ddfd44ddc4621f1bfb9ae2bb8f837"
+     },
+     {
+      "n": 139,
+      "type": "message",
+      "ts": "2026-08-26T08:00:13.885Z",
+      "id": "63744cee",
+      "parent": "e9323539",
+      "record_sha256": "b668edffac4598d305d6267602ad564c3b0984ae2b1515061c99a644eef2a3b9"
+     },
+     {
+      "n": 140,
+      "type": "custom",
+      "ts": "2026-08-26T08:01:27.762Z",
+      "id": "ca0b86a4",
+      "parent": "63744cee",
+      "record_sha256": "89364e9572673a149c2b283372891b1732dbe6faf4f4d5ba505c4495640b84fd"
+     },
+     {
+      "n": 141,
+      "type": "custom",
+      "ts": "2026-08-26T08:01:27.762Z",
+      "id": "01eca598",
+      "parent": "ca0b86a4",
+      "record_sha256": "ee9f34ca25074eb2dacbd54a9e513c1b79ff14f38bddc53ddb1e032ba46e4ec0"
+     },
+     {
+      "n": 142,
+      "type": "custom",
+      "ts": "2026-08-26T08:01:27.762Z",
+      "id": "98e50ecd",
+      "parent": "01eca598",
+      "record_sha256": "cb60a0862e4b67b7e7186b4ceedeb3ab5e55f1a656aee4db07a65ac07ca0a065"
+     },
+     {
+      "n": 143,
+      "type": "message",
+      "ts": "2026-08-26T08:01:27.763Z",
+      "id": "3f2b205f",
+      "parent": "98e50ecd",
+      "record_sha256": "ed9b9353ed61effa6076888f5be0ac3b69930f35f0a9ddc474d9bacc5e4a9e32"
+     },
+     {
+      "n": 144,
+      "type": "message",
+      "ts": "2026-08-26T08:01:27.795Z",
+      "id": "08d8a017",
+      "parent": "3f2b205f",
+      "record_sha256": "453f2536fb5c6efd57fe1cff41d313b7371d60acfbe13232abd68f14a0b760fc"
+     },
+     {
+      "n": 145,
+      "type": "message",
+      "ts": "2026-08-26T08:01:27.813Z",
+      "id": "33bec45d",
+      "parent": "08d8a017",
+      "record_sha256": "13818ecbed916cb2c8d7d48c1993e2c7d05c0f03e2b434af4851b392064dd638"
+     },
+     {
+      "n": 146,
+      "type": "message",
+      "ts": "2026-08-26T08:01:27.850Z",
+      "id": "587f8b6c",
+      "parent": "33bec45d",
+      "record_sha256": "9a5987a6e30362b07e3a3a1cc9b4971af68df17df0a6122ed0310a5552c3a0e6"
+     },
+     {
+      "n": 147,
+      "type": "custom",
+      "ts": "2026-08-26T08:03:25.349Z",
+      "id": "a034e738",
+      "parent": "587f8b6c",
+      "record_sha256": "6563a9aa49cf62f26c59bcfb46314889aed9f0a8660db677f0be576ae307d31a"
+     },
+     {
+      "n": 148,
+      "type": "custom",
+      "ts": "2026-08-26T08:03:25.349Z",
+      "id": "c61c399f",
+      "parent": "a034e738",
+      "record_sha256": "cfbca6c45e0f0af4746c13cac97283c45305ae0beb33c28726bbfdf01dd60bfc"
+     },
+     {
+      "n": 149,
+      "type": "custom",
+      "ts": "2026-08-26T08:03:25.350Z",
+      "id": "80b401f3",
+      "parent": "c61c399f",
+      "record_sha256": "8bd0164ea538f773eee7ef6acd2c8f9779c01c681487dcf036c921bb871c40a3"
+     },
+     {
+      "n": 150,
+      "type": "message",
+      "ts": "2026-08-26T08:03:25.350Z",
+      "id": "786b9161",
+      "parent": "80b401f3",
+      "record_sha256": "26d050fafcb09c755db39e492391b0919216f8002cefa026150d589354c6fadc"
+     },
+     {
+      "n": 151,
+      "type": "message",
+      "ts": "2026-08-26T08:03:25.385Z",
+      "id": "ff548ffe",
+      "parent": "786b9161",
+      "record_sha256": "c363b6dbea98ce90ba3b85b4ee73195f548b144e6408c722624c6af87c31be9e"
+     },
+     {
+      "n": 152,
+      "type": "message",
+      "ts": "2026-08-26T08:03:25.406Z",
+      "id": "f8e92420",
+      "parent": "ff548ffe",
+      "record_sha256": "152ba56b8187eaf5ef4836708de1813b348dec915c6627c1839722bc0702eea9"
+     },
+     {
+      "n": 153,
+      "type": "message",
+      "ts": "2026-08-26T08:03:25.435Z",
+      "id": "84cd6fa7",
+      "parent": "f8e92420",
+      "record_sha256": "1f0bba4e7e274f9b34bed51444fbc131b6aadc132da2f70d1068b49f925bc985"
+     },
+     {
+      "n": 154,
+      "type": "message",
+      "ts": "2026-08-26T08:03:25.482Z",
+      "id": "b3d0d2d5",
+      "parent": "84cd6fa7",
+      "record_sha256": "6f79730ae84067211920a99b18dd51a9537dce79acaa0f97c5deac2cfdae457d"
+     },
+     {
+      "n": 155,
+      "type": "custom",
+      "ts": "2026-08-26T08:06:11.101Z",
+      "id": "068a550c",
+      "parent": "b3d0d2d5",
+      "record_sha256": "880ac1a4a7dd5fcb16f4cc1f48878f53baa00ac6963f084c05ef51cda0b5adc1"
+     },
+     {
+      "n": 156,
+      "type": "custom",
+      "ts": "2026-08-26T08:06:11.105Z",
+      "id": "1d75ba2c",
+      "parent": "068a550c",
+      "record_sha256": "526ae6bbb6b140713b99bf137ea2d360779e3fcbe462412a9975c394ed86351b"
+     },
+     {
+      "n": 157,
+      "type": "custom",
+      "ts": "2026-08-26T08:06:11.105Z",
+      "id": "f7bd5e32",
+      "parent": "1d75ba2c",
+      "record_sha256": "521dcf6acc86a99a53eea3e2a3e4676974a6af406761101e6bb1e10e2c02edb1"
+     },
+     {
+      "n": 158,
+      "type": "custom",
+      "ts": "2026-08-26T08:06:11.106Z",
+      "id": "736603e7",
+      "parent": "f7bd5e32",
+      "record_sha256": "35b273cf5903a2236aed0980a4548fbb38e20627306ec83e2ac7e3d738b35213"
+     },
+     {
+      "n": 159,
+      "type": "message",
+      "ts": "2026-08-26T08:06:11.106Z",
+      "id": "3b7d037b",
+      "parent": "736603e7",
+      "record_sha256": "0babb9be48eb7735ce54c9f50da3dd896bc103458d40af8b4b33492eceb51095"
+     },
+     {
+      "n": 160,
+      "type": "custom",
+      "ts": "2026-08-26T08:06:11.110Z",
+      "id": "db19429e",
+      "parent": "3b7d037b",
+      "record_sha256": "8ebfb83e28e9d43e034398e9a8509b017cc04730d1e88cfc1d1ffc39442ac869"
+     },
+     {
+      "n": 161,
+      "type": "message",
+      "ts": "2026-08-26T08:06:11.174Z",
+      "id": "865839c6",
+      "parent": "db19429e",
+      "record_sha256": "723d942399f73e37adc91bbe35dd96dc3a38c8ab46e023efab1ab7d11f9edd35"
+     },
+     {
+      "n": 162,
+      "type": "message",
+      "ts": "2026-08-26T08:06:11.194Z",
+      "id": "293ef2f0",
+      "parent": "865839c6",
+      "record_sha256": "e919a719b2861b9b51fce88fdc53077a69f5e451b09ccbea363d508aaa599c7b"
+     },
+     {
+      "n": 163,
+      "type": "message",
+      "ts": "2026-08-26T08:06:11.212Z",
+      "id": "5588f4d8",
+      "parent": "293ef2f0",
+      "record_sha256": "4baccdcc37fc2774c743d76ae5c418b4d35158c6548b73f2ec53f1b8741a1d33"
+     },
+     {
+      "n": 164,
+      "type": "message",
+      "ts": "2026-08-26T08:06:11.235Z",
+      "id": "12863ecf",
+      "parent": "5588f4d8",
+      "record_sha256": "6e6a4ee73d91e7099608e8056f0f0b64b8d2fa6c2d6d0e2f6f907cbeb69ac722"
+     },
+     {
+      "n": 165,
+      "type": "message",
+      "ts": "2026-08-26T08:06:11.256Z",
+      "id": "dca1098e",
+      "parent": "12863ecf",
+      "record_sha256": "46721f947e52b5fa01f2ff002baf72b1b9b5d40910f9b7aa81d2714483dfc5f3"
+     },
+     {
+      "n": 166,
+      "type": "message",
+      "ts": "2026-08-26T08:06:11.310Z",
+      "id": "9dc273e4",
+      "parent": "dca1098e",
+      "record_sha256": "0b4569a04b04e5806ce6f5855ee2d3b6d95a70c2e4b33db0677e607c1e91d203"
+     },
+     {
+      "n": 167,
+      "type": "custom",
+      "ts": "2026-08-26T08:07:19.618Z",
+      "id": "2310496a",
+      "parent": "9dc273e4",
+      "record_sha256": "50c8a86d9dc77742e77facee7ef7908699650b6ad9841ee9c45c79bd747b7e67"
+     },
+     {
+      "n": 168,
+      "type": "custom",
+      "ts": "2026-08-26T08:07:19.618Z",
+      "id": "10f5eb63",
+      "parent": "2310496a",
+      "record_sha256": "93fa1d7ce042ecea7ba7b860d0967fc92974e26f16cc9f68ecb3da392e9b7436"
+     },
+     {
+      "n": 169,
+      "type": "message",
+      "ts": "2026-08-26T08:07:19.619Z",
+      "id": "03ca9559",
+      "parent": "10f5eb63",
+      "record_sha256": "35d511fffa37e921455bac4ab018fe32ba1038aa823e17ba8d7bc9609c94b9b1"
+     },
+     {
+      "n": 170,
+      "type": "message",
+      "ts": "2026-08-26T08:07:19.645Z",
+      "id": "2c88f28c",
+      "parent": "03ca9559",
+      "record_sha256": "2526bf8f9f8de0c55aa88fa1c24fcf9fb0c650b14081ffb5705caf22ff780c52"
+     },
+     {
+      "n": 171,
+      "type": "custom",
+      "ts": "2026-08-26T08:07:19.746Z",
+      "id": "5b7d346d",
+      "parent": "2c88f28c",
+      "record_sha256": "1816271c34d5381e6550d82ad43f7f38038cf316d4de7a20341b4434f23410f3"
+     },
+     {
+      "n": 172,
+      "type": "message",
+      "ts": "2026-08-26T08:07:19.747Z",
+      "id": "bfd50634",
+      "parent": "5b7d346d",
+      "record_sha256": "9e626a09bf27a4f85501bbf312e7c2fc5d92ca40ffdbc7c923fa9de6c80e7c14"
+     },
+     {
+      "n": 173,
+      "type": "message",
+      "ts": "2026-08-26T08:07:19.809Z",
+      "id": "1ed4faf6",
+      "parent": "bfd50634",
+      "record_sha256": "0db9c35babd30feb5b7274d254b78ac89b1ee454db19f65ce79bce972fbc7de6"
+     },
+     {
+      "n": 174,
+      "type": "custom",
+      "ts": "2026-08-26T08:07:33.689Z",
+      "id": "8a0591b2",
+      "parent": "1ed4faf6",
+      "record_sha256": "388ed5c718acaa4e28ae4cb8fdb5465c24592294c4f5d87e5366af0ff33f93de"
+     },
+     {
+      "n": 175,
+      "type": "message",
+      "ts": "2026-08-26T08:07:33.699Z",
+      "id": "a1e703ce",
+      "parent": "8a0591b2",
+      "record_sha256": "a8ae2e6696a790b72023c1268beac18eef79d1919cf1d5789bd100edc7fbef20"
+     },
+     {
+      "n": 176,
+      "type": "custom",
+      "ts": "2026-08-26T08:07:33.739Z",
+      "id": "161fa155",
+      "parent": "a1e703ce",
+      "record_sha256": "d79700d911fa8b92c4f6f7fc1c233bf81fccbbd321c8b371232852f62e67df5b"
+     },
+     {
+      "n": 177,
+      "type": "message",
+      "ts": "2026-08-26T08:07:33.739Z",
+      "id": "43616f37",
+      "parent": "161fa155",
+      "record_sha256": "bd47542fc6981a9b5ba526f128768f04b8f56520f76163286d2005a3d0a2e120"
+     },
+     {
+      "n": 178,
+      "type": "message",
+      "ts": "2026-08-26T08:07:33.886Z",
+      "id": "62fd3f41",
+      "parent": "43616f37",
+      "record_sha256": "f363055fdd18608b6abc4817b01a176632df38c56eaf17c7e3aef99eef907ade"
+     },
+     {
+      "n": 179,
+      "type": "custom_message",
+      "ts": "2026-08-26T08:07:34.025Z",
+      "id": "567c79f5",
+      "parent": "62fd3f41",
+      "record_sha256": "c5efd2b930c1b56c61c0a55f5e8cba3cc34eee5b3fe7ede509f3a86dd641da62"
+     },
+     {
+      "n": 180,
+      "type": "custom",
+      "ts": "2026-08-26T08:10:10.099Z",
+      "id": "36720227",
+      "parent": "567c79f5",
+      "record_sha256": "3f80567be8464a463af0bb33d0ade63137930270b7cefdfcd4e5ed80946df9f1"
+     },
+     {
+      "n": 181,
+      "type": "custom",
+      "ts": "2026-08-26T08:10:10.103Z",
+      "id": "e6698a25",
+      "parent": "36720227",
+      "record_sha256": "65cac44e4e85471d13386b5f4c282a998cb5eff4b7dfd5b0f84b13709dcb0e02"
+     },
+     {
+      "n": 182,
+      "type": "message",
+      "ts": "2026-08-26T08:10:10.104Z",
+      "id": "d6ed8590",
+      "parent": "e6698a25",
+      "record_sha256": "6599eff35591c8611ee489334b53d23a646076c369bb5e2a19b48aa25c228ad0"
+     },
+     {
+      "n": 183,
+      "type": "message",
+      "ts": "2026-08-26T08:10:10.220Z",
+      "id": "36a8ca14",
+      "parent": "d6ed8590",
+      "record_sha256": "62c716ac4a5853f06cefb693ee17949c8fc2c06f123f582070709c7206de1cba"
+     },
+     {
+      "n": 184,
+      "type": "message",
+      "ts": "2026-08-26T08:10:10.362Z",
+      "id": "58a257ae",
+      "parent": "36a8ca14",
+      "record_sha256": "d19e7d1cf7bbd2a8d283723f8c40fd4b408b3b9ccf4fd93e3d8e6db58531da3a"
+     },
+     {
+      "n": 185,
+      "type": "compaction",
+      "ts": "2026-08-26T08:14:24.462Z",
+      "id": "a932507b",
+      "parent": "58a257ae",
+      "record_sha256": "39505c65c58ed700271ad39f407cc594cfaf5a7fe81df73c4ae9dafd23dd6fe9"
+     },
+     {
+      "n": 186,
+      "type": "message",
+      "ts": "2026-08-26T08:14:24.723Z",
+      "id": "33c3b387",
+      "parent": "a932507b",
+      "record_sha256": "47b1bfe971dc7d84d069ea678d498314f0b7d2e8d36c5d7aed912e3b1f6be55b"
+     },
+     {
+      "n": 187,
+      "type": "custom",
+      "ts": "2026-08-26T08:16:55.119Z",
+      "id": "40652e93",
+      "parent": "33c3b387",
+      "record_sha256": "e132ac3138ceec78f7b65efaebbf1fbb3c534364f94785deb278ad694ccf9b73"
+     },
+     {
+      "n": 188,
+      "type": "custom",
+      "ts": "2026-08-26T08:16:55.120Z",
+      "id": "fcdd6bf1",
+      "parent": "40652e93",
+      "record_sha256": "62d27003b1a2a84730eb7b465109726cea803bfb542006002d3ad48573289259"
+     },
+     {
+      "n": 189,
+      "type": "message",
+      "ts": "2026-08-26T08:16:55.121Z",
+      "id": "b992373b",
+      "parent": "fcdd6bf1",
+      "record_sha256": "aff53bd47d2240bfbf4ff28b26ec8eed15677cbf383751e2e19b5f0a71f341eb"
+     },
+     {
+      "n": 190,
+      "type": "message",
+      "ts": "2026-08-26T08:16:55.160Z",
+      "id": "8077110a",
+      "parent": "b992373b",
+      "record_sha256": "3adf82e6753e656b2bd21a4c36bdb08a4a467a4a0a2075c53c3a64c6e5ea527b"
+     },
+     {
+      "n": 191,
+      "type": "custom",
+      "ts": "2026-08-26T08:16:55.184Z",
+      "id": "eb109919",
+      "parent": "8077110a",
+      "record_sha256": "ecfc84b5a2d489f8ab6ecfe7ad7879eee248c575dc8112abd284b6c3305da80c"
+     },
+     {
+      "n": 192,
+      "type": "message",
+      "ts": "2026-08-26T08:16:55.184Z",
+      "id": "25478be0",
+      "parent": "eb109919",
+      "record_sha256": "17d1fc624509562b386d43ffde466501159bb7181546dcf6ca2a139b4da05dc1"
+     },
+     {
+      "n": 193,
+      "type": "message",
+      "ts": "2026-08-26T08:16:55.216Z",
+      "id": "903ad3e2",
+      "parent": "25478be0",
+      "record_sha256": "ca7accaebd1d19bc89856717f004a41dce07da5f609425a1f6c9f8da05ff792b"
+     }
+    ]
+   },
+   "sidecars": []
+  }
+ },
+ "turns": {
+  "01a03d08-7c56-7000-ac9b-95c4b3ef34d7": [
+   {
+    "n": 1,
+    "kind": "human",
+    "ts": "2026-08-26T07:46:03",
+    "text_len": 138,
+    "text_sha256": "8a0e1c9a1069c9e281b831e08345807c91bddf5befeef48bcd6d27c6d0314509",
+    "head": "flowspace skill author (w-flowspace-skill): read .harness/government/briefs/w-fl"
+   },
+   {
+    "n": 2,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:46:19",
+    "text_len": 65,
+    "text_sha256": "4c04204802c00412ee555681b2f0f6063cd9f2c2193fa760ad79e24339a86c03",
+    "head": "read: {\"path\": \".harness/government/briefs/w-flowspace-skill.md\"}"
+   },
+   {
+    "n": 3,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:46:19",
+    "text_len": 29,
+    "text_sha256": "5fc77f56467a0b76158947206372cea60e0a65480d5d09d187d6f8c76a83b9a4",
+    "head": "read: {\"path\": \"skill://pij\"}"
+   },
+   {
+    "n": 4,
+    "kind": "pij_in",
+    "ts": "2026-08-26T07:46:19",
+    "text_len": 444,
+    "text_sha256": "137dbe50b1196dc0204e318e8119d3dc1d2e14d8510bc1486839551d80c3c488",
+    "head": "[pij from pij-instant-lynx] [pij dispatch dispatch-ce249efa-ae3c-4497-8bda-7dc12"
+   },
+   {
+    "n": 5,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:46:38",
+    "text_len": 116,
+    "text_sha256": "39aa4d6ad1bd58e906d9cdbad4d06b2f2ba3e40bcb571d26610627a1aba1b442",
+    "head": "read: {\"path\": \"/Users/agent/.pij/pij-instant-lynx/canary-packets/dispatch-ce249"
+   },
+   {
+    "n": 6,
+    "kind": "pij_in",
+    "ts": "2026-08-26T07:46:39",
+    "text_len": 444,
+    "text_sha256": "8ca098309405d5a0a6154797ef65d6b904eeacdc8e5d1a7a31cae702ab92792d",
+    "head": "[pij from pij-instant-lynx] [pij dispatch dispatch-4b670350-d405-4990-988e-30e61"
+   },
+   {
+    "n": 7,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:46:42",
+    "text_len": 116,
+    "text_sha256": "5fbd759bd1f41ddf89533245fffaa6d247cd962d6343cba5911632f805b35b9b",
+    "head": "read: {\"path\": \"/Users/agent/.pij/pij-instant-lynx/canary-packets/dispatch-4b670"
+   },
+   {
+    "n": 8,
+    "kind": "pij_out",
+    "ts": "2026-08-26T07:46:50",
+    "text_len": 131,
+    "text_sha256": "7a596ac3864d923e88132fa3da839d9314a472b7bed85fae3ff387b7e9aae40c",
+    "head": "pij ack dispatch-ce249efa-ae3c-4497-8bda-7dc121b5326a --packet-sha da16d20c82a42"
+   },
+   {
+    "n": 9,
+    "kind": "pij_out",
+    "ts": "2026-08-26T07:46:50",
+    "text_len": 131,
+    "text_sha256": "f5fc78c5d4e001504b5b3ec76354643c76660e2ebfff481a802412766ea71141",
+    "head": "pij ack dispatch-4b670350-d405-4990-988e-30e619bd0b6b --packet-sha 14e41990886ef"
+   },
+   {
+    "n": 10,
+    "kind": "assistant",
+    "ts": "2026-08-26T07:47:10",
+    "text_len": 117,
+    "text_sha256": "0be3bab7fda3b28f8ca15925b6712d37b2be3b0ce2b648d32c1dedc0a9b09308",
+    "head": "Both dispatches are acknowledged. Now moving to the brief's work: verifying the "
+   },
+   {
+    "n": 11,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:47:10",
+    "text_len": 54,
+    "text_sha256": "5e6513a57c56255b1c5e0674b5fa09f7a075ede3254135656d33bb8ef6884741",
+    "head": "read: {\"path\": \".agents/skills/add-provider/SKILL.md\"}"
+   },
+   {
+    "n": 12,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:47:10",
+    "text_len": 48,
+    "text_sha256": "5c007cfe826fa825545798baf8762f6a84e354e6c3c05dacea2959148d7838cf",
+    "head": "bash: command -v flowspace3 && flowspace3 doctor"
+   },
+   {
+    "n": 13,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:47:10",
+    "text_len": 23,
+    "text_sha256": "6dd996a65a74ebd0f5c90a09289282d92b0aa7fa1373a57d659047e483f59f7d",
+    "head": "bash: flowspace3 status"
+   },
+   {
+    "n": 14,
+    "kind": "pij_in",
+    "ts": "2026-08-26T07:47:10",
+    "text_len": 444,
+    "text_sha256": "9257835cfe360e20f8452e3d888e5895b5413bbef2b46c2384230dcd9705ac6d",
+    "head": "[pij from pij-instant-lynx] [pij dispatch dispatch-f589351d-10c0-415f-9ba4-58d93"
+   },
+   {
+    "n": 15,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:47:15",
+    "text_len": 116,
+    "text_sha256": "cbb45c6bb24113835d0b56f787e5b0a5259a2bb49d282e9dd0b944c3f8a0cec6",
+    "head": "read: {\"path\": \"/Users/agent/.pij/pij-instant-lynx/canary-packets/dispatch-f5893"
+   },
+   {
+    "n": 16,
+    "kind": "pij_out",
+    "ts": "2026-08-26T07:47:32",
+    "text_len": 131,
+    "text_sha256": "bd3cb6a61cdb20300deee8e2432378e5b2bb03a2d548da445c27c32fc00e83b8",
+    "head": "pij ack dispatch-f589351d-10c0-415f-9ba4-58d93e84c5cb --packet-sha 32965b1092498"
+   },
+   {
+    "n": 17,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:47:32",
+    "text_len": 37,
+    "text_sha256": "0cac9b97383a0578930c9351f1d58fe05c04d4fd2c169dbe69741b98b8cf7c85",
+    "head": "glob: {\"path\": \"target/*/flowspace3\"}"
+   },
+   {
+    "n": 18,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:47:32",
+    "text_len": 137,
+    "text_sha256": "5c34c75fc641452a120d365c46c6427fbfe517625c21b031c290f54182866adc",
+    "head": "bash: ls ~/.cargo/bin/ 2>/dev/null | grep -i flow; which -a flowspace3 2>/dev/nu"
+   },
+   {
+    "n": 19,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:47:40",
+    "text_len": 38,
+    "text_sha256": "68fccba808803e07e759ab19929b925b01cbbf13832801dd34837c98fd80fed6",
+    "head": "bash: target/release/flowspace3 doctor"
+   },
+   {
+    "n": 20,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:47:40",
+    "text_len": 38,
+    "text_sha256": "411f58f609b0e5d2fc1ce856e6979cbd4ff8f749e5b99d0374c497a14d6b1bcb",
+    "head": "bash: target/release/flowspace3 status"
+   },
+   {
+    "n": 21,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:47:40",
+    "text_len": 89,
+    "text_sha256": "f8150096bb0d83a07927f1aae22d744d2ed37a006346e9abab0afd2a6b8bb844",
+    "head": "bash: target/release/flowspace3 --help && echo === && target/release/flowspace3 "
+   },
+   {
+    "n": 22,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:47:52",
+    "text_len": 47,
+    "text_sha256": "6c70bc2bd7006651309228580e9f4f6f0a7e44667122297fcd30823aed85cffa",
+    "head": "bash: target/release/flowspace3 docs get agents"
+   },
+   {
+    "n": 23,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:47:52",
+    "text_len": 47,
+    "text_sha256": "8342f7ecb1013aa7bdb4f5b5c33316e33b1fd952799325bbf46ffa14b4ea446b",
+    "head": "bash: target/release/flowspace3 docs get search"
+   },
+   {
+    "n": 24,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:47:52",
+    "text_len": 103,
+    "text_sha256": "cb8154458719cc53273c9700b0535491b4b24de65ceb304747f578ea43d62a1e",
+    "head": "bash: target/release/flowspace3 search --help && echo === && target/release/flow"
+   },
+   {
+    "n": 25,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:48:23",
+    "text_len": 57,
+    "text_sha256": "759a1e1b14154d7c53f2b9290002b7675c2477157bdbbd00309b0686f9e2b0be",
+    "head": "glob: {\"path\": \"crates/cli/src/docs/**;crates/*/docs/**\"}"
+   },
+   {
+    "n": 26,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:48:23",
+    "text_len": 69,
+    "text_sha256": "1f26475e764ee6aeec374f7233967db8fd1ad8118d4d64192c7d085aaa461652",
+    "head": "grep: {\"pattern\": \"include_str!.*docs|docs.*\\\\.md\", \"path\": \"crates\"}"
+   },
+   {
+    "n": 27,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:48:23",
+    "text_len": 52,
+    "text_sha256": "bf02cdcc4c6604a3de863b278b255e38aa71dc5081ce8af3a99fbe81cca007e2",
+    "head": "bash: ls /Users/agent/substrate/flowspace/flowspace3"
+   },
+   {
+    "n": 28,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:48:33",
+    "text_len": 43,
+    "text_sha256": "c30c469391d4fbabf4f7b8097a77602cd692493f695480aff74c0d7cc415d413",
+    "head": "read: {\"path\": \"crates/cli/docs/agents.md\"}"
+   },
+   {
+    "n": 29,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:48:33",
+    "text_len": 43,
+    "text_sha256": "5a6f628914d410e47dc4b980825f1f1aa35521ba2f2285fa88d4a1638353107f",
+    "head": "read: {\"path\": \"crates/cli/docs/search.md\"}"
+   },
+   {
+    "n": 30,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:48:33",
+    "text_len": 27,
+    "text_sha256": "c5c4be0f20137b8aaa0a861d1a3752cf81a7257764e7c03d7bb9d2389dfef326",
+    "head": "read: {\"path\": \"README.md\"}"
+   },
+   {
+    "n": 31,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:48:33",
+    "text_len": 28,
+    "text_sha256": "2a8683a8087c01bd6a3525c70b8680336760618c4b520e74da9c10148ea53fd5",
+    "head": "read: {\"path\": \"install.sh\"}"
+   },
+   {
+    "n": 32,
+    "kind": "assistant",
+    "ts": "2026-08-26T07:48:58",
+    "text_len": 148,
+    "text_sha256": "ea11abf22718104ccf2963906b27d21d04b7d9d649124c7304fa519a70f96d2a",
+    "head": "Docs topics confirmed present (the brief's coordination point is moot — they've "
+   },
+   {
+    "n": 33,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:48:58",
+    "text_len": 107,
+    "text_sha256": "e1fb9ba5b48435ca128ae7a203c581d0326fe62e35052c833fd052b7dee88dd6",
+    "head": "bash: target/release/flowspace3 search \"how does the queue avoid two workers tak"
+   },
+   {
+    "n": 34,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:48:58",
+    "text_len": 87,
+    "text_sha256": "1f2f16cabe9130adcf7ba4f0a1ea7365e6f5340298f77ebb442fd45073f952ac",
+    "head": "bash: target/release/flowspace3 search \"job claiming\" --path \"crates/store/*\" --"
+   },
+   {
+    "n": 35,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:48:58",
+    "text_len": 78,
+    "text_sha256": "a21eebb55b57a5ab2ab1565ce1d4bc048201e107bee91eff6782b2036f5b8386",
+    "head": "bash: target/release/flowspace3 search \"zzz nonexistent concept qqq\" --limit 2"
+   },
+   {
+    "n": 36,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:49:18",
+    "text_len": 80,
+    "text_sha256": "c88534a6215a2f96e1919d3f5b01574ade3fd669ce6bca3ea148e8114acda9c1",
+    "head": "bash: target/release/flowspace3 search \"job claiming\" --min-score 0.99 --limit 3"
+   },
+   {
+    "n": 37,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:49:18",
+    "text_len": 85,
+    "text_sha256": "392d2f80d48912abf3b1630ad07d77cc0c5a3c4e8655cd3db97ff4e22439ed04",
+    "head": "bash: target/release/flowspace3 search \"job claiming\" --daemon-url http://127.0."
+   },
+   {
+    "n": 38,
+    "kind": "assistant",
+    "ts": "2026-08-26T07:51:21",
+    "text_len": 148,
+    "text_sha256": "60cf134a21749efe1f13ef63aad56d5353a0eb832d4d994e06a090083f74c62b",
+    "head": "All envelope shapes are sourced from real runs. Checking one repo convention bef"
+   },
+   {
+    "n": 39,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:51:21",
+    "text_len": 34,
+    "text_sha256": "f2c07c859688bde81106b7eab5199d78b3f8b0c0c0a7a5f06950f84fd331a294",
+    "head": "read: {\"path\": \"skills-lock.json\"}"
+   },
+   {
+    "n": 40,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:51:21",
+    "text_len": 24,
+    "text_sha256": "00983860dea5d63a0ee609c132b8f022e0b7038941e10c210de1b62ac45112b2",
+    "head": "bash: ls .agents/skills/"
+   },
+   {
+    "n": 41,
+    "kind": "pij_in",
+    "ts": "2026-08-26T07:51:21",
+    "text_len": 688,
+    "text_sha256": "9a06b26b04468088f4761f166f524f4e132fd015e66693d6c5dc7d439ffe9ca7",
+    "head": "[pij from pij-instant-lynx] UNIT 2 QUEUED (Jordan, do NOT start until unit 1 ski"
+   },
+   {
+    "n": 42,
+    "kind": "pij_in",
+    "ts": "2026-08-26T07:51:21",
+    "text_len": 2048,
+    "text_sha256": "467552ab8477197f33e6624cfb2822a4284c8c4acb11e4cc4ddf11654636c891",
+    "head": "[pij from pij-broad-sawfish] ROW CONTRACT, sent ahead of your ping so you are no"
+   },
+   {
+    "n": 43,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:52:43",
+    "text_len": 38,
+    "text_sha256": "bba7f69f293a1818155cdd7b6b4f46210accb68ee04bd8ec15f717d039a8abfe",
+    "head": "bash: target/release/flowspace3 config"
+   },
+   {
+    "n": 44,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:52:43",
+    "text_len": 27,
+    "text_sha256": "b2036200c780aeeff5dc3ac719da9832c1693d6657374d7b7fecda8c7db53c55",
+    "head": "bash: git log --oneline -12"
+   },
+   {
+    "n": 45,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:52:43",
+    "text_len": 31,
+    "text_sha256": "e4554185c460cf11530a79fd769ff9f360da2be858d051897e366fcfdb39bd3e",
+    "head": "read: {\"path\": \"xd://pij_send\"}"
+   },
+   {
+    "n": 46,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:56:03",
+    "text_len": 167,
+    "text_sha256": "3c132131f37fc455d8a11146353b001ab415d3347ef973dcb2fc246a8ef5f793",
+    "head": "write: {\"path\": \".agents/skills/flowspace/SKILL.md\", \"content\": \"---\\nname: flow"
+   },
+   {
+    "n": 47,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:56:03",
+    "text_len": 97,
+    "text_sha256": "a61d634974cc4743b31cdeb8169dd24099c9ce7d426e24873a3cc522e93cbe10",
+    "head": "bash: git status -sb && git log --oneline origin/main -1 2>/dev/null || echo \"no"
+   },
+   {
+    "n": 48,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:56:03",
+    "text_len": 38,
+    "text_sha256": "c269a20ac09df533b1ff122d4c6953006bb5f779fdf7e277c4226e449ca32dfe",
+    "head": "bash: cargo build --release -p fs3-cli"
+   },
+   {
+    "n": 49,
+    "kind": "pij_out",
+    "ts": "2026-08-26T07:56:45",
+    "text_len": 487,
+    "text_sha256": "39438599824fd9800aab5fbcf8d3dc03f0072044440607b4fea421d3677df54e",
+    "head": "[pij_send] → pij-instant-lynx: Unit 2 receipt acked. Holding per your condition."
+   },
+   {
+    "n": 50,
+    "kind": "pij_out",
+    "ts": "2026-08-26T07:56:45",
+    "text_len": 810,
+    "text_sha256": "f236b38e806dc40c4f38f2af46d684259eef07ebf1582583bc11ff614b726c9c",
+    "head": "[pij_send] → pij-broad-sawfish: Unit-2 row-shape decisions, from the req-0053 br"
+   },
+   {
+    "n": 51,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:57:14",
+    "text_len": 38,
+    "text_sha256": "68fccba808803e07e759ab19929b925b01cbbf13832801dd34837c98fd80fed6",
+    "head": "bash: target/release/flowspace3 doctor"
+   },
+   {
+    "n": 52,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:57:14",
+    "text_len": 49,
+    "text_sha256": "db500c024a3cc8a8f0107b1f186cd3dde03d9eb61f8d042ea6482cb645b3bf8b",
+    "head": "bash: sha256sum .agents/skills/flowspace/SKILL.md"
+   },
+   {
+    "n": 53,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:57:14",
+    "text_len": 38,
+    "text_sha256": "411f58f609b0e5d2fc1ce856e6979cbd4ff8f749e5b99d0374c497a14d6b1bcb",
+    "head": "bash: target/release/flowspace3 status"
+   },
+   {
+    "n": 54,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:57:48",
+    "text_len": 110,
+    "text_sha256": "616071854b3499ace5e3129a3dc670c9e3f40fb2207ba2e7ae5619379c07d75b",
+    "head": "bash: harness commit \"docs(skills): req-0052 agent-facing flowspace search skill"
+   },
+   {
+    "n": 55,
+    "kind": "pij_in",
+    "ts": "2026-08-26T07:57:50",
+    "text_len": 230,
+    "text_sha256": "dfb3159906f2d23b0d5a73f315a011248a118d10a0448d4cbd13765d4942fd88",
+    "head": "[pij from pij-instant-lynx] Ack — sequencing approved as you stated: your unit-1"
+   },
+   {
+    "n": 56,
+    "kind": "tool_call",
+    "ts": "2026-08-26T07:57:55",
+    "text_len": 38,
+    "text_sha256": "7ba9677c7a166bfa1a70e4b8aadb8a35be6f80b1e96e20460f62925250b59c8c",
+    "head": "bash: git push && git log --oneline -1"
+   },
+   {
+    "n": 57,
+    "kind": "pij_out",
+    "ts": "2026-08-26T07:58:19",
+    "text_len": 1863,
+    "text_sha256": "a9d1a62fa6a456d5f943e7be2702995989b19dd03d5b514f117841d415b1088c",
+    "head": "[pij_send] → pij-instant-lynx: UNIT 1 LANDED. - Claim: `.agents/skills/flowspace"
+   },
+   {
+    "n": 58,
+    "kind": "assistant",
+    "ts": "2026-08-26T07:58:36",
+    "text_len": 1313,
+    "text_sha256": "4a9d86b2d0b890aea3127259071dce88b1165545956509d8e1466f297133c394",
+    "head": "Unit 1 complete. Status: - **Skill landed**: `.agents/skills/flowspace/SKILL.md`"
+   },
+   {
+    "n": 59,
+    "kind": "pij_in",
+    "ts": "2026-08-26T07:59:25",
+    "text_len": 723,
+    "text_sha256": "c781f9358d547811dd7b738e03964fdf40d559c46a86eeb5572038b355a5b4af",
+    "head": "[pij from pij-instant-lynx] UNIT 1 ACCEPTED — verified: 55a9016 on origin/main, "
+   },
+   {
+    "n": 60,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:00:04",
+    "text_len": 35,
+    "text_sha256": "710bdf6626948ca570d4cbcc262dc5cb480573fa025e3e55353cbb7aa6d2a61c",
+    "head": "glob: {\"path\": \"docs/plans/prd/**\"}"
+   },
+   {
+    "n": 61,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:00:04",
+    "text_len": 29,
+    "text_sha256": "fe2435812ba31ce267dbca19226ee8ac0e7904cfb14ab617eb3a85f375bcb56e",
+    "head": "bash: git show --stat 7975adc"
+   },
+   {
+    "n": 62,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:00:13",
+    "text_len": 55,
+    "text_sha256": "7193ee72970167b73e89bd3c7d452af0b1b43ad1e5e8131219f514da763460f1",
+    "head": "grep: {\"pattern\": \"req-0053\", \"path\": \"docs/plans/prd\"}"
+   },
+   {
+    "n": 63,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:00:13",
+    "text_len": 87,
+    "text_sha256": "4eae541ae208a9091a28a6924ac68967ce434df15540b91f9251d90971bf48f1",
+    "head": "bash: git show 7975adc -- docs/plans/prd/doctor-design.md docs/plans/prd/base-pr"
+   },
+   {
+    "n": 64,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:01:27",
+    "text_len": 40,
+    "text_sha256": "f4b644692b85eebc096c66c25449e04553d9f2c90207cbd43890438bf7acdbab",
+    "head": "read: {\"path\": \"crates/cli/src/main.rs\"}"
+   },
+   {
+    "n": 65,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:01:27",
+    "text_len": 42,
+    "text_sha256": "9006d9049707ba4b4417bb4b1e519f59ea4a89b070ece465dac4055df1bab5ca",
+    "head": "read: {\"path\": \"crates/cli/src/doctor.rs\"}"
+   },
+   {
+    "n": 66,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:01:27",
+    "text_len": 39,
+    "text_sha256": "0ee796ffe5af85d0ecf24832e7fcc88852111c33f84b9f6dcffeb6e22d01e990",
+    "head": "read: {\"path\": \"crates/cli/Cargo.toml\"}"
+   },
+   {
+    "n": 67,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:03:25",
+    "text_len": 47,
+    "text_sha256": "eb3a7dff8fe9553eb4b5ca7912ac2bd27152e1a2b8341be9eabc3c25a5ad8a25",
+    "head": "read: {\"path\": \"crates/cli/src/main.rs:17-264\"}"
+   },
+   {
+    "n": 68,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:03:25",
+    "text_len": 65,
+    "text_sha256": "60ef00c47dcfd4dac4dddd47bd059ca1a5d9143c21cd84a6f9c65e1b2727b48c",
+    "head": "grep: {\"pattern\": \"\\\"FS3-E-[A-Z-]+\\\"\", \"path\": \"crates/core/src\"}"
+   },
+   {
+    "n": 69,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:03:25",
+    "text_len": 62,
+    "text_sha256": "3039748a89c7e0a5fb433cb2500dbd0764aea029688d1f3e05afd79d6ac27e17",
+    "head": "grep: {\"pattern\": \"^(clap|sha2|anyhow)\", \"path\": \"Cargo.toml\"}"
+   },
+   {
+    "n": 70,
+    "kind": "pij_in",
+    "ts": "2026-08-26T08:03:25",
+    "text_len": 2054,
+    "text_sha256": "871150b1d0f81d5d30f7afecf4ca36e51f9bd43b1d40e27bcc772c689cd7d637",
+    "head": "[pij from pij-broad-sawfish] UNBLOCKED — ed5da0c pushed. All four of your asks l"
+   },
+   {
+    "n": 71,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:06:11",
+    "text_len": 39,
+    "text_sha256": "253f9cf5b2e100dd1dd58c48e7cc62b2747c45100e2226c34f6258139a75b661",
+    "head": "read: {\"path\": \"crates/cli/src/lib.rs\"}"
+   },
+   {
+    "n": 72,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:06:11",
+    "text_len": 45,
+    "text_sha256": "cbb99080cff8663e937b6cd3ccc64b9fe3308aa16b330e509d08578305a8d1fd",
+    "head": "read: {\"path\": \"crates/cli/src/docs.rs:1-55\"}"
+   },
+   {
+    "n": 73,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:06:11",
+    "text_len": 86,
+    "text_sha256": "bdbd46c232c1bfbc4dfd8fa6a5b3dd55f021ba44de535d4be2a5fd0103874464",
+    "head": "grep: {\"pattern\": \"fn config_dir|var_os\\\\(\\\"HOME\\\"\\\\)|HOME\", \"path\": \"crates/cli"
+   },
+   {
+    "n": 74,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:06:11",
+    "text_len": 87,
+    "text_sha256": "6f66e4c64898d827319344ade2f462e5352ad76e69596eddaf2a5233d886ef7f",
+    "head": "grep: {\"pattern\": \"pub fn.*sha256|sha256_hex|pub use.*sha2\", \"path\": \"crates/cor"
+   },
+   {
+    "n": 75,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:06:11",
+    "text_len": 93,
+    "text_sha256": "6d26097cb90a77b6266643752f240a6428f551338ec5622ee961abccd2ad49c2",
+    "head": "grep: {\"pattern\": \"flowspace3|include_str|TOPICS\", \"path\": \"crates/cli/tests/doc"
+   },
+   {
+    "n": 76,
+    "kind": "pij_in",
+    "ts": "2026-08-26T08:06:11",
+    "text_len": 363,
+    "text_sha256": "6d21855f34b32924c4c28ba3c41343bdeab0e636b715db24cb9920e710baf1ef",
+    "head": "[pij from pij-instant-lynx] A message just reached me with its head clipped (kno"
+   },
+   {
+    "n": 77,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:07:19",
+    "text_len": 47,
+    "text_sha256": "c367d898a1f49c8580dcd009c0a232dc11e258786c1261e77c37566e4bec1a6b",
+    "head": "read: {\"path\": \"crates/cli/src/docs.rs:59-140\"}"
+   },
+   {
+    "n": 78,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:07:19",
+    "text_len": 46,
+    "text_sha256": "2a8afe3fd5d08c2235838a630a43b284f9951a4aeda55dcbc2dc62ef16f33a3d",
+    "head": "bash: cargo check -p fs3-daemon 2>&1 | tail -5"
+   },
+   {
+    "n": 79,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:07:19",
+    "text_len": 167,
+    "text_sha256": "ca1dd4f3416ab89bf0290a6a2f76f43beef056da6b07b15349a32ae12b6c71b0",
+    "head": "write: {\"content\": \"# Unit-2 progress — flowspace skill distribution (req-0053)\\"
+   },
+   {
+    "n": 80,
+    "kind": "pij_out",
+    "ts": "2026-08-26T08:07:33",
+    "text_len": 675,
+    "text_sha256": "979aed5bff9663eceb72c8653347fb18fb022c8f4af43864ed1b303ed6fcad85",
+    "head": "[pij_send] → pij-instant-lynx: Resending in pointer form per your clipping note."
+   },
+   {
+    "n": 81,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:07:33",
+    "text_len": 48,
+    "text_sha256": "4c9da395de4d458782e9df488afcc24a5695a1673a52755749d17f28500c1e57",
+    "head": "read: {\"path\": \"crates/cli/src/docs.rs:144-175\"}"
+   },
+   {
+    "n": 82,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:10:10",
+    "text_len": 81,
+    "text_sha256": "94ecc8a70d47c56fdd6e9035ed5afb041daa6668aa0b4dd999f11452caefb7f3",
+    "head": "grep: {\"pattern\": \"Envelope::(ok|failed)\\\\(\", \"path\": \"crates/cli/src/doctor.rs\""
+   },
+   {
+    "n": 83,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:10:10",
+    "text_len": 166,
+    "text_sha256": "abf48a835f4cc1df4dc7cf8b580b9a8773e646a2479b235e2081d26cce931032",
+    "head": "bash: mkdir -p crates/cli/skills/flowspace && cp .agents/skills/flowspace/SKILL."
+   },
+   {
+    "n": 84,
+    "kind": "pij_in",
+    "ts": "2026-08-26T08:14:24",
+    "text_len": 837,
+    "text_sha256": "5fc701451617df194cedddec2d1b9d89f3ce56fd5f60bad16b872577ea61c457",
+    "head": "[pij from pij-instant-lynx] Unit-2 phase-1 design APPROVED including the structu"
+   },
+   {
+    "n": 85,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:16:55",
+    "text_len": 45,
+    "text_sha256": "adae691263c6528ccb95a634a329173ba5fc07a8db12e20eb880ab6f17d5231e",
+    "head": "read: {\"path\": \"crates/cli/src/main.rs:1-30\"}"
+   },
+   {
+    "n": 86,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:16:55",
+    "text_len": 31,
+    "text_sha256": "d5b80f3551c9621a34ea3c41bb09b1df94242defa45bb7e1e71820def4567775",
+    "head": "glob: {\"path\": \"docs/services\"}"
+   },
+   {
+    "n": 87,
+    "kind": "tool_call",
+    "ts": "2026-08-26T08:16:55",
+    "text_len": 167,
+    "text_sha256": "dd4a3ed4b9516c17e22c74cd319c1448fb77c26148cd2b7e6dc6a97e6ad0f811",
+    "head": "write: {\"content\": \"//! The bundled agent skill and its install command (PRD req"
+   }
+  ]
+ },
+ "fixture_sha256": {
+  "omp/2026-08-26T07-46-01-430Z_01a03d08-7c56-7000-ac9b-95c4b3ef34d7/30.bash-original.log": "555db534e6492f9994dba4b81fdf5ce11a21c95299d7762065fb61e9db5a483e",
+  "omp/2026-08-26T07-46-01-430Z_01a03d08-7c56-7000-ac9b-95c4b3ef34d7.jsonl": "014eb80691eb3b306b5d1c3f638f0fb8c576bc4956ab16a6133da5e7b6ea799f",
+  "omp/PROVENANCE.md": "0acb0356df1ef90518a9eaf511437dd36e5e86a73d92a80ae999f3bf7720a48e"
+ }
+}

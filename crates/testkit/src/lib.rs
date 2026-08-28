@@ -25,12 +25,20 @@
 
 pub mod arch;
 pub mod contract;
+pub mod conversation_source;
 pub mod database;
 pub mod discovery_filter;
+pub mod expectations;
+pub mod fake_source;
 pub mod fakes;
 pub mod spawn;
 
 pub use contract::{embedder_contract, sample_element, summarizer_contract};
+pub use conversation_source::{SourceFixture, conversation_source_contract};
 pub use database::{TEST_DATABASE_ENV, refusal, test_database_url};
+pub use expectations::{Expectations, FixtureStore, fixtures_root};
+pub use fake_source::{
+    FAKE_CHILDREN_DIR, FAKE_MAIN_FILE, FakeConversationSource, FakeDefect, FakeSourceFixture,
+};
 pub use fakes::{FakeEmbedder, FakeSummarizer};
 pub use spawn::{TestDatabase, flowspace3_binary, sealed};

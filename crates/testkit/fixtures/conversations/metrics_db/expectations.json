@@ -1,0 +1,1216 @@
+{
+ "store": "metrics_db",
+ "claims": [
+  "structural",
+  "subset"
+ ],
+ "prose_kinds": [
+  "assistant",
+  "human",
+  "pij_in"
+ ],
+ "generated_by": "docs/plans/005-convo-ingest/assets/inputs/tools/oracle_expectations.py",
+ "regenerate": "python3 docs/plans/005-convo-ingest/assets/inputs/tools/oracle_expectations.py",
+ "oracle": {
+  "script": "docs/plans/005-convo-ingest/assets/inputs/reconvo.py",
+  "sha256": "62b89a89f7035bd8ba077375ffe3e91ae5aa76e650e9cf54b092832302ad82c1",
+  "entrypoint": "read_metrics"
+ },
+ "grade_of_proof": "The oracle's own de-duplication is part of the subset expectation — claude-dialect rows are deduped on the first 80 chars of user/assistant text and on tool_use id, which is exactly the dedup behaviour tk-c105 pins — and its HUMAN_NOISE prefix filter means a Rust reader emitting those turns is ahead of it, not wrong. The rowid cursor is pinned by the structural section. Repo scoping is NOT expressed here: it is proven by API shape in u1d, over the foreign-repo negative rows this fixture deliberately carries.",
+ "sessions": [
+  {
+   "key": "1fe494c6-e5c5-4e46-a9b4-4691b9411c3c",
+   "files": [
+    "metrics_db/metrics.sqlite3"
+   ],
+   "record_count": 1,
+   "by_type": {
+    "session.permissions_changed": 1
+   },
+   "oracle_turns": 0,
+   "oracle_by_kind": {},
+   "extras": {
+    "tool": "github-copilot-cli",
+    "dialect": "copilot"
+   }
+  },
+  {
+   "key": "222c2c9d-5798-48cf-9dbd-cd4a52324c53",
+   "files": [
+    "metrics_db/metrics.sqlite3"
+   ],
+   "record_count": 26,
+   "by_type": {
+    "assistant.message": 3,
+    "assistant.turn_end": 3,
+    "assistant.turn_start": 2,
+    "hook.end": 2,
+    "hook.start": 2,
+    "model.captured_assignment_context": 1,
+    "model.message": 1,
+    "model.messages_snapshot": 1,
+    "model.model_call_started": 1,
+    "model.model_call_success": 1,
+    "model.response": 1,
+    "model.turn_ended": 1,
+    "model.turn_started": 1,
+    "session.shutdown": 1,
+    "session.usage_checkpoint": 2,
+    "tool.execution_complete": 1,
+    "tool.execution_start": 1,
+    "user.message": 1
+   },
+   "oracle_turns": 0,
+   "oracle_by_kind": {},
+   "extras": {
+    "tool": "github-copilot-cli",
+    "dialect": "copilot"
+   }
+  },
+  {
+   "key": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+   "files": [
+    "metrics_db/metrics.sqlite3"
+   ],
+   "record_count": 56,
+   "by_type": {
+    "agent-name": 2,
+    "assistant": 13,
+    "atis-latch": 2,
+    "attachment": 11,
+    "custom-title": 2,
+    "file-history-delta": 1,
+    "file-history-snapshot": 1,
+    "last-prompt": 2,
+    "mode": 2,
+    "permission-mode": 2,
+    "pr-link": 2,
+    "queue-operation": 6,
+    "system": 1,
+    "user": 9
+   },
+   "oracle_turns": 10,
+   "oracle_by_kind": {
+    "assistant": 1,
+    "human": 1,
+    "pij_in": 1,
+    "pij_out": 2,
+    "tool_call": 5
+   },
+   "extras": {
+    "tool": "claude",
+    "dialect": "claude"
+   }
+  },
+  {
+   "key": "agent-a01869bcb5e09448b",
+   "files": [
+    "metrics_db/metrics.sqlite3"
+   ],
+   "record_count": 15,
+   "by_type": {
+    "assistant": 8,
+    "attachment": 2,
+    "user": 5
+   },
+   "oracle_turns": 7,
+   "oracle_by_kind": {
+    "assistant": 2,
+    "human": 1,
+    "tool_call": 4
+   },
+   "extras": {
+    "tool": "claude",
+    "dialect": "claude"
+   }
+  },
+  {
+   "key": "c5967bc2-f25c-438e-a23f-a61c15de973e",
+   "files": [
+    "metrics_db/metrics.sqlite3"
+   ],
+   "record_count": 1,
+   "by_type": {
+    "mode": 1
+   },
+   "oracle_turns": 0,
+   "oracle_by_kind": {},
+   "extras": {
+    "tool": "claude",
+    "dialect": "claude"
+   }
+  },
+  {
+   "key": "c800c9ff-86e7-4a5f-bdc3-f63517243af6",
+   "files": [
+    "metrics_db/metrics.sqlite3"
+   ],
+   "record_count": 1,
+   "by_type": {
+    "hook.end": 1
+   },
+   "oracle_turns": 0,
+   "oracle_by_kind": {},
+   "extras": {
+    "tool": "github-copilot-cli",
+    "dialect": "copilot"
+   }
+  }
+ ],
+ "structural": {
+  "1fe494c6-e5c5-4e46-a9b4-4691b9411c3c": {
+   "main": {
+    "file": "metrics_db/metrics.sqlite3",
+    "record_count": 1,
+    "by_type": {
+     "session.permissions_changed": 1
+    },
+    "records": [
+     {
+      "n": 1,
+      "type": "session.permissions_changed",
+      "ts": "1787827152",
+      "id": "948060",
+      "parent": "9811908f-ad24-4727-9b25-6944b7847362",
+      "record_sha256": "2fc10d9d8870bec42d580697e46dffb3750f6f35fd4ea760f14bb740487fbe2b"
+     }
+    ]
+   },
+   "sidecars": []
+  },
+  "222c2c9d-5798-48cf-9dbd-cd4a52324c53": {
+   "main": {
+    "file": "metrics_db/metrics.sqlite3",
+    "record_count": 26,
+    "by_type": {
+     "assistant.message": 3,
+     "assistant.turn_end": 3,
+     "assistant.turn_start": 2,
+     "hook.end": 2,
+     "hook.start": 2,
+     "model.captured_assignment_context": 1,
+     "model.message": 1,
+     "model.messages_snapshot": 1,
+     "model.model_call_started": 1,
+     "model.model_call_success": 1,
+     "model.response": 1,
+     "model.turn_ended": 1,
+     "model.turn_started": 1,
+     "session.shutdown": 1,
+     "session.usage_checkpoint": 2,
+     "tool.execution_complete": 1,
+     "tool.execution_start": 1,
+     "user.message": 1
+    },
+    "records": [
+     {
+      "n": 1,
+      "type": "assistant.message",
+      "ts": "1787778218",
+      "id": "936647",
+      "parent": "e2005680-2f62-4a12-b582-8c0588168175",
+      "record_sha256": "c012a3c5b7274fe1840db9efb01665e493f52ac60ee6e327df14f63002ee1a96"
+     },
+     {
+      "n": 2,
+      "type": "tool.execution_start",
+      "ts": "1787778218",
+      "id": "936648",
+      "parent": "666d4c05-a69c-45b2-ba2f-ffee688455d1",
+      "record_sha256": "8b03e76967cc7e3caa837322370c73c016c6865416924158e9a9388b39de459b"
+     },
+     {
+      "n": 3,
+      "type": "hook.start",
+      "ts": "1787778218",
+      "id": "936649",
+      "parent": "ad8bbeed-7fe1-4f50-abb0-3d5e9d1a62c6",
+      "record_sha256": "7e94598b1c508b6d49beeef0982f378d3b11083a6919dfddf39869ece6719d39"
+     },
+     {
+      "n": 4,
+      "type": "hook.end",
+      "ts": "1787778218",
+      "id": "936650",
+      "parent": "2d0802e9-3c85-4c65-95b7-e603efea46c4",
+      "record_sha256": "f0cde068cd7356c7b65a742d8d6c7b81f6c1b11de5be76e60f86f702fe2177a9"
+     },
+     {
+      "n": 5,
+      "type": "hook.start",
+      "ts": "1787778219",
+      "id": "936651",
+      "parent": "06364b72-6229-42bc-b75a-907612e8df89",
+      "record_sha256": "a4f96a8a8e07e5908e4a15fbd9377b1fc6940f89c1187d94b533fdaaf8ef5ed6"
+     },
+     {
+      "n": 6,
+      "type": "hook.end",
+      "ts": "1787778219",
+      "id": "936652",
+      "parent": "f088f6b4-32bd-4a13-af1d-1cb8eaf63e27",
+      "record_sha256": "7c2a8575b212b86fe62ed5533984ba8c7b791b02eaee458ee4bff0d1f1fa9b41"
+     },
+     {
+      "n": 7,
+      "type": "tool.execution_complete",
+      "ts": "1787778219",
+      "id": "936653",
+      "parent": "0bdec143-0a31-467c-a2a2-5984fa9e5093",
+      "record_sha256": "0e403fe8cc3313e18ef4377090c630ef960ac83f299d714c66e55f5f568c5e07"
+     },
+     {
+      "n": 8,
+      "type": "assistant.turn_end",
+      "ts": "1787778219",
+      "id": "936654",
+      "parent": "57c137a5-57c5-4f62-a101-163d682d52ad",
+      "record_sha256": "5dee5dbd1d3ed60c6df5f6a78d50ee4161abdf5681923e830045fc0e6f5dee5e"
+     },
+     {
+      "n": 9,
+      "type": "assistant.turn_start",
+      "ts": "1787778219",
+      "id": "936655",
+      "parent": "16c6f697-83c7-45a5-bc74-bd18f5d1f44c",
+      "record_sha256": "e7f24000cece6d7ec1c7a6229fca9ef59d67b62d3978d33485758d0de0ccd961"
+     },
+     {
+      "n": 10,
+      "type": "assistant.message",
+      "ts": "1787778223",
+      "id": "936656",
+      "parent": "a0ec94db-a2d3-4ceb-9274-f6b3bf0193e5",
+      "record_sha256": "039ebf91811e42f1d2b8158eac5e19496555e55d0dbd56042096e1c371388ab4"
+     },
+     {
+      "n": 11,
+      "type": "assistant.turn_end",
+      "ts": "1787778223",
+      "id": "936657",
+      "parent": "b4127bf2-89f0-4543-82d4-c3fcfa7c26ef",
+      "record_sha256": "f3b02ea3846975b378dcd4af2e8c64a9f5cffadb47cf8b6b24bc0cc8ef3687dc"
+     },
+     {
+      "n": 12,
+      "type": "session.usage_checkpoint",
+      "ts": "1787778223",
+      "id": "936658",
+      "parent": "a0610ac8-48b8-4ec8-ac37-df6df5513a9f",
+      "record_sha256": "bc5443b7163830726d7bef857a2cd7e1988ae3ffedcaa01127adca5765be069d"
+     },
+     {
+      "n": 13,
+      "type": "user.message",
+      "ts": "1787778481",
+      "id": "936659",
+      "parent": "03c15a2c-29c1-4efa-8fdf-f248914a7607",
+      "record_sha256": "3d9bf5183bcb6f431e6cd0a1b28dc8dffea466ec6ad679b6a3632e6da1834e70"
+     },
+     {
+      "n": 14,
+      "type": "model.turn_started",
+      "ts": "1787778481",
+      "id": "936660",
+      "parent": null,
+      "record_sha256": "2c7e675d92085a229b4f435389d5e75495d7a54f9070eb2d1a4c2adf506dfa5f"
+     },
+     {
+      "n": 15,
+      "type": "model.model_call_started",
+      "ts": "1787778481",
+      "id": "936661",
+      "parent": "ed5c9b52-fcf3-4eae-90e5-ba0fa2a6a7df",
+      "record_sha256": "0a5ccf83c34c0b2c7fcda60b407c635ba4f468688f39036134b12a30a4bb45ba"
+     },
+     {
+      "n": 16,
+      "type": "assistant.turn_start",
+      "ts": "1787778481",
+      "id": "936662",
+      "parent": "6a9b7f1c-327d-4a64-b6ac-a51a252aeeb7",
+      "record_sha256": "63542b84b06c281b02fcadaa3974dafe4e6475b277fe2a87cb03662577dbac5d"
+     },
+     {
+      "n": 17,
+      "type": "model.captured_assignment_context",
+      "ts": "1787778484",
+      "id": "936663",
+      "parent": "292c7f1f-ee25-4bb9-a5b9-87887d8fa8fb",
+      "record_sha256": "b5c2c5e56a9668c9c8ef24418d218a7babebbdd1695d02f6810833cad2b52353"
+     },
+     {
+      "n": 18,
+      "type": "model.model_call_success",
+      "ts": "1787778484",
+      "id": "936664",
+      "parent": "a6f66d07-3187-424f-801f-498aa35bf55f",
+      "record_sha256": "4bf7f4a2d037f49cf3e885ea9251d05b14049824b9d03111da619b3a5d487b61"
+     },
+     {
+      "n": 19,
+      "type": "model.message",
+      "ts": "1787778484",
+      "id": "936665",
+      "parent": "9b54f185-4e9e-4915-9180-c70c5e14780a",
+      "record_sha256": "9fbc4f756d359928b681ab9457f8608d0ba0a2835477cb34c6234d3ee99be4dc"
+     },
+     {
+      "n": 20,
+      "type": "model.response",
+      "ts": "1787778484",
+      "id": "936666",
+      "parent": "9b7a6bda-4145-4488-a5f2-5705be0ecffd",
+      "record_sha256": "aeb7c017ffd897329289e71aa10aa91f8bd9352978f4ecca2ff26a69a7a9bad1"
+     },
+     {
+      "n": 21,
+      "type": "model.turn_ended",
+      "ts": "1787778484",
+      "id": "936667",
+      "parent": "9f14e408-e838-4187-8154-9fc3b3f579db",
+      "record_sha256": "361e8d30b436d7764c171630d90b23bdba0a975852604db4f7263b16bb2a0b6b"
+     },
+     {
+      "n": 22,
+      "type": "model.messages_snapshot",
+      "ts": "1787778484",
+      "id": "936668",
+      "parent": "8bd1f839-ae41-4e91-adff-7d7003cdfe1f",
+      "record_sha256": "befe9a36bd5d1b4a93592cfaa11a1bc48b516fd0181706dd5fd08e7acc33c430"
+     },
+     {
+      "n": 23,
+      "type": "assistant.message",
+      "ts": "1787778493",
+      "id": "936669",
+      "parent": "a51f139c-4ce5-44ee-aa2a-ca4cb685513c",
+      "record_sha256": "4a053d55a887b544edd0e9374a9f8d064501560baa7468e32d09f009870d66df"
+     },
+     {
+      "n": 24,
+      "type": "assistant.turn_end",
+      "ts": "1787778493",
+      "id": "936670",
+      "parent": "06db8179-d671-4ffe-a913-bc95454d2451",
+      "record_sha256": "4c260b975b17abe3161ca02e5a1e3a067efe9222b09d6c09548c4e2aeb748d4e"
+     },
+     {
+      "n": 25,
+      "type": "session.usage_checkpoint",
+      "ts": "1787778494",
+      "id": "936671",
+      "parent": "d79c51f0-40ed-44f0-b0b8-a8041d63b887",
+      "record_sha256": "2cebdd8a3c150b0c3fdba4a583e18578e9e2cc27beef21c26130ddfe3b6ccca4"
+     },
+     {
+      "n": 26,
+      "type": "session.shutdown",
+      "ts": "1787870111",
+      "id": "948627",
+      "parent": "b9f9f834-02b6-4dcd-9eb9-840ea5a9ac21",
+      "record_sha256": "603d63358732e4becbeed746e707251c36a78658041a8047a41828693cf9f930"
+     }
+    ]
+   },
+   "sidecars": []
+  },
+  "a5a5588f-0979-439f-a1bf-ddf185a089c7": {
+   "main": {
+    "file": "metrics_db/metrics.sqlite3",
+    "record_count": 56,
+    "by_type": {
+     "agent-name": 2,
+     "assistant": 13,
+     "atis-latch": 2,
+     "attachment": 11,
+     "custom-title": 2,
+     "file-history-delta": 1,
+     "file-history-snapshot": 1,
+     "last-prompt": 2,
+     "mode": 2,
+     "permission-mode": 2,
+     "pr-link": 2,
+     "queue-operation": 6,
+     "system": 1,
+     "user": 9
+    },
+    "records": [
+     {
+      "n": 1,
+      "type": "assistant",
+      "ts": "1787817816",
+      "id": "945010",
+      "parent": "e37f5a8a-2861-4f18-b8c0-2059468f01e1",
+      "record_sha256": "ba629127fd045b3ceeea35c70b54b54ac519952697fb875c8fa06684b6363f87"
+     },
+     {
+      "n": 2,
+      "type": "assistant",
+      "ts": "1787817840",
+      "id": "945011",
+      "parent": "54c0ada5-ce7e-4f48-bc31-65b163f3ea91",
+      "record_sha256": "404f4f37dce4d4be9c6f8b9c52bbcea7046c2cd6de3a985c0afde48b301531c3"
+     },
+     {
+      "n": 3,
+      "type": "file-history-delta",
+      "ts": "1787817840",
+      "id": "945015",
+      "parent": null,
+      "record_sha256": "202a8fa44b1259ec1036d1aa50f34fdf47ca266d1ca847b883ceda87ccd683e5"
+     },
+     {
+      "n": 4,
+      "type": "queue-operation",
+      "ts": "1787817840",
+      "id": "945016",
+      "parent": null,
+      "record_sha256": "aa9e2e687b5a637c73bdb8cc472ae5c8cf2bbc8a29944a361916abefeddc3950"
+     },
+     {
+      "n": 5,
+      "type": "queue-operation",
+      "ts": "1787817840",
+      "id": "945017",
+      "parent": null,
+      "record_sha256": "82edc1183bb28631347113568d2b7977f80432709f15761241be6341d02f4ecd"
+     },
+     {
+      "n": 6,
+      "type": "user",
+      "ts": "1787817840",
+      "id": "945018",
+      "parent": "21ea702d-75cc-4957-927b-2fe35c3d914c",
+      "record_sha256": "1e5a3e5d06de163da8b8f098f0fce188150c37e037487eb6628942252854af90"
+     },
+     {
+      "n": 7,
+      "type": "attachment",
+      "ts": "1787817819",
+      "id": "945019",
+      "parent": "7e24fa2a-46a0-40f7-9f0b-8bb0a2e554a9",
+      "record_sha256": "db907d342c147982cb99675b45092e1fd7663789009b4c671858747f0f0a68b6"
+     },
+     {
+      "n": 8,
+      "type": "attachment",
+      "ts": "1787817833",
+      "id": "945020",
+      "parent": "5b02384a-4734-4a78-8bd7-b34b48b784a5",
+      "record_sha256": "36cf50369f6caf4ae145a624fbc774db3349348f116bad9062d69ecf62f3df84"
+     },
+     {
+      "n": 9,
+      "type": "attachment",
+      "ts": "1787817840",
+      "id": "945021",
+      "parent": "7652afb8-63ff-4126-bf9d-90cdba390fa7",
+      "record_sha256": "21afa52427010dc9fa2c4160a27bfc2579c4adcc8db005c0d55b4a970287af5a"
+     },
+     {
+      "n": 10,
+      "type": "assistant",
+      "ts": "1787817847",
+      "id": "945022",
+      "parent": "67267a4f-0ce5-4758-92d2-e7276e9f0298",
+      "record_sha256": "01e5f288fc0e3da05d14ffa7820f04a474fd84f2e30ccb089cc51d87c82a6ed0"
+     },
+     {
+      "n": 11,
+      "type": "assistant",
+      "ts": "1787817848",
+      "id": "945023",
+      "parent": "3ac7cd0b-9405-40eb-ab53-bb633315bf13",
+      "record_sha256": "9adadb11f6b454fb9c178b189c2e529deacc069216165f1562c78ff418dcf7c0"
+     },
+     {
+      "n": 12,
+      "type": "user",
+      "ts": "1787817851",
+      "id": "945024",
+      "parent": "973601d3-1d88-408a-ba03-c8b880107900",
+      "record_sha256": "fc5b6fce2f679c17a0fbdc27a9859f10b4c48ba40c6389e88341e37fc01bbb8a"
+     },
+     {
+      "n": 13,
+      "type": "attachment",
+      "ts": "1787817851",
+      "id": "945025",
+      "parent": "5a2ff6f8-2f86-4aba-80cf-fb283a52b3de",
+      "record_sha256": "c1928bd1d0979f06bb21067f1cd930aa9340c8f66ff6fa53271863e08042a8fc"
+     },
+     {
+      "n": 14,
+      "type": "assistant",
+      "ts": "1787817854",
+      "id": "945026",
+      "parent": "2608c9e4-1230-4e87-b426-9df27d6c4a08",
+      "record_sha256": "1dbb4f044a1f849288fbd6f326ffd76724dfaee5500a76e939f06cdbbf2fe604"
+     },
+     {
+      "n": 15,
+      "type": "user",
+      "ts": "1787817855",
+      "id": "945027",
+      "parent": "deb7bae7-9409-401d-b435-43b108a9db1b",
+      "record_sha256": "3738e601adcc1dbeb1f4918e59e5afaac9952930143f4684a1786f3e11f38845"
+     },
+     {
+      "n": 16,
+      "type": "attachment",
+      "ts": "1787817855",
+      "id": "945028",
+      "parent": "c4473ba4-5531-40ad-860e-19ddd4118408",
+      "record_sha256": "b0e8cd25702705c9a94747da19037e7c5deea4edb9d5fa3084a7caa6a28c480a"
+     },
+     {
+      "n": 17,
+      "type": "queue-operation",
+      "ts": "1787817855",
+      "id": "945029",
+      "parent": null,
+      "record_sha256": "aebf6a26701a2f51d56e63256af0e2c55efd52e44715b6bad69bd843773d3fbb"
+     },
+     {
+      "n": 18,
+      "type": "queue-operation",
+      "ts": "1787817865",
+      "id": "945030",
+      "parent": null,
+      "record_sha256": "92f33378b2c89ece647a253a02d484897b7a5bd5904bf82e720424f8b3f968a9"
+     },
+     {
+      "n": 19,
+      "type": "assistant",
+      "ts": "1787817858",
+      "id": "945031",
+      "parent": "2a939052-f500-4763-8554-33e8b6ee4825",
+      "record_sha256": "882ed836923c006b919fbed3a731cf4fb7fe2f3c85f204b9626bb3fff7997d6f"
+     },
+     {
+      "n": 20,
+      "type": "assistant",
+      "ts": "1787817936",
+      "id": "945032",
+      "parent": "cc25a3f3-e0a5-4201-a1d1-869e3c68dc27",
+      "record_sha256": "ec1e172581646206a9c4bb5bab9895c8aca3ca2e2f44a0ff29e88fe1082204f5"
+     },
+     {
+      "n": 21,
+      "type": "last-prompt",
+      "ts": "1787817936",
+      "id": "945033",
+      "parent": null,
+      "record_sha256": "9046218d2ae72a906ff03e98dd7215c37c2e02e8b7dff2e772956980ba980e94"
+     },
+     {
+      "n": 22,
+      "type": "custom-title",
+      "ts": "1787817936",
+      "id": "945034",
+      "parent": null,
+      "record_sha256": "596c0860d8d5f21c305f72ef56e387033813d7459a70d47f54de9600f2111612"
+     },
+     {
+      "n": 23,
+      "type": "agent-name",
+      "ts": "1787817936",
+      "id": "945035",
+      "parent": null,
+      "record_sha256": "fa781f296e32b5064b162760e52454a81f101b4675b4231fbe5ddec7234f4337"
+     },
+     {
+      "n": 24,
+      "type": "mode",
+      "ts": "1787817936",
+      "id": "945036",
+      "parent": null,
+      "record_sha256": "e7024c8c4fa30a2a227a473ea388e3ea8ceeb914c3c6fff3ee07edfa0a9de8c1"
+     },
+     {
+      "n": 25,
+      "type": "permission-mode",
+      "ts": "1787817936",
+      "id": "945037",
+      "parent": null,
+      "record_sha256": "05e9512ba94a0b454a089ba6d9bdb7faab1ffb85575f144501c6cb1994327370"
+     },
+     {
+      "n": 26,
+      "type": "atis-latch",
+      "ts": "1787817936",
+      "id": "945038",
+      "parent": null,
+      "record_sha256": "84186a59b182b6d2939f3b1f22d5da8a45eb0f78b3d7438f7b78214a412f1ea6"
+     },
+     {
+      "n": 27,
+      "type": "pr-link",
+      "ts": "1787817936",
+      "id": "945039",
+      "parent": null,
+      "record_sha256": "9ce55b0c46ae79eb09e45a169f8148420c212ebbb92bc2f741224c91580a6982"
+     },
+     {
+      "n": 28,
+      "type": "queue-operation",
+      "ts": "1787817936",
+      "id": "945041",
+      "parent": null,
+      "record_sha256": "711d982f043107c73676ee5a881f113e0ff01655bc354080bb58f60e4612f5c7"
+     },
+     {
+      "n": 29,
+      "type": "queue-operation",
+      "ts": "1787817936",
+      "id": "945042",
+      "parent": null,
+      "record_sha256": "740df3cc1a1994459a9a94606427672faeb29a8c7ada03f3e7d434037c857607"
+     },
+     {
+      "n": 30,
+      "type": "user",
+      "ts": "1787817936",
+      "id": "945043",
+      "parent": "bd55d1ea-f40c-4c09-bcb2-be41ed7fb690",
+      "record_sha256": "b8d6deba70e8ff2dd385a2dc468544971f0d973cdac2a60e08fc15a35d4d1cc2"
+     },
+     {
+      "n": 31,
+      "type": "attachment",
+      "ts": "1787817855",
+      "id": "945044",
+      "parent": "987f6891-0b8b-4a85-923a-263c18bc3813",
+      "record_sha256": "4b6603f90bf4ac7b599350571287d3ac0c07d9f60c1767b961bf4524c9abd75f"
+     },
+     {
+      "n": 32,
+      "type": "attachment",
+      "ts": "1787817865",
+      "id": "945045",
+      "parent": "ff5e1d0c-ce64-4a6a-a467-41ad754a2fd9",
+      "record_sha256": "290ff7e7af377ab9532fa2ce90f04d774d83d18e94c2dcb18237925c3789cb87"
+     },
+     {
+      "n": 33,
+      "type": "attachment",
+      "ts": "1787817936",
+      "id": "945046",
+      "parent": "3db83163-2a95-47af-a92c-3d13554d25e7",
+      "record_sha256": "e276303bc7718e057b43ffb15b8cccd21bece2b2146c16fc61693bbe94e092de"
+     },
+     {
+      "n": 34,
+      "type": "last-prompt",
+      "ts": "1787817979",
+      "id": "945047",
+      "parent": null,
+      "record_sha256": "195be3e53cd1b17b290ce010e5ac43b4d0daa1f1fcc45f181d3472a7b617ad0c"
+     },
+     {
+      "n": 35,
+      "type": "custom-title",
+      "ts": "1787817979",
+      "id": "945048",
+      "parent": null,
+      "record_sha256": "5b265a7a9dfe6c1f59648de91a4de2bc8052292057a6d5bc74706371a88871d2"
+     },
+     {
+      "n": 36,
+      "type": "agent-name",
+      "ts": "1787817979",
+      "id": "945049",
+      "parent": null,
+      "record_sha256": "63cb89105c0e50da3667333b182b4785194ffea33ac062b1c5a30ecdd6f25ec2"
+     },
+     {
+      "n": 37,
+      "type": "mode",
+      "ts": "1787817979",
+      "id": "945050",
+      "parent": null,
+      "record_sha256": "25610f6712d3b8c4f2b659300ac7fed7edbac12df55c9661acdeb08fb695b127"
+     },
+     {
+      "n": 38,
+      "type": "permission-mode",
+      "ts": "1787817979",
+      "id": "945051",
+      "parent": null,
+      "record_sha256": "aaa911323eb341b04feffa61852eebb7a869f1c718468eca273521dd3273adde"
+     },
+     {
+      "n": 39,
+      "type": "atis-latch",
+      "ts": "1787817979",
+      "id": "945052",
+      "parent": null,
+      "record_sha256": "0beea4e106d296c2dcda978e120a3aa8a9ea3df681a069b0ee291993a75293e6"
+     },
+     {
+      "n": 40,
+      "type": "pr-link",
+      "ts": "1787817936",
+      "id": "945053",
+      "parent": null,
+      "record_sha256": "210ead7ac3c09a40953a300391628c85d63bec7b9c0d77a78532a60d56224404"
+     },
+     {
+      "n": 41,
+      "type": "assistant",
+      "ts": "1787817947",
+      "id": "945054",
+      "parent": "3e271364-4a96-404a-a4ba-187675c14bdd",
+      "record_sha256": "4620e49fcf357849246b3612de4cb3e6699c2cc49e87ff1d249a740246749940"
+     },
+     {
+      "n": 42,
+      "type": "assistant",
+      "ts": "1787817949",
+      "id": "945055",
+      "parent": "31f0041c-5890-4cd0-9bd9-6dfad36a2c7b",
+      "record_sha256": "a0895503f17a7c492723d967cb3fa4f29ad3e2bebe6e0bac02c11fe4b49a95cb"
+     },
+     {
+      "n": 43,
+      "type": "user",
+      "ts": "1787817950",
+      "id": "945056",
+      "parent": "31e9db1a-eba2-4c79-ae25-e0d1b871c023",
+      "record_sha256": "19544d0d26742e4b91d127726d0db8c487a59f1d5293dbf51be49741b6d44d1a"
+     },
+     {
+      "n": 44,
+      "type": "attachment",
+      "ts": "1787817950",
+      "id": "945057",
+      "parent": "afd6de99-1b7a-49a8-9d99-e9b78d7ade28",
+      "record_sha256": "d77e7c247fc679b868823f8bbb603f50307e9569daa9634eb6c2e79def72eac3"
+     },
+     {
+      "n": 45,
+      "type": "assistant",
+      "ts": "1787817960",
+      "id": "945058",
+      "parent": "06851d35-ad73-4966-9841-bcf7d073178f",
+      "record_sha256": "f39abbf6f7e9511b93526f8cce8238c73a5c96a8e4ddbf1684a51e70536fdee3"
+     },
+     {
+      "n": 46,
+      "type": "assistant",
+      "ts": "1787817960",
+      "id": "945059",
+      "parent": "7865e5b6-8665-4fef-9957-1912d16985cf",
+      "record_sha256": "85c37b4c2c9c23a7e270257fcd93e1a2fd8b1861e33cd8806b5b63649ab5ee4c"
+     },
+     {
+      "n": 47,
+      "type": "assistant",
+      "ts": "1787817960",
+      "id": "945060",
+      "parent": "fc98a5d8-c92e-4de9-9e08-1448179103a2",
+      "record_sha256": "192cb1c5268e874e330ce0f9a9b31a49c00fd5ca043c05aca5c065b639fb172c"
+     },
+     {
+      "n": 48,
+      "type": "user",
+      "ts": "1787817960",
+      "id": "945061",
+      "parent": "3eff0a73-8182-4aa2-bf65-3c582414026d",
+      "record_sha256": "bc4d9dea0144438862d1737af1390d46e944811c6507979b7fe8bcf8c3970ce5"
+     },
+     {
+      "n": 49,
+      "type": "attachment",
+      "ts": "1787817960",
+      "id": "945062",
+      "parent": "6368de52-f7c3-450d-ba41-8b2f10a1cbab",
+      "record_sha256": "e7293298c371b725e5e411e3620f6a08151646ece4a8d265521c185acf81d5a7"
+     },
+     {
+      "n": 50,
+      "type": "assistant",
+      "ts": "1787817978",
+      "id": "945063",
+      "parent": "8e8a860b-999e-4afd-9996-e829a2b787b1",
+      "record_sha256": "bdc3bcaeba3d00abc777f51b32df5b79afef9ff6f5a02f1ea479d8d3351c920e"
+     },
+     {
+      "n": 51,
+      "type": "user",
+      "ts": "1787817979",
+      "id": "945066",
+      "parent": "7f4c02de-9283-438e-afcd-2e247ca3f30f",
+      "record_sha256": "6ad993bcefd95711a0d8977efd7a43caf02060d3e48181ff00be3a66f53fddbc"
+     },
+     {
+      "n": 52,
+      "type": "attachment",
+      "ts": "1787817979",
+      "id": "945067",
+      "parent": "22f2c87a-2929-4ebe-aec7-d8b099d82f1a",
+      "record_sha256": "4be1a931d13785e7c8f56cabc3a94ca3ebd3c141250793fa6095c37b5719b565"
+     },
+     {
+      "n": 53,
+      "type": "system",
+      "ts": "1787818015",
+      "id": "945088",
+      "parent": "f1b0efbc-46ee-4891-a789-d86633683f70",
+      "record_sha256": "7d982efcf96487342e9c340fc69e8fdc2b72ceb7a3851491643f62634e5c7a50"
+     },
+     {
+      "n": 54,
+      "type": "user",
+      "ts": "1787818024",
+      "id": "945089",
+      "parent": "9f08a5b3-ce1a-46f9-aeff-809e2ca534d9",
+      "record_sha256": "1bc1f08758538cba15f0711d802ccdb4f94aa77adfa28930484ea159d92f2fe2"
+     },
+     {
+      "n": 55,
+      "type": "file-history-snapshot",
+      "ts": "1787818047",
+      "id": "945091",
+      "parent": null,
+      "record_sha256": "c684bceb8b1e3f410fb9898b63bd73afe44dc8e3e4cd1d905c761d31c81fb06f"
+     },
+     {
+      "n": 56,
+      "type": "user",
+      "ts": "1787818216",
+      "id": "945255",
+      "parent": "e949e2d2-c84c-4bc7-87c8-c83cf318d98f",
+      "record_sha256": "2f055bdcfb8db98c35995c50802e4e088554eba0706cab1f3616b057803eb82f"
+     }
+    ]
+   },
+   "sidecars": []
+  },
+  "agent-a01869bcb5e09448b": {
+   "main": {
+    "file": "metrics_db/metrics.sqlite3",
+    "record_count": 15,
+    "by_type": {
+     "assistant": 8,
+     "attachment": 2,
+     "user": 5
+    },
+    "records": [
+     {
+      "n": 1,
+      "type": "user",
+      "ts": "1787726892",
+      "id": "929028",
+      "parent": null,
+      "record_sha256": "766b39e10d6da37f35b8e11b87b8514f8d18ae88edadf09bc87583a6c91ca65d"
+     },
+     {
+      "n": 2,
+      "type": "attachment",
+      "ts": "1787726892",
+      "id": "929029",
+      "parent": "a164e02c-f1e9-4b8a-9088-d36e71de217d",
+      "record_sha256": "d25a8289de8bc13b2c9a689dd9c9d34af6ba5c84d0bbd9585aa34411e32649a6"
+     },
+     {
+      "n": 3,
+      "type": "attachment",
+      "ts": "1787726892",
+      "id": "929030",
+      "parent": "604a85ba-4026-47c5-9258-f5e67ea7fe86",
+      "record_sha256": "1d1ab8e7cf7bddb2ecbe0eab0352fc9997acfbaaf882b6809c397077ca204e64"
+     },
+     {
+      "n": 4,
+      "type": "assistant",
+      "ts": "1787726895",
+      "id": "929031",
+      "parent": "4647499c-c575-4203-a9da-24463e9eb96c",
+      "record_sha256": "733cb4817296ff0218c0f664af7ac60fc6ae8d6dd1ae89de90658bc47094410a"
+     },
+     {
+      "n": 5,
+      "type": "assistant",
+      "ts": "1787726896",
+      "id": "929032",
+      "parent": "9c9716b1-4087-44a0-891f-78d9c6e5faf6",
+      "record_sha256": "2605ba526b67945f59755691f5471af12509e6dd850ff3ab0a8b44447febd6b7"
+     },
+     {
+      "n": 6,
+      "type": "user",
+      "ts": "1787726897",
+      "id": "929033",
+      "parent": "6a51b24c-e0d1-4f05-bbcb-2fd8387e8a7c",
+      "record_sha256": "769e80fb38916447ac83b73f68da91b8ac7fc3f7fa833e9fad70cc92fa2ca458"
+     },
+     {
+      "n": 7,
+      "type": "assistant",
+      "ts": "1787726900",
+      "id": "929034",
+      "parent": "6a2564a7-a7d4-4f18-8a35-b5bfea1309a1",
+      "record_sha256": "3802d3d486617386544294fa5dc0cf24431efc0277916c6b8ccbfab5bc214ff8"
+     },
+     {
+      "n": 8,
+      "type": "assistant",
+      "ts": "1787726900",
+      "id": "929035",
+      "parent": "82563f08-5c6a-4564-93be-dae360cb1aeb",
+      "record_sha256": "bd7915344385f19dbd3c5976d74bc0cc04ab7ec1966c3617db7f31c5be9c1768"
+     },
+     {
+      "n": 9,
+      "type": "assistant",
+      "ts": "1787726901",
+      "id": "929036",
+      "parent": "2bbdc9f8-2159-43b7-8dde-1cf08576273c",
+      "record_sha256": "4a90f5fba48d65749be7f30fa158ef8c9e50ea0ebbab893cdd203dba3c016342"
+     },
+     {
+      "n": 10,
+      "type": "user",
+      "ts": "1787726901",
+      "id": "929037",
+      "parent": "8f3951a5-4b23-48e5-93f1-18ec7fc68071",
+      "record_sha256": "e6201476790ffa087f74bd23e345c04726b4ae69063d0089bc4b80c9fcb19da4"
+     },
+     {
+      "n": 11,
+      "type": "assistant",
+      "ts": "1787726905",
+      "id": "929038",
+      "parent": "9d3ed19c-6820-4a71-9920-9e0f2b670b1d",
+      "record_sha256": "8dab42c284ff071e23c09673fa804f9092f8411b60cdfc94525e3a5caa7a78ab"
+     },
+     {
+      "n": 12,
+      "type": "user",
+      "ts": "1787726906",
+      "id": "929039",
+      "parent": "e62cb1b2-805d-442d-805c-b1b13d1aa183",
+      "record_sha256": "25555c42f9658785afcdc922706b3160ba5549a4d561d09a3cbf37144d8a6d6a"
+     },
+     {
+      "n": 13,
+      "type": "assistant",
+      "ts": "1787726909",
+      "id": "929040",
+      "parent": "bb0add12-8edc-4b90-a3cb-4a8d925af9e9",
+      "record_sha256": "3dca99260a7df1a6f0d9baeae8e544fa8f2a28a340090f174b5d0843594494c0"
+     },
+     {
+      "n": 14,
+      "type": "user",
+      "ts": "1787726924",
+      "id": "929041",
+      "parent": "c3dcd30e-25ed-41cd-af6a-f24ddd618a05",
+      "record_sha256": "87432981a35ae1ceccd6527c298bad7a7436c10c0ddf6b2f887d7860d36987f4"
+     },
+     {
+      "n": 15,
+      "type": "assistant",
+      "ts": "1787726930",
+      "id": "929042",
+      "parent": "5a87b678-e847-4cda-a080-3d0fe7d2ebc4",
+      "record_sha256": "774339c5f47c424c891c9bb9cdf006fd282e0a443b46815fbf9a6d889cd4cc1d"
+     }
+    ]
+   },
+   "sidecars": []
+  },
+  "c5967bc2-f25c-438e-a23f-a61c15de973e": {
+   "main": {
+    "file": "metrics_db/metrics.sqlite3",
+    "record_count": 1,
+    "by_type": {
+     "mode": 1
+    },
+    "records": [
+     {
+      "n": 1,
+      "type": "mode",
+      "ts": "1787801096",
+      "id": "943232",
+      "parent": null,
+      "record_sha256": "85781bb98f5712e1fe957aa216bf03199c905908ad622d54b24435b2b70a3d7a"
+     }
+    ]
+   },
+   "sidecars": []
+  },
+  "c800c9ff-86e7-4a5f-bdc3-f63517243af6": {
+   "main": {
+    "file": "metrics_db/metrics.sqlite3",
+    "record_count": 1,
+    "by_type": {
+     "hook.end": 1
+    },
+    "records": [
+     {
+      "n": 1,
+      "type": "hook.end",
+      "ts": "1787801061",
+      "id": "943197",
+      "parent": "5f3ff540-6f6b-443a-9ce9-e1b213977f9a",
+      "record_sha256": "e68c61369c35778654b03e49b8079b94fff9ac16f204b6b56d4951090bbae954"
+     }
+    ]
+   },
+   "sidecars": []
+  }
+ },
+ "turns": {
+  "1fe494c6-e5c5-4e46-a9b4-4691b9411c3c": [],
+  "222c2c9d-5798-48cf-9dbd-cd4a52324c53": [],
+  "a5a5588f-0979-439f-a1bf-ddf185a089c7": [
+   {
+    "n": 1,
+    "kind": "tool_call",
+    "ts": "2026-08-27T08:04:00",
+    "text_len": 166,
+    "text_sha256": "8d800ec6b2219d6dafd940433efc7455ae49c38d75b4d0b67aa333136af713a2",
+    "head": "Write: {\"content\": \"# Brief: w-embed-oversize — oversized inputs must embed, not"
+   },
+   {
+    "n": 2,
+    "kind": "pij_out",
+    "ts": "2026-08-27T08:04:08",
+    "text_len": 253,
+    "text_sha256": "c15f09033c29f506369144a30634e03d00851927eddd3ee95cbe5f404ca0c9bd",
+    "head": "pij spawn --harness pi --bin omp --model github-copilot/claude-opus-5 --effort h"
+   },
+   {
+    "n": 3,
+    "kind": "tool_call",
+    "ts": "2026-08-27T08:04:14",
+    "text_len": 96,
+    "text_sha256": "a75620e16fd64d0994039a02eac0142f563ef4c756762697e9d4575cc18009d8",
+    "head": "Bash: tmux break-pane -s %70 -n embed-oversize 2>&1; tmux display-message -p -t "
+   },
+   {
+    "n": 4,
+    "kind": "assistant",
+    "ts": "2026-08-27T08:04:18",
+    "text_len": 183,
+    "text_sha256": "7920a0b14482fcab33e2e838bcd5ab9516066c97fb5f8876f00ceb217e4b0ee0",
+    "head": "Seat spawned for the embed fix (window `flowspace3:embed-oversize`, pane %70 — i"
+   },
+   {
+    "n": 5,
+    "kind": "tool_call",
+    "ts": "2026-08-27T08:05:36",
+    "text_len": 167,
+    "text_sha256": "ea393adfd2bc451c88b38e91a465539692485c88291e72db5ad568c65e227478",
+    "head": "Write: {\"content\": \"# O-PRIME HANDOVER — pij-instant-lynx, written pre-compactio"
+   },
+   {
+    "n": 6,
+    "kind": "pij_out",
+    "ts": "2026-08-27T08:05:49",
+    "text_len": 225,
+    "text_sha256": "0d09ad63dc1bc2a80994ec65b6395e159880b5066b976c17a71de62d2d6e6e56",
+    "head": "pij send pij-mere-orlandine 'CANARY-VERIFY from pij-instant-lynx (o-prime). Repl"
+   },
+   {
+    "n": 7,
+    "kind": "tool_call",
+    "ts": "2026-08-27T08:06:00",
+    "text_len": 65,
+    "text_sha256": "e95ea97548e3035c1152a72b7be02c4db3aa90d2b6dbbaa49d3726d66c590d0b",
+    "head": "Bash: grep -n '^## ' .harness/government/how-we-work.md | tail -4"
+   },
+   {
+    "n": 8,
+    "kind": "tool_call",
+    "ts": "2026-08-27T08:06:18",
+    "text_len": 165,
+    "text_sha256": "22d604780d5528222916922a9ce2f4897b92a0ef187d87598e58c7838a242008",
+    "head": "Edit: {\"file_path\": \"/Users/agent/substrate/flowspace/flowspace3/.harness/govern"
+   },
+   {
+    "n": 9,
+    "kind": "pij_in",
+    "ts": "2026-08-27T08:07:04",
+    "text_len": 317,
+    "text_sha256": "a4f95f591958d28e906682283a6f04d2b329b559a7cf4e46d5fc428f8eb90c82",
+    "head": "[pij from pij-mere-orlandine] pij id: pij-mere-orlandine | spawnId: s17878178494"
+   },
+   {
+    "n": 10,
+    "kind": "human",
+    "ts": "2026-08-27T08:10:16",
+    "text_len": 2047,
+    "text_sha256": "b4d50a9a85406041a3de037547debae2e2de6abb55ba7fadf3c8f47941fde050",
+    "head": "This session is being continued from a previous conversation that ran out of con"
+   }
+  ],
+  "agent-a01869bcb5e09448b": [
+   {
+    "n": 1,
+    "kind": "human",
+    "ts": "2026-08-26T06:48:12",
+    "text_len": 1271,
+    "text_sha256": "9b021532f29f8f19dc1934d1f22fbfb0a1c3b73c3e1de7f3d662f38035dec811",
+    "head": "Task on this macOS host (explicitly authorized by the machine's owner): find LM "
+   },
+   {
+    "n": 2,
+    "kind": "tool_call",
+    "ts": "2026-08-26T06:48:16",
+    "text_len": 164,
+    "text_sha256": "fcde1b14b8d7b95d1f0c2e6672e061a1ddcf0f32437df56fc4f00abe37a36359",
+    "head": "Bash: ls -d \"/Applications/LM Studio.app\" 2>/dev/null; ls -d ~/.lmstudio ~/.cach"
+   },
+   {
+    "n": 3,
+    "kind": "assistant",
+    "ts": "2026-08-26T06:48:20",
+    "text_len": 100,
+    "text_sha256": "fd9d710b547bef2b38f3bf6a6c6f4b3a1ec539de31d73c4c47c843b8e4e7136c",
+    "head": "LM Studio is running (v0.4.21) — noted; deletion proceeds anyway. Now listing th"
+   },
+   {
+    "n": 4,
+    "kind": "tool_call",
+    "ts": "2026-08-26T06:48:21",
+    "text_len": 166,
+    "text_sha256": "4afb97fe6d97dc5ef442b0414e6d6aa58b683eb7e55c1a563dd0f4d7d2b5d12b",
+    "head": "Bash: ls -la ~/.lmstudio/models/; echo ---; du -sh ~/.lmstudio/models/*/* 2>/dev"
+   },
+   {
+    "n": 5,
+    "kind": "tool_call",
+    "ts": "2026-08-26T06:48:25",
+    "text_len": 147,
+    "text_sha256": "8c1fb84bd6d721e7e445b18e838eb483a6dd711354552598d3fe23f4276b530f",
+    "head": "Bash: du -sk ~/.lmstudio/models/ | awk '{print $1}'; ls -R ~/.lmstudio/models/lm"
+   },
+   {
+    "n": 6,
+    "kind": "tool_call",
+    "ts": "2026-08-26T06:48:29",
+    "text_len": 101,
+    "text_sha256": "d205df115b4267172febfb6c50203cff4f044379f74a09fa3a86d05c752e1674",
+    "head": "Bash: rm -rf ~/.lmstudio/models/lmstudio-community && ls -la ~/.lmstudio/models/"
+   },
+   {
+    "n": 7,
+    "kind": "assistant",
+    "ts": "2026-08-26T06:48:50",
+    "text_len": 987,
+    "text_sha256": "40266ae2a8805a63438691f3c2e950fc4631020fc900ddb9a63f21706f74aef9",
+    "head": "Done. Report: **Where LM Studio was found** - App: `/Applications/LM Studio.app`"
+   }
+  ],
+  "c5967bc2-f25c-438e-a23f-a61c15de973e": [],
+  "c800c9ff-86e7-4a5f-bdc3-f63517243af6": []
+ },
+ "fixture_sha256": {
+  "metrics_db/PROVENANCE.md": "7696abfd627413431dd37752b219782925a897d6d8731800335fa5724bd447db",
+  "metrics_db/metrics.sqlite3": "0de99805d337eba6e3d844651de791a046a5cf968d1378b670d0845899c1a954"
+ }
+}

@@ -1,5 +1,6 @@
-//! Implementations of the two ports: OpenAI-shaped HTTP services, and a local
-//! ONNX model that runs in this process.
+//! Implementations of fs3's ports: OpenAI-shaped HTTP services, a local ONNX
+//! model that runs in this process, and the readers for the native
+//! agent-session stores.
 //!
 //! This crate holds *adapters only*. It does not choose which one runs — that
 //! is the composition root's single `match` in `fs3-daemon` (workshop 001
@@ -11,9 +12,20 @@
 //! move when it landed — that is what rule 3 buys. It needs no key, no server
 //! and, after its first model download, no network.
 //!
+//! Plan 005 widened this crate from the two enrichment ports to port impls
+//! GENERALLY: [`conversation_sources`] holds the four
+//! [`ConversationSource`](fs3_core::ConversationSource) readers. They belong
+//! here for the same reason the local embedder does — they are the side of the
+//! system that touches the world. `fs3-parsers` was the impl-guide's first
+//! placement and was ruled against on 2026-08-28 (prime, SA1): that crate's
+//! scan is a pure function that opens nothing, and a reader that stats inodes,
+//! re-globs sidecar directories and opens a sqlite database would have made
+//! its documented invariant false.
+//!
 //! [`Embedder`]: fs3_core::Embedder
 
 mod azure_openai;
+pub mod conversation_sources;
 mod local;
 mod openai;
 mod openai_compat;

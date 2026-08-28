@@ -1,0 +1,490 @@
+{
+ "store": "pij",
+ "claims": [
+  "structural",
+  "subset"
+ ],
+ "prose_kinds": [
+  "assistant",
+  "human",
+  "pij_in"
+ ],
+ "generated_by": "docs/plans/005-convo-ingest/assets/inputs/tools/oracle_expectations.py",
+ "regenerate": "python3 docs/plans/005-convo-ingest/assets/inputs/tools/oracle_expectations.py",
+ "oracle": {
+  "script": "docs/plans/005-convo-ingest/assets/inputs/reconvo.py",
+  "sha256": "62b89a89f7035bd8ba077375ffe3e91ae5aa76e650e9cf54b092832302ad82c1",
+  "entrypoint": "read_pij_ledger"
+ },
+ "grade_of_proof": "THE SUBSET SECTION IS WEAK HERE AND THAT IS MEASURED, NOT ASSUMED: the oracle yields only 3 turns from 50 records, because read_pij_ledger emits solely 'receipt' and 'message' events, keeps only role user/assistant, and requires a 'text' content block — and this harvested window is tool-heavy: of its 14 text blocks 13 sit on role 'toolResult', and every assistant record is thinking plus toolCall with no prose. The structural section, not the subset section, is this store's real done-bar; the seq cursor and the two receipt records are what the fixture was harvested to cover.",
+ "sessions": [
+  {
+   "key": "pij-linguistic-narwhal",
+   "files": [
+    "pij/events.ndjson"
+   ],
+   "record_count": 50,
+   "by_type": {
+    "message": 22,
+    "receipt": 2,
+    "tool_call": 13,
+    "tool_result": 13
+   },
+   "oracle_turns": 3,
+   "oracle_by_kind": {
+    "pij_in": 1,
+    "pij_out": 2
+   },
+   "extras": {}
+  }
+ ],
+ "structural": {
+  "pij-linguistic-narwhal": {
+   "main": {
+    "file": "pij/events.ndjson",
+    "record_count": 50,
+    "by_type": {
+     "message": 22,
+     "receipt": 2,
+     "tool_call": 13,
+     "tool_result": 13
+    },
+    "records": [
+     {
+      "n": 1,
+      "type": "tool_call",
+      "ts": "2026-08-28T00:13:20.156Z",
+      "id": "118",
+      "parent": null,
+      "record_sha256": "fcef3987855a76359c14e40ed648f5265f80b8e46f5be1a5a64c13729db2a18c"
+     },
+     {
+      "n": 2,
+      "type": "message",
+      "ts": "2026-08-28T00:13:20.190Z",
+      "id": "119",
+      "parent": null,
+      "record_sha256": "c161cd7e82257eb999828112f4d60adb92eb4b0292cc8645e3be3cf1ce6e98ac"
+     },
+     {
+      "n": 3,
+      "type": "tool_result",
+      "ts": "2026-08-28T00:13:20.605Z",
+      "id": "120",
+      "parent": null,
+      "record_sha256": "b982b06c3d296c2db65eec378eca542cbdcfac81be9c734cdeb85fcd9429789d"
+     },
+     {
+      "n": 4,
+      "type": "message",
+      "ts": "2026-08-28T00:13:20.908Z",
+      "id": "121",
+      "parent": null,
+      "record_sha256": "1032672107af0493e02af82747998d2d6dfb7384b58910235e4499bc858ced60"
+     },
+     {
+      "n": 5,
+      "type": "receipt",
+      "ts": "2026-08-28T00:13:25.623Z",
+      "id": "122",
+      "parent": null,
+      "record_sha256": "bf72807b1705125ce64fa2621a9d7bc25e9f89f53680336869a228963348fc67"
+     },
+     {
+      "n": 6,
+      "type": "tool_call",
+      "ts": "2026-08-28T00:13:28.284Z",
+      "id": "123",
+      "parent": null,
+      "record_sha256": "42927f4466f7b1cc820e237de5bad01c76f20624014a43d80368b4c39f885418"
+     },
+     {
+      "n": 7,
+      "type": "message",
+      "ts": "2026-08-28T00:13:28.334Z",
+      "id": "124",
+      "parent": null,
+      "record_sha256": "69aff0cc016768487b0ddf0513cdc1009da0d809f5780776842af977ec877e2e"
+     },
+     {
+      "n": 8,
+      "type": "tool_result",
+      "ts": "2026-08-28T00:13:28.441Z",
+      "id": "125",
+      "parent": null,
+      "record_sha256": "c7fad29ea4d3d64525ae53a557e3c0da3f13b55e2408a4222d4a39731c3e498b"
+     },
+     {
+      "n": 9,
+      "type": "message",
+      "ts": "2026-08-28T00:13:28.461Z",
+      "id": "126",
+      "parent": null,
+      "record_sha256": "81380846095bf144dac2dd910c9116f13da1ffc420227df86cbb862cc1d7ac0d"
+     },
+     {
+      "n": 10,
+      "type": "receipt",
+      "ts": "2026-08-28T00:13:28.507Z",
+      "id": "127",
+      "parent": null,
+      "record_sha256": "1c0eab90f254726958f3ba6fdc8f386af46f98c14f464c4829240c724204747a"
+     },
+     {
+      "n": 11,
+      "type": "message",
+      "ts": "2026-08-28T00:13:28.514Z",
+      "id": "128",
+      "parent": null,
+      "record_sha256": "35bd644c1fc1b7ca5bfdf9b336bdace03f8877bb3ce375cd3e17a85f543b13be"
+     },
+     {
+      "n": 12,
+      "type": "tool_call",
+      "ts": "2026-08-28T00:13:51.686Z",
+      "id": "129",
+      "parent": null,
+      "record_sha256": "44c8a5c6b158f8ab2278f4a5358925cb0a53621bb562e44a6a796f4f0b5d7bfb"
+     },
+     {
+      "n": 13,
+      "type": "tool_call",
+      "ts": "2026-08-28T00:13:51.759Z",
+      "id": "130",
+      "parent": null,
+      "record_sha256": "4c06a16bc739ddce243edacd688f4edd09206dd1aa40ea60cae8e69de28f7a10"
+     },
+     {
+      "n": 14,
+      "type": "tool_call",
+      "ts": "2026-08-28T00:13:51.769Z",
+      "id": "131",
+      "parent": null,
+      "record_sha256": "3dbf5063647b902e66ed1f9a8aecb4ae3dbe5695d0d63739a9ff8c712e9dc5f3"
+     },
+     {
+      "n": 15,
+      "type": "message",
+      "ts": "2026-08-28T00:13:51.780Z",
+      "id": "132",
+      "parent": null,
+      "record_sha256": "d9ef55106ab75f7aa540eae2c5a6c5cdf5b5aa167f97d480cf67c284d4bd4c64"
+     },
+     {
+      "n": 16,
+      "type": "tool_result",
+      "ts": "2026-08-28T00:13:51.793Z",
+      "id": "133",
+      "parent": null,
+      "record_sha256": "383e5a78cc309e958cb06b529ffd39d9750510eb927cc62078a223c60e8d885c"
+     },
+     {
+      "n": 17,
+      "type": "message",
+      "ts": "2026-08-28T00:13:51.805Z",
+      "id": "134",
+      "parent": null,
+      "record_sha256": "3e71f36cfda828dfd7285c3a644f2edd81d15a6d0a80df905dcf136112505c8d"
+     },
+     {
+      "n": 18,
+      "type": "tool_result",
+      "ts": "2026-08-28T00:13:51.984Z",
+      "id": "135",
+      "parent": null,
+      "record_sha256": "85f42f72617fbc57f83cb14503de0e9bb0539074f9b4dcc15fc25171d19ed7db"
+     },
+     {
+      "n": 19,
+      "type": "message",
+      "ts": "2026-08-28T00:13:52.007Z",
+      "id": "136",
+      "parent": null,
+      "record_sha256": "a1750b3584c3862c4ef1712e5263cbd94fddf463b6f76bdab725ed62c90696b2"
+     },
+     {
+      "n": 20,
+      "type": "tool_result",
+      "ts": "2026-08-28T00:13:52.119Z",
+      "id": "137",
+      "parent": null,
+      "record_sha256": "fc52bfc302178f533875b78e5df9e227bf38634d0fd7b2d67d8ad0f900dba85c"
+     },
+     {
+      "n": 21,
+      "type": "message",
+      "ts": "2026-08-28T00:13:52.129Z",
+      "id": "138",
+      "parent": null,
+      "record_sha256": "3b84ec213cf43ef5b14fd36cfd8b3ab700ec5db9abc941428aa44c712d8da264"
+     },
+     {
+      "n": 22,
+      "type": "tool_call",
+      "ts": "2026-08-28T00:14:00.273Z",
+      "id": "139",
+      "parent": null,
+      "record_sha256": "a230af6ed6a2fa112e41c4de550415e8d4c8331adc87500c1343a17667fa6d7b"
+     },
+     {
+      "n": 23,
+      "type": "tool_call",
+      "ts": "2026-08-28T00:14:00.303Z",
+      "id": "140",
+      "parent": null,
+      "record_sha256": "f7432e7713c51570ca8f8712d5df1c2b1b78648904b517bb0123ceb4052541af"
+     },
+     {
+      "n": 24,
+      "type": "tool_call",
+      "ts": "2026-08-28T00:14:00.318Z",
+      "id": "141",
+      "parent": null,
+      "record_sha256": "e46d77ce7d50d0600008116706f9413c0afabb99786ff51d02b95c06d82d381d"
+     },
+     {
+      "n": 25,
+      "type": "message",
+      "ts": "2026-08-28T00:14:00.331Z",
+      "id": "142",
+      "parent": null,
+      "record_sha256": "3d94902068db2176502ee35147d1a0763c7cd7b6f2eb34be5fc99c2d2492f916"
+     },
+     {
+      "n": 26,
+      "type": "tool_result",
+      "ts": "2026-08-28T00:14:00.549Z",
+      "id": "143",
+      "parent": null,
+      "record_sha256": "db75031c286046a88859e3fbfd2f78cb74d7d280695c20c8301ebd08f920a38a"
+     },
+     {
+      "n": 27,
+      "type": "message",
+      "ts": "2026-08-28T00:14:00.655Z",
+      "id": "144",
+      "parent": null,
+      "record_sha256": "aa1ab03c25c82d511dfaf29fc747bbc820a97d506d8b01979f45b9ff9b2c2243"
+     },
+     {
+      "n": 28,
+      "type": "tool_result",
+      "ts": "2026-08-28T00:14:00.694Z",
+      "id": "145",
+      "parent": null,
+      "record_sha256": "52305ebe1a3e293790521b1296b04ffb67e2f7dfdbeaa8a9ff495fce9cee4261"
+     },
+     {
+      "n": 29,
+      "type": "message",
+      "ts": "2026-08-28T00:14:00.754Z",
+      "id": "146",
+      "parent": null,
+      "record_sha256": "6148533ed65318f885a3b007bc00f810945e3e3fafd4b0d2cdcdb0bf2e1a8d02"
+     },
+     {
+      "n": 30,
+      "type": "tool_result",
+      "ts": "2026-08-28T00:14:00.905Z",
+      "id": "147",
+      "parent": null,
+      "record_sha256": "c13e17e8cf7a3abde15369df5742393e471d6bbba9f63a5781365c8d8be2f489"
+     },
+     {
+      "n": 31,
+      "type": "message",
+      "ts": "2026-08-28T00:14:00.924Z",
+      "id": "148",
+      "parent": null,
+      "record_sha256": "e8877c3a251e093eaa8da72af07b3a524d299086542dffe0a4886fa1f69e41f2"
+     },
+     {
+      "n": 32,
+      "type": "message",
+      "ts": "2026-08-28T00:14:00.975Z",
+      "id": "149",
+      "parent": null,
+      "record_sha256": "c81750b35ba85eaef83210371d71361d6c71b0e2956791d11095cdd057e07a24"
+     },
+     {
+      "n": 33,
+      "type": "tool_call",
+      "ts": "2026-08-28T00:14:08.629Z",
+      "id": "150",
+      "parent": null,
+      "record_sha256": "3d9c8058a887c250b8cdc0207a88e370c4e66cfc6afe2a4cadb3a81115ce39b3"
+     },
+     {
+      "n": 34,
+      "type": "tool_call",
+      "ts": "2026-08-28T00:14:08.640Z",
+      "id": "151",
+      "parent": null,
+      "record_sha256": "1d1d5cbf77bf4dae982f303f8c9b9177cf095c1c77d26873d6e6a436e4e4acb5"
+     },
+     {
+      "n": 35,
+      "type": "message",
+      "ts": "2026-08-28T00:14:08.652Z",
+      "id": "152",
+      "parent": null,
+      "record_sha256": "28e957e6ce9821b9b7df2baca13b7afb4e04532ba5990b415ae95831018af59c"
+     },
+     {
+      "n": 36,
+      "type": "tool_result",
+      "ts": "2026-08-28T00:14:08.699Z",
+      "id": "153",
+      "parent": null,
+      "record_sha256": "e49d96a74c6067d8078d824b5cdde1d31f06a0d2467cc051ad4cae6b4582c16c"
+     },
+     {
+      "n": 37,
+      "type": "message",
+      "ts": "2026-08-28T00:14:08.770Z",
+      "id": "154",
+      "parent": null,
+      "record_sha256": "0e983c8e0102281641597790c3b9414405f69a6cc90260969c7c6aa1777d3f05"
+     },
+     {
+      "n": 38,
+      "type": "tool_result",
+      "ts": "2026-08-28T00:14:08.875Z",
+      "id": "155",
+      "parent": null,
+      "record_sha256": "61e9686323c4711d62623472d951eb93f83be2b7981f9f3d4f1126736c4ad9d5"
+     },
+     {
+      "n": 39,
+      "type": "message",
+      "ts": "2026-08-28T00:14:08.899Z",
+      "id": "156",
+      "parent": null,
+      "record_sha256": "2727cc841a4c3424668a1a3edda28a3d3b6d0b1c571d58bf26e538725ddf6788"
+     },
+     {
+      "n": 40,
+      "type": "tool_call",
+      "ts": "2026-08-28T00:14:29.572Z",
+      "id": "157",
+      "parent": null,
+      "record_sha256": "b53a212f89fbb6a921ce72e7a7924a23ff36acfdb475b9a0658c38ef986fb95c"
+     },
+     {
+      "n": 41,
+      "type": "tool_call",
+      "ts": "2026-08-28T00:14:29.600Z",
+      "id": "158",
+      "parent": null,
+      "record_sha256": "1a5089bc397b8fefee6708d077ef017c9a7576ba24e393c225e116f582e0f7d8"
+     },
+     {
+      "n": 42,
+      "type": "tool_call",
+      "ts": "2026-08-28T00:14:29.615Z",
+      "id": "159",
+      "parent": null,
+      "record_sha256": "f7f5d3018d93afcf975e0e0383a3d8d181f90cfcd38c78809028aa2d26f81d1e"
+     },
+     {
+      "n": 43,
+      "type": "message",
+      "ts": "2026-08-28T00:14:29.888Z",
+      "id": "160",
+      "parent": null,
+      "record_sha256": "ec92fe7e30896030dd526c05f918a1b202b9e04b1904d4a162210de690caebcd"
+     },
+     {
+      "n": 44,
+      "type": "tool_result",
+      "ts": "2026-08-28T00:14:29.898Z",
+      "id": "161",
+      "parent": null,
+      "record_sha256": "6f3647e2c0d96a17555820ddc4399b5bd8593e138b8cf54b2c58675cac69e90a"
+     },
+     {
+      "n": 45,
+      "type": "message",
+      "ts": "2026-08-28T00:14:29.908Z",
+      "id": "162",
+      "parent": null,
+      "record_sha256": "793507a4f7d116e810b2739f8e24f2d949f72d57aa2b2618b374a6fcdc75b651"
+     },
+     {
+      "n": 46,
+      "type": "tool_result",
+      "ts": "2026-08-28T00:14:29.980Z",
+      "id": "163",
+      "parent": null,
+      "record_sha256": "d6d9b6c931eaae0b41183a8e9ae711d04016ce934fb27232e3a4eef9daf2d585"
+     },
+     {
+      "n": 47,
+      "type": "message",
+      "ts": "2026-08-28T00:14:29.995Z",
+      "id": "164",
+      "parent": null,
+      "record_sha256": "172873c8179301e703bf46f138dd6cfafd2e66bb4551eb9099e8bc99539593a4"
+     },
+     {
+      "n": 48,
+      "type": "tool_result",
+      "ts": "2026-08-28T00:14:30.341Z",
+      "id": "165",
+      "parent": null,
+      "record_sha256": "1c2635d31f15b1b4361c78a23c54f22cc1836345052cf54b06b3ab89f4b2a4a5"
+     },
+     {
+      "n": 49,
+      "type": "message",
+      "ts": "2026-08-28T00:14:30.353Z",
+      "id": "166",
+      "parent": null,
+      "record_sha256": "2511633574c56b52a02c02e27ea4cb1f99c92da9374e70f34a3974483e8ae7a6"
+     },
+     {
+      "n": 50,
+      "type": "message",
+      "ts": "2026-08-28T00:14:30.393Z",
+      "id": "167",
+      "parent": null,
+      "record_sha256": "a08110551fa2ba1726a5542df13e12e1e2ef7780d570bfecb5bed3b4e0084656"
+     }
+    ]
+   },
+   "sidecars": []
+  }
+ },
+ "turns": {
+  "pij-linguistic-narwhal": [
+   {
+    "n": 1,
+    "kind": "pij_out",
+    "ts": "2026-08-28T00:13:25",
+    "text_len": 64,
+    "text_sha256": "3fbbfab8b822befe8134920d76ba3837ffb0f0506e53f35c877cf4256bbd2936",
+    "head": "→ pij-instant-lynx: delivery queued (1787876005266-000001-43068)"
+   },
+   {
+    "n": 2,
+    "kind": "pij_out",
+    "ts": "2026-08-28T00:13:28",
+    "text_len": 67,
+    "text_sha256": "a15945c9a1a84f242e0c7f185fb16ee34b0d966e5f745850af8b7db6a68f49f6",
+    "head": "→ pij-instant-lynx: delivery delivered (1787876005266-000001-43068)"
+   },
+   {
+    "n": 3,
+    "kind": "pij_in",
+    "ts": "2026-08-28T00:13:28",
+    "text_len": 1591,
+    "text_sha256": "1b99b93f967f1719f7760245053ba5ce10ff247745dfaa67bc48e4d0970e7ff1",
+    "head": "[pij from pij-instant-lynx] Rulings by letter: A) COPY-IN approved, your recomme"
+   }
+  ]
+ },
+ "fixture_sha256": {
+  "pij/PROVENANCE.md": "5e27f7cb4dd6119679e8d7c0db938ca4314a0ffb6fc2015353abd896167fa471",
+  "pij/events.ndjson": "5a5dd9d338fffbacadaebfa11142d363625a787a56ea7e062559660907c98cc6"
+ }
+}

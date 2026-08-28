@@ -6,14 +6,17 @@
 //! **zero doubles**.
 //!
 //! Workshop 001 rule 3 — a trait earns its existence only when a second real
-//! implementation exists or is firmly planned. fs3 v1 has exactly two ports:
-//! [`Embedder`] and [`Summarizer`]. A third is stop-and-ask.
+//! implementation exists or is firmly planned. fs3 has three ports:
+//! [`Embedder`], [`Summarizer`] and [`ConversationSource`] — the last ruled by
+//! prime on 2026-08-28 (plan 005) and shipping four real implementations on
+//! day one. A FOURTH is stop-and-ask.
 
 pub mod address;
 pub mod catalog;
 pub mod classify;
 pub mod config;
 pub mod conversation;
+pub mod conversation_source;
 pub mod element;
 pub mod envelope;
 pub mod error;
@@ -40,6 +43,10 @@ pub use config::{
 };
 pub use conversation::{
     Conversation, ConversationId, ToolInput, Turn, TurnItem, TurnRole, TurnSource, earns_summary,
+};
+pub use conversation_source::{
+    ConversationSource, Harness, IngestInput, RawRecord, ReadBatch, SessionFile, SessionKind,
+    SourceCursor,
 };
 pub use element::{
     ADDRESS_SEGMENT, BlobRef, Element, ElementKind, ElementTree, PreOrder, Span, content_hash,
