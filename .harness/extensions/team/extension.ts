@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { basename, join, sep } from 'node:path';
 import { defineExtension } from '@ai-substrate/engineering-harness/contract';
 import type { V2VerbContext, VerbResult } from '@ai-substrate/engineering-harness/contract';
@@ -14,6 +15,12 @@ import type { V2VerbContext, VerbResult } from '@ai-substrate/engineering-harnes
  *
  * Ported from scratch/team-new-poc/team-new.mjs; see
  * scratch/team-new-poc/validation.md for the POC transcripts.
+ *
+ * `harness team tidy <slug>` — the teardown counterpart. It exists because the
+ * absence of it was already costing us: `worktreePaths` below stats every path
+ * precisely because a hand-tidy leaves the registry naming trees that are gone,
+ * and `E_BRANCH_EXISTS` on the mint side names "a tidy that removed the worktree
+ * but not the branch" as its usual cause. Both are scars from this missing verb.
  */
 
 /** Seeded beside the plan so prime can fill them in place. */
@@ -310,12 +317,342 @@ async function runNew(ctx: V2VerbContext): Promise<VerbResult> {
   }
 }
 
+
+// ---------------------------------------------------------------------------
+// tidy — the teardown counterpart to `new`
+// ---------------------------------------------------------------------------
+
+/** Where a seat's observation buffer lives inside its worktree. */
+const BUFFER_REL = join('.harness', 'temp', 'agent', 'session-buffer.md');
+/** Where a rescued buffer lands in the main clone — beside the live one, same gitignored area. */
+const RESCUE_DIR = join('.harness', 'temp', 'agent');
+
+const sha256 = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex');
+
+type WorktreeRecord = { path: string; branch: string | null };
+
+/** `git worktree list --porcelain` parsed into (path, branch) pairs. */
+async function worktreeRecords(ctx: V2VerbContext, root: string): Promise<WorktreeRecord[]> {
+  const listed = await git(ctx, ['worktree', 'list', '--porcelain'], root);
+  if (!listed.ok) return [];
+  const records: WorktreeRecord[] = [];
+  let current: WorktreeRecord | null = null;
+  for (const line of listed.stdout.split('\n')) {
+    if (line.startsWith('worktree ')) {
+      if (current) records.push(current);
+      current = { path: line.slice('worktree '.length).trim(), branch: null };
+    } else if (line.startsWith('branch ') && current) {
+      current.branch = line.slice('branch refs/heads/'.length).trim();
+    }
+  }
+  if (current) records.push(current);
+  return records;
+}
+
+/**
+ * The observation buffer is the one thing in a worktree that is NOT
+ * regenerable and NOT committed: it is gitignored by construction, so removing
+ * the tree destroys it silently. That is DL-027, and it has cost us real
+ * observations. So the rescue runs before ANY mutation and before any refusal
+ * that would abort — a tidy that refuses must still not lose the buffer — and
+ * it is verified by hashing the bytes we wrote and the bytes that came back.
+ */
+async function rescueBuffer(
+  ctx: V2VerbContext,
+  root: string,
+  worktree: string,
+  slug: string,
+): Promise<{ rescued: null | { from: string; to: string; sha256: string; bytes: number }; refusal?: VerbResult }> {
+  const source = join(worktree, BUFFER_REL);
+  if (!ctx.fs.exists(source)) return { rescued: null };
+  const text = ctx.fs.readText(source);
+  if (text === null || text.trim() === '') return { rescued: null };
+
+  const fsWrite = ctx.fsWrite;
+  if (!fsWrite) {
+    return {
+      rescued: null,
+      refusal: ctx.error('E_CORE_TOO_OLD', 'this harness core provides no write-side filesystem capability, so the observation buffer cannot be rescued', {
+        details: { buffer: source, bytes: text.length },
+        next_action: 'Upgrade the harness CLI (`npm i -g @ai-substrate/engineering-harness`), or copy the buffer out by hand before tidying. Nothing was removed.',
+      }),
+    };
+  }
+
+  // Never overwrite a previous rescue — a second tidy of the same slug, or a
+  // re-run after a refusal, must not clobber what the first one saved.
+  const dir = join(root, RESCUE_DIR);
+  fsWrite.mkdirp(dir);
+  let dest = join(dir, `${slug}-observations.md`);
+  if (ctx.fs.exists(dest)) {
+    dest = join(dir, `${slug}-observations-${ctx.clock.nowIso().replace(/[:.]/g, '-')}.md`);
+  }
+
+  const expected = sha256(text);
+  fsWrite.writeText(dest, text);
+  const readBack = ctx.fs.readText(dest);
+  if (readBack === null || sha256(readBack) !== expected) {
+    return {
+      rescued: null,
+      refusal: ctx.error('E_RESCUE_FAILED', `the observation buffer was copied to ${dest} but the copy does not hash-match the source — refusing to remove the worktree`, {
+        details: { from: source, to: dest, expected_sha256: expected, actual_sha256: readBack === null ? null : sha256(readBack) },
+        next_action: 'Copy the buffer out by hand and verify it, then re-run. NOTHING was removed — the worktree, its branch and its volumes are all still here.',
+      }),
+    };
+  }
+  return { rescued: { from: source, to: dest, sha256: expected, bytes: text.length } };
+}
+
+/** Uncommitted work, including untracked-but-not-ignored files. */
+async function dirtyPaths(ctx: V2VerbContext, worktree: string): Promise<string[]> {
+  const status = await git(ctx, ['status', '--porcelain'], worktree);
+  return status.ok ? status.stdout.split('\n').map((l) => l.trim()).filter(Boolean) : [];
+}
+
+/**
+ * Commits that exist only here. No upstream means EVERY commit off the merge
+ * base is unpushed — the dangerous case, not the safe one, so it is reported
+ * as such rather than skipped.
+ */
+async function unpushedCommits(ctx: V2VerbContext, worktree: string, root: string, branch: string | null): Promise<string[]> {
+  if (!branch) return [];
+  const upstream = await git(ctx, ['rev-parse', '--abbrev-ref', `${branch}@{upstream}`], worktree);
+  const range = upstream.ok && upstream.stdout.trim() ? `${upstream.stdout.trim()}..${branch}` : null;
+  const spec = range ?? `origin/main..${branch}`;
+  const log = await git(ctx, ['log', '--oneline', '--no-decorate', spec], root);
+  if (!log.ok) return [];
+  return log.stdout.split('\n').map((l) => l.trim()).filter(Boolean);
+}
+
+/**
+ * Is the branch already merged into main? A clone that only ever checked out
+ * one branch has no local `main`, so fall back to the remote-tracking ref
+ * before concluding "not merged" — the wrong answer here is the one that
+ * refuses a legitimate tidy.
+ */
+async function isMerged(ctx: V2VerbContext, root: string, branch: string): Promise<boolean> {
+  for (const base of ['main', 'origin/main']) {
+    const merged = await git(ctx, ['branch', '--merged', base, '--format=%(refname:short)'], root);
+    if (!merged.ok) continue;
+    return merged.stdout.split('\n').map((l) => l.trim()).includes(branch);
+  }
+  return false;
+}
+
+/**
+ * Volumes in this slug's compose namespace only. Compose derives the project
+ * name from the directory, so a worktree at `fs3-<slug>` owns `fs3-<slug>_*`
+ * and nothing else. Other projects' volumes are named in instructions.md for a
+ * human to remove — this verb never touches them, and never prunes globally.
+ */
+async function slugVolumes(
+  ctx: V2VerbContext,
+  root: string,
+  slug: string,
+): Promise<{ available: boolean; removable: string[]; in_use: string[]; detail?: string }> {
+  const engine = ctx.env.get('FS3_ENGINE') ?? 'docker';
+  const listed = await ctx.exec(engine, ['volume', 'ls', '--format', '{{.Name}}'], { cwd: root, timeoutMs: GIT_TIMEOUT });
+  if (!listed.ok) {
+    return { available: false, removable: [], in_use: [], detail: (listed.stderr || listed.stdout).trim().split('\n').slice(-1)[0] || `${engine} unreachable` };
+  }
+  const prefix = `fs3-${slug}_`;
+  const mine = listed.stdout.split('\n').map((l) => l.trim()).filter((n) => n.startsWith(prefix));
+  const removable: string[] = [];
+  const inUse: string[] = [];
+  for (const name of mine) {
+    // A volume with any container attached — running or not — is in use. This
+    // is the zero-link test, done by asking rather than by parsing sizes.
+    const users = await ctx.exec(engine, ['ps', '-a', '--filter', `volume=${name}`, '-q'], { cwd: root, timeoutMs: GIT_TIMEOUT });
+    if (users.ok && users.stdout.trim() === '') removable.push(name);
+    else inUse.push(name);
+  }
+  return { available: true, removable, in_use: inUse };
+}
+
+async function runTidy(ctx: V2VerbContext): Promise<VerbResult> {
+  const slug = typeof ctx.args.slug === 'string' ? ctx.args.slug.trim() : '';
+  // `--propose` is an alias for `--dry-run`: one preview vocabulary across the
+  // verb family, so `new --propose` and `tidy --propose` mean the same thing.
+  const dryRun = Boolean(ctx.options.dryRun) || Boolean(ctx.options.propose);
+  const force = Boolean(ctx.options.force);
+  const alsoRemote = Boolean(ctx.options.remote);
+
+  if (!KEBAB.test(slug)) {
+    return ctx.error('E_BAD_SLUG', `slug "${slug}" is not kebab-case ([a-z0-9] words joined by single hyphens)`, {
+      next_action: 'Re-run with the slug you passed to `harness team new`, e.g. `harness team tidy conversation-ingest`.',
+    });
+  }
+
+  const located = await mainClone(ctx);
+  if ('refusal' in located) return located.refusal;
+  const root = located.root;
+
+  // --- resolve the target -------------------------------------------------
+  const worktree = join(root, '..', `fs3-${slug}`);
+  const records = await worktreeRecords(ctx, root);
+  const registered = records.find((r) => ctx.fs.realpath(r.path) === ctx.fs.realpath(worktree));
+  const onDisk = ctx.fs.exists(worktree);
+
+  // The branch: from the registry when the tree is registered, else the
+  // `NNN-<slug>` plan branch left behind by a hand-tidy — which is exactly the
+  // orphan `E_BRANCH_EXISTS` complains about, and which this verb can clear.
+  let branch = registered?.branch ?? null;
+  if (!branch) {
+    const heads = await git(ctx, ['for-each-ref', '--format=%(refname:short)', 'refs/heads'], root);
+    const pattern = new RegExp(`^\\d+-${slug}$`);
+    branch = heads.ok ? (heads.stdout.split('\n').map((l) => l.trim()).find((b) => pattern.test(b)) ?? null) : null;
+  }
+
+  if (!onDisk && !registered && !branch) {
+    return ctx.error('E_NOTHING_TO_TIDY', `no worktree at ${worktree}, no registry entry for it, and no NNN-${slug} branch`, {
+      details: { worktree, scanned_worktrees: records.length },
+      next_action: 'Nothing to do — this slug is already tidy. Check the slug spelling against `git worktree list`.',
+    });
+  }
+
+  // --- RESCUE FIRST: before any mutation, before any refusal --------------
+  // Ordering is the whole point. A tidy that refuses on a dirty tree must
+  // still have saved the buffer, because the next thing the operator does is
+  // re-run with --force.
+  let rescued: { from: string; to: string; sha256: string; bytes: number } | null = null;
+  let wouldRescue: { from: string; bytes: number } | null = null;
+  if (onDisk) {
+    if (dryRun) {
+      const source = join(worktree, BUFFER_REL);
+      const text = ctx.fs.exists(source) ? ctx.fs.readText(source) : null;
+      if (text !== null && text.trim() !== '') wouldRescue = { from: source, bytes: text.length };
+    } else {
+      const attempt = await rescueBuffer(ctx, root, worktree, slug);
+      if (attempt.refusal) return attempt.refusal;
+      rescued = attempt.rescued;
+    }
+  }
+
+  // --- gather what removal would cost ------------------------------------
+  const dirty = onDisk ? await dirtyPaths(ctx, worktree) : [];
+  const unpushed = onDisk ? await unpushedCommits(ctx, worktree, root, branch) : [];
+  const merged = branch ? await isMerged(ctx, root, branch) : false;
+  const volumes = await slugVolumes(ctx, root, slug);
+
+  const wouldRemove = {
+    worktree: onDisk ? worktree : null,
+    registry_entry: registered ? registered.path : null,
+    branch,
+    branch_merged: merged,
+    remote_branch: alsoRemote && branch ? `origin/${branch}` : null,
+    volumes: volumes.removable,
+    volumes_in_use_kept: volumes.in_use,
+    docker: volumes.available ? 'available' : `unavailable — ${volumes.detail}`,
+    would_rescue: wouldRescue,
+    at_risk: { uncommitted: dirty, unpushed_commits: unpushed },
+  };
+
+  // --- dry run: answer, touch nothing ------------------------------------
+  if (dryRun) {
+    return ctx.ok(
+      { mode: 'dry-run', removed: false, ...wouldRemove },
+      {
+        evidence: [{ label: 'dry run', none: true }],
+        next_action: `Nothing was removed. Run \`harness team tidy ${slug}\` to do it${dirty.length || unpushed.length ? ' — note the at_risk block; it will refuse without --force' : ''}.`,
+      },
+    );
+  }
+
+  // --- refusals, naming exactly what would be lost ------------------------
+  // Two distinct conditions, two distinct codes. A clean tree that is merely
+  // unpushed is NOT dirty, and a refusal whose code says otherwise sends the
+  // operator looking for uncommitted files that do not exist.
+  const stillHere = rescued ? `The observation buffer was already rescued to ${rescued.to}.` : 'Nothing was removed.';
+  if (!force && dirty.length > 0) {
+    return ctx.error('E_WORKTREE_DIRTY', `${worktree} has ${dirty.length} uncommitted change(s) — refusing to remove it`, {
+      details: { uncommitted: dirty, unpushed_commits: unpushed, rescued },
+      next_action: `Commit them, or re-run with --force to discard them. ${stillHere}`,
+    });
+  }
+  if (!force && unpushed.length > 0) {
+    return ctx.error('E_UNPUSHED_COMMITS', `${branch ?? worktree} has ${unpushed.length} commit(s) that exist nowhere else — refusing to remove it`, {
+      details: { unpushed_commits: unpushed, rescued },
+      next_action: `Push the branch, or re-run with --force to discard those commits. ${stillHere}`,
+    });
+  }
+  if (branch && !merged && !force) {
+    return ctx.error('E_BRANCH_NOT_MERGED', `branch ${branch} is not merged into main — refusing to delete it`, {
+      details: { branch, unpushed_commits: unpushed, rescued },
+      next_action: `Merge the PR first, or re-run with --force to delete it anyway. ${stillHere}`,
+    });
+  }
+
+  // --- remove -------------------------------------------------------------
+  const removed: Record<string, unknown> = { rescued };
+  const problems: string[] = [];
+
+  if (onDisk || registered) {
+    const args = ['worktree', 'remove', ...(force ? ['--force'] : []), worktree];
+    const rm = await git(ctx, args, root);
+    if (rm.ok) removed.worktree = worktree;
+    else problems.push(`worktree remove: ${(rm.stderr || rm.stdout).trim()}`);
+    const pruned = await git(ctx, ['worktree', 'prune'], root);
+    removed.registry_pruned = pruned.ok;
+  }
+
+  if (branch) {
+    const del = await git(ctx, ['branch', force ? '-D' : '-d', branch], root);
+    if (del.ok) removed.branch = branch;
+    else problems.push(`branch delete: ${(del.stderr || del.stdout).trim()}`);
+    if (alsoRemote && del.ok) {
+      const pushed = await git(ctx, ['push', 'origin', '--delete', branch], root);
+      if (pushed.ok) removed.remote_branch = `origin/${branch}`;
+      else problems.push(`remote branch delete: ${(pushed.stderr || pushed.stdout).trim()}`);
+    }
+  }
+
+  const engine = ctx.env.get('FS3_ENGINE') ?? 'docker';
+  const droppedVolumes: string[] = [];
+  for (const name of volumes.removable) {
+    const drop = await ctx.exec(engine, ['volume', 'rm', name], { cwd: root, timeoutMs: GIT_TIMEOUT });
+    if (drop.ok) droppedVolumes.push(name);
+    else problems.push(`volume rm ${name}: ${(drop.stderr || drop.stdout).trim()}`);
+  }
+  removed.volumes = droppedVolumes;
+  removed.volumes_in_use_kept = volumes.in_use;
+
+  const payload = {
+    mode: 'tidy',
+    ...removed,
+    docker: volumes.available ? 'available' : `unavailable — ${volumes.detail}`,
+    forced: force,
+    problems,
+  };
+
+  // A partial tidy is reported as partial, never as success. The operator has
+  // to know which half happened — that asymmetry is what E_BRANCH_EXISTS on
+  // the mint side is made of.
+  if (problems.length > 0) {
+    return ctx.degraded(
+      payload,
+      `Tidy was partial — ${problems.length} step(s) failed (see problems). Resolve them by hand; re-running tidy is safe and will finish what is left.`,
+      { evidence: rescued ? [{ label: 'rescued observations', path: rescued.to }] : [{ label: 'tidy', none: true }] },
+    );
+  }
+  if (!volumes.available) {
+    return ctx.degraded(
+      payload,
+      `Worktree and branch are gone, but the ${engine} engine was unreachable so no volumes were checked or dropped. Re-run tidy with the engine up to clear fs3-${slug}_* volumes.`,
+      { evidence: rescued ? [{ label: 'rescued observations', path: rescued.to }] : [{ label: 'tidy', none: true }] },
+    );
+  }
+  return ctx.ok(payload, {
+    evidence: rescued ? [{ label: 'rescued observations', path: rescued.to }] : [{ label: 'tidy', none: true }],
+    next_action: `Tidy complete. The ordinal is free again — \`harness team new <slug> --propose\` will no longer count ${branch ?? slug}.`,
+  });
+}
+
 export default defineExtension({
   name: 'team',
-  summary: 'Scaffold pij-team delivery: a worktree, its plan branch, and the next-ordinal plan folder.',
+  summary: 'pij-team delivery lifecycle: mint a worktree + plan branch + next-ordinal plan folder, and tidy them away again when the plan lands.',
   verbs: {
     team: {
-      summary: 'pij-team delivery scaffolding.',
+      summary: 'pij-team delivery scaffolding — `harness team <new|tidy>`.',
       sub: {
         new: {
           summary: 'Create the worktree, plan branch and next-ordinal plan folder for a new pij-team plan.',
@@ -329,6 +666,31 @@ export default defineExtension({
             },
           ],
           run: runNew,
+        },
+        tidy: {
+          summary: 'Remove the worktree, plan branch and slug-scoped docker volumes for a finished pij-team plan.',
+          description:
+            'The teardown counterpart to `new`. Rescues the worktree\'s observation buffer to the main clone FIRST (sha-verified) — before any mutation and before any refusal — then removes ../fs3-<slug>, prunes the registry, deletes the <ord>-<slug> branch, and drops zero-link fs3-<slug>_* docker volumes by name. Refuses on uncommitted changes, unpushed commits or an unmerged branch, always naming what would be lost. --dry-run (alias --propose) prints the same plan without touching anything.',
+          args: [{ name: '<slug>', description: 'the kebab-case slug the worktree was created with, e.g. conversation-ingest' }],
+          options: [
+            {
+              flags: '--dry-run',
+              description: 'print what would be removed, rescued and refused, without touching anything',
+            },
+            {
+              flags: '--propose',
+              description: 'alias for --dry-run, matching `team new --propose`',
+            },
+            {
+              flags: '--force',
+              description: 'remove despite uncommitted changes, unpushed commits or an unmerged branch (they are still listed first)',
+            },
+            {
+              flags: '--remote',
+              description: 'also delete the remote branch (origin/<ord>-<slug>) after the local one',
+            },
+          ],
+          run: runTidy,
         },
       },
     },
