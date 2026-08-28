@@ -1,0 +1,69 @@
+{
+  "dd": {
+    "schema": "pij-team/impl-guide"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Implementation guide — worktree-diff",
+        "plan": "docs/plans/006-worktree-diff/plan.dd.json",
+        "mode": "investigate-then-build: phase 1 runs in INVESTIGATE mode (units are single-variable probes, interfaces are evidence contracts, done is a receipt with observed tool versions, composition is the ruled unit set); phases 2-3 run in BUILD mode against the interfaces frozen at the end of phase 1.",
+        "updated": "2026-08-28"
+      }
+    },
+    {
+      "name": "architecture",
+      "value": "Doctrine: .agents/skills/pij-team/TENETS.md — tenets 1-6 govern; this repo instantiates them per docs/rules-idioms-architecture/fs3-architecture.md (binding). THE DEFINING CONSTRAINT OF THIS PLAN: the seams cannot be frozen from an armchair because current behaviour is unmeasured — so phase 1 IS the seam-freezing activity: its probe report rules which units exist and what their interfaces are, and prime signs that ruling off before any fan-out (tk-w105). Probable surfaces, for orientation only (probe evidence outranks this sentence): discovery/registration in the daemon/watcher (crates/daemon watch + roots), scan scoping in the scan path against the store's blob set (crates/daemon/scan + crates/store), version resolution in the query surface (crates/store queries + crates/cli/daemon search wiring), lifecycle in roots/GC (crates/store/src/roots.rs — held_by_a_live_root! and the three-level collector are the existing reference machinery; extending them follows their idiom, never a second mechanism). Relevant landed context: PR #38 fixed the watcher's ignore hole and gave embed the reference spend guard — probe measurements assume both. Bobolink's live capture (2026-08-28): worktree uncommitted content is invisible to search without duplicate-rooting — the probe must reproduce this. No new dependency edges anticipated; any is stop-and-ask."
+    },
+    {
+      "name": "fan_out",
+      "value": {
+        "decision": "solo-pm phase 1, coders phase 2 per the ruled unit set",
+        "rationale": "Phase 1 is one probe harness + four probes — serial, evidence-critical, PM-coded (a probe fleet would spend more on dispatch than measurement; single-writer keeps the evidence contract coherent). Phase 2 fan-out count comes from the probe report: up to four units IF the gaps are real and separable; fold units that turn out trivial (a unit cheaper than its dispatch is not a unit). Phase 3 is the PM composing."
+      }
+    },
+    {
+      "name": "units",
+      "value": [
+        { "id": "p1-p4", "name": "the four probes (phase 1, PM-solo)", "paths": "docs/plans/006-worktree-diff/assets/probes/**, assets/probe-report.md", "responsibility": "Measure discovery, incremental cost, search resolution, removal/GC — one variable each.", "interface": "The evidence contract: every claim carries a transcript (daemon log lines, DB deltas, CLI envelopes); provider-call counts measured, never inferred; observed tool versions in each receipt.", "test_strategy": "The probe script IS the test; it must be re-runnable end-to-end by a future seat (ac-0005).", "depends_on": "none", "wave": 0, "note": "Disposable worktrees use poctest- prefixed slugs; teardown always runs." },
+        { "id": "u-a", "name": "PROVISIONAL: worktree auto-discovery", "paths": "<ruled by probe P1>", "responsibility": "New worktrees of registered repos register + scan without a manual add.", "interface": "<frozen at phase-1 close>", "test_strategy": "<per ruled unit>", "depends_on": "phase 1", "wave": 1, "note": "May be ruled OUT if discovery already works." },
+        { "id": "u-b", "name": "PROVISIONAL: diff-scoped scanning", "paths": "<ruled by probe P2>", "responsibility": "Worktree scans spend nothing on content identical to main.", "interface": "<frozen at phase-1 close>", "test_strategy": "<per ruled unit>", "depends_on": "phase 1", "wave": 1, "note": "May shrink to a fix if blob-dedupe already covers it." },
+        { "id": "u-c", "name": "PROVISIONAL: version resolution + context labeling", "paths": "<ruled by probe P3>", "responsibility": "Search prefers the asking context's version, labels provenance, offers explicit scoping.", "interface": "<frozen at phase-1 close>", "test_strategy": "<per ruled unit>", "depends_on": "phase 1", "wave": 1, "note": "The query-surface change most likely to be real work." },
+        { "id": "u-d", "name": "PROVISIONAL: removal lifecycle", "paths": "<ruled by probe P4>", "responsibility": "worktree remove -> dereference -> GC, no orphaned paid enrichment.", "interface": "<frozen at phase-1 close>", "test_strategy": "<per ruled unit>", "depends_on": "phase 1", "wave": 1, "note": "Follows roots.rs idiom; never a second reference mechanism." }
+      ]
+    },
+    {
+      "name": "isolation",
+      "value": {
+        "mode": "worktree-per-coder",
+        "note": "Phase-2 coders: own worktrees off 006-worktree-diff, PM merges, coders never merge. ABSOLUTE PATHS FOR EVERY FILE READ/EDIT (DL-007/008: seat file tools may resolve relatives against the spawn cwd — proven cross-tree writes). Done reports carry an ASSUMPTIONS section + prove-in-tree evidence. CARGO_INCREMENTAL=0; rustc-LLVM IO errors = disk, report not debug; report free-space in every message. Toolchain pinned at phase 1; receipts carry observed versions."
+      }
+    },
+    {
+      "name": "composition",
+      "value": {
+        "composer": "pm",
+        "steps": "BEFORE wiring, ask each done coder what it ASSUMED about the composition it does not own. Merge ruled units in dependency order, wire at the composition root, harness checks green on the composed tree, then first light. Composition is wiring, not building — unit-internal rework here is a phase-1/contract defect: stop, record, get it ruled.",
+        "integration_proof": "tk-w302's live loop transcript: create worktree -> edit -> version-correct search both directions -> remove -> GC reclaim, on this repo itself."
+      }
+    },
+    {
+      "name": "review",
+      "value": {
+        "when": "after phase-3 composition, before the PR into main",
+        "inputs": "plan + this impl-guide + probe report + full diff; priority: the four ACs' truth, probe-report fidelity (did the build match the evidence), reference-machinery idiom (no second mechanism beside roots.rs), query-surface contract stability",
+        "model_override": ""
+      }
+    },
+    {
+      "name": "risks",
+      "value": [
+        { "id": "r1", "text": "Building against assumed rather than measured behaviour — retired by the phase-1 gate: no fan-out until prime signs the probe report." },
+        { "id": "r2", "text": "A second reference mechanism creeping in beside held_by_a_live_root!/GC — retired by the review priority + the roots.rs-idiom rule." },
+        { "id": "r3", "text": "Probe worktrees colliding with the live pij-team fleet's worktrees — retired by poctest- slugs + always-run teardown." },
+        { "id": "r4", "text": "Disk: another fleet's target trees during wave 1 of plan 005 — retired by staging PM #2's fan-out AFTER 005 composition or behind Jordan's 330G reclaim, prime's call at phase-1 close." }
+      ]
+    }
+  ]
+}

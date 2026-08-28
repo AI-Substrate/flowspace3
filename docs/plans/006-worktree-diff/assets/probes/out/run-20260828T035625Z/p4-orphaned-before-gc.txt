@@ -1,0 +1,10 @@
+ orphaned_summaries 
+--------------------
+                  3
+(1 row)
+
+ orphaned_embeddings 
+---------------------
+                  12
+(1 row)
+

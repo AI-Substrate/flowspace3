@@ -1,0 +1,6 @@
+                                root_path                                | files | blobs 
+-------------------------------------------------------------------------+-------+-------
+ /Users/jordanknight/substrate/flowspace/flowspace3                      |   456 |   454
+ /Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T024227Z |   305 |   304
+(2 rows)
+

@@ -29,6 +29,8 @@ pub struct Hit {
     pub repo: Option<String>,
     /// A live path holding it, relative to its worktree root.
     pub path: Option<String>,
+    /// The registered worktree root that supplied this hit.
+    pub worktree: Option<String>,
 }
 
 /// What `GET /search` answers with.

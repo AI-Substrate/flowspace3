@@ -1,0 +1,239 @@
+{
+  "ok": true,
+  "command": "search",
+  "v": 1,
+  "data": {
+    "results": [
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/cli/docs/daemon.md::daemon",
+        "kind": "section",
+        "match_field": "raw",
+        "name": "daemon",
+        "path": "crates/cli/docs/daemon.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.5438768944520521,
+        "smart": null,
+        "snippet": "# daemon\n\n```bash\nflowspace3 daemon\n```",
+        "span": [
+          1,
+          63
+        ],
+        "subkind": "atx_heading",
+        "tags": []
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/pocs/daemon-shell/LEARNINGS.md::LEARNINGS — what the real fs3 daemon needs to know::5. HTTP shape",
+        "kind": "section",
+        "match_field": "smart",
+        "name": "5. HTTP shape",
+        "path": "pocs/daemon-shell/LEARNINGS.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.5347943843807554,
+        "smart": "The daemon’s HTTP API should separate reading from acknowledgement: `GET /dirty` is non-consuming and `DELETE /dirty` acknowledges, providing at-least-once delivery. It should distinguish malformed requests (`400`) from overlapping roots (`409`), reject non-loopback binds at startup for security, and expose per-root `/status` metrics such as events, ignored events, pending work, and dirty state.",
+        "snippet": "## 5. HTTP shape\n\n**`GET /dirty` does not consume.** A `GET` that empties what it reports is a\n`GET` you cannot retry: every consumer that crashes between reading and\nacknowledging loses work permanently. Reading and taking are split — `GET",
+        "span": [
+          240,
+          261
+        ],
+        "subkind": "atx_heading",
+        "tags": [
+          "HTTP API semantics",
+          "at-least-once delivery",
+          "error status codes",
+          "loopback security",
+          "diagnostic status"
+        ]
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/docs/services/watcher.md::watcher — how the daemon finds out that a file changed::What it is",
+        "kind": "section",
+        "match_field": "smart",
+        "name": "What it is",
+        "path": "docs/services/watcher.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.5231558655384069,
+        "smart": "The daemon uses one reconciliation loop for both paths present at boot and paths added later, comparing desired worktrees with actual OS watcher handles and applying the difference. Each pass diffs roots, absorbs filesystem notifications, sweeps quiet directories via the debouncer, then re-lists and scans valid directories, enqueueing changed files while rejecting paths no longer reachable from ROOT.",
+        "snippet": "## What it is\n\nJordan's ask, verbatim: *\"the daemon should automatically watch whatever paths\nare present on boot, and also if I add a path, it should start watching it.\"*\n",
+        "span": [
+          7,
+          25
+        ],
+        "subkind": "atx_heading",
+        "tags": [
+          "reconciliation",
+          "file watchers",
+          "worktrees",
+          "debouncing",
+          "discovery"
+        ]
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/docs/services/watcher.md::watcher — how the daemon finds out that a file changed",
+        "kind": "section",
+        "match_field": "smart",
+        "name": "watcher — how the daemon finds out that a file changed",
+        "path": "docs/services/watcher.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.509048158124403,
+        "smart": "The daemon reconciles desired worktree roots from Postgres with live OS watchers, then drains events, debounces dirty directories, verifies discovery reachability from the worktree root, re-lists changed subtrees, diffs files, and enqueues deduplicated scan jobs. Directory-level handling compensates for unreliable recursive watcher behavior, while maximum-age settling, ignore filtering, nested-directory pruning, and whole-map persistence address correctness and performance edge cases. The watcher is a recoverable hint rather than a ledger; periodic full-walk backstops, descriptor budgeting, non-UTF-8 paths, root overlap, and graceful shutdown remain follow-up decisions.",
+        "snippet": "# watcher — how the daemon finds out that a file changed\n\n**Code**: `crates/daemon/src/watch.rs` (shell) + `crates/daemon/src/debounce.rs` (pure core) + `crates/daemon/src/reconcile.rs` (the loop)\n**Tests**: `crates/daemon/tests/watcher.rs` (end to end, real OS watcher, throwaway database) + the `#[cfg(test)]` modules in all three source files\n**Rulings**: daemon-native-on-host (2026-08-26) · reconcile-loop doctrine (`docs/plans/prd/daemon-worker-architecture.md`) · watcher doctrine, from the `pocs/daemon-shell` prototype",
+        "span": [
+          1,
+          232
+        ],
+        "subkind": "atx_heading",
+        "tags": [
+          "reconcile loop",
+          "directory-level watching",
+          "debouncing",
+          "discovery reachability",
+          "notify"
+        ]
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/docs/services/auto-update.md::Auto-update",
+        "kind": "section",
+        "match_field": "smart",
+        "name": "Auto-update",
+        "path": "docs/services/auto-update.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.5011724379271814,
+        "smart": "The daemon periodically checks GitHub for newer releases, compares semver, verifies SHA256SUMS, executes the staged binary with --version, and atomically replaces the canonical install path while preserving the running process’s old inode. Update state is keyed per install path and reconciled from the binary on disk at boot and after checks, with auto=false disabling unattended network updates while retaining reconciliation and manual doctor upgrade. A shared, scoped user-message queue reports update status and actionable failures through daemon envelopes and doctor, with producers declaring their current messages so stale notices retract automatically.",
+        "snippet": "# Auto-update\n\n**Owner**: pij-strange-edeard (w-auto-update packet) · **Requirements**: PRD\nreq 54 (auto-update), req 59 (user messages queue), req 58 (config reference).\n",
+        "span": [
+          1,
+          335
+        ],
+        "subkind": "atx_heading",
+        "tags": [
+          "automatic updates",
+          "per-install state",
+          "user message queue",
+          "binary verification",
+          "atomic replacement"
+        ]
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/daemon/src/update.rs::UpdateSupervisor::reconcile",
+        "kind": "function",
+        "match_field": "smart",
+        "name": "reconcile",
+        "path": "crates/daemon/src/update.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.4948999355977693,
+        "smart": "Reconciles the daemon’s own installation path by optionally checking for updates, recording outcomes, and observing the on-disk version at boot or after a check. It updates the persisted state and synchronizes desired messages every pass, while network-check failures preserve the last known conclusion and avoid retry storms.",
+        "snippet": "async fn reconcile(&mut self) -> Result<crate::reconcile::Pass> {\n        let mut changed = 0;\n        // This daemon speaks for exactly one installation: its own resolved\n        // binary path. It declares and retracts messages for that path and\n        // touches nobody else's row — \"the path is gone HERE\" is not \"the path",
+        "span": [
+          827,
+          890
+        ],
+        "subkind": "function_item",
+        "tags": [
+          "update reconciliation",
+          "installation state",
+          "message synchronization",
+          "error handling"
+        ]
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/core/src/config.rs::DaemonConfig",
+        "kind": "container",
+        "match_field": "smart",
+        "name": "DaemonConfig",
+        "path": "crates/core/src/config.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.4904408220833891,
+        "smart": "`DaemonConfig` defines the daemon URL, log directory, log filtering level, maximum log file size, and number of retained log files. It supports `~/` path expansion, uses a consistent config-directory convention, lets `RUST_LOG` override configured levels, and bounds disk usage through size-based rotation and retention.",
+        "snippet": "pub struct DaemonConfig {\n    /// Base URL the daemon serves and the CLI calls.\n    pub url: String,\n    /// Directory the daemon writes its rolling log files into.\n    ///",
+        "span": [
+          319,
+          342
+        ],
+        "subkind": "struct_item",
+        "tags": [
+          "daemon configuration",
+          "logging",
+          "log rotation",
+          "environment variables"
+        ]
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/daemon/tests/watcher.rs::files_created_inside_a_brand_new_directory_are_indexed_anyway",
+        "kind": "function",
+        "match_field": "smart",
+        "name": "files_created_inside_a_brand_new_directory_are_indexed_anyway",
+        "path": "crates/daemon/tests/watcher.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.4836186992170206,
+        "smart": "Tests that a watcher indexes every file created inside a newly added directory, even when directory and contents appear simultaneously as in a git clone or npm install. It repeatedly reconciles and drains pending jobs until one file is indexed, then verifies all five files were indexed.",
+        "snippet": "async fn files_created_inside_a_brand_new_directory_are_indexed_anyway() {\n    let stack = Stack::create(\"watch-newdir\").await;\n    stack.write(\"src/first.rs\", \"/// One.\\npub fn first() -> u8 { 1 }\\n\");\n    stack.add_root().await;\n    stack.drain().await;",
+        "span": [
+          290,
+          328
+        ],
+        "subkind": "function_item",
+        "tags": [
+          "watcher",
+          "directory creation",
+          "file indexing",
+          "inotify",
+          "reconciliation"
+        ]
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/cli/src/client.rs::DaemonClient",
+        "kind": "container",
+        "match_field": "smart",
+        "name": "DaemonClient",
+        "path": "crates/cli/src/client.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.4803444925813096,
+        "smart": "`DaemonClient` provides the CLI’s HTTP interface to the daemon, including health checks, root management, scanning, garbage collection, conversation operations, status, search, retrieval, and tree browsing. It configures distinct connection and scan timeouts, normalizes the base URL, and centralizes GET/POST handling. Responses are converted into `Envelope` values, preserving daemon envelopes while mapping unreachable daemons or invalid responses to structured failures with diagnostic details and recovery guidance.",
+        "snippet": "impl DaemonClient {\n    /// How long to wait before declaring the daemon unreachable. Short: the CLI\n    /// fails fast and points at doctor rather than hanging (PRD req 37).\n    pub const TIMEOUT: Duration = Duration::from_secs(3);\n",
+        "span": [
+          56,
+          262
+        ],
+        "subkind": "impl_item",
+        "tags": [
+          "HTTP client",
+          "daemon health",
+          "envelopes",
+          "repository operations",
+          "error handling"
+        ]
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/pocs/daemon-shell/README.md::daemon-shell::The surface",
+        "kind": "section",
+        "match_field": "smart",
+        "name": "The surface",
+        "path": "pocs/daemon-shell/README.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.47948362867706407,
+        "smart": "Defines the daemon’s HTTP surface: health and status endpoints, watch-root creation and removal, and idempotent dirty-set retrieval with explicit acknowledgement via DELETE. It also provides curl examples for checking health, adding the current directory, inspecting status and dirty paths, and clearing the dirty set.",
+        "snippet": "## The surface\n\n| method | path | answers |\n| --- | --- | --- |\n| `GET` | `/health` | `{\"status\":\"ok\",\"version\":\"0.1.0\"}` |",
+        "span": [
+          33,
+          51
+        ],
+        "subkind": "atx_heading",
+        "tags": [
+          "HTTP API",
+          "watch management",
+          "dirty set",
+          "health and status"
+        ]
+      }
+    ]
+  },
+  "meta": {
+    "scope": {
+      "cwd": "/Users/jordanknight/substrate/flowspace/flowspace3",
+      "repo": "git:github.com/AI-Substrate/flowspace3",
+      "source": "cwd",
+      "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+    }
+  },
+  "next_action": "read a hit in full with `flowspace3 get <address>`, browse its file with `flowspace3 tree <address>`, or narrow with --path/--repo"
+}

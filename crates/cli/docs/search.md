@@ -34,10 +34,13 @@ filter that matches nothing returns nothing rather than a padded list.
   "score": 0.83, "match_field": "smart", "kind": "function",
   "subkind": "function_item", "name": "validate_session_token",
   "span": [42, 58], "path": "src/auth.rs", "repo": "git:github.com/org/repo",
-  "snippet": "…", "smart": "Validates a session token…", "tags": ["auth"] }
+  "worktree": "/srv/code/repo", "snippet": "…",
+  "smart": "Validates a session token…", "tags": ["auth"] }
 ```
 
 - `path` + `span` is what you open; `span` is inclusive, 1-based.
+- `worktree` names the registered checkout that supplied the hit. It is the
+  absolute root; `path` is relative to it.
 - `score` is `1 - cosine distance`: 1.0 is identical, higher is better. That
   conversion happens once, at the boundary, so `--min-score 0.7` means what it
   looks like.
@@ -63,6 +66,15 @@ says.
   concatenation of its own functions, so it would out-rank every one of them on
   any question about that file. Files with no parsed children (prose, unknown
   languages) do get one.
+- **The result cap is measured, not implied.** `meta.truncation` reports the
+  requested `limit` and whether at least one additional hit existed. Search
+  fetches one extra candidate only to establish that fact; `data.results`
+  still contains at most the requested limit.
+- **A weak match teaches without changing the answer.** When results exist but
+  the best score is below the named confidence floor, `meta.hint` and
+  `next_action` say: "Weak match: describe the component in its own vocabulary
+  rather than asking a question." The hint never filters or reorders results.
+  Zero results keep their existing diagnostic steer.
 - **Empty results are a real answer — but the surface will tell you when they
   are not.** `meta.empty_because` carries the reason whenever one is known:
   `below_floor` means rows were found and your `--min-score` rejected them, and
@@ -89,12 +101,27 @@ says.
 ## Scope: a bare search is about where you are
 
 The CLI sends your working directory, and a search with no `--repo` narrows to
-the repository that directory belongs to (workshop 003 D6). `meta.scope` says
-which repository answered and how it was chosen; `--repo all` widens back to
-every indexed repository. Standing somewhere fs3 has never indexed puts a
-warning in `scope.warnings` and at the front of `next_action`, naming
-`flowspace3 add <path>` — rather than answering from an unrelated repository
-and letting you believe it was yours.
+the registered checkout containing that directory (workshop 003 D6). Content
+that exists only in another checkout is excluded before ranking, including
+another checkout of the same repository; byte-identical content shared by both
+remains visible. Every hit names the serving checkout in `worktree`.
+
+`meta.scope` says which repository and worktree answered and how the scope was
+chosen; `--repo all` explicitly widens back to every indexed repository.
+Standing somewhere fs3 has never indexed puts a warning in `scope.warnings` and
+at the front of `next_action`, naming `flowspace3 add <path>` — rather than
+answering from an unrelated repository and letting you believe it was yours.
+
+## Weak-match calibration
+
+The advisory floor is the named `WEAK_MATCH_SCORE_FLOOR` constant beside its
+calibration table in `crates/daemon/src/search.rs`. The 2026-08-28 snapshot used
+the live repository index and Azure `text-embedding-3-small-no-rate` at 1024
+dimensions: known noise topped out at 0.4644 and known-relevant results bottomed
+out at 0.5509, so 0.50 sits between the observed bands. The index grows and
+absolute similarity is provider-dependent; re-run the labelled query table
+before changing the constant. A newly relevant result below the band moves the
+floor down. The procedure is durable; the sample is not.
 
 ## Depth comes from `get`
 

@@ -447,6 +447,10 @@ async fn status(State(state): State<AppState>) -> Answer<StatusReport> {
     }
 }
 
+/// Advisory text for a result below the calibrated search confidence floor.
+const WEAK_MATCH_HINT: &str =
+    "Weak match: describe the component in its own vocabulary rather than asking a question.";
+
 async fn search(
     State(state): State<AppState>,
     Query(request): Query<SearchRequest>,
@@ -465,6 +469,7 @@ async fn search(
 
     match crate::search::search(&state, &request, &scope).await {
         Ok(outcome) => {
+            let weak_match = outcome.is_weak_match();
             // The third cause is the one nobody guesses: vectors are only read
             // under the model_key that wrote them, so searching with a
             // different embedder than the one that indexed returns nothing
@@ -488,10 +493,17 @@ async fn search(
                      `flowspace3 tree <address>`, or narrow with --path/--repo"
                 }
             };
-            let meta = serde_json::json!({
+            let mut meta = serde_json::json!({
                 "scope": scope,
                 "empty_because": outcome.empty_because,
+                "truncation": {
+                    "limit": outcome.limit,
+                    "truncated": outcome.truncated,
+                },
             });
+            if weak_match {
+                meta["hint"] = serde_json::Value::String(WEAK_MATCH_HINT.to_string());
+            }
             let results = SearchResults {
                 results: outcome.results,
             };
@@ -500,6 +512,11 @@ async fn search(
                 format!("{next} — {}", crate::ask_hint::HINT)
             } else {
                 next
+            };
+            let next = if weak_match {
+                format!("{WEAK_MATCH_HINT} — then: {next}")
+            } else {
+                next.to_string()
             };
             ok(&state, COMMAND, results)
                 .await

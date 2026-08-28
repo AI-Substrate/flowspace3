@@ -31,6 +31,7 @@ pub mod status;
 pub mod update;
 pub mod watch;
 pub mod wiring;
+pub mod worktrees;
 
 pub use answer::{Answer, IntoFailure};
 pub use auth::Auth;

@@ -1,0 +1,113 @@
+{
+  "ok": true,
+  "command": "search",
+  "v": 1,
+  "data": {
+    "results": [
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/daemon/tests/auto_update.rs::binary_reporting",
+        "kind": "function",
+        "match_field": "raw",
+        "name": "binary_reporting",
+        "path": "crates/daemon/tests/auto_update.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.18898223704205563,
+        "smart": null,
+        "snippet": "fn binary_reporting(version: &str) -> Vec<u8> {\n    format!(\"#!/bin/sh\\necho \\\"flowspace3 {version}\\\"\\n\").into_bytes()\n}",
+        "span": [
+          108,
+          110
+        ],
+        "subkind": "function_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/core/src/git.rs::tests::every_transport_spelling_of_one_remote_yields_one_key",
+        "kind": "function",
+        "match_field": "raw",
+        "name": "every_transport_spelling_of_one_remote_yields_one_key",
+        "path": "crates/core/src/git.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.1815682582177808,
+        "smart": null,
+        "snippet": "fn every_transport_spelling_of_one_remote_yields_one_key() {\n        let ssh =\n            RepoIdentity::from_remote_parts(Some(\"github.com\"), \"AI-Substrate/flowspace3.git\");\n        let https =\n            RepoIdentity::from_remote_parts(Some(\"GitHub.com\"), \"/AI-Substrate/flowspace3/\");",
+        "span": [
+          347,
+          360
+        ],
+        "subkind": "function_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/core/src/update.rs::tests::versions_parse_with_or_without_the_tag_prefix",
+        "kind": "function",
+        "match_field": "raw",
+        "name": "versions_parse_with_or_without_the_tag_prefix",
+        "path": "crates/core/src/update.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.17457432075066526,
+        "smart": null,
+        "snippet": "fn versions_parse_with_or_without_the_tag_prefix() {\n        assert_eq!(\n            Version::parse(\"v1.2.3\"),\n            Some(Version {\n                major: 1,",
+        "span": [
+          311,
+          321
+        ],
+        "subkind": "function_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/daemon/src/update.rs::not_writable",
+        "kind": "function",
+        "match_field": "raw",
+        "name": "not_writable",
+        "path": "crates/daemon/src/update.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.172292207342851,
+        "smart": null,
+        "snippet": "pub fn not_writable(directory: &Path) -> Option<String> {\n    let probe = directory.join(format!(\".flowspace3-write-probe-{}\", std::process::id()));\n    match std::fs::File::create(&probe) {\n        Ok(_) => {\n            let _ = std::fs::remove_file(&probe);",
+        "span": [
+          396,
+          405
+        ],
+        "subkind": "function_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/store/src/admin.rs::schema_current",
+        "kind": "function",
+        "match_field": "raw",
+        "name": "schema_current",
+        "path": "crates/store/src/admin.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.17113941907882813,
+        "smart": null,
+        "snippet": "pub async fn schema_current(pool: &PgPool) -> Result<SchemaStatus, StoreError> {\n    let mut embedded: Vec<i64> = crate::MIGRATOR\n        .iter()\n        .map(|migration| migration.version)\n        .collect();",
+        "span": [
+          108,
+          145
+        ],
+        "subkind": "function_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      }
+    ]
+  },
+  "meta": {
+    "hint": "Weak match: describe the component in its own vocabulary rather than asking a question.",
+    "scope": {
+      "cwd": "/Users/jordanknight/substrate/flowspace/flowspace3",
+      "repo": "git:github.com/AI-Substrate/flowspace3",
+      "source": "cwd",
+      "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+    },
+    "truncation": {
+      "limit": 5,
+      "truncated": true
+    }
+  },
+  "next_action": "Weak match: describe the component in its own vocabulary rather than asking a question. — then: read a hit in full with `flowspace3 get <address>`, browse its file with `flowspace3 tree <address>`, or narrow with --path/--repo"
+}

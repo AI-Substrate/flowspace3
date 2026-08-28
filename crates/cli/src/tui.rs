@@ -6,6 +6,7 @@
 
 use std::collections::VecDeque;
 use std::io::{self, Stdout};
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -19,6 +20,7 @@ use crossterm::terminal::{
 };
 use fs3_core::envelope::Envelope;
 use fs3_core::events::{Event, EventKind, Hello, STREAM_NAME, STREAM_VERSION};
+use fs3_core::views::search::Hit as SearchHit;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
@@ -161,21 +163,6 @@ struct QueueRow {
 struct SearchData {
     #[serde(default)]
     results: Vec<SearchHit>,
-}
-
-#[derive(Debug, Deserialize, Clone, PartialEq)]
-struct SearchHit {
-    address: String,
-    #[serde(default)]
-    score: f64,
-    #[serde(default)]
-    path: String,
-    #[serde(default)]
-    kind: String,
-    #[serde(default)]
-    snippet: String,
-    #[serde(default)]
-    smart: Option<String>,
 }
 
 #[derive(Debug)]
@@ -588,6 +575,7 @@ struct App {
     queue_history: VecDeque<u64>,
     activity: VecDeque<ActivityLine>,
     results: Vec<SearchHit>,
+    show_search_worktrees: bool,
     selected_result: usize,
     searching: bool,
     search_error: Option<String>,
@@ -608,6 +596,7 @@ impl Default for App {
             queue_history: VecDeque::new(),
             activity: VecDeque::new(),
             results: Vec::new(),
+            show_search_worktrees: false,
             selected_result: 0,
             searching: false,
             search_error: None,
@@ -634,6 +623,8 @@ impl App {
                 self.snapshot_error = Some(error);
             }
             WorkerMessage::Search(Ok(results)) => {
+                self.show_search_worktrees =
+                    worktree_provenance_needed(&results, std::env::current_dir().ok().as_deref());
                 self.results = results;
                 self.selected_result = 0;
                 self.searching = false;
@@ -872,6 +863,30 @@ enum Action {
 
 fn first_line(value: &str) -> &str {
     value.lines().next().unwrap_or(value)
+}
+
+/// Scope must stay visible at every surface that renders a chosen row, not
+/// only where the row was selected. Keep the common caller-checkout case clean,
+/// but disclose provenance when roots differ or the only root is not the cwd.
+/// Computed once per result delivery rather than on every draw tick.
+fn worktree_provenance_needed(results: &[SearchHit], caller: Option<&Path>) -> bool {
+    let Some(first) = results.iter().find_map(|hit| hit.worktree.as_deref()) else {
+        return false;
+    };
+    if results
+        .iter()
+        .any(|hit| hit.worktree.as_deref() != Some(first))
+    {
+        return true;
+    }
+    caller.is_none_or(|cwd| !cwd.starts_with(first))
+}
+
+fn checkout_name(root: &str) -> &str {
+    Path::new(root)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(root)
 }
 
 #[derive(Debug)]
@@ -1165,14 +1180,26 @@ fn draw_search_results(frame: &mut ratatui::Frame<'_>, area: Rect, app: &mut App
         app.results
             .iter()
             .map(|hit| {
-                ListItem::new(Line::from(vec![
+                let mut line = vec![
                     Span::styled(
                         format!("{:.2}", hit.score),
                         Style::default().fg(Color::Yellow),
                     ),
                     Span::raw("  "),
                     Span::styled(&hit.address, Style::default().fg(Color::Cyan)),
-                ]))
+                ];
+                if app.show_search_worktrees {
+                    let checkout = hit
+                        .worktree
+                        .as_deref()
+                        .map(checkout_name)
+                        .unwrap_or("unknown checkout");
+                    line.push(Span::styled(
+                        format!("  [{checkout}]"),
+                        Style::default().fg(Color::DarkGray),
+                    ));
+                }
+                ListItem::new(Line::from(line))
             })
             .collect()
     };
@@ -1196,11 +1223,20 @@ fn draw_search_results(frame: &mut ratatui::Frame<'_>, area: Rect, app: &mut App
     let detail = app.results.get(app.selected_result).map_or_else(
         || "Select a result to inspect its context.".to_string(),
         |hit| {
+            let checkout = if app.show_search_worktrees {
+                format!(
+                    "\ncheckout: {}",
+                    hit.worktree.as_deref().unwrap_or("unknown")
+                )
+            } else {
+                String::new()
+            };
             format!(
-                "{} · {}\n{}\n\n{}",
+                "{} · {}\n{}{}\n\n{}",
                 hit.kind,
-                hit.path,
+                hit.path.as_deref().unwrap_or("—"),
                 hit.address,
+                checkout,
                 hit.smart.as_deref().unwrap_or(&hit.snippet)
             )
         },
@@ -1256,6 +1292,41 @@ mod tests {
     use fs3_core::events::{EventKind, QueueDepth};
 
     const FIXTURE: &str = include_str!("../tests/fixtures/tui-events.ndjson");
+
+    fn search_hit(worktree: &str) -> SearchHit {
+        SearchHit {
+            address: "el:git:example/repo/src/lib.rs::run".to_string(),
+            score: 0.8,
+            match_field: "raw".to_string(),
+            kind: "function".to_string(),
+            subkind: "function_item".to_string(),
+            name: "run".to_string(),
+            span: [1, 2],
+            snippet: "fn run() {}".to_string(),
+            smart: None,
+            tags: Vec::new(),
+            repo: Some("git:example/repo".to_string()),
+            path: Some("src/lib.rs".to_string()),
+            worktree: Some(worktree.to_string()),
+        }
+    }
+
+    #[test]
+    fn checkout_provenance_appears_only_when_it_disambiguates() {
+        let caller = Path::new("/srv/repo/main/src");
+        let own = vec![search_hit("/srv/repo/main"), search_hit("/srv/repo/main")];
+        assert!(!worktree_provenance_needed(&own, Some(caller)));
+
+        let mixed = vec![
+            search_hit("/srv/repo/main"),
+            search_hit("/srv/repo/feature"),
+        ];
+        assert!(worktree_provenance_needed(&mixed, Some(caller)));
+
+        let foreign = vec![search_hit("/srv/repo/feature")];
+        assert!(worktree_provenance_needed(&foreign, Some(caller)));
+        assert_eq!(checkout_name("/srv/repo/feature"), "feature");
+    }
 
     #[test]
     fn layout_becomes_results_dominant_when_search_is_focused() {

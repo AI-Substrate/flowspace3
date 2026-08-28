@@ -1,0 +1,226 @@
+2026-08-28T02:44:33.835177Z  INFO fs3_daemon::watch: re-listed a changed directory directory=/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T024227Z/crates/cli/src events=8 enqueued=8 settled=Quiet
+2026-08-28T02:44:33.990043Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/cli/src/client.rs ms=81 left=20
+2026-08-28T02:44:33.995346Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/cli/src/lib.rs ms=36 left=25
+2026-08-28T02:44:33.999232Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/client.rs::DaemonClient ms=10 left=32
+2026-08-28T02:44:33.999520Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/client.rs::HealthReport ms=14 left=32
+2026-08-28T02:44:34.002214Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/conversation.rs::Header ms=9 left=38
+2026-08-28T02:44:34.004746Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/docs.rs::Topic ms=8 left=41
+2026-08-28T02:44:34.005828Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/cli/src/settings.rs ms=30 left=44
+2026-08-28T02:44:34.008251Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/cli/src/docs.rs ms=72 left=48
+2026-08-28T02:44:34.008951Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/conversation.rs::read ms=7 left=48
+2026-08-28T02:44:34.009977Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/client.rs::DaemonClient::health ms=10 left=51
+2026-08-28T02:44:34.012000Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/conversation.rs::shape_turn ms=8 left=54
+2026-08-28T02:44:34.015201Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/docs.rs::TopicPage ms=7 left=62
+2026-08-28T02:44:34.016524Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/client.rs::DaemonClient::envelope ms=6 left=64
+2026-08-28T02:44:34.018132Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/conversation.rs::mint_guid ms=5 left=66
+2026-08-28T02:44:34.020255Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/cli/src/conversation.rs ms=98 left=68
+2026-08-28T02:44:34.020639Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/docs.rs::list ms=6 left=68
+2026-08-28T02:44:34.021176Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/cli/src/show.rs ms=42 left=69
+2026-08-28T02:44:34.021779Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/conversation.rs::now ms=6 left=68
+2026-08-28T02:44:34.023393Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/cli/src/main.rs ms=58 left=70
+2026-08-28T02:44:34.024127Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/docs.rs::get ms=6 left=70
+2026-08-28T02:44:34.025000Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/conversation.rs::civil_from_days ms=5 left=70
+2026-08-28T02:44:34.025713Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/docs.rs::tests ms=4 left=69
+2026-08-28T02:44:34.028261Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/main.rs::Command ms=4 left=72
+2026-08-28T02:44:34.030015Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/conversation.rs::tests ms=4 left=73
+2026-08-28T02:44:34.031795Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/settings.rs::load_effective_from ms=4 left=74
+2026-08-28T02:44:34.033597Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/docs.rs::tests::every_topic_is_listed_with_a_real_size ms=5 left=75
+2026-08-28T02:44:34.035330Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/settings.rs::load_secrets_from ms=4 left=76
+2026-08-28T02:44:34.036131Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/main.rs::ConversationCommand ms=3 left=75
+2026-08-28T02:44:34.038427Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::Step ms=4 left=78
+2026-08-28T02:44:34.042718Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/conversation.rs::tests::import ms=7 left=79
+2026-08-28T02:44:34.043002Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/show.rs::render ms=5 left=78
+2026-08-28T02:44:34.062720Z  INFO fs3_daemon::runner: progress phase="working" scanned=7214 scan_left=1 summarized=49012 summarize_left=43 embedded=57209 embed_left=33 failed=0
+2026-08-28T02:44:34.065519Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/cli/src/doctor.rs ms=109 left=88
+2026-08-28T02:44:34.066904Z  INFO fs3_daemon::runner: batch kind="embed" subject=24 x smart jobs=24 ms=0
+2026-08-28T02:44:34.521241Z  INFO fs3_daemon::runner: batch kind="embed" subject=141 x raw jobs=13 ms=455
+2026-08-28T02:44:34.523801Z  INFO fs3_daemon::runner: done kind="embed" id=114754 left=87
+2026-08-28T02:44:34.526110Z  INFO fs3_daemon::runner: done kind="embed" id=114742 left=86
+2026-08-28T02:44:34.528669Z  INFO fs3_daemon::runner: done kind="embed" id=114732 left=85
+2026-08-28T02:44:34.531402Z  INFO fs3_daemon::runner: done kind="embed" id=114741 left=84
+2026-08-28T02:44:34.533807Z  INFO fs3_daemon::runner: done kind="embed" id=114746 left=83
+2026-08-28T02:44:34.536724Z  INFO fs3_daemon::runner: done kind="embed" id=114756 left=82
+2026-08-28T02:44:34.540111Z  INFO fs3_daemon::runner: done kind="embed" id=114748 left=81
+2026-08-28T02:44:34.543081Z  INFO fs3_daemon::runner: done kind="embed" id=114750 left=80
+2026-08-28T02:44:34.545937Z  INFO fs3_daemon::runner: done kind="embed" id=114736 left=79
+2026-08-28T02:44:34.548932Z  INFO fs3_daemon::runner: done kind="embed" id=114718 left=78
+2026-08-28T02:44:34.552173Z  INFO fs3_daemon::runner: done kind="embed" id=114706 left=77
+2026-08-28T02:44:34.555286Z  INFO fs3_daemon::runner: done kind="embed" id=114759 left=76
+2026-08-28T02:44:34.559222Z  INFO fs3_daemon::runner: done kind="embed" id=114685 left=75
+2026-08-28T02:44:34.561806Z  INFO fs3_daemon::runner: done kind="embed" id=114752 left=74
+2026-08-28T02:44:34.564738Z  INFO fs3_daemon::runner: done kind="embed" id=114744 left=73
+2026-08-28T02:44:34.567543Z  INFO fs3_daemon::runner: done kind="embed" id=114721 left=72
+2026-08-28T02:44:34.570872Z  INFO fs3_daemon::runner: done kind="embed" id=114739 left=71
+2026-08-28T02:44:34.574210Z  INFO fs3_daemon::runner: done kind="embed" id=114727 left=70
+2026-08-28T02:44:34.582845Z  INFO fs3_daemon::runner: done kind="embed" id=114704 left=69
+2026-08-28T02:44:34.590495Z  INFO fs3_daemon::runner: done kind="embed" id=114760 left=68
+2026-08-28T02:44:34.594053Z  INFO fs3_daemon::runner: done kind="embed" id=114695 left=67
+2026-08-28T02:44:34.596095Z  INFO fs3_daemon::runner: done kind="embed" id=114679 left=66
+2026-08-28T02:44:34.598054Z  INFO fs3_daemon::runner: done kind="embed" id=114710 left=65
+2026-08-28T02:44:34.600272Z  INFO fs3_daemon::runner: done kind="embed" id=114681 left=64
+2026-08-28T02:44:34.602275Z  INFO fs3_daemon::runner: done kind="embed" id=114772 left=63
+2026-08-28T02:44:34.604579Z  INFO fs3_daemon::runner: done kind="embed" id=114738 left=62
+2026-08-28T02:44:34.606706Z  INFO fs3_daemon::runner: done kind="embed" id=114676 left=61
+2026-08-28T02:44:34.609072Z  INFO fs3_daemon::runner: done kind="embed" id=114764 left=60
+2026-08-28T02:44:34.611666Z  INFO fs3_daemon::runner: done kind="embed" id=114734 left=59
+2026-08-28T02:44:34.614393Z  INFO fs3_daemon::runner: done kind="embed" id=114691 left=58
+2026-08-28T02:44:34.617037Z  INFO fs3_daemon::runner: done kind="embed" id=114728 left=57
+2026-08-28T02:44:34.619322Z  INFO fs3_daemon::runner: done kind="embed" id=114703 left=56
+2026-08-28T02:44:34.621238Z  INFO fs3_daemon::runner: done kind="embed" id=114671 left=55
+2026-08-28T02:44:34.623177Z  INFO fs3_daemon::runner: done kind="embed" id=114668 left=54
+2026-08-28T02:44:34.624946Z  INFO fs3_daemon::runner: done kind="embed" id=114709 left=53
+2026-08-28T02:44:34.626726Z  INFO fs3_daemon::runner: done kind="embed" id=114737 left=52
+2026-08-28T02:44:34.628750Z  INFO fs3_daemon::runner: done kind="embed" id=114731 left=51
+2026-08-28T02:44:34.637857Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/docs.rs::tests::an_unknown_topic_is_a_404_that_lists_the_real_ones ms=7 left=52
+2026-08-28T02:44:34.638766Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/main.rs::ConfigCommand ms=5 left=51
+2026-08-28T02:44:34.639851Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x smart jobs=2 ms=0
+2026-08-28T02:44:34.642061Z  INFO fs3_daemon::runner: done kind="embed" id=114774 left=51
+2026-08-28T02:44:34.643076Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::Step ms=6 left=50
+2026-08-28T02:44:34.644262Z  INFO fs3_daemon::runner: done kind="embed" id=114773 left=49
+2026-08-28T02:44:34.648810Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.650912Z  INFO fs3_daemon::runner: done kind="embed" id=114775 left=49
+2026-08-28T02:44:34.651708Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/conversation.rs::tests::a_bare_stream_of_turns_is_a_legal_transcript ms=5 left=48
+2026-08-28T02:44:34.653567Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.654796Z  INFO fs3_daemon::runner: done kind="embed" id=114776 left=48
+2026-08-28T02:44:34.655517Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/show.rs::key_status ms=3 left=47
+2026-08-28T02:44:34.657605Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.658951Z  INFO fs3_daemon::runner: done kind="embed" id=114777 left=47
+2026-08-28T02:44:34.659711Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/docs.rs::tests::topic_names_are_unique_and_related_links_resolve ms=3 left=46
+2026-08-28T02:44:34.661937Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.663088Z  INFO fs3_daemon::runner: done kind="embed" id=114778 left=46
+2026-08-28T02:44:34.663841Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::Step::ok ms=3 left=45
+2026-08-28T02:44:34.665443Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.666888Z  INFO fs3_daemon::runner: done kind="embed" id=114779 left=45
+2026-08-28T02:44:34.667556Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/main.rs::DoctorCommand ms=3 left=44
+2026-08-28T02:44:34.669241Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.670379Z  INFO fs3_daemon::runner: done kind="embed" id=114780 left=44
+2026-08-28T02:44:34.671132Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/conversation.rs::tests::the_same_transcript_mints_the_same_guid ms=3 left=43
+2026-08-28T02:44:34.672916Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.674725Z  INFO fs3_daemon::runner: done kind="embed" id=114781 left=43
+2026-08-28T02:44:34.675515Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/show.rs::missing_key_variables ms=4 left=42
+2026-08-28T02:44:34.677212Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.678384Z  INFO fs3_daemon::runner: done kind="embed" id=114782 left=42
+2026-08-28T02:44:34.679132Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::Step::warn ms=3 left=41
+2026-08-28T02:44:34.680686Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.681917Z  INFO fs3_daemon::runner: done kind="embed" id=114783 left=41
+2026-08-28T02:44:34.682557Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/main.rs::main ms=3 left=40
+2026-08-28T02:44:34.684212Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.685503Z  INFO fs3_daemon::runner: done kind="embed" id=114784 left=40
+2026-08-28T02:44:34.686299Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/show.rs::tests ms=3 left=39
+2026-08-28T02:44:34.688002Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.689277Z  INFO fs3_daemon::runner: done kind="embed" id=114785 left=39
+2026-08-28T02:44:34.690106Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/main.rs::run ms=3 left=38
+2026-08-28T02:44:34.691775Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.693213Z  INFO fs3_daemon::runner: done kind="embed" id=114786 left=38
+2026-08-28T02:44:34.693877Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::Step::info ms=3 left=37
+2026-08-28T02:44:34.695552Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.696982Z  INFO fs3_daemon::runner: done kind="embed" id=114787 left=37
+2026-08-28T02:44:34.697844Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/show.rs::tests::effective ms=3 left=36
+2026-08-28T02:44:34.699458Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.700687Z  INFO fs3_daemon::runner: done kind="embed" id=114788 left=36
+2026-08-28T02:44:34.701324Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/conversation.rs::tests::a_grown_transcript_keeps_its_guid_and_extends_its_numbering ms=3 left=35
+2026-08-28T02:44:34.702769Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.704251Z  INFO fs3_daemon::runner: done kind="embed" id=114789 left=35
+2026-08-28T02:44:34.704804Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::Step::down ms=3 left=34
+2026-08-28T02:44:34.706294Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.707527Z  INFO fs3_daemon::runner: done kind="embed" id=114790 left=34
+2026-08-28T02:44:34.708213Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/show.rs::tests::every_section_reports_the_layer_it_came_from ms=3 left=33
+2026-08-28T02:44:34.709821Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.710930Z  INFO fs3_daemon::runner: done kind="embed" id=114791 left=33
+2026-08-28T02:44:34.711709Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/main.rs::emit ms=3 left=32
+2026-08-28T02:44:34.713145Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.714362Z  INFO fs3_daemon::runner: done kind="embed" id=114792 left=32
+2026-08-28T02:44:34.715124Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/main.rs::config_show ms=3 left=31
+2026-08-28T02:44:34.716859Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.717988Z  INFO fs3_daemon::runner: done kind="embed" id=114793 left=31
+2026-08-28T02:44:34.718787Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/conversation.rs::tests::a_dialect_carrying_its_own_numbering_and_items_is_kept ms=3 left=30
+2026-08-28T02:44:34.720594Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.721815Z  INFO fs3_daemon::runner: done kind="embed" id=114794 left=30
+2026-08-28T02:44:34.722477Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::Step::repaired ms=3 left=29
+2026-08-28T02:44:34.724451Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.725748Z  INFO fs3_daemon::runner: done kind="embed" id=114795 left=29
+2026-08-28T02:44:34.726424Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/show.rs::tests::a_repo_override_is_shown_next_to_the_default ms=3 left=28
+2026-08-28T02:44:34.728071Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.729377Z  INFO fs3_daemon::runner: done kind="embed" id=114796 left=28
+2026-08-28T02:44:34.730012Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/conversation.rs::tests::now_is_rfc_3339_in_utc ms=3 left=27
+2026-08-28T02:44:34.731648Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.733026Z  INFO fs3_daemon::runner: done kind="embed" id=114797 left=27
+2026-08-28T02:44:34.733661Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::DoctorReport ms=3 left=26
+2026-08-28T02:44:34.735991Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.737854Z  INFO fs3_daemon::runner: done kind="embed" id=114798 left=26
+2026-08-28T02:44:34.738404Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/show.rs::tests::an_unreferenced_instance_never_asks_for_a_key ms=4 left=25
+2026-08-28T02:44:34.739868Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.741060Z  INFO fs3_daemon::runner: done kind="embed" id=114799 left=25
+2026-08-28T02:44:34.741631Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/show.rs::tests::the_paths_are_named_so_the_user_knows_what_to_edit ms=2 left=24
+2026-08-28T02:44:34.743169Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.744325Z  INFO fs3_daemon::runner: done kind="embed" id=114800 left=24
+2026-08-28T02:44:34.745060Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::run ms=3 left=23
+2026-08-28T02:44:34.746683Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.750508Z  INFO fs3_daemon::runner: done kind="embed" id=114801 left=23
+2026-08-28T02:44:34.751212Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/main.rs::ping ms=5 left=22
+2026-08-28T02:44:34.752960Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.754192Z  INFO fs3_daemon::runner: done kind="embed" id=114802 left=22
+2026-08-28T02:44:34.806868Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::walk ms=55 left=21
+2026-08-28T02:44:34.908280Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.909793Z  INFO fs3_daemon::runner: done kind="embed" id=114803 left=21
+2026-08-28T02:44:34.931515Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::check_update ms=73 left=20
+2026-08-28T02:44:34.954162Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.955812Z  INFO fs3_daemon::runner: done kind="embed" id=114804 left=20
+2026-08-28T02:44:34.956437Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::check_messages ms=24 left=19
+2026-08-28T02:44:34.979384Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:34.984165Z  INFO fs3_daemon::runner: done kind="embed" id=114805 left=19
+2026-08-28T02:44:35.009007Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::next_action ms=51 left=18
+2026-08-28T02:44:35.014920Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:35.017890Z  INFO fs3_daemon::runner: done kind="embed" id=114806 left=18
+2026-08-28T02:44:35.049603Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::check_engine ms=38 left=17
+2026-08-28T02:44:35.061554Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:35.091778Z  INFO fs3_daemon::runner: done kind="embed" id=114807 left=17
+2026-08-28T02:44:35.093114Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::check_stack ms=34 left=16
+2026-08-28T02:44:35.096226Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:35.098594Z  INFO fs3_daemon::runner: done kind="embed" id=114808 left=16
+2026-08-28T02:44:35.109205Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::check_database ms=15 left=15
+2026-08-28T02:44:35.113417Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:35.116216Z  INFO fs3_daemon::runner: done kind="embed" id=114809 left=15
+2026-08-28T02:44:35.117397Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::check_schema ms=6 left=14
+2026-08-28T02:44:35.120248Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:35.122540Z  INFO fs3_daemon::runner: done kind="embed" id=114810 left=14
+2026-08-28T02:44:35.123546Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::check_daemon ms=5 left=13
+2026-08-28T02:44:35.126388Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:35.129220Z  INFO fs3_daemon::runner: done kind="embed" id=114811 left=13
+2026-08-28T02:44:35.130833Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::check_providers ms=6 left=12
+2026-08-28T02:44:35.133223Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:35.134924Z  INFO fs3_daemon::runner: done kind="embed" id=114812 left=12
+2026-08-28T02:44:35.136040Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::skills_row ms=4 left=11
+2026-08-28T02:44:35.137951Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:35.139425Z  INFO fs3_daemon::runner: done kind="embed" id=114813 left=11
+2026-08-28T02:44:35.140194Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::check_skills ms=3 left=10
+2026-08-28T02:44:35.142048Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:35.143512Z  INFO fs3_daemon::runner: done kind="embed" id=114814 left=10
+2026-08-28T02:44:35.144134Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::check_logs ms=3 left=9
+2026-08-28T02:44:35.145807Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:35.147131Z  INFO fs3_daemon::runner: done kind="embed" id=114815 left=9
+2026-08-28T02:44:35.147888Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::map_store ms=3 left=8
+2026-08-28T02:44:35.150038Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:35.151518Z  INFO fs3_daemon::runner: done kind="embed" id=114816 left=8
+2026-08-28T02:44:35.152523Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::tests ms=4 left=7
+2026-08-28T02:44:35.154982Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:35.156654Z  INFO fs3_daemon::runner: done kind="embed" id=114817 left=7
+2026-08-28T02:44:35.157353Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::tests::a_repaired_step_records_both_the_finding_and_the_action ms=4 left=6
+2026-08-28T02:44:35.159312Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:35.161202Z  INFO fs3_daemon::runner: done kind="embed" id=114818 left=6
+2026-08-28T02:44:35.162309Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::tests::the_logs_row_names_the_active_file_when_it_can_be_written ms=4 left=5
+2026-08-28T02:44:35.164654Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:35.166647Z  INFO fs3_daemon::runner: done kind="embed" id=114819 left=5
+2026-08-28T02:44:35.167809Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::tests::a_log_directory_that_does_not_exist_yet_is_reported_not_created ms=5 left=4
+2026-08-28T02:44:35.170200Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:35.172706Z  INFO fs3_daemon::runner: done kind="embed" id=114820 left=4
+2026-08-28T02:44:35.173515Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::tests::an_unwritable_log_directory_warns_and_steers ms=5 left=3
+2026-08-28T02:44:35.175500Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:35.177697Z  INFO fs3_daemon::runner: done kind="embed" id=114821 left=3
+2026-08-28T02:44:35.179482Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::tests::a_log_dir_that_is_a_file_says_so_rather_than_calling_it_missing ms=5 left=2
+2026-08-28T02:44:35.181736Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:35.183599Z  INFO fs3_daemon::runner: done kind="embed" id=114822 left=2
+2026-08-28T02:44:35.184341Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/src/doctor.rs::tests::the_skills_row_shapes_its_states_verbatim ms=4 left=1
+2026-08-28T02:44:35.186060Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T02:44:35.187823Z  INFO fs3_daemon::runner: done kind="embed" id=114823 left=0
+2026-08-28T02:44:35.231330Z  INFO fs3_daemon::runner: progress phase="idle" scanned=7215 scan_left=0 summarized=49066 summarize_left=0 embedded=57297 embed_left=0 failed=0

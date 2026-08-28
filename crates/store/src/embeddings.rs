@@ -325,6 +325,8 @@ pub async fn query_embeddings(
 pub struct SearchFilters {
     /// Only content held by a live path in this repository identity.
     pub repo: Option<String>,
+    /// Only content held by this registered worktree root.
+    pub worktree: Option<String>,
     /// Only content held by a live path matching this SQL `LIKE` pattern.
     pub path: Option<String>,
     /// Which element kinds may answer — the CONTENT-TYPE axis.
@@ -354,6 +356,7 @@ impl Default for SearchFilters {
     fn default() -> Self {
         SearchFilters {
             repo: None,
+            worktree: None,
             path: None,
             source: None,
             max_distance: None,
@@ -374,6 +377,8 @@ pub struct SearchHit {
     /// that outlived the checkout it came from, which decision D7 keeps on
     /// purpose. The hit is still real; only its address is stale.
     pub identity: Option<String>,
+    /// The registered worktree root that supplied this hit.
+    pub root_path: Option<String>,
     /// A live path holding the blob, relative to its worktree root.
     pub path: Option<String>,
 }
@@ -440,53 +445,42 @@ pub async fn search_elements(
               WHERE model_key = $2
                 AND ($4::text IS NULL OR source_kind = $4)
                 AND ($5::float8 IS NULL OR (vector <=> $1) <= $5)
-                -- The CONTENT-TYPE gate, and it is unconditional: a caller that
-                -- names kinds must not be answered with another kind, whether
-                -- or not it also named a repository.
-                AND ($8::text[] IS NULL
-                     OR EXISTS (
-                          SELECT 1
-                            FROM elements el
-                           WHERE el.raw_hash = COALESCE(
-                                   (SELECT sc.raw_hash FROM smart_content sc
-                                     WHERE e.source_kind = 'smart'
-                                       AND sc.text_hash = e.source_hash
-                                     LIMIT 1),
-                                   e.source_hash)
-                             AND el.kind = ANY($8)))
-                -- The ANCHOR gate, conditional so that content which outlived
-                -- its checkout is still findable when nobody asked to narrow
-                -- (decision D7). Two legs, because content reaches a repository
-                -- two ways: code through the live path holding its blob, and a
-                -- turn through the conversation ANCHORED to that repository.
-                -- Without the second leg `--repo` would answer every
-                -- conversation query with nothing, silently, while workshop 005
-                -- promises the anchor filters compose.
-                AND ($6::text IS NULL AND $7::text IS NULL
-                     OR EXISTS (
-                          SELECT 1
-                            FROM elements el
-                           WHERE el.raw_hash = COALESCE(
-                                   (SELECT sc.raw_hash FROM smart_content sc
-                                     WHERE e.source_kind = 'smart'
-                                       AND sc.text_hash = e.source_hash
-                                     LIMIT 1),
-                                   e.source_hash)
-                             AND (EXISTS (
-                                    SELECT 1
-                                      FROM worktree_files f
-                                      JOIN worktrees w ON w.id = f.worktree_id
-                                      JOIN repos r     ON r.id = w.repo_id
-                                     WHERE f.blob_sha = el.blob_sha
-                                       AND ($6::text IS NULL OR r.identity = $6)
-                                       AND ($7::text IS NULL OR f.path LIKE $7))
-                                  OR EXISTS (
-                                    SELECT 1
-                                      FROM turns t
-                                      JOIN conversations c ON c.guid = t.conversation_id
-                                     WHERE t.blob_sha = el.blob_sha
-                                       AND ($6::text IS NULL OR c.repo_identity = $6)
-                                       AND ($7::text IS NULL OR c.worktree LIKE $7)))))
+                -- Admission asks whether ANY eligible element carries the
+                -- vector source; it does not choose a smart raw_hash. Choosing
+                -- here with LIMIT 1 used to let an unordered foreign mapping
+                -- erase a valid caller-held smart hit before ranking.
+                AND EXISTS (
+                     SELECT 1
+                       FROM elements admitted
+                      WHERE (
+                            (e.source_kind = 'raw' AND admitted.raw_hash = e.source_hash)
+                            OR (e.source_kind = 'smart' AND EXISTS (
+                                 SELECT 1
+                                   FROM smart_content candidate
+                                  WHERE candidate.text_hash = e.source_hash
+                                    AND candidate.raw_hash = admitted.raw_hash)))
+                        AND ($8::text[] IS NULL OR admitted.kind = ANY($8))
+                        -- The caller worktree belongs here, before LIMIT:
+                        -- filtering a ranked page afterwards both under-fills
+                        -- it and can leak a foreign version beyond the cap.
+                        AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
+                             OR EXISTS (
+                                  SELECT 1
+                                    FROM worktree_files f
+                                    JOIN worktrees w ON w.id = f.worktree_id
+                                    JOIN repos r     ON r.id = w.repo_id
+                                   WHERE f.blob_sha = admitted.blob_sha
+                                     AND ($6::text IS NULL OR r.identity = $6)
+                                     AND ($7::text IS NULL OR f.path LIKE $7)
+                                     AND ($9::text IS NULL OR w.root_path = $9))
+                             OR EXISTS (
+                                  SELECT 1
+                                    FROM turns t
+                                    JOIN conversations c ON c.guid = t.conversation_id
+                                   WHERE t.blob_sha = admitted.blob_sha
+                                     AND ($6::text IS NULL OR c.repo_identity = $6)
+                                     AND ($7::text IS NULL OR c.worktree LIKE $7)
+                                     AND ($9::text IS NULL OR c.worktree = $9))))
               ORDER BY vector <=> $1
               LIMIT $3
          )
@@ -494,13 +488,42 @@ pub async fn search_elements(
                 s.text, s.tags, s.extras,
                 e.blob_sha, e.parser_version, e.kind, e.subkind, e.name,
                 e.address, e.span_start, e.span_end, e.sibling_order, e.raw_text,
-                live.identity, live.path
+                COALESCE(live.identity, anchored.identity) AS identity,
+                COALESCE(live.root_path, anchored.root_path) AS root_path,
+                live.path
            FROM nearest n
            LEFT JOIN LATERAL (
                 SELECT sc.raw_hash, sc.text, sc.tags, sc.extras
                   FROM smart_content sc
                  WHERE n.source_kind = 'smart' AND sc.text_hash = n.source_hash
-                 ORDER BY sc.created_at, sc.model_key
+                   -- A shared summary text_hash can describe different raw
+                   -- bodies. This is the chooser, so it repeats every caller
+                   -- filter and orders all ties; otherwise a foreign oldest
+                   -- mapping silently removes a valid caller smart hit.
+                   AND EXISTS (
+                        SELECT 1
+                          FROM elements choice
+                         WHERE choice.raw_hash = sc.raw_hash
+                           AND ($8::text[] IS NULL OR choice.kind = ANY($8))
+                           AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
+                                OR EXISTS (
+                                     SELECT 1
+                                       FROM worktree_files f
+                                       JOIN worktrees w ON w.id = f.worktree_id
+                                       JOIN repos r     ON r.id = w.repo_id
+                                      WHERE f.blob_sha = choice.blob_sha
+                                        AND ($6::text IS NULL OR r.identity = $6)
+                                        AND ($7::text IS NULL OR f.path LIKE $7)
+                                        AND ($9::text IS NULL OR w.root_path = $9))
+                                OR EXISTS (
+                                     SELECT 1
+                                       FROM turns t
+                                       JOIN conversations c ON c.guid = t.conversation_id
+                                      WHERE t.blob_sha = choice.blob_sha
+                                        AND ($6::text IS NULL OR c.repo_identity = $6)
+                                        AND ($7::text IS NULL OR c.worktree LIKE $7)
+                                        AND ($9::text IS NULL OR c.worktree = $9))))
+                 ORDER BY sc.created_at, sc.model_key, sc.raw_hash
                  LIMIT 1
            ) s ON TRUE
            JOIN LATERAL (
@@ -516,20 +539,57 @@ pub async fn search_elements(
                    -- element and be rendered with an `el:` address. The kind
                    -- has to be pinned on BOTH sides of the query.
                    AND ($8::text[] IS NULL OR el.kind = ANY($8))
+                   -- The candidate gate above proves that SOME element with
+                   -- this raw hash is anchored in the caller scope. Without
+                   -- repeating that anchor here, the global lowest-id element
+                   -- may come from a foreign blob; the LEFT JOIN provenance
+                   -- lookups then return nulls and detach the hit from its repo.
+                   -- Scoping the representative also makes shared content
+                   -- report the caller's own path and address.
+                   AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
+                        OR EXISTS (
+                             SELECT 1
+                               FROM worktree_files f
+                               JOIN worktrees w ON w.id = f.worktree_id
+                               JOIN repos r     ON r.id = w.repo_id
+                              WHERE f.blob_sha = el.blob_sha
+                                AND ($6::text IS NULL OR r.identity = $6)
+                                AND ($7::text IS NULL OR f.path LIKE $7)
+                                AND ($9::text IS NULL OR w.root_path = $9))
+                        OR EXISTS (
+                             SELECT 1
+                               FROM turns t
+                               JOIN conversations c ON c.guid = t.conversation_id
+                              WHERE t.blob_sha = el.blob_sha
+                                AND ($6::text IS NULL OR c.repo_identity = $6)
+                                AND ($7::text IS NULL OR c.worktree LIKE $7)
+                                AND ($9::text IS NULL OR c.worktree = $9)))
                  ORDER BY el.id
                  LIMIT 1
            ) e ON TRUE
            LEFT JOIN LATERAL (
-                SELECT r.identity, f.path
+                SELECT r.identity, w.root_path, f.path
                   FROM worktree_files f
                   JOIN worktrees w ON w.id = f.worktree_id
                   JOIN repos r     ON r.id = w.repo_id
                  WHERE f.blob_sha = e.blob_sha
                    AND ($6::text IS NULL OR r.identity = $6)
                    AND ($7::text IS NULL OR f.path LIKE $7)
-                 ORDER BY r.identity, f.path
+                   AND ($9::text IS NULL OR w.root_path = $9)
+                 ORDER BY r.identity, w.root_path, f.path
                  LIMIT 1
            ) live ON TRUE
+           LEFT JOIN LATERAL (
+                SELECT c.repo_identity AS identity, c.worktree AS root_path
+                  FROM turns t
+                  JOIN conversations c ON c.guid = t.conversation_id
+                 WHERE t.blob_sha = e.blob_sha
+                   AND ($6::text IS NULL OR c.repo_identity = $6)
+                   AND ($7::text IS NULL OR c.worktree LIKE $7)
+                   AND ($9::text IS NULL OR c.worktree = $9)
+                 ORDER BY c.repo_identity, c.worktree
+                 LIMIT 1
+           ) anchored ON TRUE
           ORDER BY n.distance",
     )
     .bind(Vector::from(query.to_vec()))
@@ -545,6 +605,7 @@ pub async fn search_elements(
             .as_ref()
             .map(|kinds| kinds.iter().map(|kind| kind.as_str()).collect::<Vec<_>>()),
     )
+    .bind(filters.worktree.as_deref())
     .fetch_all(&mut *tx)
     .await?;
 
@@ -558,6 +619,7 @@ pub async fn search_elements(
             Ok(SearchHit {
                 similar: similar_from_row(row)?,
                 identity: row.try_get("identity")?,
+                root_path: row.try_get("root_path")?,
                 path: row.try_get("path")?,
             })
         })
@@ -605,6 +667,7 @@ pub async fn anchor_has_vectors(
                 AND e.source_kind = 'raw'
                 AND ($2::text IS NULL OR r.identity = $2)
                 AND ($3::text IS NULL OR f.path LIKE $3)
+                AND ($6::text IS NULL OR w.root_path = $6)
                 AND ($4::text[] IS NULL OR el.kind = ANY($4))
                 -- A smart-space search reads summary vectors, so eligibility
                 -- means the summary exists — not merely that the element does.
@@ -622,6 +685,7 @@ pub async fn anchor_has_vectors(
             .map(|kinds| kinds.iter().map(|kind| kind.as_str()).collect::<Vec<_>>()),
     )
     .bind(filters.source.map(SourceKind::as_str))
+    .bind(filters.worktree.as_deref())
     .fetch_one(pool)
     .await?;
 

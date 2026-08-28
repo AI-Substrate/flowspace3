@@ -1,0 +1,106 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Worktree diff — version-correct indexing and search across worktrees",
+        "slug": "worktree-diff",
+        "ordinal": 6,
+        "status": "draft",
+        "summary": "Creating a worktree auto-registers and scans it; only files diverging from the main tree cost anything; search resolves the asking context's version. Phase 1 measures current behaviour (investigate mode); phases 2-3 build only the measured gaps."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Jordan's ask (2026-08-28, verbatim intent): 'we need to ensure our worktree diff works - so we can create worktrees and they auto get scanned and only changed files in there that diff from main branch are re-scanned, searching uses those versions etc.' Evidence that part of this already exists structurally: worktree_files rows are per-worktree (swallow's churn findings), content-addressing dedupes unchanged bytes, and the (blob,parser_version) skip makes identical-content re-scan cheap. Live evidence of the gap: bobolink (retro seat) found a worktree's uncommitted content is invisible to search unless the whole tree is added as a duplicate root (captured 2026-08-28). Phase 1 is a scripted measurement of what actually happens today; the phase-2 unit set is RULED BY THAT EVIDENCE, not by this draft. Second full validation run of the pij-team pipeline (PM #2)."
+    },
+    {
+      "name": "goals",
+      "value": [
+        "A newly created worktree of a registered repo becomes searchable without a manual add.",
+        "Indexing a worktree costs zero provider spend for files identical to the main tree (measured, not assumed).",
+        "Search is version-correct: from inside a worktree you get that worktree's version of changed files, from main you get main's; cross-context hits are labeled.",
+        "Removing a worktree unreferences its divergent content cleanly through GC with no orphaned paid enrichment."
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "Branch-aware history indexing (only live worktrees on disk, not refs).",
+        "Cross-machine worktrees or remote diff resolution.",
+        "Changing the content-addressed storage model — this plan scopes discovery, reference-tracking, and query-time resolution only."
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-0001",
+          "claim": "Phase-1 probe report exists with measured answers to all four questions (auto-discovery, incremental cost, search resolution, removal/GC) — each answer backed by a transcript, none inferred.",
+          "state": "checked",
+          "receipt": "assets/probe-report.md at 0aaaac8: four transcript-backed answers from run-20260828T024227Z — P1 p1_auto_discovered=0; P2a 305 files for 0 elements/0 summaries/0 vectors and 0 provider round trips; P3 p3_search_context_sensitive=0 with p3_wrong_version_leak_to_main=1 while get stays version-correct; P4 gc reclaimed 149 elements + 8 vectors with orphaned-paid 0. No answer inferred."
+        },
+        {
+          "id": "ac-0002",
+          "claim": "A new worktree with K changed files becomes searchable without manual registration, and its scan enqueues enrichment only for divergent content (provider-call count proven for the unchanged remainder: zero).",
+          "state": "checked",
+          "receipt": "Auto-registration proven live in first light (run-20260828T035625Z): p1_auto_discovered=1 with no manual add, and one hand-registered root produced twenty auto-discovered worktrees. Zero-provider-cost for identical content proven in phase 1 and unchanged since: 305 files registered for 0 elements, 0 summaries, 0 vectors and 0 provider round trips (all 289 embed batches x smart, slowest 18ms), mechanism at enrich.rs:552-567."
+        },
+        {
+          "id": "ac-0003",
+          "claim": "Search from inside a worktree returns that worktree's version of a changed file; the same query from the main tree returns main's version; results carry which context they came from.",
+          "state": "unchecked",
+          "note": "OPEN BY DESIGN until the go-live run, and the validator's tk-e203-is-checked-but-ac-0003-is-not contradiction is expected: u-c's unit is delivered and independently re-verified (store pg_first_light 17/17, daemon first_light 14/14 on the composed tree), but this AC is a claim about LIVE retrieval and cannot be measured under the fake embedder first light ran with — a query quoting the marker's own body verbatim scored 0.1889 against unrelated files. Prime ruled (2026-08-28) that the live P3 measurement happens AFTER merge, because running it IS the feature going live for the fleet rather than a test. The receipt from that run closes this AC."
+        },
+        {
+          "id": "ac-0004",
+          "claim": "git worktree remove leads to the divergent-only content becoming unreferenced and GC-collectable, proven by before/after reference counts with zero orphaned paid enrichment.",
+          "state": "checked",
+          "receipt": "Proven live in first light (run-20260828T035625Z) with the detector driving it: git worktree remove alone now leads to p4_root_still_registered=0 and p4_deleted_content_still_served=0 with NO manual CLI call, and p4_served_after_gc=0. Phase 1 measured the mechanism it rides on: flowspace3 remove unmaps 305 files, gc reclaims 149 elements + 8 vectors, orphaned-paid 0 before and after, shared content untouched (repo_removed:false)."
+        },
+        {
+          "id": "ac-0005",
+          "claim": "The phase-1 probe script survives as a committed regression harness artifact runnable by any future seat.",
+          "state": "checked",
+          "receipt": "assets/probes/probe.sh committed at 0aaaac8 — one command runs all four probes, teardown on EXIT INT TERM, evidence written to assets/probes/out/run-<UTC>/receipt.env; re-running it is the phase-2 regression check (its predicate flips are the units' done bars)."
+        },
+        {
+          "id": "ac-0006",
+          "claim": "harness checks green on the composed branch; any new dependency edges are impl-guide-granted allowlist rows.",
+          "state": "checked",
+          "receipt": "harness checks green on the composed branch (9 gates) against a unique checks database. No allowlist rows were needed because no dependency edge was added: git diff 51ffc0c..HEAD over crates/testkit/arch-allowlist.toml and every Cargo.toml is empty."
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-e1aa",
+          "title": "Phase 1: Measure current behaviour (investigate)",
+          "brief": "Investigate mode: scripted probes, each varying ONE variable, producing an evidence contract — not opinions. Probe set: (P1) create a worktree of a registered repo, touch nothing: is it discovered? what rows/jobs appear? (P2) edit K files: what is scanned, what is enqueued, what hits a provider (count calls via logs/DB deltas)? (P3) search the same query from main and from the worktree: which versions rank, is context distinguishable? (P4) remove the worktree: what becomes unreferenced, what does GC reap, anything orphaned-paid? Output: assets/probe-report.md with transcripts + the RULED phase-2 unit set. The probe script is a deliverable (ac-0005). PM-codeable solo per fan_out rules; interlock note: watcher-ignore fixes are on main (PR #38) so measurements are clean.",
+          "state": "checked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks",
+          "receipt": "Phase 1 complete: probe harness + report committed at 0aaaac8; ruled unit set delivered to prime for the HARD sign-off gate. No coder spawned."
+        },
+        {
+          "id": "ph-e2aa",
+          "title": "Phase 2: Close the measured gaps (parallel units — PROVISIONAL until phase 1 rules them)",
+          "brief": "Candidate units, TO BE CONFIRMED/REPLACED by the probe evidence: (u-a) worktree auto-discovery (daemon/watcher registers new worktrees of known repos); (u-b) diff-scoped scanning (scan a worktree against the main tree's blob set rather than full-walking); (u-c) query-time version resolution + context labeling (query surface: prefer the asking worktree's version, fall through to main, expose --worktree/--branch scoping); (u-d) removal lifecycle (worktree remove -> dereference -> GC path). Each unit SRP behind interfaces frozen at the end of phase 1, worktree-per-coder, snap-in recipes, assumptions sections in done reports.",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-2/tasks.dd.json#tasks"
+        },
+        {
+          "id": "ph-e3aa",
+          "title": "Phase 3: Composition + first light",
+          "brief": "PM composes; first light is live: create a worktree of THIS repo, edit a file, search finds the worktree version from inside it and the main version from main, remove the worktree, show GC reclaim — the whole loop as one transcript, using our own pij-team worktrees as the test corpus. Reviewer (settings default) after composition; PR held unmerged for prime.",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-3/tasks.dd.json#tasks"
+        }
+      ]
+    }
+  ]
+}

@@ -109,6 +109,7 @@ pub const REDACTED: &str = "<redacted>";
 /// [indexing]
 /// summary_min_lines = 10
 /// debounce_seconds = 10
+/// worktree_reconcile_ticks = 6
 ///
 /// [scan]
 /// max_file_bytes = 2000000
@@ -836,6 +837,7 @@ fn unknown_instance(
 /// [indexing]
 /// summary_min_lines = 10
 /// debounce_seconds = 10
+/// worktree_reconcile_ticks = 6
 /// turn_summary_min_bytes = 256
 /// worker_concurrency = 4
 /// summarize_lane = 32
@@ -863,6 +865,14 @@ pub struct IndexingConfig {
     pub turn_summary_min_bytes: usize,
     /// How long a dirty file must settle before processing (PRD req 29).
     pub debounce_seconds: u64,
+    /// How many shared five-second reconcile ticks pass between git worktree scans.
+    ///
+    /// Zero disables automatic worktree discovery. Six is a 30-second cadence:
+    /// worktree creation is rare, so spawning one git process per registered
+    /// repository every five seconds would buy little latency at permanent cost.
+    /// Thirty seconds also matches the product's probe window while remaining
+    /// shorter than the normal create-then-query workflow.
+    pub worktree_reconcile_ticks: u32,
     /// How many jobs the runner claims at once.
     ///
     /// This is the QUEUE's concurrency: `claim_job`'s `SKIP LOCKED` hands N
@@ -969,6 +979,7 @@ impl Default for IndexingConfig {
             turn_summary_min_bytes: 256,
             summary_min_lines: 10,
             debounce_seconds: 10,
+            worktree_reconcile_ticks: 6,
             worker_concurrency: 4,
             summarize_lane: 32,
             embed_lane: 10,
@@ -1667,6 +1678,7 @@ mod tests {
         assert_eq!(config.daemon.url, DaemonConfig::DEFAULT_URL);
         // PRD req 29: debounce defaults to 10 seconds.
         assert_eq!(config.indexing.debounce_seconds, 10);
+        assert_eq!(config.indexing.worktree_reconcile_ticks, 6);
         assert_eq!(config.scan, ScanConfig::default());
     }
 

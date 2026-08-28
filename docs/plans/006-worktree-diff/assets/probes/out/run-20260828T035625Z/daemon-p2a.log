@@ -1,0 +1,92 @@
+2026-08-28T03:59:20.559062Z  INFO fs3_daemon::watch: re-listed a changed directory directory=/Users/jordanknight/substrate/flowspace/fs3-daemon-sandbox/crates/daemon/src events=4 enqueued=1 settled=Quiet
+2026-08-28T03:59:24.184898Z  INFO fs3_daemon::watch: re-listed a changed directory directory=/Users/jordanknight/substrate/flowspace/fs3-worktree-diff/docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z events=34 enqueued=1 settled=Quiet
+2026-08-28T03:59:24.185819Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/daemon/src/boot.rs ms=189 left=13
+2026-08-28T03:59:24.196559Z  INFO fs3_daemon::runner: progress phase="working" scanned=7078 scan_left=1 summarized=8876 summarize_left=11 embedded=18061 embed_left=1 failed=0
+2026-08-28T03:59:24.251888Z  INFO fs3_daemon::runner: batch kind="embed" subject=13 x raw jobs=1 ms=51
+2026-08-28T03:59:24.255278Z  INFO fs3_daemon::runner: done kind="embed" id=72477 left=12
+2026-08-28T03:59:24.274955Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p1-noop-jobs.txt ms=14 left=12
+2026-08-28T03:59:24.279736Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T03:59:24.283006Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/daemon/src/boot.rs::refuse_a_defaulted_store_under_test ms=10 left=13
+2026-08-28T03:59:24.283294Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/daemon/src/boot.rs::run ms=17 left=13
+2026-08-28T03:59:24.285055Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/daemon/src/boot.rs::run_sandbox ms=15 left=11
+2026-08-28T03:59:24.285492Z  INFO fs3_daemon::runner: done kind="embed" id=72478 left=11
+2026-08-28T03:59:24.308737Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/daemon/src/boot.rs::serve ms=19 left=11
+2026-08-28T03:59:24.310608Z  INFO fs3_daemon::runner: batch kind="embed" subject=3 x smart jobs=3 ms=15
+2026-08-28T03:59:24.313489Z  INFO fs3_daemon::runner: done kind="embed" id=72479 left=10
+2026-08-28T03:59:24.316769Z  INFO fs3_daemon::runner: done kind="embed" id=72481 left=9
+2026-08-28T03:59:24.321501Z  INFO fs3_daemon::runner: done kind="embed" id=72480 left=8
+2026-08-28T03:59:24.336072Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/daemon/src/boot.rs::bind_address ms=10 left=8
+2026-08-28T03:59:24.340287Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=10
+2026-08-28T03:59:24.343325Z  INFO fs3_daemon::runner: done kind="embed" id=72482 left=7
+2026-08-28T03:59:24.349672Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T03:59:24.354530Z  INFO fs3_daemon::runner: done kind="embed" id=72483 left=7
+2026-08-28T03:59:24.356409Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/daemon/src/boot.rs::split_authority ms=10 left=6
+2026-08-28T03:59:24.360779Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T03:59:24.368783Z  INFO fs3_daemon::runner: done kind="embed" id=72484 left=5
+2026-08-28T03:59:24.377369Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/daemon/src/boot.rs::tests ms=19 left=5
+2026-08-28T03:59:24.387787Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/daemon/src/boot.rs::tests::bind_address_strips_scheme_and_path ms=14 left=5
+2026-08-28T03:59:24.393893Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=14
+2026-08-28T03:59:24.396976Z  INFO fs3_daemon::runner: done kind="embed" id=72485 left=4
+2026-08-28T03:59:24.407745Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T03:59:24.413912Z  INFO fs3_daemon::runner: done kind="embed" id=72486 left=4
+2026-08-28T03:59:24.416549Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/daemon/src/boot.rs::tests::bind_address_refuses_every_non_loopback_host ms=15 left=3
+2026-08-28T03:59:24.421259Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T03:59:24.426339Z  INFO fs3_daemon::runner: done kind="embed" id=72487 left=3
+2026-08-28T03:59:24.427982Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/daemon/src/boot.rs::tests::bind_address_accepts_every_loopback_spelling ms=9 left=2
+2026-08-28T03:59:24.432488Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T03:59:24.436265Z  INFO fs3_daemon::runner: done kind="embed" id=72488 left=1
+2026-08-28T03:59:24.442890Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/daemon/src/boot.rs::tests::sandbox_forces_fake_providers_and_process_owned_endpoints ms=13 left=1
+2026-08-28T03:59:24.460245Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=14
+2026-08-28T03:59:24.463672Z  INFO fs3_daemon::runner: done kind="embed" id=72489 left=0
+2026-08-28T03:59:24.480458Z  INFO fs3_daemon::runner: progress phase="idle" scanned=7079 scan_left=0 summarized=8887 summarize_left=0 embedded=18074 embed_left=0 failed=0
+2026-08-28T03:59:49.824594Z  INFO fs3_daemon::watch: re-listed a changed directory directory=/Users/jordanknight/substrate/flowspace/fs3-convo-ingest/docs/plans/005-convo-ingest/assets events=2 enqueued=1 settled=Quiet
+2026-08-28T03:59:50.025824Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/process-report.md ms=65 left=10
+2026-08-28T03:59:50.053575Z  INFO fs3_daemon::runner: progress phase="working" scanned=7080 scan_left=0 summarized=8887 summarize_left=9 embedded=18074 embed_left=1 failed=0
+2026-08-28T03:59:50.093066Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=33
+2026-08-28T03:59:50.097311Z  INFO fs3_daemon::runner: done kind="embed" id=72500 left=9
+2026-08-28T03:59:50.111340Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/005-convo-ingest/assets/process-report.md::Process report — plan 005-convo-ingest, the pij-team pipeline's first run::The headline ms=7 left=10
+2026-08-28T03:59:50.114996Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/005-convo-ingest/assets/process-report.md::Process report — plan 005-convo-ingest, the pij-team pipeline's first run ms=14 left=10
+2026-08-28T03:59:50.118569Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/005-convo-ingest/assets/process-report.md::Process report — plan 005-convo-ingest, the pij-team pipeline's first run::Confirmed — keep these ms=11 left=10
+2026-08-28T03:59:50.127757Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/005-convo-ingest/assets/process-report.md::Process report — plan 005-convo-ingest, the pij-team pipeline's first run::Wrong or missing — change these ms=17 left=9
+2026-08-28T03:59:50.132353Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x smart jobs=2 ms=15
+2026-08-28T03:59:50.158111Z  INFO fs3_daemon::runner: done kind="embed" id=72501 left=8
+2026-08-28T03:59:50.162208Z  INFO fs3_daemon::runner: done kind="embed" id=72502 left=7
+2026-08-28T03:59:50.239035Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x smart jobs=2 ms=2
+2026-08-28T03:59:50.292655Z  INFO fs3_daemon::runner: done kind="embed" id=72503 left=7
+2026-08-28T03:59:50.294614Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/005-convo-ingest/assets/process-report.md::Process report — plan 005-convo-ingest, the pij-team pipeline's first run::The defect shape this run should be remembered for ms=128 left=6
+2026-08-28T03:59:50.297559Z  INFO fs3_daemon::runner: done kind="embed" id=72504 left=5
+2026-08-28T03:59:50.303798Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T03:59:50.306545Z  INFO fs3_daemon::runner: done kind="embed" id=72505 left=5
+2026-08-28T03:59:50.308437Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/005-convo-ingest/assets/process-report.md::Process report — plan 005-convo-ingest, the pij-team pipeline's first run::What the tests could not see ms=8 left=4
+2026-08-28T03:59:50.335103Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T03:59:50.338451Z  INFO fs3_daemon::runner: done kind="embed" id=72506 left=4
+2026-08-28T03:59:50.340379Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/005-convo-ingest/assets/process-report.md::Process report — plan 005-convo-ingest, the pij-team pipeline's first run::Dogfooding, honestly ms=30 left=3
+2026-08-28T03:59:50.350135Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T03:59:50.354824Z  INFO fs3_daemon::runner: done kind="embed" id=72507 left=2
+2026-08-28T03:59:50.393241Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/005-convo-ingest/assets/process-report.md::Process report — plan 005-convo-ingest, the pij-team pipeline's first run::Platform defects this run surfaced ms=46 left=2
+2026-08-28T03:59:50.402951Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=7
+2026-08-28T03:59:50.406052Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/005-convo-ingest/assets/process-report.md::Process report — plan 005-convo-ingest, the pij-team pipeline's first run::What the cross-model reviewer found, and why it is the best money this run spent ms=47 left=2
+2026-08-28T03:59:50.408731Z  INFO fs3_daemon::runner: done kind="embed" id=72508 left=1
+2026-08-28T03:59:50.423628Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=9
+2026-08-28T03:59:50.426951Z  INFO fs3_daemon::runner: done kind="embed" id=72509 left=0
+2026-08-28T03:59:50.441797Z  INFO fs3_daemon::runner: progress phase="idle" scanned=7080 scan_left=0 summarized=8896 summarize_left=0 embedded=18084 embed_left=0 failed=0
+2026-08-28T03:59:54.563523Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/cli/tests/epipe.rs ms=33 left=6
+2026-08-28T03:59:54.574650Z  INFO fs3_daemon::runner: progress phase="working" scanned=7081 scan_left=0 summarized=8896 summarize_left=5 embedded=18084 embed_left=1 failed=0
+2026-08-28T03:59:54.581108Z  INFO fs3_daemon::enrich: skipping embeds for content no registered root holds dropped=1 kept=0 kind="raw"
+2026-08-28T03:59:54.581143Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=2
+2026-08-28T03:59:54.584974Z  INFO fs3_daemon::runner: done kind="embed" id=72516 left=5
+2026-08-28T03:59:54.631939Z  INFO fs3_daemon::watch: re-listed a changed directory directory=/Users/jordanknight/substrate/flowspace/fs3-epipe/crates/cli/tests events=2 enqueued=1 settled=Quiet
+2026-08-28T03:59:54.648375Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/tests/epipe.rs::flowspace3 ms=59 left=6
+2026-08-28T03:59:54.650133Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/tests/epipe.rs::serve_once ms=48 left=6
+2026-08-28T03:59:54.652909Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/tests/epipe.rs::reader_closing_after_one_byte_is_a_quiet_success ms=13 left=5
+2026-08-28T03:59:54.654334Z  INFO fs3_daemon::runner: batch kind="embed" subject=3 x smart jobs=3 ms=0
+2026-08-28T03:59:54.658016Z  INFO fs3_daemon::runner: done kind="embed" id=72519 left=5
+2026-08-28T03:59:54.659625Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/tests/epipe.rs::stderr_reader_closing_after_one_byte_is_a_quiet_success ms=10 left=4
+2026-08-28T03:59:54.661869Z  INFO fs3_daemon::runner: done kind="embed" id=72518 left=3
+2026-08-28T03:59:54.681546Z  INFO fs3_daemon::runner: done kind="embed" id=72517 left=2
+2026-08-28T03:59:54.718469Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=3
+2026-08-28T03:59:54.748375Z  INFO fs3_daemon::runner: done kind="embed" id=72520 left=2
+2026-08-28T03:59:54.757374Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/cli/tests/epipe.rs::successful_envelope_bytes_are_unchanged ms=59 left=1
+2026-08-28T03:59:54.774295Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=13
+2026-08-28T03:59:54.780090Z  INFO fs3_daemon::runner: done kind="embed" id=72521 left=0
+2026-08-28T03:59:54.806724Z  INFO fs3_daemon::runner: progress phase="idle" scanned=7081 scan_left=0 summarized=8901 summarize_left=0 embedded=18090 embed_left=0 failed=0

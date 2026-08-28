@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "command": "search",
+  "v": 1,
+  "data": {
+    "results": [
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/skills/eng-harness-0-harnessability-assessment/templates/assessment-latest.md::Harnessability Assessment — sample-service::Scenario probes",
+        "kind": "section",
+        "match_field": "raw",
+        "name": "Scenario probes",
+        "path": ".claude/skills/eng-harness-0-harnessability-assessment/templates/assessment-latest.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.4644892260620243,
+        "smart": null,
+        "snippet": "## Scenario probes\n\n- API behavior loop (applicable): highest plausible proof today L3; missing a fixture-backed smoke test on one route.\n- State/storage loop (applicable): highest plausible proof today L2; missing a containerized local database plus seed/reset.",
+        "span": [
+          194,
+          198
+        ],
+        "subkind": "atx_heading",
+        "tags": []
+      }
+    ]
+  },
+  "meta": {
+    "scope": {
+      "cwd": "/Users/jordanknight/substrate/flowspace/flowspace3",
+      "repo": "git:github.com/AI-Substrate/flowspace3",
+      "source": "cwd",
+      "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+    }
+  },
+  "next_action": "read a hit in full with `flowspace3 get <address>`, browse its file with `flowspace3 tree <address>`, or narrow with --path/--repo"
+}
