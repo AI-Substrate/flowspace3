@@ -22,12 +22,27 @@
 //! and misses one that never names it. The `LIKE` count survives as a test
 //! tripwire over frozen bytes, where it is fine, and nowhere else.
 //!
-//! # 2. The cursor is `rowid`, and it can go backwards under you
+//! # 2. The cursor is the `id` column, and it survives a VACUUM
 //!
 //! `event_ts` is second-grain and NOT unique — 17 timestamps in the fixture
 //! carry more than one row — so it collides precisely when a conversation is
-//! busiest. `rowid` is monotonic per insert and unique, and in this schema `id`
-//! is `INTEGER PRIMARY KEY`, therefore an alias for `rowid`.
+//! busiest. The `id` column is monotonic per insert and unique.
+//!
+//! A sqlite `rowid` is normally NOT stable: `VACUUM` renumbers rows. That would
+//! be fatal here, because a renumbered store breaks every ordinal already
+//! persisted, all at once, in someone else's database that we do not control.
+//! It does not apply, and this is the evidence — the store's own DDL:
+//!
+//! ```sql
+//! CREATE TABLE metrics ( id INTEGER PRIMARY KEY AUTOINCREMENT, event_json TEXT NOT NULL, ... )
+//! ```
+//!
+//! `INTEGER PRIMARY KEY` makes `id` an ALIAS for the rowid, and sqlite only
+//! renumbers tables that lack one, so `VACUUM` cannot move these values.
+//! `AUTOINCREMENT` additionally guarantees an id is never reused after a
+//! deletion. The queries below therefore name `id` explicitly rather than the
+//! bare `rowid` keyword: they are the same value, and naming the aliased column
+//! is what makes that stability visible to whoever reads the query next.
 //!
 //! This database SELF-PRUNES (`schema_metadata` carries a
 //! `metrics_last_prune_ts` watermark). A prune can drop rows out from under a
@@ -49,8 +64,8 @@
 //!
 //! # The ordinal derivation is FROZEN — changing it doubles every conversation
 //!
-//! **The ordinal is the decimal string form of the row's `rowid`. For rows
-//! merged by `message.id`, it is the FIRST `rowid` of the group.**
+//! **The ordinal is the decimal string form of the row's `id`. For rows merged
+//! by `message.id`, it is the FIRST `id` of the group.**
 //!
 //! This is not an implementation detail and it is not yours to tidy. The
 //! ordinal is the key the durable cursor ledger deduplicates on, and that key
@@ -63,8 +78,27 @@
 //! stable across a re-read that regroups the same blocks; last-of-group would
 //! change between polls and the dedupe would miss.
 //!
-//! If you have a reason to change it, that is a conversation with the plan's
-//! owner, not an edit.
+//! ## The GROUPING RULE is frozen too, and it is the sharper edge
+//!
+//! This reader's ordinal is group-derived, so it depends on a datum AND on the
+//! rule that decides group membership. Two of the four readers are like this;
+//! the other two key on a record and carry strictly less risk. The frozen rule
+//! here, in full:
+//!
+//! * Only `tool = 'claude'` rows of type `user` or `assistant` are emitted at
+//!   all. Every other record type is dropped.
+//! * Of those, rows carrying `message.id` merge into ONE record per distinct
+//!   `message.id`. Rows without one — every `user` row — never merge.
+//! * The record's ordinal is the smallest `id` in its group.
+//!
+//! Widen the emit allowlist, let a new type join a merge, or start including a
+//! row that is skipped today, and the FIRST element of an existing group can
+//! change even though the datum did not. Every stored record then looks new and
+//! the conversation doubles — the same silent failure as changing the
+//! derivation, reached by touching what looks like an unrelated list.
+//!
+//! If you have a reason to change either, that is a conversation with the
+//! plan's owner, not an edit.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -322,7 +356,9 @@ impl ConversationSource for MetricsDbSource {
                 (&session_id, self.scope.as_str()),
                 |row| row.get(0),
             )
-            .map_err(|error| Error::Provider(format!("metrics-db: counting {session_id}: {error}")))?;
+            .map_err(|error| {
+                Error::Provider(format!("metrics-db: counting {session_id}: {error}"))
+            })?;
 
         if present == 0 {
             return Err(Error::Provider(format!(
@@ -345,14 +381,16 @@ impl ConversationSource for MetricsDbSource {
         // so this costs no JSON parsing.
         let mut statement = connection
             .prepare(
-                "select external_session_id, min(rowid) as first_row from metrics \
+                "select external_session_id, min(id) as first_row from metrics \
                  where event_kind = 5 \
                    and external_parent_session_id = ?1 \
                    and json_extract(event_json, '$.a.\"1\"') = ?2 \
                  group by external_session_id \
                  order by first_row",
             )
-            .map_err(|error| Error::Provider(format!("metrics-db: preparing child query: {error}")))?;
+            .map_err(|error| {
+                Error::Provider(format!("metrics-db: preparing child query: {error}"))
+            })?;
 
         let children = statement
             .query_map((&session_id, self.scope.as_str()), |row| {
@@ -389,7 +427,7 @@ impl ConversationSource for MetricsDbSource {
         // let a busy unrelated repository mask one.
         let highest: Option<i64> = connection
             .query_row(
-                "select max(rowid) from metrics \
+                "select max(id) from metrics \
                  where event_kind = 5 \
                    and external_session_id = ?1 \
                    and json_extract(event_json, '$.a.\"1\"') = ?2",
@@ -411,12 +449,12 @@ impl ConversationSource for MetricsDbSource {
 
         let mut statement = connection
             .prepare(
-                "select rowid, tool, event_json, event_ts from metrics \
+                "select id, tool, event_json, event_ts from metrics \
                  where event_kind = 5 \
                    and external_session_id = ?1 \
                    and json_extract(event_json, '$.a.\"1\"') = ?2 \
-                   and rowid > ?3 \
-                 order by rowid",
+                   and id > ?3 \
+                 order by id",
             )
             .map_err(|error| Error::Provider(format!("metrics-db: preparing read: {error}")))?;
 
@@ -524,12 +562,10 @@ fn claude_row(row: &Row, records: &mut Vec<RawRecord>, open_groups: &mut BTreeMa
 
     // A user turn has no message.id and must never be merged; only the
     // assistant's block groups fold.
-    if let Some(group) = group {
-        if let Some(index) = open_groups.get(group).copied() {
-            let (body, items) = claude_content(message, row);
-            append_into(&mut records[index], &body, items);
-            return;
-        }
+    if let Some(index) = group.and_then(|group| open_groups.get(group).copied()) {
+        let (body, items) = claude_content(message, row);
+        append_into(&mut records[index], &body, items);
+        return;
     }
 
     let (body, items) = claude_content(message, row);
@@ -612,13 +648,16 @@ fn claude_content(message: Option<&Value>, row: &Row) -> (String, Vec<TurnItem>)
 /// One content block.
 fn claude_block(block: &Value, body: &mut String, items: &mut Vec<TurnItem>) {
     // A bare tool_result object — the shape a user row carries — has no `type`.
-    let kind = block.get("type").and_then(Value::as_str).unwrap_or_else(|| {
-        if block.get("tool_use_id").is_some() {
-            "tool_result"
-        } else {
-            ""
-        }
-    });
+    let kind = block
+        .get("type")
+        .and_then(Value::as_str)
+        .unwrap_or_else(|| {
+            if block.get("tool_use_id").is_some() {
+                "tool_result"
+            } else {
+                ""
+            }
+        });
 
     match kind {
         // `text` only. A `thinking` block is NOT prose the agent said, and the
@@ -690,7 +729,13 @@ fn copilot_row(row: &Row, records: &mut Vec<RawRecord>, open_calls: &mut BTreeMa
             } else {
                 TurnSource::Human
             };
-            records.push(copilot_record(row, TurnRole::Human, source, body, Vec::new()));
+            records.push(copilot_record(
+                row,
+                TurnRole::Human,
+                source,
+                body,
+                Vec::new(),
+            ));
         }
         "assistant.message" => {
             let body = data
@@ -895,11 +940,17 @@ mod tests {
     #[test]
     fn epoch_seconds_render_as_rfc3339_utc() {
         // The fixture's own first row: event_ts 1787817816.
-        assert_eq!(rfc3339_from_unix_seconds(1_787_817_816), "2026-08-27T08:03:36Z");
+        assert_eq!(
+            rfc3339_from_unix_seconds(1_787_817_816),
+            "2026-08-27T08:03:36Z"
+        );
         assert_eq!(rfc3339_from_unix_seconds(0), "1970-01-01T00:00:00Z");
         // A leap day, because the civil-from-days arithmetic is where this
         // would go wrong and be believed anyway.
-        assert_eq!(rfc3339_from_unix_seconds(1_709_164_800), "2024-02-29T00:00:00Z");
+        assert_eq!(
+            rfc3339_from_unix_seconds(1_709_164_800),
+            "2024-02-29T00:00:00Z"
+        );
     }
 
     #[test]

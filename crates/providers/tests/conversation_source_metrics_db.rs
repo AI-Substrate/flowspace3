@@ -202,7 +202,11 @@ fn the_two_sessions_yield_the_records_the_merge_arithmetic_predicts() {
     assert_eq!(main.len(), 16, "9 unmerged user rows + 7 message.id groups");
 
     let subagent = read_all(&fixture, SUBAGENT);
-    assert_eq!(subagent.len(), 10, "5 unmerged user rows + 5 message.id groups");
+    assert_eq!(
+        subagent.len(),
+        10,
+        "5 unmerged user rows + 5 message.id groups"
+    );
 
     // The merge is the point: 13 assistant rows became 7 turns, so a reader that
     // stopped merging would still pass a naive "some records came back" check.
@@ -462,8 +466,15 @@ fn a_pruned_store_is_reported_as_a_rescan_rather_than_going_quiet() {
         .read_incremental(&file, Some(&stale))
         .expect("a pruned store is readable, not an error");
 
-    assert!(batch.rescanned, "a cursor above max(rowid) means the store pruned");
-    assert_eq!(batch.records.len(), 16, "a rescan returns the whole conversation");
+    assert!(
+        batch.rescanned,
+        "a cursor above max(rowid) means the store pruned"
+    );
+    assert_eq!(
+        batch.records.len(),
+        16,
+        "a rescan returns the whole conversation"
+    );
 }
 
 #[test]
@@ -489,7 +500,10 @@ fn a_session_with_no_rows_in_scope_is_not_mistaken_for_a_prune() {
 
     assert!(batch.records.is_empty());
     assert!(!batch.rescanned, "no rows is no data, not a prune");
-    assert_eq!(batch.cursor, held, "an empty poll leaves the cursor where it was");
+    assert_eq!(
+        batch.cursor, held,
+        "an empty poll leaves the cursor where it was"
+    );
 }
 
 #[test]
