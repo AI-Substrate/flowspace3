@@ -1,0 +1,45 @@
+Cargo.lock
+  s_15d888f4b629c1::t_b6a41f7c9739b0 1140
+crates/parsers/src/ddoc.rs
+  s_15d888f4b629c1::t_b4102e1392f790 1-321
+crates/parsers/src/lib.rs
+  s_15d888f4b629c1::t_a4c1f19c469195 16-17,21-22
+crates/parsers/tests/ddoc.rs
+  s_15d888f4b629c1::t_730fa2f978aaf9 1-225
+crates/parsers/Cargo.toml
+  s_15d888f4b629c1::t_6c8ecf1b3aabcb 17
+crates/parsers/fixtures/ddoc/discovery/nested/ordinary.json
+  s_15d888f4b629c1::t_3386a279e29b10 1
+crates/parsers/fixtures/ddoc/discovery/nested/source.dd.json
+  s_15d888f4b629c1::t_47de813f805f20 1
+crates/parsers/fixtures/ddoc/discovery/nested/source.dd.md
+  s_15d888f4b629c1::t_9952653ea581bf 1-2
+crates/parsers/fixtures/ddoc/no-rows.dd.json
+  s_15d888f4b629c1::t_9969fecf8042fd 1-14
+crates/parsers/fixtures/ddoc/plain.dd.json
+  s_15d888f4b629c1::t_13ff9797a72393 1-31
+crates/parsers/fixtures/ddoc/reorder-a.dd.json
+  s_15d888f4b629c1::t_9a1cd6556fdc81 1-24
+crates/parsers/fixtures/ddoc/reorder-b.dd.json
+  s_15d888f4b629c1::t_e25bd96229fe91 1-24
+crates/parsers/src/discovery.rs
+  s_15d888f4b629c1::t_7f2f88b68ca35e 719-734
+crates/testkit/arch-allowlist.toml
+  s_15d888f4b629c1::t_41062b85ebf1dd 73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cc02a168c7e331c7df2d2ccc46749b56a9e42df1",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
