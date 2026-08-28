@@ -85,6 +85,43 @@ impl Default for AgentBounds {
     }
 }
 
+/// What one tool call produced.
+///
+/// The `evidence` flag is the whole reason this is a struct rather than a
+/// `String`. "The call did not error" and "the call produced something the
+/// answer can rest on" are DIFFERENT facts, and conflating them is how a
+/// grounding check becomes a lie: a search that runs perfectly and matches
+/// nothing is a successful call carrying no evidence at all. Only the toolbox
+/// can tell the difference, so only the toolbox may report it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ToolOutcome {
+    /// What to hand back to the model.
+    pub content: String,
+    /// Whether this call actually yielded material from the index.
+    ///
+    /// False for a search that matched nothing — the call worked, the index
+    /// answered, and the answer was "nothing here".
+    pub evidence: bool,
+}
+
+impl ToolOutcome {
+    /// A call that produced real material from the index.
+    pub fn evidence(content: impl Into<String>) -> Self {
+        Self {
+            content: content.into(),
+            evidence: true,
+        }
+    }
+
+    /// A call that worked but found nothing to stand on.
+    pub fn nothing(content: impl Into<String>) -> Self {
+        Self {
+            content: content.into(),
+            evidence: false,
+        }
+    }
+}
+
 /// The tools the loop can run.
 ///
 /// The second injected seam. Core cannot reach the store or the network, so the
@@ -104,7 +141,7 @@ pub trait ToolBox: Send + Sync {
     ///
     /// # Errors
     /// Any failure the tool itself reports. This ends the CALL, never the run.
-    async fn call(&self, name: &str, arguments: &str) -> Result<String>;
+    async fn call(&self, name: &str, arguments: &str) -> Result<ToolOutcome>;
 }
 
 /// Why a run stopped.
@@ -130,6 +167,12 @@ pub struct TraceEntry {
     /// Whether the call produced a result or an error the model had to recover
     /// from. Both are normal; a run with a recovered error is a healthy run.
     pub failed: bool,
+    /// Whether this call yielded material from the index.
+    ///
+    /// Distinct from `!failed`: a search that runs correctly and matches
+    /// nothing has `failed: false` and `evidence: false`. That distinction is
+    /// what keeps [`AgentAnswer::grounded`] honest.
+    pub evidence: bool,
     /// Size of the result handed back, after any truncation.
     pub result_chars: usize,
 }
@@ -194,8 +237,31 @@ pub async fn ask(
             tokens_used = Some(tokens_used.unwrap_or(0) + spent);
         }
 
+        // Accounting happens above; the budget is checked HERE, before any
+        // further paid work, because everything below this line either calls
+        // the model again (the pushback) or runs tools on the strength of a
+        // turn we have already paid for.
+        let over_budget = tokens_used.is_some_and(|spent| spent >= bounds.token_budget);
+
         if turn.tool_calls.is_empty() {
             let grounded = read_something(&trace);
+
+            // Precedence, stated deliberately: an answer IN HAND wins over the
+            // budget. The cap governs whether to buy more, not whether to keep
+            // what is already paid for — and `tokens_used` still reports the
+            // overspend honestly. But the pushback is another paid call, so a
+            // run that is out of budget publishes the ungrounded answer and
+            // says the budget is why it stopped, rather than spending again.
+            if !grounded && !nudged && over_budget {
+                return Ok(AgentAnswer {
+                    answer: turn.content,
+                    trace,
+                    iterations: iteration,
+                    tokens_used,
+                    stopped: StopReason::TokenBudget,
+                    grounded,
+                });
+            }
 
             // A model that answers having read NOTHING is answering from
             // memory, which is precisely what this verb must not do. Asking is
@@ -228,33 +294,10 @@ pub async fn ask(
             });
         }
 
-        // The assistant's own request must be replayed verbatim alongside the
-        // results, or the next turn cannot tell which result answers what.
-        messages.push(ChatMessage::Assistant {
-            content: turn.content.clone(),
-            tool_calls: turn.tool_calls.clone(),
-        });
-
-        for call in &turn.tool_calls {
-            let (content, failed) = match tools.call(&call.name, &call.arguments).await {
-                Ok(result) => (truncate(result, bounds.tool_result_max_chars), false),
-                // Deliberately a result, not an early return: see the module docs.
-                Err(error) => (format!("ERROR: {error}"), true),
-            };
-            trace.push(TraceEntry {
-                iteration,
-                tool: call.name.clone(),
-                arguments: call.arguments.clone(),
-                failed,
-                result_chars: content.chars().count(),
-            });
-            messages.push(ChatMessage::ToolResult {
-                tool_call_id: call.id.clone(),
-                content,
-            });
-        }
-
-        if tokens_used.is_some_and(|spent| spent >= bounds.token_budget) {
+        // A turn asking for tools, with the budget already gone: stop before
+        // running them, because their results only matter if we can afford to
+        // send them back to the model.
+        if over_budget {
             let grounded = read_something(&trace);
             return Ok(AgentAnswer {
                 answer: None,
@@ -263,6 +306,37 @@ pub async fn ask(
                 tokens_used,
                 stopped: StopReason::TokenBudget,
                 grounded,
+            });
+        }
+
+        // The assistant's own request must be replayed verbatim alongside the
+        // results, or the next turn cannot tell which result answers what.
+        messages.push(ChatMessage::Assistant {
+            content: turn.content.clone(),
+            tool_calls: turn.tool_calls.clone(),
+        });
+
+        for call in &turn.tool_calls {
+            let (content, failed, evidence) = match tools.call(&call.name, &call.arguments).await {
+                Ok(outcome) => (
+                    truncate(outcome.content, bounds.tool_result_max_chars),
+                    false,
+                    outcome.evidence,
+                ),
+                // Deliberately a result, not an early return: see the module docs.
+                Err(error) => (format!("ERROR: {error}"), true, false),
+            };
+            trace.push(TraceEntry {
+                iteration,
+                tool: call.name.clone(),
+                arguments: call.arguments.clone(),
+                failed,
+                evidence,
+                result_chars: content.chars().count(),
+            });
+            messages.push(ChatMessage::ToolResult {
+                tool_call_id: call.id.clone(),
+                content,
             });
         }
     }
@@ -278,12 +352,15 @@ pub async fn ask(
     })
 }
 
-/// Whether any tool call actually returned evidence.
+/// Whether any tool call actually returned material from the index.
 ///
-/// A run where every call failed has nothing in it, however fluent the reply —
-/// so this, and not the presence of an answer, is what "grounded" means.
+/// Deliberately NOT "any call that did not fail". A search that runs perfectly
+/// and matches nothing is a successful call carrying no evidence, and counting
+/// it would let a model search once, find nothing, invent an answer, and be
+/// reported as grounded — the precise failure this flag exists to expose. The
+/// question is what the run READ, not what it managed to execute.
 fn read_something(trace: &[TraceEntry]) -> bool {
-    trace.iter().any(|entry| !entry.failed)
+    trace.iter().any(|entry| entry.evidence)
 }
 
 /// Cut `text` to `max` characters, saying so where it was cut.
@@ -384,7 +461,7 @@ mod tests {
 
     /// A toolbox that answers one way, or refuses.
     struct StubTools {
-        answer: Result<String>,
+        answer: Result<ToolOutcome>,
     }
 
     #[async_trait]
@@ -397,9 +474,9 @@ mod tests {
             }]
         }
 
-        async fn call(&self, _name: &str, _arguments: &str) -> Result<String> {
+        async fn call(&self, _name: &str, _arguments: &str) -> Result<ToolOutcome> {
             match &self.answer {
-                Ok(text) => Ok(text.clone()),
+                Ok(outcome) => Ok(outcome.clone()),
                 Err(error) => Err(crate::Error::Provider(error.to_string())),
             }
         }
@@ -407,7 +484,15 @@ mod tests {
 
     fn tools_ok(answer: &str) -> StubTools {
         StubTools {
-            answer: Ok(answer.to_string()),
+            answer: Ok(ToolOutcome::evidence(answer)),
+        }
+    }
+
+    /// A toolbox whose calls SUCCEED and find nothing — the shape a search
+    /// against an index with no match really has.
+    fn tools_no_hits() -> StubTools {
+        StubTools {
+            answer: Ok(ToolOutcome::nothing("NO HITS")),
         }
     }
 
@@ -464,6 +549,55 @@ mod tests {
             )),
             "the model must be TOLD why its answer was refused: {conversation:?}"
         );
+    }
+
+    #[test]
+    fn a_search_that_matched_nothing_is_not_evidence() {
+        // The false positive that a reviewer found in the first version of this
+        // mechanism: a search that RUNS FINE and matches nothing is a
+        // successful call, so "did not fail" counted it as grounding. A model
+        // could search once, find nothing, invent an answer, and have the
+        // report vouch for it. Grounding is about what was READ, not about
+        // what executed.
+        let chat = ScriptedChat::new(vec![
+            calls(vec![call("c1", "search", "{}")], 10),
+            prose("invented from memory", 10),
+            prose("invented from memory", 10),
+        ]);
+
+        let outcome = run(ask(&chat, &tools_no_hits(), AgentBounds::default(), "q"));
+
+        assert!(
+            !outcome.trace[0].failed,
+            "the search worked — this is not an error case"
+        );
+        assert!(
+            !outcome.trace[0].evidence,
+            "but it matched nothing, so it carries no evidence"
+        );
+        assert!(
+            !outcome.grounded,
+            "an answer resting on zero matches is not grounded"
+        );
+    }
+
+    #[test]
+    fn a_run_that_is_out_of_budget_does_not_buy_another_turn_to_push_back() {
+        // The pushback is a paid model call. A run that has already spent its
+        // budget publishes what it has and says the budget stopped it, rather
+        // than spending again to improve it.
+        let chat = ScriptedChat::new(vec![prose("ungrounded", 500)]);
+        let bounds = AgentBounds {
+            token_budget: 100,
+            ..AgentBounds::default()
+        };
+
+        let outcome = run(ask(&chat, &tools_ok("unused"), bounds, "q"));
+
+        assert_eq!(outcome.stopped, StopReason::TokenBudget);
+        assert_eq!(outcome.answer.as_deref(), Some("ungrounded"));
+        assert!(!outcome.grounded);
+        assert_eq!(outcome.iterations, 1, "no second turn was bought");
     }
 
     #[test]
@@ -594,7 +728,10 @@ mod tests {
 
         assert_eq!(outcome.stopped, StopReason::TokenBudget);
         assert_eq!(outcome.tokens_used, Some(500));
+        // The tools were never run: their results would only matter if the run
+        // could afford to send them back to the model.
         assert!(outcome.answer.is_none());
+        assert!(outcome.trace.is_empty(), "no tools were bought either");
     }
 
     #[test]

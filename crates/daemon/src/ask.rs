@@ -29,7 +29,8 @@
 
 use async_trait::async_trait;
 use fs3_core::{
-    AgentAnswer, AgentBounds, Result as CoreResult, ToolBox, ToolSchema, agent::StopReason,
+    AgentAnswer, AgentBounds, Result as CoreResult, ToolBox, ToolOutcome, ToolSchema,
+    agent::StopReason,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -70,6 +71,13 @@ pub struct AskTraceEntry {
     /// Whether the call came back an error the model had to recover from. A run
     /// containing a recovered error is a healthy run, not a failed one.
     pub failed: bool,
+    /// Whether the call yielded material from the index.
+    ///
+    /// Not the same as `!failed`: a search that ran correctly and matched
+    /// nothing is `failed: false, evidence: false`. An evaluator wants this
+    /// distinction — "the tools worked and found nothing" and "the tools
+    /// broke" score differently.
+    pub evidence: bool,
     /// Size of the result handed back, after truncation.
     pub result_chars: usize,
 }
@@ -152,7 +160,7 @@ impl<'a> IndexTools<'a> {
         }
     }
 
-    async fn run_search(&self, arguments: &Value) -> CoreResult<String> {
+    async fn run_search(&self, arguments: &Value) -> CoreResult<ToolOutcome> {
         let query = arguments
             .get("query")
             .and_then(Value::as_str)
@@ -203,12 +211,16 @@ impl<'a> IndexTools<'a> {
             // The scope-trap guard. A bare "no results" invites the model to
             // conclude the thing does not exist; naming the scope and the way
             // out keeps a scoped miss from being read as a global absence.
-            return Ok(format!(
+            // NOT evidence. The call succeeded and the index answered
+            // "nothing here" — counting that as grounding would let a model
+            // search once, match nothing, and invent an answer that the report
+            // then vouches for.
+            return Ok(ToolOutcome::nothing(format!(
                 "NO HITS ({}).\nThis does NOT mean the subject does not exist — only that nothing \
                  matched IN THIS SCOPE. If the answer might live in another repository, call \
                  search again with repo=\"all\". Otherwise try a shorter, differently worded query.",
                 Self::scope_line(&scope)
-            ));
+            )));
         }
 
         let mut rendered = format!(
@@ -229,10 +241,10 @@ impl<'a> IndexTools<'a> {
                 hit.score
             ));
         }
-        Ok(rendered)
+        Ok(ToolOutcome::evidence(rendered))
     }
 
-    async fn run_get(&self, arguments: &Value) -> CoreResult<String> {
+    async fn run_get(&self, arguments: &Value) -> CoreResult<ToolOutcome> {
         let address = arguments
             .get("address")
             .and_then(Value::as_str)
@@ -252,6 +264,7 @@ impl<'a> IndexTools<'a> {
             .push(address.to_string());
 
         serde_json::to_string_pretty(&payload)
+            .map(ToolOutcome::evidence)
             .map_err(|e| provider_error(&format!("could not render {address}: {e}")))
     }
 }
@@ -303,7 +316,7 @@ impl ToolBox for IndexTools<'_> {
         ]
     }
 
-    async fn call(&self, name: &str, arguments: &str) -> CoreResult<String> {
+    async fn call(&self, name: &str, arguments: &str) -> CoreResult<ToolOutcome> {
         // Malformed arguments are the model's mistake to correct, so they come
         // back as an error the loop hands over as a tool result.
         let parsed: Value = serde_json::from_str(arguments)
@@ -348,6 +361,7 @@ pub async fn ask(state: &AppState, request: &AskRequest, scope: Scope) -> CoreRe
                 tool: entry.tool,
                 arguments: entry.arguments,
                 failed: entry.failed,
+                evidence: entry.evidence,
                 result_chars: entry.result_chars,
             })
             .collect(),

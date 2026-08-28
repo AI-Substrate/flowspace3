@@ -33,7 +33,9 @@ pub use address::{
     Address, AddressError, ConversationAddress, ElementAddress, ElementParts, element_address,
     element_path,
 };
-pub use agent::{AgentAnswer, AgentBounds, SYSTEM_PROMPT, StopReason, ToolBox, TraceEntry, ask};
+pub use agent::{
+    AgentAnswer, AgentBounds, SYSTEM_PROMPT, StopReason, ToolBox, ToolOutcome, TraceEntry, ask,
+};
 pub use catalog::{Area, Code};
 pub use classify::{category_hint, classify, is_declaration_shaped};
 pub use config::{
