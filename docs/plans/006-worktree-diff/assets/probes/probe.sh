@@ -446,6 +446,23 @@ echo "version_file_address=$FILE_ADDRESS" >> "$OUT/receipt.env"
 # These predicates read the ENVELOPES, never the exit codes; an ok:false
 # envelope is a measurement. So capture the envelope and carry on, and let the
 # gate below decide what it means.
+# WHAT DOES THE INDEX ACTUALLY HOLD FOR THE MARKER, at the moment we query it?
+#
+# "Not retrievable" has two very different causes and the receipt must say
+# which: the marker was never parsed or embedded (a timing/queue fact about
+# this run), or it is present and simply does not rank (a retrieval fact about
+# the product). Run seven could not distinguish them, which is one refusal too
+# many for a control that exists to prevent exactly that ambiguity.
+MARKER_ELEMENTS=$(sql "select count(*) from elements where name like '${MARKER}%'")
+MARKER_VECTORS=$(sql "
+  select count(*) from elements e
+   where e.name like '${MARKER}%'
+     and exists (select 1 from embeddings_1024 em
+                  where em.source_hash = e.raw_hash and em.source_kind = 'raw')")
+note "marker index state at query time: elements=$MARKER_ELEMENTS with raw vectors=$MARKER_VECTORS"
+echo "p3_marker_elements=$MARKER_ELEMENTS" >> "$OUT/receipt.env"
+echo "p3_marker_vectors=$MARKER_VECTORS" >> "$OUT/receipt.env"
+
 for cwd in "$MAIN_ROOT" "$WT"; do
   tag=main; [[ "$cwd" == "$WT" ]] && tag=worktree
   ( cd "$cwd" && fs3 search "$Q_MARKER" --limit 5 --source raw ) > "$OUT/p3-marker-from-$tag.json" 2>&1 || true
@@ -534,9 +551,20 @@ elif (( P3_FOUND == 0 )); then
   # The control: the worktree's OWN divergent function must be findable FROM the
   # worktree. If it is not, the run proves nothing about resolution — and a
   # leak of 0 would be measuring absence, not exclusion.
-  note "ANSWER P3: NOT MEASURABLE — the probe's own function is not findable from its own worktree"
-  echo "p3_search_context_sensitive=unmeasurable-marker-not-retrievable" >> "$OUT/receipt.env"
-  echo "p3_wrong_version_leak_to_main=unmeasurable-marker-not-retrievable" >> "$OUT/receipt.env"
+  #
+  # Say WHICH absence, because the two mean opposite things: not indexed yet is
+  # a fact about this run's timing, while indexed-and-not-ranked is a fact about
+  # retrieval and would be a finding.
+  if (( MARKER_VECTORS == 0 )); then
+    marker_reason="marker-not-indexed-yet (elements=$MARKER_ELEMENTS, vectors=$MARKER_VECTORS)"
+    note "ANSWER P3: NOT MEASURABLE — the marker has no raw vector yet; its enrichment had not landed when the query ran"
+  else
+    marker_reason="marker-indexed-but-unranked (elements=$MARKER_ELEMENTS, vectors=$MARKER_VECTORS)"
+    note "ANSWER P3: NOT MEASURABLE — the marker IS indexed with $MARKER_VECTORS raw vector(s) and still did not rank."
+    note "           That is a RETRIEVAL finding, not a timing one — report it rather than re-running."
+  fi
+  echo "p3_search_context_sensitive=unmeasurable-$marker_reason" >> "$OUT/receipt.env"
+  echo "p3_wrong_version_leak_to_main=unmeasurable-$marker_reason" >> "$OUT/receipt.env"
 else
   if diff -q <(answer_identity "$OUT/p3-marker-from-main.json") \
             <(answer_identity "$OUT/p3-marker-from-worktree.json") >/dev/null; then
