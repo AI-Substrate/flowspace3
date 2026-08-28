@@ -163,6 +163,9 @@ external = [
   # a one-method async trait dyn-able; core already carries it for the ports.
   "async-trait",
   "axum",
+  # The daemon mints a fresh 256-bit bearer key at each boot. `getrandom`
+  # reaches the host RNG directly, with no seed state or general PRNG surface.
+  "getrandom",
   # The live file watcher (ruling 2026-08-26: the daemon is host-native BECAUSE
   # watching cannot cross a container boundary). It belongs here rather than in
   # a leaf crate because watching is wiring — the supervisor reads the
@@ -219,13 +222,19 @@ external = [
 internal = ["fs3-core", "fs3-daemon", "fs3-store", "fs3-testkit@dev"]
 external = [
   "anyhow",
+  "anstream",
   "clap",
+  "comfy-table",
+  "crossterm",
+  "owo-colors",
+  "ratatui",
   "reqwest",
   # PRD req-0053: sha256 of the bundled skill's content — pure computation, no IO.
   "sha2",
   "serde",
   "serde_json",
   "tokio",
+  "textwrap",
   "toml",
   # DEV only: doctor's daemon row is probed against a stub /health server — a
   # fake, not a mock (workshop 001 rule 5).

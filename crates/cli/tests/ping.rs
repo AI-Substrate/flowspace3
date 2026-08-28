@@ -10,6 +10,8 @@ use std::net::TcpListener;
 use std::path::Path;
 use std::process::Command;
 
+const TEST_KEY: &str = "isolated-cli-test-key";
+
 /// A `flowspace3` sealed against the production store.
 ///
 /// Every test here passes `--daemon-url` and talks to a hand-rolled stub, so
@@ -18,6 +20,14 @@ use std::process::Command;
 /// their real `secrets.env`, and they are one change to a startup path away
 /// from being the 2026-08-27 incident again (see `fs3_testkit::spawn`).
 fn flowspace3(config_dir: &Path) -> Command {
+    let key_path = fs3_core::daemon_key_path(config_dir);
+    std::fs::write(&key_path, TEST_KEY).expect("writing the isolated daemon key");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        std::fs::set_permissions(&key_path, std::fs::Permissions::from_mode(0o600))
+            .expect("restricting the isolated daemon key");
+    }
     fs3_testkit::sealed(
         Path::new(env!("CARGO_BIN_EXE_flowspace3")),
         config_dir,
@@ -114,6 +124,31 @@ fn ping_without_a_daemon_exits_non_zero_and_suggests_doctor() {
     );
 }
 
+/// A missing key fails before network I/O and names the exact recovery.
+#[test]
+fn ping_without_a_key_is_actionable() {
+    let config = tempfile::tempdir().expect("a temp config directory");
+    let output = fs3_testkit::sealed(
+        Path::new(env!("CARGO_BIN_EXE_flowspace3")),
+        config.path(),
+        fs3_testkit::TestDatabase::Unreachable,
+    )
+    .args(["ping", "--daemon-url", "http://127.0.0.1:1"])
+    .output()
+    .expect("the flowspace3 binary should run");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("daemon.key"),
+        "the missing file is named: {stderr}"
+    );
+    assert!(
+        stderr.contains("restart"),
+        "the recovery is named: {stderr}"
+    );
+}
+
 /// A daemon that answers but is unwell is not a healthy daemon.
 #[test]
 fn ping_refuses_a_daemon_that_reports_a_bad_status() {
@@ -158,6 +193,12 @@ fn the_client_sends_a_get_to_health() {
     assert!(
         request.starts_with("GET /health "),
         "request was: {request}"
+    );
+    assert!(
+        request
+            .lines()
+            .any(|line| line.eq_ignore_ascii_case(&format!("authorization: Bearer {TEST_KEY}"))),
+        "every daemon request must carry the config directory's key: {request}"
     );
 }
 

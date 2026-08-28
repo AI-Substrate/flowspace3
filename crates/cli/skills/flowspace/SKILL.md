@@ -10,6 +10,13 @@ summarises and embeds them, and answers questions by meaning across every indexe
 repo at once. This skill is the pointer layer: the binary's bundled docs are the
 authoritative guides and outlive this page — where the two disagree, the binary wins.
 
+## Output contract for agents
+
+A real TTY (terminal) gets human-readable output. A pipe, file, CI capture, or agent
+subprocess keeps receiving the JSON envelope with no flag. `--json` forces JSON
+anywhere. A harness running inside a PTY such as tmux looks human to a terminal
+probe, so export `FS3_OUTPUT=json` once to pin the machine shape.
+
 ## 1. Detect
 
 ```bash

@@ -14,14 +14,14 @@
 //! (`fs3_cli::render`). The two views cannot disagree, because one is made out
 //! of the other.
 
-use std::io::IsTerminal;
+use std::io::{IsTerminal, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::OnceLock;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use fs3_cli::{DaemonClient, daemon_url, doctor, render, settings, show, skill, watch};
+use fs3_cli::{DaemonClient, doctor, render, settings, show, skill, watch};
 use fs3_core::envelope::Envelope;
 use fs3_core::output::{OUTPUT_ENV, OutputMode};
 
@@ -101,6 +101,12 @@ enum Command {
         /// Override the stream heartbeat cadence.
         #[arg(long, value_name = "MILLISECONDS", requires = "watch")]
         heartbeat_ms: Option<u64>,
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
+    /// Open the live terminal dashboard.
+    Tui {
         /// Override the daemon URL from configuration.
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
@@ -424,7 +430,14 @@ async fn run(command: Command) -> Result<ExitCode> {
         Command::Ping { daemon_url: url } => ping(url).await,
         Command::Add { path, daemon_url } => {
             let client = client_for(daemon_url)?;
-            Ok(emit(&client.add(&display(&path)).await))
+            let path = display(&path);
+            let envelope = match output_mode() {
+                OutputMode::Human => {
+                    render::progress::while_pending(&client, client.add(&path)).await
+                }
+                OutputMode::Json => client.add(&path).await,
+            };
+            Ok(emit(&envelope))
         }
         Command::Remove { path, daemon_url } => {
             let client = client_for(daemon_url)?;
@@ -436,7 +449,14 @@ async fn run(command: Command) -> Result<ExitCode> {
         }
         Command::Scan { path, daemon_url } => {
             let client = client_for(daemon_url)?;
-            Ok(emit(&client.scan(&display(&path)).await))
+            let path = display(&path);
+            let envelope = match output_mode() {
+                OutputMode::Human => {
+                    render::progress::while_pending(&client, client.scan(&path)).await
+                }
+                OutputMode::Json => client.scan(&path).await,
+            };
+            Ok(emit(&envelope))
         }
         Command::Status {
             watch: watching,
@@ -455,6 +475,11 @@ async fn run(command: Command) -> Result<ExitCode> {
             } else {
                 Ok(emit(&client.status().await))
             }
+        }
+        Command::Tui { daemon_url } => {
+            let client = client_for(daemon_url)?;
+            fs3_cli::tui::run(client).await?;
+            Ok(ExitCode::SUCCESS)
         }
         Command::Search {
             query,
@@ -574,7 +599,7 @@ async fn run(command: Command) -> Result<ExitCode> {
                 None => settings::config_dir()?,
             };
             let effective = settings::load_effective_from(&dir)?;
-            Ok(emit(&doctor::run(&effective.config).await))
+            Ok(emit(&doctor::run(&effective.config, &dir).await))
         }
         Command::Docs { command } => Ok(match command {
             DocsCommand::List => emit(&fs3_cli::docs::list()),
@@ -640,7 +665,10 @@ fn emit<T: serde::Serialize>(envelope: &Envelope<T>) -> ExitCode {
                     .and_then(render::render),
             };
             match screen {
-                Some(text) => print!("{text}"),
+                Some(text) => {
+                    let mut stdout = anstream::stdout();
+                    let _ = write!(stdout, "{text}");
+                }
                 None => println!("{json}"),
             }
         }
@@ -696,11 +724,12 @@ fn here() -> Option<String> {
 }
 
 fn client_for(override_url: Option<String>) -> Result<DaemonClient> {
+    let directory = settings::config_dir()?;
     let url = match override_url {
         Some(url) => url,
-        None => daemon_url()?,
+        None => settings::daemon_url_from(&directory)?,
     };
-    DaemonClient::new(url)
+    DaemonClient::new(url, &directory)
 }
 
 fn config_show(override_dir: Option<PathBuf>) -> Result<()> {

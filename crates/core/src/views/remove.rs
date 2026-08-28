@@ -12,7 +12,7 @@ pub struct RemoveReport {
     /// answer.
     pub was_registered: bool,
     /// The repository identity it belonged to, when it was registered.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub identity: Option<String>,
     /// Path→blob mappings that went with it.
     pub files: i64,

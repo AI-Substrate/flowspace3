@@ -251,13 +251,15 @@ impl Stack {
 /// Call the router the daemon actually serves, so the test cannot pass against
 /// a shape the binary does not have.
 async fn call(state: &AppState, method: &str, path: &str, body: Option<Value>) -> Envelope {
-    let base = support::spawn(fs3_daemon::router(state.clone())).await;
+    let auth = support::auth("first-light-call");
+    let base = support::spawn(fs3_daemon::router(state.clone(), auth.auth)).await;
     let client = reqwest::Client::new();
     let url = format!("{base}{path}");
     let request = match method {
         "POST" => client.post(&url).json(&body.unwrap_or(Value::Null)),
         _ => client.get(&url),
-    };
+    }
+    .bearer_auth(&auth.key);
     let response = request.send().await.expect("the daemon answers");
     let status = response.status();
     let envelope: Envelope = response
@@ -683,11 +685,13 @@ async fn a_behind_database_is_rejected_then_repaired_by_doctor_then_works() {
         );
     }
 
-    // `/health` is the exception, and deliberately: it is how a CLI decides
-    // whether the daemon exists at all, so it must answer before anything
-    // behind it can be wrong.
-    let base = support::spawn(fs3_daemon::router(stack.state.clone())).await;
-    let health = reqwest::get(format!("{base}/health"))
+    // `/health` is independent of schema state, but not of daemon auth.
+    let auth = support::auth("behind-schema-health");
+    let base = support::spawn(fs3_daemon::router(stack.state.clone(), auth.auth)).await;
+    let health = reqwest::Client::new()
+        .get(format!("{base}/health"))
+        .bearer_auth(&auth.key)
+        .send()
         .await
         .expect("health answers")
         .status();
@@ -696,7 +700,12 @@ async fn a_behind_database_is_rejected_then_repaired_by_doctor_then_works() {
     // --- doctor repairs it -------------------------------------------------
     // No daemon is listening in this test, so doctor reports the stack as
     // degraded — correctly. What is under test is the SCHEMA row.
-    let report = fs3_cli::doctor::run(&doctor_config(&stack.database.url())).await;
+    let doctor_auth = support::auth("doctor-behind-schema");
+    let report = fs3_cli::doctor::run(
+        &doctor_config(&stack.database.url()),
+        &doctor_auth.config_dir,
+    )
+    .await;
     assert!(report.ok, "doctor failed: {:?}", report.error);
     let data = report.data.expect("doctor reports its steps");
     assert!(data.healthy);
@@ -766,7 +775,8 @@ async fn doctor_creates_a_database_that_is_not_there() {
     );
     probe.close().await;
 
-    let report = fs3_cli::doctor::run(&doctor_config(&url)).await;
+    let doctor_auth = support::auth("doctor-create-database");
+    let report = fs3_cli::doctor::run(&doctor_config(&url), &doctor_auth.config_dir).await;
     assert!(report.ok, "doctor failed: {:?}", report.error);
     let data = report.data.expect("doctor reports its steps");
 
