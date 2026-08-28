@@ -14,7 +14,12 @@
     "negative": 3,
     "scoped-zero": 1
   },
-  "mix_rationale": "Four answerables exercise Rust implementation/test evidence, evaluation policy, control-plane policy, and a legacy external repository. Three negatives make honesty measurable across never-indexed, deleted-path, and explicit-scope absence classes. One scoped-zero case isolates recovery: its answer exists globally, but not in the initial cwd scope.",
+  "control_counts": {
+    "negative": 4,
+    "true-absence": 3,
+    "scope-trap": 1
+  },
+  "mix_rationale": "Four answerables exercise Rust implementation/test evidence, evaluation policy, control-plane policy, and a legacy external repository. Three true-absence negatives make refusal honesty measurable across never-indexed, deleted-path, and explicit-scope classes. One dual-tagged scoped-zero negative control isolates cross-repo widening in its own denominator, so strength at recovery cannot mask weak refusal honesty (or vice versa).",
   "scenarios": [
     "scenarios/answerable-flowspace3-claim-locking/scenario.json",
     "scenarios/answerable-harness-unknown/scenario.json",

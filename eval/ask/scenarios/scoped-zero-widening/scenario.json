@@ -3,6 +3,9 @@
   "slug": "scoped-zero-widening",
   "title": "Recover from cwd-scoped zero by widening",
   "lane": "scoped-zero",
+  "control": "negative",
+  "negative_class": "scope-trap-widening",
+  "denominator": "scoped-zero",
   "request": {
     "question": "In flow-conformance evaluation, what does an UNKNOWN deterministic row mean, and how does it affect score denominators?",
     "cwd": "${REPO_ROOT:git:github.com/AI-Substrate/flowspace3}",
