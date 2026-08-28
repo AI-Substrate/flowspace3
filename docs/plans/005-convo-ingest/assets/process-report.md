@@ -160,3 +160,56 @@ commit` can still record agent work as human-authored.** Three seats reproduced
 all four combinations of reported-status and actual-attribution between them,
 which proves the two are INDEPENDENT: verified means a note exists, not that the
 work is attributed. `harness commit` should verify the note's CONTENT.
+
+## What the cross-model reviewer found, and why it is the best money this run spent
+
+`gpt-5.6-sol` returned REQUEST_CHANGES with three MAJOR findings and one MINOR.
+All four confirmed against fresh evidence; none refuted. Two of them were things
+the PM had **asserted in writing** — in a task receipt and in a report to
+prime — that were simply not true.
+
+**A safety check that cannot fail is not a check.** The accounting backstop
+compared `accepted + already_stored` against `prepared.turns.len()`. The store
+defines `already_stored` as `turns.len() - accepted.len()`, so the check reduces
+to `accepted + (len - accepted) == len` — true of every universe. It was cited
+as a safety property in a receipt. The unit that owns the ledger had described
+the RIGHT check in plain words; the PM implemented a different one and then
+quoted it as evidence.
+
+**Verify structural claims against the mechanism, not the name.** The PM
+reported to prime that `SERIAL_KINDS` structurally enforced per-conversation
+serialisation. `SERIAL_KINDS` means claimed one at a time, not RUN one at a
+time — the runner can have several ingest jobs in flight up to
+`worker_concurrency`. And two live queue keys can address ONE conversation,
+which the PM's own first-light transcript shows and the PM did not notice.
+Now a real advisory lock.
+
+**The shared blind spot was real, and only an outsider found it.** The
+cardinality claim was built to catch a reader disagreeing with an independent
+derivation. It could not catch the one case where the derivation and the reader
+disagreed with EACH OTHER on a session the assertion did not cover: the
+generator expected four copilot records, the reader emitted five, and both tests
+passed. The PM had asked the reviewer, in writing, to hunt exactly this — and
+still could not find it from the inside.
+
+**The reviewer's judgement beat the PM's instinct.** On which side should move,
+the PM leaned toward correcting the derivation, on the grounds that changing a
+reader whose author is gone is riskier. The reviewer said move the READER,
+because the assistant message already carries the tool request, so the extra
+record reported one tool call as two turns. Verified in the fixture before
+acting: same `toolCallId`, same tool name, two representations. The reviewer was
+right and the PM's risk-based instinct would have shipped a duplicate.
+
+**Narrowing an AC to match what was built is what we refuse from coders.** The
+PM had checked ac-0004 — "child conversations LINKED to the parent" — on
+evidence that did not support the word "linked": the relationship lived in an
+in-memory report the worker discarded. Offered the choice of persisting the link
+or narrowing the criterion, prime ruled persist, using the PM's own argument
+back at it.
+
+The transferable claim: **a cross-model reviewer that is told where the author
+is least confident, told to disbelieve the author's own receipts, and told what
+is already known-open, spends its whole budget on things the author could not
+find.** Four findings, four confirmed, zero style noise, zero re-reporting of
+the three known-open items it was handed.
+
