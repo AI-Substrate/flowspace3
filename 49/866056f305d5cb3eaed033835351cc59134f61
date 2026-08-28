@@ -1,0 +1,21 @@
+docs/plans/007-human-interface/plan.dd.json
+  s_15d888f4b629c1::t_4a432c76f91309 103-105
+docs/plans/007-human-interface/plan.dd.md
+  s_15d888f4b629c1::t_3a7ff2660ac7e7 70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "49866056f305d5cb3eaed033835351cc59134f61",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
