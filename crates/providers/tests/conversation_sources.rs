@@ -422,6 +422,35 @@ fn omp_ordinals_are_a_subsequence_of_the_store() {
     Expectations::load(FixtureStore::Omp).assert_ordinals_are_a_subsequence(OMP_SESSION, &ordinals);
 }
 
+/// The CARDINALITY claim, over the COMMITTED bytes rather than a scratch
+/// fixture.
+///
+/// It reads the committed file directly and deliberately: `omp_whole()` grows
+/// a scratch copy and the `SourceFixture` contract holds one line back for the
+/// torn-record case, so a grown fixture is legitimately one record short of the
+/// store. The emitted expectation is a statement about what the STORE implies,
+/// so it is asserted against the store's own bytes.
+#[test]
+fn the_omp_reader_emits_exactly_what_the_committed_store_implies() {
+    let root = fs3_testkit::expectations::fixtures_root().join("omp");
+    let source = OmpSource::new(&root, root.clone());
+    let files = source
+        .resolve(&IngestInput::Native {
+            session_id: OMP_SESSION.to_string(),
+            harness: Harness::Omp,
+            folder: root.clone(),
+        })
+        .expect("resolve must find the committed conversation");
+    let ordinals: Vec<String> = source
+        .read_incremental(&files[0], None)
+        .expect("a full read of the committed bytes")
+        .records
+        .into_iter()
+        .map(|record| record.ordinal)
+        .collect();
+    Expectations::load(FixtureStore::Omp).assert_emitted_ordinals_match(OMP_SESSION, &ordinals);
+}
+
 #[test]
 fn pij_ordinals_are_a_subsequence_of_the_store() {
     let mut fixture = pij_whole();
@@ -431,6 +460,36 @@ fn pij_ordinals_are_a_subsequence_of_the_store() {
         .map(|record| record.ordinal)
         .collect();
     Expectations::load(FixtureStore::Pij).assert_ordinals_are_a_subsequence(PIJ_SEAT, &ordinals);
+}
+
+/// The CARDINALITY claim for the ledger, over the COMMITTED bytes — see the omp
+/// test above for why a grown fixture is the wrong corpus for it.
+#[test]
+fn the_pij_reader_emits_exactly_what_the_committed_store_implies() {
+    // The ledger store is `<root>/<seat>/events.ndjson`, and the fixture is
+    // committed flat, so the seat directory is materialised around a COPY of
+    // the committed bytes. The claim is still about those bytes.
+    let root = scratch_root("pij-committed");
+    let seat_dir = root.join(PIJ_SEAT);
+    std::fs::create_dir_all(&seat_dir).expect("a seat directory must be creatable");
+    let committed = fs3_testkit::expectations::fixtures_root().join("pij/events.ndjson");
+    std::fs::copy(&committed, seat_dir.join("events.ndjson")).expect("copy the committed ledger");
+
+    let source = PijLedgerSource::new(&root);
+    let files = source
+        .resolve(&IngestInput::Pij {
+            id: PIJ_SEAT.to_string(),
+            folder: root.clone(),
+        })
+        .expect("resolve must find the committed ledger");
+    let ordinals: Vec<String> = source
+        .read_incremental(&files[0], None)
+        .expect("a full read of the committed bytes")
+        .records
+        .into_iter()
+        .map(|record| record.ordinal)
+        .collect();
+    Expectations::load(FixtureStore::Pij).assert_emitted_ordinals_match(PIJ_SEAT, &ordinals);
 }
 
 #[test]

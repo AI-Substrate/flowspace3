@@ -154,6 +154,45 @@ pub struct OracleTurn {
     pub head: String,
 }
 
+/// What a reader must EMIT from one file, derived independently of every
+/// reader.
+///
+/// The structural and subset claims are both blind to OVER-EMISSION: splitting
+/// one merged group into three emits MORE ordinals, but they are still real
+/// store ids, still in order and still repeat-free, so
+/// [`Expectations::assert_ordinals_are_a_subsequence`] passes — and the prose
+/// is scattered across more records rather than lost, so
+/// [`Expectations::assert_oracle_prose_appears`] passes too. Subsequence
+/// constrains ORDER and MEMBERSHIP, never CARDINALITY.
+///
+/// A broken grouping rule IS over-emission, and because the ordinal is the
+/// ingest ledger's dedupe key, a changed grouping rule makes every stored
+/// record look new and silently DOUBLES the conversation. This is the claim
+/// that catches it.
+#[derive(Clone, Debug, Deserialize)]
+pub struct Emitted {
+    /// The fixture file, for a sidecar; absent on a conversation's main file.
+    #[serde(default)]
+    pub file: Option<String>,
+    /// How many records a correct reader emits.
+    pub count: usize,
+    /// Their ordinals, in store order — the exact sequence, not a subsequence.
+    pub ordinals: Vec<String>,
+    /// The allowlist and grouping rule this was derived under, in prose.
+    pub rule: String,
+}
+
+/// One conversation's emitted expectation, main file plus child conversations.
+#[derive(Clone, Debug, Deserialize)]
+pub struct ExpectedEmitted {
+    /// How the numbers were derived, and why that is not circular.
+    pub grade: String,
+    /// The conversation's own file.
+    pub main: Emitted,
+    /// Child conversations — claude subagent sidecars; empty elsewhere.
+    pub sidecars: Vec<Emitted>,
+}
+
 /// A summary row per conversation in a fixture set.
 #[derive(Clone, Debug, Deserialize)]
 pub struct Session {
@@ -169,6 +208,9 @@ pub struct Session {
     pub oracle_turns: usize,
     /// Those turns by kind.
     pub oracle_by_kind: BTreeMap<String, usize>,
+    /// What a correct reader EMITS — the cardinality claim the structural and
+    /// subset claims structurally cannot make.
+    pub expected_emitted: ExpectedEmitted,
     /// Store-specific facts — claude's merge arithmetic and sidecar inventory,
     /// metrics-db's dialect. Deliberately untyped: they are a reader's own
     /// checklist, not a shape every store shares.
@@ -364,6 +406,97 @@ impl Expectations {
                      the store never wrote"
                 ),
             }
+        }
+    }
+
+    /// Assert a reader emitted EXACTLY the records it should, in order.
+    ///
+    /// The cardinality claim. [`assert_ordinals_are_a_subsequence`] cannot make
+    /// it: over-emission — one merged group split into three — yields more
+    /// ordinals that are still real, still ordered and still repeat-free, so it
+    /// passes. So does the prose containment claim, because splitting scatters
+    /// prose rather than losing it. Both are structurally blind to exactly the
+    /// failure that silently doubles a stored conversation.
+    ///
+    /// The expected sequence is derived from the store's bytes by
+    /// `oracle_expectations.py`, applying the ruled allowlist and grouping rule
+    /// a SECOND time — never harvested from a reader's output, which would pin
+    /// whatever the code did that day.
+    ///
+    /// [`assert_ordinals_are_a_subsequence`]:
+    /// Expectations::assert_ordinals_are_a_subsequence
+    ///
+    /// # Panics
+    /// On any difference in length, membership or order, naming the first
+    /// position that differs.
+    pub fn assert_emitted_ordinals_match(&self, key: &str, observed: &[String]) {
+        let expected = &self.session(key).expected_emitted;
+        Self::compare_emitted(key, &expected.main, observed, &expected.grade);
+    }
+
+    /// The same claim for a child conversation, addressed by any trailing part
+    /// of its fixture path — a file name is enough, so a test reading a
+    /// tempdir copy can name the sidecar without reconstructing the fixture
+    /// path.
+    ///
+    /// # Panics
+    /// If nothing matches `file`, or on any difference.
+    pub fn assert_emitted_sidecar_ordinals_match(
+        &self,
+        key: &str,
+        file: &str,
+        observed: &[String],
+    ) {
+        let expected = &self.session(key).expected_emitted;
+        let sidecar = expected
+            .sidecars
+            .iter()
+            .find(|candidate| {
+                candidate
+                    .file
+                    .as_deref()
+                    .is_some_and(|recorded| recorded.ends_with(file))
+            })
+            .unwrap_or_else(|| {
+                let known: Vec<&str> = expected
+                    .sidecars
+                    .iter()
+                    .filter_map(|candidate| candidate.file.as_deref())
+                    .collect();
+                panic!("no sidecar of `{key}` ends with `{file}`; this fixture has {known:?}")
+            });
+        Self::compare_emitted(key, sidecar, observed, &expected.grade);
+    }
+
+    fn compare_emitted(key: &str, expected: &Emitted, observed: &[String], grade: &str) {
+        let where_ = expected.file.as_deref().unwrap_or(key);
+        if observed.len() != expected.count {
+            let verdict = if observed.len() > expected.count {
+                "OVER-EMITTED: a group was split, or a record type that is store bookkeeping \
+                 was emitted as a turn. Because the ordinal is the ingest ledger's dedupe key, \
+                 every stored record would look new and the conversation would silently DOUBLE"
+            } else {
+                "UNDER-EMITTED: records were merged that should not have been, or the allowlist \
+                 dropped something that carries prose"
+            };
+            panic!(
+                "{where_}: expected {} records, reader emitted {} — {verdict}.\n  rule: {}\n  \
+                 grade: {grade}",
+                expected.count,
+                observed.len(),
+                expected.rule
+            );
+        }
+        for (position, (want, got)) in expected.ordinals.iter().zip(observed).enumerate() {
+            assert!(
+                want == got,
+                "{where_}: ordinal {position} is `{got}` where the store's own bytes say \
+                 `{want}`. The count is right, so this is a WRONG RECORD CHOSEN rather than a \
+                 miscount — for a merged group, the ordinal must be the group's FIRST member, \
+                 because a later member's id changes between an incremental read and a rescan \
+                 and the ledger's dedupe would miss.\n  rule: {}\n  grade: {grade}",
+                expected.rule
+            );
         }
     }
 

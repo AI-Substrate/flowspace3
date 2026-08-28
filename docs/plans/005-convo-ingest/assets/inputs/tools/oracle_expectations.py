@@ -309,6 +309,14 @@ def build_claude(oracle_sha: str) -> dict:
                 },
             )
         )
+        sessions[-1]["expected_emitted"] = {
+            "grade": EMITTED_GRADE,
+            "main": emitted_claude(main_jsonl),
+            "sidecars": [
+                dict(file=str(p.relative_to(FIXTURES)), **emitted_claude(p))
+                for p in sidecars
+            ],
+        }
         structural[session_id] = {"main": main, "sidecars": sidecar_structural}
 
     doc["sessions"] = sessions
@@ -350,6 +358,11 @@ def build_omp(oracle, oracle_sha: str) -> dict:
             },
         )
     ]
+    doc["sessions"][0]["expected_emitted"] = {
+        "grade": EMITTED_GRADE,
+        "main": emitted_omp(main_jsonl),
+        "sidecars": [],
+    }
     doc["structural"] = {session_id: {"main": main, "sidecars": []}}
     doc["turns"] = {session_id: turns}
     doc["fixture_sha256"] = fixture_digest(root)
@@ -375,6 +388,11 @@ def build_pij(oracle, oracle_sha: str) -> dict:
         "receipt records are what the fixture was harvested to cover."
     )
     doc["sessions"] = [session_row(seat, [main["file"]], main, turns, by_kind)]
+    doc["sessions"][0]["expected_emitted"] = {
+        "grade": EMITTED_GRADE,
+        "main": emitted_pij(root / "events.ndjson"),
+        "sidecars": [],
+    }
     doc["structural"] = {seat: {"main": main, "sidecars": []}}
     doc["turns"] = {seat: turns}
     doc["fixture_sha256"] = fixture_digest(root)
@@ -464,11 +482,147 @@ def build_metrics_db(oracle, oracle_sha: str) -> dict:
                 {"tool": tool, "dialect": dialect},
             )
         )
+        doc["sessions"][-1]["expected_emitted"] = {
+            "grade": EMITTED_GRADE,
+            "main": emitted_metrics_db(per_session[session_id], dialect),
+            "sidecars": [],
+        }
         doc["structural"][session_id] = {"main": main, "sidecars": []}
         doc["turns"][session_id] = turns
 
     doc["fixture_sha256"] = fixture_digest(root)
     return doc
+
+
+# --------------------------------------------------- what a reader must EMIT
+#
+# WHY THIS EXISTS (plan 005, prime ruling 2026-08-28). The structural section
+# proves that a reader's ordinals are an in-order, repeat-free SUBSEQUENCE of
+# the store's ids, and the subset section proves the oracle's prose appears.
+# Both are blind to OVER-EMISSION: splitting one merged group into three emits
+# MORE ordinals, but they are still real store ids, still in order, still
+# without repeats — so the subsequence claim passes, and the prose is scattered
+# across more records rather than lost, so the containment claim passes too.
+# Subsequence constrains ORDER and MEMBERSHIP, never CARDINALITY.
+#
+# A broken grouping rule IS over-emission, and a changed grouping rule silently
+# doubles every stored conversation, because the ordinal is the ledger's dedupe
+# key. Two readers found this by mutation-checking their own suites: u1a's
+# adjacent-run fold emitted 20 assistant turns where 13 are correct, and u1d's
+# no-merge mutation emitted 22 records where 16 are correct — and every
+# committed assertion still passed.
+#
+# INDEPENDENCE IS THE WHOLE POINT. These numbers are derived HERE, from the
+# store's bytes, by a second implementation of the ruled allowlist and grouping
+# rule. A count harvested from a reader's own output would pin whatever the
+# code did that day — a change-detector, not a correctness test.
+
+EMITTED_GRADE = (
+    "PM-derived, INDEPENDENT of every Rust reader: computed from the store's "
+    "own bytes by oracle_expectations.py, applying the ruled record allowlist "
+    "and grouping rule a second time. NOT harvested from reader output, which "
+    "would be circular. Where the oracle covers a store it is a weaker witness "
+    "than this, because it drops record kinds a reader must keep (the omp "
+    "compaction record, pij receipts), so it cannot state an emitted set at all."
+)
+
+
+def emitted(ordinals: list[str], rule: str) -> dict:
+    return {"count": len(ordinals), "ordinals": ordinals, "rule": rule}
+
+
+def emitted_claude(path: Path) -> dict:
+    """user records, plus ONE record per assistant `message.id` group.
+
+    The ordinal is the FIRST member's `uuid`, so the value depends on the
+    grouping rule as well as on the datum — which is why the rule is frozen in
+    the service page and restated here.
+    """
+    ordinals: list[str] = []
+    seen_groups: set[str] = set()
+    for raw in path.read_text().splitlines():
+        if not raw.strip():
+            continue
+        record = json.loads(raw)
+        kind = record.get("type")
+        if kind == "user":
+            ordinals.append(str(record.get("uuid")))
+        elif kind == "assistant":
+            group = (record.get("message") or {}).get("id")
+            if group is None:
+                ordinals.append(str(record.get("uuid")))
+            elif group not in seen_groups:
+                seen_groups.add(group)
+                ordinals.append(str(record.get("uuid")))
+    return emitted(
+        ordinals,
+        "types user and assistant; assistant records sharing a message.id are "
+        "ONE record whose ordinal is the group's first uuid; every other type "
+        "is store bookkeeping and is dropped",
+    )
+
+
+def emitted_omp(path: Path) -> dict:
+    keep = {"message", "compaction", "custom_message"}
+    ordinals = []
+    for raw in path.read_text().splitlines():
+        if not raw.strip():
+            continue
+        record = json.loads(raw)
+        if record.get("type") in keep and record.get("id") is not None:
+            ordinals.append(str(record["id"]))
+    return emitted(
+        ordinals,
+        "types message, compaction and custom_message, each of which carries an "
+        "id; the 72 tool_execution_start mirrors, the title slot, the session "
+        "header, model_change and thinking_level_change are not turns",
+    )
+
+
+def emitted_pij(path: Path) -> dict:
+    ordinals = []
+    for raw in path.read_text().splitlines():
+        if not raw.strip():
+            continue
+        ordinals.append(str(json.loads(raw)["seq"]))
+    return emitted(
+        ordinals,
+        "every event, including receipts — the ledger is the only store that "
+        "records delivery state; the ordinal is seq rendered as a decimal string",
+    )
+
+
+def emitted_metrics_db(rows: list, dialect: str) -> dict:
+    """`rows` are this session's (row_id, …, event_json) tuples in rowid order."""
+    ordinals: list[str] = []
+    seen_groups: set[str] = set()
+    for row_id, _ts, record_type, _eid, _pid, event_json in sorted(rows):
+        try:
+            record = json.loads(event_json)["v"]["0"]
+        except Exception:
+            record = {}
+        if dialect == "copilot":
+            if record_type in {"user.message", "assistant.message"}:
+                ordinals.append(str(row_id))
+            continue
+        if record_type == "user":
+            ordinals.append(str(row_id))
+        elif record_type == "assistant":
+            group = (record.get("message") or {}).get("id")
+            if group is None:
+                ordinals.append(str(row_id))
+            elif group not in seen_groups:
+                seen_groups.add(group)
+                ordinals.append(str(row_id))
+    rule = (
+        "copilot dialect: user.message and assistant.message only; the "
+        "tool.execution_* events become ITEMS on their call, never records"
+        if dialect == "copilot"
+        else "claude-mirror dialect: types user and assistant; assistant rows "
+        "sharing a message.id are ONE record whose ordinal is the group's first "
+        "rowid; the twelve bookkeeping types are dropped"
+    )
+    return emitted(ordinals, rule)
 
 
 # ------------------------------------------------------------------------ main

@@ -206,6 +206,10 @@ fn emitted_ordinals_are_a_subsequence_of_what_the_store_holds() {
             .collect();
 
         expectations.assert_ordinals_are_a_subsequence(session, &ordinals);
+        // The CARDINALITY claim the subsequence claim above structurally cannot
+        // make: a no-merge mutation emits 22 records where 16 are correct, and
+        // every ordinal is still a real rowid in store order.
+        expectations.assert_emitted_ordinals_match(session, &ordinals);
     }
 }
 

@@ -51,6 +51,87 @@
      "claude/a5a5588f-0979-439f-a1bf-ddf185a089c7/subagents/agent-aa8ccc51dce0404a8.meta.json"
     ],
     "spilled_tool_results": []
+   },
+   "expected_emitted": {
+    "grade": "PM-derived, INDEPENDENT of every Rust reader: computed from the store's own bytes by oracle_expectations.py, applying the ruled record allowlist and grouping rule a second time. NOT harvested from reader output, which would be circular. Where the oracle covers a store it is a weaker witness than this, because it drops record kinds a reader must keep (the omp compaction record, pij receipts), so it cannot state an emitted set at all.",
+    "main": {
+     "count": 39,
+     "ordinals": [
+      "e41cb57f-94c1-4ca5-9fe1-2187b8f49ef4",
+      "fead4fd7-cee9-4169-9254-8e7e30674f33",
+      "76f2f7d9-1f8e-4637-9a40-7a424e6ccff1",
+      "200b355f-5fe1-48a6-82b7-eaf5d88780c2",
+      "196068d6-6b2b-41c1-9668-5ecdb2b25b87",
+      "6c0a308f-d43b-41e7-9c2b-d36d64539df8",
+      "9ccf07af-ba99-4554-bfb4-b02591244f76",
+      "9f85c625-030b-419c-8d9d-6a8cac85bf41",
+      "72e11fcf-c691-459a-8c56-56cef2986aea",
+      "115e6575-0c6a-42e0-9739-5bd1d0482e6e",
+      "2ec0b8dc-13a8-4bb4-bcd0-711b70fe11c1",
+      "5182db0e-e787-4a44-987d-0caab68f77a2",
+      "262dbae0-9581-451d-a545-297db584ce77",
+      "7166cf4a-52f3-4647-9903-e9f2693f8311",
+      "99d14c19-ae3d-4667-99f3-216b9e228d5d",
+      "8eef636e-0af3-45be-884a-5eb564ab04e9",
+      "9cf5a18b-0c3f-46ba-81e1-798c91684737",
+      "2eed38e9-4326-4028-bfb6-c99c59e6781b",
+      "d196f161-f834-49d7-ac0f-c6d07347e6ce",
+      "904d92e0-5a6b-4c7f-b86e-be6e070480df",
+      "6d408355-0342-4114-975e-988dcfd46d63",
+      "729a5ad5-8bd5-44d1-a11e-dcae0105b846",
+      "4d219c31-f3c4-40cb-9e80-e2c807345f54",
+      "0dc8bd5a-6705-4ba5-b2c7-95914e68615d",
+      "d19eab55-f119-4816-8a20-ad5995bd4ea5",
+      "dcf04b52-0819-4b1a-88e7-58fec57dd775",
+      "d41cbae9-4ec3-4ce7-8d67-2c108b2f5021",
+      "9df22c8c-f969-42cb-b8f7-2f20159cf954",
+      "2cb34789-44f4-4db9-845f-120eb9ca1637",
+      "dcd75fdf-a5a2-421b-bb24-3b57f923e4a6",
+      "c83b9115-8500-4786-a2ac-a217d25d7978",
+      "dec5feae-2c9b-4756-8e12-7b334d9203d8",
+      "dafa5047-d36a-4d56-b1f7-45c727dd1c4e",
+      "6fa53c4f-9469-48d5-9134-7a77c503dd75",
+      "efe60acb-5be2-4d60-a558-b9c4b8d5b72b",
+      "7a7021b5-b8fc-48e8-876a-0914036bde67",
+      "058d722a-8830-4139-9669-08a7b86e1f5d",
+      "963dc15f-bda3-4bfd-b4a3-61df47c41912",
+      "844602cb-d153-4cda-a748-d8d0a9d23ed4"
+     ],
+     "rule": "types user and assistant; assistant records sharing a message.id are ONE record whose ordinal is the group's first uuid; every other type is store bookkeeping and is dropped"
+    },
+    "sidecars": [
+     {
+      "file": "claude/a5a5588f-0979-439f-a1bf-ddf185a089c7/subagents/agent-aa8ccc51dce0404a8.jsonl",
+      "count": 24,
+      "ordinals": [
+       "255b99ca-cf22-4807-8047-9efe6e8c9757",
+       "7c1966fa-6510-4f38-b8c1-0bc9b5eaa51e",
+       "a3f8da8c-4220-41a5-a8b0-6e06e97376b6",
+       "52b0b898-09b3-4825-ab67-12e0077c7069",
+       "67b4ed02-a2a5-4660-aa67-05b5714d36e2",
+       "7050ee0b-9c69-41d9-ad90-9b6b0e1451ba",
+       "b9002c33-843f-44de-91ab-cbffbcf1d57f",
+       "088738c1-0cfd-447b-b67a-d7fd83049141",
+       "6a2345ca-39ef-4704-8eb8-45ae8fc62967",
+       "dbc613b7-3f7e-4151-b3a3-559383a4c696",
+       "43320291-9508-4f67-81d4-630dc8db811c",
+       "b071f42d-f3b9-4ca9-9930-352111e2f133",
+       "c978807f-76eb-4b0b-a25b-1d2c4602f91b",
+       "7bbfdd75-ac72-476f-9190-69424f5193de",
+       "e4d28bd5-8e69-49e7-9b0b-83840b213bfe",
+       "a57a1ea2-1d7b-4a14-b668-479f5cc97a81",
+       "1fd15590-036a-49db-b4a3-ecc29f1ac08e",
+       "adfb585e-0936-4fcb-bf89-f0620b0ec77e",
+       "333639a3-ef6d-4619-bae4-66781a523407",
+       "e23e6533-c85a-457f-a7d9-22d95b76f3d0",
+       "9f811c9d-8c8c-47af-b6bf-0cdfa6598edc",
+       "69d4e7f3-921d-437e-95d8-6237be1c9780",
+       "f88fc1b5-a821-4ee5-a6c8-cb9380bdb7e2",
+       "3bfbc07e-653d-405d-b23b-c348203a834b"
+      ],
+      "rule": "types user and assistant; assistant records sharing a message.id are ONE record whose ordinal is the group's first uuid; every other type is store bookkeeping and is dropped"
+     }
+    ]
    }
   },
   {
@@ -80,6 +161,25 @@
     "spilled_tool_results": [
      "claude/b1d6f4fb-bd8e-4a10-a018-4205f4058b8e/tool-results/b8e9hq4my.txt"
     ]
+   },
+   "expected_emitted": {
+    "grade": "PM-derived, INDEPENDENT of every Rust reader: computed from the store's own bytes by oracle_expectations.py, applying the ruled record allowlist and grouping rule a second time. NOT harvested from reader output, which would be circular. Where the oracle covers a store it is a weaker witness than this, because it drops record kinds a reader must keep (the omp compaction record, pij receipts), so it cannot state an emitted set at all.",
+    "main": {
+     "count": 9,
+     "ordinals": [
+      "0589fb40-157f-4e20-a513-7dea37faa0e3",
+      "92ead361-7aa4-4d5f-8a71-dfa3c5f7549d",
+      "bc653187-9d79-4db7-948b-c25b71df70f8",
+      "78e43263-908e-42fd-bd9f-5b6490f6bf5b",
+      "847813ce-e094-45ae-9ee6-e1981eae05e8",
+      "d824b086-3d09-469a-ab7e-2b3f0b3003b9",
+      "3f3e49c7-913e-4651-b232-51e1bb6755c1",
+      "0bdcbaaf-1c5d-419b-b876-e1c60a378162",
+      "bea2f953-1963-4a5a-a049-73e6144325aa"
+     ],
+     "rule": "types user and assistant; assistant records sharing a message.id are ONE record whose ordinal is the group's first uuid; every other type is store bookkeeping and is dropped"
+    },
+    "sidecars": []
    }
   }
  ],

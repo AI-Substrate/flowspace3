@@ -32,6 +32,15 @@
    "extras": {
     "tool": "github-copilot-cli",
     "dialect": "copilot"
+   },
+   "expected_emitted": {
+    "grade": "PM-derived, INDEPENDENT of every Rust reader: computed from the store's own bytes by oracle_expectations.py, applying the ruled record allowlist and grouping rule a second time. NOT harvested from reader output, which would be circular. Where the oracle covers a store it is a weaker witness than this, because it drops record kinds a reader must keep (the omp compaction record, pij receipts), so it cannot state an emitted set at all.",
+    "main": {
+     "count": 0,
+     "ordinals": [],
+     "rule": "copilot dialect: user.message and assistant.message only; the tool.execution_* events become ITEMS on their call, never records"
+    },
+    "sidecars": []
    }
   },
   {
@@ -65,6 +74,20 @@
    "extras": {
     "tool": "github-copilot-cli",
     "dialect": "copilot"
+   },
+   "expected_emitted": {
+    "grade": "PM-derived, INDEPENDENT of every Rust reader: computed from the store's own bytes by oracle_expectations.py, applying the ruled record allowlist and grouping rule a second time. NOT harvested from reader output, which would be circular. Where the oracle covers a store it is a weaker witness than this, because it drops record kinds a reader must keep (the omp compaction record, pij receipts), so it cannot state an emitted set at all.",
+    "main": {
+     "count": 4,
+     "ordinals": [
+      "936647",
+      "936656",
+      "936659",
+      "936669"
+     ],
+     "rule": "copilot dialect: user.message and assistant.message only; the tool.execution_* events become ITEMS on their call, never records"
+    },
+    "sidecars": []
    }
   },
   {
@@ -100,6 +123,32 @@
    "extras": {
     "tool": "claude",
     "dialect": "claude"
+   },
+   "expected_emitted": {
+    "grade": "PM-derived, INDEPENDENT of every Rust reader: computed from the store's own bytes by oracle_expectations.py, applying the ruled record allowlist and grouping rule a second time. NOT harvested from reader output, which would be circular. Where the oracle covers a store it is a weaker witness than this, because it drops record kinds a reader must keep (the omp compaction record, pij receipts), so it cannot state an emitted set at all.",
+    "main": {
+     "count": 16,
+     "ordinals": [
+      "945010",
+      "945018",
+      "945022",
+      "945024",
+      "945026",
+      "945027",
+      "945031",
+      "945043",
+      "945054",
+      "945056",
+      "945058",
+      "945061",
+      "945063",
+      "945066",
+      "945089",
+      "945255"
+     ],
+     "rule": "claude-mirror dialect: types user and assistant; assistant rows sharing a message.id are ONE record whose ordinal is the group's first rowid; the twelve bookkeeping types are dropped"
+    },
+    "sidecars": []
    }
   },
   {
@@ -122,6 +171,26 @@
    "extras": {
     "tool": "claude",
     "dialect": "claude"
+   },
+   "expected_emitted": {
+    "grade": "PM-derived, INDEPENDENT of every Rust reader: computed from the store's own bytes by oracle_expectations.py, applying the ruled record allowlist and grouping rule a second time. NOT harvested from reader output, which would be circular. Where the oracle covers a store it is a weaker witness than this, because it drops record kinds a reader must keep (the omp compaction record, pij receipts), so it cannot state an emitted set at all.",
+    "main": {
+     "count": 10,
+     "ordinals": [
+      "929028",
+      "929031",
+      "929033",
+      "929034",
+      "929037",
+      "929038",
+      "929039",
+      "929040",
+      "929041",
+      "929042"
+     ],
+     "rule": "claude-mirror dialect: types user and assistant; assistant rows sharing a message.id are ONE record whose ordinal is the group's first rowid; the twelve bookkeeping types are dropped"
+    },
+    "sidecars": []
    }
   },
   {
@@ -138,6 +207,15 @@
    "extras": {
     "tool": "claude",
     "dialect": "claude"
+   },
+   "expected_emitted": {
+    "grade": "PM-derived, INDEPENDENT of every Rust reader: computed from the store's own bytes by oracle_expectations.py, applying the ruled record allowlist and grouping rule a second time. NOT harvested from reader output, which would be circular. Where the oracle covers a store it is a weaker witness than this, because it drops record kinds a reader must keep (the omp compaction record, pij receipts), so it cannot state an emitted set at all.",
+    "main": {
+     "count": 0,
+     "ordinals": [],
+     "rule": "claude-mirror dialect: types user and assistant; assistant rows sharing a message.id are ONE record whose ordinal is the group's first rowid; the twelve bookkeeping types are dropped"
+    },
+    "sidecars": []
    }
   },
   {
@@ -154,6 +232,15 @@
    "extras": {
     "tool": "github-copilot-cli",
     "dialect": "copilot"
+   },
+   "expected_emitted": {
+    "grade": "PM-derived, INDEPENDENT of every Rust reader: computed from the store's own bytes by oracle_expectations.py, applying the ruled record allowlist and grouping rule a second time. NOT harvested from reader output, which would be circular. Where the oracle covers a store it is a weaker witness than this, because it drops record kinds a reader must keep (the omp compaction record, pij receipts), so it cannot state an emitted set at all.",
+    "main": {
+     "count": 0,
+     "ordinals": [],
+     "rule": "copilot dialect: user.message and assistant.message only; the tool.execution_* events become ITEMS on their call, never records"
+    },
+    "sidecars": []
    }
   }
  ],

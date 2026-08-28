@@ -665,7 +665,7 @@ fn the_committed_fixtures_are_unchanged() {
 }
 
 #[test]
-fn emitted_ordinals_are_a_subsequence_of_what_the_store_holds() {
+fn emitted_ordinals_are_exactly_what_the_store_implies() {
     let (_scratch, root) = scratch_store("subsequence");
     let source = ClaudeSource::new(&root);
     let expectations = Expectations::load(FixtureStore::Claude);
@@ -675,9 +675,28 @@ fn emitted_ordinals_are_a_subsequence_of_what_the_store_holds() {
         // returns and therefore the order a reader consumes them in.
         let files = source.resolve(&native(key)).expect("resolve");
         let mut observed = Vec::new();
-        for file in &files {
+        for (index, file) in files.iter().enumerate() {
             let batch = source.read_incremental(file, None).expect("a full read");
-            observed.extend(batch.records.into_iter().map(|record| record.ordinal));
+            let ordinals: Vec<String> = batch
+                .records
+                .into_iter()
+                .map(|record| record.ordinal)
+                .collect();
+
+            // The CARDINALITY claim, per file. The subsequence claim below
+            // cannot make it: a split group emits more ordinals that are still
+            // real, still ordered and still repeat-free.
+            if index == 0 {
+                expectations.assert_emitted_ordinals_match(key, &ordinals);
+            } else {
+                let name = file
+                    .path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .expect("a sidecar has a file name");
+                expectations.assert_emitted_sidecar_ordinals_match(key, name, &ordinals);
+            }
+            observed.extend(ordinals);
         }
         expectations.assert_ordinals_are_a_subsequence(key, &observed);
     }
