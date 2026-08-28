@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.5.0](https://github.com/AI-Substrate/flowspace3/compare/v0.4.0...v0.5.0) (2026-08-28)
+
+
+### Features
+
+* add fail-closed daemon restart tool ([#49](https://github.com/AI-Substrate/flowspace3/issues/49)) ([d52a2ae](https://github.com/AI-Substrate/flowspace3/commit/d52a2ae9e8de6166d6aa204ac77abbbe4a4bde67))
+* add isolated daemon sandbox ([#48](https://github.com/AI-Substrate/flowspace3/issues/48)) ([f8bd87b](https://github.com/AI-Substrate/flowspace3/commit/f8bd87be63de63355d8ae5dcda337143543e5fe6))
+* add OpenRouter through OpenAI-compatible providers ([#58](https://github.com/AI-Substrate/flowspace3/issues/58)) ([4ba23dc](https://github.com/AI-Substrate/flowspace3/commit/4ba23dc5b306b924aeddf8b6e91d59ebbceda9d2))
+* **ask:** flowspace3 ask — a bounded, grounded agent loop over the index ([#45](https://github.com/AI-Substrate/flowspace3/issues/45)) ([e8d0a88](https://github.com/AI-Substrate/flowspace3/commit/e8d0a8864e3c13b08b947385ca7d6a28bfc14d41))
+* **ask:** render for humans, record what the model saw, and make the budget real ([#57](https://github.com/AI-Substrate/flowspace3/issues/57)) ([4a8ad05](https://github.com/AI-Substrate/flowspace3/commit/4a8ad056cc612a2e4046d01eb55f3f9b776eb166))
+* authenticate daemon HTTP requests ([#43](https://github.com/AI-Substrate/flowspace3/issues/43)) ([17d7708](https://github.com/AI-Substrate/flowspace3/commit/17d77086fb4a25d61915a56cc367ef1db7b1500a))
+* **convo-ingest:** read agent conversations out of their native session stores (plan 005) ([#42](https://github.com/AI-Substrate/flowspace3/issues/42)) ([85cd3ad](https://github.com/AI-Substrate/flowspace3/commit/85cd3adaae288dd2423978c2c7800063ab69c05d))
+* **daemon:** worktree lifecycle detection and checkout-scoped search ([#50](https://github.com/AI-Substrate/flowspace3/issues/50)) ([c8f5006](https://github.com/AI-Substrate/flowspace3/commit/c8f50065e0df0e6ff74f9b6291e3ed3babbd7177))
+* **ddocs:** index deterministic documents as addressable rows ([#65](https://github.com/AI-Substrate/flowspace3/issues/65)) ([8cef085](https://github.com/AI-Substrate/flowspace3/commit/8cef0855827915bc377a67fd37363533717fc023))
+* **harness:** team extension — worktree + next-ordinal plan scaffold ([#37](https://github.com/AI-Substrate/flowspace3/issues/37)) ([1d3bda9](https://github.com/AI-Substrate/flowspace3/commit/1d3bda904d0dd803245b807e9853e48c8848dd7c))
+* human-first output, the tui verb, and the daemon event stream (plan 007) ([#52](https://github.com/AI-Substrate/flowspace3/issues/52)) ([37efe03](https://github.com/AI-Substrate/flowspace3/commit/37efe03105c32f2afe2c6ad289766aaeb49aef6a))
+* **pij-team:** team-delivery skill prototype — tenets, dd schemas, packet templates, government settings ([#35](https://github.com/AI-Substrate/flowspace3/issues/35)) ([4a3f1d9](https://github.com/AI-Substrate/flowspace3/commit/4a3f1d9cf34cca0a4c49eca44ac7b5a886b358ab))
+* **team:** harness team tidy — the teardown counterpart to team new ([#40](https://github.com/AI-Substrate/flowspace3/issues/40)) ([bb10474](https://github.com/AI-Substrate/flowspace3/commit/bb10474aa69594d72d5c34070c20d4ed21db7d29))
+
+
+### Bug Fixes
+
+* **ask:** refuse when the agent port cannot answer, instead of publishing a placeholder ([#55](https://github.com/AI-Substrate/flowspace3/issues/55)) ([8822ebf](https://github.com/AI-Substrate/flowspace3/commit/8822ebf4d9c92588feb43d244b02ecf7e4aae823))
+* exit quietly on broken pipes ([#47](https://github.com/AI-Substrate/flowspace3/issues/47)) ([086f812](https://github.com/AI-Substrate/flowspace3/commit/086f812de58776a985f02f8951e4d0a11869d015))
+* isolate conversation ingest lane ([#56](https://github.com/AI-Substrate/flowspace3/issues/56)) ([b2f9c65](https://github.com/AI-Substrate/flowspace3/commit/b2f9c65dd28d7411ba77eed926ad23ea05bfd083))
+* make daemon boot and shutdown race-safe ([#64](https://github.com/AI-Substrate/flowspace3/issues/64)) ([c5fa703](https://github.com/AI-Substrate/flowspace3/commit/c5fa703fcd84a89a4747ceacce210887b8616a81))
+* prevent queue starvation with lifo claims ([#61](https://github.com/AI-Substrate/flowspace3/issues/61)) ([bdb2dbb](https://github.com/AI-Substrate/flowspace3/commit/bdb2dbb1ebb2268f936d901fca453ce45d1c98b4))
+* **query:** stop a scoped search being starved by the rest of the index ([#44](https://github.com/AI-Substrate/flowspace3/issues/44)) ([1325394](https://github.com/AI-Substrate/flowspace3/commit/1325394ed333e2ef796264f4f6817fc77501e483))
+* reindex blobs after parser version changes ([#63](https://github.com/AI-Substrate/flowspace3/issues/63)) ([8aad313](https://github.com/AI-Substrate/flowspace3/commit/8aad313ab1f8709ab4471ceef0baf746859878ef))
+* **team:** tidy must treat squash-merged branches as merged ([#41](https://github.com/AI-Substrate/flowspace3/issues/41)) ([ed188d4](https://github.com/AI-Substrate/flowspace3/commit/ed188d43675fb81f648cfa14b277300904713e39))
+* **watcher,enrich:** stop indexing gitignored trees, and stop paying to embed them ([#38](https://github.com/AI-Substrate/flowspace3/issues/38)) ([037fd4e](https://github.com/AI-Substrate/flowspace3/commit/037fd4e5feff2370ab7e3c31caf7bb447ca6f896))
+
+
+### Performance Improvements
+
+* **daemon:** newly discovered worktree scans claim ahead of backlog ([#59](https://github.com/AI-Substrate/flowspace3/issues/59)) ([8817b1f](https://github.com/AI-Substrate/flowspace3/commit/8817b1f970d3220ad7b899e296c31ce4eaf481cd))
+
 ## [0.4.0](https://github.com/AI-Substrate/flowspace3/compare/v0.3.2...v0.4.0) (2026-08-27)
 
 
