@@ -30,7 +30,7 @@ pub struct Step {
     pub found: String,
     /// What doctor did about it, or what you should do — absent when there was
     /// nothing to do.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub action: Option<String>,
     /// This row's contribution to the envelope's `next_action`, when it is the
     /// most important unmet thing.
@@ -38,7 +38,7 @@ pub struct Step {
     /// Carried by the ROW rather than computed from a chain of check names, so
     /// a new row supplies its own steer without editing the steering logic —
     /// and so the steer can never drift from the finding that produced it.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub steer: Option<String>,
     /// How long the step took.
     pub elapsed_ms: u128,
