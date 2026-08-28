@@ -111,6 +111,9 @@ pub struct IngestReport {
     pub deduped: usize,
     /// Turns queued for enrichment.
     pub summarized: usize,
+    /// Session files another poll of the same conversation was already
+    /// holding. Nonzero means this run did NOT read them and re-queued itself.
+    pub contended: usize,
 }
 
 /// The job kind that does the reading.
@@ -139,6 +142,19 @@ pub struct IngestAccepted {
 /// [`catalog::QUERY_INVALID`] for an address that is not one of the two
 /// shapes; store failures mapped by their own codes.
 pub async fn submit(state: &AppState, request: &IngestRequest) -> Result<IngestAccepted, Failure> {
+    submit_after(state, request, std::time::Duration::ZERO).await
+}
+
+/// Enqueue an ingest to run no sooner than `delay`.
+///
+/// # Errors
+/// [`catalog::QUERY_INVALID`] for an address that is not one of the two
+/// shapes; store failures mapped by their own codes.
+pub async fn submit_after(
+    state: &AppState,
+    request: &IngestRequest,
+    delay: std::time::Duration,
+) -> Result<IngestAccepted, Failure> {
     // Validated HERE rather than in the worker, so a mistyped address is a
     // synchronous error the caller can see rather than a job that fails later
     // where a hook will never look.
@@ -170,15 +186,9 @@ pub async fn submit(state: &AppState, request: &IngestRequest) -> Result<IngestA
         )
     })?;
 
-    fs3_store::enqueue_job(
-        &state.db,
-        INGEST_SESSION,
-        &dedupe_key,
-        &payload,
-        std::time::Duration::ZERO,
-    )
-    .await
-    .map_err(fail)?;
+    fs3_store::enqueue_job(&state.db, INGEST_SESSION, &dedupe_key, &payload, delay)
+        .await
+        .map_err(fail)?;
 
     Ok(IngestAccepted {
         address,
@@ -193,7 +203,18 @@ pub async fn submit(state: &AppState, request: &IngestRequest) -> Result<IngestA
 /// Whatever [`ingest`] returns; a malformed payload is terminal.
 pub async fn run(state: &AppState, payload: serde_json::Value) -> Result<(), Failure> {
     let request: IngestRequest = crate::runner::payload(payload)?;
-    ingest(state, &request).await.map(|_| ())
+    let report = ingest(state, &request).await?;
+
+    // A contended file was NOT read by this run, and the poll that held the
+    // lock may have read before the bytes this job was fired for existed.
+    // Settling successfully here would lose that delta until something else
+    // happened to fire another ingest. Re-queue instead: the dedupe upsert
+    // collapses it against any firing that arrives meanwhile, and the delay
+    // gives the holder time to finish rather than immediately contending again.
+    if report.contended > 0 {
+        submit_after(state, &request, std::time::Duration::from_secs(5)).await?;
+    }
+    Ok(())
 }
 
 /// What to tell an operator who just submitted one.
@@ -606,6 +627,12 @@ pub async fn ingest(state: &AppState, request: &IngestRequest) -> Result<IngestR
         // reading the same bytes, so there is nothing to wait for and nothing
         // to redo — leave the work to whichever poll got there first.
         let Some(outcome) = outcome else {
+            // Another poll of this conversation holds the lock. It is reading
+            // the same bytes, so there is nothing to redo — but it may have
+            // read BEFORE the bytes this run was fired for arrived, so
+            // reporting success here would settle a job that never read them.
+            // Counted, and re-queued below.
+            report.contended += 1;
             continue;
         };
         let Some(session) = outcome? else {

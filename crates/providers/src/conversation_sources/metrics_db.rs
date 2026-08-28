@@ -552,7 +552,10 @@ fn assemble(rows: &[Row]) -> Vec<RawRecord> {
     // its siblings already opened.
     let mut open_groups: BTreeMap<String, usize> = BTreeMap::new();
     // toolCallId -> index, for copilot's split call/result events.
-    let mut open_calls: BTreeMap<String, usize> = BTreeMap::new();
+    // toolCallId -> (record index, the tool the START named). The NAME travels
+    // with the index because a turn can hold several calls, and labelling a
+    // result from the record's FIRST call mislabels every one after it.
+    let mut open_calls: BTreeMap<String, (usize, String)> = BTreeMap::new();
 
     for row in rows {
         match row.dialect {
@@ -751,7 +754,11 @@ fn claude_block(block: &Value, body: &mut String, items: &mut Vec<TurnItem>) {
 /// holds, which catches an invented or reordered record but cannot catch a
 /// wrong allowlist. Ruled by the plan's PM 2026-08-28 and labelled here for the
 /// same reason the claude fixtures are labelled.
-fn copilot_row(row: &Row, records: &mut Vec<RawRecord>, open_calls: &mut BTreeMap<String, usize>) {
+fn copilot_row(
+    row: &Row,
+    records: &mut Vec<RawRecord>,
+    open_calls: &mut BTreeMap<String, (usize, String)>,
+) {
     let Some(record_type) = row.record_type() else {
         return;
     };
@@ -790,13 +797,25 @@ fn copilot_row(row: &Row, records: &mut Vec<RawRecord>, open_calls: &mut BTreeMa
                 .and_then(Value::as_array)
             {
                 for request in requests {
+                    // When the request carries its own id, remember it against
+                    // the record this turn is about to become: that is an EXACT
+                    // association, and it is what a later tool.execution_start
+                    // should prefer over any name-based guess.
+                    let named = request
+                        .get("toolName")
+                        .or_else(|| request.get("name"))
+                        .and_then(Value::as_str)
+                        .unwrap_or("unknown")
+                        .to_owned();
+                    if let Some(id) = request
+                        .get("id")
+                        .or_else(|| request.get("toolCallId"))
+                        .and_then(Value::as_str)
+                    {
+                        open_calls.insert(id.to_owned(), (records.len(), named.clone()));
+                    }
                     items.push(TurnItem::ToolCall {
-                        tool: request
-                            .get("toolName")
-                            .or_else(|| request.get("name"))
-                            .and_then(Value::as_str)
-                            .unwrap_or("unknown")
-                            .to_owned(),
+                        tool: named,
                         input: ToolInput::Verbatim {
                             text: render(request.get("arguments").or_else(|| request.get("input"))),
                         },
@@ -813,48 +832,51 @@ fn copilot_row(row: &Row, records: &mut Vec<RawRecord>, open_calls: &mut BTreeMa
             ));
         }
         "tool.execution_start" => {
-            // NOT a turn, and NOT an item either — the assistant.message that
-            // requested this tool ALREADY converted its `toolRequests` entry
-            // into a `TurnItem::ToolCall` on its own record. Round 1 of review
-            // caught this emitting a fifth record; round 2 caught the first fix
-            // pushing a SECOND ToolCall for the same call onto the same turn.
-            // All this event has to contribute is WHERE the result belongs.
-            //
-            // The anchor is found by walking back to the most recent record
-            // that already holds a ToolCall for this tool, rather than taking
-            // `records.last()`: an intervening emitted record would otherwise
-            // receive the result of a call it never made.
-            let Some(tool) = data
-                .and_then(|data| data.get("toolName"))
+            // NOT a turn, and NOT an item — the assistant.message that requested
+            // this tool already converted its `toolRequests` entry into a
+            // `TurnItem::ToolCall`. Round 1 caught this emitting a fifth record;
+            // round 2 caught the first fix pushing a SECOND ToolCall for the
+            // same call. All this event contributes is WHERE the result belongs
+            // and WHICH tool it is for.
+            let Some(call) = data
+                .and_then(|data| data.get("toolCallId"))
                 .and_then(Value::as_str)
             else {
                 return;
             };
-            let anchor = records.iter().rposition(|record| {
-                record.items.iter().any(|item| match item {
-                    TurnItem::ToolCall { tool: named, .. } => named == tool,
-                    TurnItem::ToolResult { .. } => false,
+            let tool = data
+                .and_then(|data| data.get("toolName"))
+                .and_then(Value::as_str)
+                .unwrap_or("unknown")
+                .to_owned();
+
+            // EXACT association first: the assistant request registered this id
+            // against its own record. Only when the store omitted the id — which
+            // it does in the committed fixture — fall back to the most recent
+            // record already holding a ToolCall for this tool. Round 3 of review
+            // named the difference: a name-anchored guess mis-attaches on a turn
+            // that called two tools.
+            let anchor = open_calls.get(call).map(|(index, _)| *index).or_else(|| {
+                records.iter().rposition(|record| {
+                    record.items.iter().any(|item| match item {
+                        TurnItem::ToolCall { tool: named, .. } => *named == tool,
+                        TurnItem::ToolResult { .. } => false,
+                    })
                 })
             });
             let Some(index) = anchor else {
                 // The assistant record that requested it is older than the
                 // cursor. Dropping is right for the same reason a result whose
-                // call we never saw is dropped: attaching it to the wrong turn
-                // would be worse than not having it.
+                // call we never saw is dropped.
                 return;
             };
-            if let Some(call) = data
-                .and_then(|data| data.get("toolCallId"))
-                .and_then(Value::as_str)
-            {
-                open_calls.insert(call.to_owned(), index);
-            }
+            open_calls.insert(call.to_owned(), (index, tool));
         }
         "tool.execution_complete" => {
             let call = data
                 .and_then(|data| data.get("toolCallId"))
                 .and_then(Value::as_str);
-            let Some(index) = call.and_then(|call| open_calls.remove(call)) else {
+            let Some((index, tool)) = call.and_then(|call| open_calls.remove(call)) else {
                 // A result whose call we never saw — the call is older than the
                 // cursor. Dropping it is right: attaching it to the wrong turn
                 // would be worse than not having it.
@@ -862,10 +884,6 @@ fn copilot_row(row: &Row, records: &mut Vec<RawRecord>, open_calls: &mut BTreeMa
             };
             let text = render(data.and_then(|data| data.get("result")));
             let total = text.len() as u64;
-            let tool = match &records[index].items[..] {
-                [TurnItem::ToolCall { tool, .. }, ..] => tool.clone(),
-                _ => "unknown".to_owned(),
-            };
             records[index].items.push(TurnItem::ToolResult {
                 tool,
                 head: text,

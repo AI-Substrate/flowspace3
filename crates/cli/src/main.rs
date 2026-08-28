@@ -522,7 +522,7 @@ async fn run(command: Command) -> Result<ExitCode> {
                 "harness": harness,
                 "folder": folder.or_else(here),
             });
-            Ok(emit(&client.conversation_ingest(&body).await))
+            emit(&client.conversation_ingest(&body).await)
         }
         Command::Conversation {
             command:

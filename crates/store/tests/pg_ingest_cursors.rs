@@ -127,6 +127,70 @@ async fn poll(
 /// re-read, which is the entire cost model of this plan. All three variants,
 /// because each store resumes in different terms and a serialisation that
 /// works for one proves nothing about the others.
+/// The anomaly alarm fires on a MIXED batch, which is the shape it exists for.
+///
+/// Round 2 of cross-model review found the first guard gated on
+/// `prepared.deduped == 0`, which disabled it on exactly the ordinary
+/// rescan-plus-growth batch: one already-seen ordinal makes `deduped` nonzero,
+/// and a colliding NEW turn would then be classified already-stored while the
+/// cursor and ledger committed past it. This pins the property the guard reads:
+/// `prepare_batch` removes every seen record BEFORE `append_turns`, so
+/// `already_stored` counts only turns the ledger called new — and it can be
+/// nonzero while `deduped` is too.
+#[tokio::test]
+async fn a_mixed_batch_still_reports_a_ledger_and_table_disagreement() {
+    let database = FreshDatabase::create().await;
+    let guid = id('e');
+    let pool = seeded(&database, &guid).await;
+    let harness = Harness::Omp;
+    let session = "mixed-batch";
+
+    // First poll: two records, both stored and both ledgered.
+    let first = [record("a", "one"), record("b", "two")];
+    let view = ledger_view(&pool, harness, session, &guid, &["a", "b"])
+        .await
+        .unwrap();
+    let prepared = prepare_batch(&first, &view.seen, view.next_turn_no);
+    assert_eq!(prepared.turns.len(), 2);
+    append(&pool, &guid, &prepared.turns).await;
+    commit_poll(
+        &pool,
+        harness,
+        session,
+        &guid,
+        &SourceCursor::Seq { seq: 2 },
+        &prepared.ledger,
+    )
+    .await
+    .unwrap();
+
+    // Second poll is MIXED: "a" is already in the ledger, "c" is new. That
+    // makes `deduped` nonzero — the condition that used to silence the alarm.
+    let second = [record("a", "one"), record("c", "three")];
+    let view = ledger_view(&pool, harness, session, &guid, &["a", "c"])
+        .await
+        .unwrap();
+    let prepared = prepare_batch(&second, &view.seen, view.next_turn_no);
+    assert_eq!(prepared.deduped, 1, "the ledger recognised the old record");
+    assert_eq!(prepared.turns.len(), 1, "and only the new one is prepared");
+
+    // Simulate the disagreement the guard watches for: another poll stored that
+    // turn under the same number while this one was deciding.
+    append(&pool, &guid, &prepared.turns).await;
+    let appended = append_turns(&pool, &guid, &prepared.turns, |_| false)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        appended.already_stored, 1,
+        "the store had a turn the ledger called new — nonzero even though \
+         deduped was also nonzero, which is the case the old qualifier hid"
+    );
+    assert!(appended.accepted.is_empty());
+
+    database.destroy(pool).await;
+}
+
 #[tokio::test]
 async fn every_cursor_variant_round_trips_through_postgres() {
     let guid = id('a');

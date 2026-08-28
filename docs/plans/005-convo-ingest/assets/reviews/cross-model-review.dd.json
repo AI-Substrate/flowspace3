@@ -9,10 +9,10 @@
         "title": "Cross-model review — plan 005 convo ingest",
         "reviewer": "pij-weary-orangutan",
         "model": "github-copilot/gpt-5.6-sol",
-        "round": "1",
+        "round": "3",
         "date": "2026-08-28",
         "plan": "../../plan.dd.json#meta",
-        "note": "VERDICT: REQUEST_CHANGES. AC judgment from fresh evidence: ac-0001 true (live seat-route re-poll job 3532 completed and the scratch conversation held 897 turns); ac-0002 true (native-route job 3683 completed into the same single conversation and the count remained 897); ac-0003 true for the exercised OMP session (804 to 897 turns, cursor offset 2684922 to 2902565); ac-0004 false as written (F-002); ac-0005 true in the reader suites; ac-0006(a) pipeline findability true — the stored turn was addressable at conv:bebaf916-be8e-8fa8-a3ee-5a826b0f1b3e#t160, the cursor advanced in the fresh re-poll, and the offline source-filter contract test `conversations_answer_only_when_asked_for` passed 1/1; ac-0006(b) semantic meaningfulness is accepted as prime-closed by the one explicitly authorised real-provider proof and was not re-run, exactly as the safety rule requires; ac-0007 core contract-suite claim is true, while its receipt overstates cardinality coverage (F-003); ac-0008 true (`harness checks` exited 0 across its nine-gate envelope at 718b83c). `harness plan validate --complete` did not reproduce the claimed clean plan gate: 0 errors, 6 warnings (F-004). Non-blocking fallback note requested by the PM: value-versus-hole is a valid operational distinction, not a correctness guarantee; Claude's 1970 timestamp sentinel stores successfully but can persist false turn time and permanently win `started_at` through LEAST. I could not establish whether a live turn-bearing Claude row can omit its timestamp, and no regression covers that fallback. Other named evidence gaps: Claude-native discovery/ingest was not exercised live; and `discover_folder` returns the first filesystem-order match if duplicate copies of one session id exist under multiple workspace slugs, but I found no evidence that this is reachable with divergent session content. Safety note: a pre-rule scratch-daemon run inherited ambient paid providers; it was stopped immediately when the rule arrived. Observation DL-018 remains in the shared buffer and was not cleared."
+        "note": "ROUND-3 VERDICT: REQUEST_CHANGES. F-005 implementation is correct: every nonzero `appended.already_stored` now fails, though no permanent regression exercises the mixed seen/new collision (F-011). F-006's detached session fixes panic/cancellation lock leakage and removes pool-slot exhaustion, but lock contention is now reported as successful ingest without reading; a live file can grow after the winner read and before the loser skips, leaving the later request's bytes unprocessed (F-009). F-007's duplicate item is fixed and its count assertion is now exact, but call/result association still keys by tool name and stores only the record index; multiple calls can be mis-attributed or results can inherit the first tool's name (F-010). F-008 is fully fixed: the new composed test runs real Claude ingest and reads the parent `conv:` address through daemon list; fresh 1/1 pass. F-004 remains fixed: complete plan validation reports 0 errors, 0 warnings, 0 open. Fresh targeted evidence: sidecar 1/1, metrics 16/16, cursor store 19/19; isolated `harness checks` passed all nine gates. DL-019 remains buffered and uncleared. Gist: ambient global config is a mutable higher-precedence input, so the unsealed gate failed before code checks on a newly unsupported `agent` field while the same branch passed with an empty FS3_CONFIG_DIR; deterministic branch validation should seal config and run user-config compatibility as a separate explicit probe."
       }
     },
     {
@@ -27,7 +27,8 @@
           "links": [
             "../../plan.dd.json#acceptance_criteria/ac-0003"
           ],
-          "receipt": "Fresh source trace: runner loop spawns every claimed serial-kind job while tasks.len() < workers; append_turns computes already_stored solely as input length minus returned inserts; the orchestrator sums those two complementary values. Existing cursor/store suites passed but contain no concurrent composed-pipeline case."
+          "receipt": "Fresh source trace: runner loop spawns every claimed serial-kind job while tasks.len() < workers; append_turns computes already_stored solely as input length minus returned inserts; the orchestrator sums those two complementary values. Existing cursor/store suites passed but contain no concurrent composed-pipeline case.",
+          "note": "Round 2 attempted two fixes; both remain narrower than this finding. See F-005 and F-006."
         },
         {
           "id": "f-002",
@@ -38,7 +39,8 @@
           "links": [
             "../../plan.dd.json#acceptance_criteria/ac-0004"
           ],
-          "receipt": "Exact-symbol search found `parent_session_id` only in reader/session-file construction, the discarded ingest report, and fixture assertions; no store or query surface persists it."
+          "receipt": "Exact-symbol search found `parent_session_id` only in reader/session-file construction, the discarded ingest report, and fixture assertions; no store or query surface persists it.",
+          "note": "Round 2 implementation accepted: migration, upsert and daemon list mapping persist and expose the parent. The receipt overstates its test evidence; see F-008."
         },
         {
           "id": "f-003",
@@ -49,7 +51,8 @@
           "links": [
             "../../plan.dd.json#acceptance_criteria/ac-0007"
           ],
-          "receipt": "Fresh `cargo test -p fs3-providers --test conversation_source_metrics_db` passed all 16 tests: the Copilot test accepted five records while the cardinality test passed because it iterates only MAIN and SUBAGENT. `oracle_expectations.py --check` also passed, confirming the contradictory four-record expectation is the committed generated artifact rather than drift. A read-only SQLite inspection then matched assistant row 936647's toolRequests.toolCallId to execution-start row 936648's toolCallId, proving the fifth record mirrors a call already represented on the assistant turn."
+          "receipt": "Fresh `cargo test -p fs3-providers --test conversation_source_metrics_db` passed all 16 tests: the Copilot test accepted five records while the cardinality test passed because it iterates only MAIN and SUBAGENT. `oracle_expectations.py --check` also passed, confirming the contradictory four-record expectation is the committed generated artifact rather than drift. A read-only SQLite inspection then matched assistant row 936647's toolRequests.toolCallId to execution-start row 936648's toolCallId, proving the fifth record mirrors a call already represented on the assistant turn.",
+          "note": "Round 2 fixed the four-versus-five record cardinality contradiction and added COPILOT to the equality loop. Tool payload still duplicates; see F-007."
         },
         {
           "id": "f-004",
@@ -60,7 +63,89 @@
           "links": [
             "../../plan.dd.json#meta"
           ],
-          "receipt": "Fresh gate output: error=0, warn=6, semantic open=6; warnings named ph-c2aa, ph-c3aa, tk-c201, tk-c202, tk-c203 and tk-c204."
+          "receipt": "Fresh gate output: error=0, warn=6, semantic open=6; warnings named ph-c2aa, ph-c3aa, tk-c201, tk-c202, tk-c203 and tk-c204.",
+          "note": "Round 2 fixed. Fresh complete validation: 0 errors, 0 warnings, 0 open."
+        },
+        {
+          "id": "f-005",
+          "kind": "defect",
+          "severity": "MAJOR",
+          "finding": "The replacement accounting backstop still suppresses a real ledger/table disagreement whenever the input batch contains any deduped record. `prepare_batch` removes every seen or within-batch duplicate before calling `append_turns`, so `appended.already_stored` describes only turns the ledger classified as new. Therefore any value above zero is anomalous regardless of `prepared.deduped`. The added condition `prepared.deduped == 0` disables the alarm on the normal rescan-plus-growth shape: one old ordinal makes `deduped > 0`, while a colliding new turn is silently classified already stored and the cursor/ledger can commit past it. Smallest fix: trigger on `appended.already_stored > 0` alone, or implement the stronger original recommendation and verify every conflict's existing canonical hash before treating it as an idempotent retry. Add a regression with one seen ordinal plus one ledger-new turn forced to collide.",
+          "address": "/Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/daemon/src/convo_ingest.rs:533-569; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/core/src/conversation_normalize.rs:108-134; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/store/src/conversations.rs:236-275",
+          "links": [
+            "../../plan.dd.json#acceptance_criteria/ac-0003"
+          ],
+          "receipt": "Fresh source trace: prepared.turns contains only ordinals absent from view.seen and the batch-local minted set; append_turns already_stored is computed only over that prepared slice. The deduped==0 conjunct has no valid bearing on whether a prepared turn may conflict.",
+          "note": "Round 3 code fix accepted: the deduped qualifier is gone. No regression forces the mixed seen/new conflict; see F-011."
+        },
+        {
+          "id": "f-006",
+          "kind": "defect",
+          "severity": "MAJOR",
+          "finding": "The new session-level advisory lock unlocks ordinary closure returns, including `Result::Err`, but it is not safe under panic or future cancellation. Both bypass the explicit `pg_advisory_unlock`. SQLx 0.8.6 returns `PoolConnection` to the pool on Drop unless `close_on_drop` was set, so the PostgreSQL session — and its advisory lock — survive. Reacquiring that same session is re-entrant and one later unlock leaves the leaked hold behind; another session blocks. The helper also consumes one of a fixed eight pool connections while its closure acquires separate connections from the same pool. `worker_concurrency` has no upper bound, so eight distinct ingest jobs can each hold a lock connection and then all wait forever for a ninth connection. No test calls `with_conversation_lock`. Smallest boring fix: use a globally serial ingest lane first, or make the lock guard close its connection on every abnormal drop and bound lock holders below pool capacity; then prove same-key mutual exclusion, different-key progress, closure error, panic/cancellation recovery, and configured high worker concurrency.",
+          "address": "/Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/store/src/ingest_cursors.rs:426-485; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/store/src/lib.rs:183-214; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/core/src/config.rs:850-899; /Users/jordanknight/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-core-0.8.6/src/pool/connection.rs:18-25,91-99,198-210",
+          "links": [
+            "../../plan.dd.json#acceptance_criteria/ac-0003"
+          ],
+          "receipt": "SQLx source explicitly states PoolConnection is returned to the pool on drop and does so unless close_on_drop is true. The fs3 pool is fixed at 8; worker_concurrency validation rejects only zero. Exact-symbol search found no test callsite for with_conversation_lock.",
+          "note": "Round 3 detached connection and try-lock fix the panic/cancellation and pool-slot mechanisms. Returning success on contention introduces a separate live-growth loss window; see F-009."
+        },
+        {
+          "id": "f-007",
+          "kind": "defect",
+          "severity": "MAJOR",
+          "finding": "Copilot cardinality is now four, but the assistant turn still contains the same tool call twice. The `assistant.message` branch first converts every `toolRequests` entry into a `TurnItem::ToolCall`; the immediately following `tool.execution_start` branch then pushes another `ToolCall` onto that same last record before registering it. The fixture proves both events carry the same toolCallId and call payload. The revised test checks only that the last two items are Call/Result, so `[original Call, duplicate Call, Result]` passes. The start branch also chooses `records.last()` rather than the assistant request's toolCallId, so an intervening emitted record would receive the call incorrectly. Smallest fix: record each toolCallId→assistant-index while processing `assistant.message`, make `tool.execution_start` a non-emitting confirmation (or enrich the matched item without duplicating it), and assert exactly one call plus one result on the correct assistant turn.",
+          "address": "/Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/providers/src/conversation_sources/metrics_db.rs:779-850; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/providers/tests/conversation_source_metrics_db.rs:373-422",
+          "links": [
+            "../../plan.dd.json#acceptance_criteria/ac-0007"
+          ],
+          "receipt": "Fixture rows 936647 and 936648 share the same toolCallId. Current code pushes one ToolCall in the assistant request loop and a second in the execution-start branch. Fresh metrics suite passed 16/16, demonstrating the test does not reject the duplicate item.",
+          "note": "Round 3 fixes the duplicate ToolCall and asserts exact counts. Association still does not use the assistant request toolCallId; see F-010."
+        },
+        {
+          "id": "f-008",
+          "kind": "defect",
+          "severity": "MINOR",
+          "finding": "The parent persistence implementation appears to satisfy ac-0004, but the named proof is narrower than its receipt. `a_child_conversation_knows_its_parent_after_the_job_settles` does not run an ingest job and does not call the daemon/CLI list surface: it manually constructs `Conversation.parent`, calls the store upsert directly, and reads the store list directly. It therefore stays green if the composition root stops deriving the parent, or if the daemon stops serializing it as a `conv:` address — the two seams the receipt says it proves. Smallest fix: add a composed fixture test that invokes the ingest path for a sidecar and reads the relationship through `conversations::list` or the HTTP endpoint after the worker settles. Keep the store test for COALESCE semantics.",
+          "address": "/Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/store/tests/pg_conversations.rs:745-813; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/daemon/src/convo_ingest.rs:499-515; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/daemon/src/conversations.rs:233-266",
+          "links": [
+            "../../plan.dd.json#acceptance_criteria/ac-0004"
+          ],
+          "receipt": "Fresh parent test passed 1/1. Its body bypasses the worker and daemon mapping by calling upsert_conversation and list_conversations directly; no daemon or CLI test references parent_conversation_id or the named test.",
+          "note": "Round 3 fixed. The composed test executes real ingest and daemon list; fresh pass 1/1."
+        },
+        {
+          "id": "f-009",
+          "kind": "defect",
+          "severity": "MAJOR",
+          "finding": "Lock contention now completes the losing ingest job successfully without reading the file. The comment's premise that the winner is reading the same bytes is false for a live-growing session: the winner can read through offset N, new bytes can arrive while it still holds the lock, and a later explicit ingest can fail `pg_try_advisory_lock`, return `Ok(None)`, and be marked done. The winner commits N; the later job that could have read N+delta has disappeared, and no future poll is guaranteed for this pull-based feature. This narrows F-006 by replacing deadlock with silent deferral/loss of the request. Smallest fix: represent contention as retry/park, or deterministically enqueue one canonical follow-up after the holder releases; do not settle the job as success. Add a test that appends after the holder's read while a second route contends, then proves the later bytes land without a third invocation.",
+          "address": "/Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/store/src/ingest_cursors.rs:439-492; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/daemon/src/convo_ingest.rs:452-465,601-610; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/daemon/src/convo_ingest.rs:188-195",
+          "links": [
+            "../../plan.dd.json#acceptance_criteria/ac-0003"
+          ],
+          "receipt": "Source trace: try-lock false returns Ok(None); ingest converts that to continue and ultimately Ok(report); run discards the report and returns Ok, so the queue settles the contending job done. The session store is live and the read occurs before the lock is released, leaving a concrete growth window."
+        },
+        {
+          "id": "f-010",
+          "kind": "defect",
+          "severity": "MAJOR",
+          "finding": "Copilot now emits exactly one ToolCall item, but result association remains weaker than the store's identity. `assistant.message.toolRequests` contains each toolCallId, yet the reader discards those ids. On `tool.execution_start` it walks backward by tool name and stores only `toolCallId -> record index`; on completion it labels the result with the first ToolCall in that record. An assistant turn with two different tool requests therefore gives the second result the first tool's name, and two nearby assistant turns using the same tool can register a start against the wrong turn. The current fixture has no multi-request assistant row, so the exact-count test cannot catch either case. Smallest fix: when emitting the assistant record, map every request's toolCallId to `(record index, tool name)`; make execution-start a no-op or validation; use the captured pair for completion. Add multi-tool and repeated-same-tool interleaving cases.",
+          "address": "/Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/providers/src/conversation_sources/metrics_db.rs:779-869; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/providers/tests/conversation_source_metrics_db.rs:403-438",
+          "links": [
+            "../../plan.dd.json#acceptance_criteria/ac-0007"
+          ],
+          "receipt": "Fresh source trace shows request toolCallId is ignored in the assistant branch, start anchors with rposition by tool name, and completion derives its tool from records[index].items first element. Read-only fixture inspection found zero assistant rows with more than one toolRequest, so the 16/16 suite does not exercise the ambiguity."
+        },
+        {
+          "id": "f-011",
+          "kind": "defect",
+          "severity": "MINOR",
+          "finding": "F-005's code condition is now correct, but the requested permanent proof is still absent. Exact-symbol search finds the anomaly condition and message only in production code; no test creates a batch containing one ledger-seen ordinal and one ledger-new turn whose number already exists. This is the precise shape the prior qualifier accidentally disabled. Smallest fix: add that regression at the composed or store seam and mutation-check restoring the `deduped == 0` qualifier.",
+          "address": "/Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/daemon/src/convo_ingest.rs:533-569",
+          "links": [
+            "../../plan.dd.json#acceptance_criteria/ac-0003"
+          ],
+          "receipt": "Exact search for the anomaly text and condition returned only crates/daemon/src/convo_ingest.rs. Fresh cursor-store tests passed 19/19 but none invokes the backstop."
         }
       ]
     },
@@ -76,20 +161,62 @@
         {
           "id": "v-002",
           "finding": "#findings/f-002",
-          "resolution": "confirmed",
-          "rationale": "REQUEST_CHANGES: the persisted product does not contain the accepted child-parent relationship."
+          "resolution": "fixed",
+          "rationale": "Parent persistence and daemon mapping landed; a narrower proof gap remains as F-008."
         },
         {
           "id": "v-003",
           "finding": "#findings/f-003",
-          "resolution": "confirmed",
-          "rationale": "REQUEST_CHANGES: a committed independent expectation contradicts behavior and is not exercised."
+          "resolution": "fixed",
+          "rationale": "The record-cardinality contradiction is fixed and COPILOT is in the equality loop; duplicate item semantics remain as F-007."
         },
         {
           "id": "v-004",
           "finding": "#findings/f-004",
+          "resolution": "fixed",
+          "rationale": "Fresh complete plan validation reports zero errors, warnings, and open rows."
+        },
+        {
+          "id": "v-005",
+          "finding": "#findings/f-005",
+          "resolution": "fixed",
+          "rationale": "Round-3 condition is correct; permanent regression remains F-011."
+        },
+        {
+          "id": "v-006",
+          "finding": "#findings/f-006",
+          "resolution": "fixed",
+          "rationale": "Detached try-lock fixes the original lock leak and pool exhaustion; contention success remains F-009."
+        },
+        {
+          "id": "v-007",
+          "finding": "#findings/f-007",
+          "resolution": "fixed",
+          "rationale": "Duplicate item fixed; identity association remains F-010."
+        },
+        {
+          "id": "v-008",
+          "finding": "#findings/f-008",
+          "resolution": "fixed",
+          "rationale": "Composed ingest-to-daemon-list proof now covers the promised seams."
+        },
+        {
+          "id": "v-009",
+          "finding": "#findings/f-009",
           "resolution": "confirmed",
-          "rationale": "Plan-record fix required before the complete gate can pass."
+          "rationale": "Round-3 evidence confirms this remaining gap."
+        },
+        {
+          "id": "v-010",
+          "finding": "#findings/f-010",
+          "resolution": "confirmed",
+          "rationale": "Round-3 evidence confirms this remaining gap."
+        },
+        {
+          "id": "v-011",
+          "finding": "#findings/f-011",
+          "resolution": "confirmed",
+          "rationale": "Round-3 evidence confirms this remaining gap."
         }
       ]
     }
