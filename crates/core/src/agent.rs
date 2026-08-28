@@ -102,6 +102,12 @@ pub struct ToolOutcome {
     /// False for a search that matched nothing — the call worked, the index
     /// answered, and the answer was "nothing here".
     pub evidence: bool,
+    /// Opaque references surfaced inside `content`, for tool-specific provenance.
+    ///
+    /// Core assigns no semantics to these strings. It only carries references
+    /// that survived result truncation, so callers can report exactly what the
+    /// model saw rather than everything the toolbox originally produced.
+    pub references: Vec<String>,
 }
 
 impl ToolOutcome {
@@ -110,6 +116,16 @@ impl ToolOutcome {
         Self {
             content: content.into(),
             evidence: true,
+            references: Vec::new(),
+        }
+    }
+
+    /// A call that produced real material and surfaced opaque references.
+    pub fn evidence_with_references(content: impl Into<String>, references: Vec<String>) -> Self {
+        Self {
+            content: content.into(),
+            evidence: true,
+            references,
         }
     }
 
@@ -118,6 +134,7 @@ impl ToolOutcome {
         Self {
             content: content.into(),
             evidence: false,
+            references: Vec::new(),
         }
     }
 }
@@ -173,6 +190,11 @@ pub struct TraceEntry {
     /// nothing has `failed: false` and `evidence: false`. That distinction is
     /// what keeps [`AgentAnswer::grounded`] honest.
     pub evidence: bool,
+    /// Opaque references present in the result the model actually saw.
+    ///
+    /// The toolbox defines their meaning. Core filters out any reference that
+    /// was cut away when the result was truncated.
+    pub references: Vec<String>,
     /// Size of the result handed back, after any truncation.
     pub result_chars: usize,
 }
@@ -330,21 +352,27 @@ pub async fn ask(
         });
 
         for call in &turn.tool_calls {
-            let (content, failed, evidence) = match tools.call(&call.name, &call.arguments).await {
-                Ok(outcome) => (
-                    truncate(outcome.content, bounds.tool_result_max_chars),
-                    false,
-                    outcome.evidence,
-                ),
-                // Deliberately a result, not an early return: see the module docs.
-                Err(error) => (format!("ERROR: {error}"), true, false),
-            };
+            let (content, failed, evidence, references) =
+                match tools.call(&call.name, &call.arguments).await {
+                    Ok(outcome) => {
+                        let content = truncate(outcome.content, bounds.tool_result_max_chars);
+                        let references = outcome
+                            .references
+                            .into_iter()
+                            .filter(|reference| content.contains(reference))
+                            .collect();
+                        (content, false, outcome.evidence, references)
+                    }
+                    // Deliberately a result, not an early return: see the module docs.
+                    Err(error) => (format!("ERROR: {error}"), true, false, Vec::new()),
+                };
             trace.push(TraceEntry {
                 iteration,
                 tool: call.name.clone(),
                 arguments: call.arguments.clone(),
                 failed,
                 evidence,
+                references,
                 result_chars: content.chars().count(),
             });
             messages.push(ChatMessage::ToolResult {
@@ -501,6 +529,18 @@ mod tests {
         }
     }
 
+    fn tools_with_references(content: &str, references: &[&str]) -> StubTools {
+        StubTools {
+            answer: Ok(ToolOutcome::evidence_with_references(
+                content,
+                references
+                    .iter()
+                    .map(|reference| reference.to_string())
+                    .collect(),
+            )),
+        }
+    }
+
     /// A toolbox whose calls SUCCEED and find nothing — the shape a search
     /// against an index with no match really has.
     fn tools_no_hits() -> StubTools {
@@ -589,9 +629,60 @@ mod tests {
             "but it matched nothing, so it carries no evidence"
         );
         assert!(
+            outcome.trace[0].references.is_empty(),
+            "a no-hit search surfaced no references"
+        );
+        assert!(
             !outcome.grounded,
             "an answer resting on zero matches is not grounded"
         );
+    }
+
+    #[test]
+    fn only_references_visible_after_truncation_reach_the_trace() {
+        let visible = "el:visible";
+        let truncated = "el:truncated";
+        let content = format!("{visible}{}\n{truncated}", "x".repeat(40));
+        let chat = ScriptedChat::new(vec![
+            calls(vec![call("c1", "search", "{}")], 10),
+            prose("answer from the visible summary", 10),
+        ]);
+        let bounds = AgentBounds {
+            tool_result_max_chars: visible.len(),
+            ..AgentBounds::default()
+        };
+
+        let outcome = run(ask(
+            &chat,
+            &tools_with_references(&content, &[visible, truncated]),
+            bounds,
+            "q",
+        ));
+
+        assert_eq!(outcome.trace[0].references, [visible]);
+        let ChatMessage::ToolResult { content, .. } = &chat.last_conversation()[3] else {
+            panic!("expected a tool result");
+        };
+        assert!(content.contains(visible));
+        assert!(!content.contains(truncated));
+    }
+
+    #[test]
+    fn an_ordinary_evidence_call_does_not_invent_surfaced_references() {
+        let chat = ScriptedChat::new(vec![
+            calls(vec![call("c1", "get", r#"{"address":"el:read"}"#)], 10),
+            prose("answer from the full read", 10),
+        ]);
+
+        let outcome = run(ask(
+            &chat,
+            &tools_ok("full element"),
+            AgentBounds::default(),
+            "q",
+        ));
+
+        assert!(outcome.trace[0].evidence);
+        assert!(outcome.trace[0].references.is_empty());
     }
 
     #[test]

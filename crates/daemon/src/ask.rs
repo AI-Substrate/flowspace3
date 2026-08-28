@@ -78,6 +78,12 @@ pub struct AskTraceEntry {
     /// distinction — "the tools worked and found nothing" and "the tools
     /// broke" score differently.
     pub evidence: bool,
+    /// Addresses whose summaries this search surfaced to the model.
+    ///
+    /// Empty for non-search calls, failed searches and searches with no hits.
+    /// This is deliberately weaker provenance than [`AskReport::citations`]:
+    /// surfaced here means offered as a summary, not read in full.
+    pub search_hits: Vec<String>,
     /// Size of the result handed back, after truncation.
     pub result_chars: usize,
 }
@@ -228,6 +234,7 @@ impl<'a> IndexTools<'a> {
             Self::scope_line(&scope),
             results.results.len()
         );
+        let mut addresses = Vec::with_capacity(results.results.len());
         for hit in &results.results {
             let gist = hit
                 .smart
@@ -240,8 +247,9 @@ impl<'a> IndexTools<'a> {
                 hit.path.as_deref().unwrap_or("(unknown path)"),
                 hit.score
             ));
+            addresses.push(hit.address.clone());
         }
-        Ok(ToolOutcome::evidence(rendered))
+        Ok(ToolOutcome::evidence_with_references(rendered, addresses))
     }
 
     async fn run_get(&self, arguments: &Value) -> CoreResult<ToolOutcome> {
@@ -377,6 +385,7 @@ pub async fn ask(state: &AppState, request: &AskRequest, scope: Scope) -> CoreRe
                 arguments: entry.arguments,
                 failed: entry.failed,
                 evidence: entry.evidence,
+                search_hits: entry.references,
                 result_chars: entry.result_chars,
             })
             .collect(),

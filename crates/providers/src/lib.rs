@@ -46,8 +46,8 @@ pub use local::{
 };
 pub use openai::{OpenAiEmbedder, OpenAiSummarizer};
 pub use openai_compat::{
-    DEFAULT_MAX_TOKENS, DEFAULT_MODEL, OpenAiCompatConfig, OpenAiCompatSummarizer,
-    embeddings_unsupported,
+    DEFAULT_MAX_TOKENS, DEFAULT_MODEL, OpenAiCompatChatClient, OpenAiCompatConfig,
+    OpenAiCompatEmbedder, OpenAiCompatSummarizer, embeddings_unsupported,
 };
 
 /// The default OpenAI API base. Overridable for Azure or a gateway.

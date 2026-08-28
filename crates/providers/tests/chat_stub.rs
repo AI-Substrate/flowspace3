@@ -14,6 +14,7 @@ use azure_core::{
     credentials::{AccessToken, TokenCredential, TokenRequestOptions},
     time::OffsetDateTime,
 };
+use fs3_core::ChatProvider;
 use fs3_providers::{
     AzureCredential, AzureOpenAiChatClient, AzureOpenAiConfig, COGNITIVE_SERVICES_SCOPE,
     ChatCompletionRequest, ChatFunctionCall, ChatMessage, ChatRole, ChatTool, ChatToolCall,
@@ -83,6 +84,8 @@ fn request(messages: Vec<ChatMessage>) -> ChatCompletionRequest {
 const PLAIN_RESPONSE: &str =
     r#"{"choices":[{"message":{"role":"assistant","content":"The answer."}}]}"#;
 const TOOL_RESPONSE: &str = r#"{"choices":[{"message":{"role":"assistant","content":null,"tool_calls":[{"id":"call-1","type":"function","function":{"name":"search_code","arguments":"{\"query\":\"retry policy\"}"}}]}}]}"#;
+const USAGE_RESPONSE: &str = r#"{"choices":[{"message":{"role":"assistant","content":"Measured."}}],"usage":{"prompt_tokens":13,"completion_tokens":8,"total_tokens":21}}"#;
+const EXTRA_USAGE_RESPONSE: &str = r#"{"choices":[{"message":{"role":"assistant","content":"Measured."}}],"usage":{"prompt_tokens":13,"completion_tokens":8,"total_tokens":21,"prompt_tokens_details":{"cached_tokens":5},"future_counter":34}}"#;
 
 #[tokio::test]
 async fn an_api_key_chat_request_carries_tools_replayed_messages_and_the_gpt_five_cap() {
@@ -170,6 +173,45 @@ async fn a_plain_content_reply_deserializes_without_tool_calls() {
     assert_eq!(message.content.as_deref(), Some("The answer."));
     assert!(message.tool_calls.is_empty());
     assert_eq!(message.tool_call_id, None);
+}
+
+#[tokio::test]
+async fn reported_total_usage_reaches_the_provider_neutral_turn() {
+    let stub = StubServer::ok(USAGE_RESPONSE).await;
+    let client = AzureOpenAiChatClient::new(config(&stub.endpoint, AzureCredential::api_key("k")));
+
+    let turn = client
+        .turn(&[fs3_core::ChatMessage::User("Answer".to_string())], &[])
+        .await
+        .expect("the stub answers");
+
+    assert_eq!(turn.tokens_used, Some(21));
+}
+
+#[tokio::test]
+async fn a_reply_without_usage_keeps_token_cost_unknown() {
+    let stub = StubServer::ok(PLAIN_RESPONSE).await;
+    let client = AzureOpenAiChatClient::new(config(&stub.endpoint, AzureCredential::api_key("k")));
+
+    let turn = client
+        .turn(&[fs3_core::ChatMessage::User("Answer".to_string())], &[])
+        .await
+        .expect("the stub answers");
+
+    assert_eq!(turn.tokens_used, None);
+}
+
+#[tokio::test]
+async fn extra_usage_fields_do_not_break_a_chat_turn() {
+    let stub = StubServer::ok(EXTRA_USAGE_RESPONSE).await;
+    let client = AzureOpenAiChatClient::new(config(&stub.endpoint, AzureCredential::api_key("k")));
+
+    let turn = client
+        .turn(&[fs3_core::ChatMessage::User("Answer".to_string())], &[])
+        .await
+        .expect("the stub answers");
+
+    assert_eq!(turn.tokens_used, Some(21));
 }
 
 #[tokio::test]

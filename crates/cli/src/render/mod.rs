@@ -47,6 +47,7 @@ fn render_at_width(envelope: &Envelope<Value>, width: u16) -> Option<String> {
     }
 
     match envelope.command.as_str() {
+        "ask" => surfaces::ask::render(envelope, width),
         "search" => surfaces::search::render(envelope, width),
         "status" => surfaces::status::render(envelope, width),
         "doctor" => surfaces::doctor::render(envelope, width),

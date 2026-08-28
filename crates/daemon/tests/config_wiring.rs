@@ -134,6 +134,95 @@ fn the_openai_arm_fails_fast_and_names_the_missing_key() {
     std::fs::remove_dir_all(&dir).ok();
 }
 
+#[test]
+fn openai_compat_missing_key_is_a_config_answer_naming_secrets_file() {
+    let dir = support::temp_dir("openai-compat-missing-key");
+    std::fs::write(
+        dir.join("config.toml"),
+        r#"
+        [providers.openrouter]
+        kind = "openai_compat"
+        base_url = "https://openrouter.ai/api/v1"
+        model = "z-ai/glm-5.3-flash"
+        api_key_env = "FS3_TEST_OPENROUTER_KEY_NOT_SET"
+
+        [agent]
+        active = "openrouter"
+        "#,
+    )
+    .expect("writing the fixture config");
+
+    let config = config::load_config_from(&dir).expect("the config shape is valid");
+    let message = format!(
+        "{:#}",
+        AppState::from_config(config).expect_err("wiring must resolve the named key")
+    );
+    assert!(
+        message.contains("FS3_TEST_OPENROUTER_KEY_NOT_SET"),
+        "{message}"
+    );
+    assert!(message.contains("secrets.env"), "{message}");
+    assert!(message.contains("config.toml"), "{message}");
+    assert!(!message.contains("Bearer"), "{message}");
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[tokio::test]
+async fn mixed_surfaces_wire_without_cross_contamination() {
+    const KEY_ENV: &str = "FS3_TEST_MIXED_SURFACE_PROVIDER_KEY";
+    // SAFETY: this test owns a uniquely named variable and removes it before
+    // returning; no other test reads this name.
+    unsafe { std::env::set_var(KEY_ENV, "offline-fixture-key") };
+    let dir = support::temp_dir("mixed-surface-providers");
+    std::fs::write(
+        dir.join("config.toml"),
+        format!(
+            r#"
+            [providers.azure-embed]
+            kind = "azure_openai"
+            endpoint = "https://example.openai.azure.com"
+            deployment = "text-embedding-3-small"
+            api_version = "2024-02-01"
+            api_key_env = "{KEY_ENV}"
+            dimensions = 1024
+
+            [providers.azure-summary]
+            kind = "azure_openai"
+            endpoint = "https://example.openai.azure.com"
+            deployment = "gpt-4o"
+            api_version = "2024-12-01-preview"
+            api_key_env = "{KEY_ENV}"
+
+            [providers.openrouter-glm]
+            kind = "openai_compat"
+            base_url = "https://openrouter.ai/api/v1"
+            model = "z-ai/glm-5.3-flash"
+            api_key_env = "{KEY_ENV}"
+
+            [embedder]
+            active = "azure-embed"
+            [summarizer]
+            active = "azure-summary"
+            [agent]
+            active = "openrouter-glm"
+            "#
+        ),
+    )
+    .expect("writing the mixed fixture");
+
+    let config = config::load_config_from(&dir).expect("the mixed config is valid");
+    let state = AppState::from_config(config).expect("all three selected surfaces wire");
+    assert_eq!(state.active_kind(Port::Embedder), "azure_openai");
+    assert_eq!(state.active_kind(Port::Summarizer), "azure_openai");
+    assert_eq!(state.active_kind(Port::Agent), "openai_compat");
+    assert!(state.embedder.key().starts_with("text-embedding-3-small@"));
+    assert!(state.summarizer.key().starts_with("gpt-4o@"));
+    assert_eq!(state.agent.key(), "z-ai/glm-5.3-flash");
+
+    unsafe { std::env::remove_var(KEY_ENV) };
+    std::fs::remove_dir_all(&dir).ok();
+}
+
 /// An instance nobody selects is never constructed, so declaring a provider you
 /// have no key for must not stop the daemon starting.
 #[tokio::test]
