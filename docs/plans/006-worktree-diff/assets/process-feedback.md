@@ -88,7 +88,7 @@ it. The honest workaround — leave the task unchecked, record execution
 evidence, check on proof — is fine, but the discipline and the schema disagree
 about whether in-progress is a state.
 
-## Two additions I would make to the tenets
+## Three additions I would make to the tenets
 
 ### A. A measurement has preconditions, and a predicate must refuse when they fail
 
@@ -102,6 +102,14 @@ The harness now reads the embedder from the daemon's boot line and emits
 `unmeasurable-fake-embedder` rather than a number it cannot support. **A
 misleading zero is worse than a refusal** — and the same instinct caught me
 about to ship a "must be 0" gate on a population that can never be 0.
+
+The rule needed one more turn of the screw, found by driving the new
+`daemon --sandbox` verb: the gate originally refused on `fake` and *proceeded*
+on `unknown`. But the sandbox logs beside its own temp config, where the script
+was not looking — so a real run could have reported P3 verdicts with the
+embedder unidentified, computing the answer on faith. **An unverified
+PRECONDITION must refuse exactly like an unverified RESULT.** Absence of proof
+is not proof.
 
 ### B. Composition is where EMERGENT defects appear — units can each be correct and the pair wrong
 
@@ -129,6 +137,28 @@ composed artifact rather than reading it.** All three were invisible to passing
 tests: the spend incident, the null-path leak, and a `set -e` trap in my own
 harness that made the committed probe abort mid-run on the normal isolated-daemon
 shape.
+
+### C. The law generalises outward, one surface at a time
+
+The rule this plan discovered kept extending, and each extension was found the
+same way — by looking at what a *caller* received rather than at what a step
+returned:
+
+1. **Choosing** — a scope filter over content-addressed storage must be applied
+   at every step that CHOOSES a row, not only where one is ADMITTED. Found in
+   the raw representative resolver (f-001).
+2. **The next chooser** — the reviewer applied that rule one step downstream and
+   found the smart-content chooser doing the same thing, with a different
+   symptom: a silent false negative rather than a null leak (f-005).
+3. **Rendering** — scope must be VISIBLE at every surface that RENDERS a chosen
+   row, not merely enforced where it was chosen. Identical-looking rows from two
+   checkouts in a human interface is the same defect with a nicer font (the TUI
+   question, ruled by prime: show provenance only when it disambiguates —
+   honest at ambiguity, silent when unambiguous, the same shape as the
+   weak-match hint).
+
+A defect class is not closed when the instance is fixed. It is closed when
+someone has walked the rule to the next surface and found nothing.
 
 ## On the reviewer
 
