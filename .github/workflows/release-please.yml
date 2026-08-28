@@ -87,7 +87,7 @@ jobs:
 
       # Only when there is a release PR to fix up. `prs` is a JSON array; the
       # branch name is what we need to push back onto.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: ${{ steps.release.outputs.prs }}
         with:
           fetch-depth: 0
