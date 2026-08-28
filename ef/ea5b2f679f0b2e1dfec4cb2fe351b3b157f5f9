@@ -1,0 +1,22 @@
+docs/plans/008-ddocs-scan/assets/done-reports.md
+  h_9e71e8b09f7cf2 1-98
+docs/plans/008-ddocs-scan/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 50,58,246-248,253-255,260-262,267-269,274-276,281-283,288-290,295-297,302-304,311-313,318-320,325-327,332-334,339-341,346-348,353-355
+docs/plans/008-ddocs-scan/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 41-42,89-99,103-111
+docs/plans/008-ddocs-scan/plan.dd.json
+  h_9e71e8b09f7cf2 176-177
+docs/plans/008-ddocs-scan/plan.dd.md
+  h_9e71e8b09f7cf2 96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "efea5b2f679f0b2e1dfec4cb2fe351b3b157f5f9",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
