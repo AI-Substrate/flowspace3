@@ -1,0 +1,41 @@
+crates/daemon/tests/oversize.rs
+  s_844473ec1a58cb::t_6babddc63e8099 99-104,178-183
+crates/daemon/tests/streaming.rs
+  s_844473ec1a58cb::t_cf5f30941745fe 243-311
+crates/daemon/tests/support/mod.rs
+  s_844473ec1a58cb::t_ab6d16f96e09c8 204,245-246
+crates/parsers/src/discovery.rs
+  s_844473ec1a58cb::t_dfbed4623939ba 511
+crates/parsers/tests/discovery_subtree.rs
+  s_844473ec1a58cb::t_0323b37c2aab83 95-98,209-210
+docs/services/discovery.md
+  s_15d888f4b629c1::t_5c30404294bf2f 8,12,15-25,60-62,191-193,207-213
+docs/services/remove-and-gc.md
+  s_844473ec1a58cb::t_76e8bea9b449cc 124-136,159-165
+docs/services/watcher.md
+  s_15d888f4b629c1::t_7cc1746a3f1702 22-24,74-76,132-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "88777e0b316c91222e88a21f9110400a74dc7d7b",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_844473ec1a58cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-afe39ecf96e2cf786",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
