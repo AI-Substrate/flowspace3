@@ -8,7 +8,7 @@ use std::io::Write;
 
 use crate::DaemonClient;
 use anyhow::{Context, Result};
-use fs3_core::events::{Event, EventKind, Hello};
+use fs3_core::events::{Event, EventKind, Hello, STREAM_NAME, STREAM_VERSION};
 
 /// Connect to `/events` and copy it until the daemon or caller disconnects.
 ///
@@ -49,6 +49,20 @@ fn render_line(line: &[u8]) -> Result<()> {
     let value: serde_json::Value = serde_json::from_slice(line).context("invalid event JSON")?;
     if value.get("stream").is_some() {
         let hello: Hello = serde_json::from_value(value).context("invalid event hello")?;
+        if hello.stream != STREAM_NAME {
+            anyhow::bail!(
+                "unsupported event stream {:?}: expected {:?}",
+                hello.stream,
+                STREAM_NAME
+            );
+        }
+        if hello.v != STREAM_VERSION {
+            anyhow::bail!(
+                "unsupported event stream version v{}: this client supports v{}",
+                hello.v,
+                STREAM_VERSION
+            );
+        }
         println!(
             "watching {} v{} (daemon {}, heartbeat {}ms)",
             hello.stream, hello.v, hello.daemon, hello.heartbeat_ms
@@ -57,6 +71,13 @@ fn render_line(line: &[u8]) -> Result<()> {
     }
 
     let event: Event = serde_json::from_value(value).context("invalid event line")?;
+    if event.v != STREAM_VERSION {
+        anyhow::bail!(
+            "unsupported event line version v{}: this client supports v{}",
+            event.v,
+            STREAM_VERSION
+        );
+    }
     match event.kind {
         EventKind::JobDone {
             job,
