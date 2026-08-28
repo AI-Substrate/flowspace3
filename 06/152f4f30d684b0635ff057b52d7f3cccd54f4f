@@ -1,0 +1,18 @@
+crates/daemon/src/ddoc.rs
+  h_9e71e8b09f7cf2 216-217,222,224-226,235-238,251-274,333,338,362-370,567-645
+crates/daemon/src/scan.rs
+  h_9e71e8b09f7cf2 79-118,164-168,189-200,209-210,215,248,256-279
+crates/daemon/tests/ddoc_rescan.rs
+  h_9e71e8b09f7cf2 1-205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "06152f4f30d684b0635ff057b52d7f3cccd54f4f",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
