@@ -24,7 +24,18 @@
 #
 # The probe worktree always uses a poctest- slug and is always torn down.
 
-set -euo pipefail
+# -E so the ERR trap is INHERITED by functions, command substitutions and
+# subshells. Without it `trap … ERR` fires only at top level, which is why two
+# go-live runs exited 1 from inside a helper and wrote no abort line at all:
+# `set -e` killed the script and the reporter never ran. A diagnostic that is
+# silent in exactly the case it exists for is worse than no diagnostic.
+set -Eeuo pipefail
+
+# FS3_PROBE_TRACE=1 writes an xtrace beside the evidence. Off by default — it
+# is large — but it is the difference between "it exited 1 somewhere in P3" and
+# a line number, and this script has now cost two diagnosis sessions for want
+# of one. Wired below, once the evidence directory exists.
+TRACE=${FS3_PROBE_TRACE:-0}
 
 # ---------------------------------------------------------------- parameters
 MAIN_ROOT=/Users/jordanknight/substrate/flowspace/flowspace3
@@ -62,6 +73,12 @@ MARKER="poctest_${RUN_ID}"
 
 mkdir -p "$OUT"
 exec > >(tee -a "$OUT/transcript.log") 2>&1
+if [[ "$TRACE" == "1" ]]; then
+  exec {trace_fd}>"$OUT/xtrace.log"
+  BASH_XTRACEFD=$trace_fd
+  PS4='+ ${BASH_SOURCE##*/}:${LINENO}: '
+  set -x
+fi
 
 say() { printf '\n=== %s — %s\n' "$(date -u +%FT%TZ)" "$*"; }
 note() { printf '    %s\n' "$*"; }
