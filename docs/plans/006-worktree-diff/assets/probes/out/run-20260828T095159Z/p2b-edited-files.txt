@@ -1,0 +1,8 @@
+crates/cli/src/client.rs
+crates/cli/src/conversation.rs
+crates/cli/src/docs.rs
+crates/cli/src/doctor.rs
+crates/cli/src/lib.rs
+crates/cli/src/main.rs
+crates/cli/src/render/mod.rs
+crates/cli/src/render/progress.rs

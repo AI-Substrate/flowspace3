@@ -1,0 +1,78 @@
+{
+  "ok": true,
+  "command": "search",
+  "v": 1,
+  "data": {
+    "results": [
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/docs/plans/005-convo-ingest/assets/rescue/buffers/u1b-session-buffer.md",
+        "kind": "file",
+        "match_field": "raw",
+        "name": "u1b-session-buffer.md",
+        "path": "docs/plans/005-convo-ingest/assets/rescue/buffers/u1b-session-buffer.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.43602507504616306,
+        "smart": null,
+        "snippet": "- id: DL-001\n  kind: difficulty\n  description: \"pij send has no --file/stdin option, so every multi-paragraph message (ack, numbered plan, done report) must be shell-quoted. A here-doc inside command substitution inside double quotes silently mangled a 10KB numbered plan into fragments plus stray 'command not found' lines, and pij DELIVERED the mangled text with a normal success receipt — the PM would have read garbage as my plan.\"\n  severity: degrading\n  workaround: \"Wrote the message to a file and used pij send \\\"$(cat file)\\\", which is safe because command substitution output is not re-parsed.\"",
+        "span": [
+          1,
+          36
+        ],
+        "subkind": "markdown",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/docs/plans/002-docker-daemon-base/assets/poc/docker-results.md::Plan 002 Phase 1 POC results — docker daemon base::Proofs (done_when)",
+        "kind": "section",
+        "match_field": "raw",
+        "name": "Proofs (done_when)",
+        "path": "docs/plans/002-docker-daemon-base/assets/poc/docker-results.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.4158098991947166,
+        "smart": null,
+        "snippet": "## Proofs (done_when)\n\n| assertion | result |\n| --- | --- |\n| dw-0101 ELF aarch64 built entirely in-container from mac host | ✅ `file`: \"ELF 64-bit LSB pie executable, ARM aarch64 … interpreter /lib/ld-linux-aarch64.so.1\" |",
+        "span": [
+          21,
+          33
+        ],
+        "subkind": "atx_heading",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/docs/plans/005-convo-ingest/assets/successor-context-pm2.md::Successor context — PM seat 2 (predecessor pij-linguistic-narwhal died 2026-08-28T00:30Z)::Your first moves",
+        "kind": "section",
+        "match_field": "raw",
+        "name": "Your first moves",
+        "path": "docs/plans/005-convo-ingest/assets/successor-context-pm2.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.4149576863583486,
+        "smart": null,
+        "snippet": "## Your first moves\n1. Canary to prime as instructed, then: read packet + impl-guide (committed\n   amendments included) + this note; inventory the uncommitted tree against\n   tk-c101..c105; run the contract suite + harness checks (FS3_TEST_DATABASE_URL\n   per ruling D(ii) — scratch db fs3_convo_ingest exists); fix or finish what",
+        "span": [
+          38,
+          52
+        ],
+        "subkind": "atx_heading",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      }
+    ]
+  },
+  "meta": {
+    "empty_because": null,
+    "hint": "Weak match: describe the component in its own vocabulary rather than asking a question.",
+    "scope": {
+      "cwd": "/Users/jordanknight/substrate/flowspace/flowspace3",
+      "repo": "git:github.com/AI-Substrate/flowspace3",
+      "source": "cwd",
+      "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+    },
+    "truncation": {
+      "limit": 3,
+      "truncated": true
+    }
+  },
+  "next_action": "Weak match: describe the component in its own vocabulary rather than asking a question. — then: read a hit in full with `flowspace3 get <address>`, browse its file with `flowspace3 tree <address>`, or narrow with --path/--repo"
+}

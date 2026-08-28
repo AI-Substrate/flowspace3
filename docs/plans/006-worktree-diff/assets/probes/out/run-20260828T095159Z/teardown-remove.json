@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "command": "remove",
+  "v": 1,
+  "data": {
+    "files": 591,
+    "identity": "git:github.com/AI-Substrate/flowspace3",
+    "jobs_killed": 8,
+    "reclaimable": {
+      "elements": 0,
+      "embeddings": 0,
+      "jobs": 0,
+      "summaries": 0,
+      "total": 0
+    },
+    "repo_removed": false,
+    "root_path": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T095159Z",
+    "was_registered": true
+  },
+  "next_action": "removed — nothing left to reclaim, because its content is still held by another root or was never indexed"
+}

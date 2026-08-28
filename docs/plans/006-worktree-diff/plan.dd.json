@@ -52,8 +52,9 @@
         {
           "id": "ac-0003",
           "claim": "Search from inside a worktree returns that worktree's version of a changed file; the same query from the main tree returns main's version; results carry which context they came from.",
-          "state": "unchecked",
-          "note": "OPEN BY DESIGN until the go-live run, and the validator's tk-e203-is-checked-but-ac-0003-is-not contradiction is expected: u-c's unit is delivered and independently re-verified (store pg_first_light 17/17, daemon first_light 14/14 on the composed tree), but this AC is a claim about LIVE retrieval and cannot be measured under the fake embedder first light ran with — a query quoting the marker's own body verbatim scored 0.1889 against unrelated files. Prime ruled (2026-08-28) that the live P3 measurement happens AFTER merge, because running it IS the feature going live for the fleet rather than a test. The receipt from that run closes this AC."
+          "state": "checked",
+          "note": "",
+          "receipt": "CLOSED on the live production stack, run-20260828T105601Z (go-live-run-nine-final-retrievable-stimulus), embedder=azure_openai verified via daemon-ping at gate time. From INSIDE the probe worktree the divergent function ranks FIRST at 0.7408 with worktree provenance on every row; from MAIN the same query returns the same unrelated results with the marker ABSENT — excluded, not leaked. Predicates: p3_search_context_sensitive=1, p3_wrong_version_leak_to_main=0, p3_marker_found_from_worktree=1 (the control that makes the leak number mean exclusion rather than absence), p3_get_context_sensitive=1, p3_unresolved_rows=0 against an exposure of 730 hashes carrying the hazard shape. Nine runs: five died on an honest CLI refusal the probe wrongly treated as a crash, one on a Postgres crash, two refused correctly under measurement preconditions that were not met (fake embedder; queue starvation leaving the caller's edit unparsed), and the ninth measured it once #61's LIFO claim ordering let a fresh edit be served. The stimulus was replaced before this run on run eight's discriminated evidence (elements=8, vectors=8, unranked): a nonsense phrase distinctive to a human is not distinctive to an embedder, and a stimulus retrievable by no query cannot measure exclusion."
         },
         {
           "id": "ac-0004",

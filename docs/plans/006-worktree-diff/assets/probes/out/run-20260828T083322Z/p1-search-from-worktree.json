@@ -1,0 +1,84 @@
+{
+  "ok": true,
+  "command": "search",
+  "v": 1,
+  "data": {
+    "results": [
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/cli/src/client.rs::DaemonClient",
+        "kind": "container",
+        "match_field": "raw",
+        "name": "DaemonClient",
+        "path": "crates/cli/src/client.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.4386825853314078,
+        "smart": null,
+        "snippet": "impl DaemonClient {\n    /// How long to wait before declaring the daemon unreachable. Short: the CLI\n    /// fails fast and points at doctor rather than hanging (PRD req 37).\n    pub const TIMEOUT: Duration = Duration::from_secs(3);\n",
+        "span": [
+          121,
+          448
+        ],
+        "subkind": "impl_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T083322Z"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-version-file.txt",
+        "kind": "file",
+        "match_field": "raw",
+        "name": "p3-version-file.txt",
+        "path": "docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-version-file.txt",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.4373770180483403,
+        "smart": null,
+        "snippet": "crates/cli/src/client.rs",
+        "span": [
+          1,
+          1
+        ],
+        "subkind": "unknown",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T083322Z"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/docs/plans/001-fs3-foundations/original-ask.md::Original ask — fs3-foundations",
+        "kind": "section",
+        "match_field": "smart",
+        "name": "Original ask — fs3-foundations",
+        "path": "docs/plans/001-fs3-foundations/original-ask.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.4370579232645997,
+        "smart": "FS3 is a new Rust-based version of Flowspace that uses Tree-sitter for direct AST parsing and centralizes file data and embeddings in PostgreSQL with vector support, rather than a source graph. It should represent worktrees as Git-aware file trees, diffing changed files by commit IDs instead of copying and rescanning the main graph, while splitting files into embeddable summaries of files and their methods or components using local or online models with parallel processing.",
+        "snippet": "# Original ask — fs3-foundations\n**Captured**: 2026-08-26T00:45Z  ·  **By**: /the-flow\n\n> get a base flow in, this is plan 001, fs3 foundations.\n>",
+        "span": [
+          1,
+          20
+        ],
+        "subkind": "atx_heading",
+        "tags": [
+          "fs3 foundations",
+          "Rust",
+          "Tree-sitter",
+          "PostgreSQL vector store",
+          "Git worktrees"
+        ],
+        "worktree": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T083322Z"
+      }
+    ]
+  },
+  "meta": {
+    "empty_because": null,
+    "hint": "Weak match: describe the component in its own vocabulary rather than asking a question.",
+    "scope": {
+      "cwd": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T083322Z",
+      "repo": "git:github.com/AI-Substrate/flowspace3",
+      "source": "cwd",
+      "worktree": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T083322Z"
+    },
+    "truncation": {
+      "limit": 3,
+      "truncated": true
+    }
+  },
+  "next_action": "Weak match: describe the component in its own vocabulary rather than asking a question. — then: read a hit in full with `flowspace3 get <address>`, browse its file with `flowspace3 tree <address>`, or narrow with --path/--repo"
+}

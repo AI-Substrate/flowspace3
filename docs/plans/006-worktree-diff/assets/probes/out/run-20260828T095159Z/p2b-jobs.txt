@@ -1,0 +1,7 @@
+   kind    |  state  | count 
+-----------+---------+-------
+ embed     | done    |  4255
+ embed     | pending |     1
+ scan_file | pending |    13
+(3 rows)
+

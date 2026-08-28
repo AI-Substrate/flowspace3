@@ -1,0 +1,1181 @@
+2026-08-28T09:54:25.357608Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=0
+2026-08-28T09:54:25.388646Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/enrichment.md ms=76 left=48840
+2026-08-28T09:54:25.388731Z  INFO fs3_daemon::runner: done kind="embed" id=622452 left=48839
+2026-08-28T09:54:25.533176Z  INFO fs3_daemon::runner: batch kind="embed" subject=14 x raw jobs=1 ms=0
+2026-08-28T09:54:25.563041Z  INFO fs3_daemon::runner: done kind="embed" id=622466 left=48838
+2026-08-28T09:54:25.563105Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/event-stream.md ms=79 left=48839
+2026-08-28T09:54:25.723975Z  INFO fs3_daemon::runner: batch kind="embed" subject=13 x raw jobs=1 ms=2
+2026-08-28T09:54:25.724639Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/first-light.md ms=51 left=48838
+2026-08-28T09:54:25.763012Z  INFO fs3_daemon::runner: done kind="embed" id=622476 left=48837
+2026-08-28T09:54:25.914126Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=0
+2026-08-28T09:54:25.920371Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/git-blob.md ms=50 left=48837
+2026-08-28T09:54:25.939971Z  INFO fs3_daemon::runner: done kind="embed" id=622483 left=48836
+2026-08-28T09:54:26.189762Z  INFO fs3_daemon::runner: batch kind="embed" subject=6 x raw jobs=1 ms=2
+2026-08-28T09:54:26.191372Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/human-render.md ms=40 left=48836
+2026-08-28T09:54:26.214106Z  INFO fs3_daemon::runner: done kind="embed" id=622488 left=48835
+2026-08-28T09:54:26.392485Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=0
+2026-08-28T09:54:26.436904Z  INFO fs3_daemon::runner: done kind="embed" id=622493 left=48834
+2026-08-28T09:54:26.485030Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/local-embeddings.md ms=145 left=48834
+2026-08-28T09:54:26.612320Z  INFO fs3_daemon::runner: progress phase="working" scanned=58839 scan_left=199 summarized=108226 summarize_left=48634 embedded=183296 embed_left=1 failed=0
+2026-08-28T09:54:26.652984Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=0
+2026-08-28T09:54:26.659570Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/openai-compat.md ms=99 left=48834
+2026-08-28T09:54:26.694153Z  INFO fs3_daemon::runner: done kind="embed" id=622503 left=48833
+2026-08-28T09:54:26.864059Z  INFO fs3_daemon::runner: batch kind="embed" subject=6 x raw jobs=1 ms=0
+2026-08-28T09:54:26.911678Z  INFO fs3_daemon::runner: done kind="embed" id=622508 left=48833
+2026-08-28T09:54:26.912420Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/provider-throughput.md ms=100 left=48832
+2026-08-28T09:54:27.069023Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=0
+2026-08-28T09:54:27.117441Z  INFO fs3_daemon::runner: done kind="embed" id=622512 left=48831
+2026-08-28T09:54:27.212630Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/read-surface.md ms=192 left=48831
+2026-08-28T09:54:27.304699Z  INFO fs3_daemon::runner: batch kind="embed" subject=12 x raw jobs=1 ms=0
+2026-08-28T09:54:27.361139Z  INFO fs3_daemon::runner: done kind="embed" id=622523 left=48830
+2026-08-28T09:54:27.441542Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/remove-and-gc.md ms=207 left=48830
+2026-08-28T09:54:27.548841Z  INFO fs3_daemon::runner: batch kind="embed" subject=11 x raw jobs=1 ms=1
+2026-08-28T09:54:27.587153Z  INFO fs3_daemon::runner: done kind="embed" id=622534 left=48829
+2026-08-28T09:54:27.635345Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/scanner.md ms=142 left=48829
+2026-08-28T09:54:27.760103Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=0
+2026-08-28T09:54:27.808677Z  INFO fs3_daemon::runner: done kind="embed" id=622540 left=48828
+2026-08-28T09:54:27.881775Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/schema-skew.md ms=175 left=48828
+2026-08-28T09:54:27.959858Z  INFO fs3_daemon::runner: batch kind="embed" subject=11 x raw jobs=1 ms=0
+2026-08-28T09:54:27.989765Z  INFO fs3_daemon::runner: done kind="embed" id=622550 left=48827
+2026-08-28T09:54:27.990202Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/self-teaching-cli.md ms=68 left=48827
+2026-08-28T09:54:28.129180Z  INFO fs3_daemon::runner: batch kind="embed" subject=10 x raw jobs=1 ms=0
+2026-08-28T09:54:28.135766Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/store-schema.md ms=52 left=48827
+2026-08-28T09:54:28.162059Z  INFO fs3_daemon::runner: done kind="embed" id=622560 left=48826
+2026-08-28T09:54:28.302787Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=0
+2026-08-28T09:54:28.318351Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/tui.md ms=62 left=48826
+2026-08-28T09:54:28.322250Z  INFO fs3_daemon::runner: done kind="embed" id=622567 left=48825
+2026-08-28T09:54:28.473093Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=1
+2026-08-28T09:54:28.498436Z  INFO fs3_daemon::runner: done kind="embed" id=622575 left=48824
+2026-08-28T09:54:28.499383Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/watcher.md ms=79 left=48825
+2026-08-28T09:54:28.656331Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=0
+2026-08-28T09:54:28.657229Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/worktree-lifecycle.md ms=48 left=48824
+2026-08-28T09:54:28.688923Z  INFO fs3_daemon::runner: done kind="embed" id=622585 left=48823
+2026-08-28T09:54:28.838437Z  INFO fs3_daemon::runner: done kind=scan_file subject=eval/ask/prompts/subject.md ms=38 left=48823
+2026-08-28T09:54:28.840240Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=1
+2026-08-28T09:54:28.871595Z  INFO fs3_daemon::runner: done kind="embed" id=622591 left=48822
+2026-08-28T09:54:29.012381Z  INFO fs3_daemon::runner: done kind=scan_file subject=install.ps1 ms=40 left=48822
+2026-08-28T09:54:29.012772Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T09:54:29.039179Z  INFO fs3_daemon::runner: done kind="embed" id=622593 left=48821
+2026-08-28T09:54:29.189796Z  INFO fs3_daemon::runner: done kind=scan_file subject=install.sh ms=44 left=48821
+2026-08-28T09:54:29.191718Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T09:54:29.219729Z  INFO fs3_daemon::runner: done kind="embed" id=622594 left=48820
+2026-08-28T09:54:29.364921Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=3
+2026-08-28T09:54:29.385094Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/daemon-shell/LEARNINGS.md ms=63 left=48820
+2026-08-28T09:54:29.390790Z  INFO fs3_daemon::runner: done kind="embed" id=622595 left=48819
+2026-08-28T09:54:29.542374Z  INFO fs3_daemon::runner: batch kind="embed" subject=12 x raw jobs=1 ms=0
+2026-08-28T09:54:29.553070Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/daemon-shell/README.md ms=51 left=48819
+2026-08-28T09:54:29.570319Z  INFO fs3_daemon::runner: done kind="embed" id=622607 left=48818
+2026-08-28T09:54:29.732876Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=0
+2026-08-28T09:54:29.769068Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/daemon-shell/src/core.rs ms=92 left=48819
+2026-08-28T09:54:29.769135Z  INFO fs3_daemon::runner: done kind="embed" id=622613 left=48819
+2026-08-28T09:54:29.902197Z  INFO fs3_daemon::runner: batch kind="embed" subject=40 x raw jobs=3 ms=1
+2026-08-28T09:54:29.933982Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/daemon-shell/src/http.rs ms=67 left=48820
+2026-08-28T09:54:29.934048Z  INFO fs3_daemon::runner: done kind="embed" id=622619 left=48819
+2026-08-28T09:54:30.020788Z  INFO fs3_daemon::runner: done kind="embed" id=622630 left=48818
+2026-08-28T09:54:30.099148Z  INFO fs3_daemon::runner: done kind="embed" id=622638 left=48817
+2026-08-28T09:54:30.232578Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/daemon-shell/src/lib.rs ms=43 left=48817
+2026-08-28T09:54:30.236844Z  INFO fs3_daemon::runner: batch kind="embed" subject=18 x raw jobs=2 ms=0
+2026-08-28T09:54:30.273566Z  INFO fs3_daemon::runner: done kind="embed" id=622647 left=48816
+2026-08-28T09:54:30.351648Z  INFO fs3_daemon::runner: done kind="embed" id=622645 left=48815
+2026-08-28T09:54:30.494714Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=0
+2026-08-28T09:54:30.495990Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/daemon-shell/src/main.rs ms=46 left=48815
+2026-08-28T09:54:30.524990Z  INFO fs3_daemon::runner: done kind="embed" id=622649 left=48814
+2026-08-28T09:54:30.660857Z  INFO fs3_daemon::runner: batch kind="embed" subject=3 x raw jobs=1 ms=0
+2026-08-28T09:54:30.691059Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/daemon-shell/src/watcher.rs ms=67 left=48815
+2026-08-28T09:54:30.691139Z  INFO fs3_daemon::runner: done kind="embed" id=622652 left=48814
+2026-08-28T09:54:30.864921Z  INFO fs3_daemon::runner: batch kind="embed" subject=21 x raw jobs=2 ms=0
+2026-08-28T09:54:30.919962Z  INFO fs3_daemon::runner: done kind="embed" id=622663 left=48813
+2026-08-28T09:54:31.023308Z  INFO fs3_daemon::runner: done kind="embed" id=622660 left=48812
+2026-08-28T09:54:31.067623Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/daemon-shell/tests/end_to_end.rs ms=254 left=48812
+2026-08-28T09:54:31.195211Z  INFO fs3_daemon::runner: batch kind="embed" subject=15 x raw jobs=1 ms=1
+2026-08-28T09:54:31.249753Z  INFO fs3_daemon::runner: done kind="embed" id=622677 left=48811
+2026-08-28T09:54:31.337732Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/LEARNINGS.md ms=198 left=48811
+2026-08-28T09:54:31.416039Z  INFO fs3_daemon::runner: batch kind="embed" subject=13 x raw jobs=1 ms=0
+2026-08-28T09:54:31.462828Z  INFO fs3_daemon::runner: done kind="embed" id=622688 left=48810
+2026-08-28T09:54:31.495295Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/README.md ms=132 left=48810
+2026-08-28T09:54:31.644217Z  INFO fs3_daemon::runner: batch kind="embed" subject=6 x raw jobs=1 ms=0
+2026-08-28T09:54:31.698958Z  INFO fs3_daemon::runner: done kind="embed" id=622694 left=48809
+2026-08-28T09:54:31.735042Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/bin/demo.rs ms=136 left=48809
+2026-08-28T09:54:31.863904Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/lib.rs ms=57 left=48809
+2026-08-28T09:54:31.867554Z  INFO fs3_daemon::runner: progress phase="working" scanned=58864 scan_left=174 summarized=108226 summarize_left=48634 embedded=183325 embed_left=1 failed=0
+2026-08-28T09:54:31.920931Z  INFO fs3_daemon::runner: batch kind="embed" subject=15 x raw jobs=2 ms=0
+2026-08-28T09:54:31.957212Z  INFO fs3_daemon::runner: done kind="embed" id=622700 left=48808
+2026-08-28T09:54:32.035259Z  INFO fs3_daemon::runner: done kind="embed" id=622699 left=48807
+2026-08-28T09:54:32.282194Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/mode.rs ms=148 left=48807
+2026-08-28T09:54:32.300798Z  INFO fs3_daemon::runner: batch kind="embed" subject=14 x raw jobs=1 ms=1
+2026-08-28T09:54:32.344005Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/render.rs ms=103 left=48806
+2026-08-28T09:54:32.344248Z  INFO fs3_daemon::runner: done kind="embed" id=622707 left=48806
+2026-08-28T09:54:32.483039Z  INFO fs3_daemon::runner: batch kind="embed" subject=14 x raw jobs=1 ms=0
+2026-08-28T09:54:32.488856Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/surfaces.rs ms=45 left=48806
+2026-08-28T09:54:32.517086Z  INFO fs3_daemon::runner: done kind="embed" id=622712 left=48805
+2026-08-28T09:54:32.672718Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=0
+2026-08-28T09:54:32.693446Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/surfaces/doctor.rs ms=68 left=48805
+2026-08-28T09:54:32.698859Z  INFO fs3_daemon::runner: done kind="embed" id=622713 left=48804
+2026-08-28T09:54:32.843859Z  INFO fs3_daemon::runner: batch kind="embed" subject=14 x raw jobs=1 ms=0
+2026-08-28T09:54:32.857987Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/surfaces/failure.rs ms=64 left=48804
+2026-08-28T09:54:32.866366Z  INFO fs3_daemon::runner: done kind="embed" id=622721 left=48803
+2026-08-28T09:54:33.007242Z  INFO fs3_daemon::runner: batch kind="embed" subject=11 x raw jobs=1 ms=0
+2026-08-28T09:54:33.019466Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/surfaces/generic.rs ms=51 left=48803
+2026-08-28T09:54:33.037621Z  INFO fs3_daemon::runner: done kind="embed" id=622728 left=48802
+2026-08-28T09:54:33.184282Z  INFO fs3_daemon::runner: batch kind="embed" subject=6 x raw jobs=1 ms=0
+2026-08-28T09:54:33.217362Z  INFO fs3_daemon::runner: done kind="embed" id=622733 left=48803
+2026-08-28T09:54:33.217504Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/surfaces/search.rs ms=74 left=48802
+2026-08-28T09:54:33.371689Z  INFO fs3_daemon::runner: batch kind="embed" subject=18 x raw jobs=2 ms=0
+2026-08-28T09:54:33.379479Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/surfaces/status.rs ms=59 left=48802
+2026-08-28T09:54:33.413880Z  INFO fs3_daemon::runner: done kind="embed" id=622745 left=48801
+2026-08-28T09:54:33.493482Z  INFO fs3_daemon::runner: done kind="embed" id=622748 left=48800
+2026-08-28T09:54:33.659251Z  INFO fs3_daemon::runner: batch kind="embed" subject=13 x raw jobs=1 ms=0
+2026-08-28T09:54:33.677445Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/theme.rs ms=66 left=48801
+2026-08-28T09:54:33.686390Z  INFO fs3_daemon::runner: done kind="embed" id=622756 left=48800
+2026-08-28T09:54:33.832902Z  INFO fs3_daemon::runner: batch kind="embed" subject=25 x raw jobs=2 ms=0
+2026-08-28T09:54:33.847009Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/views.rs ms=62 left=48800
+2026-08-28T09:54:33.861926Z  INFO fs3_daemon::runner: done kind="embed" id=622763 left=48799
+2026-08-28T09:54:33.937868Z  INFO fs3_daemon::runner: done kind="embed" id=622766 left=48798
+2026-08-28T09:54:34.082158Z  INFO fs3_daemon::runner: batch kind="embed" subject=10 x raw jobs=1 ms=3
+2026-08-28T09:54:34.099639Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/tests/surfaces.rs ms=58 left=48798
+2026-08-28T09:54:34.108220Z  INFO fs3_daemon::runner: done kind="embed" id=622773 left=48797
+2026-08-28T09:54:34.253906Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=0
+2026-08-28T09:54:34.255935Z  INFO fs3_daemon::runner: done kind=scan_file subject=tests/daemon-restart.sh ms=47 left=48797
+2026-08-28T09:54:34.284572Z  INFO fs3_daemon::runner: done kind="embed" id=622781 left=48796
+2026-08-28T09:54:34.416149Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/003-harnessability-orientation-skill/research-dossier.md::Research Report: engineering-harness-orient::Product-Code Affordance Findings ms=40 left=48796
+2026-08-28T09:54:34.421918Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=2
+2026-08-28T09:54:34.461427Z  INFO fs3_daemon::runner: done kind="embed" id=622782 left=48795
+2026-08-28T09:54:34.607409Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/003-harnessability-orientation-skill/research-dossier.md::Research Report: engineering-harness-orient::Proof Model ms=37 left=48795
+2026-08-28T09:54:34.614000Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:34.645949Z  INFO fs3_daemon::runner: done kind="embed" id=622783 left=48794
+2026-08-28T09:54:34.776033Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/003-harnessability-orientation-skill/research-dossier.md::Research Report: engineering-harness-orient::Prior Learnings ms=32 left=48794
+2026-08-28T09:54:34.779999Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:54:34.830707Z  INFO fs3_daemon::runner: done kind="embed" id=622784 left=48793
+2026-08-28T09:54:34.966167Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/003-harnessability-orientation-skill/research-dossier.md::Research Report: engineering-harness-orient::Domain Context ms=29 left=48793
+2026-08-28T09:54:34.971615Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:54:35.005947Z  INFO fs3_daemon::runner: done kind="embed" id=622785 left=48792
+2026-08-28T09:54:35.139580Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/003-harnessability-orientation-skill/research-dossier.md::Research Report: engineering-harness-orient::Critical Discoveries ms=31 left=48792
+2026-08-28T09:54:35.141211Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:35.171264Z  INFO fs3_daemon::runner: done kind="embed" id=622786 left=48791
+2026-08-28T09:54:35.314627Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/003-harnessability-orientation-skill/research-dossier.md::Research Report: engineering-harness-orient::Modification Considerations ms=42 left=48791
+2026-08-28T09:54:35.323056Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:54:35.357098Z  INFO fs3_daemon::runner: done kind="embed" id=622787 left=48790
+2026-08-28T09:54:35.519460Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/003-harnessability-orientation-skill/research-dossier.md::Research Report: engineering-harness-orient::Recommendations ms=41 left=48790
+2026-08-28T09:54:35.526236Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:35.560844Z  INFO fs3_daemon::runner: done kind="embed" id=622788 left=48789
+2026-08-28T09:54:35.706934Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:35.714157Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/003-harnessability-orientation-skill/research-dossier.md::Research Report: engineering-harness-orient::Recommendations::For `/plan-1b` Specification ms=47 left=48789
+2026-08-28T09:54:35.740952Z  INFO fs3_daemon::runner: done kind="embed" id=622789 left=48788
+2026-08-28T09:54:35.894698Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:35.903993Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/003-harnessability-orientation-skill/research-dossier.md::Research Report: engineering-harness-orient::External Research Opportunities ms=50 left=48788
+2026-08-28T09:54:35.932954Z  INFO fs3_daemon::runner: done kind="embed" id=622790 left=48787
+2026-08-28T09:54:36.097678Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:36.100152Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/003-harnessability-orientation-skill/research-dossier.md::Research Report: engineering-harness-orient::Appendix: File Inventory ms=54 left=48787
+2026-08-28T09:54:36.127530Z  INFO fs3_daemon::runner: done kind="embed" id=622791 left=48786
+2026-08-28T09:54:36.270604Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/003-harnessability-orientation-skill/research-dossier.md::Research Report: engineering-harness-orient::Appendix: File Inventory::Core Files ms=40 left=48786
+2026-08-28T09:54:36.284974Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=3
+2026-08-28T09:54:36.319713Z  INFO fs3_daemon::runner: done kind="embed" id=622792 left=48785
+2026-08-28T09:54:36.469623Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/003-harnessability-orientation-skill/research-dossier.md::Research Report: engineering-harness-orient::Next Steps ms=38 left=48785
+2026-08-28T09:54:36.477876Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:36.516556Z  INFO fs3_daemon::runner: done kind="embed" id=622793 left=48784
+2026-08-28T09:54:36.665628Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/cli-core-ask.md::Starter harness CLI core — verbatim ask ms=43 left=48784
+2026-08-28T09:54:36.681065Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:36.718074Z  INFO fs3_daemon::runner: done kind="embed" id=622794 left=48783
+2026-08-28T09:54:36.844875Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/cli-core-ask.md::Starter harness CLI core — verbatim ask::Minimum command surface ms=26 left=48783
+2026-08-28T09:54:36.852740Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=3
+2026-08-28T09:54:36.890843Z  INFO fs3_daemon::runner: done kind="embed" id=622795 left=48782
+2026-08-28T09:54:37.034539Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/cli-core-ask.md::Starter harness CLI core — verbatim ask::Output and evidence contract ms=41 left=48782
+2026-08-28T09:54:37.052829Z  INFO fs3_daemon::runner: progress phase="working" scanned=58877 scan_left=161 summarized=108240 summarize_left=48620 embedded=183354 embed_left=1 failed=0
+2026-08-28T09:54:37.086023Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x smart jobs=2 ms=0
+2026-08-28T09:54:37.116922Z  INFO fs3_daemon::runner: done kind="embed" id=622797 left=48781
+2026-08-28T09:54:37.200380Z  INFO fs3_daemon::runner: done kind="embed" id=622796 left=48780
+2026-08-28T09:54:37.331057Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/cli-core-ask.md::Starter harness CLI core — verbatim ask::CLI quality bar ms=38 left=48780
+2026-08-28T09:54:37.418148Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:37.418798Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/cli-core-ask.md::Starter harness CLI core — verbatim ask::Clean architecture shape ms=31 left=48780
+2026-08-28T09:54:37.441092Z  INFO fs3_daemon::runner: done kind="embed" id=622798 left=48779
+2026-08-28T09:54:37.582436Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:37.592648Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/cli-core-ask.md::Starter harness CLI core — verbatim ask::CLI engineering checks ms=52 left=48779
+2026-08-28T09:54:37.607538Z  INFO fs3_daemon::runner: done kind="embed" id=622799 left=48778
+2026-08-28T09:54:37.747749Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/cli-core-ask.md::Starter harness CLI core — verbatim ask::Local and CI backpressure ms=36 left=48778
+2026-08-28T09:54:37.753616Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:37.781650Z  INFO fs3_daemon::runner: done kind="embed" id=622800 left=48777
+2026-08-28T09:54:37.930793Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/cli-core-ask.md::Starter harness CLI core — verbatim ask::KISS stories ms=38 left=48777
+2026-08-28T09:54:37.936774Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:37.973414Z  INFO fs3_daemon::runner: done kind="embed" id=622801 left=48776
+2026-08-28T09:54:38.106374Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/cli-core-ask.md::Starter harness CLI core — verbatim ask::Acceptance criteria ms=28 left=48776
+2026-08-28T09:54:38.109820Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:38.153904Z  INFO fs3_daemon::runner: done kind="embed" id=622802 left=48775
+2026-08-28T09:54:38.284243Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:38.287559Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-plan.md::Starter Harness CLI Core — Implementation Plan ms=37 left=48775
+2026-08-28T09:54:38.306823Z  INFO fs3_daemon::runner: done kind="embed" id=622803 left=48774
+2026-08-28T09:54:38.430461Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-plan.md::Starter Harness CLI Core — Implementation Plan::Gate Matrix ms=29 left=48774
+2026-08-28T09:54:38.434223Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:38.459200Z  INFO fs3_daemon::runner: done kind="embed" id=622804 left=48773
+2026-08-28T09:54:38.580758Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:38.617382Z  INFO fs3_daemon::runner: done kind="embed" id=622805 left=48773
+2026-08-28T09:54:38.617445Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-plan.md::Starter Harness CLI Core — Implementation Plan::Target Domains ms=63 left=48774
+2026-08-28T09:54:38.686548Z  INFO fs3_daemon::watch: re-listed a changed directory directory=/Users/jordanknight/substrate/flowspace/fs3-worktree-diff/docs/plans/006-worktree-diff/assets/probes/out/run-20260828T095159Z events=36 enqueued=1 settled=Quiet
+2026-08-28T09:54:38.764906Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-plan.md::Starter Harness CLI Core — Implementation Plan::Domain Manifest ms=41 left=48773
+2026-08-28T09:54:38.768176Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:54:38.792434Z  INFO fs3_daemon::runner: done kind="embed" id=622806 left=48772
+2026-08-28T09:54:38.932712Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-plan.md::Starter Harness CLI Core — Implementation Plan::Key Findings ms=29 left=48772
+2026-08-28T09:54:38.936041Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:38.980752Z  INFO fs3_daemon::runner: done kind="embed" id=622808 left=48771
+2026-08-28T09:54:39.112483Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-plan.md::Starter Harness CLI Core — Implementation Plan::Phases ms=30 left=48771
+2026-08-28T09:54:39.115059Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:39.142180Z  INFO fs3_daemon::runner: done kind="embed" id=622809 left=48770
+2026-08-28T09:54:39.273310Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-plan.md::Starter Harness CLI Core — Implementation Plan::Phases::Phase Index ms=31 left=48770
+2026-08-28T09:54:39.278458Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:39.306483Z  INFO fs3_daemon::runner: done kind="embed" id=622810 left=48769
+2026-08-28T09:54:39.453511Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:39.463867Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-plan.md::Starter Harness CLI Core — Implementation Plan::Phases::Phase Index::Phase 1: Package scaffold + engineering kernel ms=42 left=48769
+2026-08-28T09:54:39.477509Z  INFO fs3_daemon::runner: done kind="embed" id=622811 left=48768
+2026-08-28T09:54:39.643613Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:39.655779Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-plan.md::Starter Harness CLI Core — Implementation Plan::Phases::Phase Index::Phase 2: CLI command surface + architecture ms=61 left=48768
+2026-08-28T09:54:39.676683Z  INFO fs3_daemon::runner: done kind="embed" id=622812 left=48767
+2026-08-28T09:54:39.863095Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-plan.md::Starter Harness CLI Core — Implementation Plan::Phases::Phase Index::Phase 3: CI, release automation, branch protection ms=61 left=48767
+2026-08-28T09:54:39.863692Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:39.906481Z  INFO fs3_daemon::runner: done kind="embed" id=622813 left=48766
+2026-08-28T09:54:40.068637Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-plan.md::Starter Harness CLI Core — Implementation Plan::Acceptance Criteria ms=42 left=48766
+2026-08-28T09:54:40.076208Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:40.114745Z  INFO fs3_daemon::runner: done kind="embed" id=622814 left=48765
+2026-08-28T09:54:40.275702Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:40.294238Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-plan.md::Starter Harness CLI Core — Implementation Plan::Risks ms=74 left=48765
+2026-08-28T09:54:40.307498Z  INFO fs3_daemon::runner: done kind="embed" id=622815 left=48764
+2026-08-28T09:54:40.500916Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-plan.md::Starter Harness CLI Core — Implementation Plan::Validation Record (2026-06-08) ms=58 left=48764
+2026-08-28T09:54:40.505262Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=4
+2026-08-28T09:54:40.540417Z  INFO fs3_daemon::runner: done kind="embed" id=622816 left=48763
+2026-08-28T09:54:40.703651Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-plan.md::Starter Harness CLI Core — Implementation Plan::Validation Record (2026-06-08)::Validation Thesis ms=50 left=48763
+2026-08-28T09:54:40.704480Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:40.749976Z  INFO fs3_daemon::runner: done kind="embed" id=622817 left=48762
+2026-08-28T09:54:40.904628Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:40.910520Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-plan.md::Starter Harness CLI Core — Implementation Plan::Validation Record (2026-06-08)::Forward-Compatibility Matrix ms=52 left=48762
+2026-08-28T09:54:40.934195Z  INFO fs3_daemon::runner: done kind="embed" id=622818 left=48761
+2026-08-28T09:54:41.097373Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-spec.md::Starter Harness CLI Core ms=52 left=48761
+2026-08-28T09:54:41.107234Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:41.144410Z  INFO fs3_daemon::runner: done kind="embed" id=622819 left=48760
+2026-08-28T09:54:41.282216Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:41.284668Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-spec.md::Starter Harness CLI Core::Target Domains ms=48 left=48760
+2026-08-28T09:54:41.303609Z  INFO fs3_daemon::runner: done kind="embed" id=622820 left=48759
+2026-08-28T09:54:41.442757Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-spec.md::Starter Harness CLI Core::Target Domains::New Domain Sketches ms=30 left=48759
+2026-08-28T09:54:41.445633Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:41.472438Z  INFO fs3_daemon::runner: done kind="embed" id=622821 left=48758
+2026-08-28T09:54:41.607254Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-spec.md::Starter Harness CLI Core::Complexity ms=34 left=48758
+2026-08-28T09:54:41.611178Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:41.636420Z  INFO fs3_daemon::runner: done kind="embed" id=622822 left=48757
+2026-08-28T09:54:41.769884Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-spec.md::Starter Harness CLI Core::Acceptance Criteria ms=30 left=48757
+2026-08-28T09:54:41.773880Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:41.799374Z  INFO fs3_daemon::runner: done kind="embed" id=622823 left=48756
+2026-08-28T09:54:41.936792Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/harness-core-spec.md::Starter Harness CLI Core::Clarifications ms=32 left=48756
+2026-08-28T09:54:41.942801Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:41.971186Z  INFO fs3_daemon::runner: done kind="embed" id=622824 left=48755
+2026-08-28T09:54:42.115400Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/install-flow.md::Harness-core — install flow ms=36 left=48755
+2026-08-28T09:54:42.129490Z  INFO fs3_daemon::runner: progress phase="working" scanned=58877 scan_left=162 summarized=108268 summarize_left=48592 embedded=183382 embed_left=1 failed=0
+2026-08-28T09:54:42.168122Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x smart jobs=2 ms=0
+2026-08-28T09:54:42.194037Z  INFO fs3_daemon::runner: done kind="embed" id=622825 left=48754
+2026-08-28T09:54:42.278108Z  INFO fs3_daemon::runner: done kind="embed" id=622826 left=48753
+2026-08-28T09:54:42.416790Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/install-flow.md::Harness-core — install flow::Stage 2 — Dope the repo with harness scaffolding ms=38 left=48753
+2026-08-28T09:54:42.503634Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/install-flow.md::Harness-core — install flow::Stage 4 — Create initial harness extensions ms=36 left=48753
+2026-08-28T09:54:42.508598Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:42.540785Z  INFO fs3_daemon::runner: done kind="embed" id=622827 left=48752
+2026-08-28T09:54:42.675844Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/original-ask.md::Original ask — harness-core ms=34 left=48752
+2026-08-28T09:54:42.679178Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:42.703209Z  INFO fs3_daemon::runner: done kind="embed" id=622828 left=48751
+2026-08-28T09:54:42.846296Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/original-ask.md::Original ask — harness-core::Scope ms=38 left=48751
+2026-08-28T09:54:42.848734Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:42.880347Z  INFO fs3_daemon::runner: done kind="embed" id=622829 left=48750
+2026-08-28T09:54:43.015550Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/research-dossier.md::Research Dossier: Starter harness CLI core ms=31 left=48750
+2026-08-28T09:54:43.023395Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:43.058944Z  INFO fs3_daemon::runner: done kind="embed" id=622830 left=48749
+2026-08-28T09:54:43.195572Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/research-dossier.md::Research Dossier: Starter harness CLI core::Executive Summary ms=32 left=48749
+2026-08-28T09:54:43.199466Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:43.225987Z  INFO fs3_daemon::runner: done kind="embed" id=622831 left=48748
+2026-08-28T09:54:43.356402Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/research-dossier.md::Research Dossier: Starter harness CLI core::Reference Pattern 1 — `minih` CLI architecture (what to copy structurally) ms=34 left=48748
+2026-08-28T09:54:43.359433Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:43.394632Z  INFO fs3_daemon::runner: done kind="embed" id=622832 left=48747
+2026-08-28T09:54:43.534383Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/research-dossier.md::Research Dossier: Starter harness CLI core::Reference Pattern 2 — `minih` engineering tooling (configs to adapt) ms=40 left=48747
+2026-08-28T09:54:43.536762Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:43.577732Z  INFO fs3_daemon::runner: done kind="embed" id=622833 left=48746
+2026-08-28T09:54:43.707865Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/research-dossier.md::Research Dossier: Starter harness CLI core::Reference Pattern 3 — `chainglass` harness UX & clean-arch doctrine ms=34 left=48746
+2026-08-28T09:54:43.720326Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:43.745920Z  INFO fs3_daemon::runner: done kind="embed" id=622834 left=48745
+2026-08-28T09:54:43.885642Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/research-dossier.md::Research Dossier: Starter harness CLI core::Prior Learnings (this repo's own first-principles pre-endorse the design) ms=38 left=48745
+2026-08-28T09:54:43.887817Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:43.917875Z  INFO fs3_daemon::runner: done kind="embed" id=622835 left=48744
+2026-08-28T09:54:44.056355Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/research-dossier.md::Research Dossier: Starter harness CLI core::Critical Discoveries (decisions the spec/clarify must lock) ms=36 left=48744
+2026-08-28T09:54:44.100482Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:44.141275Z  INFO fs3_daemon::runner: done kind="embed" id=622836 left=48743
+2026-08-28T09:54:44.301522Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/research-dossier.md::Research Dossier: Starter harness CLI core::Open Questions for the Spec (host-independent decisions) ms=44 left=48743
+2026-08-28T09:54:44.306265Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:44.339678Z  INFO fs3_daemon::runner: done kind="embed" id=622837 left=48742
+2026-08-28T09:54:44.483564Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:44.488946Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/research-dossier.md::Research Dossier: Starter harness CLI core::Recommendations ms=47 left=48742
+2026-08-28T09:54:44.514479Z  INFO fs3_daemon::runner: done kind="embed" id=622838 left=48741
+2026-08-28T09:54:44.682375Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:44.684330Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/execution.log.md::Execution Log — Phase 1: Package scaffold + engineering kernel ms=50 left=48741
+2026-08-28T09:54:44.722843Z  INFO fs3_daemon::runner: done kind="embed" id=622839 left=48740
+2026-08-28T09:54:44.870137Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/execution.log.md::Execution Log — Phase 1: Package scaffold + engineering kernel::Companion findings disposition ms=42 left=48740
+2026-08-28T09:54:44.877417Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:44.911309Z  INFO fs3_daemon::runner: done kind="embed" id=622840 left=48739
+2026-08-28T09:54:45.066644Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:45.070464Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/execution.log.md::Execution Log — Phase 1: Package scaffold + engineering kernel::Task Log ms=55 left=48739
+2026-08-28T09:54:45.114165Z  INFO fs3_daemon::runner: done kind="embed" id=622841 left=48738
+2026-08-28T09:54:45.286247Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:45.292596Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/execution.log.md::Execution Log — Phase 1: Package scaffold + engineering kernel::Task Log::T001 — Root package.json + tsconfig (+ scaffold stub) ms=58 left=48738
+2026-08-28T09:54:45.327832Z  INFO fs3_daemon::runner: done kind="embed" id=622842 left=48737
+2026-08-28T09:54:45.490871Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/execution.log.md::Execution Log — Phase 1: Package scaffold + engineering kernel::Task Log::T005 — Clock adapter (port/system/fake) [Stage 2] ms=46 left=48737
+2026-08-28T09:54:45.494688Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:45.538633Z  INFO fs3_daemon::runner: done kind="embed" id=622843 left=48736
+2026-08-28T09:54:45.668293Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/execution.log.md::Execution Log — Phase 1: Package scaffold + engineering kernel::Task Log::T007 — Implement output kernel (GREEN) [Stage 3 complete] ms=36 left=48736
+2026-08-28T09:54:45.672675Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:54:45.702003Z  INFO fs3_daemon::runner: done kind="embed" id=622844 left=48735
+2026-08-28T09:54:45.836912Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/execution.log.md::Execution Log — Phase 1: Package scaffold + engineering kernel::Task Log::T009 — Minimal entrypoint + smokes [Stage 5 — PHASE LANDED] ms=35 left=48735
+2026-08-28T09:54:45.840515Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:45.877719Z  INFO fs3_daemon::runner: done kind="embed" id=622845 left=48734
+2026-08-28T09:54:46.017580Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:46.030695Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/tasks.fltplan.md::Flight Plan: Phase 1 — Package scaffold + engineering kernel ms=48 left=48734
+2026-08-28T09:54:46.049527Z  INFO fs3_daemon::runner: done kind="embed" id=622846 left=48733
+2026-08-28T09:54:46.180036Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/tasks.fltplan.md::Flight Plan: Phase 1 — Package scaffold + engineering kernel::Domain Context ms=30 left=48733
+2026-08-28T09:54:46.182917Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:46.211638Z  INFO fs3_daemon::runner: done kind="embed" id=622847 left=48732
+2026-08-28T09:54:46.332633Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/tasks.fltplan.md::Flight Plan: Phase 1 — Package scaffold + engineering kernel::Flight Status ms=30 left=48732
+2026-08-28T09:54:46.336285Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:46.361628Z  INFO fs3_daemon::runner: done kind="embed" id=622848 left=48731
+2026-08-28T09:54:46.489408Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/tasks.fltplan.md::Flight Plan: Phase 1 — Package scaffold + engineering kernel::Stages ms=36 left=48731
+2026-08-28T09:54:46.491472Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:46.525942Z  INFO fs3_daemon::runner: done kind="embed" id=622849 left=48730
+2026-08-28T09:54:46.678483Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/tasks.fltplan.md::Flight Plan: Phase 1 — Package scaffold + engineering kernel::Architecture: Before & After ms=39 left=48730
+2026-08-28T09:54:46.685498Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:46.713337Z  INFO fs3_daemon::runner: done kind="embed" id=622850 left=48729
+2026-08-28T09:54:46.849890Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/tasks.fltplan.md::Flight Plan: Phase 1 — Package scaffold + engineering kernel::Checklist ms=42 left=48729
+2026-08-28T09:54:46.852582Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:46.884128Z  INFO fs3_daemon::runner: done kind="embed" id=622851 left=48728
+2026-08-28T09:54:47.024092Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/tasks.md::Phase 1 — Package scaffold + engineering kernel — Tasks ms=33 left=48728
+2026-08-28T09:54:47.027130Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:47.057758Z  INFO fs3_daemon::runner: done kind="embed" id=622852 left=48727
+2026-08-28T09:54:47.183221Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/tasks.md::Phase 1 — Package scaffold + engineering kernel — Tasks::Executive Briefing ms=31 left=48727
+2026-08-28T09:54:47.211882Z  INFO fs3_daemon::runner: progress phase="working" scanned=58877 scan_left=162 summarized=108296 summarize_left=48564 embedded=183410 embed_left=1 failed=0
+2026-08-28T09:54:47.241877Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x smart jobs=2 ms=0
+2026-08-28T09:54:47.266561Z  INFO fs3_daemon::runner: done kind="embed" id=622853 left=48726
+2026-08-28T09:54:47.348289Z  INFO fs3_daemon::runner: done kind="embed" id=622854 left=48725
+2026-08-28T09:54:47.479534Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/tasks.md::Phase 1 — Package scaffold + engineering kernel — Tasks::Pre-Implementation Check ms=30 left=48725
+2026-08-28T09:54:47.586725Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/tasks.md::Phase 1 — Package scaffold + engineering kernel — Tasks::Architecture Map ms=40 left=48725
+2026-08-28T09:54:47.590469Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:47.634462Z  INFO fs3_daemon::runner: done kind="embed" id=622855 left=48724
+2026-08-28T09:54:47.765800Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/tasks.md::Phase 1 — Package scaffold + engineering kernel — Tasks::Tasks ms=32 left=48724
+2026-08-28T09:54:47.773719Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=3
+2026-08-28T09:54:47.801144Z  INFO fs3_daemon::runner: done kind="embed" id=622856 left=48723
+2026-08-28T09:54:47.941576Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/tasks.md::Phase 1 — Package scaffold + engineering kernel — Tasks::Context Brief ms=39 left=48723
+2026-08-28T09:54:47.944833Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:47.968495Z  INFO fs3_daemon::runner: done kind="embed" id=622857 left=48722
+2026-08-28T09:54:48.101736Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/tasks.md::Phase 1 — Package scaffold + engineering kernel — Tasks::Directory Layout ms=34 left=48722
+2026-08-28T09:54:48.104974Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:48.142095Z  INFO fs3_daemon::runner: done kind="embed" id=622858 left=48721
+2026-08-28T09:54:48.280857Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/tasks.md::Phase 1 — Package scaffold + engineering kernel — Tasks::Validation Record (2026-06-08) ms=39 left=48721
+2026-08-28T09:54:48.281388Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:48.303917Z  INFO fs3_daemon::runner: done kind="embed" id=622859 left=48720
+2026-08-28T09:54:48.443410Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/tasks.md::Phase 1 — Package scaffold + engineering kernel — Tasks::Validation Record (2026-06-08)::Validation Thesis ms=41 left=48720
+2026-08-28T09:54:48.448787Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:48.480123Z  INFO fs3_daemon::runner: done kind="embed" id=622860 left=48719
+2026-08-28T09:54:48.630122Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-1-package-scaffold-engineering-kernel/tasks.md::Phase 1 — Package scaffold + engineering kernel — Tasks::Validation Record (2026-06-08)::Forward-Compatibility Matrix ms=45 left=48719
+2026-08-28T09:54:48.633097Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:48.667438Z  INFO fs3_daemon::runner: done kind="embed" id=622861 left=48718
+2026-08-28T09:54:48.828290Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/execution.log.md::Execution Log — Phase 2: CLI command surface + architecture ms=54 left=48718
+2026-08-28T09:54:48.831175Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:54:48.872243Z  INFO fs3_daemon::runner: done kind="embed" id=622862 left=48717
+2026-08-28T09:54:49.015929Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:49.020361Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/execution.log.md::Execution Log — Phase 2: CLI command surface + architecture::Companion findings disposition ms=46 left=48717
+2026-08-28T09:54:49.052755Z  INFO fs3_daemon::runner: done kind="embed" id=622863 left=48716
+2026-08-28T09:54:49.197591Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/execution.log.md::Execution Log — Phase 2: CLI command surface + architecture::Task Log ms=42 left=48716
+2026-08-28T09:54:49.204504Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:49.252752Z  INFO fs3_daemon::runner: done kind="embed" id=622864 left=48715
+2026-08-28T09:54:49.393305Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/execution.log.md::Execution Log — Phase 2: CLI command surface + architecture::Task Log::T001 — fs adapter (port/node/fake) [Stage 1] ms=36 left=48715
+2026-08-28T09:54:49.405668Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:49.455956Z  INFO fs3_daemon::runner: done kind="embed" id=622865 left=48714
+2026-08-28T09:54:49.614506Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/execution.log.md::Execution Log — Phase 2: CLI command surface + architecture::Task Log::FIX (companion F005) — bin works through npm/npx symlink ms=43 left=48714
+2026-08-28T09:54:49.621894Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:49.660047Z  INFO fs3_daemon::runner: done kind="embed" id=622866 left=48713
+2026-08-28T09:54:49.822466Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.fltplan.md::Flight Plan: Phase 2 — CLI command surface + architecture ms=46 left=48713
+2026-08-28T09:54:49.829325Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:49.865229Z  INFO fs3_daemon::runner: done kind="embed" id=622867 left=48712
+2026-08-28T09:54:50.092099Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:50.105841Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.fltplan.md::Flight Plan: Phase 2 — CLI command surface + architecture::Domain Context ms=68 left=48712
+2026-08-28T09:54:50.114926Z  INFO fs3_daemon::runner: done kind="embed" id=622868 left=48711
+2026-08-28T09:54:50.277271Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.fltplan.md::Flight Plan: Phase 2 — CLI command surface + architecture::Flight Status ms=33 left=48711
+2026-08-28T09:54:50.281876Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:54:50.305123Z  INFO fs3_daemon::runner: done kind="embed" id=622869 left=48710
+2026-08-28T09:54:50.449208Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.fltplan.md::Flight Plan: Phase 2 — CLI command surface + architecture::Stages ms=32 left=48710
+2026-08-28T09:54:50.453257Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:50.481348Z  INFO fs3_daemon::runner: done kind="embed" id=622870 left=48709
+2026-08-28T09:54:50.615452Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.fltplan.md::Flight Plan: Phase 2 — CLI command surface + architecture::Architecture: Before & After ms=36 left=48709
+2026-08-28T09:54:50.618021Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:50.648120Z  INFO fs3_daemon::runner: done kind="embed" id=622871 left=48708
+2026-08-28T09:54:50.786880Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.fltplan.md::Flight Plan: Phase 2 — CLI command surface + architecture::Acceptance Criteria ms=38 left=48708
+2026-08-28T09:54:50.791651Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:54:50.821017Z  INFO fs3_daemon::runner: done kind="embed" id=622872 left=48707
+2026-08-28T09:54:50.946526Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.fltplan.md::Flight Plan: Phase 2 — CLI command surface + architecture::Checklist ms=30 left=48707
+2026-08-28T09:54:50.954600Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:50.978023Z  INFO fs3_daemon::runner: done kind="embed" id=622873 left=48706
+2026-08-28T09:54:51.121182Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.md::Tasks — Phase 2: CLI command surface + architecture ms=39 left=48706
+2026-08-28T09:54:51.127627Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:51.158692Z  INFO fs3_daemon::runner: done kind="embed" id=622874 left=48705
+2026-08-28T09:54:51.310729Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.md::Tasks — Phase 2: CLI command surface + architecture::Executive Briefing ms=42 left=48705
+2026-08-28T09:54:51.312964Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:51.345033Z  INFO fs3_daemon::runner: done kind="embed" id=622875 left=48704
+2026-08-28T09:54:51.477912Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.md::Tasks — Phase 2: CLI command surface + architecture::Prior Phase Context — Phase 1 (Package scaffold + engineering kernel) ms=32 left=48704
+2026-08-28T09:54:51.495252Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:51.518247Z  INFO fs3_daemon::runner: done kind="embed" id=622876 left=48703
+2026-08-28T09:54:51.663286Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.md::Tasks — Phase 2: CLI command surface + architecture::Pre-Implementation Check ms=39 left=48703
+2026-08-28T09:54:51.667867Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:51.703037Z  INFO fs3_daemon::runner: done kind="embed" id=622877 left=48702
+2026-08-28T09:54:51.826659Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.md::Tasks — Phase 2: CLI command surface + architecture::Architecture Map ms=27 left=48702
+2026-08-28T09:54:51.830930Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:51.865475Z  INFO fs3_daemon::runner: done kind="embed" id=622878 left=48701
+2026-08-28T09:54:51.995891Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.md::Tasks — Phase 2: CLI command surface + architecture::Tasks ms=31 left=48701
+2026-08-28T09:54:51.998839Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:52.025161Z  INFO fs3_daemon::runner: done kind="embed" id=622879 left=48700
+2026-08-28T09:54:52.162326Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.md::Tasks — Phase 2: CLI command surface + architecture::Context Brief ms=30 left=48700
+2026-08-28T09:54:52.165509Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:52.191261Z  INFO fs3_daemon::runner: done kind="embed" id=622880 left=48699
+2026-08-28T09:54:52.331349Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.md::Tasks — Phase 2: CLI command surface + architecture::Context Brief::Mermaid flow diagram (a slot invocation) ms=34 left=48699
+2026-08-28T09:54:52.356848Z  INFO fs3_daemon::runner: progress phase="working" scanned=58877 scan_left=162 summarized=108324 summarize_left=48536 embedded=183438 embed_left=1 failed=0
+2026-08-28T09:54:52.394582Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x smart jobs=2 ms=0
+2026-08-28T09:54:52.418430Z  INFO fs3_daemon::runner: done kind="embed" id=622882 left=48698
+2026-08-28T09:54:52.492739Z  INFO fs3_daemon::runner: done kind="embed" id=622881 left=48697
+2026-08-28T09:54:52.631072Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.md::Tasks — Phase 2: CLI command surface + architecture::Context Brief::Mermaid sequence diagram (doctor — services injected with real adapters) ms=42 left=48697
+2026-08-28T09:54:52.724348Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.md::Tasks — Phase 2: CLI command surface + architecture::Discoveries & Learnings ms=37 left=48697
+2026-08-28T09:54:52.726076Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:52.749867Z  INFO fs3_daemon::runner: done kind="embed" id=622883 left=48696
+2026-08-28T09:54:52.889276Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.md::Tasks — Phase 2: CLI command surface + architecture::Directory layout ms=39 left=48696
+2026-08-28T09:54:52.891021Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:52.916429Z  INFO fs3_daemon::runner: done kind="embed" id=622884 left=48695
+2026-08-28T09:54:53.078642Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:53.082754Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.md::Tasks — Phase 2: CLI command surface + architecture::Validation Record (2026-06-08) ms=50 left=48695
+2026-08-28T09:54:53.126024Z  INFO fs3_daemon::runner: done kind="embed" id=622885 left=48694
+2026-08-28T09:54:53.272751Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:53.274708Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.md::Tasks — Phase 2: CLI command surface + architecture::Validation Record (2026-06-08)::Validation Thesis ms=46 left=48694
+2026-08-28T09:54:53.307609Z  INFO fs3_daemon::runner: done kind="embed" id=622886 left=48693
+2026-08-28T09:54:53.455820Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:53.460106Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-2-cli-command-surface-architecture/tasks.md::Tasks — Phase 2: CLI command surface + architecture::Validation Record (2026-06-08)::Forward-Compatibility Matrix ms=51 left=48693
+2026-08-28T09:54:53.496005Z  INFO fs3_daemon::runner: done kind="embed" id=622887 left=48692
+2026-08-28T09:54:53.689734Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:53.689823Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/execution.log.md::Execution Log — Phase 3: CI, release automation, branch protection ms=49 left=48692
+2026-08-28T09:54:53.724070Z  INFO fs3_daemon::runner: done kind="embed" id=622888 left=48691
+2026-08-28T09:54:53.898860Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:53.901981Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/execution.log.md::Execution Log — Phase 3: CI, release automation, branch protection::Environment facts (verified at phase start) ms=59 left=48691
+2026-08-28T09:54:53.931294Z  INFO fs3_daemon::runner: done kind="embed" id=622889 left=48690
+2026-08-28T09:54:54.085407Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/execution.log.md::Execution Log — Phase 3: CI, release automation, branch protection::Tasks ms=44 left=48690
+2026-08-28T09:54:54.091780Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:54.130451Z  INFO fs3_daemon::runner: done kind="embed" id=622890 left=48689
+2026-08-28T09:54:54.271347Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/execution.log.md::Execution Log — Phase 3: CI, release automation, branch protection::Phase 3 Result — Acceptance Criteria ms=41 left=48689
+2026-08-28T09:54:54.275275Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:54.321027Z  INFO fs3_daemon::runner: done kind="embed" id=622891 left=48688
+2026-08-28T09:54:54.483994Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/tasks.fltplan.md::Flight Plan: Phase 3 — CI, release automation, branch protection ms=50 left=48688
+2026-08-28T09:54:54.494825Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:54.526981Z  INFO fs3_daemon::runner: done kind="embed" id=622892 left=48687
+2026-08-28T09:54:54.656862Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/tasks.fltplan.md::Flight Plan: Phase 3 — CI, release automation, branch protection::Domain Context ms=30 left=48687
+2026-08-28T09:54:54.659588Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:54.689338Z  INFO fs3_daemon::runner: done kind="embed" id=622893 left=48686
+2026-08-28T09:54:54.825022Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/tasks.fltplan.md::Flight Plan: Phase 3 — CI, release automation, branch protection::Flight Status ms=35 left=48686
+2026-08-28T09:54:54.827201Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:54.859557Z  INFO fs3_daemon::runner: done kind="embed" id=622894 left=48685
+2026-08-28T09:54:54.997305Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/tasks.fltplan.md::Flight Plan: Phase 3 — CI, release automation, branch protection::Stages ms=41 left=48685
+2026-08-28T09:54:55.001686Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:55.033779Z  INFO fs3_daemon::runner: done kind="embed" id=622895 left=48684
+2026-08-28T09:54:55.172940Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/tasks.fltplan.md::Flight Plan: Phase 3 — CI, release automation, branch protection::Architecture: Before & After ms=38 left=48684
+2026-08-28T09:54:55.178938Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:55.215333Z  INFO fs3_daemon::runner: done kind="embed" id=622896 left=48683
+2026-08-28T09:54:55.354230Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/tasks.md::Phase 3 — CI, release automation, branch protection · Tasks ms=45 left=48683
+2026-08-28T09:54:55.358536Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:55.388275Z  INFO fs3_daemon::runner: done kind="embed" id=622897 left=48682
+2026-08-28T09:54:55.546198Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/tasks.md::Phase 3 — CI, release automation, branch protection · Tasks::Executive Briefing ms=46 left=48682
+2026-08-28T09:54:55.550855Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:54:55.575548Z  INFO fs3_daemon::runner: done kind="embed" id=622898 left=48681
+2026-08-28T09:54:55.709718Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/tasks.md::Phase 3 — CI, release automation, branch protection · Tasks::Prior Phase Context ms=37 left=48681
+2026-08-28T09:54:55.716839Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:55.751595Z  INFO fs3_daemon::runner: done kind="embed" id=622899 left=48680
+2026-08-28T09:54:55.896441Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/tasks.md::Phase 3 — CI, release automation, branch protection · Tasks::Prior Phase Context::Phase 1 — Package scaffold + engineering kernel (done) ms=38 left=48680
+2026-08-28T09:54:55.900037Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:55.936705Z  INFO fs3_daemon::runner: done kind="embed" id=622900 left=48679
+2026-08-28T09:54:56.075522Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/tasks.md::Phase 3 — CI, release automation, branch protection · Tasks::Prior Phase Context::Phase 2 — CLI command surface + architecture (done) ms=36 left=48679
+2026-08-28T09:54:56.078230Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:56.109673Z  INFO fs3_daemon::runner: done kind="embed" id=622901 left=48678
+2026-08-28T09:54:56.248574Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/tasks.md::Phase 3 — CI, release automation, branch protection · Tasks::Pre-Implementation Check ms=32 left=48678
+2026-08-28T09:54:56.254907Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:56.287446Z  INFO fs3_daemon::runner: done kind="embed" id=622902 left=48677
+2026-08-28T09:54:56.429735Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/tasks.md::Phase 3 — CI, release automation, branch protection · Tasks::Architecture Map ms=38 left=48677
+2026-08-28T09:54:56.432964Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:56.459451Z  INFO fs3_daemon::runner: done kind="embed" id=622903 left=48676
+2026-08-28T09:54:56.597295Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/tasks.md::Phase 3 — CI, release automation, branch protection · Tasks::Tasks ms=39 left=48676
+2026-08-28T09:54:56.604112Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:56.632780Z  INFO fs3_daemon::runner: done kind="embed" id=622904 left=48675
+2026-08-28T09:54:56.768946Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/the-flow.md::Flight plan — harness-core ms=37 left=48675
+2026-08-28T09:54:56.774016Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:56.804305Z  INFO fs3_daemon::runner: done kind="embed" id=622905 left=48674
+2026-08-28T09:54:56.933615Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/tasks.md::Phase 3 — CI, release automation, branch protection · Tasks::Context Brief ms=33 left=48674
+2026-08-28T09:54:56.937776Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:56.977640Z  INFO fs3_daemon::runner: done kind="embed" id=622906 left=48673
+2026-08-28T09:54:57.123647Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/tasks.md::Phase 3 — CI, release automation, branch protection · Tasks::Directory Layout ms=39 left=48673
+2026-08-28T09:54:57.127027Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:57.157330Z  INFO fs3_daemon::runner: done kind="embed" id=622907 left=48672
+2026-08-28T09:54:57.305645Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/001-output-envelope-and-exit-codes.md::Workshop: Output envelope + exit-code contract ms=40 left=48672
+2026-08-28T09:54:57.307499Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:57.332418Z  INFO fs3_daemon::runner: done kind="embed" id=622908 left=48671
+2026-08-28T09:54:57.485429Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/tasks.md::Phase 3 — CI, release automation, branch protection · Tasks::Validation Record (2026-06-08) ms=54 left=48671
+2026-08-28T09:54:57.485793Z  INFO fs3_daemon::runner: progress phase="working" scanned=58877 scan_left=162 summarized=108352 summarize_left=48508 embedded=183466 embed_left=1 failed=0
+2026-08-28T09:54:57.547246Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x smart jobs=2 ms=0
+2026-08-28T09:54:57.583625Z  INFO fs3_daemon::runner: done kind="embed" id=622910 left=48670
+2026-08-28T09:54:57.665020Z  INFO fs3_daemon::runner: done kind="embed" id=622909 left=48669
+2026-08-28T09:54:57.828307Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/001-output-envelope-and-exit-codes.md::Workshop: Output envelope + exit-code contract::Key Questions Addressed ms=48 left=48669
+2026-08-28T09:54:57.915174Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:57.922050Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/tasks.md::Phase 3 — CI, release automation, branch protection · Tasks::Validation Record (2026-06-08)::Validation Thesis ms=54 left=48669
+2026-08-28T09:54:57.952532Z  INFO fs3_daemon::runner: done kind="embed" id=622911 left=48668
+2026-08-28T09:54:58.100774Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:58.109013Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/001-output-envelope-and-exit-codes.md::Workshop: Output envelope + exit-code contract::Background: the proven reference pattern (captured, not assumed) ms=48 left=48668
+2026-08-28T09:54:58.139826Z  INFO fs3_daemon::runner: done kind="embed" id=622912 left=48667
+2026-08-28T09:54:58.293780Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:58.305213Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/tasks/phase-3-ci-release-automation-branch-protection/tasks.md::Phase 3 — CI, release automation, branch protection · Tasks::Validation Record (2026-06-08)::Fixes Applied (this validation) ms=67 left=48667
+2026-08-28T09:54:58.333587Z  INFO fs3_daemon::runner: done kind="embed" id=622913 left=48666
+2026-08-28T09:54:58.501698Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/001-output-envelope-and-exit-codes.md::Workshop: Output envelope + exit-code contract::Decision Space ms=52 left=48666
+2026-08-28T09:54:58.503416Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:58.545582Z  INFO fs3_daemon::runner: done kind="embed" id=622914 left=48665
+2026-08-28T09:54:58.699567Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:58.699615Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter) ms=46 left=48665
+2026-08-28T09:54:58.730937Z  INFO fs3_daemon::runner: done kind="embed" id=622915 left=48664
+2026-08-28T09:54:58.894082Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=5
+2026-08-28T09:54:58.902419Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::Key Questions Addressed ms=64 left=48664
+2026-08-28T09:54:58.939285Z  INFO fs3_daemon::runner: done kind="embed" id=622916 left=48663
+2026-08-28T09:54:59.073382Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/001-output-envelope-and-exit-codes.md::Workshop: Output envelope + exit-code contract::The Contract ms=33 left=48663
+2026-08-28T09:54:59.079771Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:59.122192Z  INFO fs3_daemon::runner: done kind="embed" id=622917 left=48662
+2026-08-28T09:54:59.251306Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/001-output-envelope-and-exit-codes.md::Workshop: Output envelope + exit-code contract::The Contract::Envelope type ms=31 left=48662
+2026-08-28T09:54:59.253237Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:54:59.283248Z  INFO fs3_daemon::runner: done kind="embed" id=622918 left=48661
+2026-08-28T09:54:59.416942Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::Value Frame ms=32 left=48661
+2026-08-28T09:54:59.426795Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:59.458842Z  INFO fs3_daemon::runner: done kind="embed" id=622919 left=48660
+2026-08-28T09:54:59.590216Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::The pattern, captured from `minih` (so we don't assume it's on disk) ms=35 left=48660
+2026-08-28T09:54:59.594325Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:59.627670Z  INFO fs3_daemon::runner: done kind="embed" id=622920 left=48659
+2026-08-28T09:54:59.776403Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/001-output-envelope-and-exit-codes.md::Workshop: Output envelope + exit-code contract::The Contract::Field-presence rules (the part agents depend on) ms=44 left=48659
+2026-08-28T09:54:59.786139Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:59.820195Z  INFO fs3_daemon::runner: done kind="embed" id=622921 left=48658
+2026-08-28T09:54:59.962569Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::Our layering ms=38 left=48658
+2026-08-28T09:54:59.967967Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:54:59.994677Z  INFO fs3_daemon::runner: done kind="embed" id=622922 left=48657
+2026-08-28T09:55:00.136481Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/001-output-envelope-and-exit-codes.md::Workshop: Output envelope + exit-code contract::The Contract::Status → exit code mapping (authoritative) ms=32 left=48657
+2026-08-28T09:55:00.140708Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:00.175259Z  INFO fs3_daemon::runner: done kind="embed" id=622923 left=48656
+2026-08-28T09:55:00.321959Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::Our layering::Composition at a glance ms=42 left=48656
+2026-08-28T09:55:00.323464Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:00.354784Z  INFO fs3_daemon::runner: done kind="embed" id=622924 left=48655
+2026-08-28T09:55:00.483725Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/001-output-envelope-and-exit-codes.md::Workshop: Output envelope + exit-code contract::The Contract::Constructors ms=31 left=48655
+2026-08-28T09:55:00.487889Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:00.516099Z  INFO fs3_daemon::runner: done kind="embed" id=622925 left=48654
+2026-08-28T09:55:00.664706Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::Our layering::Folder tree (Phase 2 target) ms=32 left=48654
+2026-08-28T09:55:00.668594Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:00.697346Z  INFO fs3_daemon::runner: done kind="embed" id=622926 left=48653
+2026-08-28T09:55:00.831127Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/001-output-envelope-and-exit-codes.md::Workshop: Output envelope + exit-code contract::The Contract::Human vs JSON selection (the `OutputPort`) ms=35 left=48653
+2026-08-28T09:55:00.833573Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:00.862258Z  INFO fs3_daemon::runner: done kind="embed" id=622927 left=48652
+2026-08-28T09:55:01.012834Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/execution.log.md::Execution Log — Plan 005: Harness Extension System ms=38 left=48652
+2026-08-28T09:55:01.015904Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:01.045672Z  INFO fs3_daemon::runner: done kind="embed" id=622928 left=48651
+2026-08-28T09:55:01.195647Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:01.197419Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::Our layering::Layer responsibilities ms=42 left=48651
+2026-08-28T09:55:01.221251Z  INFO fs3_daemon::runner: done kind="embed" id=622929 left=48650
+2026-08-28T09:55:01.366972Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/001-output-envelope-and-exit-codes.md::Workshop: Output envelope + exit-code contract::Worked Examples ms=37 left=48650
+2026-08-28T09:55:01.369989Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:01.397338Z  INFO fs3_daemon::runner: done kind="embed" id=622930 left=48649
+2026-08-28T09:55:01.525375Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:01.529500Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/execution.log.md::Execution Log — Plan 005: Harness Extension System::Companion finding disposition ms=33 left=48649
+2026-08-28T09:55:01.561898Z  INFO fs3_daemon::runner: done kind="embed" id=622931 left=48648
+2026-08-28T09:55:01.705275Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::Dependency injection: parameter injection (no container) ms=39 left=48648
+2026-08-28T09:55:01.709214Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:01.749164Z  INFO fs3_daemon::runner: done kind="embed" id=622932 left=48647
+2026-08-28T09:55:01.897424Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/001-output-envelope-and-exit-codes.md::Workshop: Output envelope + exit-code contract::Worked Examples::`doctor` (human, TTY) ms=29 left=48647
+2026-08-28T09:55:01.901843Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:01.929640Z  INFO fs3_daemon::runner: done kind="embed" id=622933 left=48646
+2026-08-28T09:55:02.088147Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::Dependency injection: parameter injection (no container)::Runtime flow: `harness doctor --json` ms=50 left=48646
+2026-08-28T09:55:02.092204Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:02.126585Z  INFO fs3_daemon::runner: done kind="embed" id=622934 left=48645
+2026-08-28T09:55:02.287734Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::Adapter set ms=47 left=48645
+2026-08-28T09:55:02.288483Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:02.320323Z  INFO fs3_daemon::runner: done kind="embed" id=622935 left=48644
+2026-08-28T09:55:02.479881Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/001-output-envelope-and-exit-codes.md::Workshop: Output envelope + exit-code contract::Worked Examples::`doctor` (JSON, piped) ms=48 left=48644
+2026-08-28T09:55:02.485861Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:02.540855Z  INFO fs3_daemon::runner: done kind="embed" id=622936 left=48643
+2026-08-28T09:55:02.705751Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::Adapter set::Ships in this slice ms=55 left=48643
+2026-08-28T09:55:02.708800Z  INFO fs3_daemon::runner: progress phase="working" scanned=58877 scan_left=162 summarized=108380 summarize_left=48480 embedded=183494 embed_left=1 failed=0
+2026-08-28T09:55:02.754663Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x smart jobs=2 ms=0
+2026-08-28T09:55:02.787757Z  INFO fs3_daemon::runner: done kind="embed" id=622937 left=48642
+2026-08-28T09:55:02.865867Z  INFO fs3_daemon::runner: done kind="embed" id=622938 left=48641
+2026-08-28T09:55:03.031147Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/001-output-envelope-and-exit-codes.md::Workshop: Output envelope + exit-code contract::Worked Examples::`run --dry-run` on an unconfigured slot (safe at session start) ms=57 left=48641
+2026-08-28T09:55:03.114774Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-plan.md::Harness Extension System Implementation Plan ms=51 left=48641
+2026-08-28T09:55:03.116675Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:03.145423Z  INFO fs3_daemon::runner: done kind="embed" id=622939 left=48640
+2026-08-28T09:55:03.299854Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/001-output-envelope-and-exit-codes.md::Workshop: Output envelope + exit-code contract::Worked Examples::`error` (bad arguments) ms=43 left=48640
+2026-08-28T09:55:03.311951Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:03.344730Z  INFO fs3_daemon::runner: done kind="embed" id=622940 left=48639
+2026-08-28T09:55:03.485504Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::Adapter set::Port + impl + fake (worked example: fs) ms=30 left=48639
+2026-08-28T09:55:03.496650Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=6
+2026-08-28T09:55:03.546831Z  INFO fs3_daemon::runner: done kind="embed" id=622941 left=48638
+2026-08-28T09:55:03.703704Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-plan.md::Harness Extension System Implementation Plan::Gate Matrix ms=43 left=48638
+2026-08-28T09:55:03.707276Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:03.745848Z  INFO fs3_daemon::runner: done kind="embed" id=622942 left=48637
+2026-08-28T09:55:03.891209Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/001-output-envelope-and-exit-codes.md::Workshop: Output envelope + exit-code contract::Error code table (starter) ms=35 left=48637
+2026-08-28T09:55:03.893708Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:03.924790Z  INFO fs3_daemon::runner: done kind="embed" id=622943 left=48636
+2026-08-28T09:55:04.064020Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-plan.md::Harness Extension System Implementation Plan::Plan Decisions (folding deferred WS-B / WS-C micro-decisions) ms=33 left=48636
+2026-08-28T09:55:04.066872Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:04.098146Z  INFO fs3_daemon::runner: done kind="embed" id=622944 left=48635
+2026-08-28T09:55:04.241524Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::Fake strategy: one fake per adapter ms=41 left=48635
+2026-08-28T09:55:04.245852Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:04.275952Z  INFO fs3_daemon::runner: done kind="embed" id=622945 left=48634
+2026-08-28T09:55:04.411306Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/001-output-envelope-and-exit-codes.md::Workshop: Output envelope + exit-code contract::Evidence Ledger ms=28 left=48634
+2026-08-28T09:55:04.415282Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:04.456132Z  INFO fs3_daemon::runner: done kind="embed" id=622946 left=48633
+2026-08-28T09:55:04.606037Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-plan.md::Harness Extension System Implementation Plan::Target Domains ms=42 left=48633
+2026-08-28T09:55:04.609876Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:04.642885Z  INFO fs3_daemon::runner: done kind="embed" id=622947 left=48632
+2026-08-28T09:55:04.792398Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::Fake strategy: one fake per adapter::Test wiring: same service, fakes swapped in ms=36 left=48632
+2026-08-28T09:55:04.794748Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:04.823959Z  INFO fs3_daemon::runner: done kind="embed" id=622948 left=48631
+2026-08-28T09:55:04.952928Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:04.959132Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/001-output-envelope-and-exit-codes.md::Workshop: Output envelope + exit-code contract::Open Questions ms=39 left=48631
+2026-08-28T09:55:04.977305Z  INFO fs3_daemon::runner: done kind="embed" id=622949 left=48630
+2026-08-28T09:55:05.111192Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::Fake strategy: one fake per adapter::Worked unit test (service + fake, no real fs) ms=30 left=48630
+2026-08-28T09:55:05.115209Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:05.140444Z  INFO fs3_daemon::runner: done kind="embed" id=622950 left=48629
+2026-08-28T09:55:05.271079Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-plan.md::Harness Extension System Implementation Plan::Domain Manifest ms=34 left=48629
+2026-08-28T09:55:05.275610Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:55:05.301612Z  INFO fs3_daemon::runner: done kind="embed" id=622951 left=48628
+2026-08-28T09:55:05.441056Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-plan.md::Harness Extension System Implementation Plan::Key Findings ms=38 left=48628
+2026-08-28T09:55:05.444866Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:05.471330Z  INFO fs3_daemon::runner: done kind="embed" id=622952 left=48627
+2026-08-28T09:55:05.615749Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::The extension seam (shape only — loader is out of scope) ms=32 left=48627
+2026-08-28T09:55:05.619390Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:05.646828Z  INFO fs3_daemon::runner: done kind="embed" id=622953 left=48626
+2026-08-28T09:55:05.777438Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-plan.md::Harness Extension System Implementation Plan::Implementation ms=31 left=48626
+2026-08-28T09:55:05.782501Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:05.811554Z  INFO fs3_daemon::runner: done kind="embed" id=622954 left=48625
+2026-08-28T09:55:05.942794Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::The extension seam (shape only — loader is out of scope)::Forward-compatibility with a pi-style extension system (checked, OOS to build) ms=38 left=48625
+2026-08-28T09:55:05.945806Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:05.979208Z  INFO fs3_daemon::runner: done kind="embed" id=622955 left=48624
+2026-08-28T09:55:06.098227Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:06.109550Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-plan.md::Harness Extension System Implementation Plan::Implementation::Tasks ms=35 left=48624
+2026-08-28T09:55:06.118434Z  INFO fs3_daemon::runner: done kind="embed" id=622956 left=48623
+2026-08-28T09:55:06.250776Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::Decision Space ms=35 left=48623
+2026-08-28T09:55:06.253421Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:06.278707Z  INFO fs3_daemon::runner: done kind="embed" id=622957 left=48622
+2026-08-28T09:55:06.411533Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-plan.md::Harness Extension System Implementation Plan::Implementation::Acceptance Criteria ms=32 left=48622
+2026-08-28T09:55:06.414078Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:06.449443Z  INFO fs3_daemon::runner: done kind="embed" id=622958 left=48621
+2026-08-28T09:55:06.608751Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::Evidence Ledger ms=46 left=48621
+2026-08-28T09:55:06.613656Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:06.657358Z  INFO fs3_daemon::runner: done kind="embed" id=622959 left=48620
+2026-08-28T09:55:06.827237Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-plan.md::Harness Extension System Implementation Plan::Implementation::Risks ms=53 left=48620
+2026-08-28T09:55:06.838487Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:06.881341Z  INFO fs3_daemon::runner: done kind="embed" id=622960 left=48619
+2026-08-28T09:55:07.041982Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::Validation / Acceptance ms=47 left=48619
+2026-08-28T09:55:07.056819Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:07.103746Z  INFO fs3_daemon::runner: done kind="embed" id=622961 left=48618
+2026-08-28T09:55:07.252204Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:07.256796Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-plan.md::Harness Extension System Implementation Plan::Validation Record (2026-06-08) ms=54 left=48618
+2026-08-28T09:55:07.287151Z  INFO fs3_daemon::runner: done kind="embed" id=622962 left=48617
+2026-08-28T09:55:07.441632Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:07.451569Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-spec.md::Harness Extension System ms=53 left=48617
+2026-08-28T09:55:07.472904Z  INFO fs3_daemon::runner: done kind="embed" id=622963 left=48616
+2026-08-28T09:55:07.641882Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:07.649902Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/004-harness-core/workshops/002-cli-composition-pattern.md::Workshop: CLI composition pattern (entrypoint → act → service → adapter)::Open Questions ms=58 left=48616
+2026-08-28T09:55:07.683349Z  INFO fs3_daemon::runner: done kind="embed" id=622964 left=48615
+2026-08-28T09:55:07.825047Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-plan.md::Harness Extension System Implementation Plan::Validation Record (2026-06-08)::Validation Thesis ms=44 left=48615
+2026-08-28T09:55:07.841141Z  INFO fs3_daemon::runner: progress phase="working" scanned=58877 scan_left=162 summarized=108408 summarize_left=48452 embedded=183522 embed_left=1 failed=0
+2026-08-28T09:55:07.887916Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x smart jobs=2 ms=0
+2026-08-28T09:55:07.924558Z  INFO fs3_daemon::runner: done kind="embed" id=622965 left=48614
+2026-08-28T09:55:08.006242Z  INFO fs3_daemon::runner: done kind="embed" id=622966 left=48613
+2026-08-28T09:55:08.154740Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-spec.md::Harness Extension System::Target Domains ms=41 left=48613
+2026-08-28T09:55:08.260049Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-plan.md::Harness Extension System Implementation Plan::Validation Record (2026-06-08)::Forward-Compatibility Matrix ms=39 left=48613
+2026-08-28T09:55:08.262848Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:08.288372Z  INFO fs3_daemon::runner: done kind="embed" id=622967 left=48612
+2026-08-28T09:55:08.421288Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-spec.md::Harness Extension System::Complexity ms=33 left=48612
+2026-08-28T09:55:08.424488Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:08.466025Z  INFO fs3_daemon::runner: done kind="embed" id=622968 left=48611
+2026-08-28T09:55:08.604847Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:08.604894Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-plan.md::Harness Extension System Implementation Plan::Validation Record — Code Changes (2026-06-08) ms=37 left=48611
+2026-08-28T09:55:08.632179Z  INFO fs3_daemon::runner: done kind="embed" id=622969 left=48610
+2026-08-28T09:55:08.783185Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-spec.md::Harness Extension System::Acceptance Criteria ms=41 left=48610
+2026-08-28T09:55:08.785863Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:08.818395Z  INFO fs3_daemon::runner: done kind="embed" id=622970 left=48609
+2026-08-28T09:55:08.961518Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:08.976989Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-plan.md::Harness Extension System Implementation Plan::Validation Record — Code Changes (2026-06-08)::Validation Thesis ms=41 left=48609
+2026-08-28T09:55:08.979704Z  INFO fs3_daemon::runner: done kind="embed" id=622971 left=48608
+2026-08-28T09:55:09.118258Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-spec.md::Harness Extension System::Clarifications ms=40 left=48608
+2026-08-28T09:55:09.126663Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=3
+2026-08-28T09:55:09.152210Z  INFO fs3_daemon::runner: done kind="embed" id=622972 left=48607
+2026-08-28T09:55:09.291892Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-plan.md::Harness Extension System Implementation Plan::Validation Record — Code Changes (2026-06-08)::Forward-Compatibility Matrix ms=33 left=48607
+2026-08-28T09:55:09.298620Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:55:09.330583Z  INFO fs3_daemon::runner: done kind="embed" id=622973 left=48606
+2026-08-28T09:55:09.469391Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system-spec.md::Harness Extension System::Clarifications::Session 2026-06-08 ms=33 left=48606
+2026-08-28T09:55:09.473195Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:09.506474Z  INFO fs3_daemon::runner: done kind="embed" id=622974 left=48605
+2026-08-28T09:55:09.646841Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system.fltplan.md::Flight Plan: Harness Extension System ms=31 left=48605
+2026-08-28T09:55:09.653918Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=3
+2026-08-28T09:55:09.679533Z  INFO fs3_daemon::runner: done kind="embed" id=622975 left=48604
+2026-08-28T09:55:09.824556Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system.fltplan.md::Flight Plan: Harness Extension System::Where We Are → Where We're Headed ms=38 left=48604
+2026-08-28T09:55:09.829375Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:09.862612Z  INFO fs3_daemon::runner: done kind="embed" id=622976 left=48603
+2026-08-28T09:55:10.001878Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system.fltplan.md::Flight Plan: Harness Extension System::Scope ms=38 left=48603
+2026-08-28T09:55:10.003850Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:10.043678Z  INFO fs3_daemon::runner: done kind="embed" id=622977 left=48602
+2026-08-28T09:55:10.205321Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system.fltplan.md::Flight Plan: Harness Extension System::Journey Map ms=39 left=48602
+2026-08-28T09:55:10.210565Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:10.239022Z  INFO fs3_daemon::runner: done kind="embed" id=622978 left=48601
+2026-08-28T09:55:10.377680Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system.fltplan.md::Flight Plan: Harness Extension System::Phases Overview ms=34 left=48601
+2026-08-28T09:55:10.379887Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:10.409884Z  INFO fs3_daemon::runner: done kind="embed" id=622979 left=48600
+2026-08-28T09:55:10.545325Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system.fltplan.md::Flight Plan: Harness Extension System::Acceptance Criteria ms=28 left=48600
+2026-08-28T09:55:10.550633Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:10.578771Z  INFO fs3_daemon::runner: done kind="embed" id=622980 left=48599
+2026-08-28T09:55:10.698675Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/harness-extension-system.fltplan.md::Flight Plan: Harness Extension System::Key Risks ms=26 left=48599
+2026-08-28T09:55:10.700912Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:10.739303Z  INFO fs3_daemon::runner: done kind="embed" id=622981 left=48598
+2026-08-28T09:55:10.867885Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/original-ask.md::Original ask — harness-extension-system ms=33 left=48598
+2026-08-28T09:55:10.870711Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:10.896927Z  INFO fs3_daemon::runner: done kind="embed" id=622982 left=48597
+2026-08-28T09:55:11.058856Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:11.065082Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/research-dossier.md::Research Report: Harness Extension System ms=52 left=48597
+2026-08-28T09:55:11.099872Z  INFO fs3_daemon::runner: done kind="embed" id=622983 left=48596
+2026-08-28T09:55:11.240441Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:11.243302Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/research-dossier.md::Research Report: Harness Extension System::Executive Summary ms=46 left=48596
+2026-08-28T09:55:11.290199Z  INFO fs3_daemon::runner: done kind="embed" id=622984 left=48595
+2026-08-28T09:55:11.462132Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:11.475462Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/research-dossier.md::Research Report: Harness Extension System::How pi's Extension System Works (condensed, CLI-relevant lens) ms=55 left=48595
+2026-08-28T09:55:11.501438Z  INFO fs3_daemon::runner: done kind="embed" id=622985 left=48594
+2026-08-28T09:55:11.686848Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/research-dossier.md::Research Report: Harness Extension System::Our Current Extension Seam (first-hand, `harness/cli/`) ms=52 left=48594
+2026-08-28T09:55:11.687117Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:11.738128Z  INFO fs3_daemon::runner: done kind="embed" id=622986 left=48593
+2026-08-28T09:55:11.882789Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:11.898252Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/research-dossier.md::Research Report: Harness Extension System::The Adaptation Delta — CLI Verbs vs Agent Tools (the crux) ms=52 left=48593
+2026-08-28T09:55:11.920631Z  INFO fs3_daemon::runner: done kind="embed" id=622987 left=48592
+2026-08-28T09:55:12.077433Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/research-dossier.md::Research Report: Harness Extension System::Constraints (must honour) ms=50 left=48592
+2026-08-28T09:55:12.084658Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=3
+2026-08-28T09:55:12.132264Z  INFO fs3_daemon::runner: done kind="embed" id=622988 left=48591
+2026-08-28T09:55:12.295076Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/research-dossier.md::Research Report: Harness Extension System::Prior Learnings (institutional knowledge) ms=47 left=48591
+2026-08-28T09:55:12.305671Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:12.341295Z  INFO fs3_daemon::runner: done kind="embed" id=622989 left=48590
+2026-08-28T09:55:12.494377Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/research-dossier.md::Research Report: Harness Extension System::Install & Discovery Model ms=41 left=48590
+2026-08-28T09:55:12.497615Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:55:12.530231Z  INFO fs3_daemon::runner: done kind="embed" id=622990 left=48589
+2026-08-28T09:55:12.657874Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/research-dossier.md::Research Report: Harness Extension System::Design Decision Space & Open Questions (for `/plan-1b` and a likely workshop) ms=33 left=48589
+2026-08-28T09:55:12.661560Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:12.686326Z  INFO fs3_daemon::runner: done kind="embed" id=622991 left=48588
+2026-08-28T09:55:12.830980Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/research-dossier.md::Research Report: Harness Extension System::External Research Opportunities ms=39 left=48588
+2026-08-28T09:55:12.835044Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:12.866617Z  INFO fs3_daemon::runner: done kind="embed" id=622992 left=48587
+2026-08-28T09:55:13.012240Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/the-flow.md::`the-flow.md` — harness-extension-system (flight view) ms=46 left=48587
+2026-08-28T09:55:13.031427Z  INFO fs3_daemon::runner: progress phase="working" scanned=58877 scan_left=162 summarized=108436 summarize_left=48424 embedded=183550 embed_left=1 failed=0
+2026-08-28T09:55:13.076476Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x smart jobs=2 ms=0
+2026-08-28T09:55:13.103526Z  INFO fs3_daemon::runner: done kind="embed" id=622994 left=48586
+2026-08-28T09:55:13.179747Z  INFO fs3_daemon::runner: done kind="embed" id=622993 left=48585
+2026-08-28T09:55:13.304389Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/research-dossier.md::Research Report: Harness Extension System::External Research Opportunities::Research Opportunity 1: TS-loading mechanism for a distributed npx CLI in 2024+ ms=27 left=48585
+2026-08-28T09:55:13.407153Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/research-dossier.md::Research Report: Harness Extension System::External Research Opportunities::Research Opportunity 2: Secure/robust plugin loading patterns for Node CLIs ms=34 left=48585
+2026-08-28T09:55:13.411364Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:13.445386Z  INFO fs3_daemon::runner: done kind="embed" id=622995 left=48584
+2026-08-28T09:55:13.590732Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/research-dossier.md::Research Report: Harness Extension System::Recommendations ms=39 left=48584
+2026-08-28T09:55:13.597297Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:13.629382Z  INFO fs3_daemon::runner: done kind="embed" id=622996 left=48583
+2026-08-28T09:55:13.773280Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/research-dossier.md::Research Report: Harness Extension System::Next Steps ms=40 left=48583
+2026-08-28T09:55:13.777948Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:13.820432Z  INFO fs3_daemon::runner: done kind="embed" id=622997 left=48582
+2026-08-28T09:55:13.971383Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/workshops/001-extension-contract-and-loader.md::Workshop: Extension Contract & Loader Architecture (WS-A) ms=42 left=48582
+2026-08-28T09:55:13.975231Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:14.009269Z  INFO fs3_daemon::runner: done kind="embed" id=622998 left=48581
+2026-08-28T09:55:14.146730Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/workshops/001-extension-contract-and-loader.md::Workshop: Extension Contract & Loader Architecture (WS-A)::Key Questions Addressed ms=42 left=48581
+2026-08-28T09:55:14.150707Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:14.178906Z  INFO fs3_daemon::runner: done kind="embed" id=622999 left=48580
+2026-08-28T09:55:14.326361Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/workshops/001-extension-contract-and-loader.md::Workshop: Extension Contract & Loader Architecture (WS-A)::Value Frame ms=40 left=48580
+2026-08-28T09:55:14.331004Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:14.366342Z  INFO fs3_daemon::runner: done kind="embed" id=623000 left=48579
+2026-08-28T09:55:14.493355Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/workshops/001-extension-contract-and-loader.md::Workshop: Extension Contract & Loader Architecture (WS-A)::Decision 1 — Loading mechanism → **jiti v2** (with `.js` fast-path; native-TS as a future) ms=34 left=48579
+2026-08-28T09:55:14.498843Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=3
+2026-08-28T09:55:14.532026Z  INFO fs3_daemon::runner: done kind="embed" id=623001 left=48578
+2026-08-28T09:55:14.671021Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/workshops/001-extension-contract-and-loader.md::Workshop: Extension Contract & Loader Architecture (WS-A)::Decision 1 — Loading mechanism → **jiti v2** (with `.js` fast-path; native-TS as a future)::Decision Space ms=33 left=48578
+2026-08-28T09:55:14.674748Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:14.706649Z  INFO fs3_daemon::runner: done kind="embed" id=623002 left=48577
+2026-08-28T09:55:14.852801Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/workshops/001-extension-contract-and-loader.md::Workshop: Extension Contract & Loader Architecture (WS-A)::Decision 2 — Verb contract shape → **declarative default export** (`HarnessVerb | HarnessVerb[]`) ms=34 left=48577
+2026-08-28T09:55:14.856564Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:14.889238Z  INFO fs3_daemon::runner: done kind="embed" id=623003 left=48576
+2026-08-28T09:55:15.019486Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/workshops/001-extension-contract-and-loader.md::Workshop: Extension Contract & Loader Architecture (WS-A)::Decision 2 — Verb contract shape → **declarative default export** (`HarnessVerb | HarnessVerb[]`)::The contract (authors import these types; the core provides the impl) ms=32 left=48576
+2026-08-28T09:55:15.022358Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:15.046165Z  INFO fs3_daemon::runner: done kind="embed" id=623004 left=48575
+2026-08-28T09:55:15.184075Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/workshops/001-extension-contract-and-loader.md::Workshop: Extension Contract & Loader Architecture (WS-A)::Decision 3 — `ctx` capability set → ports + an **`ExecPort`** (confirmed for P8) ms=34 left=48575
+2026-08-28T09:55:15.188763Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:15.219458Z  INFO fs3_daemon::runner: done kind="embed" id=623005 left=48574
+2026-08-28T09:55:15.391728Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/workshops/001-extension-contract-and-loader.md::Workshop: Extension Contract & Loader Architecture (WS-A)::Decision 4 — Discovery rules ms=53 left=48574
+2026-08-28T09:55:15.396504Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=3
+2026-08-28T09:55:15.427388Z  INFO fs3_daemon::runner: done kind="embed" id=623006 left=48573
+2026-08-28T09:55:15.579466Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/workshops/001-extension-contract-and-loader.md::Workshop: Extension Contract & Loader Architecture (WS-A)::Decision 5 — Trust & failure isolation → **trust-the-repo + per-extension isolation + `--no-extensions`** ms=53 left=48573
+2026-08-28T09:55:15.585172Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:15.622525Z  INFO fs3_daemon::runner: done kind="embed" id=623007 left=48572
+2026-08-28T09:55:15.783117Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:15.785544Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/workshops/001-extension-contract-and-loader.md::Workshop: Extension Contract & Loader Architecture (WS-A)::Decision 5 — Trust & failure isolation → **trust-the-repo + per-extension isolation + `--no-extensions`**::Decisions ms=52 left=48572
+2026-08-28T09:55:15.824179Z  INFO fs3_daemon::runner: done kind="embed" id=623008 left=48571
+2026-08-28T09:55:15.997151Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:16.004221Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/workshops/001-extension-contract-and-loader.md::Workshop: Extension Contract & Loader Architecture (WS-A)::Decision 6 — Async `main` restructure (load-before-parse) ms=62 left=48571
+2026-08-28T09:55:16.026183Z  INFO fs3_daemon::runner: done kind="embed" id=623009 left=48570
+2026-08-28T09:55:16.182697Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:16.193040Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/workshops/001-extension-contract-and-loader.md::Workshop: Extension Contract & Loader Architecture (WS-A)::Worked Example — a `hello` verb and a `build` verb ms=55 left=48570
+2026-08-28T09:55:16.211340Z  INFO fs3_daemon::runner: done kind="embed" id=623010 left=48569
+2026-08-28T09:55:16.361514Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/workshops/001-extension-contract-and-loader.md::Workshop: Extension Contract & Loader Architecture (WS-A)::Evidence Ledger ms=48 left=48569
+2026-08-28T09:55:16.365812Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:16.401848Z  INFO fs3_daemon::runner: done kind="embed" id=623011 left=48568
+2026-08-28T09:55:16.555617Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/005-harness-extension-system/workshops/001-extension-contract-and-loader.md::Workshop: Extension Contract & Loader Architecture (WS-A)::Validation / Acceptance ms=49 left=48568
+2026-08-28T09:55:16.558666Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:55:16.594108Z  INFO fs3_daemon::runner: done kind="embed" id=623012 left=48567
+2026-08-28T09:55:16.750727Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:16.760754Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/add-extension-skill-plan.md::Add-Extension Skill (+ scaffold command) Implementation Plan ms=51 left=48567
+2026-08-28T09:55:16.785224Z  INFO fs3_daemon::runner: done kind="embed" id=623013 left=48566
+2026-08-28T09:55:16.916276Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/add-extension-skill-plan.md::Add-Extension Skill (+ scaffold command) Implementation Plan::Gate Matrix ms=32 left=48566
+2026-08-28T09:55:16.919598Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:16.943765Z  INFO fs3_daemon::runner: done kind="embed" id=623014 left=48565
+2026-08-28T09:55:17.101168Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/add-extension-skill-plan.md::Add-Extension Skill (+ scaffold command) Implementation Plan::Target Domains ms=48 left=48565
+2026-08-28T09:55:17.104737Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:17.132388Z  INFO fs3_daemon::runner: done kind="embed" id=623015 left=48564
+2026-08-28T09:55:17.276849Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/add-extension-skill-plan.md::Add-Extension Skill (+ scaffold command) Implementation Plan::Domain Manifest ms=32 left=48564
+2026-08-28T09:55:17.279677Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:17.309843Z  INFO fs3_daemon::runner: done kind="embed" id=623016 left=48563
+2026-08-28T09:55:17.435750Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/add-extension-skill-plan.md::Add-Extension Skill (+ scaffold command) Implementation Plan::Key Findings ms=35 left=48563
+2026-08-28T09:55:17.439870Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:17.465686Z  INFO fs3_daemon::runner: done kind="embed" id=623017 left=48562
+2026-08-28T09:55:17.612775Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/add-extension-skill-plan.md::Add-Extension Skill (+ scaffold command) Implementation Plan::Implementation ms=36 left=48562
+2026-08-28T09:55:17.619129Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:17.650953Z  INFO fs3_daemon::runner: done kind="embed" id=623018 left=48561
+2026-08-28T09:55:17.792135Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/add-extension-skill-plan.md::Add-Extension Skill (+ scaffold command) Implementation Plan::Implementation::Tasks ms=33 left=48561
+2026-08-28T09:55:17.796864Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:55:17.833444Z  INFO fs3_daemon::runner: done kind="embed" id=623019 left=48560
+2026-08-28T09:55:17.975573Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/add-extension-skill-plan.md::Add-Extension Skill (+ scaffold command) Implementation Plan::Implementation::Acceptance Criteria ms=37 left=48560
+2026-08-28T09:55:17.977505Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:18.007645Z  INFO fs3_daemon::runner: done kind="embed" id=623020 left=48559
+2026-08-28T09:55:18.151703Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/add-extension-skill-plan.md::Add-Extension Skill (+ scaffold command) Implementation Plan::Implementation::Risks ms=34 left=48559
+2026-08-28T09:55:18.175403Z  INFO fs3_daemon::runner: progress phase="working" scanned=58877 scan_left=162 summarized=108464 summarize_left=48396 embedded=183578 embed_left=1 failed=0
+2026-08-28T09:55:18.207694Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x smart jobs=2 ms=0
+2026-08-28T09:55:18.234002Z  INFO fs3_daemon::runner: done kind="embed" id=623022 left=48558
+2026-08-28T09:55:18.308787Z  INFO fs3_daemon::runner: done kind="embed" id=623021 left=48557
+2026-08-28T09:55:18.439799Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/add-extension-skill-plan.md::Add-Extension Skill (+ scaffold command) Implementation Plan::Validation Record (2026-06-08) ms=36 left=48557
+2026-08-28T09:55:18.523683Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/add-extension-skill-plan.md::Add-Extension Skill (+ scaffold command) Implementation Plan::Validation Record (2026-06-08)::Validation Thesis ms=32 left=48557
+2026-08-28T09:55:18.526917Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:18.560323Z  INFO fs3_daemon::runner: done kind="embed" id=623023 left=48556
+2026-08-28T09:55:18.698752Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/add-extension-skill-plan.md::Add-Extension Skill (+ scaffold command) Implementation Plan::Validation Record (2026-06-08)::Forward-Compatibility Matrix ms=31 left=48556
+2026-08-28T09:55:18.704186Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:18.726380Z  INFO fs3_daemon::runner: done kind="embed" id=623024 left=48555
+2026-08-28T09:55:18.858624Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/add-extension-skill-spec.md::Add-Extension Skill (+ scaffold command) ms=34 left=48555
+2026-08-28T09:55:18.862753Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:18.891077Z  INFO fs3_daemon::runner: done kind="embed" id=623025 left=48554
+2026-08-28T09:55:19.021842Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/add-extension-skill-spec.md::Add-Extension Skill (+ scaffold command)::Goals ms=30 left=48554
+2026-08-28T09:55:19.025765Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:19.050655Z  INFO fs3_daemon::runner: done kind="embed" id=623026 left=48553
+2026-08-28T09:55:19.189674Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/add-extension-skill-spec.md::Add-Extension Skill (+ scaffold command)::Target Domains ms=38 left=48553
+2026-08-28T09:55:19.193065Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:19.228436Z  INFO fs3_daemon::runner: done kind="embed" id=623027 left=48552
+2026-08-28T09:55:19.375349Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/add-extension-skill-spec.md::Add-Extension Skill (+ scaffold command)::Complexity ms=34 left=48552
+2026-08-28T09:55:19.377100Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:19.419031Z  INFO fs3_daemon::runner: done kind="embed" id=623028 left=48551
+2026-08-28T09:55:19.551791Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/add-extension-skill-spec.md::Add-Extension Skill (+ scaffold command)::Acceptance Criteria ms=36 left=48551
+2026-08-28T09:55:19.564402Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:19.599945Z  INFO fs3_daemon::runner: done kind="embed" id=623029 left=48550
+2026-08-28T09:55:19.760001Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/add-extension-skill-spec.md::Add-Extension Skill (+ scaffold command)::Clarifications ms=52 left=48550
+2026-08-28T09:55:19.763854Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:19.805073Z  INFO fs3_daemon::runner: done kind="embed" id=623030 left=48549
+2026-08-28T09:55:19.967120Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/add-extension-skill-spec.md::Add-Extension Skill (+ scaffold command)::Clarifications::Session 2026-06-08 ms=45 left=48549
+2026-08-28T09:55:19.978653Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=4
+2026-08-28T09:55:20.017965Z  INFO fs3_daemon::runner: done kind="embed" id=623031 left=48548
+2026-08-28T09:55:20.193544Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:20.196695Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/execution.log.md::Execution Log — Plan 006 Add-Extension Skill (Implementation) ms=52 left=48548
+2026-08-28T09:55:20.246614Z  INFO fs3_daemon::runner: done kind="embed" id=623032 left=48547
+2026-08-28T09:55:20.407680Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:20.410685Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/execution.log.md::Execution Log — Plan 006 Add-Extension Skill (Implementation)::Companion finding disposition ms=53 left=48547
+2026-08-28T09:55:20.440740Z  INFO fs3_daemon::runner: done kind="embed" id=623033 left=48546
+2026-08-28T09:55:20.597423Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/execution.log.md::Execution Log — Plan 006 Add-Extension Skill (Implementation)::Task log ms=54 left=48546
+2026-08-28T09:55:20.600849Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:20.639687Z  INFO fs3_daemon::runner: done kind="embed" id=623034 left=48545
+2026-08-28T09:55:20.805073Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:20.805341Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/execution.log.md::Execution Log — Plan 006 Add-Extension Skill (Implementation)::Task log::T020 — just fft + built-bin smoke (verify gate) ms=48 left=48545
+2026-08-28T09:55:20.853154Z  INFO fs3_daemon::runner: done kind="embed" id=623035 left=48544
+2026-08-28T09:55:21.003886Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:21.013130Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/execution.log.md::Execution Log — Plan 006 Add-Extension Skill (Implementation)::Task log::T023 — feedback + magic wand disposition (per AGENTS.md) ms=54 left=48544
+2026-08-28T09:55:21.043068Z  INFO fs3_daemon::runner: done kind="embed" id=623036 left=48543
+2026-08-28T09:55:21.178793Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/execution.log.md::Execution Log — Plan 006 Add-Extension Skill (Implementation)::Follow-ups (self-improving loop backlog) ms=33 left=48543
+2026-08-28T09:55:21.181181Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:21.212212Z  INFO fs3_daemon::runner: done kind="embed" id=623037 left=48542
+2026-08-28T09:55:21.374747Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/the-flow.md::Flight plan — add-extension-skill ms=38 left=48542
+2026-08-28T09:55:21.377299Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:21.416247Z  INFO fs3_daemon::runner: done kind="embed" id=623038 left=48541
+2026-08-28T09:55:21.583553Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/workshops/001-scaffold-template-set-and-layout.md::Workshop: Scaffold template set + layout ms=40 left=48541
+2026-08-28T09:55:21.586217Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:21.630247Z  INFO fs3_daemon::runner: done kind="embed" id=623039 left=48540
+2026-08-28T09:55:21.761277Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/workshops/001-scaffold-template-set-and-layout.md::Workshop: Scaffold template set + layout::Key Questions Addressed ms=35 left=48540
+2026-08-28T09:55:21.761989Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:21.792887Z  INFO fs3_daemon::runner: done kind="embed" id=623040 left=48539
+2026-08-28T09:55:21.944083Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/workshops/001-scaffold-template-set-and-layout.md::Workshop: Scaffold template set + layout::1. Command surface ms=38 left=48539
+2026-08-28T09:55:21.951579Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:21.977597Z  INFO fs3_daemon::runner: done kind="embed" id=623041 left=48538
+2026-08-28T09:55:22.124032Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/workshops/001-scaffold-template-set-and-layout.md::Workshop: Scaffold template set + layout::2. Where the file is written (layout) ms=42 left=48538
+2026-08-28T09:55:22.129310Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:22.164388Z  INFO fs3_daemon::runner: done kind="embed" id=623042 left=48537
+2026-08-28T09:55:22.300231Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/workshops/001-scaffold-template-set-and-layout.md::Workshop: Scaffold template set + layout::3. Where the template *sources* live (the decision) ms=32 left=48537
+2026-08-28T09:55:22.303208Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:22.331500Z  INFO fs3_daemon::runner: done kind="embed" id=623043 left=48536
+2026-08-28T09:55:22.467835Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/workshops/001-scaffold-template-set-and-layout.md::Workshop: Scaffold template set + layout::4. The emitted starters (verbatim fixtures) ms=33 left=48536
+2026-08-28T09:55:22.471089Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:22.515773Z  INFO fs3_daemon::runner: done kind="embed" id=623044 left=48535
+2026-08-28T09:55:22.651271Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/workshops/001-scaffold-template-set-and-layout.md::Workshop: Scaffold template set + layout::4. The emitted starters (verbatim fixtures)::4a. Minimal `.ts` (default) — `harness new greet` ms=39 left=48535
+2026-08-28T09:55:22.655575Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:22.689874Z  INFO fs3_daemon::runner: done kind="embed" id=623045 left=48534
+2026-08-28T09:55:22.828523Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/workshops/001-scaffold-template-set-and-layout.md::Workshop: Scaffold template set + layout::4. The emitted starters (verbatim fixtures)::4b. Wrap `.ts` — `harness new test --wrap "npm test"` ms=34 left=48534
+2026-08-28T09:55:22.831073Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:22.875054Z  INFO fs3_daemon::runner: done kind="embed" id=623046 left=48533
+2026-08-28T09:55:23.008175Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/workshops/001-scaffold-template-set-and-layout.md::Workshop: Scaffold template set + layout::4. The emitted starters (verbatim fixtures)::4c. Minimal `.js` — `harness new greet --js` ms=31 left=48533
+2026-08-28T09:55:23.012795Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:23.038416Z  INFO fs3_daemon::runner: done kind="embed" id=623047 left=48532
+2026-08-28T09:55:23.166528Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/workshops/001-scaffold-template-set-and-layout.md::Workshop: Scaffold template set + layout::5. Name validation ms=32 left=48532
+2026-08-28T09:55:23.170623Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:55:23.200987Z  INFO fs3_daemon::runner: done kind="embed" id=623048 left=48531
+2026-08-28T09:55:23.331799Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/workshops/001-scaffold-template-set-and-layout.md::Workshop: Scaffold template set + layout::6. Error codes (new band E15x) ms=32 left=48531
+2026-08-28T09:55:23.349941Z  INFO fs3_daemon::runner: progress phase="working" scanned=58877 scan_left=162 summarized=108492 summarize_left=48368 embedded=183606 embed_left=1 failed=0
+2026-08-28T09:55:23.387571Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x smart jobs=2 ms=1
+2026-08-28T09:55:23.423681Z  INFO fs3_daemon::runner: done kind="embed" id=623049 left=48530
+2026-08-28T09:55:23.499110Z  INFO fs3_daemon::runner: done kind="embed" id=623050 left=48529
+2026-08-28T09:55:23.669777Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/workshops/001-scaffold-template-set-and-layout.md::Workshop: Scaffold template set + layout::7. Port change required (the one real contract impact) ms=43 left=48529
+2026-08-28T09:55:23.751280Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/workshops/001-scaffold-template-set-and-layout.md::Workshop: Scaffold template set + layout::8. CLI flow ms=30 left=48529
+2026-08-28T09:55:23.755872Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:23.781603Z  INFO fs3_daemon::runner: done kind="embed" id=623051 left=48528
+2026-08-28T09:55:23.917167Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/workshops/001-scaffold-template-set-and-layout.md::Workshop: Scaffold template set + layout::Evidence Ledger ms=37 left=48528
+2026-08-28T09:55:23.919996Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:23.949097Z  INFO fs3_daemon::runner: done kind="embed" id=623052 left=48527
+2026-08-28T09:55:24.090604Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:24.099376Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/006-add-extension-skill/workshops/001-scaffold-template-set-and-layout.md::Workshop: Scaffold template set + layout::Open Questions ms=55 left=48527
+2026-08-28T09:55:24.131466Z  INFO fs3_daemon::runner: done kind="embed" id=623053 left=48526
+2026-08-28T09:55:24.292011Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/execution.log.md::Execution Log — Plan 007 first-class-documentation (Implementation phase) ms=39 left=48526
+2026-08-28T09:55:24.301833Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:24.346796Z  INFO fs3_daemon::runner: done kind="embed" id=623054 left=48525
+2026-08-28T09:55:24.495995Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/execution.log.md::Execution Log — Plan 007 first-class-documentation (Implementation phase)::Pre-flight discoveries (before T001) ms=51 left=48525
+2026-08-28T09:55:24.497973Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:24.531146Z  INFO fs3_daemon::runner: done kind="embed" id=623055 left=48524
+2026-08-28T09:55:24.690905Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:24.692467Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/execution.log.md::Execution Log — Plan 007 first-class-documentation (Implementation phase)::Task log ms=48 left=48524
+2026-08-28T09:55:24.723497Z  INFO fs3_daemon::runner: done kind="embed" id=623056 left=48523
+2026-08-28T09:55:24.881423Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/first-class-documentation-plan.md::First-Class Documentation Support Implementation Plan ms=42 left=48523
+2026-08-28T09:55:24.885714Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:24.924355Z  INFO fs3_daemon::runner: done kind="embed" id=623057 left=48522
+2026-08-28T09:55:25.077575Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:25.086286Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/first-class-documentation-plan.md::First-Class Documentation Support Implementation Plan::Gate Matrix ms=51 left=48522
+2026-08-28T09:55:25.123590Z  INFO fs3_daemon::runner: done kind="embed" id=623058 left=48521
+2026-08-28T09:55:25.279502Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:25.289184Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/first-class-documentation-plan.md::First-Class Documentation Support Implementation Plan::Target Domains ms=55 left=48521
+2026-08-28T09:55:25.320314Z  INFO fs3_daemon::runner: done kind="embed" id=623059 left=48520
+2026-08-28T09:55:25.509935Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:25.514358Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/first-class-documentation-plan.md::First-Class Documentation Support Implementation Plan::Domain Manifest ms=64 left=48520
+2026-08-28T09:55:25.545829Z  INFO fs3_daemon::runner: done kind="embed" id=623060 left=48519
+2026-08-28T09:55:25.680283Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/first-class-documentation-plan.md::First-Class Documentation Support Implementation Plan::Key Findings ms=32 left=48519
+2026-08-28T09:55:25.685124Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=3
+2026-08-28T09:55:25.720236Z  INFO fs3_daemon::runner: done kind="embed" id=623061 left=48518
+2026-08-28T09:55:25.851799Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/first-class-documentation-plan.md::First-Class Documentation Support Implementation Plan::Implementation ms=33 left=48518
+2026-08-28T09:55:25.855621Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:25.883538Z  INFO fs3_daemon::runner: done kind="embed" id=623062 left=48517
+2026-08-28T09:55:26.031227Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/first-class-documentation-plan.md::First-Class Documentation Support Implementation Plan::Implementation::Tasks ms=40 left=48517
+2026-08-28T09:55:26.039234Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:26.077675Z  INFO fs3_daemon::runner: done kind="embed" id=623063 left=48516
+2026-08-28T09:55:26.221441Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/first-class-documentation-plan.md::First-Class Documentation Support Implementation Plan::Implementation::Acceptance Criteria ms=42 left=48516
+2026-08-28T09:55:26.226608Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:26.252683Z  INFO fs3_daemon::runner: done kind="embed" id=623064 left=48515
+2026-08-28T09:55:26.387015Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/first-class-documentation-plan.md::First-Class Documentation Support Implementation Plan::Implementation::Risks ms=39 left=48515
+2026-08-28T09:55:26.391896Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:55:26.421272Z  INFO fs3_daemon::runner: done kind="embed" id=623065 left=48514
+2026-08-28T09:55:26.547317Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/first-class-documentation-plan.md::First-Class Documentation Support Implementation Plan::Validation Record (2026-06-08) ms=28 left=48514
+2026-08-28T09:55:26.551651Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:55:26.579037Z  INFO fs3_daemon::runner: done kind="embed" id=623066 left=48513
+2026-08-28T09:55:26.715289Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/first-class-documentation-plan.md::First-Class Documentation Support Implementation Plan::Validation Record (2026-06-08)::Validation Thesis ms=39 left=48513
+2026-08-28T09:55:26.720474Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:26.755641Z  INFO fs3_daemon::runner: done kind="embed" id=623067 left=48512
+2026-08-28T09:55:26.894227Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/first-class-documentation-plan.md::First-Class Documentation Support Implementation Plan::Validation Record (2026-06-08)::Forward-Compatibility Matrix ms=30 left=48512
+2026-08-28T09:55:26.897946Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:26.921988Z  INFO fs3_daemon::runner: done kind="embed" id=623068 left=48511
+2026-08-28T09:55:27.056759Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/first-class-documentation-spec.md::First-Class Documentation Support for the Harness CLI ms=38 left=48511
+2026-08-28T09:55:27.063646Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:27.092198Z  INFO fs3_daemon::runner: done kind="embed" id=623069 left=48510
+2026-08-28T09:55:27.228907Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/first-class-documentation-spec.md::First-Class Documentation Support for the Harness CLI::Target Domains ms=33 left=48510
+2026-08-28T09:55:27.234222Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:27.262444Z  INFO fs3_daemon::runner: done kind="embed" id=623070 left=48509
+2026-08-28T09:55:27.394083Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/first-class-documentation-spec.md::First-Class Documentation Support for the Harness CLI::Testing Strategy ms=34 left=48509
+2026-08-28T09:55:27.396421Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:27.418059Z  INFO fs3_daemon::runner: done kind="embed" id=623071 left=48508
+2026-08-28T09:55:27.552974Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/first-class-documentation-spec.md::First-Class Documentation Support for the Harness CLI::Complexity ms=39 left=48508
+2026-08-28T09:55:27.553074Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:27.590133Z  INFO fs3_daemon::runner: done kind="embed" id=623072 left=48507
+2026-08-28T09:55:27.748369Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/first-class-documentation-spec.md::First-Class Documentation Support for the Harness CLI::Acceptance Criteria ms=45 left=48507
+2026-08-28T09:55:27.750694Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:27.781483Z  INFO fs3_daemon::runner: done kind="embed" id=623073 left=48506
+2026-08-28T09:55:27.925960Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/research-dossier.md::Research Report: First-class documentation support for the harness CLI ms=39 left=48506
+2026-08-28T09:55:27.932680Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:27.959313Z  INFO fs3_daemon::runner: done kind="embed" id=623074 left=48505
+2026-08-28T09:55:28.097032Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/research-dossier.md::Research Report: First-class documentation support for the harness CLI::Executive Summary ms=34 left=48505
+2026-08-28T09:55:28.102068Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:28.134607Z  INFO fs3_daemon::runner: done kind="embed" id=623075 left=48504
+2026-08-28T09:55:28.250797Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/research-dossier.md::Research Report: First-class documentation support for the harness CLI::How docs work today (current state) ms=31 left=48504
+2026-08-28T09:55:28.254543Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:28.279509Z  INFO fs3_daemon::runner: done kind="embed" id=623076 left=48503
+2026-08-28T09:55:28.433437Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/research-dossier.md::Research Report: First-class documentation support for the harness CLI::Architecture & design direction ms=48 left=48503
+2026-08-28T09:55:28.437175Z  INFO fs3_daemon::runner: progress phase="working" scanned=58877 scan_left=162 summarized=108520 summarize_left=48340 embedded=183634 embed_left=1 failed=0
+2026-08-28T09:55:28.488003Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x smart jobs=2 ms=0
+2026-08-28T09:55:28.521149Z  INFO fs3_daemon::runner: done kind="embed" id=623078 left=48502
+2026-08-28T09:55:28.611133Z  INFO fs3_daemon::runner: done kind="embed" id=623077 left=48501
+2026-08-28T09:55:28.766800Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/research-dossier.md::Research Report: First-class documentation support for the harness CLI::Architecture & design direction::The forward-compatible seam (MCP-ready by construction) ms=44 left=48501
+2026-08-28T09:55:28.882976Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/research-dossier.md::Research Report: First-class documentation support for the harness CLI::Documentation inventory (bake-in candidates) ms=50 left=48501
+2026-08-28T09:55:28.887615Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:55:28.919710Z  INFO fs3_daemon::runner: done kind="embed" id=623079 left=48500
+2026-08-28T09:55:29.074369Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:29.088215Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/research-dossier.md::Research Report: First-class documentation support for the harness CLI::Constitution principles that constrain this feature ms=55 left=48500
+2026-08-28T09:55:29.110595Z  INFO fs3_daemon::runner: done kind="embed" id=623080 left=48499
+2026-08-28T09:55:29.267946Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=3
+2026-08-28T09:55:29.274581Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/the-flow.md::Flight plan — first-class-documentation ms=57 left=48499
+2026-08-28T09:55:29.306469Z  INFO fs3_daemon::runner: done kind="embed" id=623081 left=48498
+2026-08-28T09:55:29.463260Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:29.473292Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/workshops/001-doc-bundling-and-source-of-truth.md::Workshop: Doc Bundling & Source-of-Truth Strategy ms=51 left=48498
+2026-08-28T09:55:29.503264Z  INFO fs3_daemon::runner: done kind="embed" id=623082 left=48497
+2026-08-28T09:55:29.660537Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:29.675107Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/workshops/001-doc-bundling-and-source-of-truth.md::Workshop: Doc Bundling & Source-of-Truth Strategy::Key Questions Addressed ms=56 left=48497
+2026-08-28T09:55:29.693652Z  INFO fs3_daemon::runner: done kind="embed" id=623083 left=48496
+2026-08-28T09:55:29.842820Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:29.851176Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/workshops/001-doc-bundling-and-source-of-truth.md::Workshop: Doc Bundling & Source-of-Truth Strategy::Decision Space ms=51 left=48496
+2026-08-28T09:55:29.884562Z  INFO fs3_daemon::runner: done kind="embed" id=623084 left=48495
+2026-08-28T09:55:30.033451Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/workshops/001-doc-bundling-and-source-of-truth.md::Workshop: Doc Bundling & Source-of-Truth Strategy::Decision Space::D1 — Bundling strategy (the headline) ms=35 left=48495
+2026-08-28T09:55:30.038320Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:30.081170Z  INFO fs3_daemon::runner: done kind="embed" id=623085 left=48494
+2026-08-28T09:55:30.219431Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/workshops/001-doc-bundling-and-source-of-truth.md::Workshop: Doc Bundling & Source-of-Truth Strategy::Decision Space::D2 — Generated file: committed vs gitignored (the sub-decision) ms=42 left=48494
+2026-08-28T09:55:30.223473Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:30.254767Z  INFO fs3_daemon::runner: done kind="embed" id=623086 left=48493
+2026-08-28T09:55:30.408663Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/workshops/001-doc-bundling-and-source-of-truth.md::Workshop: Doc Bundling & Source-of-Truth Strategy::Decision Space::D4 — `harness docs <id>` output shape (carried from spec Open Question) ms=42 left=48493
+2026-08-28T09:55:30.413851Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:30.436395Z  INFO fs3_daemon::runner: done kind="embed" id=623087 left=48492
+2026-08-28T09:55:30.584227Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/workshops/001-doc-bundling-and-source-of-truth.md::Workshop: Doc Bundling & Source-of-Truth Strategy::Contract: file layout & shapes ms=34 left=48492
+2026-08-28T09:55:30.587571Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:30.623257Z  INFO fs3_daemon::runner: done kind="embed" id=623088 left=48491
+2026-08-28T09:55:30.753480Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/workshops/001-doc-bundling-and-source-of-truth.md::Workshop: Doc Bundling & Source-of-Truth Strategy::Contract: file layout & shapes::File tree (what gets created) ms=31 left=48491
+2026-08-28T09:55:30.758883Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:30.788721Z  INFO fs3_daemon::runner: done kind="embed" id=623089 left=48490
+2026-08-28T09:55:30.924978Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/workshops/001-doc-bundling-and-source-of-truth.md::Workshop: Doc Bundling & Source-of-Truth Strategy::Contract: file layout & shapes::Types (transport-agnostic — the MCP seam) ms=31 left=48490
+2026-08-28T09:55:30.928192Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:30.968096Z  INFO fs3_daemon::runner: done kind="embed" id=623090 left=48489
+2026-08-28T09:55:31.105797Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/workshops/001-doc-bundling-and-source-of-truth.md::Workshop: Doc Bundling & Source-of-Truth Strategy::Contract: file layout & shapes::Generated module shape (`docs-content.ts`) ms=30 left=48489
+2026-08-28T09:55:31.109547Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:55:31.137468Z  INFO fs3_daemon::runner: done kind="embed" id=623091 left=48488
+2026-08-28T09:55:31.275929Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/workshops/001-doc-bundling-and-source-of-truth.md::Workshop: Doc Bundling & Source-of-Truth Strategy::Contract: file layout & shapes::Pure service (`docs-service.ts`) ms=34 left=48488
+2026-08-28T09:55:31.279192Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:31.305544Z  INFO fs3_daemon::runner: done kind="embed" id=623092 left=48487
+2026-08-28T09:55:31.443848Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/workshops/001-doc-bundling-and-source-of-truth.md::Workshop: Doc Bundling & Source-of-Truth Strategy::Contract: file layout & shapes::Generator behavior (`scripts/gen-docs.mjs`) — pseudocode ms=30 left=48487
+2026-08-28T09:55:31.447830Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:55:31.479133Z  INFO fs3_daemon::runner: done kind="embed" id=623093 left=48486
+2026-08-28T09:55:31.603110Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/workshops/001-doc-bundling-and-source-of-truth.md::Workshop: Doc Bundling & Source-of-Truth Strategy::Build wiring ms=32 left=48486
+2026-08-28T09:55:31.608166Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:31.646572Z  INFO fs3_daemon::runner: done kind="embed" id=623094 left=48485
+2026-08-28T09:55:31.790435Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/workshops/001-doc-bundling-and-source-of-truth.md::Workshop: Doc Bundling & Source-of-Truth Strategy::Validation / Acceptance ms=34 left=48485
+2026-08-28T09:55:31.795024Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:31.821339Z  INFO fs3_daemon::runner: done kind="embed" id=623095 left=48484
+2026-08-28T09:55:31.968168Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/007-first-class-documentation/workshops/001-doc-bundling-and-source-of-truth.md::Workshop: Doc Bundling & Source-of-Truth Strategy::Open Questions ms=34 left=48484
+2026-08-28T09:55:31.972592Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:55:32.016685Z  INFO fs3_daemon::runner: done kind="embed" id=623096 left=48483
+2026-08-28T09:55:32.154145Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/execution.log.md::Execution Log — 008 harness-setup-flow (Simple, companion mode) ms=39 left=48483
+2026-08-28T09:55:32.155884Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:32.178353Z  INFO fs3_daemon::runner: done kind="embed" id=623097 left=48482
+2026-08-28T09:55:32.314058Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/execution.log.md::Execution Log — 008 harness-setup-flow (Simple, companion mode)::Companion findings reconciliation ms=33 left=48482
+2026-08-28T09:55:32.316769Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:32.349246Z  INFO fs3_daemon::runner: done kind="embed" id=623098 left=48481
+2026-08-28T09:55:32.477025Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/execution.log.md::Execution Log — 008 harness-setup-flow (Simple, companion mode)::Task log ms=39 left=48481
+2026-08-28T09:55:32.479093Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:32.512578Z  INFO fs3_daemon::runner: done kind="embed" id=623099 left=48480
+2026-08-28T09:55:32.674337Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:32.681015Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/fixes/FX001-harness-init-command.log.md::Execution log — FX001: `harness init` ms=57 left=48480
+2026-08-28T09:55:32.712420Z  INFO fs3_daemon::runner: done kind="embed" id=623100 left=48479
+2026-08-28T09:55:32.864954Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/fixes/FX001-harness-init-command.log.md::Execution log — FX001: `harness init`::Tasks ms=46 left=48479
+2026-08-28T09:55:32.866602Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:32.915561Z  INFO fs3_daemon::runner: done kind="embed" id=623101 left=48478
+2026-08-28T09:55:33.069217Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/fixes/FX001-harness-init-command.log.md::Execution log — FX001: `harness init`::Tasks::FX001-2 + FX001-3 — act + service wiring, envelope + exit + E190 ✅ ms=47 left=48478
+2026-08-28T09:55:33.081659Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=3
+2026-08-28T09:55:33.122030Z  INFO fs3_daemon::runner: done kind="embed" id=623102 left=48477
+2026-08-28T09:55:33.266991Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:33.276410Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/fixes/FX001-harness-init-command.log.md::Execution log — FX001: `harness init`::Tasks::FX001-4 — tests + build + finalize ✅ ms=52 left=48477
+2026-08-28T09:55:33.296536Z  INFO fs3_daemon::runner: done kind="embed" id=623103 left=48476
+2026-08-28T09:55:33.462551Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:33.471258Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/fixes/FX001-harness-init-command.log.md::Execution log — FX001: `harness init`::Companion debrief ms=54 left=48476
+2026-08-28T09:55:33.495465Z  INFO fs3_daemon::runner: done kind="embed" id=623104 left=48475
+2026-08-28T09:55:33.669954Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/fixes/FX001-harness-init-command.md::Fix FX001: `harness init` — seed the governance-doc skeleton ms=60 left=48475
+2026-08-28T09:55:33.676193Z  INFO fs3_daemon::runner: progress phase="working" scanned=58877 scan_left=162 summarized=108548 summarize_left=48312 embedded=183662 embed_left=1 failed=0
+2026-08-28T09:55:33.711837Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x smart jobs=2 ms=0
+2026-08-28T09:55:33.745812Z  INFO fs3_daemon::runner: done kind="embed" id=623106 left=48474
+2026-08-28T09:55:33.842378Z  INFO fs3_daemon::runner: done kind="embed" id=623105 left=48473
+2026-08-28T09:55:34.007499Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/fixes/FX001-harness-init-command.md::Fix FX001: `harness init` — seed the governance-doc skeleton::Problem ms=47 left=48473
+2026-08-28T09:55:34.109920Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/fixes/FX001-harness-init-command.md::Fix FX001: `harness init` — seed the governance-doc skeleton::Proposed Fix ms=46 left=48473
+2026-08-28T09:55:34.113660Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:34.152001Z  INFO fs3_daemon::runner: done kind="embed" id=623107 left=48472
+2026-08-28T09:55:34.292223Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/fixes/FX001-harness-init-command.md::Fix FX001: `harness init` — seed the governance-doc skeleton::Acceptance ms=37 left=48472
+2026-08-28T09:55:34.296697Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:34.344226Z  INFO fs3_daemon::runner: done kind="embed" id=623108 left=48471
+2026-08-28T09:55:34.479059Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/fixes/FX001-harness-init-command.md::Fix FX001: `harness init` — seed the governance-doc skeleton::Discoveries & Learnings ms=31 left=48471
+2026-08-28T09:55:34.482126Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:34.515087Z  INFO fs3_daemon::runner: done kind="embed" id=623109 left=48470
+2026-08-28T09:55:34.657208Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/fixes/FX001-harness-init-command.md::Fix FX001: `harness init` — seed the governance-doc skeleton::Validation Record (2026-06-15) ms=35 left=48470
+2026-08-28T09:55:34.661167Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T09:55:34.698147Z  INFO fs3_daemon::runner: done kind="embed" id=623110 left=48469
+2026-08-28T09:55:34.831234Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/fixes/FX001-harness-init-command.md::Fix FX001: `harness init` — seed the governance-doc skeleton::Validation Record (2026-06-15)::Validation Thesis ms=31 left=48469
+2026-08-28T09:55:34.835637Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:34.865511Z  INFO fs3_daemon::runner: done kind="embed" id=623111 left=48468
+2026-08-28T09:55:34.995138Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/fixes/FX001-harness-init-command.md::Fix FX001: `harness init` — seed the governance-doc skeleton::Validation Record (2026-06-15)::Forward-Compatibility Matrix ms=31 left=48468
+2026-08-28T09:55:34.997696Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:35.024929Z  INFO fs3_daemon::runner: done kind="embed" id=623112 left=48467
+2026-08-28T09:55:35.175331Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/harness-setup-flow-plan.md::Rework `engineering-harness-setup` into a lean install→assess→boot flow — Implementation Plan ms=38 left=48467
+2026-08-28T09:55:35.181961Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:35.212509Z  INFO fs3_daemon::runner: done kind="embed" id=623113 left=48466
+2026-08-28T09:55:35.353576Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/harness-setup-flow-plan.md::Rework `engineering-harness-setup` into a lean install→assess→boot flow — Implementation Plan::Gate Matrix ms=37 left=48466
+2026-08-28T09:55:35.357466Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:35.392860Z  INFO fs3_daemon::runner: done kind="embed" id=623114 left=48465
+2026-08-28T09:55:35.536856Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/harness-setup-flow-plan.md::Rework `engineering-harness-setup` into a lean install→assess→boot flow — Implementation Plan::Target Domains ms=38 left=48465
+2026-08-28T09:55:35.540408Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:35.580784Z  INFO fs3_daemon::runner: done kind="embed" id=623115 left=48464
+2026-08-28T09:55:35.721548Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/harness-setup-flow-plan.md::Rework `engineering-harness-setup` into a lean install→assess→boot flow — Implementation Plan::Domain Manifest ms=35 left=48464
+2026-08-28T09:55:35.724144Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:35.755746Z  INFO fs3_daemon::runner: done kind="embed" id=623116 left=48463
+2026-08-28T09:55:35.902452Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:35.904435Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/harness-setup-flow-plan.md::Rework `engineering-harness-setup` into a lean install→assess→boot flow — Implementation Plan::Key Findings ms=56 left=48463
+2026-08-28T09:55:35.935087Z  INFO fs3_daemon::runner: done kind="embed" id=623117 left=48462
+2026-08-28T09:55:36.067285Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/harness-setup-flow-plan.md::Rework `engineering-harness-setup` into a lean install→assess→boot flow — Implementation Plan::Implementation ms=30 left=48462
+2026-08-28T09:55:36.074332Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:36.110613Z  INFO fs3_daemon::runner: done kind="embed" id=623118 left=48461
+2026-08-28T09:55:36.242641Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/harness-setup-flow-spec.md::Rework `engineering-harness-setup` into a lean install→assess→extend flow ms=35 left=48461
+2026-08-28T09:55:36.247188Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:36.272518Z  INFO fs3_daemon::runner: done kind="embed" id=623119 left=48460
+2026-08-28T09:55:36.406028Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/harness-setup-flow-spec.md::Rework `engineering-harness-setup` into a lean install→assess→extend flow::Research Context ms=37 left=48460
+2026-08-28T09:55:36.411597Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:36.443334Z  INFO fs3_daemon::runner: done kind="embed" id=623120 left=48459
+2026-08-28T09:55:36.596196Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/harness-setup-flow-plan.md::Rework `engineering-harness-setup` into a lean install→assess→boot flow — Implementation Plan::Implementation::Tasks ms=42 left=48459
+2026-08-28T09:55:36.597281Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:36.625043Z  INFO fs3_daemon::runner: done kind="embed" id=623121 left=48458
+2026-08-28T09:55:36.766061Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/harness-setup-flow-spec.md::Rework `engineering-harness-setup` into a lean install→assess→extend flow::Goals ms=40 left=48458
+2026-08-28T09:55:36.768162Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:36.799988Z  INFO fs3_daemon::runner: done kind="embed" id=623122 left=48457
+2026-08-28T09:55:36.929908Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/harness-setup-flow-plan.md::Rework `engineering-harness-setup` into a lean install→assess→boot flow — Implementation Plan::Implementation::Acceptance Criteria ms=29 left=48457
+2026-08-28T09:55:36.932490Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:36.966004Z  INFO fs3_daemon::runner: done kind="embed" id=623123 left=48456
+2026-08-28T09:55:37.124281Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:37.133435Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/harness-setup-flow.fltplan.md::Flight Plan — harness-setup-flow (plan level) ms=50 left=48456
+2026-08-28T09:55:37.162847Z  INFO fs3_daemon::runner: done kind="embed" id=623124 left=48455
+2026-08-28T09:55:37.309329Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/harness-setup-flow-spec.md::Rework `engineering-harness-setup` into a lean install→assess→extend flow::Target Domains ms=40 left=48455
+2026-08-28T09:55:37.315200Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:37.364200Z  INFO fs3_daemon::runner: done kind="embed" id=623125 left=48454
+2026-08-28T09:55:37.530317Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/harness-setup-flow-plan.md::Rework `engineering-harness-setup` into a lean install→assess→boot flow — Implementation Plan::Implementation::Risks ms=51 left=48454
+2026-08-28T09:55:37.537213Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:37.579531Z  INFO fs3_daemon::runner: done kind="embed" id=623126 left=48453
+2026-08-28T09:55:37.750876Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/harness-setup-flow.fltplan.md::Flight Plan — harness-setup-flow (plan level)::Journey Map ms=47 left=48453
+2026-08-28T09:55:37.754832Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:37.793937Z  INFO fs3_daemon::runner: done kind="embed" id=623127 left=48452
+2026-08-28T09:55:37.941111Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T09:55:37.961039Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/harness-setup-flow-spec.md::Rework `engineering-harness-setup` into a lean install→assess→extend flow::Basic Boot (the nucleus deliverable) ms=55 left=48452
+2026-08-28T09:55:37.980722Z  INFO fs3_daemon::runner: done kind="embed" id=623128 left=48451
+2026-08-28T09:55:38.158759Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/archive/008-harness-setup-flow/harness-setup-flow.fltplan.md::Flight Plan — harness-setup-flow (plan level)::The flow being specified (the skill's own DAG) ms=45 left=48451
+2026-08-28T09:55:38.166826Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T09:55:38.221090Z  INFO fs3_daemon::runner: done kind="embed" id=623129 left=48450
