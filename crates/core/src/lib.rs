@@ -19,6 +19,7 @@ pub mod classify;
 pub mod config;
 pub mod conversation;
 pub mod ddoc;
+pub mod ddoc_envelope;
 pub mod element;
 pub mod envelope;
 pub mod error;

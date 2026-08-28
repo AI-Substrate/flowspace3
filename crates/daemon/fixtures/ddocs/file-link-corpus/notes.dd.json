@@ -1,0 +1,21 @@
+{
+  "dd": { "schema": "render/filelinks", "spec": "dd@1" },
+  "sections": [
+    { "name": "meta", "value": { "title": "Nested file links" } },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-a1b2",
+          "implemented_by": "src/library.ts",
+          "notes": "Follow the [handbook](../handbook.md) before editing."
+        }
+      ]
+    },
+    {
+      "name": "summary",
+      "value": "Negative controls, none of which is a file reference: an external [example](https://example.com), a bare prose path src/nowhere.ts, an [anchor](#tasks) inside this page, and an image ![diagram](../diagram.png)."
+    }
+  ],
+  "references": []
+}

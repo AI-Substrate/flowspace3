@@ -11,6 +11,7 @@ pub mod batch;
 pub mod boot;
 pub mod config;
 pub mod conversations;
+pub mod ddoc;
 pub mod debounce;
 pub mod enrich;
 pub mod gc;
