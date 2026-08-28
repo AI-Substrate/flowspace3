@@ -76,13 +76,59 @@ that land on me:
   412, appended 0, deduped 412" is the only line that distinguishes a handled
   rotation from an idle poll. Without it, a silently duplicated or silently
   dropped conversation looks exactly like a quiet one.
-- **Compare appended count against `prepared.turns.len()`** if the store
-  surfaces it, and treat a shortfall as an anomaly rather than a success — a
-  backstop that does not depend on my having reasoned correctly about
-  numbering. Question outstanding with u2 on whether `append_turns` reports it.
+- **`append_turns` DOES report the shortfall — answered by u2, 2026-08-28.** It
+  returns `Appended { accepted: Vec<Element>, already_stored: usize }`, so
+  `accepted.len() + already_stored` must equal `prepared.turns.len()` and any
+  other result means turns went somewhere unaccounted for. Treat it as a HARD
+  ANOMALY, not a logged statistic: under conversation-scoped numbering a
+  collision should not arise at all, so `already_stored` above zero on a batch
+  `prepare_batch` called entirely new means the ledger and the turns table have
+  disagreed about what exists. It is a tripwire. It also cannot tell whether the
+  row already under that number holds the same content or different content,
+  which is why it must never be allowed to read as routine.
 - **Dedupe does not cover prior transcript-imported turns.** They carry no
   ordinal, so a tail of the same content appends beside them. Correct for v1;
   it must be documented at the surface, not discovered by an operator.
+
+## Cross-reader invariants I ruled during wave 1 — verify these at composition
+
+Three readers, written by three seats that never speak to each other. These are
+the rules I gave more than one of them, and the composer's job is to confirm
+they actually hold rather than trust that each seat read its own ruling the same
+way. A reader that diverges here is a defect wearing a dialect's clothes.
+
+1. **An unknown record or event type is a DROP — never an error, never a
+   panic.** Given to u1a (claude), u1b (omp/pij) and u1d (metrics-db)
+   identically, each with a required test feeding a type the allowlist has never
+   heard of and asserting the surrounding records still parse. An ingest must
+   not fail because a store grew a bookkeeping row.
+2. **A merged group's ordinal is the FIRST member's id** — first line uuid for
+   claude, first rowid for metrics-db. The ordinal is u2's dedupe key, so it
+   must be identical when a later full re-read regroups the same blocks.
+   Last-of-group would change between polls and the dedupe would miss.
+3. **A group straddling a poll boundary EMITS AS SEEN and yields two turns.**
+   Ruled for u1a and then again for u1d against its own recommendation. The
+   rejected alternative — hold back the trailing group — loses the final turn of
+   any session that ends on a group, permanently and silently. Consequence to
+   verify at composition: the earlier turn keeps only its first blocks FOREVER,
+   because u2's ledger deduplicates the later rescan against the same ordinal.
+   Nothing is lost, nothing duplicates, one message reads as two turns. Both
+   service pages must state the permanence.
+4. **Spilled tool output is resolved from the spill file, with a fallback to the
+   inline text when the file is gone.** True for claude (u1a) and omp (u1b), for
+   different reasons and with different confidence: claude's preview is a
+   faithful prefix that states the true size, while omp's is lossy in the middle
+   and states nothing. u1b measured both. A search that finds a tool result in
+   one harness and not the other is the failure this closes.
+5. **Key on what is structurally true, never on what the sample makes look
+   true.** The same correction arrived from three seats independently: u1a found
+   a packet enumerating record types from one session of two; u1b found a rule
+   keyed on a tool's NAME rather than its observable `arguments.path` property,
+   and separately proposed reading one text block because this fixture only ever
+   has one; u1d found a repo scope keyed on a substring of conversation prose
+   rather than the first-class field the store indexes. Three seats, three
+   packets, one defect shape — it is a property of how the packets were written,
+   and it belongs in the process report.
 
 ## Recipe step 2 is mine (prime ruling, condition 3)
 
