@@ -716,12 +716,22 @@ fn verdict(
         return Err(SkipReason::Excluded);
     }
     let family = LanguageFamily::for_path(relative);
-    match family {
-        LanguageFamily::Unknown => return Err(SkipReason::UnsupportedExtension),
-        LanguageFamily::Config if !settings.index_config_formats => {
-            return Err(SkipReason::ConfigFormat);
-        }
-        _ => {}
+    if family == LanguageFamily::Unknown {
+        return Err(SkipReason::UnsupportedExtension);
+    }
+    // A deterministic document is the one deliberate exception to the JSON
+    // exclusion. Keep it ahead of that branch: both full discovery and the
+    // watcher subtree path share this verdict.
+    if !crate::is_ddoc_source(relative)
+        && family == LanguageFamily::Config
+        && !settings.index_config_formats
+    {
+        return Err(SkipReason::ConfigFormat);
+    }
+    // Generated projections are lossy and may be stale. They never become a
+    // second copy of the source document, even when config indexing is on.
+    if crate::is_generated_sibling(relative, b"") {
+        return Err(SkipReason::ConfigFormat);
     }
     if bytes > settings.max_file_bytes {
         return Err(SkipReason::TooLarge);

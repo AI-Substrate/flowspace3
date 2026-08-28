@@ -70,6 +70,7 @@ external = ["async-trait", "serde", "serde_json", "sha2", "thiserror", "toml"]
 internal = ["fs3-core", "fs3-testkit@dev"]
 external = [
   "ignore",
+  "serde_json",
   "thiserror",
   "tree-sitter",
   "tree-sitter-md",
