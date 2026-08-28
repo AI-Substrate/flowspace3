@@ -9,7 +9,7 @@
         "title": "Human interface — human-first output, the tui verb, and the daemon event stream",
         "slug": "human-interface",
         "ordinal": 7,
-        "status": "draft",
+        "status": "shipped",
         "summary": "Promote the human-render POC as the default output (TTY→human, piped→JSON, --json anywhere), add a ratatui flowspace3 tui verb, and build the status --watch NDJSON event stream both interfaces need."
       }
     },
@@ -102,7 +102,7 @@
           "brief": "PM composes (ask-assumptions first), gate green, then first light: one terminal session transcript — human-default output on the core verbs, piped JSON byte-check, then tui live against the real daemon with the real event stream while a scan runs. Reviewer (settings default) after composition; PR held unmerged.",
           "state": "checked",
           "tasks": "assets/tasks/phase-3/tasks.dd.json#tasks",
-          "receipt": "Composed all three units, gate GREEN 9/9, first light recorded live, cross-model review completed with every finding resolved, PR #52 opened into main and HELD UNMERGED for prime."
+          "receipt": "Composed all three units, gate GREEN 9/9, first light recorded live, cross-model review APPROVED (8 findings fixed, 6 amended ACs judged true, 3 composition seams passing — docs/plans/007-human-interface/assets/reviews/review-007.dd.md), PR #52 opened, CI gate PASS in 3m44s, merged into main by prime."
         }
       ]
     }

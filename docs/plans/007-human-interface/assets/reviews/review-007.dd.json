@@ -12,7 +12,7 @@
         "round": "pij-team run #3",
         "date": "2026-08-28",
         "plan": "../../plan.dd.json#meta",
-        "note": "Pinned review basis: 4a0419e3178b2f008f2419dedf489343e1a52791. Interim verdict: REQUEST_CHANGES.\n\nAcceptance criteria at this basis:\n- ac-0001 — FALSE as written: pipe/default, pipe/--human, pipe/--json, and pipe/FS3_OUTPUT are tested, but the promised PTY-backed no-flag and --json cases are not asserted per covered verb.\n- ac-0002 — TRUE under its amended scope: 12 daemon-computed answer cases and the zero-byte usage-error case retain pre-plan bytes; docs list and agents-start-here are explicitly shape-only. Two captured golden files were deleted with a recorded ruling; none was re-captured.\n- ac-0003 — PARTIALLY PROVEN: live TUI, real activity, search, stale-state behavior, and terminal restoration have evidence; the explicit SSH leg was not independently exercised.\n- ac-0004 — TRUE for the exercised contract: NDJSON framing, hello-first, concurrent watcher identity, producer-side slow-consumer drop, settlements, root changes, and TUI live consumption passed. The human watch version gate and TUI-local backpressure defects below remain.\n- ac-0005 — TRUE: AGENTS.md (and its CLAUDE.md symlink), the bundled flowspace skill, agents-start-here, and self-teaching docs carry the TTY/JSON rule; the direct agent front door returned the expected JSON envelope.\n- ac-0006 — NOT YET TRUE against current main: the composed basis predates main's quiet-EPIPE change and must reconcile it; final harness checks must be rerun on the repaired clean SHA.\n\nComposition seams:\n1. Renderer decline path — PASS. fs3_cli::render::render returns None for unknown/malformed payloads and emit falls back to serialized JSON; targeted tests passed. Output selection has one product decision call at crates/cli/src/main.rs:413-418.\n2. TUI fixture-to-live swap — PASS. Production event_source calls DaemonClient::events; the fixture is test-only; Unknown kinds are retained by serde and skipped by the UI.\n3. Renderer/event-wire agreement — PARTIAL. Both use fs3_core::events and the stderr-only meter preserves stdout, but the meter does not isolate the requested root and can display concurrent work from another root.\n\nIndependent commands observed: cargo test -p fs3-cli --test envelope_goldens (2 passed); cargo test -p fs3-cli --test render_output --test status_watch --test envelope_goldens (8 passed); cargo test -p fs3-core (139 tests/doc-tests passed); cargo test -p fs3-cli --lib (45 passed); FS3_TEST_DATABASE_URL=.../flowspace3_test cargo test -p fs3-daemon --test event_stream (7 passed). The first harness checks attempt correctly refused without FS3_TEST_DATABASE_URL; the isolated rerun raced the PM's latest-main merge and is discarded, not evidence."
+        "note": "Final delivery basis: f89cac4f86bbedcb1dd823a10ce34207701673d1; reviewed code basis e9223d29350c021e66b4a200e562129beb937025; acceptance-criterion amendment a8d75fac29ae5520b675829a0ccf65b6e449ef42. Verdict: APPROVE. All eight review findings were fixed and independently rechecked.\n\nAcceptance criteria:\n- ac-0001 — TRUE. The real-binary suite now proves pipe/default -> JSON, pipe/--human -> human, TTY/default -> human, and TTY/--json -> JSON for every covered case; the BSD/util-linux script(1) probe fails loudly if no PTY is obtained.\n- ac-0002 — TRUE under its explicit amended scope. Twelve daemon-computed answer cases retain pre-plan bytes, the zero-byte usage-error witness remains, and docs list/agents-start-here are shape-asserted. Two captured editorial goldens were deleted with a recorded ruling; none was re-captured.\n- ac-0003 — TRUE as amended. First light proves the live TUI in a plain PTY; the claim now states SSH compatibility through terminal-only rendering and the ordinary authenticated HTTP surface rather than claiming an unperformed SSH transcript.\n- ac-0004 — TRUE. NDJSON framing, hello-first, concurrent watcher identity, producer-side slow-consumer drop, settlements, root changes, TUI live consumption, bounded local TUI delivery, and human-mode version rejection all passed. The known discovery-traversal silence remains an explicit, prime-accepted limitation outside plan 007's fence.\n- ac-0005 — TRUE. AGENTS.md/CLAUDE.md, the bundled flowspace skill, agents-start-here, and self-teaching docs carry the TTY/JSON/FS3_OUTPUT rule; the direct front door returned its JSON envelope.\n- ac-0006 — TRUE. `harness checks` returned ok across all 9 gates on the reconciled tree; dependency additions match the impl-guide grants.\n\nComposition seams:\n1. Renderer decline path — PASS. Unknown/malformed payloads return None and emit falls back to serialized JSON. Output mode is resolved once in fs3_core::output::resolve.\n2. TUI fixture-to-live swap — PASS. Production event_source calls authenticated DaemonClient::events; fixtures remain test-only; Unknown kinds survive and are skipped. The local mailbox is now bounded at 256 and applies at most 32 messages per frame.\n3. Renderer/event-wire agreement — PASS. Both consume fs3_core::events; add/scan progress is stderr-only and filters exact canonical root_path; concurrent-root cross-talk is covered.\n\nIndependent evidence observed: targeted fs3-cli run — 53 library + 2 envelope golden + 3 EPIPE + 2 standing-message + 5 output-matrix + 1 progress + 4 watch tests, all passed; fs3-daemon event_stream 7/7 passed with the isolated test database; final `harness checks` returned ok for docs, lock, testdb, fmt, clippy, prodguard before/after, cargo test --all, and architecture. `harness plan validate --complete` had zero errors and zero contradictions; its two lifecycle warnings were the still-open phase/review rows that this handback enables the PM to close."
       }
     },
     {
@@ -32,7 +32,7 @@
           "severity": "MAJOR",
           "finding": "The composed basis regresses main's quiet broken-pipe contract. Evidence: `git diff main..4a0419e -- crates/cli/src/main.rs crates/cli/tests/epipe.rs` removes fallible writers/EPIPE handling from main commit 086f812; an independent 8 MiB envelope probe that read one stdout byte then closed returned 101 and stderr `panicked ... failed printing to stdout: Broken pipe`. What would make it false: reconcile the EPIPE behavior through the human/JSON seam, retain the main epipe test, and make the same probe exit 0 with empty stderr.",
           "address": "/Users/jordanknight/substrate/flowspace/fs3-human-interface/crates/cli/src/main.rs:647-704",
-          "receipt": "Probe returncode=101; panic names Broken pipe (os error 32)."
+          "receipt": "Fixed on the reconciled branch; fs3-cli epipe integration tests passed 3/3 and final harness checks passed."
         },
         {
           "id": "f-003",
@@ -40,7 +40,7 @@
           "severity": "MINOR",
           "finding": "ac-0001's real-binary four-case matrix has no TTY leg. Evidence: crates/cli/tests/render_output.rs:128-154 defines Default, HumanFlag, JsonUnderHumanEnv, HumanEnv, and every command uses Command::output(), so stdout is always piped; first-light exercises only status under a PTY. What would make it false: PTY-backed real-binary cases for every covered verb prove TTY/no-flag -> human and TTY/--json -> JSON; the existing tests already cover pipe/no-flag and pipe/--human.",
           "address": "/Users/jordanknight/substrate/flowspace/fs3-human-interface/crates/cli/tests/render_output.rs:128-154",
-          "receipt": "Targeted render_output suite passed 4/4 but contains no PTY allocation."
+          "receipt": "Fixed with real PTY coverage; render_output passed 5/5 including every covered verb's two TTY legs."
         },
         {
           "id": "f-004",
@@ -48,7 +48,7 @@
           "severity": "MINOR",
           "finding": "The add/scan meter can display another concurrent root's progress. Evidence: main.rs:436,455 calls while_pending without the requested path; render/progress.rs:20-23,68,75-89 draws every broadcast ScanProgress and applies no root/root_path filter. What would make it false: pass the canonical requested root to the consumer, filter root_path, and test interleaved events from two roots.",
           "address": "/Users/jordanknight/substrate/flowspace/fs3-human-interface/crates/cli/src/render/progress.rs:20-89",
-          "receipt": "Source trace across the composed seam; global broadcast contract confirmed in AppState."
+          "receipt": "Fixed by exact canonical root_path filtering; interleaved-root fixture coverage passed."
         },
         {
           "id": "f-005",
@@ -56,7 +56,7 @@
           "severity": "MINOR",
           "finding": "The daemon's bounded slow-consumer policy is lost after the TUI decodes the socket. Evidence: tui.rs:49 uses unbounded std::sync::mpsc::channel and run_loop at 72 drains until empty before drawing or polling input. A sustained stream can grow memory or starve repaint/input even though the daemon's per-subscriber queue is bounded. What would make it false: bounded/coalesced local delivery or a per-frame drain budget, with a flood test proving repaint and quit remain responsive.",
           "address": "/Users/jordanknight/substrate/flowspace/fs3-human-interface/crates/cli/src/tui.rs:49-78",
-          "receipt": "Source trace; daemon-side 7/7 stream tests do not exercise this post-decode queue."
+          "receipt": "Fixed with a 256-entry coalescing mailbox and 32-message frame budget; the 2,560-event flood test passed."
         },
         {
           "id": "f-006",
@@ -64,7 +64,7 @@
           "severity": "MINOR",
           "finding": "status --watch --human accepts incompatible stream versions instead of refusing them. Evidence: watch.rs:46-56 parses and prints Hello without checking STREAM_NAME/STREAM_VERSION and does not check Event.v; a v2 hello plus v2 event probe exited 0 and rendered both. What would make it false: human watch validates hello and event versions like the TUI decoder, while JSON watch remains raw passthrough, and an incompatible-v integration test fails with a named error.",
           "address": "/Users/jordanknight/substrate/flowspace/fs3-human-interface/crates/cli/src/watch.rs:46-106",
-          "receipt": "Probe returncode=0; stdout began `watching fs3.events v2`; stderr empty."
+          "receipt": "Fixed; status_watch passed 4/4 including incompatible hello and mid-stream event version rejection while JSON remains passthrough."
         },
         {
           "id": "f-007",
@@ -72,7 +72,7 @@
           "severity": "MAJOR",
           "finding": "The duplicate-diagnosis fix drops all envelope messages in human mode. Evidence: main.rs:686-690 emits messages only when no screen rendered, while no renderer reads envelope.messages; a status --human probe using the existing messages.json fixture returned 0 but the standing update message appeared in neither stdout nor stderr. What would make it false: render standing messages exactly once in human mode, suppress only the duplicate failure diagnosis, and add a human status-with-messages integration assertion.",
           "address": "/Users/jordanknight/substrate/flowspace/fs3-human-interface/crates/cli/src/main.rs:680-699",
-          "receipt": "Probe stdout_has_message=false, stderr_has_message=false, returncode=0."
+          "receipt": "Fixed; messages_visible passed 2/2 and standing messages are emitted exactly once in human and JSON modes."
         },
         {
           "id": "f-008",
@@ -80,7 +80,7 @@
           "severity": "NIT",
           "finding": "The human-render service snap-in recipe drifted after event authentication was centralized. Evidence: docs/services/human-render.md:33 prescribes while_pending(client.base_url(), future), while render/progress.rs:20-23 requires &DaemonClient and main passes &client. What would make it false: update the recipe to the authenticated client signature.",
           "address": "/Users/jordanknight/substrate/flowspace/fs3-human-interface/docs/services/human-render.md:29-34",
-          "receipt": "Direct comparison of service contract to shipped signature."
+          "receipt": "Fixed; human-render.md now documents while_pending(&client, &canonical_path, future) and exact root filtering."
         }
       ]
     },
@@ -96,44 +96,44 @@
         {
           "id": "v-002",
           "finding": "#findings/f-002",
-          "resolution": "confirmed",
-          "rationale": "Independently reproduced on the pinned binary; blocking until quiet EPIPE behavior is restored."
+          "resolution": "fixed",
+          "rationale": "Main's quiet EPIPE path was reconciled through fallible JSON and human writers; 3/3 EPIPE tests and the full gate passed."
         },
         {
           "id": "v-003",
           "finding": "#findings/f-003",
-          "resolution": "confirmed",
-          "rationale": "The test matrix's process stdout is always a pipe; the criterion explicitly requires TTY assertions."
+          "resolution": "fixed",
+          "rationale": "A portable script(1) harness now proves both real TTY legs for every covered case; 5/5 output tests passed."
         },
         {
           "id": "v-004",
           "finding": "#findings/f-004",
-          "resolution": "confirmed",
-          "rationale": "The progress consumer has no operation identity even though the broadcast carries all roots."
+          "resolution": "fixed",
+          "rationale": "The canonical operation root is passed to the consumer and unrelated ScanProgress records are ignored by fixture-backed coverage."
         },
         {
           "id": "v-005",
           "finding": "#findings/f-005",
-          "resolution": "confirmed",
-          "rationale": "The post-decode channel is unbounded and exhaustively drained before UI work."
+          "resolution": "fixed",
+          "rationale": "A bounded/coalescing mailbox plus per-frame budget keeps storage, draw, and input responsive under a 10x-capacity flood."
         },
         {
           "id": "v-006",
           "finding": "#findings/f-006",
-          "resolution": "confirmed",
-          "rationale": "An incompatible-version stream was accepted and rendered successfully."
+          "resolution": "fixed",
+          "rationale": "Human watch now rejects wrong stream and event versions with named errors; JSON remains byte passthrough; 4/4 tests passed."
         },
         {
           "id": "v-007",
           "finding": "#findings/f-007",
-          "resolution": "confirmed",
-          "rationale": "The existing messages fixture was invisible on both output streams in human mode."
+          "resolution": "fixed",
+          "rationale": "Standing messages now bypass failure de-duplication and remain visible exactly once; 2/2 integration tests passed."
         },
         {
           "id": "v-008",
           "finding": "#findings/f-008",
-          "resolution": "confirmed",
-          "rationale": "The documented call no longer matches the implementation and bypasses the authenticated seam's intent."
+          "resolution": "fixed",
+          "rationale": "The service recipe now matches the authenticated DaemonClient and canonical-root signature."
         }
       ]
     }
