@@ -1,0 +1,35 @@
+docs/briefs/w-ask-eval/ask-contract.md
+  s_b668fefb3076c7::t_1e3316e6a5f0e2 78-105
+crates/daemon/src/boot.rs
+  s_b668fefb3076c7::t_93fb8a297720ee 96,101-121
+crates/core/src/catalog.rs
+  s_b668fefb3076c7::t_806be36c51b38e 342-361,530
+crates/core/src/ports.rs
+  s_b668fefb3076c7::t_5966603f85d1cb 327-346
+docs/reference/error-codes.md
+  s_b668fefb3076c7::t_79e575115e0a87 127-135
+crates/daemon/src/ask.rs
+  s_b668fefb3076c7::t_1719c781bf31af 342-356
+crates/testkit/src/fakes.rs
+  s_b668fefb3076c7::t_98f08287442052 360-370,373-376,387,400,458-468
+crates/daemon/src/http.rs
+  s_b668fefb3076c7::t_c586be253e2f10 98-115
+crates/daemon/tests/ask.rs
+  s_b668fefb3076c7::t_5c15622de6afe0 88-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "129bff1ad8715d0dbe58e94641e4591b3096a9c1",
+  "prompts": {},
+  "sessions": {
+    "s_b668fefb3076c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0e0064-8d84-48e6-b499-eca0c65baafc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
