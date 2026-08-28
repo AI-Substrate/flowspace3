@@ -178,3 +178,75 @@ For each: a verdict of **holds** / **holds with a named risk** / **does not
 hold**, then R1 through R4 each answered in one or two sentences with the
 evidence line, then anything I could not determine and what would close it.
 Short. A review nobody reads has the same value as no review.
+
+---
+
+## Asked by PM3: do the structural expectations catch a broken grouping, and
+## is a shared numeric expectation needed at composition?
+
+Evidence I was given: u1d mutated its reader to stop merging `message.id`
+groups — 22 records emitted where 16 are correct — and BOTH
+`assert_ordinals_are_a_subsequence` and `assert_oracle_prose_appears` still
+passed. u1a reproduced it on its own store: 20 turns instead of 13, subsequence
+still green.
+
+### Why they miss it, and why that generalises
+
+This is not a gap in those two assertions; it is what they are.
+
+- **A subsequence assertion cannot detect OVER-emission.** Splitting one group
+  into three emits more ordinals, but they are still real store ids, still in
+  order, still without repeats — so they are still a valid subsequence. The
+  assertion constrains ORDER and MEMBERSHIP. It says nothing about CARDINALITY.
+- **A containment assertion cannot detect over-emission either.** Splitting a
+  group scatters prose across more records; it deletes none, so the oracle's
+  prose still appears.
+
+Generalised, and worth writing into the testkit's own docs so the next reader
+does not assume otherwise: **subsequence and containment assertions catch
+under-emission and reordering. They are structurally blind to over-emission.**
+A broken grouping is over-emission. The two assertions we have are the two
+that cannot see it.
+
+### My answer: neither option as posed. Per-fixture number, shared assertion.
+
+**Per-unit count tests are not enough**, for two reasons that have nothing to
+do with the seats' diligence. They are per-seat, so the next reader added to
+this system can simply not write one and nothing will notice. And a count a
+seat derived by RUNNING ITS OWN READER is circular — it pins whatever the code
+did on the day it was written, which makes it a change-detector rather than a
+correctness test. Still worth having, but it does not prove the grouping is
+right; it proves the grouping has not moved.
+
+**A composition-level numeric expectation is the wrong altitude.** It is
+further from the defect, it runs later, and when it fails it cannot say WHICH
+reader mis-grouped. Composition already plans a turns-count-versus-oracle check
+in the first-light proof; that is a good backstop and a bad primary.
+
+**What I would do instead:** put the expected record count in each fixture's
+committed `expectations.json` — the file that is already byte-pinned and
+already carries `grade_of_proof` — and add ONE shared assertion in
+`fs3_testkit::Expectations` that every reader's contract run calls. That buys
+the uniformity of a shared check with the locality of a per-fixture number, in
+the place readers already consult, and a new reader cannot forget it because
+the contract suite calls it.
+
+**The condition that makes it worth anything:** the number must be derived
+INDEPENDENTLY of the reader — from the oracle where the oracle covers that
+store, otherwise from a hand-count recorded in the fixture's `PROVENANCE.md` —
+and `grade_of_proof` must say which. A count harvested from the reader's own
+output is circular no matter which file it lives in. Given the phase-1 ruling
+that the pinned reconvo.py has no claude-native reader, claude's number will be
+a hand-count and should be graded as one, exactly as its ordinals already are.
+
+**One stronger option where it is available:** for oracle-covered stores,
+assert the emitted ordinal set EQUALS the expected set rather than being a
+subsequence of it. Equality catches over-emission, under-emission and
+substitution at once. It is only possible where the expected set is genuinely
+known, which is why it is an addition for those stores and not a replacement
+for the subsequence rule everywhere.
+
+This is a judgement, not a measurement. The measurable part is the first
+paragraph: two assertions were shown blind to over-emission by two seats
+independently, and that is a property of the assertions rather than of those
+two readers.
