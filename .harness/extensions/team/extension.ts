@@ -425,16 +425,44 @@ async function unpushedCommits(ctx: V2VerbContext, worktree: string, root: strin
 }
 
 /**
- * Is the branch already merged into main? A clone that only ever checked out
- * one branch has no local `main`, so fall back to the remote-tracking ref
- * before concluding "not merged" — the wrong answer here is the one that
- * refuses a legitimate tidy.
+ * Is the branch already merged into main?
+ *
+ * TWO legs, and the second is not optional. The ancestor check alone was the
+ * original bug (DL-049): this repo SQUASH-merges, which rewrites history, so a
+ * correctly-landed branch's tip is never an ancestor of main and
+ * `git branch --merged` never lists it. Every properly merged packet branch hit
+ * `E_BRANCH_NOT_MERGED` and had to be tidied with `--force` — which also
+ * silences the dirty-tree and unpushed-commit refusals. A safety rail that
+ * trains people to `--force` past ALL the checks is worse than the gap it was
+ * guarding, so squash detection belongs here rather than in a doc telling
+ * people the refusal is usually spurious.
+ *
+ * Leg 1 — ancestor: cheap, and correct for a real merge commit or fast-forward.
+ * Leg 2 — `git cherry <base> <branch>`: one line per commit on the branch,
+ *   `-` when an equivalent patch is already upstream, `+` when it is not. All
+ *   `-` means the content landed under a different sha, which is exactly what a
+ *   squash merge looks like.
+ *
+ * It fails CLOSED. Anything unproven — a failed command, a `+` line, a base
+ * that will not resolve — reports NOT merged, because the cost of guessing
+ * "merged" is deleting work that exists nowhere else.
  */
 async function isMerged(ctx: V2VerbContext, root: string, branch: string): Promise<boolean> {
   for (const base of ['main', 'origin/main']) {
     const merged = await git(ctx, ['branch', '--merged', base, '--format=%(refname:short)'], root);
     if (!merged.ok) continue;
-    return merged.stdout.split('\n').map((l) => l.trim()).includes(branch);
+    if (merged.stdout.split('\n').map((l) => l.trim()).includes(branch)) return true;
+
+    // Leg 2: the squash case. `git cherry` compares patch-ids, so it sees
+    // content that landed upstream under a different commit.
+    const cherry = await git(ctx, ['cherry', base, branch], root);
+    if (!cherry.ok) return false;
+    const lines = cherry.stdout.split('\n').map((l) => l.trim()).filter(Boolean);
+    // No commits ahead at all — nothing to lose.
+    if (lines.length === 0) return true;
+    // A single `+` is enough to refuse: a branch that is half-upstream and half
+    // novel still holds work that exists nowhere else.
+    return lines.every((line) => line.startsWith('-'));
   }
   return false;
 }
