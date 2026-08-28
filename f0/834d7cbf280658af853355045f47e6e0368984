@@ -1,0 +1,41 @@
+crates/cli/Cargo.toml
+  s_b668fefb3076c7::t_b34d013940feef 26-28
+crates/cli/src/lib.rs
+  s_b668fefb3076c7::t_7f946f9404bd0c 15
+crates/cli/src/main.rs
+  s_b668fefb3076c7::t_6bd3db02139898 102-107,445-449
+crates/cli/src/tui.rs
+  s_b668fefb3076c7::t_e8f5556cda503a 1-1355
+crates/cli/tests/fixtures/tui-events.ndjson
+  s_15d888f4b629c1::t_55a7d0ba954d1a 1-6
+crates/testkit/arch-allowlist.toml
+  s_b668fefb3076c7::t_4a676a94b974cc 223,225
+Cargo.lock
+  s_15d888f4b629c1::t_f829fa83039334 370-375,494-507,548,688-712,729-740,757-769,776,781-791,881,1148,1153,1785,2593,2598-2606,2627-2639,2652-2660,2862-2867,2901-2909,3585-3605,3629,3829-3841,3851,4139-4159,4494-4515,4573,4669,4674,5077-5087,5090-5096,5098
+docs/services/tui.md
+  s_b668fefb3076c7::t_e68b2bebd13437 1-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f0834d7cbf280658af853355045f47e6e0368984",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_b668fefb3076c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0e0064-8d84-48e6-b499-eca0c65baafc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
