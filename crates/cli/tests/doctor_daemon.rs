@@ -41,7 +41,7 @@ fn config_for(daemon_url: &str) -> fs3_core::Config {
 }
 
 /// Run doctor against a credential that belongs only to this test invocation.
-async fn run(config: &fs3_core::Config) -> fs3_core::Envelope<doctor::DoctorReport> {
+async fn run(config: &fs3_core::Config) -> fs3_core::Envelope<DoctorReport> {
     let directory = tempfile::tempdir().expect("an isolated config directory");
     let key_path = fs3_core::daemon_key_path(directory.path());
     std::fs::write(&key_path, "doctor-test-key").expect("writing the daemon key");
