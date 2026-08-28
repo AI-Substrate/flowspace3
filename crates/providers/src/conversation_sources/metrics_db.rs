@@ -864,13 +864,27 @@ fn copilot_row(
             // record already holding a ToolCall for this tool. Round 3 of review
             // named the difference: a name-anchored guess mis-attaches on a turn
             // that called two tools.
+            // EXACT association first. The fallback is deliberately narrow: it
+            // accepts ONLY the most recent record, and only if that record
+            // already holds a ToolCall for this tool.
+            //
+            // Scanning further back would mis-attach in a case this reader
+            // creates for itself: an assistant row that cannot be dated is
+            // DROPPED, so if the turn that actually requested this tool was
+            // dropped, an unrestricted walk-back lands on an OLDER turn that
+            // happened to call the same tool. Requiring the last record means
+            // the result is dropped instead, which is the rule this branch
+            // already applies to a result whose call it never saw.
             let anchor = open_calls.get(call).map(|(index, _)| *index).or_else(|| {
-                records.iter().rposition(|record| {
-                    record.items.iter().any(|item| match item {
+                let last = records.len().checked_sub(1)?;
+                records[last]
+                    .items
+                    .iter()
+                    .any(|item| match item {
                         TurnItem::ToolCall { tool: named, .. } => *named == tool,
                         TurnItem::ToolResult { .. } => false,
                     })
-                })
+                    .then_some(last)
             });
             let Some(index) = anchor else {
                 // The assistant record that requested it is older than the
