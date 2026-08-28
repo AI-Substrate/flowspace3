@@ -43,7 +43,7 @@ pub use conversations::{
     AnchorFilter, Appended, ConversationSummary, Removed, TurnOutline, append_turns,
     delete_conversation, list_conversations, outline, upsert_conversation, window,
 };
-pub use elements::{get_elements, upsert_element_tree};
+pub use elements::{blobs_with_parser_version, get_elements, upsert_element_tree};
 pub use embeddings::{
     EMBEDDING_DIMENSIONS, NewEmbedding, SearchFilters, SearchHit, SimilarElement, SourceKind,
     anchor_has_vectors, embedding_models, existing_embedding_hashes, put_embeddings,

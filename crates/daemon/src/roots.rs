@@ -202,11 +202,20 @@ async fn scan_root(
     }
 
     let known = known_blobs(&state.db, worktree_id).await?;
+    let blob_hashes: Vec<&str> = files.iter().map(|(_, blob)| blob.as_str()).collect();
+    let parsed_by_current_version =
+        fs3_store::blobs_with_parser_version(&state.db, crate::scan::PARSER_VERSION, &blob_hashes)
+            .await?;
     let removed = fs3_store::sync_worktree_files(&state.db, worktree_id, &files).await?;
 
     let mut unchanged = 0;
     for (path, blob) in &files {
-        if known.get(path.as_str()).map(String::as_str) == Some(blob.as_str()) {
+        // Keep independent invalidators explicit and conjunctive: a file is
+        // unchanged only when its path mapping and every generation stamp are
+        // current. A later invalidator is one more membership predicate here.
+        let same_blob = known.get(path.as_str()).map(String::as_str) == Some(blob.as_str());
+        let parser_is_current = parsed_by_current_version.contains(blob.as_str());
+        if same_blob && parser_is_current {
             unchanged += 1;
         } else {
             let job = ScanFileJob {
