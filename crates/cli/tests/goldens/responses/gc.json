@@ -1,0 +1,1 @@
+{"ok":true,"command":"gc","v":1,"data":{"jobs":12,"elements":3821,"summaries":3720,"embeddings":3720,"total":11273},"next_action":"reclaimed 11273 row(s): 12 queued job(s), 3821 element(s), 3720 summary/summaries, 3720 vector(s)"}

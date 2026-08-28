@@ -16,22 +16,32 @@
 //! underneath a running daemon.
 
 use anyhow::{Context, Result};
+use axum::body::{Body, Bytes};
 use axum::extract::{Query, State};
+use axum::http::{Response, header};
 use axum::middleware;
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use fs3_core::events::{EventKind, HEARTBEAT_MS, Hello};
 use serde::{Deserialize, Serialize};
+use std::convert::Infallible;
+use std::time::Duration;
+use tokio_stream::wrappers::ReceiverStream;
 
 use fs3_core::Port;
 
 use crate::answer::{Answer, IntoFailure, failed, ok};
 use crate::auth::Auth;
 use crate::conversations::{IntakeReport, IntakeRequest};
-use crate::read::{GetPayload, GetRequest, TreeRequest, TreeResult};
-use crate::roots::{RootReport, RootRequest};
-use crate::search::{SearchRequest, SearchResults};
-use crate::status::StatusReport;
+use crate::read::{GetRequest, TreeRequest};
+use crate::roots::RootRequest;
+use crate::search::SearchRequest;
 use crate::wiring::AppState;
+use fs3_core::views::read::{GetPayload, TreeResult};
+use fs3_core::views::remove::{GcCounts, RemoveReport};
+use fs3_core::views::roots::RootReport;
+use fs3_core::views::search::SearchResults;
+use fs3_core::views::status::StatusReport;
 
 /// What `GET /health` answers with.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -59,6 +69,7 @@ pub fn router(state: AppState, auth: Auth) -> Router {
         .route("/health", get(health))
         .route("/roots", post(add_root).get(status))
         .route("/status", get(status))
+        .route("/events", get(events))
         .route("/scan", post(scan))
         .route("/remove", post(remove))
         .route("/gc", post(gc))
@@ -137,7 +148,7 @@ async fn ask(
 async fn remove(
     State(state): State<AppState>,
     Json(request): Json<RootRequest>,
-) -> Answer<crate::remove::RemoveReport> {
+) -> Answer<RemoveReport> {
     const COMMAND: &str = "remove";
     if let Err(failure) = crate::schema::guard(&state.db).await {
         return failed(&state, COMMAND, failure).await;
@@ -234,7 +245,7 @@ async fn conversations(
     }
 }
 
-async fn gc(State(state): State<AppState>) -> Answer<crate::remove::GcCounts> {
+async fn gc(State(state): State<AppState>) -> Answer<GcCounts> {
     const COMMAND: &str = "gc";
     if let Err(failure) = crate::schema::guard(&state.db).await {
         return failed(&state, COMMAND, failure).await;
@@ -249,6 +260,74 @@ async fn gc(State(state): State<AppState>) -> Answer<crate::remove::GcCounts> {
                 .into()
         }
         Err(failure) => failed(&state, COMMAND, failure).await,
+    }
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct EventQuery {
+    heartbeat_ms: Option<u64>,
+}
+
+/// A live NDJSON feed. Each response owns its heartbeat and bounded output
+/// queue; neither can block the daemon's shared event producer.
+async fn events(State(state): State<AppState>, Query(query): Query<EventQuery>) -> Response<Body> {
+    let heartbeat_ms = query.heartbeat_ms.unwrap_or(HEARTBEAT_MS).max(1);
+    let subscription = state.subscribe();
+    let (sender, receiver) = tokio::sync::mpsc::channel(AppState::event_capacity());
+
+    let mut hello = Hello::new(env!("CARGO_PKG_VERSION"));
+    hello.heartbeat_ms = heartbeat_ms;
+    sender
+        .try_send(Ok::<_, Infallible>(ndjson(&hello)))
+        .expect("a new subscriber queue accepts its hello");
+
+    tokio::spawn(stream_events(state, subscription, sender, heartbeat_ms));
+
+    Response::builder()
+        .header(header::CONTENT_TYPE, "application/x-ndjson")
+        .body(Body::from_stream(ReceiverStream::new(receiver)))
+        .expect("the event response has valid static headers")
+}
+
+fn ndjson(value: &impl Serialize) -> Bytes {
+    let mut line = serde_json::to_vec(value).expect("frozen event types always serialize");
+    line.push(b'\n');
+    Bytes::from(line)
+}
+
+async fn stream_events(
+    state: AppState,
+    mut subscription: tokio::sync::broadcast::Receiver<fs3_core::Event>,
+    sender: tokio::sync::mpsc::Sender<Result<Bytes, Infallible>>,
+    heartbeat_ms: u64,
+) {
+    let period = Duration::from_millis(heartbeat_ms);
+    let mut heartbeat = tokio::time::interval_at(tokio::time::Instant::now() + period, period);
+    heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    let mut sequence = 0;
+
+    loop {
+        let line = tokio::select! {
+            biased;
+            received = subscription.recv() => match received {
+                Ok(event) => {
+                    heartbeat.reset();
+                    ndjson(&event)
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Closed)
+                | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => break,
+            },
+            _ = heartbeat.tick() => {
+                sequence += 1;
+                ndjson(&state.event(EventKind::Heartbeat { seq: sequence }))
+            }
+        };
+
+        // Full means this connection is slower than the producer. Drop it;
+        // an indexing task must never await a dashboard's socket.
+        if sender.try_send(Ok::<_, Infallible>(line)).is_err() {
+            break;
+        }
     }
 }
 
