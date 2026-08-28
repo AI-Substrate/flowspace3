@@ -9,7 +9,7 @@
         "title": "Conversation ingestion — native session stores → conversations index",
         "slug": "convo-ingest",
         "ordinal": 5,
-        "status": "draft",
+        "status": "ready",
         "summary": "Rust-native readers for the agent-session stores (claude, omp, pij ledger, git-ai metrics-db) feeding the existing conversations import incrementally, surfaced as flowspace3 conversations ingest + a thin harness extension."
       }
     },
