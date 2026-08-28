@@ -1,0 +1,21 @@
+crates/cli/src/skill.rs
+  s_b668fefb3076c7::t_39f4eaa3b990d2 177-192
+crates/cli/skills/flowspace/SKILL.md
+  s_b668fefb3076c7::t_20f4a37aab60a7 3,129-193,202-209,221-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cc8d1e84c2fa61a7c8811b5c5993e82dd88aadeb",
+  "prompts": {},
+  "sessions": {
+    "s_b668fefb3076c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0e0064-8d84-48e6-b499-eca0c65baafc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
