@@ -446,7 +446,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             let mut params = vec![("question".to_string(), question)];
             push(&mut params, "repo", repo);
             push(&mut params, "cwd", here());
-            Ok(emit(&client.ask(&params).await))
+            emit(&client.ask(&params).await)
         }
         Command::Get {
             address,
