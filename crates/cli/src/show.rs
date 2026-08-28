@@ -91,15 +91,18 @@ pub fn render(
     out
 }
 
-/// ` (OPENAI_API_KEY: set)` — or nothing, for an instance that needs no key.
 fn key_status(effective: &Effective, name: &str) -> String {
     let Ok(instance) = effective.config.provider(name) else {
         return " — NOT CONFIGURED".to_string();
     };
+    let identity = match instance.model() {
+        Some(model) => format!("{}, model = {model}", instance.kind()),
+        None => instance.kind().to_string(),
+    };
     match instance.api_key_env() {
-        None => String::new(),
+        None => format!(" ({identity})"),
         Some(variable) => format!(
-            " ({variable}: {})",
+            " ({identity}; {variable}: {})",
             if std::env::var_os(variable).is_some() {
                 "set"
             } else {
@@ -202,6 +205,57 @@ mod tests {
         assert!(rendered.contains("#   embedder -> fake"), "{rendered}");
         assert!(rendered.contains("#   summarizer -> fake"), "{rendered}");
         assert!(missing_key_variables(&effective()).is_empty());
+    }
+
+    #[test]
+    fn mixed_surfaces_show_provider_kind_and_model_at_a_glance() {
+        let effective = fs3_core::resolve(fs3_core::Sources {
+            file_label: "/tmp/fs3/config.toml",
+            file_text: Some(
+                r#"
+                [providers.azure-embed]
+                kind = "azure_openai"
+                endpoint = "https://example.openai.azure.com"
+                deployment = "text-embedding-3-small"
+                api_version = "2024-02-01"
+                dimensions = 1024
+
+                [providers.azure-summary]
+                kind = "azure_openai"
+                endpoint = "https://example.openai.azure.com"
+                deployment = "gpt-4o"
+                api_version = "2024-12-01-preview"
+
+                [providers.openrouter-glm]
+                kind = "openai_compat"
+                base_url = "https://openrouter.ai/api/v1"
+                model = "z-ai/glm-5.3-flash"
+                api_key_env = "FS3_TEST_OPENROUTER_KEY_NOT_SET"
+
+                [embedder]
+                active = "azure-embed"
+                [summarizer]
+                active = "azure-summary"
+                [agent]
+                active = "openrouter-glm"
+                "#,
+            ),
+            env: &[],
+        })
+        .unwrap();
+
+        let rendered = render(&effective, Path::new("/tmp/fs3"), true, false);
+        assert!(
+            rendered.contains(
+                "#   embedder -> azure-embed (azure_openai, model = text-embedding-3-small)"
+            ),
+            "{rendered}"
+        );
+        assert!(
+            rendered.contains("#   summarizer -> azure-summary (azure_openai, model = gpt-4o)"),
+            "{rendered}"
+        );
+        assert!(rendered.contains("#   agent -> openrouter-glm (openai_compat, model = z-ai/glm-5.3-flash; FS3_TEST_OPENROUTER_KEY_NOT_SET: NOT SET"), "{rendered}");
     }
 
     #[test]

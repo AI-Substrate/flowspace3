@@ -1,57 +1,23 @@
-//! The generic OpenAI-compatible adapter — **summarizer only**.
+//! Generic OpenAI-shaped embeddings, summaries, and tool-capable chat.
 //!
-//! One `base_url`, one optional key, and the `/chat/completions` shape that
-//! Ollama, vLLM, LM Studio and `llama.cpp`'s server all speak. What separates
-//! this from [`crate::OpenAiSummarizer`] is not the wire format — it is the
-//! assumption set:
+//! Hosted gateways such as OpenRouter configure one `model` per registry
+//! entry. The same account can therefore serve independent surfaces through
+//! entries that share `base_url` and `api_key_env` but name different models.
+//! The configured model rides every request and every provider key.
 //!
-//! - **Embeddings may not exist.** The reference endpoint answers
-//!   `/v1/embeddings` with `501`, so an embedder pointed here must be refused
-//!   with an instruction ([`embeddings_unsupported`]) rather than discovered at
-//!   the first batch.
-//! - **The served model is discovered, not configured.** These servers ignore
-//!   the `model` field and serve whatever is loaded, so the identity that
-//!   matters is read from `/v1/models` at [`OpenAiCompatSummarizer::connect`].
-//! - **A reasoning model can answer with nothing at all.** Thinking and answer
-//!   share one token budget: too small a `max_tokens` and the reply is HTTP
-//!   200, `finish_reason: "length"`, and `content: ""` — with the whole budget
-//!   spent in `reasoning_content`. That must be a named failure, never an empty
-//!   summary. This is the single most expensive thing to learn the hard way.
+//! Single-model LAN servers keep a second, explicit posture:
+//! [`OpenAiCompatSummarizer::connect`] discovers the loaded model from
+//! `/models`, using that call as both readiness proof and row identity. Such a
+//! server may not implement embeddings; callers that know this can surface the
+//! actionable [`embeddings_unsupported`] refusal instead of probing at runtime.
 //!
-//! Structured outputs are attempted exactly as for OpenAI and Azure; the
-//! remembered downgrade in [`crate::OpenAiSummarizer`]'s shape covers the
-//! servers that reject them. (`llama.cpp` does not: it converts the schema into
-//! a sampling grammar, which is stricter than either cloud.)
+//! Structured summaries retain the learned compatibility behaviour: schema
+//! rejection downgrades once, and a reasoning model that spends `max_tokens`
+//! on thinking but returns empty content is refused rather than stored.
 //!
-//! ## Snap-in
-//!
-//! Wiring happens at adoption. The recipe:
-//!
-//! ```ignore
-//! // fs3-core::config — kind = "openai-compat"
-//! ProviderInstance::OpenAiCompat {
-//!     base_url: String,             // e.g. http://192.168.1.134:8080/v1
-//!     api_key_env: Option<String>,  // most of these servers want no auth
-//!     max_tokens: Option<usize>,    // DEFAULT_MAX_TOKENS; raise for reasoning models
-//! }
-//!
-//! // fs3-daemon composition root — summarizer arm
-//! ProviderInstance::OpenAiCompat { base_url, api_key_env, max_tokens } => {
-//!     let mut config = OpenAiCompatConfig::new(base_url);
-//!     if let Some(var) = api_key_env {
-//!         config = config.with_api_key_from_env(var)?;
-//!     }
-//!     if let Some(max) = max_tokens {
-//!         config = config.with_max_tokens(max);
-//!     }
-//!     Arc::new(OpenAiCompatSummarizer::connect(config).await?) as Arc<dyn Summarizer>
-//! }
-//!
-//! // fs3-daemon composition root — EMBEDDER arm: refuse, do not attempt
-//! ProviderInstance::OpenAiCompat { base_url, .. } => {
-//!     return Err(fs3_providers::embeddings_unsupported(&base_url));
-//! }
-//! ```
+//! Configuration and selection live in `fs3-core` and `fs3-daemon`; this crate
+//! only implements the existing ports. Secret values arrive through a named
+//! environment variable and are held in a redacting type.
 
 use async_trait::async_trait;
 use fs3_core::{Element, Error, Result, Summarizer, Summary};
@@ -74,19 +40,16 @@ pub const DEFAULT_MAX_TOKENS: usize = 4000;
 /// requires it and a spec-compliant server behind the same config will not.
 pub const DEFAULT_MODEL: &str = "local";
 
-/// The refusal an embedder configured against an OpenAI-compatible endpoint
-/// must get — at wiring time, not at the first batch.
+/// Build a wiring-time refusal for a known chat-only endpoint.
 ///
-/// Public because the composition root is what owes the caller this message,
-/// and the message should be written once rather than paraphrased there.
+/// The generic adapter supports embeddings; this helper is for LAN servers
+/// whose operator already knows `/embeddings` is absent and wants a config
+/// answer instead of a first-batch failure.
 pub fn embeddings_unsupported(base_url: &str) -> Error {
     Error::Provider(format!(
-        "{base_url} is configured as an embedding provider, but the \
-         openai-compat adapter is summarizer-only: these servers commonly \
-         serve /chat/completions and answer /embeddings with 404 or 501. Point \
-         the embedder at a provider that embeds — the in-process local \
-         embedder needs no server at all — and keep this endpoint for \
-         summaries."
+        "{base_url} is configured as a summarizer-only endpoint and does not serve \
+         /embeddings. Point the embedder at a provider that embeds — the in-process local \
+         embedder needs no server at all — and keep this endpoint for summaries."
     ))
 }
 
@@ -112,6 +75,7 @@ pub struct OpenAiCompatConfig {
     base_url: String,
     model: String,
     api_key: Option<Secret>,
+    dimensions: Option<usize>,
     max_tokens: usize,
 }
 
@@ -124,6 +88,7 @@ impl OpenAiCompatConfig {
             model: DEFAULT_MODEL.to_string(),
             api_key: None,
             max_tokens: DEFAULT_MAX_TOKENS,
+            dimensions: None,
         }
     }
 
@@ -132,6 +97,13 @@ impl OpenAiCompatConfig {
     #[must_use]
     pub fn with_model(mut self, model: impl Into<String>) -> Self {
         self.model = model.into();
+        self
+    }
+
+    /// Request and verify this embedding width.
+    #[must_use]
+    pub fn with_dimensions(mut self, dimensions: usize) -> Self {
+        self.dimensions = Some(dimensions);
         self
     }
 
@@ -166,6 +138,163 @@ impl OpenAiCompatConfig {
     fn url(&self, route: &str) -> String {
         format!("{}/{route}", self.base_url.trim_end_matches('/'))
     }
+
+    async fn try_post<Req: Serialize, Res: for<'de> Deserialize<'de>>(
+        &self,
+        http: &reqwest::Client,
+        route: &str,
+        body: &Req,
+    ) -> std::result::Result<Res, PostFailure> {
+        let url = self.url(route);
+        let request = match &self.api_key {
+            Some(key) => http.post(&url).bearer_auth(key.expose()),
+            None => http.post(&url),
+        };
+        let response =
+            request.json(body).send().await.map_err(|error| {
+                PostFailure::Fatal(Error::Provider(format!("POST {url}: {error}")))
+            })?;
+        let status = response.status();
+        if !status.is_success() {
+            let retry_after = retry::retry_after_of(&response);
+            let detail = response.text().await.unwrap_or_default().trim().to_string();
+            return Err(PostFailure::Rejected(Rejection {
+                status,
+                error: Error::Provider(format!("POST {url}: {status}: {detail}")),
+                detail,
+                retry_after,
+            }));
+        }
+        response.json::<Res>().await.map_err(|error| {
+            PostFailure::Fatal(Error::Provider(format!(
+                "POST {url}: unreadable response: {error}"
+            )))
+        })
+    }
+}
+
+/// [`fs3_core::Embedder`] backed by an OpenAI-shaped `/embeddings` endpoint.
+#[derive(Debug, Clone)]
+pub struct OpenAiCompatEmbedder {
+    http: reqwest::Client,
+    config: OpenAiCompatConfig,
+}
+
+impl OpenAiCompatEmbedder {
+    /// Build without touching the network; the first batch proves the route.
+    pub fn new(config: OpenAiCompatConfig) -> Self {
+        Self {
+            http: reqwest::Client::new(),
+            config,
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct CompatEmbeddingRequest<'a> {
+    model: &'a str,
+    input: &'a [String],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    dimensions: Option<usize>,
+}
+
+#[derive(Deserialize)]
+struct CompatEmbeddingResponse {
+    data: Vec<CompatEmbeddingDatum>,
+}
+
+#[derive(Deserialize)]
+struct CompatEmbeddingDatum {
+    index: usize,
+    embedding: Vec<f32>,
+}
+
+#[async_trait]
+impl fs3_core::Embedder for OpenAiCompatEmbedder {
+    async fn embed(&self, texts: &[String]) -> Result<Vec<Vec<f32>>> {
+        if texts.is_empty() {
+            return Ok(Vec::new());
+        }
+        let request = CompatEmbeddingRequest {
+            model: &self.config.model,
+            input: texts,
+            dimensions: self.config.dimensions,
+        };
+        let response: CompatEmbeddingResponse =
+            retry::with_retry(RetryPolicy::default(), &self.config.model, || {
+                self.config.try_post(&self.http, "embeddings", &request)
+            })
+            .await
+            .map_err(PostFailure::into_error)?;
+        order_compat_embeddings(
+            response.data,
+            texts.len(),
+            self.config.dimensions,
+            &self.config.model,
+        )
+    }
+
+    fn key(&self) -> String {
+        match self.config.dimensions {
+            Some(dimensions) => format!("{}@{dimensions}", self.config.model),
+            None => self.config.model.clone(),
+        }
+    }
+
+    fn concurrency_ceiling(&self) -> usize {
+        16
+    }
+
+    fn max_input_tokens(&self) -> usize {
+        crate::OpenAiEmbedder::MAX_INPUT_TOKENS
+    }
+}
+
+fn order_compat_embeddings(
+    data: Vec<CompatEmbeddingDatum>,
+    expected: usize,
+    dimensions: Option<usize>,
+    model: &str,
+) -> Result<Vec<Vec<f32>>> {
+    if data.len() != expected {
+        return Err(Error::Provider(format!(
+            "embeddings: asked for {expected} vectors, got {}",
+            data.len()
+        )));
+    }
+    let mut slots: Vec<Option<Vec<f32>>> = vec![None; expected];
+    for datum in data {
+        if let Some(width) = dimensions
+            && datum.embedding.len() != width
+        {
+            return Err(Error::Provider(format!(
+                "embeddings: model {model} returned {} dimensions, configured {width}",
+                datum.embedding.len()
+            )));
+        }
+        let slot = slots.get_mut(datum.index).ok_or_else(|| {
+            Error::Provider(format!(
+                "embeddings: index {} out of range for a batch of {expected}",
+                datum.index
+            ))
+        })?;
+        if slot.is_some() {
+            return Err(Error::Provider(format!(
+                "embeddings: index {} returned twice",
+                datum.index
+            )));
+        }
+        *slot = Some(datum.embedding);
+    }
+    slots
+        .into_iter()
+        .enumerate()
+        .map(|(index, slot)| {
+            slot.ok_or_else(|| {
+                Error::Provider(format!("embeddings: no vector returned for index {index}"))
+            })
+        })
+        .collect()
 }
 
 /// [`Summarizer`] backed by any OpenAI-compatible `/chat/completions` server.
@@ -189,6 +318,20 @@ struct ModelEntry {
 }
 
 impl OpenAiCompatSummarizer {
+    /// Build for a configured multi-model endpoint without probing `/models`.
+    ///
+    /// Hosted gateways expose a catalogue, not one loaded model; the configured
+    /// id is therefore the identity that must ride the model key.
+    pub fn configured(config: OpenAiCompatConfig) -> Self {
+        let served_model = config.model.clone();
+        Self {
+            http: reqwest::Client::new(),
+            config,
+            served_model,
+            structured: std::sync::atomic::AtomicBool::new(true),
+        }
+    }
+
     /// Connect, and read back which model is actually loaded.
     ///
     /// This is a real round trip on purpose, and it is the closest thing these
@@ -462,6 +605,214 @@ impl OpenAiCompatSummarizer {
         }
 
         crate::openai::parse_summary(&choice.message.content, element.kind.as_str())
+    }
+}
+
+/// Tool-capable chat against a configured OpenAI-shaped endpoint.
+#[derive(Debug)]
+pub struct OpenAiCompatChatClient {
+    http: reqwest::Client,
+    config: OpenAiCompatConfig,
+}
+
+impl OpenAiCompatChatClient {
+    /// Build without a network probe; configuration and credential resolution
+    /// have already succeeded at the composition root.
+    pub fn new(config: OpenAiCompatConfig) -> Self {
+        Self {
+            http: reqwest::Client::new(),
+            config,
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct AgentRequest<'a> {
+    model: &'a str,
+    messages: Vec<AgentMessage>,
+    tools: Vec<AgentTool>,
+    max_tokens: usize,
+}
+
+#[derive(Serialize)]
+struct AgentMessage {
+    role: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    content: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    tool_calls: Vec<AgentToolCall>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tool_call_id: Option<String>,
+}
+
+#[derive(Serialize)]
+struct AgentTool {
+    #[serde(rename = "type")]
+    kind: &'static str,
+    function: AgentToolDefinition,
+}
+
+#[derive(Serialize)]
+struct AgentToolDefinition {
+    name: String,
+    description: String,
+    parameters: serde_json::Value,
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+struct AgentToolCall {
+    id: String,
+    #[serde(rename = "type")]
+    kind: String,
+    function: AgentFunctionCall,
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+struct AgentFunctionCall {
+    name: String,
+    arguments: String,
+}
+
+#[derive(Deserialize)]
+struct AgentResponse {
+    choices: Vec<AgentChoice>,
+    #[serde(default)]
+    usage: Option<AgentUsage>,
+}
+
+#[derive(Deserialize)]
+struct AgentChoice {
+    message: AgentResponseMessage,
+}
+
+#[derive(Deserialize)]
+struct AgentResponseMessage {
+    content: Option<String>,
+    #[serde(default)]
+    tool_calls: Vec<AgentToolCall>,
+}
+
+#[derive(Deserialize)]
+struct AgentUsage {
+    total_tokens: u64,
+}
+
+fn agent_message(message: &fs3_core::ChatMessage) -> AgentMessage {
+    match message {
+        fs3_core::ChatMessage::System(content) => AgentMessage {
+            role: "system",
+            content: Some(content.clone()),
+            tool_calls: Vec::new(),
+            tool_call_id: None,
+        },
+        fs3_core::ChatMessage::User(content) => AgentMessage {
+            role: "user",
+            content: Some(content.clone()),
+            tool_calls: Vec::new(),
+            tool_call_id: None,
+        },
+        fs3_core::ChatMessage::Assistant {
+            content,
+            tool_calls,
+        } => AgentMessage {
+            role: "assistant",
+            content: content.clone(),
+            tool_calls: tool_calls
+                .iter()
+                .map(|call| AgentToolCall {
+                    id: call.id.clone(),
+                    kind: "function".to_string(),
+                    function: AgentFunctionCall {
+                        name: call.name.clone(),
+                        arguments: call.arguments.clone(),
+                    },
+                })
+                .collect(),
+            tool_call_id: None,
+        },
+        fs3_core::ChatMessage::ToolResult {
+            tool_call_id,
+            content,
+        } => AgentMessage {
+            role: "tool",
+            content: Some(content.clone()),
+            tool_calls: Vec::new(),
+            tool_call_id: Some(tool_call_id.clone()),
+        },
+    }
+}
+
+#[async_trait]
+impl fs3_core::ChatProvider for OpenAiCompatChatClient {
+    async fn turn(
+        &self,
+        messages: &[fs3_core::ChatMessage],
+        tools: &[fs3_core::ToolSchema],
+    ) -> Result<fs3_core::ChatTurn> {
+        let request = AgentRequest {
+            model: &self.config.model,
+            messages: messages.iter().map(agent_message).collect(),
+            tools: tools
+                .iter()
+                .map(|tool| AgentTool {
+                    kind: "function",
+                    function: AgentToolDefinition {
+                        name: tool.name.clone(),
+                        description: tool.description.clone(),
+                        parameters: tool.parameters.clone(),
+                    },
+                })
+                .collect(),
+            max_tokens: self.config.max_tokens,
+        };
+        let response: AgentResponse = tokio::time::timeout(
+            std::time::Duration::from_secs(180),
+            retry::with_retry(RetryPolicy::default(), &self.config.model, || {
+                self.config
+                    .try_post(&self.http, "chat/completions", &request)
+            }),
+        )
+        .await
+        .map_err(|_| {
+            Error::Provider(format!(
+                "openai-compat chat model {} did not answer within 180s",
+                self.config.model
+            ))
+        })?
+        .map_err(PostFailure::into_error)?;
+
+        let usage = response.usage.map(|usage| usage.total_tokens);
+        let message = response
+            .choices
+            .into_iter()
+            .next()
+            .map(|choice| choice.message)
+            .ok_or_else(|| {
+                Error::Provider(
+                    "openai-compat chat returned no choices; nothing to answer with".into(),
+                )
+            })?;
+        Ok(fs3_core::ChatTurn {
+            content: message.content,
+            tool_calls: message
+                .tool_calls
+                .into_iter()
+                .map(|call| fs3_core::ToolCall {
+                    id: call.id,
+                    name: call.function.name,
+                    arguments: call.function.arguments,
+                })
+                .collect(),
+            tokens_used: usage,
+        })
+    }
+
+    fn key(&self) -> String {
+        self.config.model.clone()
+    }
+
+    fn max_input_tokens(&self) -> usize {
+        128_000
     }
 }
 

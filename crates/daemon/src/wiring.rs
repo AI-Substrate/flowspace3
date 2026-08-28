@@ -41,7 +41,8 @@ use fs3_core::{
 };
 use fs3_providers::{
     AzureCredential, AzureOpenAiChatClient, AzureOpenAiConfig, AzureOpenAiEmbedder,
-    AzureOpenAiSummarizer, OpenAiEmbedder, OpenAiSummarizer,
+    AzureOpenAiSummarizer, OpenAiCompatChatClient, OpenAiCompatConfig, OpenAiCompatEmbedder,
+    OpenAiCompatSummarizer, OpenAiEmbedder, OpenAiSummarizer,
 };
 // `PgPool` reaches the daemon through `fs3-store`, which owns the sqlx edge.
 // The daemon has no direct `sqlx` dependency, and the arch-check enforces that.
@@ -328,8 +329,22 @@ fn build_embedder(name: &str, instance: &ProviderInstance) -> Result<Arc<dyn Emb
         } => Arc::new(OpenAiEmbedder::new(
             model,
             api_base.clone(),
-            api_key(api_key_env, name)?,
+            api_key(api_key_env, name, "openai")?,
         )),
+        ProviderInstance::OpenAiCompat {
+            base_url,
+            model,
+            api_key_env,
+            dimensions,
+            max_tokens,
+        } => Arc::new(OpenAiCompatEmbedder::new(openai_compat_config(
+            name,
+            base_url,
+            model,
+            api_key_env.as_deref(),
+            *dimensions,
+            *max_tokens,
+        )?)),
         ProviderInstance::AzureOpenAi {
             endpoint,
             deployment,
@@ -372,6 +387,20 @@ fn build_agent(name: &str, instance: &ProviderInstance) -> Result<Arc<dyn ChatPr
             api_version,
             api_key_env.as_deref(),
         )?)),
+        ProviderInstance::OpenAiCompat {
+            base_url,
+            model,
+            api_key_env,
+            dimensions,
+            max_tokens,
+        } => Arc::new(OpenAiCompatChatClient::new(openai_compat_config(
+            name,
+            base_url,
+            model,
+            api_key_env.as_deref(),
+            *dimensions,
+            *max_tokens,
+        )?)),
         ProviderInstance::OpenAi { .. } => anyhow::bail!(
             "provider instance `{name}` is kind = \"openai\", which cannot serve the agent \
              port: fs3 has no OpenAI chat adapter yet. Name an `azure_openai` instance in \
@@ -390,8 +419,22 @@ fn build_summarizer(name: &str, instance: &ProviderInstance) -> Result<Arc<dyn S
         } => Arc::new(OpenAiSummarizer::new(
             model,
             api_base.clone(),
-            api_key(api_key_env, name)?,
+            api_key(api_key_env, name, "openai")?,
         )),
+        ProviderInstance::OpenAiCompat {
+            base_url,
+            model,
+            api_key_env,
+            dimensions,
+            max_tokens,
+        } => Arc::new(OpenAiCompatSummarizer::configured(openai_compat_config(
+            name,
+            base_url,
+            model,
+            api_key_env.as_deref(),
+            *dimensions,
+            *max_tokens,
+        )?)),
         ProviderInstance::AzureOpenAi {
             endpoint,
             deployment,
@@ -448,14 +491,42 @@ fn azure_config(
     ))
 }
 
-fn api_key(variable: &str, instance: &str) -> Result<String> {
+fn api_key(variable: &str, instance: &str, kind: &str) -> Result<String> {
     std::env::var(variable).with_context(|| {
         format!(
-            "provider instance `{instance}` is `kind = \"openai\"`, which needs an API key in \
-             ${variable}. Export it, put it in secrets.env, point `api_key_env` at another \
-             variable, or select an instance with `kind = \"fake\"` to run offline."
+            "provider instance `{instance}` is kind = \"{kind}\", which needs an API key in \
+             ${variable}. Export it or put {variable}=… in secrets.env (the secrets file named \
+             by `flowspace3 config show`); secrets never belong in config.toml. Select a \
+             `kind = \"fake\"` instance to run offline."
         )
     })
+}
+
+fn openai_compat_config(
+    name: &str,
+    base_url: &str,
+    model: &str,
+    api_key_env: Option<&str>,
+    dimensions: Option<usize>,
+    max_tokens: Option<usize>,
+) -> Result<OpenAiCompatConfig> {
+    let mut config = OpenAiCompatConfig::new(base_url).with_model(model);
+    if let Some(api_key_env) = api_key_env {
+        config = config.with_api_key_from_env(api_key_env).with_context(|| {
+            format!(
+                "provider instance `{name}` is kind = \"openai_compat\" and needs \
+                 {api_key_env}=… in the environment or secrets.env (the secrets file named by \
+                 `flowspace3 config show`); never put the key in config.toml"
+            )
+        })?;
+    }
+    if let Some(dimensions) = dimensions {
+        config = config.with_dimensions(dimensions);
+    }
+    if let Some(max_tokens) = max_tokens {
+        config = config.with_max_tokens(max_tokens);
+    }
+    Ok(config)
 }
 
 /// Current UTC time in the frozen event-wire spelling, without a date crate.

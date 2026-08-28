@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Real implementations of the fs3 Embedder and Summarizer ports."
+description = "Real implementations of fs3 provider ports."
 
 [dependencies]
 fs3-core.workspace = true
