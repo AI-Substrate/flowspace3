@@ -1,0 +1,1204 @@
+.agents/skills/pij-team/EXPERIENCES.md
+  h_9e71e8b09f7cf2 54-626,629-636
+.agents/skills/pij-team/SKILL.md
+  h_9e71e8b09f7cf2 89-94
+.agents/skills/pij-team/TENETS.md
+  h_9e71e8b09f7cf2 108-154
+.agents/skills/pij-team/templates/packet-coder.dd.json
+  h_9e71e8b09f7cf2 23-66,72-83,92,98-117,123-137,141
+.agents/skills/pij-team/templates/packet-coder.dd.md
+  h_9e71e8b09f7cf2 1-83
+.agents/skills/pij-team/templates/packet-pm.dd.json
+  h_9e71e8b09f7cf2 23-66,72-87,102-125,131-155,159
+.agents/skills/pij-team/templates/packet-pm.dd.md
+  h_9e71e8b09f7cf2 1-87
+.agents/skills/pij-team/templates/packet-reviewer.dd.json
+  h_9e71e8b09f7cf2 24,26
+.harness/extensions/convo/extension.ts
+  h_9e71e8b09f7cf2 1-116
+.harness/extensions/convo/instructions.md
+  h_9e71e8b09f7cf2 1-84
+.harness/extensions/team/instructions.md
+  h_9e71e8b09f7cf2 264-273
+.harness/government/briefs/backlog.md
+  h_9e71e8b09f7cf2 1-422
+.harness/government/briefs/w-agentic-query-poc.md
+  h_9e71e8b09f7cf2 1-48
+.harness/government/briefs/w-ask-eval.md
+  h_9e71e8b09f7cf2 1-87
+.harness/government/briefs/w-daemon-auth.md
+  h_9e71e8b09f7cf2 1-35
+.harness/government/briefs/w-daemon-restart.md
+  h_9e71e8b09f7cf2 1-42
+.harness/government/briefs/w-daemon-sandbox.md
+  h_9e71e8b09f7cf2 1-47
+.harness/government/briefs/w-daemon-shutdown.md
+  h_9e71e8b09f7cf2 1-57
+.harness/government/briefs/w-ddocs-scan.md
+  h_9e71e8b09f7cf2 1-67
+.harness/government/briefs/w-disk-usage.md
+  h_9e71e8b09f7cf2 1-48
+.harness/government/briefs/w-epipe.md
+  h_9e71e8b09f7cf2 1-24
+.harness/government/briefs/w-ingest-lane.md
+  h_9e71e8b09f7cf2 1-30
+.harness/government/briefs/w-openrouter.md
+  h_9e71e8b09f7cf2 1-58
+.harness/government/briefs/w-retro-drain.md
+  h_9e71e8b09f7cf2 1-57
+.harness/government/briefs/w-search-degenerate-query.md
+  h_9e71e8b09f7cf2 1-68
+.harness/government/briefs/w-team-tidy.md
+  h_9e71e8b09f7cf2 1-52
+.harness/government/briefs/w-tui-poc.md
+  h_9e71e8b09f7cf2 1-64
+.harness/government/briefs/w-watcher-ignore-successor.md
+  h_9e71e8b09f7cf2 1-35
+.harness/government/briefs/w-watcher-ignore.md
+  h_9e71e8b09f7cf2 1-71
+.harness/government/how-we-work.md
+  h_9e71e8b09f7cf2 2-31,44,48-53,59-63,67-70,74-78,82,84-85,89-92,96,100,106-113,117
+.harness/government/settings.dd.json
+  h_9e71e8b09f7cf2 11,22,29,31
+.harness/government/settings.dd.md
+  h_9e71e8b09f7cf2 14,22-23
+.harness/records/retro/2026-08-28/002-drain-2026-08-28-evening.md
+  h_9e71e8b09f7cf2 1-337
+AGENTS.md
+  h_9e71e8b09f7cf2 6-12
+Cargo.lock
+  h_9e71e8b09f7cf2 40-58,389-394,513-539,580,720-758,775-786,803-815,822,827-837,927,1091-1102,1203,1207-1208,1213-1214,1220,1261,1304,1852,2291-2293,2330-2338,2672,2677-2685,2706-2718,2731-2739,2937,2942-2947,2981-2989,3321-3326,3671-3691,3715,3900-3913,3929-3941,3951,4239-4259,4317-4322,4405,4600-4621,4679,4683-4703,4796,4801,5204-5214,5217-5223,5225,5337-5346
+Cargo.toml
+  h_9e71e8b09f7cf2 71-86,107
+crates/cli/Cargo.toml
+  h_9e71e8b09f7cf2 25-28,30-32
+crates/cli/docs/agents.md
+  h_9e71e8b09f7cf2 9-16
+crates/cli/docs/providers.md
+  h_9e71e8b09f7cf2 3-6,25,32-34,37-38,140-186,193,196-197
+crates/cli/docs/read.md
+  h_9e71e8b09f7cf2 7-13
+crates/cli/docs/search.md
+  h_9e71e8b09f7cf2 10-16,37-38,42-43,69-77,104-124
+crates/cli/skills/flowspace/SKILL.md
+  h_9e71e8b09f7cf2 3,13-19,136-200,209-216,228-229
+crates/cli/src/client.rs
+  h_9e71e8b09f7cf2 239-244,306-363
+crates/cli/src/conversation.rs
+  h_9e71e8b09f7cf2 121-125,136,261-277,279,379-409
+crates/cli/src/doctor.rs
+  h_9e71e8b09f7cf2 36
+crates/cli/src/lib.rs
+  h_9e71e8b09f7cf2 11,15,17
+crates/cli/src/main.rs
+  h_9e71e8b09f7cf2 3-15,18,21,25,27,39-47,99-110,248-262,326-350,431-432,435-439,459-461,475-493,495-507,510,516,524-531,543-563,565,567-568,673-694,778-793,795-798,800-819,825-836,844-846,852-858,863,868-872,951,959,975-976,981
+crates/cli/src/render/mod.rs
+  h_9e71e8b09f7cf2 1-122
+crates/cli/src/render/progress.rs
+  h_9e71e8b09f7cf2 1-152
+crates/cli/src/render/surfaces/ask.rs
+  h_9e71e8b09f7cf2 1-264
+crates/cli/src/render/surfaces/doctor.rs
+  h_9e71e8b09f7cf2 1-66
+crates/cli/src/render/surfaces/failure.rs
+  h_9e71e8b09f7cf2 1-72
+crates/cli/src/render/surfaces/lists.rs
+  h_9e71e8b09f7cf2 1-102
+crates/cli/src/render/surfaces/mod.rs
+  h_9e71e8b09f7cf2 1-9
+crates/cli/src/render/surfaces/read.rs
+  h_9e71e8b09f7cf2 1-124
+crates/cli/src/render/surfaces/remove.rs
+  h_9e71e8b09f7cf2 1-64
+crates/cli/src/render/surfaces/roots.rs
+  h_9e71e8b09f7cf2 1-58
+crates/cli/src/render/surfaces/search.rs
+  h_9e71e8b09f7cf2 1-94
+crates/cli/src/render/surfaces/status.rs
+  h_9e71e8b09f7cf2 1-121
+crates/cli/src/render/theme.rs
+  h_9e71e8b09f7cf2 1-209
+crates/cli/src/show.rs
+  h_9e71e8b09f7cf2 98-101,103,105,210-260
+crates/cli/src/skill.rs
+  h_9e71e8b09f7cf2 177-192
+crates/cli/src/tui.rs
+  h_9e71e8b09f7cf2 1-1534
+crates/cli/src/watch.rs
+  h_9e71e8b09f7cf2 1-130
+crates/cli/tests/doctor_daemon.rs
+  h_9e71e8b09f7cf2 13,44,78,249,317,330-331,336-337
+crates/cli/tests/envelope_goldens.rs
+  h_9e71e8b09f7cf2 1-455
+crates/cli/tests/fixtures/scan-progress.ndjson
+  h_9e71e8b09f7cf2 1-4
+crates/cli/tests/fixtures/tui-events.ndjson
+  h_9e71e8b09f7cf2 1-6
+crates/cli/tests/goldens/PROVENANCE.md
+  h_9e71e8b09f7cf2 1-164
+crates/cli/tests/goldens/responses/add.json
+  h_9e71e8b09f7cf2 1
+crates/cli/tests/goldens/responses/conversation-list.json
+  h_9e71e8b09f7cf2 1
+crates/cli/tests/goldens/responses/error-not-found.json
+  h_9e71e8b09f7cf2 1
+crates/cli/tests/goldens/responses/error-query-empty.json
+  h_9e71e8b09f7cf2 1
+crates/cli/tests/goldens/responses/gc.json
+  h_9e71e8b09f7cf2 1
+crates/cli/tests/goldens/responses/get.json
+  h_9e71e8b09f7cf2 1
+crates/cli/tests/goldens/responses/messages.json
+  h_9e71e8b09f7cf2 1
+crates/cli/tests/goldens/responses/remove.json
+  h_9e71e8b09f7cf2 1
+crates/cli/tests/goldens/responses/scan.json
+  h_9e71e8b09f7cf2 1
+crates/cli/tests/goldens/responses/search.json
+  h_9e71e8b09f7cf2 1
+crates/cli/tests/goldens/responses/status.json
+  h_9e71e8b09f7cf2 1
+crates/cli/tests/goldens/responses/tree.json
+  h_9e71e8b09f7cf2 1
+crates/cli/tests/goldens/stdout/add.stdout
+  h_9e71e8b09f7cf2 1-33
+crates/cli/tests/goldens/stdout/conversation-list.stdout
+  h_9e71e8b09f7cf2 1-9
+crates/cli/tests/goldens/stdout/error-not-found.stdout
+  h_9e71e8b09f7cf2 1-21
+crates/cli/tests/goldens/stdout/error-query-empty.stdout
+  h_9e71e8b09f7cf2 1-17
+crates/cli/tests/goldens/stdout/gc.stdout
+  h_9e71e8b09f7cf2 1-13
+crates/cli/tests/goldens/stdout/get.stdout
+  h_9e71e8b09f7cf2 1-46
+crates/cli/tests/goldens/stdout/remove.stdout
+  h_9e71e8b09f7cf2 1-21
+crates/cli/tests/goldens/stdout/scan.stdout
+  h_9e71e8b09f7cf2 1-18
+crates/cli/tests/goldens/stdout/search.stdout
+  h_9e71e8b09f7cf2 1-73
+crates/cli/tests/goldens/stdout/status-with-messages.stdout
+  h_9e71e8b09f7cf2 1-35
+crates/cli/tests/goldens/stdout/status.stdout
+  h_9e71e8b09f7cf2 1-87
+crates/cli/tests/goldens/stdout/tree.stdout
+  h_9e71e8b09f7cf2 1-39
+crates/cli/tests/messages_visible.rs
+  h_9e71e8b09f7cf2 1-131
+crates/cli/tests/render_output.rs
+  h_9e71e8b09f7cf2 1-479
+crates/cli/tests/render_progress.rs
+  h_9e71e8b09f7cf2 1-117
+crates/cli/tests/status_watch.rs
+  h_9e71e8b09f7cf2 1-189
+crates/core/src/agent.rs
+  h_9e71e8b09f7cf2 105-110,119-128,137,193-197,355-368,375,532-543,631-634,641-687
+crates/core/src/catalog.rs
+  h_9e71e8b09f7cf2 342-361,530
+crates/core/src/config.rs
+  h_9e71e8b09f7cf2 112,678-700,741,755,764-774,799-844,922,950-957,1064,1763,1798-1842
+crates/core/src/conversation.rs
+  h_9e71e8b09f7cf2 388-396
+crates/core/src/conversation_join.rs
+  h_9e71e8b09f7cf2 1-321
+crates/core/src/conversation_normalize.rs
+  h_9e71e8b09f7cf2 1-595
+crates/core/src/conversation_source.rs
+  h_9e71e8b09f7cf2 1-399
+crates/core/src/events.rs
+  h_9e71e8b09f7cf2 1-326
+crates/core/src/lib.rs
+  h_9e71e8b09f7cf2 9-15,23-25,31,35,40,61-70,82,88
+crates/core/src/output.rs
+  h_9e71e8b09f7cf2 1-165
+crates/core/src/ports.rs
+  h_9e71e8b09f7cf2 1,8,10,18-33,341-360
+crates/core/src/views/doctor.rs
+  h_9e71e8b09f7cf2 1-186
+crates/core/src/views/mod.rs
+  h_9e71e8b09f7cf2 1-153
+crates/core/src/views/read.rs
+  h_9e71e8b09f7cf2 1-162
+crates/core/src/views/remove.rs
+  h_9e71e8b09f7cf2 1-47
+crates/core/src/views/roots.rs
+  h_9e71e8b09f7cf2 1-65
+crates/core/src/views/search.rs
+  h_9e71e8b09f7cf2 1-76
+crates/core/src/views/status.rs
+  h_9e71e8b09f7cf2 1-57
+crates/daemon/Cargo.toml
+  h_9e71e8b09f7cf2 46
+crates/daemon/src/ask.rs
+  h_9e71e8b09f7cf2 81-86,238,251,253,351-365,389
+crates/daemon/src/boot.rs
+  h_9e71e8b09f7cf2 98-118,185,219,285-293,477,483-485,660-662,683-686
+crates/daemon/src/conversations.rs
+  h_9e71e8b09f7cf2 39,54-57,139-141,200-203,260-263,329-333,335-338,340-343,349
+crates/daemon/src/convo_ingest.rs
+  h_9e71e8b09f7cf2 1-1026
+crates/daemon/src/http.rs
+  h_9e71e8b09f7cf2 19,21,25,27-29,36-38,40-44,131,137,170-187,230,327-351,369-436,510-513,532,549,552-555,557-559,569-573
+crates/daemon/src/lib.rs
+  h_9e71e8b09f7cf2 14,35
+crates/daemon/src/read.rs
+  h_9e71e8b09f7cf2 43,45,51-53
+crates/daemon/src/remove.rs
+  h_9e71e8b09f7cf2 6,12,14-26,61,68,70-79,96
+crates/daemon/src/roots.rs
+  h_9e71e8b09f7cf2 28,35-36,41-42,44-53,56-98,101,103-104,152-172,175-176,181,183-185,192,198,201,220-236,238-240,242,244-245,250,255,258-265,284
+crates/daemon/src/runner.rs
+  h_9e71e8b09f7cf2 33,42,47,49-51,53,55-60,166,168-171,174-192,210,279,281-283,285-293,297,308-351,375-379,388-402,493,496-512,529-536,542,544-550,556,558-564,629-662,681-699,718-723,732-739,748-758,806
+crates/daemon/src/search.rs
+  h_9e71e8b09f7cf2 32-39,43,50,97-118,132-133,155-158,167-170,173-179,280,285,291,295-316,319,321-322,339-340,385-397,477-480,489,491,504-512,527,554-574,658,706,831-840
+crates/daemon/src/status.rs
+  h_9e71e8b09f7cf2 12
+crates/daemon/src/wiring.rs
+  h_9e71e8b09f7cf2 39-40,44-45,50-57,72-73,187,204,213-238,371,373-386,429-442,461,463-476,533,536-539,543-600
+crates/daemon/src/worktrees.rs
+  h_9e71e8b09f7cf2 1-489
+crates/daemon/tests/ask.rs
+  h_9e71e8b09f7cf2 19-22,25,59-198,232-273,350-390
+crates/daemon/tests/config_wiring.rs
+  h_9e71e8b09f7cf2 137-225
+crates/daemon/tests/conversation_query.rs
+  h_9e71e8b09f7cf2 15,18
+crates/daemon/tests/convo_ingest_sidecar.rs
+  h_9e71e8b09f7cf2 1-261
+crates/daemon/tests/event_stream.rs
+  h_9e71e8b09f7cf2 1-388
+crates/daemon/tests/first_light.rs
+  h_9e71e8b09f7cf2 424-429,442-449,462-465,494-566
+crates/daemon/tests/lanes.rs
+  h_9e71e8b09f7cf2 3-6,16,22-27,31,86-162,284-526
+crates/daemon/tests/watcher.rs
+  h_9e71e8b09f7cf2 30,84
+crates/daemon/tests/worktree_lifecycle.rs
+  h_9e71e8b09f7cf2 1-156
+crates/providers/Cargo.toml
+  h_9e71e8b09f7cf2 7,16-19
+crates/providers/src/chat.rs
+  h_9e71e8b09f7cf2 114,126-129,141-143,316,320-326
+crates/providers/src/conversation_sources/claude.rs
+  h_9e71e8b09f7cf2 1-734
+crates/providers/src/conversation_sources/metrics_db.rs
+  h_9e71e8b09f7cf2 1-1106
+crates/providers/src/conversation_sources/mod.rs
+  h_9e71e8b09f7cf2 1-23
+crates/providers/src/conversation_sources/omp.rs
+  h_9e71e8b09f7cf2 1-791
+crates/providers/src/conversation_sources/pij_ledger.rs
+  h_9e71e8b09f7cf2 1-636
+crates/providers/src/conversation_sources/tail.rs
+  h_9e71e8b09f7cf2 1-382
+crates/providers/src/lib.rs
+  h_9e71e8b09f7cf2 1-3,15-24,29,49-50
+crates/providers/src/openai_compat.rs
+  h_9e71e8b09f7cf2 1,3-6,8-12,14-16,18-20,43,45-47,50-52,78,91,103-109,141-297,321-334,611-818
+crates/providers/tests/chat_stub.rs
+  h_9e71e8b09f7cf2 17,87-88,178-216
+crates/providers/tests/conversation_source_claude.rs
+  h_9e71e8b09f7cf2 1-780
+crates/providers/tests/conversation_source_metrics_db.rs
+  h_9e71e8b09f7cf2 1-697
+crates/providers/tests/conversation_sources.rs
+  h_9e71e8b09f7cf2 1-702
+crates/providers/tests/openai_compat_stub.rs
+  h_9e71e8b09f7cf2 11,13-14,272-351
+crates/providers/tests/openrouter_contract.rs
+  h_9e71e8b09f7cf2 1-67
+crates/store/migrations/0014_ingest_cursors.sql
+  h_9e71e8b09f7cf2 1-105
+crates/store/migrations/0015_conversation_parent.sql
+  h_9e71e8b09f7cf2 1-29
+crates/store/migrations/0016_job_lifo.sql
+  h_9e71e8b09f7cf2 1-12
+crates/store/migrations/0017_ddoc_layer.sql
+  h_9e71e8b09f7cf2 1
+crates/store/src/conversations.rs
+  h_9e71e8b09f7cf2 96-97,153-155,161-165,173,449,474-478
+crates/store/src/embeddings.rs
+  h_9e71e8b09f7cf2 330-331,368,392-393,453-456,464-516,524-527,533-575,588-589,599-625,630,637-638,641-651,667,684,720-722,735,740-741,751-752,764
+crates/store/src/ingest_cursors.rs
+  h_9e71e8b09f7cf2 1-508
+crates/store/src/jobs.rs
+  h_9e71e8b09f7cf2 20-38,103-120,123-124,128,135,146-149,164,200,223
+crates/store/src/lib.rs
+  h_9e71e8b09f7cf2 30,57-58,155-178
+crates/store/tests/pg_conversations.rs
+  h_9e71e8b09f7cf2 54,745-815
+crates/store/tests/pg_ddoc.rs
+  h_9e71e8b09f7cf2 716,719
+crates/store/tests/pg_first_light.rs
+  h_9e71e8b09f7cf2 17-20,350-399,659-945
+crates/store/tests/pg_ingest_cursors.rs
+  h_9e71e8b09f7cf2 1-956
+crates/testkit/arch-allowlist.toml
+  h_9e71e8b09f7cf2 97-104,112,206-211,243,245-248,255
+crates/testkit/fixtures/conversations/claude/PROVENANCE.md
+  h_9e71e8b09f7cf2 1-136
+crates/testkit/fixtures/conversations/claude/a5a5588f-0979-439f-a1bf-ddf185a089c7.jsonl
+  h_9e71e8b09f7cf2 1-148
+crates/testkit/fixtures/conversations/claude/a5a5588f-0979-439f-a1bf-ddf185a089c7/subagents/agent-aa8ccc51dce0404a8.jsonl
+  h_9e71e8b09f7cf2 1-40
+crates/testkit/fixtures/conversations/claude/a5a5588f-0979-439f-a1bf-ddf185a089c7/subagents/agent-aa8ccc51dce0404a8.meta.json
+  h_9e71e8b09f7cf2 1
+crates/testkit/fixtures/conversations/claude/b1d6f4fb-bd8e-4a10-a018-4205f4058b8e.jsonl
+  h_9e71e8b09f7cf2 1-35
+crates/testkit/fixtures/conversations/claude/b1d6f4fb-bd8e-4a10-a018-4205f4058b8e/tool-results/b8e9hq4my.txt
+  h_9e71e8b09f7cf2 1-283
+crates/testkit/fixtures/conversations/claude/expectations.json
+  h_9e71e8b09f7cf2 1-2037
+crates/testkit/fixtures/conversations/metrics_db/PROVENANCE.md
+  h_9e71e8b09f7cf2 1-132
+crates/testkit/fixtures/conversations/metrics_db/expectations.json
+  h_9e71e8b09f7cf2 1-1303
+crates/testkit/fixtures/conversations/omp/2026-08-26T07-46-01-430Z_01a03d08-7c56-7000-ac9b-95c4b3ef34d7.jsonl
+  h_9e71e8b09f7cf2 1-193
+crates/testkit/fixtures/conversations/omp/2026-08-26T07-46-01-430Z_01a03d08-7c56-7000-ac9b-95c4b3ef34d7/30.bash-original.log
+  h_9e71e8b09f7cf2 1-15
+crates/testkit/fixtures/conversations/omp/PROVENANCE.md
+  h_9e71e8b09f7cf2 1-58
+crates/testkit/fixtures/conversations/omp/expectations.json
+  h_9e71e8b09f7cf2 1-2449
+crates/testkit/fixtures/conversations/pij/PROVENANCE.md
+  h_9e71e8b09f7cf2 1-6
+crates/testkit/fixtures/conversations/pij/events.ndjson
+  h_9e71e8b09f7cf2 1-50
+crates/testkit/fixtures/conversations/pij/expectations.json
+  h_9e71e8b09f7cf2 1-550
+crates/testkit/src/conversation_source.rs
+  h_9e71e8b09f7cf2 1-300
+crates/testkit/src/expectations.rs
+  h_9e71e8b09f7cf2 1-565
+crates/testkit/src/fake_source.rs
+  h_9e71e8b09f7cf2 1-354
+crates/testkit/src/fakes.rs
+  h_9e71e8b09f7cf2 360-370,373-376,387,400,458-468
+crates/testkit/src/lib.rs
+  h_9e71e8b09f7cf2 29,32-33,39,41-44
+crates/testkit/tests/conversation_expectations.rs
+  h_9e71e8b09f7cf2 1-227
+crates/testkit/tests/conversation_source_contract.rs
+  h_9e71e8b09f7cf2 1-76
+docs/briefs/w-ask-eval/ask-contract.md
+  h_9e71e8b09f7cf2 26,31-33,81-124
+docs/briefs/w-ingest-lane.md
+  h_9e71e8b09f7cf2 1-31
+docs/briefs/w-openrouter.md
+  h_9e71e8b09f7cf2 1-58
+docs/plans/005-convo-ingest/assets/ack-u1b.md
+  h_9e71e8b09f7cf2 1-319
+docs/plans/005-convo-ingest/assets/ack-u1d.md
+  h_9e71e8b09f7cf2 1-296
+docs/plans/005-convo-ingest/assets/completion-report.md
+  h_9e71e8b09f7cf2 1-90
+docs/plans/005-convo-ingest/assets/composition-notes.md
+  h_9e71e8b09f7cf2 1-253
+docs/plans/005-convo-ingest/assets/done-report-u1a.md
+  h_9e71e8b09f7cf2 1-273
+docs/plans/005-convo-ingest/assets/done-u1b.md
+  h_9e71e8b09f7cf2 1-185
+docs/plans/005-convo-ingest/assets/done-u1d.md
+  h_9e71e8b09f7cf2 1-217
+docs/plans/005-convo-ingest/assets/inputs/09-ingestion-recipe.md
+  h_9e71e8b09f7cf2 1-142
+docs/plans/005-convo-ingest/assets/inputs/SHA256SUMS
+  h_9e71e8b09f7cf2 1-3
+docs/plans/005-convo-ingest/assets/inputs/conversations-telemetry-sample.md
+  h_9e71e8b09f7cf2 1-92
+docs/plans/005-convo-ingest/assets/inputs/fixture-sanitizer-spec.md
+  h_9e71e8b09f7cf2 1-103
+docs/plans/005-convo-ingest/assets/inputs/reconvo.py
+  h_9e71e8b09f7cf2 1-283
+docs/plans/005-convo-ingest/assets/inputs/tools/oracle_expectations.py
+  h_9e71e8b09f7cf2 1-670
+docs/plans/005-convo-ingest/assets/pm3-inventory-and-plan.md
+  h_9e71e8b09f7cf2 1-93
+docs/plans/005-convo-ingest/assets/process-report.md
+  h_9e71e8b09f7cf2 1-215
+docs/plans/005-convo-ingest/assets/reports/u2-assumptions.md
+  h_9e71e8b09f7cf2 1-133
+docs/plans/005-convo-ingest/assets/reports/u2-done-report.md
+  h_9e71e8b09f7cf2 1-247
+docs/plans/005-convo-ingest/assets/reports/u2-ordinal-review-rubric.md
+  h_9e71e8b09f7cf2 1-252
+docs/plans/005-convo-ingest/assets/reports/u2-ordinal-review.md
+  h_9e71e8b09f7cf2 1-195
+docs/plans/005-convo-ingest/assets/rescue/buffers/README.md
+  h_9e71e8b09f7cf2 1-22
+docs/plans/005-convo-ingest/assets/rescue/buffers/u1a-session-buffer.md
+  h_9e71e8b09f7cf2 1-12
+docs/plans/005-convo-ingest/assets/rescue/buffers/u1b-session-buffer.md
+  h_9e71e8b09f7cf2 1-36
+docs/plans/005-convo-ingest/assets/rescue/buffers/u1d-session-buffer.md
+  h_9e71e8b09f7cf2 1-24
+docs/plans/005-convo-ingest/assets/rescue/buffers/u2-session-buffer.md
+  h_9e71e8b09f7cf2 1-36
+docs/plans/005-convo-ingest/assets/rescue/u1a-modline.patch
+  h_9e71e8b09f7cf2 1-12
+docs/plans/005-convo-ingest/assets/rescue/u1d-rusqlite.patch
+  h_9e71e8b09f7cf2 1-34
+docs/plans/005-convo-ingest/assets/reviewer-brief.md
+  h_9e71e8b09f7cf2 1-100
+docs/plans/005-convo-ingest/assets/reviews/cross-model-review.dd.json
+  h_9e71e8b09f7cf2 1-282
+docs/plans/005-convo-ingest/assets/reviews/cross-model-review.dd.md
+  h_9e71e8b09f7cf2 1-60
+docs/plans/005-convo-ingest/assets/rulings-u1b.md
+  h_9e71e8b09f7cf2 1-149
+docs/plans/005-convo-ingest/assets/rulings-u1d.md
+  h_9e71e8b09f7cf2 1-196
+docs/plans/005-convo-ingest/assets/successor-context-pm2.md
+  h_9e71e8b09f7cf2 1-52
+docs/plans/005-convo-ingest/assets/successor-context-pm3.md
+  h_9e71e8b09f7cf2 1-44
+docs/plans/005-convo-ingest/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 1-80
+docs/plans/005-convo-ingest/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 1-48
+docs/plans/005-convo-ingest/assets/tasks/phase-2/tasks.dd.json
+  h_9e71e8b09f7cf2 1-92
+docs/plans/005-convo-ingest/assets/tasks/phase-2/tasks.dd.md
+  h_9e71e8b09f7cf2 1-49
+docs/plans/005-convo-ingest/assets/tasks/phase-3/tasks.dd.json
+  h_9e71e8b09f7cf2 1-94
+docs/plans/005-convo-ingest/assets/tasks/phase-3/tasks.dd.md
+  h_9e71e8b09f7cf2 1-49
+docs/plans/005-convo-ingest/assets/wave-1-restart-note.md
+  h_9e71e8b09f7cf2 1-128
+docs/plans/005-convo-ingest/assets/wave-1-roster.md
+  h_9e71e8b09f7cf2 1-119
+docs/plans/005-convo-ingest/impl-guide.dd.json
+  h_9e71e8b09f7cf2 1-135
+docs/plans/005-convo-ingest/impl-guide.dd.md
+  h_9e71e8b09f7cf2 1-317
+docs/plans/005-convo-ingest/packet-coder-u1a.dd.json
+  h_9e71e8b09f7cf2 1-194
+docs/plans/005-convo-ingest/packet-coder-u1a.dd.md
+  h_9e71e8b09f7cf2 1-95
+docs/plans/005-convo-ingest/packet-coder-u1b.dd.json
+  h_9e71e8b09f7cf2 1-198
+docs/plans/005-convo-ingest/packet-coder-u1b.dd.md
+  h_9e71e8b09f7cf2 1-96
+docs/plans/005-convo-ingest/packet-coder-u1d.dd.json
+  h_9e71e8b09f7cf2 1-194
+docs/plans/005-convo-ingest/packet-coder-u1d.dd.md
+  h_9e71e8b09f7cf2 1-95
+docs/plans/005-convo-ingest/packet-coder-u2.dd.json
+  h_9e71e8b09f7cf2 1-206
+docs/plans/005-convo-ingest/packet-coder-u2.dd.md
+  h_9e71e8b09f7cf2 1-98
+docs/plans/005-convo-ingest/packet-coder.dd.json
+  h_9e71e8b09f7cf2 1-68
+docs/plans/005-convo-ingest/packet-coder.dd.md
+  h_9e71e8b09f7cf2 1-79
+docs/plans/005-convo-ingest/packet-pm.dd.json
+  h_9e71e8b09f7cf2 1-77
+docs/plans/005-convo-ingest/packet-pm.dd.md
+  h_9e71e8b09f7cf2 1-88
+docs/plans/005-convo-ingest/packet-reviewer.dd.json
+  h_9e71e8b09f7cf2 1-63
+docs/plans/005-convo-ingest/packet-reviewer.dd.md
+  h_9e71e8b09f7cf2 1-74
+docs/plans/005-convo-ingest/plan.dd.json
+  h_9e71e8b09f7cf2 1-121
+docs/plans/005-convo-ingest/plan.dd.md
+  h_9e71e8b09f7cf2 1-73
+docs/plans/006-worktree-diff/assets/buffers/pm-session-buffer.md
+  h_9e71e8b09f7cf2 1-84
+docs/plans/006-worktree-diff/assets/buffers/u-a-session-buffer.md
+  h_9e71e8b09f7cf2 1-96
+docs/plans/006-worktree-diff/assets/buffers/u-c-session-buffer.md
+  h_9e71e8b09f7cf2 1-60
+docs/plans/006-worktree-diff/assets/go-live-runbook.md
+  h_9e71e8b09f7cf2 1-88
+docs/plans/006-worktree-diff/assets/pr-body.md
+  h_9e71e8b09f7cf2 1-107
+docs/plans/006-worktree-diff/assets/probe-report.md
+  h_9e71e8b09f7cf2 1-338
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/daemon-p2a.log
+  h_9e71e8b09f7cf2 1-872
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/daemon-p2b.log
+  h_9e71e8b09f7cf2 1-226
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/daemon-p4.log
+  h_9e71e8b09f7cf2 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p1-deltas.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p1-jobs.txt
+  h_9e71e8b09f7cf2 1-4
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p1-search-default-limit.json
+  h_9e71e8b09f7cf2 1-239
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p1-search-from-unregistered.json
+  h_9e71e8b09f7cf2 1-82
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p1-status.json
+  h_9e71e8b09f7cf2 1-52
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p1-worktree-add.txt
+  h_9e71e8b09f7cf2 1-2
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2a-add.json
+  h_9e71e8b09f7cf2 1-66
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2a-deltas.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2a-jobs.txt
+  h_9e71e8b09f7cf2 1-7
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2a-paid.txt
+  h_9e71e8b09f7cf2 1-24
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2b-deltas.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2b-divergent-paths.txt
+  h_9e71e8b09f7cf2 1-12
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2b-edited-files.txt
+  h_9e71e8b09f7cf2 1-8
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2b-jobs.txt
+  h_9e71e8b09f7cf2 1-7
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2b-paid.txt
+  h_9e71e8b09f7cf2 1-25
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2b-reference-map.txt
+  h_9e71e8b09f7cf2 1-6
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-colliding-addresses.txt
+  h_9e71e8b09f7cf2 1-14
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-elements-by-blob.txt
+  h_9e71e8b09f7cf2 1-12
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-get-from-main.json
+  h_9e71e8b09f7cf2 1-71
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-get-from-worktree.json
+  h_9e71e8b09f7cf2 1-80
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-marker-from-main.json
+  h_9e71e8b09f7cf2 1-52
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-marker-from-worktree.json
+  h_9e71e8b09f7cf2 1-52
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-result-fields.txt
+  h_9e71e8b09f7cf2 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-search-flags.txt
+  h_9e71e8b09f7cf2 1-15
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-search-repo-scoped.json
+  h_9e71e8b09f7cf2 1-51
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-shared-from-main.json
+  h_9e71e8b09f7cf2 1-114
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-shared-from-worktree.json
+  h_9e71e8b09f7cf2 1-114
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-version-file-blobs.txt
+  h_9e71e8b09f7cf2 1-6
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-version-file.txt
+  h_9e71e8b09f7cf2 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-deltas-fs3-remove.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-deltas-gc.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-deltas-git-remove.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-deltas-whole-run.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-fs3-remove.json
+  h_9e71e8b09f7cf2 1-21
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-gc.json
+  h_9e71e8b09f7cf2 1-13
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-jobs.txt
+  h_9e71e8b09f7cf2 1-4
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-orphaned-after-gc.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-orphaned-before-gc.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-search-after-gc.json
+  h_9e71e8b09f7cf2 1-35
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-search-after-git-remove.json
+  h_9e71e8b09f7cf2 1-52
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-status-after-git-remove.json
+  h_9e71e8b09f7cf2 1-57
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/ping.json
+  h_9e71e8b09f7cf2 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/receipt.env
+  h_9e71e8b09f7cf2 1-23
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/snap-00-baseline.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/snap-01-after-worktree-create.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/snap-02-before-add.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/snap-03-after-add.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/snap-04-before-edits.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/snap-05-after-edits.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/snap-06-before-removal.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/snap-07-after-git-remove.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/snap-08-after-fs3-remove.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/snap-09-after-gc.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/status-before.json
+  h_9e71e8b09f7cf2 1-52
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/transcript.log
+  h_9e71e8b09f7cf2 1-512
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/daemon-p1.log
+  h_9e71e8b09f7cf2 1-2479
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/daemon-p2a.log
+  h_9e71e8b09f7cf2 1-92
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/daemon-p2b.log
+  h_9e71e8b09f7cf2 1-413
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/daemon-p4.log
+  h_9e71e8b09f7cf2 1-59
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p1-deltas.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p1-jobs.txt
+  h_9e71e8b09f7cf2 1-11
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p1-noop-jobs.txt
+  h_9e71e8b09f7cf2 1-4
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p1-search-default-limit.json
+  h_9e71e8b09f7cf2 1-215
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p1-search-from-worktree.json
+  h_9e71e8b09f7cf2 1-81
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p1-status.json
+  h_9e71e8b09f7cf2 1-155
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p1-worktree-add.txt
+  h_9e71e8b09f7cf2 1-3
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2a-add.json
+  h_9e71e8b09f7cf2 1-66
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2a-deltas.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2a-jobs.txt
+  h_9e71e8b09f7cf2 1-7
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2a-paid.txt
+  h_9e71e8b09f7cf2 1-26
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2b-deltas.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2b-divergent-paths.txt
+  h_9e71e8b09f7cf2 1-12
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2b-edited-files.txt
+  h_9e71e8b09f7cf2 1-8
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2b-jobs.txt
+  h_9e71e8b09f7cf2 1-9
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2b-paid.txt
+  h_9e71e8b09f7cf2 1-26
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2b-reference-map.txt
+  h_9e71e8b09f7cf2 1-6
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-colliding-addresses.txt
+  h_9e71e8b09f7cf2 1-14
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-elements-by-blob.txt
+  h_9e71e8b09f7cf2 1-12
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-get-from-main.json
+  h_9e71e8b09f7cf2 1-71
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-get-from-worktree.json
+  h_9e71e8b09f7cf2 1-80
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-marker-from-main.json
+  h_9e71e8b09f7cf2 1-113
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-marker-from-worktree.json
+  h_9e71e8b09f7cf2 1-113
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-result-fields.txt
+  h_9e71e8b09f7cf2 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-search-flags.txt
+  h_9e71e8b09f7cf2 1-15
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-search-repo-scoped.json
+  h_9e71e8b09f7cf2 1-112
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-shared-from-main.json
+  h_9e71e8b09f7cf2 1-117
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-shared-from-worktree.json
+  h_9e71e8b09f7cf2 1-117
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-version-file-blobs.txt
+  h_9e71e8b09f7cf2 1-6
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-version-file.txt
+  h_9e71e8b09f7cf2 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p4-deltas-fs3-remove.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p4-deltas-gc.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p4-deltas-git-remove.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p4-deltas-whole-run.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p4-fs3-remove.json
+  h_9e71e8b09f7cf2 1-39
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p4-gc.json
+  h_9e71e8b09f7cf2 1-13
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p4-jobs.txt
+  h_9e71e8b09f7cf2 1-7
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p4-orphaned-after-gc.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p4-orphaned-before-gc.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p4-search-after-gc.json
+  h_9e71e8b09f7cf2 1-77
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p4-search-after-git-remove.json
+  h_9e71e8b09f7cf2 1-77
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p4-status-after-git-remove.json
+  h_9e71e8b09f7cf2 1-117
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/ping.json
+  h_9e71e8b09f7cf2 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/receipt.env
+  h_9e71e8b09f7cf2 1-29
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/snap-00-baseline.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/snap-01-after-worktree-create.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/snap-02-before-add.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/snap-03-after-add.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/snap-04-before-edits.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/snap-05-after-edits.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/snap-06-before-removal.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/snap-07-after-git-remove.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/snap-08-after-fs3-remove.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/snap-09-after-gc.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/status-before.json
+  h_9e71e8b09f7cf2 1-132
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/transcript.log
+  h_9e71e8b09f7cf2 1-573
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/daemon-p1.log
+  h_9e71e8b09f7cf2 1-7024
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/daemon-p2a.log
+  h_9e71e8b09f7cf2 1-81
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/daemon-p2b.log
+  h_9e71e8b09f7cf2 1-300
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/daemon-p4.log
+  h_9e71e8b09f7cf2 1-32
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p1-deltas.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p1-jobs.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p1-noop-jobs.txt
+  h_9e71e8b09f7cf2 1-4
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p1-search-default-limit.json
+  h_9e71e8b09f7cf2 1-215
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p1-search-from-worktree.json
+  h_9e71e8b09f7cf2 1-81
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p1-status.json
+  h_9e71e8b09f7cf2 1-130
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p1-worktree-add.txt
+  h_9e71e8b09f7cf2 1-2
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2a-add.json
+  h_9e71e8b09f7cf2 1-66
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2a-deltas.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2a-jobs.txt
+  h_9e71e8b09f7cf2 1-7
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2a-paid.txt
+  h_9e71e8b09f7cf2 1-26
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2b-deltas.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2b-divergent-paths.txt
+  h_9e71e8b09f7cf2 1-12
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2b-edited-files.txt
+  h_9e71e8b09f7cf2 1-8
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2b-jobs.txt
+  h_9e71e8b09f7cf2 1-7
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2b-paid.txt
+  h_9e71e8b09f7cf2 1-25
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2b-reference-map.txt
+  h_9e71e8b09f7cf2 1-6
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-colliding-addresses.txt
+  h_9e71e8b09f7cf2 1-14
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-elements-by-blob.txt
+  h_9e71e8b09f7cf2 1-12
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-get-from-main.json
+  h_9e71e8b09f7cf2 1-71
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-get-from-worktree.json
+  h_9e71e8b09f7cf2 1-80
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-marker-from-main.json
+  h_9e71e8b09f7cf2 1-21
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-marker-from-worktree.json
+  h_9e71e8b09f7cf2 1-21
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-result-fields.txt
+  h_9e71e8b09f7cf2 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-search-flags.txt
+  h_9e71e8b09f7cf2 1-15
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-search-repo-scoped.json
+  h_9e71e8b09f7cf2 1-20
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-shared-from-main.json
+  h_9e71e8b09f7cf2 1-117
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-shared-from-worktree.json
+  h_9e71e8b09f7cf2 1-117
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-version-file-blobs.txt
+  h_9e71e8b09f7cf2 1-6
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-version-file.txt
+  h_9e71e8b09f7cf2 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p4-deltas-fs3-remove.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p4-deltas-gc.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p4-deltas-git-remove.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p4-deltas-whole-run.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p4-fs3-remove.json
+  h_9e71e8b09f7cf2 1-36
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p4-gc.json
+  h_9e71e8b09f7cf2 1-13
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p4-jobs.txt
+  h_9e71e8b09f7cf2 1-6
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p4-orphaned-after-gc.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p4-orphaned-before-gc.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p4-search-after-gc.json
+  h_9e71e8b09f7cf2 1-21
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p4-search-after-git-remove.json
+  h_9e71e8b09f7cf2 1-21
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p4-status-after-git-remove.json
+  h_9e71e8b09f7cf2 1-102
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/ping.json
+  h_9e71e8b09f7cf2 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/receipt.env
+  h_9e71e8b09f7cf2 1-33
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/snap-00-baseline.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/snap-01-after-worktree-create.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/snap-02-before-add.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/snap-03-after-add.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/snap-04-before-edits.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/snap-05-after-edits.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/snap-06-before-removal.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/snap-07-after-git-remove.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/snap-08-after-fs3-remove.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/snap-09-after-gc.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/status-before.json
+  h_9e71e8b09f7cf2 1-107
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/transcript.log
+  h_9e71e8b09f7cf2 1-549
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/daemon-p1.log
+  h_9e71e8b09f7cf2 1-7802
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/daemon-p2a.log
+  h_9e71e8b09f7cf2 1-6132
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/daemon-p2b.log
+  h_9e71e8b09f7cf2 1-4372
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/daemon-p4.log
+  h_9e71e8b09f7cf2 1-86
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p1-deltas.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p1-jobs.txt
+  h_9e71e8b09f7cf2 1-7
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p1-noop-jobs.txt
+  h_9e71e8b09f7cf2 1-4
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p1-search-default-limit.json
+  h_9e71e8b09f7cf2 1-216
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p1-search-from-worktree.json
+  h_9e71e8b09f7cf2 1-82
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p1-status.json
+  h_9e71e8b09f7cf2 1-97
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p1-worktree-add.txt
+  h_9e71e8b09f7cf2 1-2
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p2a-add.json
+  h_9e71e8b09f7cf2 1-66
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p2a-deltas.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p2a-jobs.txt
+  h_9e71e8b09f7cf2 1-9
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p2a-paid.txt
+  h_9e71e8b09f7cf2 1-24
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p2b-deltas.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p2b-divergent-paths.txt
+  h_9e71e8b09f7cf2 1-29
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p2b-edited-files.txt
+  h_9e71e8b09f7cf2 1-8
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p2b-jobs.txt
+  h_9e71e8b09f7cf2 1-7
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p2b-paid.txt
+  h_9e71e8b09f7cf2 1-26
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p2b-reference-map.txt
+  h_9e71e8b09f7cf2 1-6
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p3-colliding-addresses.txt
+  h_9e71e8b09f7cf2 1-14
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p3-elements-by-blob.txt
+  h_9e71e8b09f7cf2 1-12
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p3-get-from-main.json
+  h_9e71e8b09f7cf2 1-89
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p3-get-from-worktree.json
+  h_9e71e8b09f7cf2 1-98
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p3-marker-from-main.json
+  h_9e71e8b09f7cf2 1-114
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p3-marker-from-worktree.json
+  h_9e71e8b09f7cf2 1-114
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p3-result-fields.txt
+  h_9e71e8b09f7cf2 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p3-search-flags.txt
+  h_9e71e8b09f7cf2 1-15
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p3-search-repo-scoped.json
+  h_9e71e8b09f7cf2 1-113
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p3-shared-from-main.json
+  h_9e71e8b09f7cf2 1-118
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p3-shared-from-worktree.json
+  h_9e71e8b09f7cf2 1-118
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p3-version-file-blobs.txt
+  h_9e71e8b09f7cf2 1-6
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p3-version-file.txt
+  h_9e71e8b09f7cf2 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p4-deltas-fs3-remove.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p4-deltas-gc.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p4-deltas-git-remove.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p4-deltas-whole-run.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p4-fs3-remove.json
+  h_9e71e8b09f7cf2 1-31
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p4-gc.json
+  h_9e71e8b09f7cf2 1-13
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p4-jobs.txt
+  h_9e71e8b09f7cf2 1-7
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p4-orphaned-after-gc.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p4-orphaned-before-gc.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p4-search-after-gc.json
+  h_9e71e8b09f7cf2 1-78
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p4-search-after-git-remove.json
+  h_9e71e8b09f7cf2 1-78
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p4-status-after-git-remove.json
+  h_9e71e8b09f7cf2 1-77
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/ping.json
+  h_9e71e8b09f7cf2 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/receipt.env
+  h_9e71e8b09f7cf2 1-33
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/snap-00-baseline.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/snap-01-after-worktree-create.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/snap-02-before-add.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/snap-03-after-add.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/snap-04-before-edits.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/snap-05-after-edits.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/snap-06-before-removal.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/snap-07-after-git-remove.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/snap-08-after-fs3-remove.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/snap-09-after-gc.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/status-before.json
+  h_9e71e8b09f7cf2 1-92
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/transcript.log
+  h_9e71e8b09f7cf2 1-576
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/daemon-p1.log
+  h_9e71e8b09f7cf2 1-1281
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/daemon-p2a.log
+  h_9e71e8b09f7cf2 1-11892
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/p1-deltas.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/p1-jobs.txt
+  h_9e71e8b09f7cf2 1-8
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/p1-search-default-limit.json
+  h_9e71e8b09f7cf2 1-250
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/p1-search-from-worktree.json
+  h_9e71e8b09f7cf2 1-86
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/p1-status.json
+  h_9e71e8b09f7cf2 1-216
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/p1-worktree-add.txt
+  h_9e71e8b09f7cf2 1-3
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/p2a-add.json
+  h_9e71e8b09f7cf2 1-71
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/p2a-deltas.txt
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/p2a-jobs.txt
+  h_9e71e8b09f7cf2 1-9
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/p2a-paid.txt
+  h_9e71e8b09f7cf2 1-25
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/p2b-edited-files.txt
+  h_9e71e8b09f7cf2 1-8
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/p3-version-file.txt
+  h_9e71e8b09f7cf2 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/ping.json
+  h_9e71e8b09f7cf2 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/receipt.env
+  h_9e71e8b09f7cf2 1-21
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/snap-00-baseline.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/snap-01-after-worktree-create.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/snap-02-before-add.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/snap-03-after-add.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/snap-04-before-edits.env
+  h_9e71e8b09f7cf2 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/status-before.json
+  h_9e71e8b09f7cf2 1-200
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/transcript.log
+  h_9e71e8b09f7cf2 1-485
+docs/plans/006-worktree-diff/assets/probes/probe.sh
+  h_9e71e8b09f7cf2 1-669
+docs/plans/006-worktree-diff/assets/process-feedback.md
+  h_9e71e8b09f7cf2 1-170
+docs/plans/006-worktree-diff/assets/reviews/_computed.diff
+  h_9e71e8b09f7cf2 1-8891
+docs/plans/006-worktree-diff/assets/reviews/cross-model-review.dd.json
+  h_9e71e8b09f7cf2 1-104
+docs/plans/006-worktree-diff/assets/reviews/cross-model-review.dd.md
+  h_9e71e8b09f7cf2 1-42
+docs/plans/006-worktree-diff/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 1-79
+docs/plans/006-worktree-diff/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 1-48
+docs/plans/006-worktree-diff/assets/tasks/phase-2/execution.log.md
+  h_9e71e8b09f7cf2 1-102
+docs/plans/006-worktree-diff/assets/tasks/phase-2/tasks.dd.json
+  h_9e71e8b09f7cf2 1-71
+docs/plans/006-worktree-diff/assets/tasks/phase-2/tasks.dd.md
+  h_9e71e8b09f7cf2 1-47
+docs/plans/006-worktree-diff/assets/tasks/phase-3/tasks.dd.json
+  h_9e71e8b09f7cf2 1-62
+docs/plans/006-worktree-diff/assets/tasks/phase-3/tasks.dd.md
+  h_9e71e8b09f7cf2 1-46
+docs/plans/006-worktree-diff/impl-guide.dd.json
+  h_9e71e8b09f7cf2 1-69
+docs/plans/006-worktree-diff/impl-guide.dd.md
+  h_9e71e8b09f7cf2 1-82
+docs/plans/006-worktree-diff/packet-coder-ua.dd.json
+  h_9e71e8b09f7cf2 1-169
+docs/plans/006-worktree-diff/packet-coder-ua.dd.md
+  h_9e71e8b09f7cf2 1-89
+docs/plans/006-worktree-diff/packet-coder-uc.dd.json
+  h_9e71e8b09f7cf2 1-177
+docs/plans/006-worktree-diff/packet-coder-uc.dd.md
+  h_9e71e8b09f7cf2 1-91
+docs/plans/006-worktree-diff/packet-coder.dd.json
+  h_9e71e8b09f7cf2 1-68
+docs/plans/006-worktree-diff/packet-coder.dd.md
+  h_9e71e8b09f7cf2 1-79
+docs/plans/006-worktree-diff/packet-pm.dd.json
+  h_9e71e8b09f7cf2 1-76
+docs/plans/006-worktree-diff/packet-pm.dd.md
+  h_9e71e8b09f7cf2 1-87
+docs/plans/006-worktree-diff/packet-reviewer.dd.json
+  h_9e71e8b09f7cf2 1-157
+docs/plans/006-worktree-diff/packet-reviewer.dd.md
+  h_9e71e8b09f7cf2 1-86
+docs/plans/006-worktree-diff/plan.dd.json
+  h_9e71e8b09f7cf2 1-107
+docs/plans/006-worktree-diff/plan.dd.md
+  h_9e71e8b09f7cf2 1-70
+docs/plans/007-human-interface/assets/first-light-transcript.md
+  h_9e71e8b09f7cf2 1-227
+docs/plans/007-human-interface/assets/first-light.md
+  h_9e71e8b09f7cf2 1-47
+docs/plans/007-human-interface/assets/inputs/README.md
+  h_9e71e8b09f7cf2 1-57
+docs/plans/007-human-interface/assets/inputs/tui-poc-VERDICT.md
+  h_9e71e8b09f7cf2 1-71
+docs/plans/007-human-interface/assets/reviews/review-007.dd.json
+  h_9e71e8b09f7cf2 1-141
+docs/plans/007-human-interface/assets/reviews/review-007.dd.md
+  h_9e71e8b09f7cf2 1-48
+docs/plans/007-human-interface/assets/run/buffers/pm-session-buffer.md
+  h_9e71e8b09f7cf2 1-144
+docs/plans/007-human-interface/assets/run/buffers/u-r-session-buffer.md
+  h_9e71e8b09f7cf2 1-48
+docs/plans/007-human-interface/assets/run/buffers/u-t-session-buffer.md
+  h_9e71e8b09f7cf2 1-60
+docs/plans/007-human-interface/assets/run/buffers/u-w-session-buffer.md
+  h_9e71e8b09f7cf2 1-12
+docs/plans/007-human-interface/assets/run/pm-ack.md
+  h_9e71e8b09f7cf2 1-93
+docs/plans/007-human-interface/assets/run/process-feedback.md
+  h_9e71e8b09f7cf2 1-160
+docs/plans/007-human-interface/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 1-89
+docs/plans/007-human-interface/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 1-49
+docs/plans/007-human-interface/assets/tasks/phase-2/tasks.dd.json
+  h_9e71e8b09f7cf2 1-60
+docs/plans/007-human-interface/assets/tasks/phase-2/tasks.dd.md
+  h_9e71e8b09f7cf2 1-46
+docs/plans/007-human-interface/assets/tasks/phase-3/tasks.dd.json
+  h_9e71e8b09f7cf2 1-61
+docs/plans/007-human-interface/assets/tasks/phase-3/tasks.dd.md
+  h_9e71e8b09f7cf2 1-46
+docs/plans/007-human-interface/impl-guide.dd.json
+  h_9e71e8b09f7cf2 1-117
+docs/plans/007-human-interface/impl-guide.dd.md
+  h_9e71e8b09f7cf2 1-86
+docs/plans/007-human-interface/packet-coder-u-r.dd.json
+  h_9e71e8b09f7cf2 1-186
+docs/plans/007-human-interface/packet-coder-u-r.dd.md
+  h_9e71e8b09f7cf2 1-93
+docs/plans/007-human-interface/packet-coder-u-t.dd.json
+  h_9e71e8b09f7cf2 1-194
+docs/plans/007-human-interface/packet-coder-u-t.dd.md
+  h_9e71e8b09f7cf2 1-95
+docs/plans/007-human-interface/packet-coder-u-w.dd.json
+  h_9e71e8b09f7cf2 1-190
+docs/plans/007-human-interface/packet-coder-u-w.dd.md
+  h_9e71e8b09f7cf2 1-94
+docs/plans/007-human-interface/packet-coder.dd.json
+  h_9e71e8b09f7cf2 1-68
+docs/plans/007-human-interface/packet-coder.dd.md
+  h_9e71e8b09f7cf2 1-79
+docs/plans/007-human-interface/packet-pm.dd.json
+  h_9e71e8b09f7cf2 1-75
+docs/plans/007-human-interface/packet-pm.dd.md
+  h_9e71e8b09f7cf2 1-86
+docs/plans/007-human-interface/packet-reviewer.dd.json
+  h_9e71e8b09f7cf2 1-127
+docs/plans/007-human-interface/packet-reviewer.dd.md
+  h_9e71e8b09f7cf2 1-79
+docs/plans/007-human-interface/plan.dd.json
+  h_9e71e8b09f7cf2 1-110
+docs/plans/007-human-interface/plan.dd.md
+  h_9e71e8b09f7cf2 1-70
+docs/plans/prd/providers-roster.md
+  h_9e71e8b09f7cf2 2,9
+docs/reference/configuration.md
+  h_9e71e8b09f7cf2 146
+docs/reference/error-codes.md
+  h_9e71e8b09f7cf2 127-135
+docs/services/convo-cursors.md
+  h_9e71e8b09f7cf2 1-329
+docs/services/convo-ingest.md
+  h_9e71e8b09f7cf2 1-168
+docs/services/convo-source-claude.md
+  h_9e71e8b09f7cf2 1-395
+docs/services/convo-source-metricsdb.md
+  h_9e71e8b09f7cf2 1-406
+docs/services/convo-source-omp.md
+  h_9e71e8b09f7cf2 1-407
+docs/services/event-stream.md
+  h_9e71e8b09f7cf2 1-163
+docs/services/first-light.md
+  h_9e71e8b09f7cf2 60-63,65-71
+docs/services/human-render.md
+  h_9e71e8b09f7cf2 1-72
+docs/services/openai-compat.md
+  h_9e71e8b09f7cf2 2,4,6,8-9,11,13-33,36-43,46-53,55-64,66-70,73,75-77
+docs/services/store-schema.md
+  h_9e71e8b09f7cf2 132,139-143
+docs/services/tui.md
+  h_9e71e8b09f7cf2 1-97
+docs/services/worktree-lifecycle.md
+  h_9e71e8b09f7cf2 1-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6d81807b85b7ea0d3ba9f40ad219c23b5106e67d",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
