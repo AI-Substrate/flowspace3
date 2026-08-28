@@ -100,8 +100,9 @@
           "id": "ph-a3aa",
           "title": "Phase 3: Composition + first light",
           "brief": "PM composes (ask-assumptions first), gate green, then first light: one terminal session transcript — human-default output on the core verbs, piped JSON byte-check, then tui live against the real daemon with the real event stream while a scan runs. Reviewer (settings default) after composition; PR held unmerged.",
-          "state": "unchecked",
-          "tasks": "assets/tasks/phase-3/tasks.dd.json#tasks"
+          "state": "checked",
+          "tasks": "assets/tasks/phase-3/tasks.dd.json#tasks",
+          "receipt": "Composed all three units, gate GREEN 9/9, first light recorded live, cross-model review completed with every finding resolved, PR #52 opened into main and HELD UNMERGED for prime."
         }
       ]
     }
