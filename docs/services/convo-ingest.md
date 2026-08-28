@@ -99,6 +99,29 @@ session** by pij id.
 | re-poll appends ONLY the delta (ac-0003) | 739 → 752 turns on the second poll; the file held 755 eligible records by then, the extra 3 written after the poll |
 | both routes are one conversation (ac-0002) | `--session … --harness omp` landed in `bebaf916…`, still **one** conversation, 757 turns |
 
+### How this run was booted, and why you should NOT copy it
+
+The daemon behind this transcript ran against a per-seat scratch database — the
+database half of the sealing rule — and inherited AMBIENT PROVIDER CONFIG,
+because `FS3_CONFIG_DIR` was left unset. It bought real embeddings and
+summaries: 572 embed and 525 summarize jobs over 27 minutes. Its health line
+said `embedder=azure_openai summarizer=azure_openai` and the PM read that as
+confirmation the daemon was wired correctly rather than as an alarm.
+
+A fleet safety rule now covers this: a hand-booted daemon uses a minted
+database, `FS3_CONFIG_DIR` at an EMPTY directory so the fake providers apply, a
+unique port and in-tree logs, and you verify the boot line prints
+`embedder=fake summarizer=fake` before letting it run. See
+`.harness/government/briefs/w-daemon-sandbox.md`.
+
+**What that changes about the table above.** Every row except one is a
+queue-and-store fact that fake providers do not affect: turn counts, the delta,
+the single-conversation convergence of both routes, submit latency, the burst
+collapse. The exception is the SEMANTIC SEARCH row — a similarity score of 0.61
+exists because a real embedder produced it, and under the safety rule that
+number is not cheaply reproducible. The pipeline, the envelope and the fact that
+a conversation turn is reachable through `--source conversation` all are.
+
 ### Two things first light found that no fixture could
 
 **The `--folder` default is wrong for a worktree-resident seat — FOUND AND
