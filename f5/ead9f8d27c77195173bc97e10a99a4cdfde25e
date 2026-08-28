@@ -1,0 +1,191 @@
+crates/cli/tests/ping.rs
+  s_b668fefb3076c7::t_0325460e66cf17 13-14,23-30,127-151,197-202
+crates/core/src/agent.rs
+  s_b668fefb3076c7::t_1705224279d40c 1-799
+crates/core/src/catalog.rs
+  s_b668fefb3076c7::t_8e7ddae4a0cfce 27,172-179,187-189,445-454,521,545,637
+crates/core/src/config.rs
+  s_b668fefb3076c7::t_f5b8158fb3014b 45-53,99-105,136-137,150,158,178,210,213,215,217-219,245,269-270,506-507,511-512,520,528-529,551-598,602-603,618-620,630,1137-1142,1147-1148,1168-1195,1327,1338-1350,1386,1756-1832,1911-1914,1916,1919-1920,1924,1926-1939,2150
+crates/core/src/lib.rs
+  s_b668fefb3076c7::t_21d1566e8eee08 9-13,16,36-38,42-46,62-64
+crates/core/src/ports.rs
+  s_b668fefb3076c7::t_9b045827cea141 1,8-16,221-334
+crates/daemon/Cargo.toml
+  s_b668fefb3076c7::t_a6f8444417bf95 22
+crates/daemon/src/ask.rs
+  s_b668fefb3076c7::t_ce2bc1bfd944dc 1-379
+crates/daemon/src/ask_hint.rs
+  s_b668fefb3076c7::t_4afa667049b78c 1-90
+crates/daemon/src/auth.rs
+  s_b668fefb3076c7::t_1cb599eb362e9c 1-228
+crates/daemon/src/boot.rs
+  s_b668fefb3076c7::t_a2c19e0f960dec 79-82,121-201,257-263,496-499,563,612-650
+crates/daemon/src/lib.rs
+  s_b668fefb3076c7::t_d7601c9914662b 7-9,35-36
+crates/daemon/src/search.rs
+  s_15d888f4b629c1::t_0cf0355a5036d7 148-181,184,188,209,240-251,312-313,329-338,340-345,349-351,353-420,424-425,427-430,435-440,444,480-544,663,690-797
+crates/daemon/src/wiring.rs
+  s_b668fefb3076c7::t_9f86bf3b8e0d49 38-40,42-43,48,61-64,132-137,140,145,153-155,175-176,198-208,313-343
+crates/daemon/tests/ask.rs
+  s_b668fefb3076c7::t_435bcb974d9300 1-225
+crates/daemon/tests/config_loading.rs
+  s_b668fefb3076c7::t_a8c51401d55423 13,79-99
+crates/daemon/tests/first_light.rs
+  s_b668fefb3076c7::t_cb680160c98f74 38-43,52-56,263-264,270-271,497,520-526,554-557,563-564,786-792,801-806,876-877,1029
+crates/daemon/tests/health.rs
+  s_b668fefb3076c7::t_231bbc5e0d14ee 28-29,31-34,68-69,71-74,155-156,158,166-168
+crates/daemon/tests/read_surface.rs
+  s_b668fefb3076c7::t_a7908fd02e06d3 153-154,160-161
+crates/daemon/tests/search_scope_starvation.rs
+  s_b668fefb3076c7::t_aa4abacb859d93 1-561
+crates/daemon/tests/support/mod.rs
+  s_b668fefb3076c7::t_24277b0942f1fe 11-12,43-68
+crates/providers/src/azure_openai.rs
+  s_b668fefb3076c7::t_26690e136eddc0 163,189,191,200,209,276
+crates/providers/src/chat.rs
+  s_b668fefb3076c7::t_eed49f4b14c9df 1-338
+crates/providers/src/lib.rs
+  s_b668fefb3076c7::t_cc53d68fa35339 17,27-30
+crates/providers/tests/chat_stub.rs
+  s_b668fefb3076c7::t_f7ef4c55b2d87d 1-204
+crates/store/src/admin.rs
+  s_b668fefb3076c7::t_b6476aa5f153a2 184-221,384-395
+crates/store/src/embeddings.rs
+  s_15d888f4b629c1::t_7c4a18f3bde09e 25-48,399-416,434-436,609,612-616,629-694
+crates/store/src/lib.rs
+  s_b668fefb3076c7::t_e31449e2378bf4 38-39,48-49
+crates/testkit/Cargo.toml
+  s_b668fefb3076c7::t_7ba3016252087d 13
+crates/testkit/arch-allowlist.toml
+  s_b668fefb3076c7::t_9bf50c70aaaa19 136-137,139,168-170
+crates/testkit/src/fakes.rs
+  s_b668fefb3076c7::t_adc5d35ea37acf 1,3,6-9,355-449,454-520
+crates/testkit/src/fresh_database.rs
+  s_b668fefb3076c7::t_8757d272504471 1-163
+crates/testkit/src/lib.rs
+  s_b668fefb3076c7::t_056be66a486c8b 6-9,32,37-38
+docs/briefs/w-agentic-query/impl-guide.dd.json
+  s_b668fefb3076c7::t_33087ab7fa4ace 1-91
+docs/briefs/w-agentic-query/impl-guide.dd.md
+  s_b668fefb3076c7::t_70a06bfe794b35 1-79
+docs/briefs/w-agentic-query/packet-coder.dd.json
+  s_b668fefb3076c7::t_d46df464fb86c9 1-68
+docs/briefs/w-agentic-query/packet-coder.dd.md
+  s_b668fefb3076c7::t_d6c193824810fe 1-79
+docs/briefs/w-ask-eval/ask-contract.md
+  s_b668fefb3076c7::t_e7b4db8e783be5 1-77
+docs/briefs/w-ask-eval/brief.md
+  s_b668fefb3076c7::t_3975edd1eaad0c 1-52
+docs/how/database.md
+  s_b668fefb3076c7::t_c86d7b24b11f18 109-133
+docs/reference/configuration.md
+  s_b668fefb3076c7::t_3cb5a36b7d5384 18-29,110-124,129-131,137
+docs/reference/error-codes.md
+  s_b668fefb3076c7::t_6850881b011ad3 2,235-243
+docs/services/ask.md
+  s_b668fefb3076c7::t_f1045499506a59 1-143
+eval/ask/manifest.json
+  s_b668fefb3076c7::t_5d7b9ece64b4c6 1-33
+eval/ask/prompts/subject.md
+  s_b668fefb3076c7::t_df16c83ec970ed 1-17
+eval/ask/report-contract-assertions.json
+  s_b668fefb3076c7::t_03e4c40c5f5c63 1-20
+eval/ask/responsiveness-rubric.json
+  s_b668fefb3076c7::t_5471af9afcf0cf 1-36
+eval/ask/scenarios/answerable-flowspace3-claim-locking/assertions.json
+  s_b668fefb3076c7::t_90fce8c4aeca05 1-17
+eval/ask/scenarios/answerable-flowspace3-claim-locking/scenario.json
+  s_b668fefb3076c7::t_7d39570d819d80 1-26
+eval/ask/scenarios/answerable-harness-unknown/assertions.json
+  s_b668fefb3076c7::t_ec0976bfecb3ed 1-17
+eval/ask/scenarios/answerable-harness-unknown/scenario.json
+  s_b668fefb3076c7::t_c34988711f3785 1-25
+eval/ask/scenarios/answerable-legacy-flowspace-practices/assertions.json
+  s_b668fefb3076c7::t_0ca632651f27ab 1-17
+eval/ask/scenarios/answerable-legacy-flowspace-practices/scenario.json
+  s_b668fefb3076c7::t_4e4057c8090bc0 1-25
+eval/ask/scenarios/answerable-pij-revive-liveness/assertions.json
+  s_b668fefb3076c7::t_3b6be3516a3bed 1-17
+eval/ask/scenarios/answerable-pij-revive-liveness/scenario.json
+  s_b668fefb3076c7::t_21d043cb55746c 1-25
+eval/ask/scenarios/negative-deleted-path/assertions.json
+  s_b668fefb3076c7::t_5a64fa0a39e479 1-16
+eval/ask/scenarios/negative-deleted-path/scenario.json
+  s_b668fefb3076c7::t_e767fc6d10fafd 1-26
+eval/ask/scenarios/negative-explicit-scope/assertions.json
+  s_b668fefb3076c7::t_353e27e0f05ee3 1-16
+eval/ask/scenarios/negative-explicit-scope/scenario.json
+  s_b668fefb3076c7::t_15036bc54f6733 1-26
+eval/ask/scenarios/negative-never-indexed-repo/assertions.json
+  s_b668fefb3076c7::t_a36ac8a9225c66 1-16
+eval/ask/scenarios/negative-never-indexed-repo/scenario.json
+  s_b668fefb3076c7::t_7b3c480c54c66e 1-26
+eval/ask/scenarios/scoped-zero-widening/assertions.json
+  s_b668fefb3076c7::t_3e186f22c96b55 1-17
+eval/ask/scenarios/scoped-zero-widening/scenario.json
+  s_b668fefb3076c7::t_63e8777999b580 1-30
+tests/daemon-restart.sh
+  s_b668fefb3076c7::t_e86ac862582626 1-198
+.harness/extensions/team/extension.ts
+  s_b668fefb3076c7::t_da15b726c54df4 1,18-23,320-677,680,683,698-722
+.harness/extensions/team/instructions.md
+  s_b668fefb3076c7::t_7c5e842e218fe1 1,3,5-15,106,114-257
+Cargo.lock
+  s_b668fefb3076c7::t_5fc9b120884b3c 1108,1184
+Cargo.toml
+  s_b668fefb3076c7::t_14ecf576c72619 53-55
+bin/daemon-restart
+  s_b668fefb3076c7::t_a42e57ebf63c4a 1-220
+crates/cli/docs/daemon.md
+  s_b668fefb3076c7::t_5446a13956f1b8 14-52,56-61,63-64,100-104
+crates/cli/docs/doctor.md
+  s_b668fefb3076c7::t_37174a89075dc8 19
+crates/cli/docs/search.md
+  s_15d888f4b629c1::t_4066e3db7829bc 71-89
+crates/cli/skills/flowspace/SKILL.md
+  s_b668fefb3076c7::t_05b9c36704df80 104-112
+crates/cli/src/client.rs
+  s_b668fefb3076c7::t_9c72ece54c45b4 17,26-89,117,134-142,146,148-151,168,170-179,184-188,265-284,297-303,308-329,385-503
+crates/cli/src/doctor.rs
+  s_b668fefb3076c7::t_593ff39e61ec56 36,59-63,254,256,258,260,286,301-343,348,374-377,755-758,762,765-766,775-780,782,796-800,814-925,930,1354-1405
+crates/cli/src/main.rs
+  s_b668fefb3076c7::t_c794a151a70ccc 9-10,16,107-121,212-216,349-360,371,375-379,387-391,403,407,411,415,419,438-449,468,484,504,518,524,529,539,550-554,556,559,570,576,593,595-598,602,605,608,611-627,666,669,671,681,689,705-706,711,714-728
+crates/cli/src/show.rs
+  s_b668fefb3076c7::t_75b1b17220d335 55-63,180-198,223
+crates/cli/tests/doctor_daemon.rs
+  s_b668fefb3076c7::t_8e69d3741ee469 42-63,66,126-144,147,151,192-206,220,269,293,351
+crates/cli/tests/epipe.rs
+  s_b668fefb3076c7::t_dda0198485e615 1-152
+crates/daemon/src/http.rs
+  s_15d888f4b629c1::t_657d298f363bbf 20,28,55-57,67,72-134,349-380,385-390,392,403,409,505,509-520,524
+docs/plans/006-worktree-diff/assets/tasks/phase-2/execution.log.md
+  s_15d888f4b629c1::t_3cf7959e587813 65-85
+docs/plans/006-worktree-diff/assets/tasks/phase-2/tasks.dd.json
+  s_15d888f4b629c1::t_d3cb2747ba73c8 50
+docs/plans/006-worktree-diff/assets/tasks/phase-2/tasks.dd.md
+  s_15d888f4b629c1::t_eeeb96b4c11966 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f5ead9f8d27c77195173bc97e10a99a4cdfde25e",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_b668fefb3076c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0e0064-8d84-48e6-b499-eca0c65baafc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
