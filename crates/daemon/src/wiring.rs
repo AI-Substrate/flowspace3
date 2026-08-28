@@ -36,16 +36,16 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use fs3_core::{
-    Config, DatabaseConfig, Embedder, Event, EventKind, Port, ProviderInstance, Summarizer,
+    ChatProvider, Config, DatabaseConfig, Embedder, Event, EventKind, Port, ProviderInstance,
+    Summarizer,
 };
 use fs3_providers::{
-    AzureCredential, AzureOpenAiConfig, AzureOpenAiEmbedder, AzureOpenAiSummarizer, OpenAiEmbedder,
-    OpenAiSummarizer,
+    AzureCredential, AzureOpenAiChatClient, AzureOpenAiConfig, AzureOpenAiEmbedder,
+    AzureOpenAiSummarizer, OpenAiEmbedder, OpenAiSummarizer,
 };
 // `PgPool` reaches the daemon through `fs3-store`, which owns the sqlx edge.
 // The daemon has no direct `sqlx` dependency, and the arch-check enforces that.
 use fs3_store::{PgPool, connect_lazy};
-use fs3_testkit::{FakeEmbedder, FakeSummarizer};
 use tokio::sync::broadcast;
 
 /// Events retained per subscriber before a lagging watcher is disconnected.
@@ -54,6 +54,7 @@ use tokio::sync::broadcast;
 /// subscriber that falls more than this many events behind receives `Lagged`
 /// and the HTTP handler closes its stream rather than slowing indexing.
 const EVENT_CAPACITY: usize = 256;
+use fs3_testkit::{FakeChatProvider, FakeEmbedder, FakeSummarizer};
 
 /// Everything an HTTP handler or worker needs, wired once at startup.
 #[derive(Clone)]
@@ -68,6 +69,10 @@ pub struct AppState {
     repo_summarizers: BTreeMap<String, Arc<dyn Summarizer>>,
     /// One non-blocking fan-out for every live event-stream subscriber.
     events: broadcast::Sender<Event>,
+    /// The chat model the `ask` verb drives unless a repo says otherwise.
+    pub agent: Arc<dyn ChatProvider>,
+    /// Repos that named a different chat model, by repo identity.
+    repo_agents: BTreeMap<String, Arc<dyn ChatProvider>>,
     /// The central store.
     ///
     /// The pool is lazy — connections are established on first use, so WIRING
@@ -135,18 +140,29 @@ impl AppState {
             summarizers.insert(name, build_summarizer(name, instance)?);
         }
 
+        let mut agents: BTreeMap<&str, Arc<dyn ChatProvider>> = BTreeMap::new();
+        for name in config.referenced_providers(Port::Agent) {
+            let instance = config.provider(name)?;
+            agents.insert(name, build_agent(name, instance)?);
+        }
+
         let embedder = Arc::clone(&embedders[config.selected(Port::Embedder, None)]);
         let summarizer = Arc::clone(&summarizers[config.selected(Port::Summarizer, None)]);
+        let agent = Arc::clone(&agents[config.selected(Port::Agent, None)]);
 
         // Flatten repo -> instance -> Arc now, so a query does one map lookup.
         let mut repo_embedders = BTreeMap::new();
         let mut repo_summarizers = BTreeMap::new();
+        let mut repo_agents = BTreeMap::new();
         for (repo, selection) in &config.repos {
             if let Some(name) = selection.embedder.as_deref() {
                 repo_embedders.insert(repo.clone(), Arc::clone(&embedders[name]));
             }
             if let Some(name) = selection.summarizer.as_deref() {
                 repo_summarizers.insert(repo.clone(), Arc::clone(&summarizers[name]));
+            }
+            if let Some(name) = selection.agent.as_deref() {
+                repo_agents.insert(repo.clone(), Arc::clone(&agents[name]));
             }
         }
 
@@ -169,6 +185,8 @@ impl AppState {
             repo_embedders,
             repo_summarizers,
             events,
+            agent,
+            repo_agents,
             db,
             config,
             install_path,
@@ -214,6 +232,17 @@ impl AppState {
     #[must_use]
     pub fn summarizer_for(&self, repo: &str) -> &Arc<dyn Summarizer> {
         self.repo_summarizers.get(repo).unwrap_or(&self.summarizer)
+    }
+
+    /// The chat model to use for `repo` — its override, or the active default.
+    ///
+    /// Takes `Option` because a question is not always asked from inside a
+    /// repository: `ask` can be scoped to every indexed repo at once, and there
+    /// is no per-repo override to consult in that case.
+    #[must_use]
+    pub fn agent_for(&self, repo: Option<&str>) -> &Arc<dyn ChatProvider> {
+        repo.and_then(|repo| self.repo_agents.get(repo))
+            .unwrap_or(&self.agent)
     }
 
     /// The `model_key` enrichment rows for `repo` are written under.
@@ -317,6 +346,37 @@ fn build_embedder(name: &str, instance: &ProviderInstance) -> Result<Arc<dyn Emb
             )?,
             *dimensions,
         )),
+    })
+}
+
+/// Build the chat model behind the `ask` verb.
+///
+/// Only two arms are real. `fake` keeps the offline stack whole — `ask` must
+/// work keyless, like every other verb — and Azure is the hosted case. An
+/// `openai` instance is refused rather than silently mis-wired: fs3 has no
+/// OpenAI chat adapter yet, and answering questions with the wrong client is a
+/// worse failure than a startup error that names the gap.
+fn build_agent(name: &str, instance: &ProviderInstance) -> Result<Arc<dyn ChatProvider>> {
+    Ok(match instance {
+        ProviderInstance::Fake => Arc::new(FakeChatProvider::default()),
+        ProviderInstance::AzureOpenAi {
+            endpoint,
+            deployment,
+            api_version,
+            api_key_env,
+            ..
+        } => Arc::new(AzureOpenAiChatClient::new(azure_config(
+            name,
+            endpoint,
+            deployment,
+            api_version,
+            api_key_env.as_deref(),
+        )?)),
+        ProviderInstance::OpenAi { .. } => anyhow::bail!(
+            "provider instance `{name}` is kind = \"openai\", which cannot serve the agent \
+             port: fs3 has no OpenAI chat adapter yet. Name an `azure_openai` instance in \
+             [agent] active, or `fake` to answer offline."
+        ),
     })
 }
 

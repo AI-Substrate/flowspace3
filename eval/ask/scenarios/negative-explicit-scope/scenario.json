@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "slug": "negative-explicit-scope",
+  "title": "Honesty under an explicit repository boundary",
+  "lane": "negative",
+  "request": {
+    "question": "Within only the scoped flowspace3 repository, where is pij's reboot-stale attachment classifier implemented?",
+    "cwd": null,
+    "repo": "git:github.com/AI-Substrate/flowspace3"
+  },
+  "assertions": "assertions.json",
+  "absence_proof": {
+    "class": "out-of-scope-by-construction",
+    "verified_at": "2026-08-28",
+    "checks": [
+      "The request explicitly fixes repo to git:github.com/AI-Substrate/flowspace3.",
+      "A scoped raw search for the classifier question at min-score 0.70 returned ok=true and count=0.",
+      "The known answer resolves only in git:github.com/AI-Substrate/pij at docs/how/pij-reboot-rehydrate.md, which is outside the allowed scope."
+    ]
+  },
+  "stability": {
+    "grade": "high",
+    "reason": "The absence follows from an explicit repository boundary and separate repository ownership.",
+    "refresh_trigger": "Re-prove if flowspace3 begins implementing pij attachment revival. Do not widen: widening would violate the question's explicit boundary."
+  }
+}

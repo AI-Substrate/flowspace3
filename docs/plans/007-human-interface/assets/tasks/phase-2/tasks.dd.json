@@ -1,22 +1,60 @@
 {
- "dd": {
-  "schema": "builder/plan"
- },
- "sections": [
-  {
-   "name": "meta",
-   "value": { "title": "Phase 2: Three parallel units", "slug": "phase-2", "status": "draft", "summary": "Renderer promotion, event stream, tui verb — one coder each." }
+  "dd": {
+    "schema": "builder/plan"
   },
-  { "name": "summary", "value": "Each unit SRP behind phase-1 seams; assumptions sections in done reports; absolute paths always." },
-  {
-   "name": "tasks",
-   "value": [
-    { "id": "tk-a201", "title": "u-r renderer promotion: port pocs/human-render into the CLI behind the phase-1 seam — search, doctor, error, status, add, get, tree, remove covered; TTY strategy per the decision function; POC fixtures as goldens; agent-path doc updates (CLAUDE.md, flowspace skill, agents-start-here, self-teaching CLI) in the same unit.", "state": "unchecked", "success": "All four ac-0001 cases green per verb; ac-0002 byte-stability green; docs updated.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0001", "../../../plan.dd.json#acceptance_criteria/ac-0005"] },
-    { "id": "tk-a202", "title": "u-w daemon event stream: emit events at work-completion points (scan done, enrich done, queue transitions, root add/remove) and serve status --watch as NDJSON per the frozen wire types; multi-subscriber safe; heartbeat line so consumers detect liveness.", "state": "unchecked", "success": "Two concurrent watchers receive identical streams during a live scan; contract tests over the frozen types.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0004"] },
-    { "id": "tk-a203", "title": "u-t the tui verb: ratatui dashboard per scratch/tui-poc (reference, not vendored) — roots, operations with history, activity from the REAL --watch stream (no mock anywhere), in-pane search with results-dominant focus mode; degrades gracefully when the daemon is down (says so, retries).", "state": "unchecked", "success": "Runs over ssh in a plain terminal against the live daemon; activity pane driven by u-w's stream.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0003"] }
-   ]
-  },
-  { "name": "done_when", "value": {} }
- ],
- "references": []
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 2: Three parallel units",
+        "slug": "phase-2",
+        "status": "draft",
+        "summary": "Renderer promotion, event stream, tui verb — one coder each."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Each unit SRP behind phase-1 seams; assumptions sections in done reports; absolute paths always."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-a201",
+          "title": "u-r renderer promotion: port pocs/human-render into the CLI behind the phase-1 seam — search, doctor, error, status, add, get, tree, remove covered; TTY strategy per the decision function; POC fixtures as goldens; agent-path doc updates (CLAUDE.md, flowspace skill, agents-start-here, self-teaching CLI) in the same unit.",
+          "state": "checked",
+          "success": "All four ac-0001 cases green per verb; ac-0002 byte-stability green; docs updated.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ],
+          "receipt": "u-r (pij-content-kingfisher), branch 007-u-r: render module + per-verb surfaces, four-case matrix per covered verb through the real binary, positive ac-0005 doc assertion, add meter on stderr. harness checks 9/9 green in its worktree; merged at 849ae0e."
+        },
+        {
+          "id": "tk-a202",
+          "title": "u-w daemon event stream: emit events at work-completion points (scan done, enrich done, queue transitions, root add/remove) and serve status --watch as NDJSON per the frozen wire types; multi-subscriber safe; heartbeat line so consumers detect liveness.",
+          "state": "checked",
+          "success": "Two concurrent watchers receive identical streams during a live scan; contract tests over the frozen types.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ],
+          "receipt": "u-w (pij-bored-kite), branch 007-u-w: broadcast in AppState, authenticated GET /events NDJSON, emissions at every existing completion seam, scan_progress at 256 files OR 1000ms plus final totals, status --watch. 7/7 event_stream tests, two-subscriber identity, slow-consumer drop; DL-004-compliant live smoke on a minted database with embedder=fake verified. Merged at 9bf8dc5."
+        },
+        {
+          "id": "tk-a203",
+          "title": "u-t the tui verb: ratatui dashboard per scratch/tui-poc (reference, not vendored) — roots, operations with history, activity from the REAL --watch stream (no mock anywhere), in-pane search with results-dominant focus mode; degrades gracefully when the daemon is down (says so, retries).",
+          "state": "checked",
+          "success": "Runs over ssh in a plain terminal against the live daemon; activity pane driven by u-w's stream.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ],
+          "receipt": "u-t (pij-allied-pigeon), branch 007-u-t: ratatui dashboard with roots, operations, real activity, results-dominant search; Rect clipping not byte slicing, scalar-safe input, RAII terminal restore, Unknown kinds skipped, stale ages shown. 10 headless tests; merged at 849ae0e."
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {}
+    }
+  ]
 }

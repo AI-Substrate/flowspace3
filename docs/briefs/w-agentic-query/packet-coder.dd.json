@@ -1,0 +1,68 @@
+{
+  "dd": {
+    "schema": "pij-team/packet"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Coder packet — agentic ask verb (w-agentic-query)",
+        "role": "coder",
+        "plan": "docs/briefs/w-agentic-query/impl-guide.dd.json",
+        "seat": "pij-xerothermic-flea",
+        "updated": "2026-08-28"
+      }
+    },
+    {
+      "name": "mission",
+      "value": "You build w-agentic-query solo: promote your POC (scratch/agentic-query-poc, VERDICT.md) into the product as `flowspace3 ask` — a bounded, grounded agent loop over flowspace's own tools, per the impl-guide beside this packet. This is a PROMOTION, not a port: product idioms, product tests, product envelope discipline. You report to prime (pij-instant-lynx) — this packet has no PM."
+    },
+    {
+      "name": "instructions",
+      "value": [
+        { "id": "i1", "text": "Orient: impl-guide.dd.json beside this packet (BINDING), VERDICT.md, fs3-architecture.md, TENETS.md. Run harness boot --json in the worktree. DOGFOOD flowspace3 search before grep; report every miss as friction." },
+        { "id": "i2", "text": "Ack FIRST: numbered implementation plan to prime before code. Corrections welcome with evidence — your POC measurements outrank this packet." },
+        { "id": "i3", "text": "Build order: provider chat module (param mapping incl. max_completion_tokens, mock-provider trait) → core [agent] config port + bounded loop service → daemon sync endpoint → cli ask verb → question-shape hint (own module + ONE additive search.rs line) → docs/services/ask.md with the snap-in recipe." },
+        { "id": "i4", "text": "Tests alongside code: loop/tools/bad-call handling against the injected mock provider, offline; hint predicate; new envelope shape; NO live Azure in CI — the live run is your first-light transcript." },
+        { "id": "i5", "text": "Commit with harness commit (feat: — conventional commits binding); status card at each build-order edge." },
+        { "id": "i6", "text": "Rebase onto main when 005/006 merge; re-run gate and re-verify the search.rs hint line after each rebase." },
+        { "id": "i7", "text": "harness observe every friction; list, never clear." }
+      ]
+    },
+    {
+      "name": "working_with",
+      "value": [
+        { "id": "w1", "text": "Prime is your interface. DEFER to prime: any change to an EXISTING envelope's bytes, dependency additions beyond the impl-guide expectation, scope growth (async promotion stays deferred), anything outside your fence." },
+        { "id": "w2", "text": "Stop-and-ask with evidence, one question per message. Your measurements outrank this packet." }
+      ]
+    },
+    {
+      "name": "scope",
+      "value": {
+        "worktree": "/Users/jordanknight/substrate/flowspace/fs3-agentic-query",
+        "branch": "w-agentic-query",
+        "fence": "crates/providers/src/chat* (new module) · pub(crate) visibility bumps only in crates/providers/src/azure_openai.rs (ruled 2026-08-28) · fs3_core [agent] config + loop service (new module) · daemon ask endpoint registration + ONE additive hint call at the real hint site (crates/daemon/src/http.rs / crate::scope::steer — NOT search.rs) · crates/cli ask verb · docs/services/ask.md · allowlist rows if any",
+        "forbidden_note": "Never touch existing envelope bytes, 005's conversation_sources, 006's search.rs deliverables (scope/provenance/truncation/weak-match are u-c's), .harness/government/**, or another seat's worktree. Never merge — PR held for prime. Never print secrets anywhere. ABSOLUTE PATHS FOR EVERY FILE READ AND EDIT, ALWAYS (DL-007/008): state your worktree root once at ack and prefix every path with it."
+      }
+    },
+    {
+      "name": "done_bar",
+      "value": [
+        { "id": "d1", "text": "flowspace3 ask answers a direct question grounded and address-cited, and refuses honestly when the index lacks evidence — both proven in a first-light transcript (the watcher question + the out-of-index honesty case + the question-shape hint visible in a search envelope)." },
+        { "id": "d2", "text": "Offline test suite proves loop bounds, bad-tool-call recovery, param mapping, hint predicate, and the new envelope shape — mock provider only." },
+        { "id": "d3", "text": "harness checks green in the worktree, with prove-in-tree evidence (lockfile/mtime/artifact), rebased on current main." },
+        { "id": "d4", "text": "docs/services/ask.md ships the snap-in recipe (config shape, endpoint, verb) + names the async-job promotion as the follow-up." },
+        { "id": "d5", "text": "Done report to prime: what shipped, evidence, deviations, ASSUMPTIONS section (esp. what you assume about 006's final search.rs shape and the auth middleware), PR opened and HELD." }
+      ]
+    },
+    {
+      "name": "refs",
+      "value": [
+        { "id": "r0", "path": ".agents/skills/pij-team/TENETS.md", "note": "doctrine — tenets 2-6" },
+        { "id": "r1", "path": "docs/briefs/w-agentic-query/impl-guide.dd.json", "note": "binding architecture + rulings" },
+        { "id": "r2", "path": "scratch/agentic-query-poc/VERDICT.md", "note": "your own evidence base (main-clone scratch, gitignored)" },
+        { "id": "r3", "path": "CLAUDE.md", "note": "dogfooding + harness commit rules" }
+      ]
+    }
+  ]
+}

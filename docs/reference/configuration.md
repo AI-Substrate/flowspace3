@@ -15,8 +15,18 @@ out of files, and how to add a new option.
   `FS3_DATABASE__URL`, `FS3_SCAN__MAX_FILE_BYTES`. Every key lives in a section,
   so an `FS3_` name with no `__` is not a config override at all — which is what
   keeps the override namespace clear of the secrets namespace.
-- A nested name that matches **no** key is a startup failure, not a silent
-  no-op. A typo you cannot see is worse than one that stops you.
+- Unknown **top-level sections in the file** are ignored so an older binary can
+  still read machine-wide configuration written for a newer version. They
+  configure nothing; `flowspace3 config show` and `flowspace3 doctor` name every
+  ignored section. This kills the cross-version flag-day without making the
+  ignored content silent.
+- Unknown **keys inside a known file section** remain a startup failure. That is
+  the likelier and more dangerous typo: `[embedder] activ = "big"` must not
+  silently leave the default provider active while looking configured.
+- Environment overrides are strict at both levels. `FS3_DATABSE__URL` and
+  `FS3_EMBEDDER__ACTIV` both fail by variable name: unlike a shared file written
+  by another binary version, an unknown override has no forward-compatible
+  author and is a current human mistake.
 - Values are typed against the defaults: an integer key parses as an integer, and
   a value of the wrong shape is refused with the line to write.
 - Secret **values** never appear here or in `config.toml`. Config names the
@@ -97,18 +107,34 @@ defaults, which contain only the `fake` arm. Configure providers in the file.
 
 | Key | Type | Default | Effect | Env override |
 |---|---|---|---|---|
-| `active` | string | `fake` | The name of an instance in `[providers.*]` this port uses by default. Two ports naming one instance share a single client. A name that is not in the registry is a startup failure that lists what IS configured. | `FS3_EMBEDDER__ACTIVE`, `FS3_SUMMARIZER__ACTIVE` |
+| `active` | string | `fake` | The name of an instance in `[providers.*]` this port uses by default. Ports naming one instance share a single client. A name that is not in the registry is a startup failure that lists what IS configured. | `FS3_EMBEDDER__ACTIVE`, `FS3_SUMMARIZER__ACTIVE` |
+
+## `[agent]` — the agentic-query port
+
+The agent port selects the provider that reasons over search results and bounds
+the loop independently of provider configuration. The bounds are deliberately
+global: a repo may switch the provider, but cannot silently grant one query a
+larger budget.
+
+| Key | Type | Default | Effect | Env override |
+|---|---|---|---|---|
+| `active` | string | `fake` | The name of the provider instance that drives agentic queries. The offline default keeps a fresh keyless machine valid. | `FS3_AGENT__ACTIVE` |
+| `max_iterations` | integer | `8` | Maximum model/tool turns before the loop stops, so a provider cannot continue an unproductive query indefinitely. | `FS3_AGENT__MAX_ITERATIONS` |
+| `token_budget` | integer | `80000` | Total tokens available across all model calls in one query, rather than a per-call allowance that compounds with every iteration. | `FS3_AGENT__TOKEN_BUDGET` |
+| `tool_result_max_chars` | integer | `7000` | Maximum characters retained from one tool result before it returns to the model, bounding context growth while preserving useful evidence. | `FS3_AGENT__TOOL_RESULT_MAX_CHARS` |
 
 ## `[repos."<identity>"]` — per-repo overrides
 
 Keyed by repo identity (`github.com/AI-Substrate/flowspace3`), so a monorepo of
-Rust can use a different summarizer from a repo of prose without a second config
-file. Both keys are optional; an absent one falls back to the port's `active`.
+Rust can use different provider instances from a repo of prose without a second
+config file. All three keys are optional; an absent one falls back to the port's
+`active`.
 
 | Key | Type | Default | Effect |
 |---|---|---|---|
 | `embedder` | string | *the port's `active`* | Instance name for the embedder port, for this repo only. |
 | `summarizer` | string | *the port's `active`* | Instance name for the summarizer port, for this repo only. |
+| `agent` | string | *the port's `active`* | Instance name for the agent port, for this repo only. |
 
 ## `[indexing]`
 

@@ -4,6 +4,8 @@
 //! the only one that *wires* anything (workshop 001 rule 4).
 
 pub mod answer;
+pub mod ask;
+mod ask_hint;
 pub mod auth;
 pub mod batch;
 pub mod boot;
@@ -31,7 +33,7 @@ pub mod wiring;
 
 pub use answer::{Answer, IntoFailure};
 pub use auth::Auth;
-pub use boot::run;
+pub use boot::{run, run_sandbox};
 pub use config::{
     ConfigError, SecretsLoaded, config_dir, load_config, load_effective_from, load_secrets,
 };

@@ -219,13 +219,32 @@ enum Command {
         #[command(subcommand)]
         command: Option<DoctorCommand>,
     },
+    /// Ask an agentic question of the index.
+    Ask {
+        /// The question.
+        question: String,
+        /// Only this repository identity, or `all` for every indexed one.
+        ///
+        /// Without it a question asked inside a checkout is about THAT
+        /// repository, like `search`. `--repo all` is how a caller standing in
+        /// one repo asks a question whose answer lives in another.
+        #[arg(long, value_name = "IDENTITY")]
+        repo: Option<String>,
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
     /// Run the fs3 daemon in the foreground.
     ///
     /// The daemon lives in THIS binary (PRD req 51): one file to install, one
     /// version, and no way for a CLI and a daemon of different vintages to
     /// meet. It serves HTTP on `daemon.url`, migrates the store at boot, and
     /// drains the job queue until stopped.
-    Daemon,
+    Daemon {
+        /// Use a unique migrated database, fake providers, and an ephemeral port.
+        #[arg(long)]
+        sandbox: bool,
+    },
     /// Orient an agent that has just installed fs3: print the bundled agents
     /// guide — setup from scratch through doctor, provider and config
     /// creation, daemon, add and search (PRD req-0055).
@@ -360,13 +379,22 @@ fn main() -> ExitCode {
         // function built: it builds its own, sized for a server rather than for
         // one request, and it never returns. Routing it here rather than in
         // `run` is what keeps that true.
-        if matches!(command, Command::Daemon) {
-            // The subscriber used to be built HERE, on stdout with a hardcoded
-            // filter. It moved into `fs3_daemon::boot`, which is the first
-            // place that has read the configuration — and the log file's path,
-            // its size caps and its filter are all configuration.
-            return fs3_daemon::run().map(|()| ExitCode::SUCCESS);
-        }
+        let command = match command {
+            Command::Daemon { sandbox } => {
+                // The subscriber used to be built HERE, on stdout with a
+                // hardcoded filter. It moved into `fs3_daemon::boot`, which is
+                // the first place that has read the configuration — and the log
+                // file's path, its size caps and its filter are all
+                // configuration.
+                let outcome = if sandbox {
+                    fs3_daemon::run_sandbox()
+                } else {
+                    fs3_daemon::run()
+                };
+                return outcome.map(|()| ExitCode::SUCCESS);
+            }
+            command => command,
+        };
 
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
@@ -426,7 +454,11 @@ fn boot() -> Result<Command> {
     );
     let _ = OUTPUT.set(mode);
 
-    if let Ok(dir) = settings::config_dir() {
+    // Sandbox forces fake providers, so ambient provider secrets are neither
+    // needed nor allowed to make an isolated boot fail.
+    if !matches!(&cli.command, Command::Daemon { sandbox: true })
+        && let Ok(dir) = settings::config_dir()
+    {
         // A broken secrets file is worth failing on; a missing one is normal.
         settings::load_secrets_from(&dir)?;
     }
@@ -602,7 +634,18 @@ async fn run(command: Command) -> Result<ExitCode> {
                 None => settings::config_dir()?,
             };
             let effective = settings::load_effective_from(&dir)?;
-            emit(&doctor::run(&effective.config, &dir).await)
+            emit(&doctor::run(&effective, &dir).await)
+        }
+        Command::Ask {
+            question,
+            repo,
+            daemon_url,
+        } => {
+            let client = client_for(daemon_url)?;
+            let mut params = vec![("question".to_string(), question)];
+            push(&mut params, "repo", repo);
+            push(&mut params, "cwd", here());
+            emit(&client.ask(&params).await)
         }
         Command::Docs { command } => match command {
             DocsCommand::List => emit(&fs3_cli::docs::list()),
@@ -624,7 +667,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             command: ConfigCommand::Show { config_dir },
         } => config_show(config_dir).map(|()| ExitCode::SUCCESS),
         // Routed before the runtime was built; see `main`.
-        Command::Daemon => unreachable!("the daemon verb is handled in main"),
+        Command::Daemon { .. } => unreachable!("the daemon verb is handled in main"),
     }
 }
 
@@ -694,10 +737,14 @@ fn emit<T: serde::Serialize>(envelope: &Envelope<T>) -> Result<ExitCode> {
     // and the screen already carries the message and the fix — so repeating
     // them below prints the diagnosis twice in the same terminal, which is how
     // a careful error surface becomes noise (found by u-r, 2026-08-28).
-    if !rendered {
-        for message in &envelope.messages {
-            write_stderr(format_args!("flowspace3: {}\n", message.render()))?;
-        }
+    // Standing conditions (PRD req 59) are NOT part of this command's answer,
+    // and no human surface draws them — so they go to stderr in BOTH modes,
+    // exactly once. An earlier version of this fix suppressed them alongside
+    // the duplicated failure render and silently swallowed every one of them in
+    // human mode (found in review, 2026-08-28): a message like "a newer binary
+    // is waiting for a restart" is precisely the thing a person must not miss.
+    for message in &envelope.messages {
+        write_stderr(format_args!("flowspace3: {}\n", message.render()))?;
     }
 
     Ok(match &envelope.error {

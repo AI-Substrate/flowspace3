@@ -133,8 +133,10 @@ external = [
 internal = ["fs3-core"]
 external = ["gix", "tempfile@dev", "thiserror"]
 
+# FreshDatabase is shared test/sandbox infrastructure. It reaches Postgres only
+# through fs3-store's typed control-plane API; sqlx remains inside fs3-store.
 [crates.fs3-testkit]
-internal = ["fs3-core"]
+internal = ["fs3-core", "fs3-store"]
 external = ["async-trait", "serde", "serde_json", "thiserror", "toml", "tokio@dev"]
 
 # The composition root, and the only crate allowed to see everything. Plan 003

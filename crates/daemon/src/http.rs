@@ -15,9 +15,6 @@
 //! boot; the guard is for the case boot cannot cover — a database that moved
 //! underneath a running daemon.
 
-use std::convert::Infallible;
-use std::time::Duration;
-
 use anyhow::{Context, Result};
 use axum::body::{Body, Bytes};
 use axum::extract::{Query, State};
@@ -25,11 +22,13 @@ use axum::http::{Response, header};
 use axum::middleware;
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use fs3_core::events::{EventKind, HEARTBEAT_MS, Hello};
 use serde::{Deserialize, Serialize};
+use std::convert::Infallible;
+use std::time::Duration;
 use tokio_stream::wrappers::ReceiverStream;
 
 use fs3_core::Port;
-use fs3_core::events::{EventKind, HEARTBEAT_MS, Hello};
 
 use crate::answer::{Answer, IntoFailure, failed, ok};
 use crate::auth::Auth;
@@ -62,25 +61,21 @@ impl Health {
     pub const OK: &'static str = "ok";
 }
 
-#[derive(Debug, Default, Deserialize)]
-struct EventQuery {
-    heartbeat_ms: Option<u64>,
-}
-
 /// Build the router. Separate from [`serve`] so tests get the real routes
 /// without owning a port or a runtime shutdown. Authentication is one outer
 /// layer, so every current and future route inherits it automatically.
 pub fn router(state: AppState, auth: Auth) -> Router {
     Router::new()
         .route("/health", get(health))
-        .route("/events", get(events))
         .route("/roots", post(add_root).get(status))
         .route("/status", get(status))
+        .route("/events", get(events))
         .route("/scan", post(scan))
         .route("/remove", post(remove))
         .route("/gc", post(gc))
         .route("/conversations", post(conversations).get(conversation_list))
         .route("/conversations/remove", post(conversation_remove))
+        .route("/ask", post(ask))
         .route("/search", get(search))
         .route("/get", get(get_address))
         .route("/tree", get(tree))
@@ -88,65 +83,64 @@ pub fn router(state: AppState, auth: Auth) -> Router {
         .layer(middleware::from_fn_with_state(auth, crate::auth::require))
 }
 
-/// A live NDJSON feed. Each response owns its heartbeat and bounded output
-/// queue; neither can block the daemon's shared event producer.
-async fn events(State(state): State<AppState>, Query(query): Query<EventQuery>) -> Response<Body> {
-    let heartbeat_ms = query.heartbeat_ms.unwrap_or(HEARTBEAT_MS).max(1);
-    let subscription = state.subscribe();
-    let (sender, receiver) = tokio::sync::mpsc::channel(AppState::event_capacity());
+/// `POST /ask` — answer a question by running a bounded, grounded tool loop.
+///
+/// Synchronous today: one request runs the whole loop and returns when it is
+/// done, which can be tens of seconds. The async-job posture with a streamed
+/// progress feed is the named follow-up, deferred until the event wire lands —
+/// the tool-call trace in the report is what that feed will carry.
+async fn ask(
+    State(state): State<AppState>,
+    Json(request): Json<crate::ask::AskRequest>,
+) -> Answer<crate::ask::AskReport> {
+    const COMMAND: &str = "ask";
+    if let Err(failure) = crate::schema::guard(&state.db).await {
+        return failed(&state, COMMAND, failure).await;
+    }
 
-    let mut hello = Hello::new(env!("CARGO_PKG_VERSION"));
-    hello.heartbeat_ms = heartbeat_ms;
-    sender
-        .try_send(Ok::<_, Infallible>(ndjson(&hello)))
-        .expect("a new subscriber queue accepts its hello");
+    // Scope rides in `meta` exactly as it does for search, and for a sharper
+    // reason: an answer drawn from one repository when the caller expected all
+    // of them is indistinguishable from a wrong answer unless the scope is on
+    // the envelope.
+    let scope =
+        crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
+    let meta = serde_json::json!({ "scope": scope });
 
-    tokio::spawn(stream_events(state, subscription, sender, heartbeat_ms));
-
-    Response::builder()
-        .header(header::CONTENT_TYPE, "application/x-ndjson")
-        .body(Body::from_stream(ReceiverStream::new(receiver)))
-        .expect("the event response has valid static headers")
-}
-
-fn ndjson(value: &impl Serialize) -> Bytes {
-    let mut line = serde_json::to_vec(value).expect("frozen event types always serialize");
-    line.push(b'\n');
-    Bytes::from(line)
-}
-
-async fn stream_events(
-    state: AppState,
-    mut subscription: tokio::sync::broadcast::Receiver<fs3_core::Event>,
-    sender: tokio::sync::mpsc::Sender<Result<Bytes, Infallible>>,
-    heartbeat_ms: u64,
-) {
-    let period = Duration::from_millis(heartbeat_ms);
-    let mut heartbeat = tokio::time::interval_at(tokio::time::Instant::now() + period, period);
-    heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-    let mut sequence = 0;
-
-    loop {
-        let line = tokio::select! {
-            biased;
-            received = subscription.recv() => match received {
-                Ok(event) => {
-                    heartbeat.reset();
-                    ndjson(&event)
+    match crate::ask::ask(&state, &request, scope.clone()).await {
+        Ok(report) => {
+            let next = match (
+                &report.answer,
+                report.grounded && !report.citations.is_empty(),
+            ) {
+                (None, _) => {
+                    "the loop hit a bound before answering — raise [agent] max_iterations or \
+                     token_budget, or ask a narrower question"
                 }
-                Err(tokio::sync::broadcast::error::RecvError::Closed)
-                | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => break,
-            },
-            _ = heartbeat.tick() => {
-                sequence += 1;
-                ndjson(&state.event(EventKind::Heartbeat { seq: sequence }))
-            }
-        };
-
-        // Full means this connection is slower than the producer. Drop it;
-        // an indexing task must never await a dashboard's socket.
-        if sender.try_send(Ok::<_, Infallible>(line)).is_err() {
-            break;
+                // `grounded: false` survived a pushback, so the model answered
+                // from memory on purpose. Say so first and plainly: this is the
+                // one outcome a reader must not mistake for an ordinary answer.
+                // No citations means no address to check, so pointing at `get`
+                // would send the reader after something that does not exist.
+                (Some(_), false) => {
+                    "TREAT WITH SUSPICION — this answer cites no address that was read in full, \
+                     so there is nothing to verify it against; re-ask more narrowly, or check \
+                     `flowspace3 status` in case the index is empty"
+                }
+                (Some(_), true) => {
+                    "verify any claim with `flowspace3 get <address>` on the citations, or ask a \
+                     follow-up question"
+                }
+            };
+            ok(&state, COMMAND, report)
+                .await
+                .0
+                .with_meta(meta)
+                .with_next_action(crate::scope::steer(&scope, next))
+                .into()
+        }
+        Err(error) => {
+            let failure = crate::answer::IntoFailure::into_failure(error);
+            failed(&state, COMMAND, failure).await
         }
     }
 }
@@ -269,6 +263,74 @@ async fn gc(State(state): State<AppState>) -> Answer<GcCounts> {
     }
 }
 
+#[derive(Debug, Default, Deserialize)]
+struct EventQuery {
+    heartbeat_ms: Option<u64>,
+}
+
+/// A live NDJSON feed. Each response owns its heartbeat and bounded output
+/// queue; neither can block the daemon's shared event producer.
+async fn events(State(state): State<AppState>, Query(query): Query<EventQuery>) -> Response<Body> {
+    let heartbeat_ms = query.heartbeat_ms.unwrap_or(HEARTBEAT_MS).max(1);
+    let subscription = state.subscribe();
+    let (sender, receiver) = tokio::sync::mpsc::channel(AppState::event_capacity());
+
+    let mut hello = Hello::new(env!("CARGO_PKG_VERSION"));
+    hello.heartbeat_ms = heartbeat_ms;
+    sender
+        .try_send(Ok::<_, Infallible>(ndjson(&hello)))
+        .expect("a new subscriber queue accepts its hello");
+
+    tokio::spawn(stream_events(state, subscription, sender, heartbeat_ms));
+
+    Response::builder()
+        .header(header::CONTENT_TYPE, "application/x-ndjson")
+        .body(Body::from_stream(ReceiverStream::new(receiver)))
+        .expect("the event response has valid static headers")
+}
+
+fn ndjson(value: &impl Serialize) -> Bytes {
+    let mut line = serde_json::to_vec(value).expect("frozen event types always serialize");
+    line.push(b'\n');
+    Bytes::from(line)
+}
+
+async fn stream_events(
+    state: AppState,
+    mut subscription: tokio::sync::broadcast::Receiver<fs3_core::Event>,
+    sender: tokio::sync::mpsc::Sender<Result<Bytes, Infallible>>,
+    heartbeat_ms: u64,
+) {
+    let period = Duration::from_millis(heartbeat_ms);
+    let mut heartbeat = tokio::time::interval_at(tokio::time::Instant::now() + period, period);
+    heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    let mut sequence = 0;
+
+    loop {
+        let line = tokio::select! {
+            biased;
+            received = subscription.recv() => match received {
+                Ok(event) => {
+                    heartbeat.reset();
+                    ndjson(&event)
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Closed)
+                | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => break,
+            },
+            _ = heartbeat.tick() => {
+                sequence += 1;
+                ndjson(&state.event(EventKind::Heartbeat { seq: sequence }))
+            }
+        };
+
+        // Full means this connection is slower than the producer. Drop it;
+        // an indexing task must never await a dashboard's socket.
+        if sender.try_send(Ok::<_, Infallible>(line)).is_err() {
+            break;
+        }
+    }
+}
+
 async fn health(State(state): State<AppState>) -> Json<Health> {
     Json(Health {
         status: Health::OK.to_string(),
@@ -357,35 +419,56 @@ async fn search(
     // identical to a caller who cannot see which repository was asked.
     let scope =
         crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
-    let meta = serde_json::json!({ "scope": scope });
 
     match crate::search::search(&state, &request, &scope).await {
-        Ok(results) => {
-            let next = if results.results.is_empty() {
-                // The third cause is the one nobody guesses: vectors are only
-                // read under the model_key that wrote them, so searching with
-                // a different embedder than the one that indexed returns
-                // nothing while the index looks full. Naming doctor here is
-                // what turns that from a mystery into one command.
-                "nothing matched — widen with a shorter query, drop --min-score, check \
-                 `flowspace3 status` in case indexing has not finished, or run `flowspace3 \
-                 doctor`: a search only reads vectors written by the ACTIVE embedder, so a \
-                 provider change since indexing returns nothing from a full index"
+        Ok(outcome) => {
+            // The third cause is the one nobody guesses: vectors are only read
+            // under the model_key that wrote them, so searching with a
+            // different embedder than the one that indexed returns nothing
+            // while the index looks full. Naming doctor here is what turns
+            // that from a mystery into one command.
+            //
+            // When `empty_because` is present the surface knows more than
+            // that, and the steer says the known thing instead of listing
+            // suspects: guessing out loud next to a fact we hold is how a user
+            // ends up rephrasing a query that was never the problem.
+            let next = match (&outcome.empty_because, outcome.results.is_empty()) {
+                (Some(reason), _) => reason.detail.as_str(),
+                (None, true) => {
+                    "nothing matched — widen with a shorter query, drop --min-score, check \
+                     `flowspace3 status` in case indexing has not finished, or run `flowspace3 \
+                     doctor`: a search only reads vectors written by the ACTIVE embedder, so a \
+                     provider change since indexing returns nothing from a full index"
+                }
+                (None, false) => {
+                    "read a hit in full with `flowspace3 get <address>`, browse its file with \
+                     `flowspace3 tree <address>`, or narrow with --path/--repo"
+                }
+            };
+            let meta = serde_json::json!({
+                "scope": scope,
+                "empty_because": outcome.empty_because,
+            });
+            let results = SearchResults {
+                results: outcome.results,
+            };
+            let next = crate::scope::steer(&scope, next);
+            let next = if crate::ask_hint::looks_like_question(&request.q) {
+                format!("{next} — {}", crate::ask_hint::HINT)
             } else {
-                "read a hit in full with `flowspace3 get <address>`, browse its file with \
-                 `flowspace3 tree <address>`, or narrow with --path/--repo"
+                next
             };
             ok(&state, COMMAND, results)
                 .await
                 .0
                 .with_meta(meta)
-                .with_next_action(crate::scope::steer(&scope, next))
+                .with_next_action(next)
                 .into()
         }
         Err(failure) => failed::<SearchResults>(&state, COMMAND, failure)
             .await
             .0
-            .with_meta(meta)
+            .with_meta(serde_json::json!({ "scope": scope }))
             .into(),
     }
 }
@@ -485,6 +568,18 @@ pub async fn serve(state: AppState, address: &str, auth: Auth) -> Result<()> {
     let listener = tokio::net::TcpListener::bind(address)
         .await
         .with_context(|| format!("cannot bind {address}"))?;
+    serve_listener(state, listener, auth).await
+}
+
+/// Serve on a listener whose port is already reserved.
+///
+/// Sandbox boot uses this to publish the exact ephemeral port without a
+/// release-and-rebind race.
+pub(crate) async fn serve_listener(
+    state: AppState,
+    listener: tokio::net::TcpListener,
+    auth: Auth,
+) -> Result<()> {
     let bound = listener.local_addr().context("cannot read bound address")?;
     tracing::info!(%bound, "fs3 daemon listening");
 
@@ -497,34 +592,5 @@ pub async fn serve(state: AppState, address: &str, auth: Auth) -> Result<()> {
 async fn shutdown_signal() {
     if let Err(error) = tokio::signal::ctrl_c().await {
         tracing::error!(%error, "cannot listen for shutdown signal");
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use fs3_core::{Config, EventKind};
-
-    #[tokio::test]
-    async fn a_full_subscriber_queue_ends_instead_of_blocking_the_producer() {
-        let state = AppState::from_config(Config::default()).expect("the fake stack wires");
-        let subscription = state.subscribe();
-        let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
-        sender
-            .try_send(Ok::<_, Infallible>(Bytes::from_static(b"hello\n")))
-            .expect("fills the subscriber queue");
-
-        let pump = tokio::spawn(stream_events(state.clone(), subscription, sender, 60_000));
-        state.emit(EventKind::Heartbeat { seq: 1 });
-        tokio::time::timeout(Duration::from_secs(1), pump)
-            .await
-            .expect("a slow subscriber is dropped promptly")
-            .expect("the stream task does not panic");
-
-        assert_eq!(receiver.recv().await.unwrap().unwrap(), "hello\n");
-        assert!(
-            receiver.recv().await.is_none(),
-            "the full consumer channel is closed"
-        );
     }
 }

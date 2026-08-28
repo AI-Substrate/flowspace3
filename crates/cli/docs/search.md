@@ -63,13 +63,25 @@ says.
   concatenation of its own functions, so it would out-rank every one of them on
   any question about that file. Files with no parsed children (prose, unknown
   languages) do get one.
-- **Empty results are a real answer** — but check the boring causes first.
-  Indexing may still be running (`flowspace3 status`), the query may be too
-  narrow (shorter query, drop `--min-score`), or **the active embedder may not
-  be the one that built the index**. That last one looks exactly like a broken
-  search: the index is full, the query is fine, and nothing comes back, because
-  vectors are only read under the `model_key` that wrote them. `flowspace3
-  doctor` names the active providers.
+- **Empty results are a real answer — but the surface will tell you when they
+  are not.** `meta.empty_because` carries the reason whenever one is known:
+  `below_floor` means rows were found and your `--min-score` rejected them, and
+  names the floor; `scan_incomplete` means content IS indexed under this scope
+  and the ranking stopped before reaching it, which is what a narrow scope over
+  a large index does. A scope holding nothing at all is an error
+  (`FS3-E-QUERY-NO-INDEX`) naming the anchor and pointing at `flowspace3 add`,
+  rather than an empty list you would read as a fact about your code. With no
+  `empty_because`, check the boring causes: indexing may still be running
+  (`flowspace3 status`), or **the active embedder may not be the one that built
+  the index** — that one looks exactly like a broken search, because vectors
+  are only read under the `model_key` that wrote them. `flowspace3 doctor`
+  names the active providers.
+- **Ranking is approximate, and narrowing costs recall.** The similarity index
+  is HNSW: it examines a bounded candidate set rather than every vector, and
+  filters apply to what it examined. fs3 keeps scanning until your `--limit` is
+  filled, so a scoped search returns as many hits as it was asked for — but the
+  ordering is still nearest-so-far, not provably the global nearest. Dropping
+  `--repo`/`--path` searches a bigger candidate pool.
 - **Vectors are only comparable within one model.** Changing the embedding
   model means a new `model_key`; old rows survive but are not searched by the
   new one. Re-index to move them.

@@ -106,6 +106,31 @@ cargo run -p fs3-daemon       # migrates, then serves
 Store tests run against that same stack and **fail rather than skip** when it is
 down, naming the command. `FS3_TEST_DATABASE_URL` points them elsewhere.
 
+## Hand-run daemon isolation
+
+Never point a development daemon at a shared test or production database. The
+supported recipe owns every spend-bearing and stateful seam:
+
+```bash
+flowspace3 daemon --sandbox
+```
+
+The command creates a unique migrated child database, forces fake embedding
+and summarization even when the ambient config selects paid providers, reserves
+a free loopback port, and prints the database name and port before serving. It
+drops the child database after Ctrl-C; if the process is killed, the printed
+name identifies the harmless leftover.
+
+The former manual four-seam recipe—empty config directory, disposable database,
+unique daemon port, and fake provider selections—is retained only as the
+appendix in `flowspace3 docs get daemon`. Use it to diagnose sandbox boot, not
+as the normal isolation path.
+
+A different future posture will run real providers against a real **read-only**
+index for chat-only verification. It is intentionally separate: provider
+selection alone cannot disable add, scan, enrichment, or background writes.
+That capability boundary must be enforced before a sibling sandbox flag ships.
+
 ## Which database a test may touch
 
 Two rules, because the production database has been written to by a test run
