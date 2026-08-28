@@ -1,0 +1,81 @@
+.harness/extensions/team/extension.ts
+  s_b668fefb3076c7::t_437be0508c86b1 1,18-23,320-677,680,683,698-722
+.harness/extensions/team/instructions.md
+  s_b668fefb3076c7::t_46a149e2dd8f6d 1,3,5-15,106,114-257
+Cargo.lock
+  s_b668fefb3076c7::t_d943b7a0ada470 1108
+Cargo.toml
+  s_b668fefb3076c7::t_251716d9c036ba 53-55
+crates/cli/docs/daemon.md
+  s_b668fefb3076c7::t_babe2f46df87dc 17-22,24-25,61-65
+crates/cli/docs/doctor.md
+  s_b668fefb3076c7::t_ef94f4ee7e0740 19
+crates/cli/src/client.rs
+  s_b668fefb3076c7::t_f25cd3640691b7 17,55,71-72,76,83,99-108,113-117,206,211-251
+crates/cli/src/doctor.rs
+  s_b668fefb3076c7::t_5d675281282cd8 68,71,116,142-145,523-526,530,533-534,543-548,550,564-568,589-701
+crates/cli/src/main.rs
+  s_b668fefb3076c7::t_9bf3befa24e9ce 24,557,679,682,684
+crates/cli/tests/doctor_daemon.rs
+  s_b668fefb3076c7::t_f15ef19ecfe3aa 43-56,59,119-137,140,144,185-199,213,262,286,344
+crates/cli/tests/goldens/PROVENANCE.md
+  s_15d888f4b629c1::t_bd91b7e442be55 112-155
+crates/cli/tests/ping.rs
+  s_b668fefb3076c7::t_4141c045caa7e5 13-14,23-30,127-151,197-202
+crates/core/src/catalog.rs
+  s_b668fefb3076c7::t_3f71ed9e911fe2 27,172-179,187-189,445-454,521,545,637
+crates/core/src/config.rs
+  s_b668fefb3076c7::t_ffb7e8d7a787a4 45-53
+crates/core/src/lib.rs
+  s_b668fefb3076c7::t_193359e902a41d 38-42
+crates/daemon/Cargo.toml
+  s_b668fefb3076c7::t_0857bee91a20ad 22
+crates/daemon/src/auth.rs
+  s_b668fefb3076c7::t_c0b20eee6d8a0e 1-228
+crates/daemon/src/boot.rs
+  s_b668fefb3076c7::t_362084c8784cbf 79-82,121,177-182,415
+crates/daemon/src/http.rs
+  s_b668fefb3076c7::t_2ae609bc6978d2 20,28,59-61,75,408,415
+crates/daemon/src/lib.rs
+  s_b668fefb3076c7::t_0bdf64ad2a1a2c 7,33
+crates/daemon/tests/first_light.rs
+  s_b668fefb3076c7::t_a3ed86334c7765 254-255,261-262,688-694,703-708,778-779
+crates/daemon/tests/health.rs
+  s_b668fefb3076c7::t_67fe738c1f1d51 28-29,31-34,68-69,71-74,155-156,158,166-168
+crates/daemon/tests/read_surface.rs
+  s_b668fefb3076c7::t_7b58c92897d14b 153-154,160-161
+crates/daemon/tests/support/mod.rs
+  s_b668fefb3076c7::t_82113d16dc94dc 44-69
+crates/testkit/arch-allowlist.toml
+  s_b668fefb3076c7::t_d5328042494d97 166-168
+docs/plans/007-human-interface/impl-guide.dd.json
+  s_b668fefb3076c7::t_d4336e049f8193 49
+docs/plans/007-human-interface/impl-guide.dd.md
+  s_b668fefb3076c7::t_0d334510a3cd1f 43
+docs/reference/error-codes.md
+  s_b668fefb3076c7::t_e16c5dd69cabb2 2,235-243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1e218a90e76643f18c372d0d68fafa147050e657",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_b668fefb3076c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0e0064-8d84-48e6-b499-eca0c65baafc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
