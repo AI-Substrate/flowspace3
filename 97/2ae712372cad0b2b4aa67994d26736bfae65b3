@@ -1,0 +1,91 @@
+crates/cli/Cargo.toml
+  s_b668fefb3076c7::t_eca76826e31626 25-28
+crates/cli/src/main.rs
+  s_b668fefb3076c7::t_d8f083d753b835 17,421-428,440-447,637-640
+crates/cli/src/render/mod.rs
+  s_50df1925a3e0a3::t_bf0e2f6edb4679 1,3-5,10-18,21-73
+crates/cli/src/render/surfaces/lists.rs
+  s_50df1925a3e0a3::t_1bdbe871dbec73 1-102
+crates/cli/tests/fixtures/scan-progress.ndjson
+  s_b668fefb3076c7::t_8de7d84dbeb0ed 1-3
+crates/cli/tests/render_output.rs
+  s_a6b77772852964::t_07aeb2ca879e91 1-308
+crates/cli/tests/render_progress.rs
+  s_b668fefb3076c7::t_20927ee95e6d78 1-98
+crates/testkit/arch-allowlist.toml
+  s_b668fefb3076c7::t_688b69363d143a 222,224,226,232
+docs/services/human-render.md
+  s_b668fefb3076c7::t_f422cff40190dc 1-65
+AGENTS.md
+  s_b668fefb3076c7::t_840f2980db8776 6-12
+Cargo.lock
+  s_b668fefb3076c7::t_4969716d969d56 40-58,507-519,700-722,1121,1125,1130,1136,3173-3178,4100-4105,4444-4464,5081-5090
+crates/cli/docs/agents.md
+  s_b668fefb3076c7::t_b00d9178fc0dbe 9-16
+crates/cli/docs/read.md
+  s_b668fefb3076c7::t_3dd8a4f3477294 7-13
+crates/cli/docs/search.md
+  s_b668fefb3076c7::t_acd08b112c0079 10-16
+crates/cli/skills/flowspace/SKILL.md
+  s_b668fefb3076c7::t_25f85b052ee99e 13-19
+crates/cli/src/render/progress.rs
+  s_15d888f4b629c1::t_90bd60699d1812 1-148
+crates/cli/src/render/surfaces/doctor.rs
+  s_15d888f4b629c1::t_4a6229c1af6f0d 1-66
+crates/cli/src/render/surfaces/failure.rs
+  s_15d888f4b629c1::t_15235c58abde62 1-72
+crates/cli/src/render/surfaces/mod.rs
+  s_b668fefb3076c7::t_9ec54c46d8317e 1-8
+crates/cli/src/render/surfaces/read.rs
+  s_15d888f4b629c1::t_cce75fe76df16a 1-124
+crates/cli/src/render/surfaces/remove.rs
+  s_15d888f4b629c1::t_4ac79a38b4b83f 1-64
+crates/cli/src/render/surfaces/roots.rs
+  s_15d888f4b629c1::t_25cbce2d6259ca 1-58
+crates/cli/src/render/surfaces/search.rs
+  s_15d888f4b629c1::t_2dde6535d2f77f 1-94
+crates/cli/src/render/surfaces/status.rs
+  s_15d888f4b629c1::t_a9bb01e37e06d6 1-121
+crates/cli/src/render/theme.rs
+  s_15d888f4b629c1::t_b5f1497d0be5a3 1-209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "972ae712372cad0b2b4aa67994d26736bfae65b3",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_50df1925a3e0a3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c5967bc2-f25c-438e-a23f-a61c15de973e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a6b77772852964": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "c800c9ff-86e7-4a5f-bdc3-f63517243af6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_b668fefb3076c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0e0064-8d84-48e6-b499-eca0c65baafc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
