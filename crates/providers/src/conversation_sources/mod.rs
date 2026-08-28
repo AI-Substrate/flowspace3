@@ -14,9 +14,10 @@
 //!
 //! [`ConversationSource`]: fs3_core::ConversationSource
 
+pub mod claude;
 pub mod metrics_db;
+pub mod omp;
+pub mod pij_ledger;
 pub mod tail;
 
 // One `pub mod` line per reader lands here. Keep them alphabetical.
-pub mod omp;
-pub mod pij_ledger;
