@@ -1,0 +1,35 @@
+crates/providers/src/conversation_sources/mod.rs
+  s_af0fe1a82e54f0::t_d2461bfeed282c 20-21
+crates/providers/src/conversation_sources/omp.rs
+  s_15d888f4b629c1::t_7e289b8f31f4f3 1-791
+crates/providers/src/conversation_sources/pij_ledger.rs
+  s_15d888f4b629c1::t_f85c4e780e389e 1-636
+crates/providers/tests/conversation_sources.rs
+  s_15d888f4b629c1::t_38ae27424baa74 1-626
+docs/services/convo-source-omp.md
+  s_15d888f4b629c1::t_06d42266758f81 1-372
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f7193222056b5d51abb26979595e655ddbdc662d",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_af0fe1a82e54f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9726a7d5-28df-47fe-bb2a-d5ffcb472da2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
