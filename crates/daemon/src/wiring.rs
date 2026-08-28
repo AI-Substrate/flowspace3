@@ -35,7 +35,9 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use fs3_core::{Config, DatabaseConfig, Embedder, Port, ProviderInstance, Summarizer};
+use fs3_core::{
+    Config, DatabaseConfig, Embedder, Event, EventKind, Port, ProviderInstance, Summarizer,
+};
 use fs3_providers::{
     AzureCredential, AzureOpenAiConfig, AzureOpenAiEmbedder, AzureOpenAiSummarizer, OpenAiEmbedder,
     OpenAiSummarizer,
@@ -44,6 +46,14 @@ use fs3_providers::{
 // The daemon has no direct `sqlx` dependency, and the arch-check enforces that.
 use fs3_store::{PgPool, connect_lazy};
 use fs3_testkit::{FakeEmbedder, FakeSummarizer};
+use tokio::sync::broadcast;
+
+/// Events retained per subscriber before a lagging watcher is disconnected.
+///
+/// Producers only call [`broadcast::Sender::send`], which never waits. A
+/// subscriber that falls more than this many events behind receives `Lagged`
+/// and the HTTP handler closes its stream rather than slowing indexing.
+const EVENT_CAPACITY: usize = 256;
 
 /// Everything an HTTP handler or worker needs, wired once at startup.
 #[derive(Clone)]
@@ -56,6 +66,8 @@ pub struct AppState {
     repo_embedders: BTreeMap<String, Arc<dyn Embedder>>,
     /// Repos that named a different summarizer, by repo identity.
     repo_summarizers: BTreeMap<String, Arc<dyn Summarizer>>,
+    /// One non-blocking fan-out for every live event-stream subscriber.
+    events: broadcast::Sender<Event>,
     /// The central store.
     ///
     /// The pool is lazy — connections are established on first use, so WIRING
@@ -139,6 +151,7 @@ impl AppState {
         }
 
         let db = build_store(&config.database)?;
+        let (events, _) = broadcast::channel(EVENT_CAPACITY);
 
         // Not an error worth refusing to serve over: a daemon that cannot name
         // its own binary can still index, search and answer. It just has no
@@ -155,10 +168,31 @@ impl AppState {
             summarizer,
             repo_embedders,
             repo_summarizers,
+            events,
             db,
             config,
             install_path,
         })
+    }
+    /// Attach one live watcher to the daemon event fan-out.
+    #[must_use]
+    pub fn subscribe(&self) -> broadcast::Receiver<Event> {
+        self.events.subscribe()
+    }
+
+    /// Publish one event without ever waiting for a watcher.
+    ///
+    /// `send` failing means nobody is attached, which is the common idle
+    /// shape, not an indexing failure. The event is deliberately not retained:
+    /// `/status` is the snapshot for consumers that need current truth.
+    pub fn emit(&self, kind: EventKind) {
+        let _ = self.events.send(Event::new(now(), kind));
+    }
+
+    /// Number of events one watcher may trail before the stream drops it.
+    #[must_use]
+    pub const fn event_capacity() -> usize {
+        EVENT_CAPACITY
     }
 
     /// The embedder to use for `repo` — its override, or the active default.
@@ -356,4 +390,35 @@ fn api_key(variable: &str, instance: &str) -> Result<String> {
              variable, or select an instance with `kind = \"fake\"` to run offline."
         )
     })
+}
+
+/// Current UTC time in the frozen event-wire spelling, without a date crate.
+fn now() -> String {
+    let elapsed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default();
+    let seconds = elapsed.as_secs();
+    let (days, rest) = (seconds / 86_400, seconds % 86_400);
+    let (year, month, day) = civil_from_days(days as i64);
+    format!(
+        "{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}.{:03}Z",
+        rest / 3600,
+        (rest % 3600) / 60,
+        rest % 60,
+        elapsed.subsec_millis()
+    )
+}
+
+/// Days since the Unix epoch to a civil date (Howard Hinnant's algorithm).
+fn civil_from_days(days: i64) -> (i64, u32, u32) {
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let year = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = (doy - (153 * mp + 2) / 5 + 1) as u32;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
+    (if month <= 2 { year + 1 } else { year }, month, day)
 }

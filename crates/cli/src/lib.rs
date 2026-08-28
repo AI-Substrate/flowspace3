@@ -13,6 +13,7 @@ pub mod settings;
 pub mod show;
 pub mod skill;
 pub mod upgrade;
+pub mod watch;
 
 pub use client::{DaemonClient, HealthReport};
 pub use docs::{TopicList, TopicPage, TopicSummary};

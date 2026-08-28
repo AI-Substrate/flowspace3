@@ -30,6 +30,7 @@ use std::time::Duration;
 
 use fs3_core::catalog;
 use fs3_core::envelope::Failure;
+use fs3_core::events::{EventKind, QueueDepth as EventQueueDepth};
 use fs3_store::{Job, PgPool};
 use std::collections::BTreeMap;
 
@@ -307,6 +308,11 @@ async fn drain_embed(state: &AppState) -> Drained {
 
     let attempts: BTreeMap<i64, i32> = jobs.iter().map(|job| (job.id, job.attempts)).collect();
     let parks: BTreeMap<i64, i32> = jobs.iter().map(|job| (job.id, job.parks)).collect();
+    let subjects: BTreeMap<i64, String> = jobs
+        .iter()
+        .map(|job| (job.id, subject_of(EMBED, &job.payload)))
+        .collect();
+    let drain_started = std::time::Instant::now();
     let (batches, unreadable) = batch::plan(&jobs);
 
     let mut total = Drained::default();
@@ -315,8 +321,21 @@ async fn drain_embed(state: &AppState) -> Drained {
     // succeed, so it fails terminally rather than costing three attempts —
     // and terminally here means for good: no boot-time requeue will wake it.
     for bad in unreadable {
-        if let Err(error) = fs3_store::fail_job(&state.db, bad.job_id, &bad.reason, true).await {
-            tracing::error!(%error, id = bad.job_id, "cannot fail an unreadable embed job");
+        match fs3_store::fail_job(&state.db, bad.job_id, &bad.reason, true).await {
+            Ok(()) => {
+                emit_failure(
+                    state,
+                    EMBED,
+                    subjects.get(&bad.job_id).map_or("?", String::as_str),
+                    &bad.reason,
+                    attempts.get(&bad.job_id).copied().unwrap_or(1),
+                    true,
+                );
+                emit_queue(state).await;
+            }
+            Err(error) => {
+                tracing::error!(%error, id = bad.job_id, "cannot fail an unreadable embed job");
+            }
         }
         tracing::warn!(id = bad.job_id, kind = EMBED, "{}", bad.reason);
         total.failed += 1;
@@ -407,13 +426,27 @@ async fn drain_embed(state: &AppState) -> Drained {
 
     for id in touched {
         let attempt = attempts.get(&id).copied().unwrap_or(1);
+        let subject = subjects.get(&id).map_or("?", String::as_str);
         match broken.remove(&id) {
             None => {
-                if let Err(error) = fs3_store::complete_job(&state.db, id).await {
-                    tracing::error!(%error, id, "cannot complete an embed job");
+                match fs3_store::complete_job(&state.db, id).await {
+                    Ok(()) => {
+                        let left = fs3_store::jobs_remaining(&state.db).await.ok();
+                        tracing::info!(kind = EMBED, id, left, "done");
+                        if let Some(left) = left {
+                            state.emit(EventKind::JobDone {
+                                job: EMBED.to_string(),
+                                subject: subject.to_string(),
+                                ms: drain_started.elapsed().as_millis() as u64,
+                                left,
+                            });
+                        }
+                        emit_queue(state).await;
+                    }
+                    Err(error) => {
+                        tracing::error!(%error, id, "cannot complete an embed job");
+                    }
                 }
-                let left = fs3_store::jobs_remaining(&state.db).await.ok();
-                tracing::info!(kind = EMBED, id, left, "done");
                 total.completed += 1;
             }
             Some(failure) => {
@@ -429,26 +462,47 @@ async fn drain_embed(state: &AppState) -> Drained {
                             wait_s = delay.as_secs(),
                             "parked, no attempt spent: {message}"
                         );
-                        if let Err(error) = fs3_store::park_job(&state.db, id, delay).await {
-                            tracing::error!(%error, id, "cannot park an embed job");
+                        match fs3_store::park_job(&state.db, id, delay).await {
+                            Ok(_) => {
+                                emit_failure(state, EMBED, subject, &message, attempt, false);
+                                emit_queue(state).await;
+                            }
+                            Err(error) => {
+                                tracing::error!(%error, id, "cannot park an embed job");
+                            }
                         }
                         total.parked += 1;
                     }
                     Verdict::Retry => {
                         tracing::warn!(id, kind = EMBED, attempt, retrying = true, "{message}");
-                        if let Err(error) =
-                            fs3_store::retry_job(&state.db, id, backoff(attempt), &message).await
-                        {
-                            tracing::error!(%error, id, "cannot settle a failed embed job");
+                        match fs3_store::retry_job(&state.db, id, backoff(attempt), &message).await {
+                            Ok(()) => {
+                                emit_failure(state, EMBED, subject, &message, attempt, false);
+                                emit_queue(state).await;
+                            }
+                            Err(error) => {
+                                tracing::error!(%error, id, "cannot settle a failed embed job");
+                            }
                         }
                         total.retried += 1;
                     }
                     Verdict::Fail => {
                         tracing::warn!(id, kind = EMBED, attempt, retrying = false, "{message}");
-                        if let Err(error) =
-                            fs3_store::fail_job(&state.db, id, &message, !failure.retryable).await
+                        match fs3_store::fail_job(
+                            &state.db,
+                            id,
+                            &message,
+                            !failure.retryable,
+                        )
+                        .await
                         {
-                            tracing::error!(%error, id, "cannot settle a failed embed job");
+                            Ok(()) => {
+                                emit_failure(state, EMBED, subject, &message, attempt, true);
+                                emit_queue(state).await;
+                            }
+                            Err(error) => {
+                                tracing::error!(%error, id, "cannot settle a failed embed job");
+                            }
                         }
                         total.failed += 1;
                     }
@@ -513,6 +567,40 @@ async fn report_progress(state: &AppState, phase: &str) {
     );
 }
 
+/// Publish the queue's current shape after a settlement changes it.
+async fn emit_queue(state: &AppState) {
+    let Ok(rows) = fs3_store::queue_depth(&state.db).await else {
+        return;
+    };
+    state.emit(EventKind::Queue {
+        rows: rows
+            .into_iter()
+            .map(|row| EventQueueDepth {
+                kind: row.kind,
+                state: row.state,
+                count: row.depth,
+            })
+            .collect(),
+    });
+}
+
+fn emit_failure(
+    state: &AppState,
+    kind: &str,
+    subject: &str,
+    message: &str,
+    attempts: i32,
+    terminal: bool,
+) {
+    state.emit(EventKind::JobFailed {
+        job: kind.to_string(),
+        subject: subject.to_string(),
+        error: message.to_string(),
+        attempts: i64::from(attempts),
+        terminal,
+    });
+}
+
 /// Run one job and settle its row.
 async fn settle(state: &AppState, job: Job) -> Drained {
     let id = job.id;
@@ -531,25 +619,26 @@ async fn settle(state: &AppState, job: Job) -> Drained {
         Ok(()) => {
             if let Err(error) = fs3_store::complete_job(&state.db, id).await {
                 tracing::error!(%error, id, "cannot complete job");
+            } else {
+                // Counted after settling, so `left` excludes this event's job.
+                let left = fs3_store::jobs_remaining(&state.db).await.ok();
+                tracing::info!(
+                    kind = %kind,
+                    subject = %subject,
+                    ms = started.elapsed().as_millis() as u64,
+                    left,
+                    "done"
+                );
+                if let Some(left) = left {
+                    state.emit(EventKind::JobDone {
+                        job: kind.clone(),
+                        subject: subject.clone(),
+                        ms: started.elapsed().as_millis() as u64,
+                        left,
+                    });
+                }
+                emit_queue(state).await;
             }
-            // One line per job, at info, because a healthy index run used to
-            // print NOTHING at the default filter — the only calls in this
-            // crate were error! and warn!, so a working daemon and a wedged one
-            // looked identical from the outside (Jordan, live, 2026-08-26).
-            // `left` is what turns a stream of lines into a position: without
-            // it a watcher can see work happening but not how much of it is
-            // left, which is the question they actually have (Jordan, live,
-            // 2026-08-26). Counted after settling, so it reads as "still to
-            // go, not counting this one", and taken from the queue so it stays
-            // true as the backlog grows during scan.
-            let left = fs3_store::jobs_remaining(&state.db).await.ok();
-            tracing::info!(
-                kind = %kind,
-                subject = %subject,
-                ms = started.elapsed().as_millis() as u64,
-                left,
-                "done"
-            );
             Drained {
                 completed: 1,
                 ..Drained::default()
@@ -567,8 +656,12 @@ async fn settle(state: &AppState, job: Job) -> Drained {
                         wait_s = delay.as_secs(),
                         "parked, no attempt spent: {message}"
                     );
-                    if let Err(error) = fs3_store::park_job(&state.db, id, delay).await {
-                        tracing::error!(%error, id, "cannot park a job");
+                    match fs3_store::park_job(&state.db, id, delay).await {
+                        Ok(_) => {
+                            emit_failure(state, &kind, &subject, &message, attempts, false);
+                            emit_queue(state).await;
+                        }
+                        Err(error) => tracing::error!(%error, id, "cannot park a job"),
                     }
                     Drained {
                         parked: 1,
@@ -577,10 +670,14 @@ async fn settle(state: &AppState, job: Job) -> Drained {
                 }
                 Verdict::Retry => {
                     tracing::warn!(id, %kind, %key, attempts, retrying = true, "{message}");
-                    if let Err(error) =
-                        fs3_store::retry_job(&state.db, id, backoff(attempts), &message).await
-                    {
-                        tracing::error!(%error, id, "cannot settle a failed job");
+                    match fs3_store::retry_job(&state.db, id, backoff(attempts), &message).await {
+                        Ok(()) => {
+                            emit_failure(state, &kind, &subject, &message, attempts, false);
+                            emit_queue(state).await;
+                        }
+                        Err(error) => {
+                            tracing::error!(%error, id, "cannot settle a failed job");
+                        }
                     }
                     Drained {
                         retried: 1,
@@ -589,14 +686,24 @@ async fn settle(state: &AppState, job: Job) -> Drained {
                 }
                 Verdict::Fail => {
                     tracing::warn!(id, %kind, %key, attempts, retrying = false, "{message}");
-                    // Terminal exactly when the failure was never retryable.
-                    // A job that spent its attempts against a provider is a
-                    // job whose work is still wanted, and `requeue_failed`
-                    // is what brings that kind back once a fix lands.
-                    if let Err(error) =
-                        fs3_store::fail_job(&state.db, id, &message, !failure.retryable).await
+                    // The store's terminal bit answers whether this work may
+                    // revive after a fix. The event's terminal bit answers
+                    // whether this run has stopped trying: every Fail is news.
+                    match fs3_store::fail_job(
+                        &state.db,
+                        id,
+                        &message,
+                        !failure.retryable,
+                    )
+                    .await
                     {
-                        tracing::error!(%error, id, "cannot settle a failed job");
+                        Ok(()) => {
+                            emit_failure(state, &kind, &subject, &message, attempts, true);
+                            emit_queue(state).await;
+                        }
+                        Err(error) => {
+                            tracing::error!(%error, id, "cannot settle a failed job");
+                        }
                     }
                     Drained {
                         failed: 1,

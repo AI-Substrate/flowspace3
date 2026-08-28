@@ -25,17 +25,78 @@
 //! re-enriches nothing that was already paid for.
 
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use fs3_parsers::discovery::{self, DiscoverySettings};
 use fs3_store::PgPool;
 use serde::{Deserialize, Serialize};
 
 use crate::wiring::AppState;
+use fs3_core::EventKind;
 use fs3_core::views::roots::{PrunedDirectoryRow, RootReport, SkipCount};
 
 /// The job kind a file scan is queued under.
 pub const SCAN_FILE: &str = "scan_file";
+
+/// Emit at most one count-driven progress line per this many walked files.
+pub const SCAN_PROGRESS_FILES: u64 = 256;
+
+/// Bound visible silence during a slow walk.
+pub const SCAN_PROGRESS_INTERVAL: Duration = Duration::from_millis(1_000);
+
+struct ScanProgress {
+    root: String,
+    root_path: String,
+    files_seen: u64,
+    enqueued: u64,
+    since_emit: u64,
+    last_emit: Instant,
+}
+
+impl ScanProgress {
+    fn new(root: String, root_path: String) -> Self {
+        Self {
+            root,
+            root_path,
+            files_seen: 0,
+            enqueued: 0,
+            since_emit: 0,
+            last_emit: Instant::now(),
+        }
+    }
+
+    fn tick(&mut self, state: &AppState, current: &str) {
+        self.since_emit += 1;
+        if self.since_emit < SCAN_PROGRESS_FILES
+            && self.last_emit.elapsed() < SCAN_PROGRESS_INTERVAL
+        {
+            return;
+        }
+        self.publish(state, Some(current.to_string()));
+    }
+
+    fn pulse(&mut self, state: &AppState, current: &str) {
+        if self.last_emit.elapsed() >= SCAN_PROGRESS_INTERVAL {
+            self.publish(state, Some(current.to_string()));
+        }
+    }
+
+    fn finish(&mut self, state: &AppState) {
+        self.publish(state, None);
+    }
+
+    fn publish(&mut self, state: &AppState, current: Option<String>) {
+        state.emit(EventKind::ScanProgress {
+            root: self.root.clone(),
+            root_path: self.root_path.clone(),
+            files_seen: self.files_seen,
+            enqueued: self.enqueued,
+            current,
+        });
+        self.since_emit = 0;
+        self.last_emit = Instant::now();
+    }
+}
 
 /// What `POST /roots` and `POST /scan` take.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -88,17 +149,28 @@ impl ScanFileJob {
 /// Discovery failures (an unreadable root, an uncompilable glob), git failures,
 /// and store failures, each mapped to its own catalog code by the caller.
 pub async fn add_root(state: &AppState, root: &Path) -> Result<RootReport, RootError> {
+    scan_root(state, root, "added").await
+}
+
+async fn scan_root(
+    state: &AppState,
+    root: &Path,
+    change: &'static str,
+) -> Result<RootReport, RootError> {
     let root = canonical(root)?;
     let identity = fs3_git::repo_identity(&root)?;
+    let root_path = root.to_string_lossy().to_string();
+    let identity_key = identity.key().to_string();
 
     // Discovery decides what is worth indexing; git decides what the bytes are.
     let settings = DiscoverySettings::from(&state.config.scan);
     let discovery = discovery::discover(&root, &settings)?;
+    let mut progress = ScanProgress::new(identity_key.clone(), root_path.clone());
 
     let worktree_id = fs3_store::register_worktree(
         &state.db,
         &identity,
-        &root.to_string_lossy(),
+        &root_path,
         ref_name(&root).as_deref(),
     )
     .await?;
@@ -108,58 +180,70 @@ pub async fn add_root(state: &AppState, root: &Path) -> Result<RootReport, RootE
     // than a half-written row.
     let mut files = Vec::with_capacity(discovery.files.len());
     for file in &discovery.files {
+        progress.files_seen += 1;
         match fs3_git::blob_id(&root.join(&file.path)) {
             Ok(blob) => files.push((file.path.clone(), blob)),
             // A file that disappeared between the walk and the hash is not an
             // error: it is a file that is no longer there, and the next scan
             // will agree.
-            Err(fs3_git::Error::Io { .. }) => continue,
+            Err(fs3_git::Error::Io { .. }) => {}
             Err(error) => return Err(error.into()),
         }
+        progress.tick(state, &file.path);
     }
 
     let known = known_blobs(&state.db, worktree_id).await?;
     let removed = fs3_store::sync_worktree_files(&state.db, worktree_id, &files).await?;
 
-    let mut enqueued = 0;
     let mut unchanged = 0;
     for (path, blob) in &files {
         if known.get(path.as_str()).map(String::as_str) == Some(blob.as_str()) {
             unchanged += 1;
-            continue;
+        } else {
+            let job = ScanFileJob {
+                worktree_id,
+                identity: identity_key.clone(),
+                path: path.clone(),
+                blob: blob.as_str().to_string(),
+            };
+            fs3_store::enqueue_job(
+                &state.db,
+                SCAN_FILE,
+                &job.dedupe_key(),
+                &serde_json::to_value(&job).expect("a scan job always serialises"),
+                Duration::ZERO,
+            )
+            .await?;
+            progress.enqueued += 1;
         }
-        let job = ScanFileJob {
-            worktree_id,
-            identity: identity.key().to_string(),
-            path: path.clone(),
-            blob: blob.as_str().to_string(),
-        };
-        fs3_store::enqueue_job(
-            &state.db,
-            SCAN_FILE,
-            &job.dedupe_key(),
-            &serde_json::to_value(&job).expect("a scan job always serialises"),
-            Duration::ZERO,
-        )
-        .await?;
-        enqueued += 1;
+        // The enqueue phase can itself be slow against a remote store. It is
+        // part of the same walk and must not reintroduce visible silence.
+        progress.pulse(state, path);
     }
+    progress.finish(state);
 
-    Ok(RootReport {
-        identity: identity.key().to_string(),
+    let report = RootReport {
+        identity: identity_key.clone(),
         identity_source: match identity.source() {
             fs3_core::IdentitySource::Remote => "remote".to_string(),
             fs3_core::IdentitySource::Path => "path".to_string(),
         },
-        root_path: root.to_string_lossy().to_string(),
+        root_path: root_path.clone(),
         worktree_id,
         files: files.len(),
         skipped: skip_counts(&discovery),
         pruned: pruned_rows(&discovery),
-        enqueued,
+        enqueued: progress.enqueued as usize,
         unchanged,
         removed,
-    })
+    };
+    state.emit(EventKind::RootChanged {
+        change: change.to_string(),
+        root: identity_key,
+        root_path,
+        files: report.files as i64,
+    });
+    Ok(report)
 }
 
 /// Re-scan a root that is already registered.
@@ -178,7 +262,7 @@ pub async fn rescan_root(state: &AppState, root: &Path) -> Result<RootReport, Ro
     if fs3_store::find_worktree(&state.db, &path).await?.is_none() {
         return Err(RootError::NotRegistered(path));
     }
-    add_root(state, &root).await
+    scan_root(state, &root, "rescanned").await
 }
 
 /// The path→blob map the store already holds for this worktree.

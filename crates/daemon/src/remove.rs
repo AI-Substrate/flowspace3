@@ -3,6 +3,7 @@
 //! The daemon half of the two verbs. Both are thin: the decisions and the SQL
 //! live in [`fs3_store::roots`], and these shape the answer.
 
+use fs3_core::EventKind;
 use fs3_core::catalog;
 use fs3_core::envelope::Failure;
 
@@ -57,7 +58,7 @@ pub async fn remove(state: &AppState, path: &str) -> Result<RemoveReport, Failur
         .await
         .map_err(IntoFailure::into_failure)?;
 
-    Ok(RemoveReport {
+    let report = RemoveReport {
         root_path: path.to_string(),
         was_registered: removal.was_registered(),
         identity: removal.identity,
@@ -66,7 +67,16 @@ pub async fn remove(state: &AppState, path: &str) -> Result<RemoveReport, Failur
         repo_removed: removal.repo_removed,
         reclaimable: counts(reclaimable),
         registered,
-    })
+    };
+    if let Some(identity) = report.identity.clone() {
+        state.emit(EventKind::RootChanged {
+            change: "removed".to_string(),
+            root: identity,
+            root_path: report.root_path.clone(),
+            files: 0,
+        });
+    }
+    Ok(report)
 }
 
 /// Run a collection now.

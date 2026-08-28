@@ -21,7 +21,7 @@ use std::sync::OnceLock;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use fs3_cli::{DaemonClient, daemon_url, doctor, render, settings, show, skill};
+use fs3_cli::{DaemonClient, daemon_url, doctor, render, settings, show, skill, watch};
 use fs3_core::envelope::Envelope;
 use fs3_core::output::{OUTPUT_ENV, OutputMode};
 
@@ -95,6 +95,12 @@ enum Command {
     },
     /// Report registered roots and what is left in the queue.
     Status {
+        /// Keep reading the daemon's live NDJSON event stream.
+        #[arg(long)]
+        watch: bool,
+        /// Override the stream heartbeat cadence.
+        #[arg(long, value_name = "MILLISECONDS", requires = "watch")]
+        heartbeat_ms: Option<u64>,
         /// Override the daemon URL from configuration.
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
@@ -432,9 +438,23 @@ async fn run(command: Command) -> Result<ExitCode> {
             let client = client_for(daemon_url)?;
             Ok(emit(&client.scan(&display(&path)).await))
         }
-        Command::Status { daemon_url } => {
+        Command::Status {
+            watch: watching,
+            heartbeat_ms,
+            daemon_url,
+        } => {
             let client = client_for(daemon_url)?;
-            Ok(emit(&client.status().await))
+            if watching {
+                watch::run(
+                    client.base_url(),
+                    heartbeat_ms,
+                    output_mode() == OutputMode::Human,
+                )
+                .await?;
+                Ok(ExitCode::SUCCESS)
+            } else {
+                Ok(emit(&client.status().await))
+            }
         }
         Command::Search {
             query,
