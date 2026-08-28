@@ -24,6 +24,7 @@ use sqlx::postgres::PgPoolOptions;
 
 pub mod admin;
 pub mod conversations;
+pub mod ddoc;
 pub mod elements;
 pub mod embeddings;
 pub mod jobs;
@@ -42,6 +43,7 @@ pub use conversations::{
     AnchorFilter, Appended, ConversationSummary, Removed, TurnOutline, append_turns,
     delete_conversation, list_conversations, outline, upsert_conversation, window,
 };
+pub use ddoc::{DdocFileRef, FileRefOutcome, replace_file_refs, rows_referencing};
 pub use elements::{get_elements, upsert_element_tree};
 pub use embeddings::{
     EMBEDDING_DIMENSIONS, NewEmbedding, SearchFilters, SearchHit, SimilarElement, SourceKind,
