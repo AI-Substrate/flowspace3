@@ -1,0 +1,48 @@
+.agents/skills/pij-team/EXPERIENCES.md
+  h_9e71e8b09f7cf2 434-626
+.agents/skills/pij-team/TENETS.md
+  h_9e71e8b09f7cf2 126-154
+.agents/skills/pij-team/templates/packet-coder.dd.json
+  h_9e71e8b09f7cf2 23-66,72-83,98-117,123-137,141
+.agents/skills/pij-team/templates/packet-coder.dd.md
+  h_9e71e8b09f7cf2 1-83
+.agents/skills/pij-team/templates/packet-pm.dd.json
+  h_9e71e8b09f7cf2 23-66,72-87,102-125,131-155,159
+.agents/skills/pij-team/templates/packet-pm.dd.md
+  h_9e71e8b09f7cf2 1-87
+.harness/government/briefs/backlog.md
+  h_9e71e8b09f7cf2 188-422
+.harness/government/briefs/w-ask-eval.md
+  h_9e71e8b09f7cf2 53-87
+.harness/government/briefs/w-daemon-shutdown.md
+  h_9e71e8b09f7cf2 1-57
+.harness/government/briefs/w-openrouter.md
+  h_9e71e8b09f7cf2 1-58
+.harness/records/retro/2026-08-28/002-drain-2026-08-28-evening.md
+  h_9e71e8b09f7cf2 1-337
+crates/daemon/src/runner.rs
+  h_9e71e8b09f7cf2 53
+crates/daemon/tests/lanes.rs
+  h_9e71e8b09f7cf2 27,285-388,392-393,434,459,461,513-514
+crates/store/migrations/0016_job_lifo.sql
+  h_9e71e8b09f7cf2 1-12
+crates/store/src/jobs.rs
+  h_9e71e8b09f7cf2 146-149,164,200,223
+crates/store/tests/pg_first_light.rs
+  h_9e71e8b09f7cf2 17-20,350-399
+docs/services/first-light.md
+  h_9e71e8b09f7cf2 60-63,65-71
+docs/services/store-schema.md
+  h_9e71e8b09f7cf2 132,139-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8b4ea6ce34a8ba02165a82ad4c66f281b4327a5e",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
