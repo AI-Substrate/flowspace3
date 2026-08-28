@@ -4,6 +4,7 @@ use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
+use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 const TEST_KEY: &str = "isolated-render-test-key";
@@ -167,6 +168,90 @@ fn run(case: &Case, mode: Mode) -> Output {
     output
 }
 
+#[cfg(unix)]
+#[derive(Clone, Copy)]
+enum ScriptFlavor {
+    Bsd,
+    UtilLinux,
+}
+
+#[cfg(unix)]
+fn script_flavor() -> ScriptFlavor {
+    static FLAVOR: OnceLock<ScriptFlavor> = OnceLock::new();
+    *FLAVOR.get_or_init(|| {
+        let probe = |args: &[&str]| {
+            Command::new("script")
+                .args(args)
+                .output()
+                .is_ok_and(|output| {
+                    output.status.success()
+                        && String::from_utf8_lossy(&output.stdout).contains("fs3-script-probe")
+                })
+        };
+        if probe(&["-q", "/dev/null", "printf", "fs3-script-probe"]) {
+            ScriptFlavor::Bsd
+        } else if probe(&["-qec", "printf fs3-script-probe", "/dev/null"]) {
+            ScriptFlavor::UtilLinux
+        } else {
+            panic!(
+                "script(1) is required to prove the TTY output matrix, but neither BSD nor util-linux invocation allocated a working terminal"
+            );
+        }
+    })
+}
+
+#[cfg(unix)]
+fn shell_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
+#[cfg(unix)]
+fn run_tty(case: &Case, json: bool) -> Output {
+    let config = tempfile::tempdir().unwrap();
+    write_test_key(config.path());
+    let mut cli_args = case
+        .args
+        .iter()
+        .map(|arg| (*arg).to_string())
+        .collect::<Vec<_>>();
+    if json {
+        cli_args.push("--json".to_string());
+    }
+    let server = case.response.map(|fixture| {
+        let body = std::fs::read(goldens().join("responses").join(fixture)).unwrap();
+        let (url, handle) = serve(body);
+        cli_args.extend(["--daemon-url".to_string(), url]);
+        handle
+    });
+
+    let mut script = fs3_testkit::sealed(
+        Path::new("script"),
+        config.path(),
+        fs3_testkit::TestDatabase::Unreachable,
+    );
+    match script_flavor() {
+        ScriptFlavor::Bsd => {
+            script
+                .args(["-q", "/dev/null"])
+                .arg(binary())
+                .args(&cli_args);
+        }
+        ScriptFlavor::UtilLinux => {
+            let command = std::iter::once(binary().to_string_lossy().into_owned())
+                .chain(cli_args)
+                .map(|arg| shell_quote(&arg))
+                .collect::<Vec<_>>()
+                .join(" ");
+            script.args(["-qec", &command, "/dev/null"]);
+        }
+    }
+    let output = script.output().unwrap();
+    if let Some(server) = server {
+        server.join().unwrap();
+    }
+    output
+}
+
 fn serve(body: Vec<u8>) -> (String, std::thread::JoinHandle<()>) {
     const DEADLINE: Duration = Duration::from_secs(20);
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
@@ -272,6 +357,52 @@ fn every_covered_daemon_verb_obeys_the_four_case_matrix() {
             "{} FS3_OUTPUT=human marker absent:\n{text}",
             case.name
         );
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn every_covered_verb_obeys_both_real_tty_legs() {
+    for case in CASES {
+        let human = run_tty(case, false);
+        let human_text = String::from_utf8_lossy(&human.stdout);
+        assert!(
+            human_text.contains(case.marker),
+            "{} TTY default did not render marker {:?}:\n{human_text}",
+            case.name,
+            case.marker
+        );
+        assert!(
+            !human_text.trim_start().starts_with('{'),
+            "{} TTY default remained JSON:\n{human_text}",
+            case.name
+        );
+
+        let json = run_tty(case, true);
+        let json_text = String::from_utf8_lossy(&json.stdout).replace("\r\n", "\n");
+        let json_start = json_text.find('{').expect("PTY transcript contains JSON");
+        let json_end = json_text.rfind('}').expect("PTY transcript closes JSON") + 1;
+        let json_document = &json_text[json_start..json_end];
+        assert!(
+            !json_text.contains('▍'),
+            "{} --json rendered a human screen in a TTY:\n{json_text}",
+            case.name
+        );
+        assert!(
+            json_text.contains("\"command\""),
+            "{} --json did not emit an envelope in a TTY:\n{json_text}",
+            case.name
+        );
+        if case.exit == 0 {
+            serde_json::from_str::<serde_json::Value>(json_document).unwrap_or_else(|error| {
+                panic!(
+                    "{} TTY --json was not JSON: {error}\n{json_text}",
+                    case.name
+                )
+            });
+        } else {
+            assert!(json_text.contains("\"ok\": false"), "{json_text}");
+        }
     }
 }
 

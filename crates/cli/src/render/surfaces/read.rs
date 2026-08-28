@@ -6,10 +6,10 @@ use fs3_core::{
 use owo_colors::OwoColorize;
 use serde_json::Value;
 
-use crate::render::{WIDTH, theme};
+use crate::render::theme;
 
 #[must_use]
-pub fn get(envelope: &Envelope<Value>) -> Option<String> {
+pub fn get(envelope: &Envelope<Value>, width: u16) -> Option<String> {
     let payload: GetPayload = serde_json::from_value(envelope.data.clone()?).ok()?;
     let mut out = match payload {
         GetPayload::Element(result) => {
@@ -60,19 +60,19 @@ pub fn get(envelope: &Envelope<Value>) -> Option<String> {
                     turn.turn_no,
                     turn.at.bright_black()
                 ));
-                for line in theme::wrap(&turn.body, usize::from(WIDTH) - 4, 2).lines() {
+                for line in theme::wrap(&turn.body, usize::from(width) - 4, 2).lines() {
                     out.push_str(&format!("{}  {line}\n", theme::GUTTER));
                 }
             }
             out
         }
     };
-    append_next(&mut out, envelope);
+    append_next(&mut out, envelope, width);
     Some(out)
 }
 
 #[must_use]
-pub fn tree(envelope: &Envelope<Value>) -> Option<String> {
+pub fn tree(envelope: &Envelope<Value>, width: u16) -> Option<String> {
     let result: TreeResult = serde_json::from_value(envelope.data.clone()?).ok()?;
     let mut out = theme::title(
         "tree",
@@ -82,7 +82,7 @@ pub fn tree(envelope: &Envelope<Value>) -> Option<String> {
         ),
     );
     out.push_str("\n\n");
-    let mut table = theme::table(WIDTH);
+    let mut table = theme::table(width);
     table.set_header([
         theme::header("kind"),
         theme::header("name"),
@@ -91,7 +91,7 @@ pub fn tree(envelope: &Envelope<Value>) -> Option<String> {
     ]);
     add_entries(&mut table, &result.entries, 0);
     out.push_str(&theme::block(&table));
-    append_next(&mut out, envelope);
+    append_next(&mut out, envelope, width);
     Some(out)
 }
 
@@ -115,10 +115,10 @@ fn add_entries(table: &mut comfy_table::Table, entries: &[TreeEntry], depth: usi
     }
 }
 
-fn append_next(out: &mut String, envelope: &Envelope<Value>) {
+fn append_next(out: &mut String, envelope: &Envelope<Value>, width: u16) {
     if let Some(next) = &envelope.next_action {
         out.push('\n');
-        out.push_str(&theme::next_action(next, usize::from(WIDTH)));
+        out.push_str(&theme::next_action(next, usize::from(width)));
         out.push('\n');
     }
 }

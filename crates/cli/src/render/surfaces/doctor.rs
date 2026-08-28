@@ -3,10 +3,10 @@ use fs3_core::{envelope::Envelope, views::doctor::DoctorReport};
 use owo_colors::{OwoColorize, Style};
 use serde_json::Value;
 
-use crate::render::{WIDTH, theme};
+use crate::render::theme;
 
 #[must_use]
-pub fn render(envelope: &Envelope<Value>) -> Option<String> {
+pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
     let report: DoctorReport = serde_json::from_value(envelope.data.clone()?).ok()?;
     let repaired = report
         .steps
@@ -27,7 +27,7 @@ pub fn render(envelope: &Envelope<Value>) -> Option<String> {
     }
     let mut out = theme::title("doctor", &summary);
     out.push_str("\n\n");
-    let mut table = theme::plain_table(WIDTH);
+    let mut table = theme::plain_table(width);
     for step in &report.steps {
         let detail = theme::spans(
             &step.found,
@@ -59,7 +59,7 @@ pub fn render(envelope: &Envelope<Value>) -> Option<String> {
     }
     if let Some(next) = &envelope.next_action {
         out.push('\n');
-        out.push_str(&theme::next_action(next, usize::from(WIDTH)));
+        out.push_str(&theme::next_action(next, usize::from(width)));
         out.push('\n');
     }
     Some(out)

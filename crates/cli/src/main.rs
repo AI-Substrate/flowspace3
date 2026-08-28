@@ -473,7 +473,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             let path = display(&path);
             let envelope = match output_mode() {
                 OutputMode::Human => {
-                    render::progress::while_pending(&client, client.add(&path)).await
+                    render::progress::while_pending(&client, &path, client.add(&path)).await
                 }
                 OutputMode::Json => client.add(&path).await,
             };
@@ -492,7 +492,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             let path = display(&path);
             let envelope = match output_mode() {
                 OutputMode::Human => {
-                    render::progress::while_pending(&client, client.scan(&path)).await
+                    render::progress::while_pending(&client, &path, client.scan(&path)).await
                 }
                 OutputMode::Json => client.scan(&path).await,
             };

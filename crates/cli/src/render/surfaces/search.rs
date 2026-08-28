@@ -3,12 +3,12 @@ use fs3_core::{envelope::Envelope, views::search::SearchResults};
 use owo_colors::OwoColorize;
 use serde_json::Value;
 
-use crate::render::{WIDTH, theme};
+use crate::render::theme;
 
 const METER_CELLS: usize = 8;
 
 #[must_use]
-pub fn render(envelope: &Envelope<Value>) -> Option<String> {
+pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
     let results: SearchResults = serde_json::from_value(envelope.data.clone()?).ok()?;
     let count = results.results.len();
     let mut out = theme::title(
@@ -23,7 +23,7 @@ pub fn render(envelope: &Envelope<Value>) -> Option<String> {
             "no hits — widen with --limit, drop --min-score, or `--repo all`".bright_black()
         ));
     } else {
-        let mut table = theme::table(WIDTH);
+        let mut table = theme::table(width);
         table.set_header([
             theme::header("#"),
             theme::header("score"),
@@ -81,14 +81,14 @@ pub fn render(envelope: &Envelope<Value>) -> Option<String> {
         }
         out.push_str(&theme::block(&table));
     }
-    append_next(&mut out, envelope);
+    append_next(&mut out, envelope, width);
     Some(out)
 }
 
-fn append_next(out: &mut String, envelope: &Envelope<Value>) {
+fn append_next(out: &mut String, envelope: &Envelope<Value>, width: u16) {
     if let Some(next) = &envelope.next_action {
         out.push('\n');
-        out.push_str(&theme::next_action(next, usize::from(WIDTH)));
+        out.push_str(&theme::next_action(next, usize::from(width)));
         out.push('\n');
     }
 }
