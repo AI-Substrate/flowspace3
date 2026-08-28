@@ -1,0 +1,14 @@
+docs/plans/005-convo-ingest/assets/done-u1d.md
+  h_9e71e8b09f7cf2 1-217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ca00d0f4b711ae2b9e5ea7b445db412d46caf5c4",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
