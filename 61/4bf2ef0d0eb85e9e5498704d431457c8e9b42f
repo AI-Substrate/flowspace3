@@ -1,0 +1,14 @@
+crates/daemon/src/ddoc.rs
+  h_9e71e8b09f7cf2 578
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "614bf2ef0d0eb85e9e5498704d431457c8e9b42f",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
