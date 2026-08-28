@@ -6,11 +6,13 @@
 //! **zero doubles**.
 //!
 //! Workshop 001 rule 3 — a trait earns its existence only when a second real
-//! implementation exists or is firmly planned. fs3 has exactly three ports:
-//! [`Embedder`], [`Summarizer`] and [`ChatProvider`]. A fourth is
-//! stop-and-ask. (The third was asked for and granted, 2026-08-28: the agentic
-//! `ask` verb needs a CHAT model, which is a different model from the one that
-//! summarises in bulk, and a port is the only way to say so.)
+//! implementation exists or is firmly planned. fs3 has FOUR ports:
+//! [`Embedder`], [`Summarizer`], [`ChatProvider`] and [`ConversationSource`].
+//! The last two were asked for and granted on the same day, 2026-08-28, by two
+//! plans that did not know about each other: `ask` needs a CHAT model, which is
+//! a different model from the one that summarises in bulk, and plan 005's
+//! readers ship four real implementations of a session store on day one. A
+//! FIFTH is stop-and-ask.
 
 pub mod address;
 pub mod agent;
@@ -18,6 +20,9 @@ pub mod catalog;
 pub mod classify;
 pub mod config;
 pub mod conversation;
+pub mod conversation_join;
+pub mod conversation_normalize;
+pub mod conversation_source;
 pub mod element;
 pub mod envelope;
 pub mod error;
@@ -50,6 +55,16 @@ pub use config::{
 };
 pub use conversation::{
     Conversation, ConversationId, ToolInput, Turn, TurnItem, TurnRole, TurnSource, earns_summary,
+};
+pub use conversation_join::{
+    SeatBinding, SessionRow, parse_rows, resolve_seat, store_for, uuid_version,
+};
+pub use conversation_normalize::{
+    OUTPUT_HEAD_BYTES, PreparedBatch, normalize_record, prepare_batch, shape_turn,
+};
+pub use conversation_source::{
+    ConversationSource, Harness, IngestInput, RawRecord, ReadBatch, SessionFile, SessionKind,
+    SourceCursor,
 };
 pub use element::{
     ADDRESS_SEGMENT, BlobRef, Element, ElementKind, ElementTree, PreOrder, Span, content_hash,
