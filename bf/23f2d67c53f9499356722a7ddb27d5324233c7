@@ -1,0 +1,18 @@
+crates/providers/src/conversation_sources/metrics_db.rs
+  h_9e71e8b09f7cf2 25,29-45,67-68,81-101,359-361,384,391-393,430,452,456-457,565-568,651-660,732-738,943-946,950-953
+crates/providers/tests/conversation_source_metrics_db.rs
+  h_9e71e8b09f7cf2 205-209,469-477,503-506
+docs/services/convo-source-metricsdb.md
+  h_9e71e8b09f7cf2 1-366
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "bf23f2d67c53f9499356722a7ddb27d5324233c7",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
