@@ -1,0 +1,33 @@
+crates/daemon/src/roots.rs
+  s_b668fefb3076c7::t_e631054b8bcecc 28,35,41-100,152-159,162-163,168,173,183,189,192,202-217,219-221,223,225-226,231,236,239-246,265
+crates/daemon/tests/event_stream.rs
+  s_b668fefb3076c7::t_10e433d0375952 1-160
+crates/cli/src/lib.rs
+  s_b668fefb3076c7::t_1ed2444157140c 16
+crates/cli/src/main.rs
+  s_b668fefb3076c7::t_2dcd0c1efd7840 24,98-103,441-445,447-457
+crates/cli/src/watch.rs
+  s_b668fefb3076c7::t_b7696415905367 1-117
+crates/cli/tests/status_watch.rs
+  s_b668fefb3076c7::t_291ab3bb804772 1-58
+crates/daemon/src/runner.rs
+  s_b668fefb3076c7::t_c4dd5f2f139718 33,311-315,324-338,429,432-448,465-472,478-485,491-497,499-505,570-603,622-640,659-664,673-680,689-698,700-706
+crates/daemon/src/wiring.rs
+  s_b668fefb3076c7::t_7db92db5fbbc37 38-40,49-56,69-70,154,171,177-196,394-424
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "767cef9ed27237c6ef7f57668e04f4bb65173822",
+  "prompts": {},
+  "sessions": {
+    "s_b668fefb3076c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0e0064-8d84-48e6-b499-eca0c65baafc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
