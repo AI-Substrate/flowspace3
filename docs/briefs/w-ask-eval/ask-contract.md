@@ -23,11 +23,14 @@ envelope.data:
 - trace          entry[]       every tool call, in order;
                                entry = { iteration u32, tool string,
                                arguments string, failed bool, evidence bool,
-                               result_chars usize }
+                               search_hits string[], result_chars usize }
                                `failed:true/evidence:false` = call broke;
                                `failed:false/evidence:false` = call worked but
                                the index returned no material;
                                `failed:false/evidence:true` = real index material
+                               `search_hits` = addresses whose summaries this
+                               search surfaced to the model
+
 - iterations     u32
 - tokens_used    u64|null      NULL = evidence unavailable: the COST row is
                                UNKNOWN and excluded from denominators. It is
@@ -75,6 +78,22 @@ another repo is a legitimate scope-trap negative-control variant: it must test
 that the loop WIDENS rather than concluding absence. Because an ungrounded
 answer receives one in-conversation refusal, that path may consume one extra
 iteration; fixtures assert an iteration ceiling, never an exact count.
+
+## Search-surfaced provenance (added 2026-08-28)
+
+Each trace entry now carries `search_hits: string[]`. For a successful search,
+it contains the returned addresses whose summary rows survived tool-result
+truncation and were therefore visible to the model, in rank order. It is empty
+for failed calls, no-hit searches, and non-search tools. The search limit caps
+the list at 15 entries per call, so provenance stays proportional to the
+bounded tool result.
+
+`search_hits` and top-level `citations` are deliberately different grades of
+evidence. A search hit was OFFERED as a one-line summary; a citation was READ in
+full through `get`. An evaluator can now detect an answer that relies only on a
+summary, and can measure whether the model ignored a highly-ranked offered hit
+that would have answered the question. Neither signal is inferred from model
+prose.
 
 ## Refusal when the port cannot answer (added 2026-08-28)
 
