@@ -6,7 +6,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
 use fs3_core::ddoc_envelope::{DdocEdge, DdocGraph};
-use fs3_core::{BlobRef, Config, DatabaseConfig, DdocSchemaFacts, RepoIdentity, content_hash};
+use fs3_core::{
+    BlobRef, Config, DatabaseConfig, DdocSchemaFacts, EmbedBasis, RepoIdentity, content_hash,
+};
 use fs3_daemon::ddoc::DdocTooling;
 use fs3_daemon::roots::ScanFileJob;
 use fs3_daemon::scan::{self, PARSER_VERSION};
@@ -17,7 +19,7 @@ const SOURCE: &[u8] = br##"{
   "dd": { "schema": "review/rescan", "sweep_exclude": true },
   "sections": [
     { "name": "tasks", "value": [
-      { "id": "tk-0001", "state": "checked", "result": "#checks/deep/tk-0001" }
+      { "id": "tk-0001", "state": "checked", "title": "Schema-ranked text", "noise": "Fallback-only text", "result": "#checks/deep/tk-0001" }
     ] },
     { "name": "checks", "value": { "deep": { "tk-0001": [
       { "id": "ck-0001", "state": "unchecked" }
@@ -109,11 +111,41 @@ fn tooling(version: &str, terminal: &[&str]) -> DdocTooling {
     }
 }
 
+fn tooling_with_task_prose(version: &str) -> DdocTooling {
+    let mut tooling = tooling(version, &["checked"]);
+    tooling
+        .facts
+        .get_mut("review/rescan")
+        .expect("fixture schema facts")
+        .prose_fields
+        .insert("tasks".to_owned(), vec!["title".to_owned()]);
+    tooling
+}
+
 fn task(root: &fs3_core::Element) -> &fs3_core::DdocMeta {
     root.children[0].children[0]
         .ddoc
         .as_deref()
         .expect("task row metadata")
+}
+
+fn row_content(root: &fs3_core::Element) -> Vec<(String, String, String)> {
+    fn collect(element: &fs3_core::Element, rows: &mut Vec<(String, String, String)>) {
+        if element.kind == fs3_core::ElementKind::Row {
+            rows.push((
+                element.address.clone(),
+                element.raw_text.clone(),
+                element.raw_hash().to_owned(),
+            ));
+        }
+        for child in &element.children {
+            collect(child, rows);
+        }
+    }
+
+    let mut rows = Vec::new();
+    collect(root, &mut rows);
+    rows
 }
 
 async fn stored(fixture: &Fixture) -> fs3_core::Element {
@@ -200,6 +232,61 @@ async fn unchanged_ddoc_rederives_when_tooling_version_changes() {
         Some(true)
     );
     assert_eq!(task(&refreshed).tooling_version.as_deref(), Some("dd-B"));
+
+    finish(fixture).await;
+}
+
+#[tokio::test]
+async fn unchanged_same_version_ddoc_reparses_when_schema_facts_appear() {
+    let fixture = fixture("ddoc_reparse_facts").await;
+    fixture
+        .state
+        .set_ddoc_tooling(fixture.worktree_id, tooling("0.1.0", &["checked"]))
+        .await;
+    scan::run(&fixture.state, fixture.job.clone())
+        .await
+        .expect("initial same-version scan without field facts");
+    let first = stored(&fixture).await;
+    assert_eq!(task(&first).embed_basis, EmbedBasis::Fallback);
+    assert_eq!(task(&first).tooling_version.as_deref(), Some("0.1.0"));
+    let fallback_text = first.children[0].children[0].raw_text.clone();
+    assert!(fallback_text.contains("Fallback-only text"));
+
+    fixture
+        .state
+        .set_ddoc_tooling(fixture.worktree_id, tooling_with_task_prose("0.1.0"))
+        .await;
+    scan::run(&fixture.state, fixture.job.clone())
+        .await
+        .expect("same version reparses after facts appear");
+    let refreshed = stored(&fixture).await;
+    assert_eq!(task(&refreshed).embed_basis, EmbedBasis::SchemaDeclared);
+    assert_eq!(task(&refreshed).tooling_version.as_deref(), Some("0.1.0"));
+    let declared_text = &refreshed.children[0].children[0].raw_text;
+    assert!(declared_text.contains("Schema-ranked text"));
+    assert!(!declared_text.contains("Fallback-only text"));
+    assert_ne!(declared_text, &fallback_text);
+
+    finish(fixture).await;
+}
+
+#[tokio::test]
+async fn unchanged_current_snapshot_reparse_preserves_row_text_and_hashes() {
+    let fixture = fixture("ddoc_reparse_identity").await;
+    fixture
+        .state
+        .set_ddoc_tooling(fixture.worktree_id, tooling_with_task_prose("0.1.0"))
+        .await;
+    scan::run(&fixture.state, fixture.job.clone())
+        .await
+        .expect("initial current-snapshot scan");
+    let before = row_content(&stored(&fixture).await);
+
+    scan::run(&fixture.state, fixture.job.clone())
+        .await
+        .expect("presented unchanged ddoc reparses");
+    let after = row_content(&stored(&fixture).await);
+    assert_eq!(after, before);
 
     finish(fixture).await;
 }

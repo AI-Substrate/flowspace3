@@ -248,30 +248,6 @@ pub fn enrich_tree(tree: &mut ElementTree, tooling: &DdocTooling, findings: &[St
     });
 }
 
-/// Whether a stored ddoc tree needs the current tooling snapshot applied.
-///
-/// Version strings are compared for equality only. They are opaque producer
-/// identities, not an ordered version vocabulary.
-#[must_use]
-pub fn needs_reenrichment(root: &Element, tooling: &DdocTooling) -> bool {
-    if tooling.is_absent() {
-        return false;
-    }
-    row_matches(root, &|meta| {
-        meta.tooling_version != tooling.version
-            || meta.derived_state.is_none()
-                && meta.rels.iter().any(|relation| relation.rel == "derives")
-    })
-}
-
-fn row_matches(element: &Element, predicate: &impl Fn(&fs3_core::DdocMeta) -> bool) -> bool {
-    element.ddoc.as_deref().is_some_and(predicate)
-        || element
-            .children
-            .iter()
-            .any(|child| row_matches(child, predicate))
-}
-
 /// Surface every unresolved source address as a finding on that row.
 ///
 /// Returns how many findings were attached. Repeated addresses remain repeated,
