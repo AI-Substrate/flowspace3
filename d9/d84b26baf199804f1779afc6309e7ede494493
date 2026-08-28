@@ -1,0 +1,20 @@
+docs/plans/008-ddocs-scan/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 9,12,17,21-70,74-381,383
+docs/plans/008-ddocs-scan/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 1-2,12,17,30,36-43,49-125
+docs/plans/008-ddocs-scan/plan.dd.json
+  h_9e71e8b09f7cf2 156-158
+docs/plans/008-ddocs-scan/plan.dd.md
+  h_9e71e8b09f7cf2 94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d9d84b26baf199804f1779afc6309e7ede494493",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
