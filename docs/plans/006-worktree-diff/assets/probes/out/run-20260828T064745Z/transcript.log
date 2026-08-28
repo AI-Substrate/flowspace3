@@ -1,0 +1,485 @@
+
+=== 2026-08-28T06:47:45Z — PREFLIGHT
+      healthy - fs3 daemon 0.4.0 at http://127.0.0.1:7373 (embedder: azure_openai, summarizer: azure_openai)
+      /var/run/postgresql:5432 - accepting connections
+      root 4183	/Users/jordanknight/substrate/chainglass
+      root 296	/Users/jordanknight/substrate/dd
+      root 288	/Users/jordanknight/substrate/dd-worktrees/agents-start-here
+      root 277	/Users/jordanknight/substrate/dd-worktrees/binary-rename
+      root 303	/Users/jordanknight/substrate/dd-worktrees/derive-verb
+      root 301	/Users/jordanknight/substrate/dd-worktrees/file-links
+      root 286	/Users/jordanknight/substrate/dd-worktrees/tally-absent
+      root 553	/Users/jordanknight/substrate/flowspace/flowspace3
+      root 377	/Users/jordanknight/substrate/flowspace/fs3-006-ua
+      root 415	/Users/jordanknight/substrate/flowspace/fs3-006-uc
+      root 121	/Users/jordanknight/substrate/flowspace/fs3-agentic-query
+      root 117	/Users/jordanknight/substrate/flowspace/fs3-daemon-auth
+      root 336	/Users/jordanknight/substrate/flowspace/fs3-ddocs-scan
+      root 336	/Users/jordanknight/substrate/flowspace/fs3-ddocs-u1
+      root 336	/Users/jordanknight/substrate/flowspace/fs3-ddocs-u3
+      root 307	/Users/jordanknight/substrate/flowspace/fs3-search-degenerate
+      root 454	/Users/jordanknight/substrate/flowspace/fs3-w-ingest-lane
+      root 579	/Users/jordanknight/substrate/flowspace/fs3-worktree-diff
+      root 1772	/Users/jordanknight/substrate/harness-engineering
+      root 1854	/Users/jordanknight/substrate/harness-engineering-worktrees/p086-hooks-repair
+      root 1771	/Users/jordanknight/substrate/harness-engineering-worktrees/s090-telemetry-remediation
+      root 1360	/Users/jordanknight/pi-hacking/pij
+      root 1446	/Users/jordanknight/pi-hacking/pij-worktrees/docs-fleet-live-findings
+      root 1367	/Users/jordanknight/pi-hacking/pij-worktrees/s103-1f916-comms-study
+      root 1356	/Users/jordanknight/pi-hacking/pij-worktrees/s104-busy-steer-head-truncation
+      root 1356	/Users/jordanknight/pi-hacking/pij-worktrees/s105-claude-socket-transport
+      root 1360	/Users/jordanknight/pi-hacking/pij-worktrees/s106-model-catalog-parity
+      root 1357	/Users/jordanknight/pi-hacking/pij-worktrees/s107-harness-checks-latency
+      root 1426	/Users/jordanknight/pi-hacking/pij-worktrees/s108-rust-port
+      root 1286	/Users/jordanknight/github/flowspace_2
+      run_id=20260828T064745Z
+      date_utc=2026-08-28T06:47:46Z
+      host=JordansacStudio.localdomain
+      flowspace3=flowspace3 0.4.0 [flowspace3]
+      git=git version 2.51.0
+      docker=Docker version 29.4.0, build 9d7ad9f
+      cargo=cargo 1.95.0 (f2d3ce0bd 2026-03-21) (Homebrew)
+      main_root=/Users/jordanknight/substrate/flowspace/flowspace3
+      probe_worktree=/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T064745Z
+      k_edited_files=8
+      daemon_url=default
+      daemon_log=/Users/jordanknight/.local/state/flowspace3/logs/flowspace3.log
+      database=flowspace3
+      probe_condition=go-live-live-stack
+      discovery_wait_seconds=70
+      discovery_wait_reason=two 30s worktree cadences plus 10s scheduling slack
+      disk_avail=215Gi
+    snapshot 00-baseline -> snap-00-baseline.env
+      at=2026-08-28T06:47:46Z
+      jobs_max_id=255474
+      worktrees=30
+      worktree_files=27576
+      elements=114851
+      smart_content=67958
+      embeddings=174323
+      repos=6
+      probe_worktree_rows=0
+      probe_worktree_files=0
+
+=== 2026-08-28T06:47:48Z — P1 — create a worktree of a registered repo and touch NOTHING
+      Preparing worktree (new branch 'poctest-wtdiff-20260828T064745Z')
+      Updating files:  51% (491/953)Updating files:  52% (496/953)Updating files:  53% (506/953)Updating files:  54% (515/953)Updating files:  55% (525/953)Updating files:  56% (534/953)Updating files:  57% (544/953)Updating files:  58% (553/953)Updating files:  59% (563/953)Updating files:  60% (572/953)Updating files:  61% (582/953)Updating files:  62% (591/953)Updating files:  63% (601/953)Updating files:  64% (610/953)Updating files:  65% (620/953)Updating files:  66% (629/953)Updating files:  67% (639/953)Updating files:  68% (649/953)Updating files:  69% (658/953)Updating files:  70% (668/953)Updating files:  71% (677/953)Updating files:  72% (687/953)Updating files:  73% (696/953)Updating files:  74% (706/953)Updating files:  75% (715/953)Updating files:  76% (725/953)Updating files:  77% (734/953)Updating files:  78% (744/953)Updating files:  79% (753/953)Updating files:  80% (763/953)Updating files:  81% (772/953)Updating files:  82% (782/953)Updating files:  83% (791/953)Updating files:  84% (801/953)Updating files:  85% (811/953)Updating files:  86% (820/953)Updating files:  87% (830/953)Updating files:  88% (839/953)Updating files:  89% (849/953)Updating files:  90% (858/953)Updating files:  91% (868/953)Updating files:  92% (877/953)Updating files:  93% (887/953)Updating files:  94% (896/953)Updating files:  95% (906/953)Updating files:  96% (915/953)Updating files:  97% (925/953)Updating files:  98% (934/953)Updating files:  99% (944/953)Updating files: 100% (953/953)Updating files: 100% (953/953), done.
+      HEAD is now at c8f5006 feat(daemon): worktree lifecycle detection and checkout-scoped search (#50)
+    waiting 70s (two 30s worktree cadences plus scheduling slack)
+    snapshot 01-after-worktree-create -> snap-01-after-worktree-create.env
+      at=2026-08-28T06:49:00Z
+      jobs_max_id=259538
+      worktrees=32
+      worktree_files=29702
+      elements=114913
+      smart_content=67988
+      embeddings=174372
+      repos=6
+      probe_worktree_rows=0
+      probe_worktree_files=0
+      counter                   00-baseline 01-after-worktree-create        delta
+      jobs_max_id                    255474       259538         4064
+      worktrees                          30           32            2
+      worktree_files                  27576        29702         2126
+      elements                       114851       114913           62
+      smart_content                   67958        67988           30
+      embeddings                     174323       174372           49
+      repos                               6            6            0
+      probe_worktree_rows                 0            0            0
+      probe_worktree_files                0            0            0
+         kind    |  state  | count 
+      -----------+---------+-------
+       embed     | done    |   512
+       embed     | pending |     2
+       scan_file | pending |  2126
+       summarize | pending |  1508
+      (4 rows)
+      
+    daemon log slice: 1281 lines -> daemon-p1.log
+    ANSWER P1: probe worktree present in registered roots = 0 (1 = auto-discovered, 0 = not)
+    ANSWER P1b: jobs enqueued for unchanged registered worktree = -1
+    scope the daemon resolved for the discovered checkout: {"cwd":"/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T064745Z","repo":"git:github.com/AI-Substrate/flowspace3","source":"cwd","warnings":["this checkout (/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T064745Z) is not registered; git:github.com/AI-Substrate/flowspace3 is indexed from /Users/jordanknight/substrate/flowspace/flowspace3, /Users/jordanknight/substrate/flowspace/fs3-006-ua, /Users/jordanknight/substrate/flowspace/fs3-006-uc, /Users/jordanknight/substrate/flowspace/fs3-agentic-query, /Users/jordanknight/substrate/flowspace/fs3-daemon-auth, /Users/jordanknight/substrate/flowspace/fs3-ddocs-scan, /Users/jordanknight/substrate/flowspace/fs3-ddocs-u1, /Users/jordanknight/substrate/flowspace/fs3-ddocs-u3, /Users/jordanknight/substrate/flowspace/fs3-search-degenerate, /Users/jordanknight/substrate/flowspace/fs3-w-ingest-lane, /Users/jordanknight/substrate/flowspace/fs3-worktree-diff, so the content answering you is that checkout's — `flowspace3 add /Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T064745Z` indexes this one as well"]}
+    steer: Weak match: describe the component in its own vocabulary rather than asking a question. — then: this checkout (/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T064745Z) is not registered; git:github.com/AI-Substrate/flowspace3 is indexed from /Users/jordanknight/substrate/flowspace/flowspace3, /Users/jordanknight/substrate/flowspace/fs3-006-ua, /Users/jordanknight/substrate/flowspace/fs3-006-uc, /Users/jordanknight/substrate/flowspace/fs3-agentic-query, /Users/jordanknight/substrate/flowspace/fs3-daemon-auth, /Users/jordanknight/substrate/flowspace/fs3-ddocs-scan, /Users/jordanknight/substrate/flowspace/fs3-ddocs-u1, /Users/jordanknight/substrate/flowspace/fs3-ddocs-u3, /Users/jordanknight/substrate/flowspace/fs3-search-degenerate, /Users/jordanknight/substrate/flowspace/fs3-w-ingest-lane, /Users/jordanknight/substrate/flowspace/fs3-worktree-diff, so the content answering you is that checkout's — `flowspace3 add /Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T064745Z` indexes this one as well — then: read a hit in full with `flowspace3 get <address>`, browse its file with `flowspace3 tree <address>`, or narrow with --path/--repo
+    default (no --limit) result count = 10
+
+=== 2026-08-28T06:49:06Z — P2a — explicitly re-add the auto-discovered tree: what does unchanged content cost?
+    snapshot 02-before-add -> snap-02-before-add.env
+      at=2026-08-28T06:49:06Z
+      jobs_max_id=259938
+      worktrees=32
+      worktree_files=29702
+      elements=114913
+      smart_content=67988
+      embeddings=174372
+      repos=6
+      probe_worktree_rows=0
+      probe_worktree_files=0
+      {
+        "ok": true,
+        "command": "add",
+        "v": 1,
+        "data": {
+          "enqueued": 553,
+          "files": 553,
+          "identity": "git:github.com/AI-Substrate/flowspace3",
+          "identity_source": "remote",
+          "pruned": [
+            {
+              "fix": "index it anyway with `[scan] standard_ignores = false`",
+              "path": "crates/parsers/fixtures/discovery-bare/__pycache__",
+              "reason": "standard-ignore"
+            },
+            {
+              "fix": "index it anyway with `[scan] standard_ignores = false`",
+              "path": "crates/parsers/fixtures/discovery-bare/build",
+              "reason": "standard-ignore"
+            },
+            {
+              "fix": "index it anyway with `[scan] standard_ignores = false`",
+              "path": "crates/parsers/fixtures/discovery-bare/dist",
+              "reason": "standard-ignore"
+            },
+            {
+              "fix": "index it anyway with `[scan] standard_ignores = false`",
+              "path": "crates/parsers/fixtures/discovery-bare/node_modules",
+              "reason": "standard-ignore"
+            },
+            {
+              "fix": "index it anyway with `[scan] standard_ignores = false`",
+              "path": "crates/parsers/fixtures/discovery-bare/vendor",
+              "reason": "standard-ignore"
+            },
+            {
+              "fix": "index it anyway with `[scan] standard_ignores = false`",
+              "path": "crates/parsers/fixtures/discovery-bare/venv",
+              "reason": "standard-ignore"
+            },
+            {
+              "fix": "index it anyway with `[scan] standard_ignores = false`",
+              "path": "docs/plans/005-convo-ingest/assets/inputs/__pycache__",
+              "reason": "standard-ignore"
+            }
+          ],
+          "removed": 0,
+          "root_path": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T064745Z",
+          "skipped": [
+            {
+              "count": 1,
+              "reason": "binary"
+            },
+            {
+              "count": 216,
+              "reason": "config-format"
+            },
+            {
+              "count": 4,
+              "reason": "too-small"
+            },
+            {
+              "count": 47,
+              "reason": "unsupported-extension"
+            }
+          ],
+          "unchanged": 0,
+          "worktree_id": 42
+        },
+        "next_action": "553 scan jobs queued — poll `flowspace3 status` until the queue is empty, then search"
+      }
+    probe scans left: 553 (daemon-wide 21219) — 0s, p2a
+    probe scans left: 553 (daemon-wide 21368) — 5s, p2a
+    probe scans left: 553 (daemon-wide 21515) — 10s, p2a
+    probe scans left: 553 (daemon-wide 21692) — 15s, p2a
+    probe scans left: 553 (daemon-wide 21866) — 20s, p2a
+    probe scans left: 553 (daemon-wide 22921) — 25s, p2a
+    probe scans left: 553 (daemon-wide 23498) — 30s, p2a
+    probe scans left: 553 (daemon-wide 23633) — 35s, p2a
+    probe scans left: 553 (daemon-wide 23654) — 40s, p2a
+    probe scans left: 553 (daemon-wide 23660) — 45s, p2a
+    probe scans left: 553 (daemon-wide 23637) — 50s, p2a
+    probe scans left: 553 (daemon-wide 24288) — 55s, p2a
+    probe scans left: 553 (daemon-wide 25366) — 60s, p2a
+    probe scans left: 553 (daemon-wide 25617) — 65s, p2a
+    probe scans left: 553 (daemon-wide 25647) — 70s, p2a
+    probe scans left: 553 (daemon-wide 25610) — 75s, p2a
+    probe scans left: 553 (daemon-wide 26033) — 80s, p2a
+    probe scans left: 553 (daemon-wide 27126) — 85s, p2a
+    probe scans left: 553 (daemon-wide 27086) — 90s, p2a
+    probe scans left: 553 (daemon-wide 27049) — 95s, p2a
+    probe scans left: 553 (daemon-wide 27020) — 100s, p2a
+    probe scans left: 553 (daemon-wide 26989) — 105s, p2a
+    probe scans left: 553 (daemon-wide 27353) — 110s, p2a
+    probe scans left: 553 (daemon-wide 28202) — 115s, p2a
+    probe scans left: 553 (daemon-wide 28179) — 120s, p2a
+    probe scans left: 553 (daemon-wide 28143) — 125s, p2a
+    probe scans left: 553 (daemon-wide 28116) — 130s, p2a
+    probe scans left: 553 (daemon-wide 28101) — 135s, p2a
+    probe scans left: 553 (daemon-wide 28636) — 140s, p2a
+    probe scans left: 553 (daemon-wide 29082) — 145s, p2a
+    probe scans left: 553 (daemon-wide 29039) — 150s, p2a
+    probe scans left: 553 (daemon-wide 29216) — 155s, p2a
+    probe scans left: 553 (daemon-wide 29397) — 160s, p2a
+    probe scans left: 553 (daemon-wide 29443) — 165s, p2a
+    probe scans left: 553 (daemon-wide 29405) — 170s, p2a
+    probe scans left: 553 (daemon-wide 29369) — 175s, p2a
+    probe scans left: 553 (daemon-wide 29343) — 180s, p2a
+    probe scans left: 553 (daemon-wide 29316) — 185s, p2a
+    probe scans left: 553 (daemon-wide 29290) — 190s, p2a
+    probe scans left: 553 (daemon-wide 29703) — 195s, p2a
+    probe scans left: 553 (daemon-wide 30226) — 200s, p2a
+    probe scans left: 553 (daemon-wide 30198) — 205s, p2a
+    probe scans left: 553 (daemon-wide 30167) — 210s, p2a
+    probe scans left: 553 (daemon-wide 30136) — 215s, p2a
+    probe scans left: 553 (daemon-wide 30098) — 220s, p2a
+    probe scans left: 553 (daemon-wide 30075) — 225s, p2a
+    probe scans left: 553 (daemon-wide 30045) — 230s, p2a
+    probe scans left: 553 (daemon-wide 30009) — 235s, p2a
+    probe scans left: 553 (daemon-wide 30223) — 240s, p2a
+    probe scans left: 553 (daemon-wide 30762) — 245s, p2a
+    probe scans left: 553 (daemon-wide 30976) — 250s, p2a
+    probe scans left: 553 (daemon-wide 31013) — 255s, p2a
+    probe scans left: 553 (daemon-wide 31368) — 260s, p2a
+    probe scans left: 553 (daemon-wide 31842) — 265s, p2a
+    probe scans left: 553 (daemon-wide 31814) — 270s, p2a
+    probe scans left: 553 (daemon-wide 31785) — 275s, p2a
+    probe scans left: 553 (daemon-wide 31957) — 280s, p2a
+    probe scans left: 553 (daemon-wide 32645) — 285s, p2a
+    probe scans left: 553 (daemon-wide 32610) — 290s, p2a
+    probe scans left: 553 (daemon-wide 32603) — 295s, p2a
+    probe scans left: 553 (daemon-wide 32579) — 300s, p2a
+    probe scans left: 553 (daemon-wide 32539) — 305s, p2a
+    probe scans left: 553 (daemon-wide 32504) — 310s, p2a
+    probe scans left: 553 (daemon-wide 32499) — 315s, p2a
+    probe scans left: 553 (daemon-wide 32499) — 320s, p2a
+    probe scans left: 553 (daemon-wide 32822) — 325s, p2a
+    probe scans left: 553 (daemon-wide 33235) — 330s, p2a
+    probe scans left: 553 (daemon-wide 33225) — 335s, p2a
+    probe scans left: 553 (daemon-wide 33185) — 340s, p2a
+    probe scans left: 553 (daemon-wide 33185) — 345s, p2a
+    probe scans left: 553 (daemon-wide 33206) — 350s, p2a
+    probe scans left: 553 (daemon-wide 33179) — 355s, p2a
+    probe scans left: 553 (daemon-wide 33166) — 360s, p2a
+    probe scans left: 553 (daemon-wide 33157) — 365s, p2a
+    probe scans left: 553 (daemon-wide 33125) — 370s, p2a
+    probe scans left: 553 (daemon-wide 33103) — 375s, p2a
+    probe scans left: 553 (daemon-wide 33072) — 380s, p2a
+    probe scans left: 553 (daemon-wide 33039) — 385s, p2a
+    probe scans left: 553 (daemon-wide 32995) — 390s, p2a
+    probe scans left: 553 (daemon-wide 32977) — 395s, p2a
+    probe scans left: 553 (daemon-wide 32962) — 400s, p2a
+    probe scans left: 553 (daemon-wide 32939) — 405s, p2a
+    probe scans left: 553 (daemon-wide 32919) — 410s, p2a
+    probe scans left: 553 (daemon-wide 32892) — 415s, p2a
+    probe scans left: 553 (daemon-wide 33037) — 420s, p2a
+    probe scans left: 553 (daemon-wide 33256) — 425s, p2a
+    probe scans left: 553 (daemon-wide 33674) — 430s, p2a
+    probe scans left: 553 (daemon-wide 34067) — 435s, p2a
+    probe scans left: 553 (daemon-wide 34331) — 440s, p2a
+    probe scans left: 553 (daemon-wide 34732) — 445s, p2a
+    probe scans left: 553 (daemon-wide 35182) — 450s, p2a
+    probe scans left: 553 (daemon-wide 35338) — 455s, p2a
+    probe scans left: 553 (daemon-wide 35573) — 460s, p2a
+    probe scans left: 553 (daemon-wide 35749) — 465s, p2a
+    probe scans left: 553 (daemon-wide 35871) — 470s, p2a
+    probe scans left: 553 (daemon-wide 35994) — 475s, p2a
+    probe scans left: 553 (daemon-wide 36111) — 480s, p2a
+    probe scans left: 553 (daemon-wide 36192) — 485s, p2a
+    probe scans left: 553 (daemon-wide 36276) — 490s, p2a
+    probe scans left: 553 (daemon-wide 36363) — 495s, p2a
+    probe scans left: 553 (daemon-wide 36455) — 500s, p2a
+    probe scans left: 553 (daemon-wide 36735) — 505s, p2a
+    probe scans left: 553 (daemon-wide 37613) — 510s, p2a
+    probe scans left: 553 (daemon-wide 38248) — 515s, p2a
+    probe scans left: 553 (daemon-wide 38850) — 520s, p2a
+    probe scans left: 553 (daemon-wide 39350) — 525s, p2a
+    probe scans left: 553 (daemon-wide 39453) — 530s, p2a
+    probe scans left: 553 (daemon-wide 39630) — 535s, p2a
+    probe scans left: 553 (daemon-wide 40233) — 540s, p2a
+    probe scans left: 553 (daemon-wide 40805) — 545s, p2a
+    probe scans left: 553 (daemon-wide 40884) — 550s, p2a
+    probe scans left: 553 (daemon-wide 40976) — 555s, p2a
+    probe scans left: 553 (daemon-wide 41115) — 560s, p2a
+    probe scans left: 553 (daemon-wide 41170) — 565s, p2a
+    probe scans left: 553 (daemon-wide 41217) — 570s, p2a
+    probe scans left: 553 (daemon-wide 41294) — 575s, p2a
+    probe scans left: 553 (daemon-wide 41368) — 580s, p2a
+    probe scans left: 553 (daemon-wide 41462) — 585s, p2a
+    probe scans left: 553 (daemon-wide 41675) — 590s, p2a
+    probe scans left: 553 (daemon-wide 41795) — 595s, p2a
+    WARNING: probe scans still pending after 600s (p2a)
+    settling 60s for enrichment of the probe's own content
+    snapshot 03-after-add -> snap-03-after-add.env
+      at=2026-08-28T07:00:57Z
+      jobs_max_id=304435
+      worktrees=49
+      worktree_files=47651
+      elements=117203
+      smart_content=67988
+      embeddings=174836
+      repos=6
+      probe_worktree_rows=1
+      probe_worktree_files=553
+      counter                  02-before-add 03-after-add        delta
+      jobs_max_id                    259938       304435        44497
+      worktrees                          32           49           17
+      worktree_files                  29702        47651        17949
+      elements                       114913       117203         2290
+      smart_content                   67988        67988            0
+      embeddings                     174372       174836          464
+      repos                               6            6            0
+      probe_worktree_rows                 0            1            1
+      probe_worktree_files                0          553          553
+         kind    |  state  | count 
+      -----------+---------+-------
+       embed     | done    |  4530
+       embed     | pending |     1
+       embed     | running |     1
+       scan_file | pending | 17949
+       summarize | pending | 10427
+      (5 rows)
+      
+      -- summaries stored since 2026-08-28T06:49:06Z (global: includes other seats' work)
+       summaries_global 
+      ------------------
+                      0
+      (1 row)
+      
+      -- embeddings stored since 2026-08-28T06:49:06Z (global)
+       source_kind | count 
+      -------------+-------
+       raw         |   465
+      (1 row)
+      
+      -- summaries attributable to the probe worktree, and divergent-only
+       summaries_probe | summaries_divergent_only 
+      -----------------+--------------------------
+                     0 |                        0
+      (1 row)
+      
+      -- raw embeddings attributable to the probe worktree, and divergent-only
+       embeddings_probe | embeddings_divergent_only 
+      ------------------+---------------------------
+                      0 |                         0
+      (1 row)
+      
+      -- provider CALL lines in the daemon log window are counted separately (daemon-*.log)
+    daemon log slice: 11892 lines -> daemon-p2a.log
+
+=== 2026-08-28T07:00:59Z — P2b — edit K=8 files, all uncommitted, and measure again
+    snapshot 04-before-edits -> snap-04-before-edits.env
+      at=2026-08-28T07:00:59Z
+      jobs_max_id=304500
+      worktrees=49
+      worktree_files=47651
+      elements=117235
+      smart_content=67988
+      embeddings=174837
+      repos=6
+      probe_worktree_rows=1
+      probe_worktree_files=553
+      edited: crates/cli/src/client.rs
+      edited: crates/cli/src/conversation.rs
+      edited: crates/cli/src/docs.rs
+      edited: crates/cli/src/doctor.rs
+      edited: crates/cli/src/lib.rs
+      edited: crates/cli/src/main.rs
+      edited: crates/cli/src/render/mod.rs
+      edited: crates/cli/src/render/progress.rs
+    waiting 20s for the watcher debounce window
+    probe scans left: 553 (daemon-wide 45531) — 0s, p2b
+    probe scans left: 553 (daemon-wide 46476) — 5s, p2b
+    probe scans left: 553 (daemon-wide 47048) — 10s, p2b
+    probe scans left: 553 (daemon-wide 47537) — 15s, p2b
+    probe scans left: 553 (daemon-wide 48023) — 20s, p2b
+    probe scans left: 553 (daemon-wide 48548) — 25s, p2b
+    probe scans left: 553 (daemon-wide 48518) — 30s, p2b
+    probe scans left: 553 (daemon-wide 48490) — 35s, p2b
+    probe scans left: 553 (daemon-wide 48467) — 40s, p2b
+    probe scans left: 553 (daemon-wide 48457) — 45s, p2b
+    probe scans left: 553 (daemon-wide 48426) — 50s, p2b
+    probe scans left: 553 (daemon-wide 48687) — 55s, p2b
+    probe scans left: 553 (daemon-wide 49026) — 60s, p2b
+    probe scans left: 553 (daemon-wide 49471) — 65s, p2b
+    probe scans left: 553 (daemon-wide 50057) — 70s, p2b
+    probe scans left: 553 (daemon-wide 50526) — 75s, p2b
+    probe scans left: 553 (daemon-wide 50804) — 80s, p2b
+    probe scans left: 553 (daemon-wide 50799) — 85s, p2b
+    probe scans left: 553 (daemon-wide 50788) — 90s, p2b
+    probe scans left: 553 (daemon-wide 50769) — 95s, p2b
+    probe scans left: 553 (daemon-wide 50737) — 100s, p2b
+    probe scans left: 553 (daemon-wide 50702) — 105s, p2b
+    probe scans left: 553 (daemon-wide 50677) — 110s, p2b
+    probe scans left: 553 (daemon-wide 50647) — 115s, p2b
+    probe scans left: 553 (daemon-wide 50620) — 120s, p2b
+    probe scans left: 553 (daemon-wide 50592) — 125s, p2b
+    probe scans left: 553 (daemon-wide 50558) — 130s, p2b
+    probe scans left: 553 (daemon-wide 50532) — 135s, p2b
+    probe scans left: 553 (daemon-wide 50496) — 140s, p2b
+    probe scans left: 553 (daemon-wide 50470) — 145s, p2b
+    probe scans left: 553 (daemon-wide 50435) — 150s, p2b
+    probe scans left: 553 (daemon-wide 50405) — 155s, p2b
+    probe scans left: 553 (daemon-wide 50372) — 160s, p2b
+    probe scans left: 553 (daemon-wide 50341) — 165s, p2b
+    probe scans left: 553 (daemon-wide 50315) — 170s, p2b
+    probe scans left: 553 (daemon-wide 50282) — 175s, p2b
+    probe scans left: 553 (daemon-wide 50254) — 180s, p2b
+    probe scans left: 553 (daemon-wide 50227) — 185s, p2b
+    probe scans left: 553 (daemon-wide 50211) — 190s, p2b
+    probe scans left: 553 (daemon-wide 50183) — 195s, p2b
+    probe scans left: 553 (daemon-wide 50151) — 200s, p2b
+    probe scans left: 553 (daemon-wide 50131) — 205s, p2b
+    probe scans left: 553 (daemon-wide 50105) — 210s, p2b
+    probe scans left: 553 (daemon-wide 50082) — 215s, p2b
+    probe scans left: 553 (daemon-wide 50068) — 220s, p2b
+    probe scans left: 553 (daemon-wide 50052) — 225s, p2b
+    probe scans left: 553 (daemon-wide 50019) — 230s, p2b
+    probe scans left: 553 (daemon-wide 49993) — 235s, p2b
+    probe scans left: 553 (daemon-wide 49959) — 240s, p2b
+    probe scans left: 553 (daemon-wide 49929) — 245s, p2b
+    probe scans left: 553 (daemon-wide 49901) — 250s, p2b
+    probe scans left: 553 (daemon-wide 49877) — 255s, p2b
+    probe scans left: 553 (daemon-wide 49854) — 260s, p2b
+    probe scans left: 553 (daemon-wide 49838) — 265s, p2b
+    probe scans left: 553 (daemon-wide 49819) — 270s, p2b
+    probe scans left: 553 (daemon-wide 49811) — 275s, p2b
+    probe scans left: 553 (daemon-wide 49777) — 280s, p2b
+    probe scans left: 553 (daemon-wide 49744) — 285s, p2b
+    probe scans left: 553 (daemon-wide 49709) — 290s, p2b
+    probe scans left: 553 (daemon-wide 49679) — 295s, p2b
+    probe scans left: 553 (daemon-wide 49654) — 300s, p2b
+    probe scans left: 553 (daemon-wide 49634) — 305s, p2b
+    probe scans left: 553 (daemon-wide 49615) — 310s, p2b
+    probe scans left: 553 (daemon-wide 49597) — 315s, p2b
+    probe scans left: 553 (daemon-wide 49576) — 320s, p2b
+    probe scans left: 553 (daemon-wide 49561) — 325s, p2b
+    probe scans left: 553 (daemon-wide 49547) — 330s, p2b
+    probe scans left: 553 (daemon-wide 49530) — 335s, p2b
+    probe scans left: 553 (daemon-wide 49518) — 340s, p2b
+    probe scans left: 553 (daemon-wide 49504) — 345s, p2b
+    probe scans left: 553 (daemon-wide 49485) — 350s, p2b
+    probe scans left: 553 (daemon-wide 49454) — 355s, p2b
+    probe scans left: 553 (daemon-wide 49428) — 360s, p2b
+    probe scans left: 553 (daemon-wide 49406) — 365s, p2b
+    probe scans left: 553 (daemon-wide 49380) — 370s, p2b
+    probe scans left: 553 (daemon-wide 49355) — 375s, p2b
+    probe scans left: 553 (daemon-wide 49345) — 380s, p2b
+    probe scans left: 553 (daemon-wide 49334) — 385s, p2b
+    probe scans left: 553 (daemon-wide 49330) — 390s, p2b
+    probe scans left: 553 (daemon-wide 49307) — 395s, p2b
+    probe scans left: 553 (daemon-wide 49282) — 400s, p2b
+    probe scans left: 553 (daemon-wide 49252) — 405s, p2b
+    probe scans left: 553 (daemon-wide 49227) — 410s, p2b
+    probe scans left: 553 (daemon-wide 49217) — 415s, p2b
+    probe scans left: 553 (daemon-wide 49196) — 420s, p2b
+    probe scans left: 553 (daemon-wide 49169) — 425s, p2b
+    probe scans left: 553 (daemon-wide 49150) — 430s, p2b
+WARNING:  terminating connection because of crash of another server process
+DETAIL:  The postmaster has commanded this server process to roll back the current transaction and exit, because another server process exited abnormally and possibly corrupted shared memory.
+HINT:  In a moment you should be able to reconnect to the database and repeat your command.
+psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+=== 2026-08-28T07:09:09Z — TEARDOWN (always runs)
+    removing worktree /Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T064745Z
+    evidence: /Users/jordanknight/substrate/flowspace/fs3-worktree-diff/docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z
+    disk avail: 195Gi

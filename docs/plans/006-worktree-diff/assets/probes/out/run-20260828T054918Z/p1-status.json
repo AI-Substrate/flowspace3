@@ -1,0 +1,97 @@
+{
+  "ok": true,
+  "command": "status",
+  "v": 1,
+  "data": {
+    "last_error": null,
+    "queue": [
+      {
+        "count": 13196,
+        "kind": "embed",
+        "state": "done",
+        "with_error": 0
+      },
+      {
+        "count": 4595,
+        "kind": "scan_file",
+        "state": "done",
+        "with_error": 0
+      },
+      {
+        "count": 7244,
+        "kind": "summarize",
+        "state": "done",
+        "with_error": 0
+      }
+    ],
+    "roots": [
+      {
+        "files": 322,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "files": 377,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/Users/jordanknight/substrate/flowspace/fs3-006-ua"
+      },
+      {
+        "files": 360,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/Users/jordanknight/substrate/flowspace/fs3-006-uc"
+      },
+      {
+        "files": 398,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/Users/jordanknight/substrate/flowspace/fs3-convo-ingest"
+      },
+      {
+        "files": 330,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/Users/jordanknight/substrate/flowspace/fs3-ddocs-scan"
+      },
+      {
+        "files": 305,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/Users/jordanknight/substrate/flowspace/fs3-hi-goldenbase"
+      },
+      {
+        "files": 356,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/Users/jordanknight/substrate/flowspace/fs3-hi-u-r"
+      },
+      {
+        "files": 356,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/Users/jordanknight/substrate/flowspace/fs3-hi-u-t"
+      },
+      {
+        "files": 356,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/Users/jordanknight/substrate/flowspace/fs3-hi-u-w"
+      },
+      {
+        "files": 373,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/Users/jordanknight/substrate/flowspace/fs3-human-interface"
+      },
+      {
+        "files": 307,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/Users/jordanknight/substrate/flowspace/fs3-search-degenerate"
+      },
+      {
+        "files": 423,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/Users/jordanknight/substrate/flowspace/fs3-worktree-diff"
+      },
+      {
+        "files": 322,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T054918Z"
+      }
+    ],
+    "schema_ahead": []
+  },
+  "next_action": "the queue is empty — `flowspace3 search \"<question>\"` will answer from the index"
+}
