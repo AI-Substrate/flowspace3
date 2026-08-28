@@ -307,6 +307,8 @@ pub enum SkipReason {
     Excluded,
     /// A data/config format, with `index_config_formats` off (PRD req 43).
     ConfigFormat,
+    /// A generated `*.dd.md` projection whose `*.dd.json` source is indexed.
+    GeneratedSibling,
     /// An extension fs3 has no opinion about — the observable no-grammar
     /// outcome PRD req 43 demands.
     UnsupportedExtension,
@@ -327,6 +329,7 @@ impl SkipReason {
         match self {
             SkipReason::Excluded => "excluded",
             SkipReason::ConfigFormat => "config-format",
+            SkipReason::GeneratedSibling => "generated-sibling",
             SkipReason::UnsupportedExtension => "unsupported-extension",
             SkipReason::TooLarge => "too-large",
             SkipReason::TooSmall => "too-small",
@@ -728,10 +731,11 @@ fn verdict(
     {
         return Err(SkipReason::ConfigFormat);
     }
-    // Generated projections are lossy and may be stale. They never become a
-    // second copy of the source document, even when config indexing is on.
+    // Discovery has paths and sizes but has not opened text yet, so empty bytes
+    // deliberately select only the suffix half of the shared helper. A caller
+    // that owns bytes can additionally reject a renamed projection by banner.
     if crate::is_generated_sibling(relative, b"") {
-        return Err(SkipReason::ConfigFormat);
+        return Err(SkipReason::GeneratedSibling);
     }
     if bytes > settings.max_file_bytes {
         return Err(SkipReason::TooLarge);

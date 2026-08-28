@@ -276,21 +276,30 @@ fn row_text(
         lines.push(parents.join(" / "));
     }
 
-    if let Some((prose_fields, string_fields)) = facts.and_then(|facts| facts.embeddable(section)) {
-        append_fields(&mut lines, row, prose_fields, "");
-        append_fields(&mut lines, row, string_fields, "context ");
-        (lines.join("\n"), EmbedBasis::SchemaDeclared)
-    } else {
-        for (field, value) in row {
-            if matches!(field.as_str(), "id" | "state") {
-                continue;
-            }
-            if let Some(text) = value.as_str() {
-                lines.push(format!("{field}: {text}"));
-            }
+    if let Some(facts) = facts {
+        let prose_fields = facts.prose_fields.get(section);
+        let string_fields = facts.string_fields.get(section);
+        if prose_fields.is_some() || string_fields.is_some() {
+            append_fields(&mut lines, row, prose_fields.map_or(&[], Vec::as_slice), "");
+            append_fields(
+                &mut lines,
+                row,
+                string_fields.map_or(&[], Vec::as_slice),
+                "context ",
+            );
+            return (lines.join("\n"), EmbedBasis::SchemaDeclared);
         }
-        (lines.join("\n"), EmbedBasis::Fallback)
     }
+
+    for (field, value) in row {
+        if matches!(field.as_str(), "id" | "state") {
+            continue;
+        }
+        if let Some(text) = value.as_str() {
+            lines.push(format!("{field}: {text}"));
+        }
+    }
+    (lines.join("\n"), EmbedBasis::Fallback)
 }
 
 fn append_fields(

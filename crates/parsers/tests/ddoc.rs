@@ -145,6 +145,27 @@ fn missing_schema_facts_use_the_explicit_fallback() {
 }
 
 #[test]
+fn a_string_only_schema_section_stays_schema_declared() {
+    let schema = DdocSchemaFacts {
+        schema: "fixture/string-only".into(),
+        string_fields: BTreeMap::from([("acceptance_criteria".into(), vec!["note".into()])]),
+        ..DdocSchemaFacts::default()
+    };
+    let tree = scan_ddoc(Path::new("docs/plain.dd.json"), PLAIN, Some(&schema)).unwrap();
+    let first = rows(&tree)[0];
+
+    assert_eq!(
+        first.ddoc.as_deref().unwrap().embed_basis,
+        EmbedBasis::SchemaDeclared
+    );
+    assert!(first.raw_text.contains("context note:"));
+    assert!(
+        !first.raw_text.contains("claim:"),
+        "undeclared strings must not leak in through fallback"
+    );
+}
+
+#[test]
 fn reordering_rows_preserves_addresses_and_raw_hashes() {
     let schema = facts("tasks", &["title"], &["note"]);
     let logical_path = Path::new("docs/tasks.dd.json");
@@ -205,7 +226,7 @@ fn assert_discovery_contract(result: &fs3_parsers::discovery::Discovery) {
     );
     assert_eq!(
         skipped.get("nested/source.dd.md"),
-        Some(&SkipReason::ConfigFormat)
+        Some(&SkipReason::GeneratedSibling)
     );
 }
 
