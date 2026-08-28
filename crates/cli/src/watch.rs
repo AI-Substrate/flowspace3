@@ -6,6 +6,7 @@
 
 use std::io::Write;
 
+use crate::DaemonClient;
 use anyhow::{Context, Result};
 use fs3_core::events::{Event, EventKind, Hello};
 
@@ -13,27 +14,18 @@ use fs3_core::events::{Event, EventKind, Hello};
 ///
 /// # Errors
 /// The daemon is unreachable, refuses the request, or emits an invalid line.
-pub async fn run(base_url: &str, heartbeat_ms: Option<u64>, human: bool) -> Result<()> {
-    let url = format!("{}/events", base_url.trim_end_matches('/'));
-    let client = reqwest::Client::new();
-    let mut request = client.get(&url);
-    if let Some(heartbeat_ms) = heartbeat_ms {
-        request = request.query(&[("heartbeat_ms", heartbeat_ms)]);
-    }
-    let mut response = request
-        .send()
+pub async fn run(client: &DaemonClient, heartbeat_ms: Option<u64>, human: bool) -> Result<()> {
+    let mut response = client
+        .events(heartbeat_ms)
         .await
-        .with_context(|| format!("fs3 daemon is not reachable at {base_url}"))?;
-    let status = response.status();
-    if !status.is_success() {
-        let body = response.text().await.unwrap_or_default();
-        anyhow::bail!("fs3 daemon at {base_url} answered {status}: {}", body.trim());
-    }
+        .map_err(|failure| anyhow::anyhow!(failure.render()))?;
 
     if !human {
         let mut stdout = std::io::stdout().lock();
         while let Some(chunk) = response.chunk().await.context("reading the event stream")? {
-            stdout.write_all(&chunk).context("writing the event stream")?;
+            stdout
+                .write_all(&chunk)
+                .context("writing the event stream")?;
             stdout.flush().context("flushing the event stream")?;
         }
         return Ok(());

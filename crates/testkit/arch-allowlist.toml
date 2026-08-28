@@ -191,6 +191,12 @@ external = [
   "tempfile",
   "thiserror",
   "tokio",
+  # Already transitive via sqlx (Cargo.lock:4528), so this direct dependency
+  # fetches no new code. ReceiverStream is Tokio's own mpsc-to-Stream adapter
+  # for axum's Body::from_stream; a hand-rolled stream is more failure surface,
+  # especially when a subscriber lags.
+  "tokio-stream",
+
   "toml",
   "tracing",
   "tracing-subscriber",

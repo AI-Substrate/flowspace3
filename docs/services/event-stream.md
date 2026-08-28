@@ -90,9 +90,11 @@ source of truth about what "done" means.
 | `root_changed` | `crates/daemon/src/roots.rs` (add/rescan) and `crates/daemon/src/remove.rs` (remove) |
 | `heartbeat` | the stream handler itself, per subscriber |
 
-`scan_progress` is emitted on a cadence (time- or count-based), never once per
-file: a 40,000-file walk must not turn into 40,000 lines that no human reads and
-no TUI can draw.
+`scan_progress` is emitted after every **256 files** or **1,000ms**, whichever
+comes first, plus one final totals line. The count bound keeps a 40,000-file
+walk near 157 volume-driven updates instead of 40,000 lines; the time bound
+keeps a cold page cache, large file or network filesystem from looking hung.
+Both are explicit because a default is a number nobody chose.
 
 ## What this stream is NOT
 
@@ -115,3 +117,47 @@ something other than an envelope; every other invocation, including plain
 | `status --watch` | the raw lines in JSON mode (an agent gets NDJSON it can parse), a live summary in human mode |
 | `tui` (u-t) | `job_done`/`job_failed` for the activity pane, `queue` for depth, `root_changed` for the roots pane; builds against a recorded fixture until composition |
 | `add` progress (u-r) | `scan_progress` while the POST is in flight; the meter is written to STDERR so stdout stays exactly what it was |
+
+## Implementation assumptions
+
+- Consumers attach before the activity they want to draw. The stream retains
+  no history; `/status` supplies current roots and queue truth after reconnect.
+- One broadcast send determines ordering and timestamp once, so concurrent
+  subscribers receive byte-identical work events in the same order.
+- Queue rows come from `fs3_store::queue_depth` after settlement. The stream
+  owns no shadow counters and therefore cannot drift from the store.
+- Heartbeat sequence numbers are per connection. They prove that connection's
+  liveness and are intentionally not identical between subscribers.
+
+## Snap-in recipe
+
+The composition root owns exactly one bounded broadcast. These are the wiring
+lines in `crates/daemon/src/wiring.rs`:
+
+```rust
+events: broadcast::Sender<Event>,
+
+let (events, _) = broadcast::channel(EVENT_CAPACITY);
+
+Ok(Self {
+    // existing services...
+    events,
+    // existing state...
+})
+```
+
+`EVENT_CAPACITY` is 256. Producers call synchronous `send`; each HTTP response
+has a separately bounded 256-line channel and closes when that channel fills or
+its broadcast receiver reports lag. No producer awaits either channel.
+
+The router hook in `crates/daemon/src/http.rs` is one line beside the existing
+read routes, before shared authentication is layered over the router:
+
+```rust
+.route("/events", get(events))
+```
+
+The handler enqueues `Hello` before starting its event task, then yields one
+compact serialized object plus `\n` per body frame. `status --watch` opens the
+route through `DaemonClient::events`, so the same per-boot bearer key policy
+applies here as to every other daemon request.

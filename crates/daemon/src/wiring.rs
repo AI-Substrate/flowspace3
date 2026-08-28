@@ -186,7 +186,13 @@ impl AppState {
     /// shape, not an indexing failure. The event is deliberately not retained:
     /// `/status` is the snapshot for consumers that need current truth.
     pub fn emit(&self, kind: EventKind) {
-        let _ = self.events.send(Event::new(now(), kind));
+        let _ = self.events.send(self.event(kind));
+    }
+
+    /// Stamp an event for one connection without broadcasting it.
+    #[must_use]
+    pub(crate) fn event(&self, kind: EventKind) -> Event {
+        Event::new(now(), kind)
     }
 
     /// Number of events one watcher may trail before the stream drops it.

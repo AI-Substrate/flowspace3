@@ -167,13 +167,9 @@ async fn scan_root(
     let discovery = discovery::discover(&root, &settings)?;
     let mut progress = ScanProgress::new(identity_key.clone(), root_path.clone());
 
-    let worktree_id = fs3_store::register_worktree(
-        &state.db,
-        &identity,
-        &root_path,
-        ref_name(&root).as_deref(),
-    )
-    .await?;
+    let worktree_id =
+        fs3_store::register_worktree(&state.db, &identity, &root_path, ref_name(&root).as_deref())
+            .await?;
 
     // Hash every accepted file, then write the map in one call. Hashing first
     // means a file that vanishes mid-walk is simply absent from the map rather

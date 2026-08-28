@@ -475,7 +475,8 @@ async fn drain_embed(state: &AppState) -> Drained {
                     }
                     Verdict::Retry => {
                         tracing::warn!(id, kind = EMBED, attempt, retrying = true, "{message}");
-                        match fs3_store::retry_job(&state.db, id, backoff(attempt), &message).await {
+                        match fs3_store::retry_job(&state.db, id, backoff(attempt), &message).await
+                        {
                             Ok(()) => {
                                 emit_failure(state, EMBED, subject, &message, attempt, false);
                                 emit_queue(state).await;
@@ -488,13 +489,7 @@ async fn drain_embed(state: &AppState) -> Drained {
                     }
                     Verdict::Fail => {
                         tracing::warn!(id, kind = EMBED, attempt, retrying = false, "{message}");
-                        match fs3_store::fail_job(
-                            &state.db,
-                            id,
-                            &message,
-                            !failure.retryable,
-                        )
-                        .await
+                        match fs3_store::fail_job(&state.db, id, &message, !failure.retryable).await
                         {
                             Ok(()) => {
                                 emit_failure(state, EMBED, subject, &message, attempt, true);
@@ -689,14 +684,7 @@ async fn settle(state: &AppState, job: Job) -> Drained {
                     // The store's terminal bit answers whether this work may
                     // revive after a fix. The event's terminal bit answers
                     // whether this run has stopped trying: every Fail is news.
-                    match fs3_store::fail_job(
-                        &state.db,
-                        id,
-                        &message,
-                        !failure.retryable,
-                    )
-                    .await
-                    {
+                    match fs3_store::fail_job(&state.db, id, &message, !failure.retryable).await {
                         Ok(()) => {
                             emit_failure(state, &kind, &subject, &message, attempts, true);
                             emit_queue(state).await;

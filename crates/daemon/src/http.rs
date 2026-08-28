@@ -15,14 +15,21 @@
 //! boot; the guard is for the case boot cannot cover — a database that moved
 //! underneath a running daemon.
 
+use std::convert::Infallible;
+use std::time::Duration;
+
 use anyhow::{Context, Result};
+use axum::body::{Body, Bytes};
 use axum::extract::{Query, State};
+use axum::http::{Response, header};
 use axum::middleware;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
+use tokio_stream::wrappers::ReceiverStream;
 
 use fs3_core::Port;
+use fs3_core::events::{EventKind, HEARTBEAT_MS, Hello};
 
 use crate::answer::{Answer, IntoFailure, failed, ok};
 use crate::auth::Auth;
@@ -55,12 +62,18 @@ impl Health {
     pub const OK: &'static str = "ok";
 }
 
+#[derive(Debug, Default, Deserialize)]
+struct EventQuery {
+    heartbeat_ms: Option<u64>,
+}
+
 /// Build the router. Separate from [`serve`] so tests get the real routes
 /// without owning a port or a runtime shutdown. Authentication is one outer
 /// layer, so every current and future route inherits it automatically.
 pub fn router(state: AppState, auth: Auth) -> Router {
     Router::new()
         .route("/health", get(health))
+        .route("/events", get(events))
         .route("/roots", post(add_root).get(status))
         .route("/status", get(status))
         .route("/scan", post(scan))
@@ -73,6 +86,69 @@ pub fn router(state: AppState, auth: Auth) -> Router {
         .route("/tree", get(tree))
         .with_state(state)
         .layer(middleware::from_fn_with_state(auth, crate::auth::require))
+}
+
+/// A live NDJSON feed. Each response owns its heartbeat and bounded output
+/// queue; neither can block the daemon's shared event producer.
+async fn events(State(state): State<AppState>, Query(query): Query<EventQuery>) -> Response<Body> {
+    let heartbeat_ms = query.heartbeat_ms.unwrap_or(HEARTBEAT_MS).max(1);
+    let subscription = state.subscribe();
+    let (sender, receiver) = tokio::sync::mpsc::channel(AppState::event_capacity());
+
+    let mut hello = Hello::new(env!("CARGO_PKG_VERSION"));
+    hello.heartbeat_ms = heartbeat_ms;
+    sender
+        .try_send(Ok::<_, Infallible>(ndjson(&hello)))
+        .expect("a new subscriber queue accepts its hello");
+
+    tokio::spawn(stream_events(state, subscription, sender, heartbeat_ms));
+
+    Response::builder()
+        .header(header::CONTENT_TYPE, "application/x-ndjson")
+        .body(Body::from_stream(ReceiverStream::new(receiver)))
+        .expect("the event response has valid static headers")
+}
+
+fn ndjson(value: &impl Serialize) -> Bytes {
+    let mut line = serde_json::to_vec(value).expect("frozen event types always serialize");
+    line.push(b'\n');
+    Bytes::from(line)
+}
+
+async fn stream_events(
+    state: AppState,
+    mut subscription: tokio::sync::broadcast::Receiver<fs3_core::Event>,
+    sender: tokio::sync::mpsc::Sender<Result<Bytes, Infallible>>,
+    heartbeat_ms: u64,
+) {
+    let period = Duration::from_millis(heartbeat_ms);
+    let mut heartbeat = tokio::time::interval_at(tokio::time::Instant::now() + period, period);
+    heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    let mut sequence = 0;
+
+    loop {
+        let line = tokio::select! {
+            biased;
+            received = subscription.recv() => match received {
+                Ok(event) => {
+                    heartbeat.reset();
+                    ndjson(&event)
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Closed)
+                | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => break,
+            },
+            _ = heartbeat.tick() => {
+                sequence += 1;
+                ndjson(&state.event(EventKind::Heartbeat { seq: sequence }))
+            }
+        };
+
+        // Full means this connection is slower than the producer. Drop it;
+        // an indexing task must never await a dashboard's socket.
+        if sender.try_send(Ok::<_, Infallible>(line)).is_err() {
+            break;
+        }
+    }
 }
 
 async fn remove(
@@ -421,5 +497,34 @@ pub async fn serve(state: AppState, address: &str, auth: Auth) -> Result<()> {
 async fn shutdown_signal() {
     if let Err(error) = tokio::signal::ctrl_c().await {
         tracing::error!(%error, "cannot listen for shutdown signal");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use fs3_core::{Config, EventKind};
+
+    #[tokio::test]
+    async fn a_full_subscriber_queue_ends_instead_of_blocking_the_producer() {
+        let state = AppState::from_config(Config::default()).expect("the fake stack wires");
+        let subscription = state.subscribe();
+        let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
+        sender
+            .try_send(Ok::<_, Infallible>(Bytes::from_static(b"hello\n")))
+            .expect("fills the subscriber queue");
+
+        let pump = tokio::spawn(stream_events(state.clone(), subscription, sender, 60_000));
+        state.emit(EventKind::Heartbeat { seq: 1 });
+        tokio::time::timeout(Duration::from_secs(1), pump)
+            .await
+            .expect("a slow subscriber is dropped promptly")
+            .expect("the stream task does not panic");
+
+        assert_eq!(receiver.recv().await.unwrap().unwrap(), "hello\n");
+        assert!(
+            receiver.recv().await.is_none(),
+            "the full consumer channel is closed"
+        );
     }
 }

@@ -465,12 +465,7 @@ async fn run(command: Command) -> Result<ExitCode> {
         } => {
             let client = client_for(daemon_url)?;
             if watching {
-                watch::run(
-                    client.base_url(),
-                    heartbeat_ms,
-                    output_mode() == OutputMode::Human,
-                )
-                .await?;
+                watch::run(&client, heartbeat_ms, output_mode() == OutputMode::Human).await?;
                 Ok(ExitCode::SUCCESS)
             } else {
                 Ok(emit(&client.status().await))
