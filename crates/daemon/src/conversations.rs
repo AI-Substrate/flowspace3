@@ -36,7 +36,7 @@
 
 use fs3_core::conversation::earns_summary;
 use fs3_core::envelope::Failure;
-use fs3_core::{Conversation, ConversationId, Element, ToolInput, Turn, TurnItem, catalog};
+use fs3_core::{Conversation, ConversationId, Element, Turn, catalog};
 use serde::{Deserialize, Serialize};
 
 use crate::enrich;
@@ -51,26 +51,10 @@ pub const UNANCHORED: &str = "conv:unanchored";
 
 /// How much of a tool result is kept (workshop 005, C2).
 ///
-/// A constant rather than a config knob, per the workshop's own sketch:
-/// measured, this keeps 62.7% of results whole and the opening lines of every
-/// error — errors front-load — at 35.6% of the output bytes. It becomes a knob
-/// the day someone has a number that beats it, and not before.
-pub const OUTPUT_HEAD_BYTES: usize = 512;
-
-/// Tools whose input is the file they are about to write.
-///
-/// Measured at 1.2MB of a 2.85MB input side: the body is the very next commit,
-/// so storing it here doubles the input bill for zero search value (C3). The
-/// PATH and the size are kept, because "which file, how big" is the part a
-/// search is ever going to ask about.
-const WRITE_FAMILY: [&str; 6] = [
-    "write",
-    "edit",
-    "str_replace",
-    "create",
-    "apply_patch",
-    "patch",
-];
+/// Re-exported from [`fs3_core`], which owns the payload policy: the importer
+/// applies the same rules on the way in, and two copies of a truncation
+/// constant are a constant that drifts (plan 005 risk r3).
+pub use fs3_core::OUTPUT_HEAD_BYTES;
 
 /// What a caller posts.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
@@ -152,6 +136,9 @@ pub async fn intake(state: &AppState, request: IntakeRequest) -> Result<IntakeRe
         base_sha: request.base_sha,
         title: request.title,
         started_at: request.started_at,
+        // The transcript-import surface knows nothing about session sidecars;
+        // the parent link is established by the ingest path (plan 005).
+        parent: None,
     };
 
     fs3_store::upsert_conversation(&state.db, &header)
@@ -210,6 +197,10 @@ pub struct ConversationRow {
     pub turns: i64,
     /// When it began, RFC 3339 in UTC.
     pub started_at: String,
+    /// `conv:<guid>` of the conversation this is a child of, for a claude
+    /// subagent sidecar. Absent for everything else.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent: Option<String>,
 }
 
 /// What `conversation list` answers with.
@@ -266,6 +257,10 @@ pub async fn list(state: &AppState, request: &ListRequest) -> Result<Conversatio
                 worktree: row.worktree,
                 turns: row.turns,
                 started_at: row.started_at,
+                // The navigable half of the link: `conv:<guid>` is what `get`
+                // and `tree` take, so a child's parent is one copy-paste away
+                // rather than a guid the caller has to re-address.
+                parent: row.parent.as_ref().map(ConversationId::address),
             })
             .collect(),
     })
@@ -331,85 +326,27 @@ pub fn next_after_intake(report: &IntakeReport) -> String {
 
 /// Apply workshop 005's payload rulings to one turn.
 ///
+/// Delegates to [`fs3_core::shape_turn`] so the policy has ONE implementation.
+/// Plan 005's importer must apply the same rules the intake enforces, and a
+/// second copy of a truncation rule is a rule that drifts — so the policy, the
+/// write-family list and the character-boundary cut moved to `fs3-core` and
+/// this delegates to them.
+///
+/// Intake still ENFORCES rather than trusts: a client that posts an unshaped
+/// turn is shaped here exactly as before. That backstop is unchanged, and the
+/// tests below are its regression oracle — they are byte-identical to the ones
+/// that guarded the private implementation.
+///
 /// Idempotent: shaping an already-shaped turn changes nothing, which is what
 /// lets the importer shape cheaply and this enforce without double-cutting.
-fn shape(mut turn: Turn) -> Turn {
-    for item in &mut turn.items {
-        match item {
-            TurnItem::ToolCall { tool, input } => {
-                if let ToolInput::Verbatim { text } = input
-                    && is_write_family(tool)
-                {
-                    *input = ToolInput::Elided {
-                        path: first_line(text).to_string(),
-                        bytes: text.len() as u64,
-                    };
-                }
-            }
-            TurnItem::ToolResult {
-                head,
-                total_bytes,
-                truncated,
-                ..
-            } => {
-                // `total_bytes` describes the WHOLE result, so it is only ours
-                // to set when this is the first cut: a client that already
-                // truncated knows a number we cannot recover.
-                if head.len() > OUTPUT_HEAD_BYTES {
-                    if !*truncated {
-                        *total_bytes = head.len() as u64;
-                    }
-                    head.truncate(floor_char_boundary(head, OUTPUT_HEAD_BYTES));
-                    *truncated = true;
-                }
-            }
-        }
-    }
-    turn
-}
-
-/// Whether this tool's input is a file body we are about to commit anyway.
-///
-/// Matched on the tool name's last segment and case-insensitively, because
-/// harnesses spell the same tool `Write`, `write`, `str_replace_editor` and
-/// `fs.write` — and a policy that only catches one spelling is a policy that
-/// silently stores the bodies from the others.
-fn is_write_family(tool: &str) -> bool {
-    let name = tool.rsplit(['.', '/', ':']).next().unwrap_or(tool);
-    WRITE_FAMILY
-        .iter()
-        .any(|family| name.eq_ignore_ascii_case(family) || starts_with_family(name, family))
-}
-
-fn starts_with_family(name: &str, family: &str) -> bool {
-    name.len() > family.len()
-        && name.is_char_boundary(family.len())
-        && name[..family.len()].eq_ignore_ascii_case(family)
-        && !name.as_bytes()[family.len()].is_ascii_alphanumeric()
-}
-
-/// The first line, which for a write-family call is where the path is.
-fn first_line(text: &str) -> &str {
-    text.lines().next().unwrap_or("").trim()
-}
-
-/// The largest cut at or below `limit` that does not split a character.
-///
-/// `String::truncate` panics on a byte index inside a multi-byte character, and
-/// a transcript is exactly where one appears — the 512th byte of a tool result
-/// lands mid-character sooner or later, and a panic in intake would lose the
-/// whole batch.
-fn floor_char_boundary(text: &str, limit: usize) -> usize {
-    let mut cut = limit.min(text.len());
-    while cut > 0 && !text.is_char_boundary(cut) {
-        cut -= 1;
-    }
-    cut
+fn shape(turn: Turn) -> Turn {
+    fs3_core::shape_turn(turn)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use fs3_core::{ToolInput, TurnItem};
 
     fn call(tool: &str, text: &str) -> TurnItem {
         TurnItem::ToolCall {

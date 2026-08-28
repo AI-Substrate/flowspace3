@@ -129,15 +129,18 @@ to that file queues freely.
 UPDATE jobs SET state = 'running', attempts = attempts + 1, updated_at = now()
  WHERE id = (SELECT id FROM jobs
               WHERE state = 'pending' AND not_before <= now() AND kind = ANY($1)
-              ORDER BY priority DESC, not_before
+              ORDER BY priority DESC, id DESC
               FOR UPDATE SKIP LOCKED
               LIMIT 1)
 RETURNING id, kind, dedupe_key, payload, attempts
 ```
 
 `SKIP LOCKED` is the whole point: a row another worker is mid-claim on is stepped
-over rather than waited on, so N workers polling together get N different jobs and
-none of them block. That is what lets an LLM job and an embedding job run at once.
+over rather than waited on, so N workers polling together get N different jobs
+and none block. Priority wins first; equal-priority work is LIFO by immutable
+enqueue id, so a fresh edit is served ahead of bootstrap residue. `not_before`
+remains only the eligibility gate: a parked/retrying row stays invisible until
+due and does not become "new" because its backoff timestamp moved.
 `complete_job` / `fail_job` settle it, and `retry_job(id, delay, error)` puts a
 claimed row back as `pending`, due again after `delay`.
 

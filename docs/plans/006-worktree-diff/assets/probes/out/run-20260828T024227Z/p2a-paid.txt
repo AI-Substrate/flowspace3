@@ -1,0 +1,24 @@
+-- summaries stored since 2026-08-28T02:43:00Z (global: includes other seats' work)
+ summaries_global 
+------------------
+                0
+(1 row)
+
+-- embeddings stored since 2026-08-28T02:43:00Z (global)
+ source_kind | count 
+-------------+-------
+(0 rows)
+
+-- summaries attributable to the probe worktree, and divergent-only
+ summaries_probe | summaries_divergent_only 
+-----------------+--------------------------
+               0 |                        0
+(1 row)
+
+-- raw embeddings attributable to the probe worktree, and divergent-only
+ embeddings_probe | embeddings_divergent_only 
+------------------+---------------------------
+                0 |                         0
+(1 row)
+
+-- provider CALL lines in the daemon log window are counted separately (daemon-*.log)

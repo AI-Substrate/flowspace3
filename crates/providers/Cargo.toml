@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Real implementations of the fs3 Embedder and Summarizer ports."
+description = "Real implementations of fs3 provider ports."
 
 [dependencies]
 fs3-core.workspace = true
@@ -13,6 +13,10 @@ azure_core.workspace = true
 azure_identity.workspace = true
 fastembed.workspace = true
 reqwest.workspace = true
+# Reading git-ai's machine-wide metrics store (plan 005): the store is sqlite
+# written by another tool, and `bundled` pins which sqlite parses it rather
+# than inheriting the host's. The one new dependency edge this plan grants.
+rusqlite.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 # `spawn_blocking` only: the local ONNX session is CPU-bound and blocking, and

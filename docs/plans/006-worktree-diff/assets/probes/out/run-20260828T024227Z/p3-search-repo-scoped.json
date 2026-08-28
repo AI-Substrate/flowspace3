@@ -1,0 +1,51 @@
+{
+  "ok": true,
+  "command": "search",
+  "v": 1,
+  "data": {
+    "results": [
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/cli/src/client.rs::poctest_20260828T024227Z_version_probe",
+        "kind": "function",
+        "match_field": "raw",
+        "name": "poctest_20260828T024227Z_version_probe",
+        "path": "crates/cli/src/client.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.7749554992056263,
+        "smart": null,
+        "snippet": "fn poctest_20260828T024227Z_version_probe() -> &'static str {\n    \"pineapple lighthouse semaphore\"\n}",
+        "span": [
+          268,
+          270
+        ],
+        "subkind": "function_item",
+        "tags": []
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/skills/eng-harness-0-harnessability-assessment/templates/assessment-latest.md::Harnessability Assessment — sample-service::Scenario probes",
+        "kind": "section",
+        "match_field": "raw",
+        "name": "Scenario probes",
+        "path": ".claude/skills/eng-harness-0-harnessability-assessment/templates/assessment-latest.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.4644621805589044,
+        "smart": null,
+        "snippet": "## Scenario probes\n\n- API behavior loop (applicable): highest plausible proof today L3; missing a fixture-backed smoke test on one route.\n- State/storage loop (applicable): highest plausible proof today L2; missing a containerized local database plus seed/reset.",
+        "span": [
+          194,
+          198
+        ],
+        "subkind": "atx_heading",
+        "tags": []
+      }
+    ]
+  },
+  "meta": {
+    "scope": {
+      "cwd": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T024227Z",
+      "repo": "git:github.com/AI-Substrate/flowspace3",
+      "source": "flag"
+    }
+  },
+  "next_action": "read a hit in full with `flowspace3 get <address>`, browse its file with `flowspace3 tree <address>`, or narrow with --path/--repo"
+}

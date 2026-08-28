@@ -36,15 +36,25 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use fs3_core::{
-    ChatProvider, Config, DatabaseConfig, Embedder, Port, ProviderInstance, Summarizer,
+    ChatProvider, Config, DatabaseConfig, Embedder, Event, EventKind, Port, ProviderInstance,
+    Summarizer,
 };
 use fs3_providers::{
     AzureCredential, AzureOpenAiChatClient, AzureOpenAiConfig, AzureOpenAiEmbedder,
-    AzureOpenAiSummarizer, OpenAiEmbedder, OpenAiSummarizer,
+    AzureOpenAiSummarizer, OpenAiCompatChatClient, OpenAiCompatConfig, OpenAiCompatEmbedder,
+    OpenAiCompatSummarizer, OpenAiEmbedder, OpenAiSummarizer,
 };
 // `PgPool` reaches the daemon through `fs3-store`, which owns the sqlx edge.
 // The daemon has no direct `sqlx` dependency, and the arch-check enforces that.
 use fs3_store::{PgPool, connect_lazy};
+use tokio::sync::broadcast;
+
+/// Events retained per subscriber before a lagging watcher is disconnected.
+///
+/// Producers only call [`broadcast::Sender::send`], which never waits. A
+/// subscriber that falls more than this many events behind receives `Lagged`
+/// and the HTTP handler closes its stream rather than slowing indexing.
+const EVENT_CAPACITY: usize = 256;
 use fs3_testkit::{FakeChatProvider, FakeEmbedder, FakeSummarizer};
 
 /// Everything an HTTP handler or worker needs, wired once at startup.
@@ -58,6 +68,8 @@ pub struct AppState {
     repo_embedders: BTreeMap<String, Arc<dyn Embedder>>,
     /// Repos that named a different summarizer, by repo identity.
     repo_summarizers: BTreeMap<String, Arc<dyn Summarizer>>,
+    /// One non-blocking fan-out for every live event-stream subscriber.
+    events: broadcast::Sender<Event>,
     /// The chat model the `ask` verb drives unless a repo says otherwise.
     pub agent: Arc<dyn ChatProvider>,
     /// Repos that named a different chat model, by repo identity.
@@ -156,6 +168,7 @@ impl AppState {
         }
 
         let db = build_store(&config.database)?;
+        let (events, _) = broadcast::channel(EVENT_CAPACITY);
 
         // Not an error worth refusing to serve over: a daemon that cannot name
         // its own binary can still index, search and answer. It just has no
@@ -172,12 +185,39 @@ impl AppState {
             summarizer,
             repo_embedders,
             repo_summarizers,
+            events,
             agent,
             repo_agents,
             db,
             config,
             install_path,
         })
+    }
+    /// Attach one live watcher to the daemon event fan-out.
+    #[must_use]
+    pub fn subscribe(&self) -> broadcast::Receiver<Event> {
+        self.events.subscribe()
+    }
+
+    /// Publish one event without ever waiting for a watcher.
+    ///
+    /// `send` failing means nobody is attached, which is the common idle
+    /// shape, not an indexing failure. The event is deliberately not retained:
+    /// `/status` is the snapshot for consumers that need current truth.
+    pub fn emit(&self, kind: EventKind) {
+        let _ = self.events.send(self.event(kind));
+    }
+
+    /// Stamp an event for one connection without broadcasting it.
+    #[must_use]
+    pub(crate) fn event(&self, kind: EventKind) -> Event {
+        Event::new(now(), kind)
+    }
+
+    /// Number of events one watcher may trail before the stream drops it.
+    #[must_use]
+    pub const fn event_capacity() -> usize {
+        EVENT_CAPACITY
     }
 
     /// The embedder to use for `repo` — its override, or the active default.
@@ -289,8 +329,22 @@ fn build_embedder(name: &str, instance: &ProviderInstance) -> Result<Arc<dyn Emb
         } => Arc::new(OpenAiEmbedder::new(
             model,
             api_base.clone(),
-            api_key(api_key_env, name)?,
+            api_key(api_key_env, name, "openai")?,
         )),
+        ProviderInstance::OpenAiCompat {
+            base_url,
+            model,
+            api_key_env,
+            dimensions,
+            max_tokens,
+        } => Arc::new(OpenAiCompatEmbedder::new(openai_compat_config(
+            name,
+            base_url,
+            model,
+            api_key_env.as_deref(),
+            *dimensions,
+            *max_tokens,
+        )?)),
         ProviderInstance::AzureOpenAi {
             endpoint,
             deployment,
@@ -333,6 +387,20 @@ fn build_agent(name: &str, instance: &ProviderInstance) -> Result<Arc<dyn ChatPr
             api_version,
             api_key_env.as_deref(),
         )?)),
+        ProviderInstance::OpenAiCompat {
+            base_url,
+            model,
+            api_key_env,
+            dimensions,
+            max_tokens,
+        } => Arc::new(OpenAiCompatChatClient::new(openai_compat_config(
+            name,
+            base_url,
+            model,
+            api_key_env.as_deref(),
+            *dimensions,
+            *max_tokens,
+        )?)),
         ProviderInstance::OpenAi { .. } => anyhow::bail!(
             "provider instance `{name}` is kind = \"openai\", which cannot serve the agent \
              port: fs3 has no OpenAI chat adapter yet. Name an `azure_openai` instance in \
@@ -351,8 +419,22 @@ fn build_summarizer(name: &str, instance: &ProviderInstance) -> Result<Arc<dyn S
         } => Arc::new(OpenAiSummarizer::new(
             model,
             api_base.clone(),
-            api_key(api_key_env, name)?,
+            api_key(api_key_env, name, "openai")?,
         )),
+        ProviderInstance::OpenAiCompat {
+            base_url,
+            model,
+            api_key_env,
+            dimensions,
+            max_tokens,
+        } => Arc::new(OpenAiCompatSummarizer::configured(openai_compat_config(
+            name,
+            base_url,
+            model,
+            api_key_env.as_deref(),
+            *dimensions,
+            *max_tokens,
+        )?)),
         ProviderInstance::AzureOpenAi {
             endpoint,
             deployment,
@@ -409,12 +491,71 @@ fn azure_config(
     ))
 }
 
-fn api_key(variable: &str, instance: &str) -> Result<String> {
+fn api_key(variable: &str, instance: &str, kind: &str) -> Result<String> {
     std::env::var(variable).with_context(|| {
         format!(
-            "provider instance `{instance}` is `kind = \"openai\"`, which needs an API key in \
-             ${variable}. Export it, put it in secrets.env, point `api_key_env` at another \
-             variable, or select an instance with `kind = \"fake\"` to run offline."
+            "provider instance `{instance}` is kind = \"{kind}\", which needs an API key in \
+             ${variable}. Export it or put {variable}=… in secrets.env (the secrets file named \
+             by `flowspace3 config show`); secrets never belong in config.toml. Select a \
+             `kind = \"fake\"` instance to run offline."
         )
     })
+}
+
+fn openai_compat_config(
+    name: &str,
+    base_url: &str,
+    model: &str,
+    api_key_env: Option<&str>,
+    dimensions: Option<usize>,
+    max_tokens: Option<usize>,
+) -> Result<OpenAiCompatConfig> {
+    let mut config = OpenAiCompatConfig::new(base_url).with_model(model);
+    if let Some(api_key_env) = api_key_env {
+        config = config.with_api_key_from_env(api_key_env).with_context(|| {
+            format!(
+                "provider instance `{name}` is kind = \"openai_compat\" and needs \
+                 {api_key_env}=… in the environment or secrets.env (the secrets file named by \
+                 `flowspace3 config show`); never put the key in config.toml"
+            )
+        })?;
+    }
+    if let Some(dimensions) = dimensions {
+        config = config.with_dimensions(dimensions);
+    }
+    if let Some(max_tokens) = max_tokens {
+        config = config.with_max_tokens(max_tokens);
+    }
+    Ok(config)
+}
+
+/// Current UTC time in the frozen event-wire spelling, without a date crate.
+fn now() -> String {
+    let elapsed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default();
+    let seconds = elapsed.as_secs();
+    let (days, rest) = (seconds / 86_400, seconds % 86_400);
+    let (year, month, day) = civil_from_days(days as i64);
+    format!(
+        "{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}.{:03}Z",
+        rest / 3600,
+        (rest % 3600) / 60,
+        rest % 60,
+        elapsed.subsec_millis()
+    )
+}
+
+/// Days since the Unix epoch to a civil date (Howard Hinnant's algorithm).
+fn civil_from_days(days: i64) -> (i64, u32, u32) {
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let year = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = (doy - (153 * mp + 2) / 5 + 1) as u32;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
+    (if month <= 2 { year + 1 } else { year }, month, day)
 }

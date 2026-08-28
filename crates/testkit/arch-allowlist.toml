@@ -93,6 +93,14 @@ internal = ["fs3-core", "fs3-testkit@dev"]
 # async worker thread. Core stays tokio-free, which is the line that matters.
 # `axum@dev` serves the offline stub HTTP server the Azure tests answer from —
 # a fake, and dev-only by suffix.
+#
+# `rusqlite` is plan 005's ONE new dependency edge, granted by the impl-guide
+# for the git-ai metrics-db reader: that store is a sqlite database somebody
+# else writes, so reading it is a bundled-sqlite query and the alternative is
+# hand-rolling a file format. Bundled rather than system-linked, so a build
+# needs no libsqlite3 on the host. It lands HERE and not in `fs3-parsers`
+# because the readers are IO port impls (prime ruling SA1, 2026-08-28) and this
+# is the crate that already ships blocking, world-touching adapters.
 external = [
   "async-trait",
   "axum@dev",
@@ -100,6 +108,7 @@ external = [
   "azure_identity",
   "fastembed",
   "reqwest",
+  "rusqlite",
   "serde",
   "serde_json",
   "tokio",
@@ -193,6 +202,12 @@ external = [
   "tempfile",
   "thiserror",
   "tokio",
+  # Already transitive via sqlx (Cargo.lock:4528), so this direct dependency
+  # fetches no new code. ReceiverStream is Tokio's own mpsc-to-Stream adapter
+  # for axum's Body::from_stream; a hand-rolled stream is more failure surface,
+  # especially when a subscriber lags.
+  "tokio-stream",
+
   "toml",
   "tracing",
   "tracing-subscriber",
@@ -224,13 +239,19 @@ external = [
 internal = ["fs3-core", "fs3-daemon", "fs3-store", "fs3-testkit@dev"]
 external = [
   "anyhow",
+  "anstream",
   "clap",
+  "comfy-table",
+  "crossterm",
+  "owo-colors",
+  "ratatui",
   "reqwest",
   # PRD req-0053: sha256 of the bundled skill's content — pure computation, no IO.
   "sha2",
   "serde",
   "serde_json",
   "tokio",
+  "textwrap",
   "toml",
   # DEV only: doctor's daemon row is probed against a stub /health server — a
   # fake, not a mock (workshop 001 rule 5).

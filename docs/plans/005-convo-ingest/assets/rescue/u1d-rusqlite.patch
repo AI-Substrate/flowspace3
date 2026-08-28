@@ -1,0 +1,34 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index 1fdee31..a0c5bb0 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -65,6 +65,14 @@ notify = "8"
+ # `default-features = false` keeps the diesel/postgres/serde halves out.
+ pgvector = { version = "0.4", default-features = false, features = ["sqlx"] }
+ reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
++# Reading git-ai's machine-wide metrics store (plan 005, u1d): that database is
++# sqlite written by ANOTHER tool, so the reader is a query rather than a file
++# format fs3 would otherwise hand-roll. `bundled` compiles the amalgamation in
++# rather than linking the host's libsqlite3: we do not control which sqlite
++# wrote the file, so controlling which one parses it is the only determinism
++# available — and a host-linked build that works on a dev Mac and fails in CI
++# is a defect found at the worst possible time.
++rusqlite = { version = "0.37", features = ["bundled"] }
+ serde = { version = "1", features = ["derive"] }
+ serde_json = "1"
+ # The one hash in fs3: element `raw_hash` (the dirtiness key) and the content
+diff --git a/crates/providers/Cargo.toml b/crates/providers/Cargo.toml
+index 0ff63c8..ebd94be 100644
+--- a/crates/providers/Cargo.toml
++++ b/crates/providers/Cargo.toml
+@@ -13,6 +13,10 @@ azure_core.workspace = true
+ azure_identity.workspace = true
+ fastembed.workspace = true
+ reqwest.workspace = true
++# Reading git-ai's machine-wide metrics store (plan 005): the store is sqlite
++# written by another tool, and `bundled` pins which sqlite parses it rather
++# than inheriting the host's. The one new dependency edge this plan grants.
++rusqlite.workspace = true
+ serde.workspace = true
+ serde_json.workspace = true
+ # `spawn_blocking` only: the local ONNX session is CPU-bound and blocking, and

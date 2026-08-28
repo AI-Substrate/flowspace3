@@ -27,6 +27,7 @@ pub mod conversations;
 pub mod ddoc;
 pub mod elements;
 pub mod embeddings;
+pub mod ingest_cursors;
 pub mod jobs;
 pub mod messages;
 pub mod read;
@@ -53,7 +54,8 @@ pub use embeddings::{
     query_embeddings, search_elements,
 };
 pub use jobs::{
-    Job, QueueDepth, claim_job, claim_jobs, complete_job, enqueue_job, fail_job, jobs_remaining,
+    JOB_PRIORITY_DEFAULT, JOB_PRIORITY_NEW_WORKTREE_SCAN, Job, JobPriority, QueueDepth, claim_job,
+    claim_jobs, complete_job, enqueue_job, enqueue_job_with_priority, fail_job, jobs_remaining,
     last_failure, park_job, queue_depth, requeue_failed, requeue_running, retry_job,
 };
 pub use messages::{ack_message, live_messages, sync_messages};
@@ -149,6 +151,30 @@ pub enum StoreError {
         expected: usize,
         /// The width the caller offered.
         actual: usize,
+    },
+    /// A session was offered under a different conversation than the one it is
+    /// already tailing.
+    ///
+    /// Its own variant rather than a silent update because the caller can act
+    /// on it and a retry cannot: `ingest_ledger` is keyed by session and
+    /// carries no conversation, so its rows would not move with the rebind —
+    /// the ledger would insist every record is stored while the newly named
+    /// conversation held nothing, forever, with every call reporting success.
+    /// A session moving conversations is a bug in resolution, not an update.
+    #[error(
+        "session {harness}/{session_id} already tails conversation {stored}, not {offered} — \
+         a session cannot move conversations: its ledger is keyed by session and would not \
+         move with it, leaving {offered} permanently empty while every call reported success"
+    )]
+    SessionRebound {
+        /// The store whose session this is.
+        harness: String,
+        /// The session that is already tailing something else.
+        session_id: String,
+        /// The conversation it is already tailing.
+        stored: String,
+        /// The conversation it was offered under.
+        offered: String,
     },
 }
 

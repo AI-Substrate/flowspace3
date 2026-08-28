@@ -1,0 +1,81 @@
+2026-08-28T04:56:57.220144Z  INFO fs3_daemon::watch: re-listed a changed directory directory=/Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/providers/src/conversation_sources events=2 enqueued=1 settled=Quiet
+2026-08-28T04:56:57.505439Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/providers/src/conversation_sources/metrics_db.rs ms=92 left=26
+2026-08-28T04:56:57.544348Z  INFO fs3_daemon::runner: progress phase="working" scanned=5407 scan_left=0 summarized=7232 summarize_left=23 embedded=14203 embed_left=3 failed=0
+2026-08-28T04:56:57.567897Z  INFO fs3_daemon::runner: batch kind="embed" subject=42 x raw jobs=3 ms=16
+2026-08-28T04:56:57.572511Z  INFO fs3_daemon::runner: done kind="embed" id=54861 left=25
+2026-08-28T04:56:57.581868Z  INFO fs3_daemon::runner: done kind="embed" id=54881 left=24
+2026-08-28T04:56:57.585011Z  INFO fs3_daemon::runner: done kind="embed" id=54875 left=23
+2026-08-28T04:56:57.601077Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::RepoScope ms=12 left=24
+2026-08-28T04:56:57.601945Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::MetricsDbSource ms=9 left=24
+2026-08-28T04:56:57.603593Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::MetricsDbSource::open ms=8 left=23
+2026-08-28T04:56:57.607690Z  INFO fs3_daemon::runner: batch kind="embed" subject=3 x smart jobs=3 ms=1
+2026-08-28T04:56:57.610430Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::read_only_uri ms=11 left=23
+2026-08-28T04:56:57.612258Z  INFO fs3_daemon::runner: done kind="embed" id=54884 left=22
+2026-08-28T04:56:57.618034Z  INFO fs3_daemon::runner: done kind="embed" id=54883 left=21
+2026-08-28T04:56:57.620315Z  INFO fs3_daemon::runner: done kind="embed" id=54882 left=20
+2026-08-28T04:56:57.626856Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T04:56:57.630293Z  INFO fs3_daemon::runner: done kind="embed" id=54885 left=20
+2026-08-28T04:56:57.631997Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::Dialect ms=7 left=19
+2026-08-28T04:56:57.638424Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=3
+2026-08-28T04:56:57.644409Z  INFO fs3_daemon::runner: done kind="embed" id=54886 left=19
+2026-08-28T04:56:57.645987Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::Row ms=12 left=18
+2026-08-28T04:56:57.649412Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T04:56:57.651579Z  INFO fs3_daemon::runner: done kind="embed" id=54887 left=18
+2026-08-28T04:56:57.652552Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::rfc3339_from_unix_seconds ms=5 left=17
+2026-08-28T04:56:57.657146Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T04:56:57.658778Z  INFO fs3_daemon::runner: done kind="embed" id=54888 left=17
+2026-08-28T04:56:57.659586Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::rowid_from ms=6 left=16
+2026-08-28T04:56:57.662707Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T04:56:57.664214Z  INFO fs3_daemon::runner: done kind="embed" id=54889 left=16
+2026-08-28T04:56:57.665052Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::MetricsDbSource ms=4 left=15
+2026-08-28T04:56:57.667359Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T04:56:57.668671Z  INFO fs3_daemon::runner: done kind="embed" id=54890 left=15
+2026-08-28T04:56:57.669375Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::MetricsDbSource::resolve ms=3 left=14
+2026-08-28T04:56:57.673237Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T04:56:57.676349Z  INFO fs3_daemon::runner: done kind="embed" id=54891 left=14
+2026-08-28T04:56:57.677112Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::MetricsDbSource::read_incremental ms=7 left=13
+2026-08-28T04:56:57.679534Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T04:56:57.681113Z  INFO fs3_daemon::runner: done kind="embed" id=54892 left=13
+2026-08-28T04:56:57.683336Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::assemble ms=5 left=12
+2026-08-28T04:56:57.685900Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T04:56:57.687399Z  INFO fs3_daemon::runner: done kind="embed" id=54893 left=12
+2026-08-28T04:56:57.688105Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::claude_row ms=4 left=11
+2026-08-28T04:56:57.690093Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T04:56:57.691680Z  INFO fs3_daemon::runner: done kind="embed" id=54894 left=11
+2026-08-28T04:56:57.692410Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::claude_source ms=3 left=10
+2026-08-28T04:56:57.697939Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T04:56:57.702892Z  INFO fs3_daemon::runner: done kind="embed" id=54895 left=10
+2026-08-28T04:56:57.703758Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::claude_content ms=10 left=9
+2026-08-28T04:56:57.705861Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T04:56:57.707313Z  INFO fs3_daemon::runner: done kind="embed" id=54896 left=9
+2026-08-28T04:56:57.708305Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::claude_block ms=4 left=8
+2026-08-28T04:56:57.711521Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T04:56:57.713372Z  INFO fs3_daemon::runner: done kind="embed" id=54897 left=7
+2026-08-28T04:56:57.718184Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::copilot_row ms=9 left=7
+2026-08-28T04:56:57.720952Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::copilot_record ms=5 left=7
+2026-08-28T04:56:57.743673Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=24
+2026-08-28T04:56:57.746444Z  INFO fs3_daemon::runner: done kind="embed" id=54898 left=6
+2026-08-28T04:56:57.751020Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T04:56:57.753744Z  INFO fs3_daemon::runner: done kind="embed" id=54899 left=6
+2026-08-28T04:56:57.755229Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::render_text ms=6 left=5
+2026-08-28T04:56:57.758107Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T04:56:57.759613Z  INFO fs3_daemon::runner: done kind="embed" id=54900 left=5
+2026-08-28T04:56:57.760371Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::tests ms=4 left=4
+2026-08-28T04:56:57.762981Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T04:56:57.765064Z  INFO fs3_daemon::runner: done kind="embed" id=54901 left=4
+2026-08-28T04:56:57.765896Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::tests::a_foreign_cursor_is_refused_rather_than_read_as_zero ms=5 left=3
+2026-08-28T04:56:57.768044Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T04:56:57.769833Z  INFO fs3_daemon::runner: done kind="embed" id=54902 left=3
+2026-08-28T04:56:57.770564Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::tests::a_row_with_no_timestamp_at_all_is_dropped_rather_than_dated_with_a_hole ms=4 left=2
+2026-08-28T04:56:57.772736Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T04:56:57.774182Z  INFO fs3_daemon::runner: done kind="embed" id=54903 left=2
+2026-08-28T04:56:57.775140Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/providers/src/conversation_sources/metrics_db.rs::tests::epoch_seconds_render_as_rfc3339_utc ms=4 left=1
+2026-08-28T04:56:57.776103Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T04:56:57.777590Z  INFO fs3_daemon::runner: done kind="embed" id=54904 left=0
+2026-08-28T04:56:57.788510Z  INFO fs3_daemon::runner: progress phase="idle" scanned=5407 scan_left=0 summarized=7255 summarize_left=0 embedded=14229 embed_left=0 failed=0
+2026-08-28T04:57:07.224279Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p1-noop-jobs.txt ms=9 left=1
+2026-08-28T04:57:07.226936Z  INFO fs3_daemon::watch: re-listed a changed directory directory=/Users/jordanknight/substrate/flowspace/fs3-worktree-diff/docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z events=32 enqueued=1 settled=Quiet
+2026-08-28T04:57:07.250282Z  INFO fs3_daemon::runner: progress phase="working" scanned=5408 scan_left=0 summarized=7255 summarize_left=0 embedded=14229 embed_left=1 failed=0
+2026-08-28T04:57:07.257101Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=3
+2026-08-28T04:57:07.260882Z  INFO fs3_daemon::runner: done kind="embed" id=54906 left=0
+2026-08-28T04:57:07.279998Z  INFO fs3_daemon::runner: progress phase="idle" scanned=5408 scan_left=0 summarized=7255 summarize_left=0 embedded=14230 embed_left=0 failed=0

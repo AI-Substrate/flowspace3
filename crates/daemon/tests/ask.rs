@@ -16,9 +16,13 @@ mod support;
 use std::sync::Arc;
 
 use fs3_core::envelope::Envelope;
-use fs3_core::{ChatTurn, Config, DatabaseConfig, ToolCall};
+use fs3_core::{
+    BlobRef, ChatTurn, Config, DatabaseConfig, Element, ElementKind, RepoIdentity, Span, ToolCall,
+    content_hash, element_address,
+};
 use fs3_daemon::router;
 use fs3_daemon::wiring::AppState;
+use fs3_store::{NewEmbedding, SourceKind};
 use fs3_testkit::fakes::FakeChatProvider;
 use serde_json::{Value, json};
 
@@ -47,6 +51,146 @@ async fn daemon_answering_with(
     let pool = state.db.clone();
     // Since #43 every route sits behind the daemon key, so the test carries one
     // like any real caller.
+    let auth = support::auth(label);
+    let base = support::spawn(router(state, auth.auth)).await;
+    (base, auth.key, database, pool)
+}
+
+/// Seed one searchable element and return the exact address search emits.
+async fn seed_search_hit(state: &AppState, question: &str) -> String {
+    let root = "/srv/ask-trace";
+    let identity = RepoIdentity::from_path(std::path::Path::new(root));
+    let identity_text = identity.to_string();
+    let worktree = fs3_store::register_worktree(&state.db, &identity, root, Some("main"))
+        .await
+        .expect("registers the fixture worktree");
+    let path = "src/watcher.rs";
+    let text = "watcher debounce returns only changed directories";
+    let child_address = format!("{path}::debounce");
+    let child = Element::new(
+        ElementKind::Function,
+        "function_item",
+        "debounce",
+        &child_address,
+        Span::new(1, 1),
+        text,
+    );
+    let file = Element::new(
+        ElementKind::File,
+        "source_file",
+        path,
+        path,
+        Span::new(1, 1),
+        "fixture file containing the watcher function",
+    )
+    .with_children(vec![child]);
+    let blob = BlobRef::new("1111111111111111111111111111111111111111").expect("a blob key");
+
+    fs3_store::upsert_element_tree(&state.db, &blob, "test-parser@1", &file, |_| false)
+        .await
+        .expect("stores the fixture element");
+    fs3_store::sync_worktree_files(&state.db, worktree, &[(path.to_string(), blob)])
+        .await
+        .expect("maps the fixture file");
+
+    let vector = state
+        .embedder_for(&identity_text)
+        .embed(&[question.to_string()])
+        .await
+        .expect("the fake embeds")
+        .pop()
+        .expect("one vector");
+    let raw_hash = content_hash(text.as_bytes());
+    fs3_store::put_embeddings(
+        &state.db,
+        &state.embedder_key(&identity_text),
+        &[NewEmbedding {
+            source_hash: &raw_hash,
+            source_kind: SourceKind::Raw,
+            vector: &vector,
+            truncated: false,
+        }],
+    )
+    .await
+    .expect("stores the fixture vector");
+
+    element_address(Some(&identity_text), &child_address)
+}
+
+/// Wire a daemon with one real search hit and a scripted search → get → answer run.
+async fn daemon_with_search_hit(
+    label: &str,
+    question: &str,
+) -> (
+    String,
+    String,
+    String,
+    support::FreshDatabase,
+    fs3_store::PgPool,
+) {
+    let database = support::FreshDatabase::create(label).await;
+    let config = Config {
+        database: DatabaseConfig {
+            url: database.url(),
+        },
+        ..Config::default()
+    };
+    let mut state = AppState::from_config(config).expect("the fake stack wires");
+    fs3_store::migrate(&state.db).await.expect("migrates");
+    let address = seed_search_hit(&state, question).await;
+    state.agent = Arc::new(FakeChatProvider::scripted(vec![
+        tool_call("search", &json!({"query": question}).to_string()),
+        tool_call("get", &json!({"address": address}).to_string()),
+        prose("the watcher returns only changed directories"),
+    ]));
+
+    let pool = state.db.clone();
+    let auth = support::auth(label);
+    let base = support::spawn(router(state, auth.auth)).await;
+    (base, auth.key, address, database, pool)
+}
+
+/// Wire a daemon whose active model has an index but whose search resolves no hits.
+async fn daemon_with_no_hit_search(
+    label: &str,
+    question: &str,
+) -> (String, String, support::FreshDatabase, fs3_store::PgPool) {
+    let database = support::FreshDatabase::create(label).await;
+    let config = Config {
+        database: DatabaseConfig {
+            url: database.url(),
+        },
+        ..Config::default()
+    };
+    let mut state = AppState::from_config(config).expect("the fake stack wires");
+    fs3_store::migrate(&state.db).await.expect("migrates");
+    let vector = state
+        .embedder_for("")
+        .embed(&[question.to_string()])
+        .await
+        .expect("the fake embeds")
+        .pop()
+        .expect("one vector");
+    let orphan_hash = "a".repeat(64);
+    fs3_store::put_embeddings(
+        &state.db,
+        &state.embedder_key(""),
+        &[NewEmbedding {
+            source_hash: &orphan_hash,
+            source_kind: SourceKind::Raw,
+            vector: &vector,
+            truncated: false,
+        }],
+    )
+    .await
+    .expect("stores an index row with no resolvable element");
+    state.agent = Arc::new(FakeChatProvider::scripted(vec![
+        tool_call("search", &json!({"query": question}).to_string()),
+        prose("I could not find evidence for that in the index"),
+        prose("I could not find evidence for that in the index"),
+    ]));
+
+    let pool = state.db.clone();
     let auth = support::auth(label);
     let base = support::spawn(router(state, auth.auth)).await;
     (base, auth.key, database, pool)
@@ -83,6 +227,48 @@ fn tool_call(name: &str, arguments: &str) -> ChatTurn {
         }],
         tokens_used: Some(10),
     }
+}
+
+#[tokio::test]
+async fn a_daemon_that_cannot_answer_says_so_on_the_envelope_not_in_the_prose() {
+    // The reported bug, as a regression. A daemon wired to the offline fake
+    // returned ok:true with answer "The offline fake has no scripted answer."
+    // and citations [] — so a machine consumer, which our own envelope rule
+    // tells to branch on `ok` alone, banked a placeholder as a finding.
+    // `grounded:false` and a suspicious next_action were both present and both
+    // in the wrong place: neither is where a machine looks.
+    //
+    // An UNSCRIPTED fake is the production shape here, so this test asks for
+    // exactly that rather than scripting one.
+    let database = support::FreshDatabase::create("ask-cannot-answer").await;
+    let config = Config {
+        database: DatabaseConfig {
+            url: database.url(),
+        },
+        ..Config::default()
+    };
+    let state = AppState::from_config(config).expect("the fake arms wire with no keys");
+    fs3_store::migrate(&state.db).await.expect("migrates");
+    let pool = state.db.clone();
+    let auth = support::auth("ask-cannot-answer");
+    let key = auth.key.clone();
+    let base = support::spawn(router(state, auth.auth)).await;
+
+    let envelope = post_ask(&base, &key, "anything at all").await;
+
+    assert!(
+        !envelope.ok,
+        "a daemon that cannot answer must FAIL, not succeed with a placeholder: {envelope:?}"
+    );
+    let failure = envelope.error.expect("a failure");
+    assert_eq!(failure.code, "FS3-E-PROVIDER-CANNOT-ANSWER");
+    // The fix has to name the thing to change, or the caller is stuck knowing
+    // only that it did not work.
+    assert!(failure.fix.contains("[agent] active"), "{}", failure.fix);
+    // And nothing was spent finding out.
+    assert!(envelope.data.is_none(), "no report is produced");
+
+    database.destroy(pool).await;
 }
 
 #[tokio::test]
@@ -157,6 +343,47 @@ async fn a_search_against_an_empty_index_is_reported_to_the_model_not_hidden() {
         data["citations"].as_array().expect("citations").is_empty(),
         "nothing was read, so nothing is cited"
     );
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn search_hits_and_full_reads_are_distinct_in_the_trace() {
+    let question = "how does the watcher debounce changed directories?";
+    let (base, key, address, database, pool) =
+        daemon_with_search_hit("ask-search-hits", question).await;
+
+    let envelope = post_ask(&base, &key, question).await;
+    assert!(envelope.ok, "{envelope:?}");
+    let data = envelope.data.expect("an ask report");
+    let trace = data["trace"].as_array().expect("a trace");
+
+    assert_eq!(trace.len(), 2);
+    assert_eq!(trace[0]["tool"], "search");
+    assert_eq!(trace[0]["search_hits"], json!([address]));
+    assert_eq!(trace[1]["tool"], "get");
+    assert_eq!(trace[1]["search_hits"], json!([]));
+    assert_eq!(data["citations"], json!([address]));
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn a_no_hit_search_records_no_addresses_and_is_not_evidence() {
+    let question = "a subject absent from every mapped element";
+    let (base, key, database, pool) =
+        daemon_with_no_hit_search("ask-no-search-hits", question).await;
+
+    let envelope = post_ask(&base, &key, question).await;
+    assert!(envelope.ok, "{envelope:?}");
+    let data = envelope.data.expect("an ask report");
+    let search = &data["trace"][0];
+
+    assert_eq!(search["tool"], "search");
+    assert_eq!(search["failed"], false);
+    assert_eq!(search["evidence"], false);
+    assert_eq!(search["search_hits"], json!([]));
+    assert_eq!(data["citations"], json!([]));
 
     database.destroy(pool).await;
 }

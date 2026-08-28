@@ -1,0 +1,12 @@
+   blob   |                              address                              |                      raw_head                      
+----------+-------------------------------------------------------------------+----------------------------------------------------
+ 4e3b91e6 | crates/cli/src/client.rs::poctest_20260828T045428Z_version_probe  | fn poctest_20260828T045428Z_version_probe() -> &'s
+ 91ff0744 | crates/cli/src/conversation.rs::poctest_20260828T045428Z_marker_1 | fn poctest_20260828T045428Z_marker_1() -> u32 { 1 
+ 4434277a | crates/cli/src/docs.rs::poctest_20260828T045428Z_marker_2         | fn poctest_20260828T045428Z_marker_2() -> u32 { 2 
+ e785ec06 | crates/cli/src/doctor.rs::poctest_20260828T045428Z_marker_3       | fn poctest_20260828T045428Z_marker_3() -> u32 { 3 
+ 39e1864d | crates/cli/src/lib.rs::poctest_20260828T045428Z_marker_4          | fn poctest_20260828T045428Z_marker_4() -> u32 { 4 
+ 18154bd1 | crates/cli/src/main.rs::poctest_20260828T045428Z_marker_5         | fn poctest_20260828T045428Z_marker_5() -> u32 { 5 
+ 7a6dcd3b | crates/cli/src/settings.rs::poctest_20260828T045428Z_marker_6     | fn poctest_20260828T045428Z_marker_6() -> u32 { 6 
+ df14bd9b | crates/cli/src/show.rs::poctest_20260828T045428Z_marker_7         | fn poctest_20260828T045428Z_marker_7() -> u32 { 7 
+(8 rows)
+

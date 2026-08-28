@@ -1,0 +1,14 @@
+                           address                           | element_rows | versions 
+-------------------------------------------------------------+--------------+----------
+ crates/cli/src/client.rs                                    |            2 |        2
+ crates/cli/src/client.rs::DaemonClient                      |            4 |        2
+ crates/cli/src/client.rs::DaemonClient::add                 |            2 |        2
+ crates/cli/src/client.rs::DaemonClient::base_url            |            2 |        2
+ crates/cli/src/client.rs::DaemonClient::conversation_import |            2 |        2
+ crates/cli/src/client.rs::DaemonClient::conversation_list   |            2 |        2
+ crates/cli/src/client.rs::DaemonClient::conversation_remove |            2 |        2
+ crates/cli/src/client.rs::DaemonClient::envelope            |            2 |        2
+ crates/cli/src/client.rs::DaemonClient::gc                  |            2 |        2
+ crates/cli/src/client.rs::DaemonClient::get                 |            2 |        2
+(10 rows)
+

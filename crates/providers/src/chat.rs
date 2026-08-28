@@ -111,6 +111,7 @@ impl fs3_core::ChatProvider for AzureOpenAiChatClient {
         // An empty `choices` is a well-formed response that answers nothing.
         // Reporting it as a provider failure is honest; inventing an empty turn
         // would make the loop spin against a model that is saying nothing.
+
         let message = response
             .choices
             .into_iter()
@@ -121,6 +122,10 @@ impl fs3_core::ChatProvider for AzureOpenAiChatClient {
                     "Azure OpenAI chat returned no choices; nothing to answer with".to_string(),
                 )
             })?;
+
+        // The budget covers the whole turn, so use Azure's total rather than
+        // undercounting either the prompt or completion side.
+        let tokens_used = response.usage.and_then(|usage| usage.total_tokens);
 
         Ok(fs3_core::ChatTurn {
             content: message.content,
@@ -133,10 +138,9 @@ impl fs3_core::ChatProvider for AzureOpenAiChatClient {
                     arguments: call.function.arguments,
                 })
                 .collect(),
-            // Azure reports usage, but this adapter does not yet read it back.
-            // `None` is the honest answer: see `ChatTurn::tokens_used`, where
-            // unknown must never be mistaken for free.
-            tokens_used: None,
+            // Missing usage stays unknown: treating an unmeasured turn as free
+            // would make the loop's configured token ceiling dishonest.
+            tokens_used,
         })
     }
 
@@ -309,10 +313,17 @@ impl ChatToolDefinition {
     }
 }
 
-/// A successful completion. Azure may add fields; only choices drive the loop.
+/// A successful completion. Azure may add fields; choices and usage drive the loop.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct ChatCompletionResponse {
     pub choices: Vec<ChatChoice>,
+    usage: Option<ChatUsage>,
+}
+
+/// Total tokens reported for one completed turn.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+struct ChatUsage {
+    total_tokens: Option<u64>,
 }
 
 /// One candidate assistant turn.

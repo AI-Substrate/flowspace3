@@ -1,0 +1,112 @@
+{
+  "ok": true,
+  "command": "search",
+  "v": 1,
+  "data": {
+    "results": [
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/providers/src/chat.rs::ChatTool::function",
+        "kind": "function",
+        "match_field": "raw",
+        "name": "function",
+        "path": "crates/providers/src/chat.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.30860671401024087,
+        "smart": null,
+        "snippet": "pub fn function(function: ChatToolDefinition) -> Self {\n        Self {\n            kind: \"function\",\n            function,\n        }",
+        "span": [
+          254,
+          259
+        ],
+        "subkind": "function_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/fs3-agentic-query"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/core/src/events.rs::Hello",
+        "kind": "container",
+        "match_field": "raw",
+        "name": "Hello",
+        "path": "crates/core/src/events.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.25031309573909455,
+        "smart": null,
+        "snippet": "impl Hello {\n    /// The greeting for a daemon of `version`.\n    #[must_use]\n    pub fn new(version: impl Into<String>) -> Self {\n        Hello {",
+        "span": [
+          77,
+          88
+        ],
+        "subkind": "impl_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/fs3-hi-u-r"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/core/src/events.rs::Hello::new",
+        "kind": "function",
+        "match_field": "raw",
+        "name": "new",
+        "path": "crates/core/src/events.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.21055872973449685,
+        "smart": null,
+        "snippet": "pub fn new(version: impl Into<String>) -> Self {\n        Hello {\n            stream: STREAM_NAME.to_string(),\n            v: STREAM_VERSION,\n            daemon: version.into(),",
+        "span": [
+          80,
+          87
+        ],
+        "subkind": "function_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/fs3-hi-u-r"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/core/src/conversation_join.rs::tests::the_version_nibble_is_read_from_the_format_not_from_a_prefix",
+        "kind": "function",
+        "match_field": "raw",
+        "name": "the_version_nibble_is_read_from_the_format_not_from_a_prefix",
+        "path": "crates/core/src/conversation_join.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.20025047063081136,
+        "smart": null,
+        "snippet": "fn the_version_nibble_is_read_from_the_format_not_from_a_prefix() {\n        assert_eq!(\n            uuid_version(\"01a045f4-edc2-7000-8dc7-47d6d5677147\"),\n            Some(7)\n        );",
+        "span": [
+          309,
+          320
+        ],
+        "subkind": "function_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/fs3-convo-ingest"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/daemon/tests/auto_update.rs::binary_reporting",
+        "kind": "function",
+        "match_field": "raw",
+        "name": "binary_reporting",
+        "path": "crates/daemon/tests/auto_update.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.18898223704205563,
+        "smart": null,
+        "snippet": "fn binary_reporting(version: &str) -> Vec<u8> {\n    format!(\"#!/bin/sh\\necho \\\"flowspace3 {version}\\\"\\n\").into_bytes()\n}",
+        "span": [
+          108,
+          110
+        ],
+        "subkind": "function_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      }
+    ]
+  },
+  "meta": {
+    "hint": "Weak match: describe the component in its own vocabulary rather than asking a question.",
+    "scope": {
+      "cwd": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T035625Z",
+      "repo": "git:github.com/AI-Substrate/flowspace3",
+      "source": "flag"
+    },
+    "truncation": {
+      "limit": 5,
+      "truncated": true
+    }
+  },
+  "next_action": "Weak match: describe the component in its own vocabulary rather than asking a question. — then: read a hit in full with `flowspace3 get <address>`, browse its file with `flowspace3 tree <address>`, or narrow with --path/--repo"
+}

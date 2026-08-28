@@ -1,0 +1,121 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Conversation ingestion — native session stores → conversations index",
+        "slug": "convo-ingest",
+        "ordinal": 5,
+        "status": "ready",
+        "summary": "Rust-native readers for the agent-session stores (claude, omp, pij ledger, git-ai metrics-db) feeding the existing conversations import incrementally, surfaced as flowspace3 conversations ingest + a thin harness extension."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "flowspace3 gains first-class ingestion of agent conversations from the native telemetry stores (req-0027, extending the req-0024..0026 surface). Input is either (pij_id, folder) or (session_id, harness, folder). Parsers live INSIDE flowspace, in Rust (Jordan ruling 2026-08-28): four store readers behind one frozen ConversationSource trait, an incremental byte-offset cursor service, and a normalizer to the measured turn payload, composed into `flowspace3 conversations ingest` which appends iteratively through the existing idempotent import. A thin harness extension wraps the command for now; the harness later calls it natively. Extraction recipe: scratch/reconstruct/09-ingestion-recipe.md (xoxarle, verified on this machine); payload spec: scratch/conversations-telemetry-sample.md; reconvo.py is the reference oracle the Rust readers are verified against. This plan is dogfood run #1 of the pij-team pipeline (impl-guide.dd.json in this folder is binding for the decomposition)."
+    },
+    {
+      "name": "goals",
+      "value": [
+        "Ingest any local agent conversation by pij id or native session id into the conversations index, repeatably and incrementally.",
+        "First-class Rust parsing of the git-ai/native session stores inside flowspace (no python runtime dependency).",
+        "Append-only re-polling: a second ingest run lands only new turns, driven by durable byte-offset cursors.",
+        "Prove the pij-team working model: frozen contracts, parallel SRP services, composition as wiring."
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "Live/streaming capture (daemon-side tailing, POST /conversations) — a later plan; this is pull-based ingest on demand.",
+        "Roll-up summaries or error promotion (v1.1, Jordan-gated).",
+        "Ingesting stores on other machines or retention management of the native stores.",
+        "Harness-native ingestion (the harness absorbs this later; v1 ships a thin extension wrapper)."
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-0001",
+          "claim": "Ingest by (pij_id, folder) resolves harness + session files via the pij sessions join and lands the conversation's turns in the index.",
+          "state": "checked",
+          "receipt": "PROVEN LIVE at first light (docs/services/convo-ingest.md): flowspace3 conversation ingest --pij pij-pale-silkworm resolved through the pij sessions --json join to (omp, 01a045f4-edc2-7000-8dc7-47d6d5677147) and landed 739 turns, started_at 2026-08-28T01:21:15Z matching the session own first record. Turn readable at conv:bebaf916-be8e-8fa8-a3ee-5a826b0f1b3e#t150 with real body text. The join itself is tk-c301, unit-tested over a recorded registry payload and smoke-tested against the live 910-row registry."
+        },
+        {
+          "id": "ac-0002",
+          "claim": "Ingest by (session_id, harness, folder) lands the same turns as the pij-id route for the same underlying session (same content hashes).",
+          "state": "checked",
+          "receipt": "PROVEN LIVE, and by construction rather than coincidence. The conversation id is DERIVED from sha256 over (harness, session_id) as a v8 uuid, so both routes reduce to the same pair and cannot disagree. Measured: after the seat route had ingested, flowspace3 conversation ingest --session 01a045f4-edc2-7000-8dc7-47d6d5677147 --harness omp landed in the SAME conversation bebaf916-be8e-8fa8-a3ee-5a826b0f1b3e — conversation count stayed at ONE, turns 752 to 757. Unit test the_two_addressing_routes_derive_the_same_conversation pins the derivation."
+        },
+        {
+          "id": "ac-0003",
+          "claim": "A second ingest run after new session activity appends ONLY the new turns — byte-offset cursor proven by a live re-poll transcript.",
+          "state": "checked",
+          "receipt": "PROVEN LIVE by re-poll transcript: 739 turns at first ingest, 752 after the second poll of the same live session, with 755 eligible records on disk by then (the extra 3 written after the poll). A third poll took it to 804. The cursor is SourceCursor::ByteOffset persisted by fs3_store::ingest_cursors and committed in the same transaction as the ledger rows, so a cursor cannot advance without the ledger that makes the next rescan a no-op."
+        },
+        {
+          "id": "ac-0004",
+          "claim": "Claude subagent sidecar files are discovered (including ones that appear mid-session) and ingested as child conversations linked to the parent.",
+          "state": "checked",
+          "receipt": "Sidecars are resolved by u1a on EVERY poll, never cached, so one appearing mid-session is found — crates/providers/src/conversation_sources/claude.rs, with the sidecar-mid-session case in its suite. They are emitted as SessionKind::Subagent with parent_session_id set from the DIRECTORY, which is the only place the parent exists (the .meta.json carries agentType/description/toolUseId/spawnDepth and NO parent id — measured by u1a).\n\nTHE LINK IS NOW PERSISTED, after cross-model review found (F-002) that this receipt previously claimed LINKED on evidence that did not support the word: the relationship lived in an in-memory SessionFile and an IngestReport the async worker discarded, so after a job settled nothing could navigate from a child to its parent. Prime ruled PERSIST rather than narrow the AC, on the grounds that narrowing an AC to match what was built is the move we refuse from coders. Migration 0015 adds a nullable conversations.parent_conversation_id with a partial index; upsert_conversation carries it and COALESCEs so a later poll that does not know the parent cannot erase one an earlier poll established; list_conversations returns it and the daemon exposes it as a conv: address, so a child navigates to its parent with a copy-paste rather than a re-addressed guid. The parent id needs NO lookup — it is conversation_guid(harness, parent_session_id), the same deterministic derivation the parent row uses — so it cannot race a parent that has not been ingested yet, which is also why the column is deliberately not a foreign key.\n\nProven by a_child_conversation_knows_its_parent_after_the_job_settles in crates/store/tests/pg_conversations.rs: two conversations written the way ingest writes them, then the relationship read back through the SAME public list API a CLI caller uses with no in-memory state left over, plus the learns-but-never-forgets case. NOT exercised live: first light ran on an omp session, which has no sidecars."
+        },
+        {
+          "id": "ac-0005",
+          "claim": "Compaction/summary turns are preserved with a system-turn kind, never dropped, for both claude and omp stores.",
+          "state": "checked",
+          "receipt": "omp: the compaction record is first-class at line 184 of the fixture, emitted and never dropped, mapped to TurnRole::Agent + TurnSource::System with the summary as its body, and it sits IN the parent chain so dropping it would break the chain across the seam — named test in u1b suite. claude: the injected-summary form is kept with TurnSource::System. metrics-db: the claude-mirror compaction row (isCompactSummary) is kept, TurnSource::System. All three are pinned by the new cardinality claim as well: the emitted expectation counts them, so dropping one now fails assert_emitted_ordinals_match rather than passing a subsequence check."
+        },
+        {
+          "id": "ac-0006",
+          "claim": "A turn ingested this way is findable via flowspace3 search --source conversation after enrichment drains.",
+          "state": "checked",
+          "receipt": "SPLIT INTO TWO PROOFS by prime ruling 2026-08-28; one criterion, two claims, because they need different evidence and cost different money.\n\n(a) PIPELINE FINDABILITY — a turn ingested this way is REACHABLE through search --source conversation, the cursor advances, the envelope is right. Proven, and reproducible under the fleet daemon-sandbox rule with FAKE providers: no provider call is involved in storing a turn, addressing it as conv:<guid>#t<n>, or filtering by source. This is the half a reviewer or a future run should re-verify.\n\n(b) SEMANTIC MEANINGFULNESS — the turn is retrievable BY MEANING rather than by text. Proven once, with real embeddings, and prime has retroactively authorised that spend as the deliberate one: search \"the ordinal is the ledger dedupe key and a changed grouping rule doubles the conversation\" --source conversation returned conv:bebaf916-be8e-8fa8-a3ee-5a826b0f1b3e#t160 at 0.61 plus 9 further hits — a turn of the very session that built the reader, from a store fs3 could not read four hours earlier. CLOSED for 005 and NOT to be re-run: under the safety rule this is a separate, explicitly authorised, budgeted spend, not part of a routine gate.\n\nHow the real-provider evidence was obtained, recorded so it is not copied: the daemon inherited ambient Azure config because FS3_CONFIG_DIR was unset, and bought 572 embeddings and 525 summaries. The database was sealed; the wallet was not. The rule now requires a minted database, an EMPTY FS3_CONFIG_DIR, a unique port, in-tree logs, and verifying the boot line reads embedder=fake summarizer=fake before the daemon does anything."
+        },
+        {
+          "id": "ac-0007",
+          "claim": "All four readers pass the shared contract suite against golden fixtures, offline, standalone (cargo test -p per crate, no daemon, no network).",
+          "state": "checked",
+          "receipt": "All four readers pass fs3_testkit::conversation_source offline and standalone: cargo test -p fs3-providers is green across 13 suites with no daemon and no network. Each also passes the structural subsequence claim, the subset oracle claim where an oracle covers the store, AND the new CARDINALITY claim added under the prime ruling of 2026-08-28 — assert_emitted_ordinals_match, whose expected sequences are derived from the store bytes by a second implementation of each ruled allowlist and grouping rule, and which is mutation-checked against both regression mutations (claude adjacent-run fold 46-for-39, metrics-db no-merge 22-for-16)."
+        },
+        {
+          "id": "ac-0008",
+          "claim": "harness checks green on the composed branch; every new dependency edge is a deliberate arch-allowlist row granted by the impl-guide.",
+          "state": "checked",
+          "receipt": "harness checks GREEN on the composed branch, all NINE gates: docs, lock, testdb, fmt, clippy -D warnings, prodguard before and after, cargo test --all, arch. The single new dependency edge is rusqlite with the bundled feature, granted deliberately: the arch-allowlist row providers -> rusqlite was committed in phase 1 per impl-guide SA1, the workspace dependency row carries its rationale (we do not control which sqlite wrote git-ai database, so controlling which one parses it is the only determinism available), and prime approved the four-tree compile cost explicitly. No second edge was taken — u1b and u1d both declined tempfile and followed testkit own temp_dir precedent instead."
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-d8ff",
+          "title": "Phase 1: Contracts + fixtures",
+          "brief": "Freeze the seams before anyone is spawned (tenet 2): the ConversationSource trait (resolve(input) -> session files; read_incremental(cursor) -> raw records + new cursor), the cursor/raw-record/normalized-turn types, sanitized golden fixtures for all four stores, and the shared contract suite in testkit that every reader must pass. reconvo.py pinned as the reference oracle. Small and serial — PM-codeable per the impl-guide fan_out rules.",
+          "state": "checked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks",
+          "receipt": "Frozen and committed at a3bbfd2. tk-c101..c105 all checked with receipts. harness checks GREEN in worktree ../fs3-convo-ingest against the sealed scratch db fs3_convo_ingest: docs, lock, testdb, fmt, clippy, prodguard before/after, cargo test --all. The frozen seam is the ConversationSource trait + its types (fs3-core), the shared contract suite and the committed oracle expectations (fs3-testkit), and tail.rs line framing written once (fs3-providers). Any change to it after this point is a defect routed to prime, not a PM refactor. No AC closes here: ac-0007 needs the four readers, ac-0003 needs the live re-poll."
+        },
+        {
+          "id": "ph-c2aa",
+          "title": "Phase 2: Parallel services (readers, cursor, normalizer)",
+          "brief": "The fan-out wave: six SRP units, each independently written and tested behind the phase-1 contracts — claude reader (per-block merge, sidecar re-glob, spilled tool-results), omp reader (xd:// remap, toolCallId pairing), pij-ledger reader (seq cursor, receipts), metrics-db reader (rowid cursor, both dialects, repo scoping), cursor-state service (inode/offset, tail buffer, rotation; PG-persisted), normalizer (raw -> measured turn payload). Zero shared files beyond one export line each; every unit ships its snap-in recipe.",
+          "state": "checked",
+          "tasks": "assets/tasks/phase-2/tasks.dd.json#tasks",
+          "receipt": "CLOSED. tk-c201..c206 all checked with receipts. Four coder seats plus the PM: u1a claude, u1b omp and pij-ledger, u1d metrics-db, u2 cursors and normalizer. All four units merged into 005-convo-ingest with zero interface drift from the phase-1 freeze and no request to widen it — the wave the freeze existed to protect. One two-line mod.rs collision was the whole convergence cost. Every unit shipped its snap-in recipe and its service page; every reader passes the shared contract suite offline, the structural subsequence claim, and the cardinality claim added mid-wave under a prime ruling. Three packet defects were found and corrected by the seats at ack, all the same shape: a rule keyed on what the sample makes look true rather than on what is structurally true."
+        },
+        {
+          "id": "ph-c3aa",
+          "title": "Phase 3: Composition + surface",
+          "brief": "Composition is wiring, not building: the join (pij sessions -> uuid shape routes the store), the ingest orchestrator pumping readers through cursor-state into the existing idempotent import, the `flowspace3 conversations ingest` CLI surface, the thin harness extension wrapper, and the first-light proof — ingest a REAL live session by pij id, re-poll, show the append-only delta, then find it via search.",
+          "state": "checked",
+          "tasks": "assets/tasks/phase-3/tasks.dd.json#tasks",
+          "receipt": "CLOSED. tk-c301..c306 checked with receipts. The join, the orchestrator, the CLI verb, the harness extension and first light are in; harness checks GREEN nine gates on the composed branch; all eight ACs closed. First light ingested the PM own live session by pij id and proved ac-0001, ac-0002 and ac-0003 against real data, and found two things no fixture could — a folder default that is wrong for every worktree-resident seat (fixed in-plan by asking the store where a session lives rather than inverting a slug) and ingest starving behind enrichment (deferred by prime to packet w-ingest-lane). Cross-model review by gpt-5.6-sol then returned REQUEST_CHANGES with three MAJOR findings, all confirmed and all fixed: an accounting backstop that was an arithmetic identity, a per-conversation serialisation that was documented and absent, and a committed expectation contradicting a reader on a session no assertion covered."
+        }
+      ]
+    }
+  ]
+}

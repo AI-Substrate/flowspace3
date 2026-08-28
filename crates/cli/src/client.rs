@@ -236,6 +236,12 @@ impl DaemonClient {
             .await
     }
 
+    /// Pull a conversation out of a native agent session store.
+    pub async fn conversation_ingest(&self, body: &Value) -> Envelope {
+        self.post("conversation ingest", "/conversations/ingest", body)
+            .await
+    }
+
     /// List indexed conversations.
     pub async fn conversation_list(&self, query: &[(String, String)]) -> Envelope {
         self.get_json("conversation list", "/conversations", query)
@@ -290,6 +296,64 @@ impl DaemonClient {
     /// Browse indexed structure.
     pub async fn tree(&self, query: &[(String, String)]) -> Envelope {
         self.get_json("tree", "/tree", query).await
+    }
+
+    /// Open the daemon's event stream, authenticated.
+    ///
+    /// The one door to `GET /events` for every consumer that needs it — the
+    /// `add` progress meter, `status --watch`, and the TUI's activity pane.
+    /// It exists because the key handling above is private and must stay that
+    /// way: three units reaching for `reqwest` directly would be three places
+    /// that can forget the `Authorization` header, and the failure mode is a
+    /// silent 401 that looks exactly like "the daemon has nothing to say"
+    /// (found by u-r, 2026-08-28, before it shipped).
+    ///
+    /// Returns the raw response rather than parsed events on purpose: this is a
+    /// STREAM, and the caller reads it line by line for as long as it wants to.
+    /// The wire is `fs3_core::events` — a `Hello` line, then one `Event` per
+    /// line — and `docs/services/event-stream.md` is its contract.
+    ///
+    /// No timeout is applied beyond the connect: a healthy stream is idle most
+    /// of the time, and the heartbeat is how a consumer tells idle from dead.
+    ///
+    /// # Errors
+    /// A missing or unreadable key, or a daemon that does not answer. Both come
+    /// back as a [`Failure`] carrying its own catalog code and fix, so a caller
+    /// renders them like any other failure instead of inventing prose.
+    pub async fn events(
+        &self,
+        heartbeat_ms: Option<u64>,
+    ) -> std::result::Result<reqwest::Response, Failure> {
+        let url = format!("{}/events", self.base_url);
+        let mut request = self.http.request(reqwest::Method::GET, &url)?;
+        if let Some(interval) = heartbeat_ms {
+            request = request.query(&[("heartbeat_ms", interval.to_string())]);
+        }
+
+        let response = request.send().await.map_err(|error| {
+            Failure::new(
+                &catalog::DAEMON_UNAVAILABLE,
+                format!("cannot open the event stream at {url}: {error}"),
+            )
+            .with_detail("daemon_url", self.base_url.clone())
+        })?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            if let Ok(envelope) = serde_json::from_str::<Envelope>(&body)
+                && let Some(failure) = envelope.error
+            {
+                return Err(failure);
+            }
+            return Err(Failure::new(
+                &catalog::DAEMON_UNAVAILABLE,
+                format!("the event stream at {url} answered {status}"),
+            )
+            .with_detail("status", status.as_u16()));
+        }
+
+        Ok(response)
     }
 
     async fn get_json(&self, command: &str, path: &str, query: &[(String, String)]) -> Envelope {

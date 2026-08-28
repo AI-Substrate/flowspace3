@@ -1,0 +1,216 @@
+{
+  "ok": true,
+  "command": "search",
+  "v": 1,
+  "data": {
+    "results": [
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/pocs/daemon-shell/LEARNINGS.md::LEARNINGS — what the real fs3 daemon needs to know::7. What I would do differently in the real daemon",
+        "kind": "section",
+        "match_field": "smart",
+        "name": "7. What I would do differently in the real daemon",
+        "path": "pocs/daemon-shell/LEARNINGS.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.4264014490366416,
+        "smart": "section `pocs/daemon-shell/LEARNINGS.md::LEARNINGS — what the real fs3 daemon needs to know::7. What I would do differently in the real daemon` at 278-298 (21 lines)",
+        "snippet": "## 7. What I would do differently in the real daemon\n\n1. **Treat the watcher as a hint, not a ledger** (§1). Dirty directory ⇒ re-list.\n   Add a periodic full walk as the backstop, because the watcher WILL miss things.\n2. **Persist the dirty set.** It is in memory here, so a crash loses every",
+        "span": [
+          278,
+          298
+        ],
+        "subkind": "atx_heading",
+        "tags": [
+          "section",
+          "learnings — what the real fs3 daemon needs to know",
+          "7. what i would do differently in the real daemon"
+        ],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/docs/services/self-teaching-cli.md::Self-teaching CLI::The topics",
+        "kind": "section",
+        "match_field": "raw",
+        "name": "The topics",
+        "path": "docs/services/self-teaching-cli.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.4249183192800474,
+        "smart": null,
+        "snippet": "## The topics\n\n| topic | what it answers |\n|---|---|\n| `agents` | the whole operating loop, the envelope contract, the gotchas (req 45) |",
+        "span": [
+          12,
+          23
+        ],
+        "subkind": "atx_heading",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/docs/reference/error-codes.md::fs3 error codes::DAEMON",
+        "kind": "section",
+        "match_field": "raw",
+        "name": "DAEMON",
+        "path": "docs/reference/error-codes.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.4080940959425556,
+        "smart": null,
+        "snippet": "## DAEMON\n\n### `FS3-E-DAEMON-UNAVAILABLE`\n\nThe fs3 daemon did not answer on its configured URL.",
+        "span": [
+          224,
+          244
+        ],
+        "subkind": "atx_heading",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/pocs/daemon-shell/LEARNINGS.md::LEARNINGS — what the real fs3 daemon needs to know::1. The finding that changes the design",
+        "kind": "section",
+        "match_field": "smart",
+        "name": "1. The finding that changes the design",
+        "path": "pocs/daemon-shell/LEARNINGS.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.4068667656362147,
+        "smart": "section `pocs/daemon-shell/LEARNINGS.md::LEARNINGS — what the real fs3 daemon needs to know::1. The finding that changes the design` at 15-46 (32 lines)",
+        "snippet": "## 1. The finding that changes the design\n\n**On Linux, files written into a directory the instant it is created are never\nreported.** The first full Linux run failed exactly one test:\n",
+        "span": [
+          15,
+          46
+        ],
+        "subkind": "atx_heading",
+        "tags": [
+          "section",
+          "learnings — what the real fs3 daemon needs to know",
+          "1. the finding that changes the design"
+        ],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/cli/src/main.rs::Command",
+        "kind": "container",
+        "match_field": "raw",
+        "name": "Command",
+        "path": "crates/cli/src/main.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.3957725403173291,
+        "smart": null,
+        "snippet": "enum Command {\n    /// Check that the fs3 daemon is up and answering.\n    Ping {\n        /// Override the daemon URL from configuration.\n        #[arg(long, value_name = \"URL\")]",
+        "span": [
+          32,
+          239
+        ],
+        "subkind": "enum_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/pocs/daemon-shell/LEARNINGS.md::LEARNINGS — what the real fs3 daemon needs to know::Appendix — how it was proved",
+        "kind": "section",
+        "match_field": "smart",
+        "name": "Appendix — how it was proved",
+        "path": "pocs/daemon-shell/LEARNINGS.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.3939193125915117,
+        "smart": "section `pocs/daemon-shell/LEARNINGS.md::LEARNINGS — what the real fs3 daemon needs to know::Appendix — how it was proved` at 299-322 (24 lines)",
+        "snippet": "## Appendix — how it was proved\n\n```\nmacOS (host)     cargo test              26 passed  (16 core + 10 e2e)\n                 cargo clippy --all-targets -- -D warnings    clean",
+        "span": [
+          299,
+          322
+        ],
+        "subkind": "atx_heading",
+        "tags": [
+          "section",
+          "learnings — what the real fs3 daemon needs to know",
+          "appendix — how it was proved"
+        ],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/docs/plans/prd/daemon-worker-architecture.md::Daemon worker architecture — locked direction (not yet scheduled)::Queued decisions for the daemon plan (from the store landing, sylac 2026-08-26)",
+        "kind": "section",
+        "match_field": "raw",
+        "name": "Queued decisions for the daemon plan (from the store landing, sylac 2026-08-26)",
+        "path": "docs/plans/prd/daemon-worker-architecture.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.38669459184094057,
+        "smart": null,
+        "snippet": "## Queued decisions for the daemon plan (from the store landing, sylac 2026-08-26)\n- **Re-queue-while-running**: `enqueue_job` on a RUNNING job pushes `not_before` but cannot un-run it — the change is picked up by the D6 reconciler, not the queue. Decide: is reconciler latency acceptable, or does the daemon need a \"re-run after completion\" marker?\n- **Retry/backoff policy**: `fail_job` is terminal (last_error on the row; recovery = reconciler). Decide the retry schedule, attempts ceiling, and backoff at the WORKER layer — the store deliberately doesn't invent one. (`retryable` in workshop 004 envelopes feeds this.)",
+        "span": [
+          14,
+          17
+        ],
+        "subkind": "atx_heading",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/docs/services/auto-update.md::Auto-update::The user messages queue (req 59)::How a message reaches you",
+        "kind": "section",
+        "match_field": "raw",
+        "name": "How a message reaches you",
+        "path": "docs/services/auto-update.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.3817708378502492,
+        "smart": null,
+        "snippet": "### How a message reaches you\n\n- **Daemon-served verbs** (`add`, `scan`, `status`, `search`): attached in ONE\n  place. `answer::ok`/`failed` take `&AppState`, so an endpoint physically\n  cannot build an envelope without the queue — a compile error rather than a",
+        "span": [
+          225,
+          240
+        ],
+        "subkind": "atx_heading",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/docs/services/watcher.md::watcher — how the daemon finds out that a file changed::Two debounces, at two levels, neither redundant",
+        "kind": "section",
+        "match_field": "raw",
+        "name": "Two debounces, at two levels, neither redundant",
+        "path": "docs/services/watcher.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.3741916083522234,
+        "smart": null,
+        "snippet": "## Two debounces, at two levels, neither redundant\n\n| Level | Mechanism | What it collapses | Durable? |\n|---|---|---|---|\n| Job | `enqueue_job`'s live-dedupe index + `not_before = GREATEST(existing, new)` | repeated `scan_file` rows for one path | yes — Postgres |",
+        "span": [
+          47,
+          63
+        ],
+        "subkind": "atx_heading",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/docs/plans/prd/daemon-worker-architecture.md::Daemon worker architecture — locked direction (not yet scheduled)",
+        "kind": "section",
+        "match_field": "raw",
+        "name": "Daemon worker architecture — locked direction (not yet scheduled)",
+        "path": "docs/plans/prd/daemon-worker-architecture.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.37206504441470967,
+        "smart": null,
+        "snippet": "# Daemon worker architecture — locked direction (not yet scheduled)\n**Jordan, 2026-08-26** (verbatim intent, recorded by o-prime for the upcoming daemon plan): \"the daemon … will be watching a list in the database of files, and then the worker will process through them … we can parallelize LLM work as well as embedding work for ultra-fast things, which FlowSpace does really well … a worker that can do jobs off a backlog, and one of the job types will be scan a file.\"\n\n## The shape\n",
+        "span": [
+          1,
+          38
+        ],
+        "subkind": "atx_heading",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      }
+    ]
+  },
+  "meta": {
+    "empty_because": null,
+    "hint": "Weak match: describe the component in its own vocabulary rather than asking a question.",
+    "scope": {
+      "cwd": "/Users/jordanknight/substrate/flowspace/flowspace3",
+      "repo": "git:github.com/AI-Substrate/flowspace3",
+      "source": "cwd",
+      "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+    },
+    "truncation": {
+      "limit": 10,
+      "truncated": true
+    }
+  },
+  "next_action": "Weak match: describe the component in its own vocabulary rather than asking a question. — then: read a hit in full with `flowspace3 get <address>`, browse its file with `flowspace3 tree <address>`, or narrow with --path/--repo — this looks like a question — `flowspace3 ask \"<question>\"` answers questions by searching the index for you"
+}

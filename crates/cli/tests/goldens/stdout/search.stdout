@@ -1,0 +1,73 @@
+{
+  "ok": true,
+  "command": "search",
+  "v": 1,
+  "data": {
+    "results": [
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/pocs/human-render/src/render.rs::render",
+        "kind": "function",
+        "match_field": "raw",
+        "name": "render",
+        "path": "pocs/human-render/src/render.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.6683932793121196,
+        "smart": null,
+        "snippet": "pub fn render(envelope: &Envelope<Value>, options: &RenderOptions) -> String {\n    if !envelope.ok {\n        return surfaces::failure::render(envelope, options);\n    }\n",
+        "span": [
+          65,
+          76
+        ],
+        "subkind": "function_item",
+        "tags": []
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/pocs/human-render/README.md::human-render — the human skin over the frozen fs3 envelope",
+        "kind": "section",
+        "match_field": "smart",
+        "name": "human-render — the human skin over the frozen fs3 envelope",
+        "path": "pocs/human-render/README.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.6361700710574025,
+        "smart": "The standalone `human-render` prototype renders the frozen `fs3-core` `Envelope` either as byte-for-byte JSON or as terminal-friendly Rich-style output, ensuring the human view derives only from machine-received data. It supports search, doctor, error, status, and generic fallback surfaces, with presentation selected by flags and TTY detection while ANSI color policy is handled centrally by `anstream`. The crate is intentionally isolated from other flowspace3 components and excludes live progress, paging, watching, and theming configuration.",
+        "snippet": "# human-render — the human skin over the frozen fs3 envelope\n\nA standalone PROTOTYPE (shelf item, not wired into flowspace3). v1 answers in\nJSON only — workshop 003 D5, Jordan's call. This is the fast-follow made ready\nin advance: the same envelope, rendered for a person at a terminal, in the",
+        "span": [
+          1,
+          89
+        ],
+        "subkind": "atx_heading",
+        "tags": [
+          "human-render",
+          "Envelope",
+          "JSON passthrough",
+          "TTY strategy",
+          "terminal surfaces"
+        ]
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/pocs/human-render/src/surfaces/generic.rs::render",
+        "kind": "function",
+        "match_field": "raw",
+        "name": "render",
+        "path": "pocs/human-render/src/surfaces/generic.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.6037282982545122,
+        "smart": null,
+        "snippet": "pub fn render(envelope: &Envelope<Value>, options: &RenderOptions) -> String {\n    let status = if envelope.ok {\n        format!(\"{}\", \"ok\".green())\n    } else {\n        format!(\"{}\", \"failed\".bright_red().bold())",
+        "span": [
+          26,
+          60
+        ],
+        "subkind": "function_item",
+        "tags": []
+      }
+    ]
+  },
+  "meta": {
+    "scope": {
+      "repo": null,
+      "source": "all"
+    }
+  },
+  "next_action": "read a hit in full with `flowspace3 get <address>`, browse its file with `flowspace3 tree <address>`, or narrow with --path/--repo"
+}

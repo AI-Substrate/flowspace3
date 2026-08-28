@@ -1,8 +1,9 @@
 # Providers — setting one up from scratch
 
-fs3 has exactly two ports: an **embedder** (text to vectors) and a
-**summarizer** (element to summary plus 1–5 concept tags). Configuration
-declares a REGISTRY of named instances; the ports name one of them.
+fs3 selects three model surfaces independently: an **embedder** (text to
+vectors), a **summarizer** (element to summary plus 1–5 concept tags), and an
+**agent** (tool-capable chat for `ask`). Configuration declares a registry of
+named instances; each surface names one of them.
 
 **On a fresh install you have no real provider.** The defaults ship a single
 `fake` instance and both ports name it — that is what makes the whole stack,
@@ -21,17 +22,20 @@ Config lives in `~/.config/flowspace3/config.toml`
 
 ```toml
 [providers.<name>]          # any name you like — this is the registry key
-kind = "fake" | "openai" | "azure_openai"
+kind = "fake" | "openai" | "azure_openai" | "openai_compat"
 
 [embedder]
 active = "<name>"           # which instance embeds
 
 [summarizer]
 active = "<name>"           # which instance summarises
+
+[agent]
+active = "<name>"           # which instance answers `ask`
 ```
 
-The two ports are chosen separately and usually differ: embedding is cheap and
-high-volume, summarising is expensive and low-volume.
+The three surfaces are chosen separately and may use different providers and
+models. `flowspace3 config show` prints each surface → provider → model mapping.
 
 ## kind = "fake"
 
@@ -133,28 +137,69 @@ api_key_env = "OPENAI_API_KEY"          # the default if omitted
 # api_base = "https://api.openai.com/v1"
 ```
 
+## kind = "openai_compat" (including OpenRouter)
+
+Any endpoint that accepts OpenAI-shaped `/chat/completions` and `/embeddings`
+requests uses this kind. OpenRouter needs no provider-specific code or headers:
+
+```toml
+[providers.openrouter-chat]
+kind = "openai_compat"
+base_url = "https://openrouter.ai/api/v1"
+model = "z-ai/glm-5.3-flash"
+api_key_env = "OPENROUTER_API_KEY"
+max_tokens = 4000
+
+[providers.openrouter-embed]
+kind = "openai_compat"
+base_url = "https://openrouter.ai/api/v1"
+model = "openai/text-embedding-3-small"
+api_key_env = "OPENROUTER_API_KEY"
+dimensions = 1024
+
+[agent]
+active = "openrouter-chat"
+[embedder]
+active = "openrouter-embed"
+[summarizer]
+active = "azure-chat"       # surfaces remain independent
+```
+
+One provider entry names one model. To use one OpenRouter account with two
+models, declare two `[providers.*]` entries with the same `base_url` and
+`api_key_env` and different `model` values, as above. Put the value only in
+`~/.config/flowspace3/secrets.env`:
+
+```text
+OPENROUTER_API_KEY=…
+```
+
+If the variable is absent, daemon wiring refuses before any request and names
+both the variable and `secrets.env`; the value is never rendered. A keyless LAN
+endpoint may omit `api_key_env`. `dimensions`, when present, is sent to the
+embedding endpoint, checked against every returned vector, and included in the
+model key so incompatible vector spaces cannot mix.
+
+OpenRouter reports `usage.total_tokens`; `ask` uses that real total. This also
+means `[agent] token_budget` is enforced for usage-reporting providers rather
+than remaining dormant behind unknown (`null`) usage.
+
 ## Choosing an embedder
 
 | option | where it runs | keys | notes |
 |---|---|---|---|
 | `fake` | in process | none | offline, deterministic, real vectors |
 | `azure_openai` | Azure | Entra or key | `dimensions` must match the store's table |
+| `openai_compat` | OpenRouter or compatible endpoint | optional by endpoint | configured `dimensions` is sent, verified, and keyed |
 | `openai` | OpenAI | key | |
 
-Two more adapters exist in the codebase and are **not yet selectable from
-config** — the config enum has no variant for them, so writing one is a startup
-error rather than a working setup:
+One more adapter exists in the codebase and is **not yet selectable from
+config**:
 
 - **Local ONNX embeddings** (in-process, fastembed/BGE-small, 384 dimensions,
   no API and no key). Note 384 ≠ the 1024-wide store table, so it needs its own
   `embeddings_384` migration before it can be used. See the repository's
   `docs/services/local-embeddings.md`.
-- **OpenAI-compatible summarizer** for a LAN server (llama.cpp, Ollama, vLLM,
-  LM Studio). Summarizer only — those servers answer `/v1/embeddings` with 501.
-  It discovers the served model rather than trusting a configured name. See
-  `docs/services/openai-compat.md`.
-
-Ask for them if you need them; do not write config keys for them yet.
 
 ## Per-repo overrides
 
