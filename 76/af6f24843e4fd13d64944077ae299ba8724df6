@@ -1,0 +1,26 @@
+crates/cli/docs/ddocs.md
+  h_9e71e8b09f7cf2 43,45-46,52-64
+crates/cli/src/main.rs
+  h_9e71e8b09f7cf2 119,121
+crates/cli/tests/ddoc_eval.rs
+  h_9e71e8b09f7cf2 19,45-62
+crates/daemon/src/http.rs
+  h_9e71e8b09f7cf2 57-58,76-78,89-100,107,493-494,500,505-528,547-570,572-576
+crates/daemon/tests/read_surface.rs
+  h_9e71e8b09f7cf2 194-253,551-601
+eval/ddocs/scenarios/tasks-claiming-criterion/assertions.json
+  h_9e71e8b09f7cf2 4-7
+eval/ddocs/scenarios/tasks-claiming-criterion/scenario.json
+  h_9e71e8b09f7cf2 5,7-8,10,15-16,18-19,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "76af6f24843e4fd13d64944077ae299ba8724df6",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
