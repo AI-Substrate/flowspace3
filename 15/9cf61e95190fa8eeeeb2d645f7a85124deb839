@@ -1,0 +1,19 @@
+crates/daemon/src/conversations.rs
+  s_15d888f4b629c1::t_23aebc96acc1b8 39,54-57,318-322,324-327,329-332,338
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "159cf61e95190fa8eeeeb2d645f7a85124deb839",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
