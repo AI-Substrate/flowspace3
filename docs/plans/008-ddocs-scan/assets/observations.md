@@ -173,6 +173,135 @@ structural rather than incidental:
 
 ---
 
-## u2 and u4
+## u2 — ddocs adapter, edges, gate semantics and degradation
 
-Appended when the wave-2 seats report; both were still in flight when this file was created.
+Five of these are severity **blocking** and four are findings about `ddocs` itself rather than about
+flowspace3. Every one arrived with a verbatim envelope and a refusal to invent the missing part;
+each forced a PM ruling that amended the frozen contract.
+
+### CONF-001 — confusion/degrading · target `flowspace3` (u2, pij-supreme-tapir)
+
+**What happened.** flowspace3 search from fs3-ddocs-u2 warned that this checkout is unregistered, returned sibling-worktree hits, and truncated the next_action while the global queue remains pending
+
+**Workaround.** Used repository-scoped paths and verified source files in this worktree before trusting hits
+
+**Suggested encoding.** Register active pij worktrees automatically or provide a complete actionable next_action that names the exact add command
+
+### CONF-002 — confusion/annoying · target `pij` (u2, pij-supreme-tapir)
+
+**What happened.** I mistook the tmux status bar for the OMP pane footer when asked to quote the rendered footer; the PM had to capture the real OMP footer directly
+
+**Workaround.** Accepted the PM-captured OMP footer and will state uncertainty instead of guessing between rendered status lines
+
+**Suggested encoding.** Expose a pij verb that prints the current OMP footer distinctly from tmux status
+
+### DL-001 — difficulty/degrading · target `harness` (u2, pij-supreme-tapir)
+
+**What happened.** harness boot reported degraded because compose service db is not running, but this unit is explicitly required to use the already-healthy shared flowspace3-db on port 5433 and forbidden to start compose
+
+**Workaround.** Use the packet-mandated isolated database on the shared flowspace3-db container and do not follow boot's compose start advice
+
+**Suggested encoding.** Teach harness boot to detect the configured shared FS3_TEST_DATABASE_URL/container before requiring this worktree's compose service
+
+### DL-002 — difficulty/blocking · target `ddocs` (u2, pij-supreme-tapir)
+
+**What happened.** Real ddocs 0.1.0 schema show envelope contains only section name/required/type and omits nested field declarations, so parse_schema_show(json) cannot populate DdocSchemaFacts prose_fields or string_fields as the frozen u2 contract assumes
+
+**Workaround.** Stopped before implementing or inventing schema semantics; reported measured envelope shape to PM for ruling
+
+**Suggested encoding.** Extend ddocs schema show JSON payload with resolved field shapes or amend the adapter contract to read the resolved schema path returned by the envelope
+
+### CONF-003 — confusion/blocking · target `ddocs` (u2, pij-supreme-tapir)
+
+**What happened.** Observed ddocs 0.1.0 graph envelope contradicts the packet: all 175 live edges carry kind=document, so the supposed real graph-without-kind primary fixture cannot be recorded from the installed binary
+
+**Workaround.** Preserved the verbatim live envelope and stopped before relabeling or editing it; reported versioned evidence to PM
+
+**Suggested encoding.** Expose build provenance in ddocs version and update the consumer contract/fixtures when PR #12 edge kind ships
+
+### DL-003 — difficulty/blocking · target `ddocs` (u2, pij-supreme-tapir)
+
+**What happened.** Real ddocs graph edges identify only source document absolute path plus numeric JSONPath location; they do not carry the source row id/address, so edges_for(graph,file) cannot produce the stable source row address needed to attach outbound relations or DdocFileRef without also receiving the parsed tree
+
+**Workaround.** Stopped before guessing source identity from array position; reported the exact edge shape to PM for interface ruling
+
+**Suggested encoding.** Have ddocs graph emit source_address, or amend edges_for to consume the parsed document/tree and map JSONPath to a stable row address
+
+### DL-004 — difficulty/blocking · target `ddocs` (u2, pij-supreme-tapir)
+
+**What happened.** Recorded PR #12 graph has one structured file edge address src/library.ts and one nested Markdown file edge address ../handbook.md while normalized to is docs/plans/handbook.md; raw address is not universally repo-relative and cannot key the inverse index
+
+**Workaround.** Kept normalized edge.to as target_path and reported the two-edge counterexample before applying the address-based ruling
+
+**Suggested encoding.** Define file-edge target_path semantics explicitly in ddocs graph or emit a dedicated repo_relative_target field
+
+### DL-005 — difficulty/degrading · target `flowspace3` (u2, pij-supreme-tapir)
+
+**What happened.** After the worktree became auto-registered, flowspace3 search scoped to the newly committed crates/daemon/src/ddoc.rs returned FS3-E-QUERY-NO-INDEX: no content for this checkout/path, so the live watcher did not make the new adapter findable before closeout
+
+**Workaround.** Used source-grounded tests and LSP diagnostics; did not widen search to another checkout
+
+**Suggested encoding.** Have worktree auto-registration enqueue existing/new files immediately and expose registration-vs-indexing lag in status
+
+---
+
+## u4 — agent-facing surface
+
+Note the pair CONF-001 / CONF-002: the seat recorded a finding, the PM measured it and found the
+diagnosis wrong, and the seat then recorded the CORRECTION beside the original rather than editing
+it away. The superseded entry is kept deliberately — a buffer that only holds conclusions that
+survived is a worse record than one that shows what was believed and why it changed.
+
+### DL-001 — difficulty/degrading (u4, pij-sudden-pigeon)
+
+**What happened.** lean-ctx ctx_read command unavailable while reading required pij skill
+
+**Workaround.** fell back to native read per policy
+
+**Suggested encoding.** expose ctx_read tool or document valid lean-ctx CLI read syntax
+
+### DL-002 — difficulty/degrading (u4, pij-sudden-pigeon)
+
+**What happened.** rust-analyzer references returned no references for exported SearchRequest and Address despite exact callsites existing
+
+**Workaround.** used flowspace3 semantic search plus exact text search to enumerate callsites
+
+**Suggested encoding.** make LSP report index readiness or retry after workspace load instead of a false empty result
+
+### DL-003 — difficulty/degrading (u4, pij-sudden-pigeon)
+
+**What happened.** flowspace3 search for inverse-index ddoc rows referencing a source path missed the exact rows_referencing function in crates/store/src/ddoc.rs and returned unrelated read/root helpers
+
+**Workaround.** opened the known store ddoc module from the PM-provided contract
+
+**Suggested encoding.** index or ranking check that semantic queries mentioning ddoc inverse refs surface rows_referencing
+
+### CONF-001 — confusion/degrading (u4, pij-sudden-pigeon)
+
+**What happened.** worktree-built flowspace3 rejected documented global --json on add even though installed flowspace3 and bundled agent guide advertise it
+
+**Workaround.** reran with FS3_OUTPUT=json and no --json flag
+
+**Suggested encoding.** CLI contract test that every verb accepts the documented global output flags
+
+### CONF-002 — confusion/degrading (u4, pij-sudden-pigeon)
+
+**What happened.** CORRECTION to the finding above: the documented --json came from the INSTALLED current-main flowspace3 while the worktree-built branch binary legitimately lacks it; both report 0.4.0 so version does not expose build provenance
+
+**Workaround.** smoked target/debug/flowspace3 explicitly and stopped using the bare PATH binary as branch evidence
+
+**Suggested encoding.** require worktree agents to invoke the branch-built binary explicitly; add commit or dirty provenance to the reported version so same-semver builds are distinguishable
+
+---
+
+## What this record cost, and why it was worth keeping
+
+Five seats, 29 observations, none cleared. Three findings were reported independently by more than
+one seat, which is what promoted them from incidental to structural. Four of u2's are findings about
+`ddocs` rather than about flowspace3, and every one of those forced an amendment to a contract the
+PM had frozen — which is the strongest evidence in this plan for the rule that a brief's job is not
+to be right, it is to be CHEAP TO CONTRADICT.
+
+The buffer is SHARED across every seat in this tree. Capture is everyone's job; the drain is
+o-prime's alone. This file is a copy taken before any worktree was tidied, so the fleet's own
+wording survives teardown.
