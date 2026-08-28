@@ -1,79 +1,111 @@
 {
- "dd": {
-  "schema": "builder/plan"
- },
- "sections": [
-  {
-   "name": "meta",
-   "value": {
-    "title": "Conversation ingestion — native session stores → conversations index",
-    "slug": "convo-ingest",
-    "ordinal": 5,
-    "status": "draft",
-    "summary": "Rust-native readers for the agent-session stores (claude, omp, pij ledger, git-ai metrics-db) feeding the existing conversations import incrementally, surfaced as flowspace3 conversations ingest + a thin harness extension."
-   }
+  "dd": {
+    "schema": "builder/plan"
   },
-  {
-   "name": "summary",
-   "value": "flowspace3 gains first-class ingestion of agent conversations from the native telemetry stores (req-0027, extending the req-0024..0026 surface). Input is either (pij_id, folder) or (session_id, harness, folder). Parsers live INSIDE flowspace, in Rust (Jordan ruling 2026-08-28): four store readers behind one frozen ConversationSource trait, an incremental byte-offset cursor service, and a normalizer to the measured turn payload, composed into `flowspace3 conversations ingest` which appends iteratively through the existing idempotent import. A thin harness extension wraps the command for now; the harness later calls it natively. Extraction recipe: scratch/reconstruct/09-ingestion-recipe.md (xoxarle, verified on this machine); payload spec: scratch/conversations-telemetry-sample.md; reconvo.py is the reference oracle the Rust readers are verified against. This plan is dogfood run #1 of the pij-team pipeline (impl-guide.dd.json in this folder is binding for the decomposition)."
-  },
-  {
-   "name": "goals",
-   "value": [
-    "Ingest any local agent conversation by pij id or native session id into the conversations index, repeatably and incrementally.",
-    "First-class Rust parsing of the git-ai/native session stores inside flowspace (no python runtime dependency).",
-    "Append-only re-polling: a second ingest run lands only new turns, driven by durable byte-offset cursors.",
-    "Prove the pij-team working model: frozen contracts, parallel SRP services, composition as wiring."
-   ]
-  },
-  {
-   "name": "non_goals",
-   "value": [
-    "Live/streaming capture (daemon-side tailing, POST /conversations) — a later plan; this is pull-based ingest on demand.",
-    "Roll-up summaries or error promotion (v1.1, Jordan-gated).",
-    "Ingesting stores on other machines or retention management of the native stores.",
-    "Harness-native ingestion (the harness absorbs this later; v1 ships a thin extension wrapper)."
-   ]
-  },
-  {
-   "name": "acceptance_criteria",
-   "value": [
-    { "id": "ac-0001", "claim": "Ingest by (pij_id, folder) resolves harness + session files via the pij sessions join and lands the conversation's turns in the index.", "state": "unchecked" },
-    { "id": "ac-0002", "claim": "Ingest by (session_id, harness, folder) lands the same turns as the pij-id route for the same underlying session (same content hashes).", "state": "unchecked" },
-    { "id": "ac-0003", "claim": "A second ingest run after new session activity appends ONLY the new turns — byte-offset cursor proven by a live re-poll transcript.", "state": "unchecked" },
-    { "id": "ac-0004", "claim": "Claude subagent sidecar files are discovered (including ones that appear mid-session) and ingested as child conversations linked to the parent.", "state": "unchecked" },
-    { "id": "ac-0005", "claim": "Compaction/summary turns are preserved with a system-turn kind, never dropped, for both claude and omp stores.", "state": "unchecked" },
-    { "id": "ac-0006", "claim": "A turn ingested this way is findable via flowspace3 search --source conversation after enrichment drains.", "state": "unchecked" },
-    { "id": "ac-0007", "claim": "All four readers pass the shared contract suite against golden fixtures, offline, standalone (cargo test -p per crate, no daemon, no network).", "state": "unchecked" },
-    { "id": "ac-0008", "claim": "harness checks green on the composed branch; every new dependency edge is a deliberate arch-allowlist row granted by the impl-guide.", "state": "unchecked" }
-   ]
-  },
-  {
-   "name": "phases",
-   "value": [
+  "sections": [
     {
-     "id": "ph-d8ff",
-     "title": "Phase 1: Contracts + fixtures",
-     "brief": "Freeze the seams before anyone is spawned (tenet 2): the ConversationSource trait (resolve(input) -> session files; read_incremental(cursor) -> raw records + new cursor), the cursor/raw-record/normalized-turn types, sanitized golden fixtures for all four stores, and the shared contract suite in testkit that every reader must pass. reconvo.py pinned as the reference oracle. Small and serial — PM-codeable per the impl-guide fan_out rules.",
-     "state": "unchecked",
-     "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+      "name": "meta",
+      "value": {
+        "title": "Conversation ingestion — native session stores → conversations index",
+        "slug": "convo-ingest",
+        "ordinal": 5,
+        "status": "draft",
+        "summary": "Rust-native readers for the agent-session stores (claude, omp, pij ledger, git-ai metrics-db) feeding the existing conversations import incrementally, surfaced as flowspace3 conversations ingest + a thin harness extension."
+      }
     },
     {
-     "id": "ph-c2aa",
-     "title": "Phase 2: Parallel services (readers, cursor, normalizer)",
-     "brief": "The fan-out wave: six SRP units, each independently written and tested behind the phase-1 contracts — claude reader (per-block merge, sidecar re-glob, spilled tool-results), omp reader (xd:// remap, toolCallId pairing), pij-ledger reader (seq cursor, receipts), metrics-db reader (rowid cursor, both dialects, repo scoping), cursor-state service (inode/offset, tail buffer, rotation; PG-persisted), normalizer (raw -> measured turn payload). Zero shared files beyond one export line each; every unit ships its snap-in recipe.",
-     "state": "unchecked",
-     "tasks": "assets/tasks/phase-2/tasks.dd.json#tasks"
+      "name": "summary",
+      "value": "flowspace3 gains first-class ingestion of agent conversations from the native telemetry stores (req-0027, extending the req-0024..0026 surface). Input is either (pij_id, folder) or (session_id, harness, folder). Parsers live INSIDE flowspace, in Rust (Jordan ruling 2026-08-28): four store readers behind one frozen ConversationSource trait, an incremental byte-offset cursor service, and a normalizer to the measured turn payload, composed into `flowspace3 conversations ingest` which appends iteratively through the existing idempotent import. A thin harness extension wraps the command for now; the harness later calls it natively. Extraction recipe: scratch/reconstruct/09-ingestion-recipe.md (xoxarle, verified on this machine); payload spec: scratch/conversations-telemetry-sample.md; reconvo.py is the reference oracle the Rust readers are verified against. This plan is dogfood run #1 of the pij-team pipeline (impl-guide.dd.json in this folder is binding for the decomposition)."
     },
     {
-     "id": "ph-c3aa",
-     "title": "Phase 3: Composition + surface",
-     "brief": "Composition is wiring, not building: the join (pij sessions -> uuid shape routes the store), the ingest orchestrator pumping readers through cursor-state into the existing idempotent import, the `flowspace3 conversations ingest` CLI surface, the thin harness extension wrapper, and the first-light proof — ingest a REAL live session by pij id, re-poll, show the append-only delta, then find it via search.",
-     "state": "unchecked",
-     "tasks": "assets/tasks/phase-3/tasks.dd.json#tasks"
+      "name": "goals",
+      "value": [
+        "Ingest any local agent conversation by pij id or native session id into the conversations index, repeatably and incrementally.",
+        "First-class Rust parsing of the git-ai/native session stores inside flowspace (no python runtime dependency).",
+        "Append-only re-polling: a second ingest run lands only new turns, driven by durable byte-offset cursors.",
+        "Prove the pij-team working model: frozen contracts, parallel SRP services, composition as wiring."
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "Live/streaming capture (daemon-side tailing, POST /conversations) — a later plan; this is pull-based ingest on demand.",
+        "Roll-up summaries or error promotion (v1.1, Jordan-gated).",
+        "Ingesting stores on other machines or retention management of the native stores.",
+        "Harness-native ingestion (the harness absorbs this later; v1 ships a thin extension wrapper)."
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-0001",
+          "claim": "Ingest by (pij_id, folder) resolves harness + session files via the pij sessions join and lands the conversation's turns in the index.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0002",
+          "claim": "Ingest by (session_id, harness, folder) lands the same turns as the pij-id route for the same underlying session (same content hashes).",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0003",
+          "claim": "A second ingest run after new session activity appends ONLY the new turns — byte-offset cursor proven by a live re-poll transcript.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0004",
+          "claim": "Claude subagent sidecar files are discovered (including ones that appear mid-session) and ingested as child conversations linked to the parent.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0005",
+          "claim": "Compaction/summary turns are preserved with a system-turn kind, never dropped, for both claude and omp stores.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0006",
+          "claim": "A turn ingested this way is findable via flowspace3 search --source conversation after enrichment drains.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0007",
+          "claim": "All four readers pass the shared contract suite against golden fixtures, offline, standalone (cargo test -p per crate, no daemon, no network).",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0008",
+          "claim": "harness checks green on the composed branch; every new dependency edge is a deliberate arch-allowlist row granted by the impl-guide.",
+          "state": "unchecked"
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-d8ff",
+          "title": "Phase 1: Contracts + fixtures",
+          "brief": "Freeze the seams before anyone is spawned (tenet 2): the ConversationSource trait (resolve(input) -> session files; read_incremental(cursor) -> raw records + new cursor), the cursor/raw-record/normalized-turn types, sanitized golden fixtures for all four stores, and the shared contract suite in testkit that every reader must pass. reconvo.py pinned as the reference oracle. Small and serial — PM-codeable per the impl-guide fan_out rules.",
+          "state": "checked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks",
+          "receipt": "Frozen and committed at a3bbfd2. tk-c101..c105 all checked with receipts. harness checks GREEN in worktree ../fs3-convo-ingest against the sealed scratch db fs3_convo_ingest: docs, lock, testdb, fmt, clippy, prodguard before/after, cargo test --all. The frozen seam is the ConversationSource trait + its types (fs3-core), the shared contract suite and the committed oracle expectations (fs3-testkit), and tail.rs line framing written once (fs3-providers). Any change to it after this point is a defect routed to prime, not a PM refactor. No AC closes here: ac-0007 needs the four readers, ac-0003 needs the live re-poll."
+        },
+        {
+          "id": "ph-c2aa",
+          "title": "Phase 2: Parallel services (readers, cursor, normalizer)",
+          "brief": "The fan-out wave: six SRP units, each independently written and tested behind the phase-1 contracts — claude reader (per-block merge, sidecar re-glob, spilled tool-results), omp reader (xd:// remap, toolCallId pairing), pij-ledger reader (seq cursor, receipts), metrics-db reader (rowid cursor, both dialects, repo scoping), cursor-state service (inode/offset, tail buffer, rotation; PG-persisted), normalizer (raw -> measured turn payload). Zero shared files beyond one export line each; every unit ships its snap-in recipe.",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-2/tasks.dd.json#tasks"
+        },
+        {
+          "id": "ph-c3aa",
+          "title": "Phase 3: Composition + surface",
+          "brief": "Composition is wiring, not building: the join (pij sessions -> uuid shape routes the store), the ingest orchestrator pumping readers through cursor-state into the existing idempotent import, the `flowspace3 conversations ingest` CLI surface, the thin harness extension wrapper, and the first-light proof — ingest a REAL live session by pij id, re-poll, show the append-only delta, then find it via search.",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-3/tasks.dd.json#tasks"
+        }
+      ]
     }
-   ]
-  }
- ],
- "references": []
+  ]
 }
