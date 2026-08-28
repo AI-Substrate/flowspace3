@@ -1,0 +1,55 @@
+{
+  "ok": true,
+  "command": "docs",
+  "v": 1,
+  "data": {
+    "topics": [
+      {
+        "name": "agents",
+        "title": "The agent operating guide: the loop, the envelope, the gotchas",
+        "bytes": 8147
+      },
+      {
+        "name": "install",
+        "title": "Install and first run",
+        "bytes": 1870
+      },
+      {
+        "name": "doctor",
+        "title": "What doctor checks, what it repairs, and what it refuses to",
+        "bytes": 3112
+      },
+      {
+        "name": "daemon",
+        "title": "Running the indexer: boot, the queue, and its log stream",
+        "bytes": 2601
+      },
+      {
+        "name": "search",
+        "title": "The query surface: flags, hit shape, and how ranking works",
+        "bytes": 3879
+      },
+      {
+        "name": "read",
+        "title": "Fetch by address: get, tree, and what scoping means",
+        "bytes": 4905
+      },
+      {
+        "name": "conversations",
+        "title": "Storing the WHY: importing transcripts, and asking for them later",
+        "bytes": 6858
+      },
+      {
+        "name": "config",
+        "title": "Configuration files, layering, and the secrets chain",
+        "bytes": 2503
+      },
+      {
+        "name": "providers",
+        "title": "The provider registry: fake, OpenAI, Azure, and the row key",
+        "bytes": 6637
+      }
+    ]
+  },
+  "next_action": "`flowspace3 docs get agents` is the whole operating guide; the others are detail"
+}

@@ -1,0 +1,1 @@
+{"ok":false,"command":"search","v":1,"meta":{"scope":{"repo":null,"source":"all"}},"error":{"code":"FS3-E-QUERY-INVALID","message":"the query is empty; there is nothing to rank against","fix":"pass a question: `flowspace3 search \"how does auth work\"`","retryable":false}}
