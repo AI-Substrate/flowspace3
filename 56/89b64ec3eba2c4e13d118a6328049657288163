@@ -1,0 +1,14 @@
+docs/plans/006-worktree-diff/assets/pr-body.md
+  h_9e71e8b09f7cf2 1-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5689b64ec3eba2c4e13d118a6328049657288163",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
