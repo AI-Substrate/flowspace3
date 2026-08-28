@@ -8,10 +8,10 @@
 //! The stub is a fake service — see `tests/common/mod.rs`. No key, no network.
 
 use axum::http::StatusCode;
-use fs3_core::{Element, ElementKind, Span, Summarizer};
+use fs3_core::{ChatMessage, ChatProvider, Element, ElementKind, Embedder, Span, Summarizer};
 use fs3_providers::{
-    DEFAULT_MAX_TOKENS, OpenAiCompatConfig, OpenAiCompatSummarizer, OpenAiSummarizer,
-    embeddings_unsupported,
+    DEFAULT_MAX_TOKENS, OpenAiCompatChatClient, OpenAiCompatConfig, OpenAiCompatEmbedder,
+    OpenAiCompatSummarizer, OpenAiSummarizer, embeddings_unsupported,
 };
 
 mod common;
@@ -268,4 +268,84 @@ fn an_embedder_pointed_here_is_refused_with_an_alternative() {
     let message = embeddings_unsupported("http://192.168.1.134:8080/v1").to_string();
     assert!(message.contains("summarizer-only"), "{message}");
     assert!(message.contains("local embedder"), "{message}");
+}
+
+#[tokio::test]
+async fn hosted_embeddings_send_model_and_dimensions_and_verify_the_width() {
+    let stub = StubServer::ok(r#"{"data":[{"index":0,"embedding":[0.1,0.2,0.3]}]}"#).await;
+    let embedder = OpenAiCompatEmbedder::new(
+        OpenAiCompatConfig::new(format!("{}/v1", stub.endpoint))
+            .with_model("acme/embed")
+            .with_dimensions(3),
+    );
+
+    let vectors = embedder
+        .embed(&["hello".to_string()])
+        .await
+        .expect("the recorded OpenAI embedding shape is accepted");
+
+    assert_eq!(vectors, vec![vec![0.1, 0.2, 0.3]]);
+    assert_eq!(embedder.key(), "acme/embed@3");
+    let request = stub.only_request();
+    assert_eq!(request.path, "/v1/embeddings");
+    assert_eq!(request.body["model"], "acme/embed");
+    assert_eq!(request.body["dimensions"], 3);
+}
+
+#[tokio::test]
+async fn hosted_embeddings_refuse_a_width_other_than_the_configured_space() {
+    let stub = StubServer::ok(r#"{"data":[{"index":0,"embedding":[0.1,0.2]}]}"#).await;
+    let embedder = OpenAiCompatEmbedder::new(
+        OpenAiCompatConfig::new(format!("{}/v1", stub.endpoint))
+            .with_model("acme/embed")
+            .with_dimensions(3),
+    );
+
+    let message = embedder
+        .embed(&["hello".to_string()])
+        .await
+        .expect_err("a different vector space must never reach the index")
+        .to_string();
+    assert!(
+        message.contains("returned 2 dimensions, configured 3"),
+        "{message}"
+    );
+}
+
+#[tokio::test]
+async fn hosted_chat_propagates_reported_total_usage() {
+    let stub = StubServer::ok(
+        r#"{"choices":[{"message":{"content":"done"}}],"usage":{"prompt_tokens":7,"completion_tokens":4,"total_tokens":11}}"#,
+    )
+    .await;
+    let chat = OpenAiCompatChatClient::new(
+        OpenAiCompatConfig::new(format!("{}/v1", stub.endpoint)).with_model("acme/chat"),
+    );
+
+    let turn = chat
+        .turn(&[ChatMessage::User("answer".into())], &[])
+        .await
+        .expect("the recorded OpenAI chat shape is accepted");
+
+    assert_eq!(turn.content.as_deref(), Some("done"));
+    assert_eq!(turn.tokens_used, Some(11));
+    assert_eq!(chat.key(), "acme/chat");
+    let request = stub.only_request();
+    assert_eq!(request.path, "/v1/chat/completions");
+    assert_eq!(request.body["model"], "acme/chat");
+}
+
+#[tokio::test]
+async fn hosted_chat_without_usage_stays_unknown_not_zero() {
+    let stub = StubServer::ok(r#"{"choices":[{"message":{"content":"done"}}]}"#).await;
+    let chat = OpenAiCompatChatClient::new(
+        OpenAiCompatConfig::new(format!("{}/v1", stub.endpoint)).with_model("acme/chat"),
+    );
+
+    let turn = chat
+        .turn(&[ChatMessage::User("answer".into())], &[])
+        .await
+        .expect("usage is optional in the OpenAI shape");
+
+    assert_eq!(turn.tokens_used, None);
 }
