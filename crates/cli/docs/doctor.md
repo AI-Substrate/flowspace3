@@ -16,6 +16,7 @@ flowspace3 doctor
 | `database` | the configured database exists | yes — `CREATE DATABASE` |
 | `schema` | the database has every migration this binary carries | yes — applies the missing ones |
 | `daemon` | `GET /health` answers on `daemon.url` | no — see below |
+| `auth` | `daemon.key` is mode `0600` and the daemon accepts it | no — restart republishes a missing or stale key |
 
 Every row reports `found` (what it saw) and, when it acted, `action` (what it
 did). A row that only says "ok" would be a row you cannot verify.

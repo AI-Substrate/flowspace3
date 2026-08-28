@@ -105,7 +105,7 @@ pub struct Outline {
     /// Inclusive 1-based `[start, end]`.
     pub span: [u32; 2],
     /// Its own children, when the requested depth reaches them.
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<Outline>,
 }
 
@@ -135,28 +135,28 @@ pub struct TreeEntry {
     /// The segment's own name.
     pub name: String,
     /// The address to `get` or `tree` next, when the row has one.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub address: Option<String>,
     /// The repo-relative path, for files and directories.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
     /// Inclusive 1-based `[start, end]`, for elements.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub span: Option<[u32; 2]>,
     /// How many files this row contains, for directories and repositories.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub files: Option<i64>,
     /// Who spoke, for a turn row (workshop 005's outline: role, source, time,
     /// first line). Absent on every code row, because a function has no role.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub role: Option<String>,
     /// Where the turn came from — `human`, `peer` or `system`.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,
     /// When it happened, RFC 3339 in UTC.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub at: Option<String>,
     /// Nested structure, to the requested depth.
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<TreeEntry>,
 }

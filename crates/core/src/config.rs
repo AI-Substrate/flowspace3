@@ -42,6 +42,15 @@ pub const CONFIG_FILE_NAME: &str = "config.toml";
 /// loaded into the environment at startup, never merged into [`Config`].
 pub const SECRETS_FILE_NAME: &str = "secrets.env";
 
+/// The daemon's per-boot bearer key inside the resolved config directory.
+pub const DAEMON_KEY_FILE_NAME: &str = "daemon.key";
+
+/// Where the daemon publishes its bearer key and every client reads it.
+#[must_use]
+pub fn daemon_key_path(config_dir: &std::path::Path) -> std::path::PathBuf {
+    config_dir.join(DAEMON_KEY_FILE_NAME)
+}
+
 /// Subdirectory of the user's config home when [`CONFIG_DIR_ENV`] is unset.
 pub const DEFAULT_CONFIG_SUBDIR: &str = "flowspace3";
 

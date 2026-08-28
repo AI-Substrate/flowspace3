@@ -76,6 +76,10 @@ pub fn run() -> Result<()> {
     let logging = logging::init(&configuration.config.daemon);
 
     let address = bind_address(&configuration.config.daemon.url)?;
+    // Publish this boot's credential before anything can bind the listener.
+    // A client can therefore never reach a daemon whose accepted key is not
+    // already the bytes visible at daemon.key.
+    let auth = crate::auth::generate(&directory)?;
     tracing::info!(
         config = %directory.display(),
         // Named once, at startup, so "where are the logs" is answerable from
@@ -114,7 +118,7 @@ pub fn run() -> Result<()> {
         .enable_all()
         .build()
         .context("starting the Tokio runtime")?
-        .block_on(serve(configuration.config, address, logging))
+        .block_on(serve(configuration.config, address, logging, auth))
 }
 
 /// Refuse to boot when a TEST spawned us and nobody said which store to use.
@@ -170,7 +174,12 @@ fn refuse_a_defaulted_store_under_test(configuration: &fs3_core::Effective) -> R
     )
 }
 
-async fn serve(configuration: Config, address: String, logging: Logging) -> Result<()> {
+async fn serve(
+    configuration: Config,
+    address: String,
+    logging: Logging,
+    auth: crate::auth::Auth,
+) -> Result<()> {
     let state = AppState::from_config(configuration).context("wiring the composition root")?;
     let database = redact_url_password(&state.config.database.url);
 
@@ -403,7 +412,7 @@ async fn serve(configuration: Config, address: String, logging: Logging) -> Resu
     reconcilers.push(Box::new(crate::gc::GcSupervisor::new(state.db.clone())));
     tokio::spawn(crate::reconcile::run_forever(reconcilers, cadence));
 
-    http::serve(state, &address).await
+    http::serve(state, &address, auth).await
 }
 
 /// Turn the configured daemon URL into a bind address, refusing any host that

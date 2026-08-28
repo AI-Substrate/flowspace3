@@ -50,6 +50,9 @@ gix = { version = "0.87", default-features = false, features = [
   "dirwalk",
   "max-performance-safe",
 ] }
+# OS-backed randomness for daemon bearer keys. No PRNG state, seed, or extra
+# dependency tree: each daemon boot asks the operating system for 256 bits.
+getrandom = "0.3"
 # ripgrep's walker: gitignore semantics (tracked + untracked-but-not-ignored,
 # nested ignore files, force-include overrides) are a pile of edge cases fs3
 # refuses to re-derive — PRD req 41 is exactly what this crate already does.

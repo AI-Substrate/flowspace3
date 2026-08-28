@@ -1186,6 +1186,7 @@ dependencies = [
  "fs3-providers",
  "fs3-store",
  "fs3-testkit",
+ "getrandom 0.3.4",
  "notify",
  "reqwest 0.12.28",
  "serde",

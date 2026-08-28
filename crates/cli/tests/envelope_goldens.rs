@@ -67,12 +67,36 @@ fn binary_under_test() -> PathBuf {
     }
 }
 
-/// A `flowspace3` that cannot reach the production store.
+/// The key this harness's stub daemon is "authenticated" with.
+///
+/// Any string: the stub does not check it. What matters is that the file
+/// EXISTS, because since #43 the client reads it before every request and
+/// refuses without one.
+const TEST_KEY: &str = "isolated-golden-test-key";
+
+/// A `flowspace3` that cannot reach the production store, and can authenticate
+/// against this test's stub.
 ///
 /// Sealed for the reason `fs3_testkit::spawn` documents: unsealed, these spawns
 /// read the developer's real `config.toml` and real `secrets.env`, and an
 /// ambient `FS3_*` would silently change the bytes this file is asserting on.
+///
+/// The key file is written in the same shape `crates/cli/tests/ping.rs` uses —
+/// inside the test's own config directory, 0600. Without it every case here
+/// exits 1 with `FS3-E-DAEMON-UNAUTHORIZED` instead of reaching the stub, which
+/// is exactly what this harness caught when main's daemon authentication landed
+/// under it (2026-08-28): the goldens' bytes had not moved, the CLI's
+/// PRECONDITIONS had.
 fn flowspace3(config_dir: &Path) -> Command {
+    let key_path = fs3_core::daemon_key_path(config_dir);
+    std::fs::write(&key_path, TEST_KEY).expect("writing the isolated daemon key");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        std::fs::set_permissions(&key_path, std::fs::Permissions::from_mode(0o600))
+            .expect("restricting the isolated daemon key");
+    }
+
     fs3_testkit::sealed(
         &binary_under_test(),
         config_dir,
@@ -237,18 +261,9 @@ const CASES: &[Case] = &[
         response: Some("error-query-empty.json"),
         exit: 1,
     },
-    Case {
-        name: "docs-list",
-        args: &["docs", "list"],
-        response: None,
-        exit: 0,
-    },
-    Case {
-        name: "agents-start-here",
-        args: &["agents-start-here"],
-        response: None,
-        exit: 0,
-    },
+    // `docs list` and `agents-start-here` are NOT here: their payload is the
+    // bundled documentation itself, which the product edits on purpose. See
+    // `the_documentation_verbs_keep_their_shape` below and PROVENANCE.md.
     // A usage problem is answered by clap, before any envelope exists: exit 2,
     // stderr, and — the line that matters for plan 007 — NOTHING on stdout. An
     // agent that pipes stdout must keep getting an empty stream here, not a
@@ -354,5 +369,87 @@ fn the_piped_envelope_is_byte_identical_to_pre_plan_main() {
          golden to re-capture.\n\n{}",
         drifted.len(),
         drifted.join("\n\n")
+    );
+}
+
+/// The two verbs whose payload IS the shipped documentation keep their SHAPE,
+/// not their bytes.
+///
+/// # Why these two are not byte-frozen
+///
+/// A byte-witness is worth having because a diff can only mean one thing: the
+/// contract moved. That holds for every verb whose payload the daemon computes
+/// from store state. It is false for `docs list` and `agents-start-here`, whose
+/// payload is editorial content the product improves on purpose — plan 007's
+/// own ac-0005 rewrites those pages, and main's daemon-authentication work
+/// rewrote them again while this plan was in flight. A tripwire that fires
+/// every time someone improves a doc is a tripwire that gets muted, and a muted
+/// tripwire protects nothing (o-prime ruling, 2026-08-28).
+///
+/// The protection is not lost, it moves: the doc bytes are COMMITTED CONTENT,
+/// so `git diff` and PR review are already the byte-witness for them. What a
+/// consumer actually depends on here is the SHAPE, and that is what this
+/// asserts.
+#[test]
+fn the_documentation_verbs_keep_their_shape() {
+    let (stdout, exit) = run(&Case {
+        name: "docs-list",
+        args: &["docs", "list"],
+        response: None,
+        exit: 0,
+    });
+    assert_eq!(exit, Some(0), "`docs list` should succeed offline");
+
+    let listing: serde_json::Value =
+        serde_json::from_slice(&stdout).expect("`docs list` prints one JSON envelope");
+    assert_eq!(listing["ok"], serde_json::json!(true));
+    assert_eq!(listing["command"], serde_json::json!("docs"));
+    assert_eq!(listing["v"], serde_json::json!(1));
+
+    let topics = listing["data"]["topics"]
+        .as_array()
+        .expect("the listing carries a topics array");
+    assert!(
+        !topics.is_empty(),
+        "a listing with no topics teaches nobody"
+    );
+    for topic in topics {
+        assert!(
+            topic["name"].is_string(),
+            "every topic needs the name `docs get` takes: {topic}"
+        );
+        assert!(
+            topic["title"].is_string(),
+            "every topic needs a title: {topic}"
+        );
+        assert!(
+            topic["bytes"].is_u64(),
+            "every topic reports its size so a caller can budget: {topic}"
+        );
+    }
+
+    let (stdout, exit) = run(&Case {
+        name: "agents-start-here",
+        args: &["agents-start-here"],
+        response: None,
+        exit: 0,
+    });
+    assert_eq!(exit, Some(0), "`agents-start-here` should succeed offline");
+
+    let page: serde_json::Value =
+        serde_json::from_slice(&stdout).expect("`agents-start-here` prints one JSON envelope");
+    assert_eq!(page["ok"], serde_json::json!(true));
+    assert_eq!(page["command"], serde_json::json!("agents-start-here"));
+    assert!(
+        page["next_action"].is_string(),
+        "the front door must say what to do next (PRD req 44)"
+    );
+    let text = page["data"]["text"]
+        .as_str()
+        .expect("the page carries its text");
+    assert!(
+        text.len() > 1_000,
+        "the front door page is {} bytes — that is not a guide",
+        text.len()
     );
 }
