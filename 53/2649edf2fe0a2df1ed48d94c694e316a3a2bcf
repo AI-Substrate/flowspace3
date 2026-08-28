@@ -1,0 +1,24 @@
+crates/cli/docs/ddocs.md
+  h_9e71e8b09f7cf2 40-52
+crates/cli/src/client.rs
+  h_9e71e8b09f7cf2 285-289
+crates/cli/src/main.rs
+  h_9e71e8b09f7cf2 119-132,471-483
+crates/daemon/src/http.rs
+  h_9e71e8b09f7cf2 25,54-99,116,447-514
+crates/daemon/tests/read_surface.rs
+  h_9e71e8b09f7cf2 148,179,213-216,301,333-401
+eval/ddocs/scenarios/criteria-touching-source/scenario.json
+  h_9e71e8b09f7cf2 7-8,10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "532649edf2fe0a2df1ed48d94c694e316a3a2bcf",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
