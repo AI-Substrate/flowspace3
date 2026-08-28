@@ -201,11 +201,7 @@ pub fn items(range: std::ops::Range<u32>) -> Vec<(String, String)> {
 /// the blob instead: different content is a different root, identical content
 /// is the same root written twice with the same bytes. `label` survives only
 /// to keep the paths readable when a test fails.
-pub async fn hold(
-    state: &fs3_daemon::wiring::AppState,
-    label: &str,
-    items: &[(String, String)],
-) {
+pub async fn hold(state: &fs3_daemon::wiring::AppState, label: &str, items: &[(String, String)]) {
     // The item hashes, not the texts: they are already content-derived, and a
     // blob key is 40 hex characters whatever went into it.
     let digest = fs3_core::content_hash(
@@ -246,8 +242,8 @@ pub async fn hold(
                 fs3_core::Element::new(
                     fs3_core::ElementKind::Function,
                     "function_item",
-                    &format!("f{index}"),
-                    &format!("src/held.rs::f{index}"),
+                    format!("f{index}"),
+                    format!("src/held.rs::f{index}"),
                     fs3_core::Span::new(1, 1),
                     text,
                 )

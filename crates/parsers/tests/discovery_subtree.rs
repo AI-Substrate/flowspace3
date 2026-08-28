@@ -92,7 +92,10 @@ fn a_hidden_directory_is_not_walked_either() {
         .is_none();
     fs::remove_dir_all(&root).expect("cleanup");
 
-    assert!(refused, "the hidden filter prunes it when the root is walked");
+    assert!(
+        refused,
+        "the hidden filter prunes it when the root is walked"
+    );
 }
 
 /// And the deny list, which holds whether or not the repo has a `.gitignore`.
@@ -203,8 +206,8 @@ fn a_directory_outside_the_root_is_not_reached() {
     let stranger = tree("outside-stranger");
     write(&stranger, "main.rs", "fn main() {}\n");
 
-    let answer = discover_subtree(&root, &stranger, &DiscoverySettings::default())
-        .expect("the walk runs");
+    let answer =
+        discover_subtree(&root, &stranger, &DiscoverySettings::default()).expect("the walk runs");
     fs::remove_dir_all(&root).expect("cleanup");
     fs::remove_dir_all(&stranger).expect("cleanup");
 

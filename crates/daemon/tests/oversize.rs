@@ -96,9 +96,12 @@ async fn an_oversized_input_arrives_at_the_provider_under_the_cap() {
     let text = oversized();
     let hash = fs3_core::content_hash(text.as_bytes());
 
-    enrich::embed(&state, payload(&state, &[(hash.clone(), text.clone())]).await)
-        .await
-        .expect("an oversized element must still be embeddable");
+    enrich::embed(
+        &state,
+        payload(&state, &[(hash.clone(), text.clone())]).await,
+    )
+    .await
+    .expect("an oversized element must still be embeddable");
 
     let received = embedder.received();
     assert_eq!(received.len(), 1, "one text was sent");
@@ -172,9 +175,12 @@ async fn an_element_within_the_cap_is_neither_shortened_nor_marked() {
     let text = "fn small() -> u8 { 7 }".to_string();
     let hash = fs3_core::content_hash(text.as_bytes());
 
-    enrich::embed(&state, payload(&state, &[(hash.clone(), text.clone())]).await)
-        .await
-        .expect("embeds");
+    enrich::embed(
+        &state,
+        payload(&state, &[(hash.clone(), text.clone())]).await,
+    )
+    .await
+    .expect("embeds");
 
     assert_eq!(embedder.received(), vec![text], "sent verbatim");
     assert_eq!(truncated_flag(&state, &hash).await, Some(false));

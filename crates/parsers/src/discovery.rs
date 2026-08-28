@@ -508,8 +508,7 @@ fn descends_to(
     };
     let depth = relative.components().count();
     Ok(reached(root, directory, depth, settings, true)
-        || (!settings.force_include.is_empty()
-            && reached(root, directory, depth, settings, false)))
+        || (!settings.force_include.is_empty() && reached(root, directory, depth, settings, false)))
 }
 
 /// One depth-limited probe along the chain: does `directory` survive to be
