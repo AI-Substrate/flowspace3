@@ -197,3 +197,57 @@ is a phase-1 contract defect: stop, record (`harness observe` + the skill's
 EXPERIENCES.md), get it ruled by prime. The u2 numbering fix was NOT that — it
 was inside u2's own surface, found before composition, and fixed by the live
 seat that owned it.
+
+## Open items handed forward at coder stand-down
+
+Recorded here because their seats are released and a doubt left in a done report
+is a doubt the next seat re-investigates from scratch.
+
+**RETIRED — u1b's A3 doubt about pij tool pairing.** Its done report says the
+13-and-13 match is "suggestive and not pairing by id". The PM measured it: the
+pij fixture has ZERO tool blocks inside `message` records (messages carry only
+`data.message`), and the `tool_call` / `tool_result` events pair on
+`data.toolCallId` with EXACT set equality, 13 distinct each. So ignoring the
+message blocks drops nothing and the pairing is proven by id. The done report's
+doubt is stale; this is the record.
+
+**STRENGTHENED — u1b's A1, that omp never writes two conversations into one
+file.** First light read a live session thousands of records long, not the
+193-record fixture window, and `started_at` matched the session's own first
+record. Not proof, and u1b was right not to write it up as proof, but it is the
+strongest evidence anyone has and it belongs beside A1 rather than leaving A1
+reading as untested.
+
+**OPEN, narrow, u1b.** `artifact_reference` uses `rsplit_once`, so a body with
+TWO artifact markers resolves the LAST one; only one existed to test against.
+And spill resolution uses `read_to_string`, so a non-UTF-8 spill silently
+degrades to the inline preview rather than erroring — which quietly loses the
+resolution that was ruled for.
+
+**OPEN, ruling pending, u1d.** `Row::at` uses `unwrap_or_default`, so a row with
+neither an ISO timestamp nor `event_ts` yields an EMPTY-STRING timestamp. u2
+verified against live Postgres what that actually does: `append_turns` casts
+`t.at::timestamptz`, and an empty string ERRORS, so the turn-plus-element
+transaction writes nothing. It cannot corrupt — but `commit_poll` then never
+runs, the cursor never advances, and the next poll re-reads the same bytes and
+fails identically. A PERMANENT STALL on that one session, isolated and loud,
+unrecoverable without a code change. Recommended fix is the discipline the
+module already applies to every other uninterpretable row: `at` returns
+`Option`, a row with no timestamp is DROPPED, and the cursor still advances.
+
+**THE LINT THIS WAVE EARNED.** Four independent instances in one day, found by
+four different agents, of one shape: an absent value absorbed by a default
+nobody chose. u2's sharpened distinction is the actionable part — the difference
+is whether the fallback is a VALUE or a HOLE. Claude's `at` defaults to a 1970
+epoch string: a visible sentinel that stores fine and is obviously wrong to a
+human reading a turn list. An empty string stores nothing and stalls the
+session. Same construct, opposite outcomes. `unwrap_or_default` on a value that
+becomes a KEY or a TIMESTAMP is the thing to lint.
+
+**DEBT, fleet-wide.** `TurnSource::Peer` is detected from a body prefix in TWO
+readers, because no store records a flag. u1b's encoding if it is ever picked
+up: if either store grows a real source field, both readers key on the FIELD and
+keep the prefix as a fallback, rather than replacing one inference with another.
+What makes the prefix honest today is that a non-matching record falls through
+to Human rather than erroring.
+
