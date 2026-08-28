@@ -150,13 +150,15 @@ impl Stack {
         body: Option<Value>,
         query: &[(&str, &str)],
     ) -> Envelope {
-        let base = support::spawn(router(self.state.clone())).await;
+        let auth = support::auth("read-surface-call");
+        let base = support::spawn(router(self.state.clone(), auth.auth)).await;
         let client = reqwest::Client::new();
         let url = format!("{base}{path}");
         let request = match method {
             "POST" => client.post(&url).json(&body.unwrap_or(Value::Null)),
             _ => client.get(&url).query(query),
-        };
+        }
+        .bearer_auth(&auth.key);
         let response = request.send().await.expect("the daemon answers");
         let status = response.status();
         let envelope: Envelope = response.json().await.expect("an envelope");

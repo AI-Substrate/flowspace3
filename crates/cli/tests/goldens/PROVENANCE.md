@@ -109,6 +109,50 @@ so stdout carries nothing and the exit code is 2. A human layer that starts
 printing prose there breaks every `flowspace3 … | jq` that currently sees clean
 end-of-stream.
 
+## Why `docs list` and `agents-start-here` are shape-asserted, not byte-frozen
+
+They were byte-frozen at capture, and both drifted within hours — once from
+this plan's own ac-0005 doc rewrite, and once from main's daemon-authentication
+work editing the same pages underneath us. Neither was a contract break; both
+were the product improving its documentation, which is what those pages are for.
+
+The distinction that matters: a byte-witness earns its place where a diff can
+only mean one thing. For every verb the daemon COMPUTES from store state, a
+changed byte means someone changed the contract — exactly the alarm we want. For
+these two the payload IS editorial content the product edits on purpose, so the
+alarm misfires by design, and a tripwire that fires whenever someone improves a
+doc is a tripwire that gets muted. A muted tripwire protects nothing.
+
+So they moved to `the_documentation_verbs_keep_their_shape`, which asserts what
+a consumer actually depends on: the envelope fields, a non-empty topics array,
+and every topic carrying the `name` that `docs get` takes, a `title`, and a
+`bytes` size a caller can budget against.
+
+The protection is not lost, it MOVES. Those doc bytes are committed content, so
+`git diff` and PR review are already their byte-witness — the golden was
+duplicating a guarantee the repository already provides, on the one payload
+class where it cries wolf. (o-prime ruling, 2026-08-28.)
+
+**And the rule that came out of it, which matters more than these two files: a
+red golden must never become a capture chore.** The day re-capturing is the
+routine response to a red witness, the witness is dead. When a golden goes red
+the answer is a diagnosis and, if the drift is legitimate, a product ruling —
+never `FS3_GOLDEN_UPDATE`.
+
+## What main's daemon authentication (#43) changed here, and what it did not
+
+Merging main mid-plan turned every case red with exit 1 and
+`FS3-E-DAEMON-UNAUTHORIZED`: since #43 the client reads `daemon.key` from the
+resolved config directory before every request, and this harness's sealed spawns
+point at an empty temp directory. The GOLDENS had not moved — the CLI's
+PRECONDITIONS had. Fixed by writing an isolated key into the test's own config
+directory, in the same shape `crates/cli/tests/ping.rs` uses; the stub does not
+check it, because what the client needs is a key to exist, not a key to be right.
+
+Worth noticing: the byte-witness caught a real environmental change in the
+product the first time it met one, which is the whole reason it is asserted on
+every gate rather than run by hand.
+
 ## Not covered, and why
 
 | verb | why not | what covers it instead |

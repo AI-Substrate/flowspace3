@@ -46,7 +46,7 @@
           "test_strategy": "Contract tests over wire types; two-subscriber identity test; emission tests at each completion point via existing test harnesses.",
           "depends_on": "phase 1",
           "wave": 1,
-          "note": "Emission points are where the runner already logs done — mirror those seams, do not invent new lifecycle."
+          "note": "Emission points are where the runner already logs done — mirror those seams, do not invent new lifecycle. AMENDED 2026-08-28 (prime ruling, on PM-verified evidence): fs3-daemon MAY take a direct tokio-stream dependency (workspace + allowlist row) — already transitive via sqlx so it fetches no new code, and ReceiverStream is tokio's own mpsc→Stream adapter for exactly the axum Body::from_stream shape. The row's \"no daemon dep additions\" guards against PRESENTATION creep (renderer/TUI crates leaking daemonward), not against an adapter that makes a stream a stream. The alternative — a hand-rolled Stream impl over http-body/futures-core — was formally rejected: bespoke poll code in the serving path is more surface, and it looks fine until a subscriber lags."
         },
         {
           "id": "u-t",
