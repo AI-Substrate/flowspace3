@@ -1,0 +1,114 @@
+{
+  "ok": true,
+  "command": "search",
+  "v": 1,
+  "data": {
+    "results": [
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/core/src/classify.rs::tests::specifier_is_a_declaration_only_for_containers",
+        "kind": "function",
+        "match_field": "raw",
+        "name": "specifier_is_a_declaration_only_for_containers",
+        "path": "crates/core/src/classify.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.08908708076631056,
+        "smart": null,
+        "snippet": "fn specifier_is_a_declaration_only_for_containers() {\n        assert!(is_declaration_shaped(\n            \"struct_specifier\",\n            ElementKind::Container\n        ));",
+        "span": [
+          233,
+          242
+        ],
+        "subkind": "function_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T054918Z"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/cli/src/client.rs::HealthReport",
+        "kind": "container",
+        "match_field": "raw",
+        "name": "HealthReport",
+        "path": "crates/cli/src/client.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.08908708076631056,
+        "smart": null,
+        "snippet": "impl HealthReport {\n    /// Whether the daemon reported itself healthy.\n    pub fn is_healthy(&self) -> bool {\n        self.status == \"ok\"\n    }",
+        "span": [
+          107,
+          112
+        ],
+        "subkind": "impl_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T054918Z"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/providers/src/retry.rs::Error",
+        "kind": "container",
+        "match_field": "raw",
+        "name": "Error",
+        "path": "crates/providers/src/retry.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.08908708076631056,
+        "smart": null,
+        "snippet": "impl From<PostFailure> for Error {\n    fn from(failure: PostFailure) -> Self {\n        failure.into_error()\n    }\n}",
+        "span": [
+          93,
+          97
+        ],
+        "subkind": "impl_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T054918Z"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/core/src/conversation.rs::String",
+        "kind": "container",
+        "match_field": "raw",
+        "name": "String",
+        "path": "crates/core/src/conversation.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.08908708076631056,
+        "smart": null,
+        "snippet": "impl From<ConversationId> for String {\n    fn from(value: ConversationId) -> Self {\n        value.0\n    }\n}",
+        "span": [
+          121,
+          125
+        ],
+        "subkind": "impl_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T054918Z"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/core/src/element.rs::String",
+        "kind": "container",
+        "match_field": "raw",
+        "name": "String",
+        "path": "crates/core/src/element.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.08908708076631056,
+        "smart": null,
+        "snippet": "impl From<BlobRef> for String {\n    fn from(value: BlobRef) -> Self {\n        value.0\n    }\n}",
+        "span": [
+          129,
+          133
+        ],
+        "subkind": "impl_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T054918Z"
+      }
+    ]
+  },
+  "meta": {
+    "empty_because": null,
+    "hint": "Weak match: describe the component in its own vocabulary rather than asking a question.",
+    "scope": {
+      "cwd": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T054918Z",
+      "repo": "git:github.com/AI-Substrate/flowspace3",
+      "source": "cwd",
+      "worktree": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T054918Z"
+    },
+    "truncation": {
+      "limit": 5,
+      "truncated": true
+    }
+  },
+  "next_action": "Weak match: describe the component in its own vocabulary rather than asking a question. — then: read a hit in full with `flowspace3 get <address>`, browse its file with `flowspace3 tree <address>`, or narrow with --path/--repo"
+}

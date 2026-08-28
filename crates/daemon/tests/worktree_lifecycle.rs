@@ -69,16 +69,34 @@ async fn linked_worktrees_are_registered_once_and_removed_after_two_absences() {
     roots::add_root(&state, &main)
         .await
         .expect("main root registers");
+    for index in 0..3 {
+        fs3_store::enqueue_job(
+            &state.db,
+            roots::SCAN_FILE,
+            &format!("scan:backlog:{index}"),
+            &serde_json::json!({ "backlog": index }),
+            std::time::Duration::ZERO,
+        )
+        .await
+        .expect("seeding an older equal-priority backlog");
+    }
     let mut supervisor = WorktreeSupervisor::new(state.clone());
 
     let discovered = supervisor.reconcile().await.expect("discovery pass");
     assert_eq!(discovered.changed, 1);
     let linked = linked.canonicalize().expect("linked root resolves");
-    assert!(
-        fs3_store::find_worktree(&state.db, &linked.display().to_string())
-            .await
-            .unwrap()
-            .is_some()
+    let linked_row = fs3_store::find_worktree(&state.db, &linked.display().to_string())
+        .await
+        .unwrap()
+        .expect("the linked root is registered");
+    let claimed = fs3_store::claim_job(&state.db, &[roots::SCAN_FILE])
+        .await
+        .unwrap()
+        .expect("a scan is ready");
+    let claimed_scan: roots::ScanFileJob = serde_json::from_value(claimed.payload).unwrap();
+    assert_eq!(
+        claimed_scan.worktree_id, linked_row.id,
+        "newly discovered root scans must jump the older normal-priority backlog"
     );
 
     let jobs_before = count_jobs(&state).await;

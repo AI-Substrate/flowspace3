@@ -8,10 +8,21 @@
 `WorktreeSupervisor` implements the daemon's existing `Reconcile` trait. A
 scheduled pass reads registered roots, groups them by repository identity, asks
 Git once per identity for linked worktrees, and diffs those paths against the
-store. Appeared paths go through `roots::add_root`; vanished paths go through
-`remove::remove`. The supervisor never deletes content and never invokes GC.
-Reference removal and later reclamation therefore remain the existing
-`fs3_store::roots`/GC mechanism.
+store. Appeared paths go through the existing root-registration path with its
+initial `scan_file` jobs promoted; vanished paths go through `remove::remove`.
+The supervisor never deletes content and never invokes GC. Reference removal
+and later reclamation therefore remain the existing `fs3_store::roots`/GC
+mechanism.
+
+The shared queue has a closed two-level priority scale in
+`fs3_store::jobs`: priority 0 is ordinary explicit add/rescan, watcher, and
+enrichment work; priority 1 is reserved for initial scans of a root newly
+discovered by this supervisor. The claim query already orders priority
+descending, so the new checkout's files jump an older scan backlog. Live-job
+dedupe keeps the higher priority on conflict, preventing an ordinary re-fire
+from demoting promoted work. Any future lane must declare another named value
+and its preemption policy beside these constants rather than passing an
+anonymous integer.
 
 Git is the authority for membership. The process runs:
 
