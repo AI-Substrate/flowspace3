@@ -453,12 +453,20 @@ answer_identity() { jq -S '[.data.results[] | {address, path, name, kind, span, 
 P3_LEAK=$(jq -r --arg m "$MARKER" '[.data.results[]?|select(.name|startswith($m))]|length' "$OUT/p3-marker-from-main.json")
 P3_FOUND=$(jq -r --arg m "$MARKER" '[.data.results[]?|select(.name|startswith($m))]|length' "$OUT/p3-marker-from-worktree.json")
 
-if [[ "$EMBEDDER" == "fake" ]]; then
-  note "ANSWER P3: NOT MEASURABLE — the daemon is running a fake embedder, so retrieval carries no semantics"
+# Refuse on "fake" AND on "unknown". Absence of proof is not proof of a real
+# embedder: if the boot line was not found — a daemon logging somewhere this
+# script did not look, which `--sandbox` does by putting its log beside its own
+# temp config — then the semantics of every vector in the corpus are unverified,
+# and the P3 verdicts would be computed on faith. The whole point of this gate
+# is that a number nobody can defend is worse than a refusal, and that applies
+# to the precondition just as much as to the result.
+if [[ "$EMBEDDER" == "fake" || "$EMBEDDER" == "unknown" || -z "$EMBEDDER" ]]; then
+  reason=$([[ "$EMBEDDER" == "fake" ]] && echo "fake-embedder" || echo "embedder-unproven")
+  note "ANSWER P3: NOT MEASURABLE — embedder=${EMBEDDER:-unknown}, so retrieval semantics are not established"
   note "           (p1/p2/p4 above are unaffected: they measure bookkeeping, not ranking)"
-  echo "p3_search_context_sensitive=unmeasurable-fake-embedder" >> "$OUT/receipt.env"
-  echo "p3_wrong_version_leak_to_main=unmeasurable-fake-embedder" >> "$OUT/receipt.env"
-  echo "p3_note=rerun against a daemon with a real embedder over an already-embedded corpus" >> "$OUT/receipt.env"
+  echo "p3_search_context_sensitive=unmeasurable-$reason" >> "$OUT/receipt.env"
+  echo "p3_wrong_version_leak_to_main=unmeasurable-$reason" >> "$OUT/receipt.env"
+  echo "p3_note=rerun against a daemon whose boot line proves a real embedder, over an already-embedded corpus" >> "$OUT/receipt.env"
 elif (( P3_FOUND == 0 )); then
   # The control: the worktree's OWN divergent function must be findable FROM the
   # worktree. If it is not, the run proves nothing about resolution — and a
