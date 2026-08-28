@@ -74,8 +74,12 @@ MARKER="poctest_${RUN_ID}"
 mkdir -p "$OUT"
 exec > >(tee -a "$OUT/transcript.log") 2>&1
 if [[ "$TRACE" == "1" ]]; then
-  exec {trace_fd}>"$OUT/xtrace.log"
-  BASH_XTRACEFD=$trace_fd
+  # macOS system bash is 3.2, where `exec {fd}>file` and BASH_XTRACEFD do not
+  # exist — both are 4.1+. stderr is already tee'd into the transcript above,
+  # so xtrace lands there with everything else, in order. (Written the 4.1 way
+  # first, which failed at launch with "exec: {trace_fd}: not found" — the same
+  # class as every other incapable shape today: right idea, wrong mechanism for
+  # the environment it actually runs in.)
   PS4='+ ${BASH_SOURCE##*/}:${LINENO}: '
   set -x
 fi
