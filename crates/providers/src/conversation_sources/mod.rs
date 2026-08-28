@@ -14,6 +14,7 @@
 //!
 //! [`ConversationSource`]: fs3_core::ConversationSource
 
+pub mod claude;
 pub mod tail;
 
 // One `pub mod` line per reader lands here. Keep them alphabetical.
