@@ -1,0 +1,21 @@
+crates/store/migrations/0014_ingest_cursors.sql
+  s_15d888f4b629c1::t_1f5ee16911e6c6 1-105
+crates/core/src/conversation_normalize.rs
+  s_15d888f4b629c1::t_79997599440d27 1-595
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5f36dc7ef2bdd5ac50e6e7fa7622ce7a3fbe76c4",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
