@@ -1,0 +1,29 @@
+Cargo.toml
+  s_a6b77772852964::t_ed66bea019b870 68-83
+crates/providers/Cargo.toml
+  s_af0fe1a82e54f0::t_7eb40812891427 16-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "23a8d1e61c1e6f047a454c9c8b8bb0e1362bdcab",
+  "prompts": {},
+  "sessions": {
+    "s_a6b77772852964": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "c800c9ff-86e7-4a5f-bdc3-f63517243af6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_af0fe1a82e54f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9726a7d5-28df-47fe-bb2a-d5ffcb472da2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
