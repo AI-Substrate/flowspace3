@@ -54,7 +54,8 @@
           "id": "ac-0003",
           "claim": "flowspace3 tui runs against the live daemon showing roots, queue operations with history, a REAL activity feed (no mock tag anywhere), and in-pane search — over ssh in a plain terminal.",
           "state": "checked",
-          "receipt": "first-light-transcript.md sections 11-12: TUI live against the real stream during a scan (roots, operations, real activity, no mock tag) and degrading to STALE with an age, a retry cadence and the real error code when the daemon was stopped underneath it. 10 headless tests in crates/cli/tests."
+          "receipt": "first-light-transcript.md sections 11-12 (live activity from the real stream during a scan; STALE with age, retry cadence and real error code when the daemon was stopped underneath it) plus 11 headless TUI tests including the flood test that bounds the mailbox at 256 and keeps draw and quit responsive. The ssh clause is read per the amended note.",
+          "note": "CLAUSE AMENDED 2026-08-28 (PM, on a review finding): the criterion said \"over ssh in a plain terminal\". First light proves a real terminal (a tmux pane with a live pty), the live stream, in-pane search, daemon loss and terminal restore — but no ssh session was staged, so the ssh clause was unproven by receipt. Read as PLAIN TERMINAL, SSH-COMPATIBLE: the TUI makes no assumption beyond a terminal — no local-only IPC, no shared memory, no display server, and it talks to the daemon over the same HTTP surface every other verb uses, so a remote terminal is the same case as a local one. If ssh-exercised is wanted as a receipt rather than an inference, that is a follow-up transcript, not a code change."
         },
         {
           "id": "ac-0004",
@@ -65,12 +66,14 @@
         {
           "id": "ac-0005",
           "claim": "Agent-path docs updated in the same PR: CLAUDE.md, the flowspace skill, agents-start-here, and the self-teaching CLI guidance all state the TTY rule and --json explicitly.",
-          "state": "unchecked"
+          "state": "checked",
+          "receipt": "AGENTS.md (CLAUDE.md symlinks to it), .agents/skills/flowspace/SKILL.md, crates/cli/docs/agents.md and the self-teaching CLI pages all state the TTY rule, --json and FS3_OUTPUT; asserted positively by u-r in crates/cli/tests/render_output.rs so the doc cannot drift from the behaviour silently."
         },
         {
           "id": "ac-0006",
           "claim": "harness checks green on the composed branch; new dependency edges are impl-guide-granted allowlist rows only.",
-          "state": "unchecked"
+          "state": "checked",
+          "receipt": "harness checks GREEN 9/9 on e9223d2 (docs, lock, testdb, fmt, clippy, prodguard before/after, cargo test --all, arch-check 0 violations across 8 crates). Allowlist additions vs main are exactly the granted rows: anstream, comfy-table, owo-colors, textwrap (u-r), crossterm, ratatui (u-t), tokio-stream (fs3-daemon, prime-approved with its rationale on the row)."
         }
       ]
     },
