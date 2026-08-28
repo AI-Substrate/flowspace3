@@ -439,6 +439,104 @@ fn a_copilot_tool_call_and_its_result_land_on_the_assistant_turn() {
 }
 
 #[test]
+fn a_result_whose_requesting_turn_was_dropped_is_dropped_too() {
+    // The cross-fix pair that took three attempts to get right. An assistant
+    // row this reader cannot DATE is dropped and leaves NO record; a
+    // tool.execution_complete arriving afterwards must not attach to whatever
+    // record happens to be last, because that is an OLDER turn which called the
+    // same tool and did not make this request.
+    //
+    // Round 3 introduced a name-based fallback; round 4 narrowed it to the most
+    // recent record, which did nothing because a dropped record leaves no gap;
+    // round 5 established the store carries `toolCallId` on the request itself,
+    // so identity is available and the fallback was never needed.
+    let scratch = Scratch::new("dropped-requester");
+    let connection = Connection::open(scratch.database()).expect("open scratch");
+
+    // An assistant turn that DID call `bash`, dated, so it is emitted.
+    let rows: [(i64, String); 4] = [
+        (
+            999_101,
+            format!(
+                r#"{{"t":1787778300,"e":5,"v":{{"0":{{"type":"assistant.message","timestamp":"2026-08-26T21:05:00.000Z","data":{{"content":"older turn","toolRequests":[{{"name":"bash","toolCallId":"call_OLD","arguments":{{}}}}]}}}}}},"a":{{"1":"{FLOWSPACE3}"}}}}"#
+            ),
+        ),
+        // The turn that ACTUALLY requests the tool, with NO timestamp anywhere:
+        // undatable, therefore dropped, therefore no record.
+        (
+            999_102,
+            format!(
+                r#"{{"t":1787778301,"e":5,"v":{{"0":{{"type":"assistant.message","data":{{"content":"undatable","toolRequests":[{{"name":"bash","toolCallId":"call_NEW","arguments":{{}}}}]}}}}}},"a":{{"1":"{FLOWSPACE3}"}}}}"#
+            ),
+        ),
+        // The START for that dropped turn's call. This is the branch that used
+        // to guess an anchor by tool name.
+        (
+            999_103,
+            format!(
+                r#"{{"t":1787778302,"e":5,"v":{{"0":{{"type":"tool.execution_start","timestamp":"2026-08-26T21:05:02.000Z","data":{{"toolCallId":"call_NEW","toolName":"bash","arguments":{{}}}}}}}},"a":{{"1":"{FLOWSPACE3}"}}}}"#
+            ),
+        ),
+        // Its result arrives. There is nothing legitimate to attach it to.
+        (
+            999_104,
+            format!(
+                r#"{{"t":1787778302,"e":5,"v":{{"0":{{"type":"tool.execution_complete","timestamp":"2026-08-26T21:05:02.000Z","data":{{"toolCallId":"call_NEW","toolName":"bash","result":"output of the dropped turn"}}}}}},"a":{{"1":"{FLOWSPACE3}"}}}}"#
+            ),
+        ),
+    ];
+    for (id, json) in &rows {
+        let ts: Option<i64> = if *id == 999_102 {
+            None
+        } else {
+            Some(1_787_778_300)
+        };
+        connection
+            .execute(
+                "insert into metrics (id, event_json, attempts, next_retry_at, event_ts, \
+                 event_kind, tool, external_session_id) values (?1, ?2, 0, 0, ?3, 5, \
+                 'github-copilot-cli', ?4)",
+                (id, json, ts, COPILOT),
+            )
+            .expect("insert");
+    }
+
+    let source = MetricsDbSource::new(scratch.database(), RepoScope::remote_url(FLOWSPACE3));
+    let file = source
+        .resolve(&IngestInput::Native {
+            session_id: COPILOT.to_owned(),
+            harness: Harness::MetricsDb,
+            folder: PathBuf::from("/Users/agent/substrate/flowspace/flowspace3"),
+        })
+        .expect("resolve")
+        .into_iter()
+        .find(|file| file.kind == SessionKind::Main)
+        .expect("main");
+    let batch = source.read_incremental(&file, None).expect("read");
+
+    let older = batch
+        .records
+        .iter()
+        .find(|record| record.ordinal == "999101")
+        .expect("the dated assistant turn is emitted");
+    assert!(
+        !older
+            .items
+            .iter()
+            .any(|item| matches!(item, TurnItem::ToolResult { .. })),
+        "the older turn must NOT receive a result for a call it never made: {:?}",
+        older.items
+    );
+    assert!(
+        !batch
+            .records
+            .iter()
+            .any(|record| record.ordinal == "999102"),
+        "the undatable turn is dropped, which is what creates the hazard"
+    );
+}
+
+#[test]
 fn an_event_type_this_reader_has_never_heard_of_is_dropped_not_fatal() {
     let scratch = Scratch::new("unknown-type");
     let connection = Connection::open(scratch.database()).expect("open scratch");
