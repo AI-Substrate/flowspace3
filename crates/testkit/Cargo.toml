@@ -10,6 +10,7 @@ description = "Shipped fakes, contract harnesses, and the architecture drift che
 # fs3-daemon depends on this normally (workshop 001 rule 5).
 [dependencies]
 fs3-core.workspace = true
+fs3-store.workspace = true
 async-trait.workspace = true
 serde.workspace = true
 serde_json.workspace = true

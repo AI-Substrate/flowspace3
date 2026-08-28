@@ -420,6 +420,18 @@ pub async fn serve(state: AppState, address: &str, auth: Auth) -> Result<()> {
     let listener = tokio::net::TcpListener::bind(address)
         .await
         .with_context(|| format!("cannot bind {address}"))?;
+    serve_listener(state, listener, auth).await
+}
+
+/// Serve on a listener whose port is already reserved.
+///
+/// Sandbox boot uses this to publish the exact ephemeral port without a
+/// release-and-rebind race.
+pub(crate) async fn serve_listener(
+    state: AppState,
+    listener: tokio::net::TcpListener,
+    auth: Auth,
+) -> Result<()> {
     let bound = listener.local_addr().context("cannot read bound address")?;
     tracing::info!(%bound, "fs3 daemon listening");
 

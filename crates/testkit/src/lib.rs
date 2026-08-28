@@ -28,9 +28,11 @@ pub mod contract;
 pub mod database;
 pub mod discovery_filter;
 pub mod fakes;
+pub mod fresh_database;
 pub mod spawn;
 
 pub use contract::{embedder_contract, sample_element, summarizer_contract};
 pub use database::{TEST_DATABASE_ENV, refusal, test_database_url};
 pub use fakes::{FakeEmbedder, FakeSummarizer};
+pub use fresh_database::FreshDatabase;
 pub use spawn::{TestDatabase, flowspace3_binary, sealed};

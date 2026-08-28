@@ -194,7 +194,11 @@ enum Command {
     /// version, and no way for a CLI and a daemon of different vintages to
     /// meet. It serves HTTP on `daemon.url`, migrates the store at boot, and
     /// drains the job queue until stopped.
-    Daemon,
+    Daemon {
+        /// Use a unique migrated database, fake providers, and an ephemeral port.
+        #[arg(long)]
+        sandbox: bool,
+    },
     /// Orient an agent that has just installed fs3: print the bundled agents
     /// guide — setup from scratch through doctor, provider and config
     /// creation, daemon, add and search (PRD req-0055).
@@ -327,15 +331,18 @@ fn main() -> ExitCode {
     let outcome = boot().and_then(|command| {
         // `daemon` is the one verb that must NOT run inside a runtime this
         // function built: it builds its own, sized for a server rather than for
-        // one request, and it never returns. Routing it here rather than in
-        // `run` is what keeps that true.
-        if matches!(command, Command::Daemon) {
-            // The subscriber used to be built HERE, on stdout with a hardcoded
-            // filter. It moved into `fs3_daemon::boot`, which is the first
-            // place that has read the configuration — and the log file's path,
-            // its size caps and its filter are all configuration.
-            return fs3_daemon::run().map(|()| ExitCode::SUCCESS);
-        }
+        // one request. Routing it here keeps that invariant true.
+        let command = match command {
+            Command::Daemon { sandbox } => {
+                let outcome = if sandbox {
+                    fs3_daemon::run_sandbox()
+                } else {
+                    fs3_daemon::run()
+                };
+                return outcome.map(|()| ExitCode::SUCCESS);
+            }
+            command => command,
+        };
 
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
@@ -362,7 +369,11 @@ fn main() -> ExitCode {
 /// Parse the command line and load the secrets chain, single-threaded.
 fn boot() -> Result<Command> {
     let command = Cli::parse().command;
-    if let Ok(dir) = settings::config_dir() {
+    // Sandbox forces fake providers, so ambient provider secrets are neither
+    // needed nor allowed to make an isolated boot fail.
+    if !matches!(&command, Command::Daemon { sandbox: true })
+        && let Ok(dir) = settings::config_dir()
+    {
         // A broken secrets file is worth failing on; a missing one is normal.
         settings::load_secrets_from(&dir)?;
     }
@@ -532,7 +543,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             command: ConfigCommand::Show { config_dir },
         } => config_show(config_dir).map(|()| ExitCode::SUCCESS),
         // Routed before the runtime was built; see `main`.
-        Command::Daemon => unreachable!("the daemon verb is handled in main"),
+        Command::Daemon { .. } => unreachable!("the daemon verb is handled in main"),
     }
 }
 
@@ -669,4 +680,19 @@ async fn ping(override_url: Option<String>) -> Result<ExitCode> {
         health.summarizer
     ))?;
     Ok(ExitCode::SUCCESS)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Cli, Command};
+    use clap::Parser as _;
+
+    #[test]
+    fn daemon_sandbox_is_an_explicit_boolean_mode() {
+        let cli = Cli::try_parse_from(["flowspace3", "daemon", "--sandbox"]).unwrap();
+        assert!(matches!(cli.command, Command::Daemon { sandbox: true }));
+
+        let cli = Cli::try_parse_from(["flowspace3", "daemon"]).unwrap();
+        assert!(matches!(cli.command, Command::Daemon { sandbox: false }));
+    }
 }
