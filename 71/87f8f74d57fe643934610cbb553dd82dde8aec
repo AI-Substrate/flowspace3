@@ -1,0 +1,31 @@
+crates/providers/src/conversation_sources/claude.rs
+  s_af0fe1a82e54f0::t_fc26b0a4dba60c 317,319-331,337,412-415,718-720
+crates/providers/tests/conversation_source_claude.rs
+  s_15d888f4b629c1::t_b3267a7f024b7f 31-38,43,551-602
+docs/plans/005-convo-ingest/assets/done-report-u1a.md
+  s_15d888f4b629c1::t_4534a5f7e58a07 236-273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7187f8f74d57fe643934610cbb553dd82dde8aec",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_af0fe1a82e54f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9726a7d5-28df-47fe-bb2a-d5ffcb472da2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
