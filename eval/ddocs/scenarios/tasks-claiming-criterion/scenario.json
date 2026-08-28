@@ -2,20 +2,22 @@
   "schema_version": 1,
   "slug": "tasks-claiming-criterion",
   "title": "Which tasks claim this criterion",
-  "lane": "ddoc-search",
+  "lane": "ddoc-traversal",
   "request": {
-    "query": "which tasks claim acceptance criterion ac-0013 eval fixtures",
+    "command": "refs",
+    "target": "docs/plans/004-ship-it/plan.dd.json#acceptance_criteria/ac-0001",
     "repo": "git:github.com/AI-Substrate/flowspace3",
-    "id_kind": "tk",
-    "ddoc_schema": "builder/plan"
+    "limit": 100
   },
   "assertions": "assertions.json",
   "ground_truth": {
     "verified_at": "2026-08-28",
-    "search_query": "which tasks claim acceptance criterion ac-0013 eval fixtures",
+    "search_query": "which tasks claim acceptance criterion ac-0001 in plan 004-ship-it",
+    "traversal_target": "docs/plans/004-ship-it/plan.dd.json#acceptance_criteria/ac-0001",
     "addresses": [
-      "docs/plans/008-ddocs-scan/assets/tasks/phase-1/tasks.dd.json#tasks/tk-0005"
+      "docs/plans/004-ship-it/assets/tasks/phase-1/tasks.dd.json#tasks/tk-0101",
+      "docs/plans/004-ship-it/assets/tasks/phase-1/tasks.dd.json#tasks/tk-0106"
     ],
-    "resolution": "Task tk-0005 owns the agent-facing surface and explicitly requires the three eval fixtures named by ac-0013."
+    "resolution": "Exact refs traversal returns the two task rows whose stored satisfies edges target ac-0001; this is edge evidence, not prose-similarity evidence."
   }
 }

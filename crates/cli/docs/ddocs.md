@@ -40,18 +40,28 @@ If a row is indexed before ddocs enrichment is available, relationships may be e
 and derived state and gate membership may be absent. The row remains a valid search
 answer; the response's `next_action` identifies the missing enrichment.
 
-## Source-file references
+## Exact references and citations
 
-The inverse index answers which ddoc rows reference one repository-relative source path.
-It is exact and unranked:
+`refs` is exact and unranked. A repository-relative source path returns ddoc rows with
+file edges to that path:
 
 ```bash
 flowspace3 refs crates/core/src/address.rs
 ```
 
-An empty `results` array is a successful answer: the current corpus may contain no file
-edges, including while dd PR #12 remains unmerged. Every non-empty result carries the
-row's positional `address`, ready for `ddocs get` or `flowspace3 get`.
+A fully qualified dd address returns rows whose stored relations cite it:
+
+```bash
+flowspace3 refs docs/plans/004-ship-it/plan.dd.json#acceptance_criteria/ac-0001
+```
+
+Copy the full address from a search or get result. Bare `#section/id` input is refused
+because guessing its document, or quietly returning empty, would turn ambiguity into a
+false absence claim. Every result carries the citing row's positional `address`, relation,
+and JSONPath location, ready for `ddocs get` or `flowspace3 get`.
+
+An empty `results` array is a successful exact answer. For path input, the current corpus
+may contain no file edges while dd PR #12 remains unmerged.
 
 ## Filters
 

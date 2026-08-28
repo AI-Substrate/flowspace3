@@ -191,6 +191,66 @@ impl Stack {
         }
     }
 
+    async fn index_citing_rows(&self, target: &str) -> Vec<String> {
+        let path = "docs/tasks.dd.json";
+        let source = br#"{
+            "dd": {"schema": "builder/plan"},
+            "sections": [{"name": "tasks", "value": [
+                {"id": "tk-0001", "title": "First citer", "state": "unchecked"},
+                {"id": "tk-0002", "title": "Second citer", "state": "unchecked"}
+            ]}]
+        }"#;
+        let mut tree =
+            fs3_parsers::scan_ddoc(Path::new(path), source, None).expect("citation fixture parses");
+        let mut addresses = Vec::new();
+        for (index, row) in tree
+            .root
+            .children
+            .iter_mut()
+            .flat_map(|section| section.children.iter_mut())
+            .enumerate()
+        {
+            addresses.push(row.address.clone());
+            row.ddoc
+                .as_mut()
+                .expect("row metadata")
+                .rels
+                .push(fs3_core::DdocRel {
+                    rel: if index == 0 { "satisfies" } else { "derives" }.to_string(),
+                    target: target.to_string(),
+                    kind: fs3_core::DdocRel::KIND_DOCUMENT.to_string(),
+                    location: format!("$.sections[0].value[{index}].target"),
+                });
+        }
+
+        let identity = fs3_core::RepoIdentity::from_path(Path::new("/srv/citing-ddoc"));
+        let worktree = fs3_store::register_worktree(
+            &self.state.db,
+            &identity,
+            "/srv/citing-ddoc",
+            Some("main"),
+        )
+        .await
+        .expect("register citation fixture root");
+        fs3_store::sync_worktree_files(
+            &self.state.db,
+            worktree,
+            &[(path.to_string(), tree.blob.clone())],
+        )
+        .await
+        .expect("map citation fixture path");
+        fs3_store::upsert_element_tree(
+            &self.state.db,
+            &tree.blob,
+            fs3_daemon::scan::PARSER_VERSION,
+            &tree.root,
+            |_| false,
+        )
+        .await
+        .expect("store citation fixture");
+        addresses
+    }
+
     async fn embed_ddoc(&self, fixture: &DdocFixture, query: &str) {
         let identity = fs3_core::RepoIdentity::from_path(Path::new("/srv/read-ddoc"));
         let repo = identity.key();
@@ -485,6 +545,57 @@ async fn refs_returns_the_source_rows_pasteable_dd_address() {
     assert_eq!(results[0]["address"], fixture.address);
     assert_eq!(results[0]["path"], "src/lib.rs");
     assert_eq!(results[0]["rel"], "ref");
+    stack.destroy().await;
+}
+
+#[tokio::test]
+async fn refs_address_with_no_citers_is_a_successful_empty_answer() {
+    let stack = Stack::create("refs_address_empty").await;
+    let target = "docs/plan.dd.json#acceptance_criteria/ac-ffff";
+    let envelope = stack.refs(&[("path", target)]).await;
+    assert!(envelope.ok, "an exact empty traversal is not an error");
+    assert_eq!(data(&envelope)["results"], serde_json::json!([]));
+    assert!(
+        envelope
+            .next_action
+            .as_deref()
+            .is_some_and(|next| next.contains("cite that address") && next.contains("successful"))
+    );
+    stack.destroy().await;
+}
+
+#[tokio::test]
+async fn refs_address_returns_two_citers_in_deterministic_order() {
+    let stack = Stack::create("refs_address_citers").await;
+    let target = "docs/plan.dd.json#acceptance_criteria/ac-0001";
+    let addresses = stack.index_citing_rows(target).await;
+    let envelope = stack.refs(&[("path", target)]).await;
+    let results = data(&envelope)["results"]
+        .as_array()
+        .expect("citation results");
+    assert_eq!(results.len(), 2);
+    assert_eq!(results[0]["address"], addresses[0]);
+    assert_eq!(results[0]["rel"], "satisfies");
+    assert_eq!(results[0]["location"], "$.sections[0].value[0].target");
+    assert!(results[0].get("path").is_none());
+    assert_eq!(results[1]["address"], addresses[1]);
+    assert_eq!(results[1]["rel"], "derives");
+    assert_eq!(results[1]["location"], "$.sections[0].value[1].target");
+    assert!(results[1].get("path").is_none());
+    stack.destroy().await;
+}
+
+#[tokio::test]
+async fn refs_bare_dd_address_is_rejected_instead_of_looking_empty() {
+    let stack = Stack::create("refs_bare_address").await;
+    let envelope = stack
+        .refs(&[("path", "#acceptance_criteria/ac-0001")])
+        .await;
+    assert!(!envelope.ok);
+    assert_eq!(code(&envelope), "FS3-E-QUERY-INVALID");
+    let next = envelope.next_action.as_deref().expect("failure steers");
+    assert!(next.contains("<file>#<section>/<id>"));
+    assert!(next.contains("flowspace3 search"));
     stack.destroy().await;
 }
 
