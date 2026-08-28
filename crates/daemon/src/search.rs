@@ -141,6 +141,8 @@ pub struct DdocHit {
     pub id_kind: Option<String>,
     pub trail: Vec<String>,
     pub doc_title: Option<String>,
+    /// How the parser chose embedded text: schema-declared fields or fallback.
+    pub embed_basis: fs3_core::EmbedBasis,
     /// The source document's stored state. It is not authoritative.
     pub state_stored: Option<String>,
     /// State derived from assertions. Believe this claim when present.
@@ -161,6 +163,7 @@ impl From<&DdocMeta> for DdocHit {
             id_kind: meta.id_kind.clone(),
             trail: meta.trail.clone(),
             doc_title: meta.doc_title.clone(),
+            embed_basis: meta.embed_basis,
             state_stored: meta.state.clone(),
             state_derived: meta.derived_state.clone(),
             gate_terminal: meta.gate_terminal,
@@ -716,6 +719,53 @@ mod tests {
             code.get("ddoc").is_none(),
             "the shipped code-hit wire shape must omit ddoc entirely: {code}"
         );
+    }
+
+    #[test]
+    fn embed_basis_surfaces_schema_declared_and_fallback_rows_only() {
+        let source = br#"{
+            "dd": {"schema": "builder/plan"},
+            "sections": [{"name": "acceptance_criteria", "value": [
+                {"id": "ac-0001", "claim": "Visible basis", "state": "unchecked"}
+            ]}]
+        }"#;
+        let facts = fs3_core::DdocSchemaFacts {
+            schema: "builder/plan".to_string(),
+            prose_fields: std::collections::BTreeMap::from([(
+                "acceptance_criteria".to_string(),
+                vec!["claim".to_string()],
+            )]),
+            ..fs3_core::DdocSchemaFacts::default()
+        };
+        let row = |facts| {
+            fs3_parsers::scan_ddoc(std::path::Path::new("docs/plan.dd.json"), source, facts)
+                .expect("ddoc parses")
+                .root
+                .iter()
+                .find(|element| element.kind == ElementKind::Row)
+                .expect("row exists")
+                .clone()
+        };
+
+        let declared = serde_json::to_value(render(&hit(row(Some(&facts)))))
+            .expect("schema-declared row serializes");
+        assert_eq!(declared["ddoc"]["embed_basis"], "schema_declared");
+
+        let fallback =
+            serde_json::to_value(render(&hit(row(None)))).expect("fallback row serializes");
+        assert_eq!(fallback["ddoc"]["embed_basis"], "fallback");
+
+        let code = fs3_core::Element::new(
+            ElementKind::Function,
+            "function_item",
+            "run",
+            "src/lib.rs::run",
+            fs3_core::Span::new(1, 1),
+            "fn run() {}",
+        );
+        let code = serde_json::to_value(render(&hit(code))).expect("code hit serializes");
+        assert!(code.get("ddoc").is_none());
+        assert!(!code.to_string().contains("embed_basis"));
     }
 
     #[test]

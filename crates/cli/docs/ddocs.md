@@ -7,6 +7,9 @@ id, parent trail, typed relationships, validation findings, and completion state
 ```bash
 flowspace3 search "which acceptance criteria are still open" --id-kind ac --gate-open
 ```
+`ddoc.embed_basis` is `schema_declared` when the schema chose the embedded fields and
+`fallback` when no schema resolved and the parser used its documented JSON fallback.
+The basis describes how text was chosen; it is not a generic degraded boolean.
 
 The hit's top-level `address` is dd's full positional address, for example:
 
