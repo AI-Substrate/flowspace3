@@ -277,23 +277,38 @@ async fn search(
     // identical to a caller who cannot see which repository was asked.
     let scope =
         crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
-    let meta = serde_json::json!({ "scope": scope });
 
     match crate::search::search(&state, &request, &scope).await {
-        Ok(results) => {
-            let next = if results.results.is_empty() {
-                // The third cause is the one nobody guesses: vectors are only
-                // read under the model_key that wrote them, so searching with
-                // a different embedder than the one that indexed returns
-                // nothing while the index looks full. Naming doctor here is
-                // what turns that from a mystery into one command.
-                "nothing matched — widen with a shorter query, drop --min-score, check \
-                 `flowspace3 status` in case indexing has not finished, or run `flowspace3 \
-                 doctor`: a search only reads vectors written by the ACTIVE embedder, so a \
-                 provider change since indexing returns nothing from a full index"
-            } else {
-                "read a hit in full with `flowspace3 get <address>`, browse its file with \
-                 `flowspace3 tree <address>`, or narrow with --path/--repo"
+        Ok(outcome) => {
+            // The third cause is the one nobody guesses: vectors are only read
+            // under the model_key that wrote them, so searching with a
+            // different embedder than the one that indexed returns nothing
+            // while the index looks full. Naming doctor here is what turns
+            // that from a mystery into one command.
+            //
+            // When `empty_because` is present the surface knows more than
+            // that, and the steer says the known thing instead of listing
+            // suspects: guessing out loud next to a fact we hold is how a user
+            // ends up rephrasing a query that was never the problem.
+            let next = match (&outcome.empty_because, outcome.results.is_empty()) {
+                (Some(reason), _) => reason.detail.as_str(),
+                (None, true) => {
+                    "nothing matched — widen with a shorter query, drop --min-score, check \
+                     `flowspace3 status` in case indexing has not finished, or run `flowspace3 \
+                     doctor`: a search only reads vectors written by the ACTIVE embedder, so a \
+                     provider change since indexing returns nothing from a full index"
+                }
+                (None, false) => {
+                    "read a hit in full with `flowspace3 get <address>`, browse its file with \
+                     `flowspace3 tree <address>`, or narrow with --path/--repo"
+                }
+            };
+            let meta = serde_json::json!({
+                "scope": scope,
+                "empty_because": outcome.empty_because,
+            });
+            let results = SearchResults {
+                results: outcome.results,
             };
             ok(&state, COMMAND, results)
                 .await
@@ -305,7 +320,7 @@ async fn search(
         Err(failure) => failed::<SearchResults>(&state, COMMAND, failure)
             .await
             .0
-            .with_meta(meta)
+            .with_meta(serde_json::json!({ "scope": scope }))
             .into(),
     }
 }
