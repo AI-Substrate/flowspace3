@@ -1,0 +1,19 @@
+crates/daemon/src/boot.rs
+  s_15d888f4b629c1::t_993f4a317dc8ed 79-82,140-148,153-156,174-175,177-178,185,191-195,197,202-203,212-213,217-231,235-250,263-290,348,350-351,353-360,528-551,562-566,632,634-687,751,801-805,807-809,813,827-828,830-832,834-837,839-842,858-859
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c851b2fe9a129df7a1fef9d783ccde0a06fc4ad5",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
