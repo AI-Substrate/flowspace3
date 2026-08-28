@@ -10,16 +10,19 @@
     "${REPO_ROOT:git:github.com/AI-Substrate/flowspace3}": "Resolve from `flowspace3 status`; fail setup rather than substituting another checkout."
   },
   "counts": {
-    "answerable": 4,
+    "answerable": 5,
     "negative": 3,
-    "scoped-zero": 1
+    "scoped-zero": 1,
+    "path-unmatched": 1,
+    "enumeration-honesty": 1
   },
   "control_counts": {
-    "negative": 4,
+    "negative": 5,
     "true-absence": 3,
-    "scope-trap": 1
+    "scope-trap": 1,
+    "unsatisfiable-path-filter": 1
   },
-  "mix_rationale": "Four answerables exercise Rust implementation/test evidence, evaluation policy, control-plane policy, and a legacy external repository. Three true-absence negatives make refusal honesty measurable across never-indexed, deleted-path, and explicit-scope classes. One dual-tagged scoped-zero negative control isolates cross-repo widening in its own denominator, so strength at recovery cannot mask weak refusal honesty (or vice versa).",
+  "mix_rationale": "Five answerables include one deliberately broad enumeration that must stay open-ended. Three true-absence negatives, one cross-repo scope trap, and one unsatisfiable path-filter control distinguish absence from a query that could not inspect the requested layout.",
   "scenarios": [
     "scenarios/answerable-flowspace3-claim-locking/scenario.json",
     "scenarios/answerable-harness-unknown/scenario.json",
@@ -28,6 +31,8 @@
     "scenarios/negative-never-indexed-repo/scenario.json",
     "scenarios/negative-deleted-path/scenario.json",
     "scenarios/negative-explicit-scope/scenario.json",
-    "scenarios/scoped-zero-widening/scenario.json"
+    "scenarios/scoped-zero-widening/scenario.json",
+    "scenarios/enumeration-bounded-findings/scenario.json",
+    "scenarios/path-filter-unmatched/scenario.json"
   ]
 }

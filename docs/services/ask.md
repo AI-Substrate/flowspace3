@@ -84,6 +84,13 @@ All three limits close a different door. `max_iterations` bounds round trips,
 amount of text back into the next paid turn. Reaching a bound is a named stop,
 not permission to continue optimistically.
 
+The response also carries `coverage`: `iterations_used`, `iteration_limit`,
+the `retrieval_top_k` used by each search, and `exhaustive: false`. The last
+field is invariant. A bounded nearest-neighbour loop can report what it found;
+it cannot prove that an enumeration is complete. The standing synthesis prompt
+therefore requires enumerations to be phrased as findings, never as “all” or
+“the only” paths.
+
 ### Grounded
 
 A confident wrong answer about your own codebase is worse than no answer,
@@ -95,6 +102,12 @@ open the same evidence with `flowspace3 get`. When the available searches and
 reads do not establish an answer, it says **not found** rather than filling the
 gap from model memory. The citations are the proof boundary between an answer
 about this index and a plausible sentence about some other code.
+
+A path-filtered miss is likewise not code absence. When the glob matches zero
+indexed paths, search returns `empty_because.reason = "path_unmatched"` plus a
+hint listing indexed top-level entries. Ask passes that distinction to the
+model and tells it to correct the filter rather than infer that the code does
+not exist.
 
 ## Bad tool calls are data, not loop failures
 

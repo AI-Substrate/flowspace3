@@ -473,6 +473,69 @@ async fn an_empty_answer_under_a_floor_names_the_floor() {
     database.destroy(state.db).await;
 }
 
+/// A glob that cannot match the indexed layout is not evidence of code absence.
+#[tokio::test]
+async fn an_unmatched_path_filter_names_the_layout_on_the_wire() {
+    let (database, state) = stack("search-path-unmatched", &[]).await;
+    let base_vector = question_vector().await;
+    let (identity, worktree) = repo(&state, TARGET_REPO).await;
+    seed(&state, worktree, "target", 1, 0.1, &base_vector).await;
+    let identity = identity.to_string();
+    let mut request = ask(Some(&identity), None, 10);
+    request.path = Some("apps/**".to_string());
+
+    let outcome = search(&state, &request, &scoped(&identity))
+        .await
+        .expect("an unmatched path is an explained empty answer");
+    let reason = outcome
+        .empty_because
+        .expect("the path filter is known to match zero indexed paths");
+    assert_eq!(reason.reason, "path_unmatched");
+    assert!(reason.detail.contains("apps/**"), "{}", reason.detail);
+    assert!(
+        reason
+            .hint
+            .as_deref()
+            .is_some_and(|hint| hint.contains("src")),
+        "the correction names the indexed layout: {:?}",
+        reason.hint
+    );
+
+    let auth = support::auth("search-path-unmatched");
+    let base = support::spawn(fs3_daemon::http::router(state.clone(), auth.auth)).await;
+    let envelope: serde_json::Value = reqwest::Client::new()
+        .get(format!("{base}/search"))
+        .bearer_auth(&auth.key)
+        .query(&[
+            ("q", QUESTION),
+            ("repo", identity.as_str()),
+            ("path", "apps/**"),
+        ])
+        .send()
+        .await
+        .expect("the daemon answers")
+        .json()
+        .await
+        .expect("an envelope");
+
+    assert_eq!(
+        envelope["meta"]["empty_because"]["reason"],
+        "path_unmatched"
+    );
+    assert!(
+        envelope["meta"]["empty_because"]["hint"]
+            .as_str()
+            .is_some_and(|hint| hint.contains("src"))
+    );
+    assert!(
+        envelope["next_action"]
+            .as_str()
+            .is_some_and(|next| next.contains("src"))
+    );
+
+    database.destroy(state.db).await;
+}
+
 /// A repository with nothing indexed in it must be told so, as an ERROR.
 ///
 /// This is the cause nobody guesses: the index is full, the model is right, and

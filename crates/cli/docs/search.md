@@ -80,14 +80,17 @@ says.
   `below_floor` means rows were found and your `--min-score` rejected them, and
   names the floor; `scan_incomplete` means content IS indexed under this scope
   and the ranking stopped before reaching it, which is what a narrow scope over
-  a large index does. A scope holding nothing at all is an error
-  (`FS3-E-QUERY-NO-INDEX`) naming the anchor and pointing at `flowspace3 add`,
-  rather than an empty list you would read as a fact about your code. With no
-  `empty_because`, check the boring causes: indexing may still be running
-  (`flowspace3 status`), or **the active embedder may not be the one that built
-  the index** — that one looks exactly like a broken search, because vectors
-  are only read under the `model_key` that wrote them. `flowspace3 doctor`
-  names the active providers.
+  a large index does; `path_unmatched` means the requested `--path` glob
+  matches zero indexed paths in the scope. That last reason includes a `hint`
+  naming indexed top-level entries so the glob can be corrected without
+  treating an unsatisfiable filter as code absence. A scope holding nothing at
+  all is an error (`FS3-E-QUERY-NO-INDEX`) naming the anchor and pointing at
+  `flowspace3 add`, rather than an empty list you would read as a fact about
+  your code. With no `empty_because`, check the boring causes: indexing may
+  still be running (`flowspace3 status`), or **the active embedder may not be
+  the one that built the index** — that one looks exactly like a broken search,
+  because vectors are only read under the `model_key` that wrote them.
+  `flowspace3 doctor` names the active providers.
 - **Ranking is approximate, and narrowing costs recall.** The similarity index
   is HNSW: it examines a bounded candidate set rather than every vector, and
   filters apply to what it examined. fs3 keeps scanning until your `--limit` is

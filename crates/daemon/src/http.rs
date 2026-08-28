@@ -587,7 +587,10 @@ async fn search(
 }
 fn next_after_search(outcome: &SearchOutcome) -> String {
     if let Some(reason) = &outcome.empty_because {
-        return reason.detail.clone();
+        return match &reason.hint {
+            Some(hint) => format!("{} — {hint}", reason.detail),
+            None => reason.detail.clone(),
+        };
     }
     if outcome.results.is_empty() {
         return "nothing matched — widen with a shorter query, drop --min-score, check \

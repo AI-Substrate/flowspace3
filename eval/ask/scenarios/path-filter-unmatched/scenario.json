@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "slug": "path-filter-unmatched",
+  "title": "Unsatisfiable path filter is not code absence",
+  "lane": "path-unmatched",
+  "control": "negative",
+  "negative_class": "unsatisfiable-path-filter",
+  "denominator": "path-unmatched",
+  "request": {
+    "question": "Search only under src/** for the function that diagnoses empty search results. If that path glob matches no indexed paths, report the filter problem rather than concluding the function does not exist.",
+    "cwd": null,
+    "repo": "git:github.com/AI-Substrate/flowspace3"
+  },
+  "assertions": "assertions.json",
+  "ground_truth": {
+    "verified_at": "2026-08-29",
+    "deliberately_wrong_glob": "src/**",
+    "indexed_layout": ["crates", "docs", "eval", "pocs"],
+    "known_answer_address": "el:git:github.com/AI-Substrate/flowspace3/crates/daemon/src/search.rs::empty_because",
+    "source_facts": [
+      "Repository paths are repository-root-relative and the Rust sources begin under crates/, not src/.",
+      "The src/** filter therefore matches zero indexed paths in this repository.",
+      "A zero-path filter proves nothing about whether the requested function exists."
+    ]
+  },
+  "stability": {
+    "grade": "high",
+    "reason": "The workspace layout is rooted at crates/ and the deliberately wrong top-level src/ glob is exact.",
+    "refresh_trigger": "Refresh if a repository-root src/ directory is added to the index."
+  }
+}

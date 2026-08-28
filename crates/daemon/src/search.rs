@@ -141,10 +141,13 @@ fn weak_match_score(best: Option<f64>) -> bool {
 /// and only one of them is an answer.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct EmptyBecause {
-    /// The machine-readable cause: `below_floor` or `scan_incomplete`.
+    /// The machine-readable cause: `below_floor`, `scan_incomplete`, or `path_unmatched`.
     pub reason: &'static str,
     /// One sentence stating what is actually known, for a human or an agent.
     pub detail: String,
+    /// A concrete correction when the index can expose one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hint: Option<String>,
 }
 
 /// A search's answer, plus the truth about it being empty when it is.
@@ -323,6 +326,15 @@ pub async fn search(
         });
     }
 
+    if let Some(reason) = path_unmatched(state, request, &filters, code).await {
+        return Ok(SearchOutcome {
+            results: Vec::new(),
+            empty_because: Some(reason),
+            limit,
+            truncated: false,
+        });
+    }
+
     // An empty result is the most misread signal we have: "not indexed yet",
     // "indexed under a model this search cannot see", "indexed, but not in the
     // repository you are standing in", "the ranking never reached your
@@ -378,6 +390,7 @@ fn empty_because(filters: &SearchFilters, code: bool) -> Option<EmptyBecause> {
                  --min-score {:.3}",
                 1.0 - distance
             ),
+            hint: None,
         });
     }
 
@@ -416,9 +429,55 @@ fn empty_because(filters: &SearchFilters, code: bool) -> Option<EmptyBecause> {
              it reached that content. A scope holding a small share of a large index is where \
              this happens — retry without --repo/--path to see what the index does hold"
         ),
+        hint: None,
     })
 }
 
+/// Diagnose a path filter that cannot reach any indexed path in its ownership scope.
+async fn path_unmatched(
+    state: &AppState,
+    request: &SearchRequest,
+    filters: &SearchFilters,
+    code: bool,
+) -> Option<EmptyBecause> {
+    if !code {
+        return None;
+    }
+    let requested = request.path.as_deref()?;
+    let pattern = filters.path.as_deref()?;
+    let probe = fs3_store::path_filter_probe(
+        &state.db,
+        filters.repo.as_deref(),
+        filters.worktree.as_deref(),
+        pattern,
+    )
+    .await
+    .ok()?;
+    if probe.matches || probe.top_level_entries.is_empty() {
+        return None;
+    }
+
+    let mut entries = probe.top_level_entries;
+    const LAYOUT_LIMIT: usize = 12;
+    let omitted = entries.len().saturating_sub(LAYOUT_LIMIT);
+    entries.truncate(LAYOUT_LIMIT);
+    let mut layout = entries.join(", ");
+    if omitted > 0 {
+        layout.push_str(&format!(", and {omitted} more"));
+    }
+
+    Some(EmptyBecause {
+        reason: "path_unmatched",
+        detail: format!(
+            "the --path filter {requested:?} matches zero indexed paths in this scope; this says \
+             nothing about whether the requested code exists elsewhere in the indexed layout"
+        ),
+        hint: Some(format!(
+            "indexed top-level entries in this scope: {layout}; correct --path to start from one \
+             of these entries"
+        )),
+    })
+}
 /// Why an empty result was empty — when the reason is an ERROR the caller can
 /// act on rather than a fact about the ranking.
 ///
