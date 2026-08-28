@@ -4,6 +4,14 @@
 //! query with the SAME embedder that wrote the vectors, hand the vector and the
 //! filters to the store, render what comes back.
 //!
+//! # Snap-in recipe
+//!
+//! This surface needs no new config, constructor, service, or route registration.
+//! Keep the existing `GET /search` route deserializing [`SearchRequest`] and the
+//! existing `GET /get` route deserializing [`crate::read::GetRequest`]. Parsed ddoc
+//! rows already arrive at `SearchHit.similar.element.ddoc`; [`render`] copies that
+//! value into [`Hit::ddoc`] and passes the element's dd address through verbatim.
+//!
 //! # Why the query embedder must be the repo's
 //!
 //! Vectors are only comparable within one model's space: cosine distance
@@ -22,9 +30,9 @@
 //! so `--min-score 0.7` is a number a human can reason about rather than a
 //! ceiling they have to invert in their head.
 
-use fs3_core::ElementKind;
 use fs3_core::catalog;
 use fs3_core::envelope::Failure;
+use fs3_core::{DdocMeta, DdocRel, DerivedState, ElementKind};
 use fs3_store::{SearchFilters, SearchHit, SourceKind};
 use serde::{Deserialize, Serialize};
 
@@ -57,6 +65,16 @@ pub struct SearchRequest {
     /// How many hits.
     #[serde(default)]
     pub limit: Option<i64>,
+    /// Restrict ddoc rows to one raw minted-id prefix.
+    #[serde(default)]
+    pub id_kind: Option<String>,
+    /// Select known-open (`true`) or known-closed (`false`) ddoc rows.
+    /// Unknown gate state matches neither value; absent means no gate filter.
+    #[serde(default)]
+    pub gate_open: Option<bool>,
+    /// Restrict ddoc rows to one declared schema, verbatim.
+    #[serde(default)]
+    pub ddoc_schema: Option<String>,
 }
 
 /// The largest `--limit` a caller may ask for.
@@ -72,11 +90,12 @@ pub const MAX_LIMIT: i64 = 100;
 /// Named exhaustively rather than as "everything except a turn", so that adding
 /// a content type is a decision someone makes here rather than an accident that
 /// silently starts blending it into code results.
-const CODE_KINDS: [ElementKind; 4] = [
+const CODE_KINDS: [ElementKind; 5] = [
     ElementKind::File,
     ElementKind::Container,
     ElementKind::Function,
     ElementKind::Section,
+    ElementKind::Row,
 ];
 
 /// One hit, in the workshop-003 row shape.
@@ -106,6 +125,49 @@ pub struct Hit {
     pub repo: Option<String>,
     /// A live path holding it, relative to its worktree root.
     pub path: Option<String>,
+    /// Deterministic-document metadata. Absent, including the key, on code hits.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ddoc: Option<DdocHit>,
+}
+
+/// One ddoc row's meaning and both of its independent state claims.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct DdocHit {
+    /// dd's path-qualified positional address; paste directly into `ddocs get`.
+    pub address: String,
+    pub schema: String,
+    pub section: String,
+    pub id: String,
+    pub id_kind: Option<String>,
+    pub trail: Vec<String>,
+    pub doc_title: Option<String>,
+    /// The source document's stored state. It is not authoritative.
+    pub state_stored: Option<String>,
+    /// State derived from assertions. Believe this claim when present.
+    pub state_derived: Option<DerivedState>,
+    /// Whether the stored state belongs to the schema's terminal set.
+    pub gate_terminal: Option<bool>,
+    pub rels: Vec<DdocRel>,
+    pub findings: Vec<String>,
+}
+
+impl From<&DdocMeta> for DdocHit {
+    fn from(meta: &DdocMeta) -> Self {
+        DdocHit {
+            address: meta.address.clone(),
+            schema: meta.schema.clone(),
+            section: meta.section.clone(),
+            id: meta.id.clone(),
+            id_kind: meta.id_kind.clone(),
+            trail: meta.trail.clone(),
+            doc_title: meta.doc_title.clone(),
+            state_stored: meta.state.clone(),
+            state_derived: meta.derived_state.clone(),
+            gate_terminal: meta.gate_terminal,
+            rels: meta.rels.clone(),
+            findings: meta.findings.clone(),
+        }
+    }
 }
 
 /// What `GET /search` answers with.
@@ -243,7 +305,7 @@ pub async fn search(
             )
         })?;
 
-    let filters = SearchFilters {
+    let mut filters = SearchFilters {
         repo: scope.repo.clone(),
         path: request.path.as_deref().map(glob_to_like),
         source,
@@ -252,6 +314,8 @@ pub async fn search(
         limit,
         ..SearchFilters::default()
     };
+
+    apply_ddoc_filters(&mut filters, request);
 
     let hits = fs3_store::search_elements(&state.db, &model_key, &vector, &filters)
         .await
@@ -475,6 +539,7 @@ fn render(hit: &SearchHit) -> Hit {
             .unwrap_or_default(),
         repo: hit.identity.clone(),
         path: hit.path.clone(),
+        ddoc: element.ddoc.as_deref().map(DdocHit::from),
     }
 }
 
@@ -493,10 +558,17 @@ fn render(hit: &SearchHit) -> Hit {
 /// repository for it would be a lie.
 fn address_of(hit: &SearchHit) -> String {
     let element = &hit.similar.element;
-    if element.kind == ElementKind::Turn {
+    if element.kind == ElementKind::Turn || element.kind == ElementKind::Row {
         return element.address.clone();
     }
     fs3_core::element_address(hit.identity.as_deref(), &element.address)
+}
+
+/// Apply only ddoc-specific predicates, preserving the gate's three states.
+fn apply_ddoc_filters(filters: &mut SearchFilters, request: &SearchRequest) {
+    filters.id_kinds = request.id_kind.clone().map(|kind| vec![kind]);
+    filters.gate_open = request.gate_open;
+    filters.ddoc_schema.clone_from(&request.ddoc_schema);
 }
 
 /// The first few lines of an element's text.
@@ -585,6 +657,94 @@ mod tests {
         assert!((score(1.0) - 0.0).abs() < f64::EPSILON);
         // and a min_score of 0.7 must become a distance ceiling of 0.3
         assert!((1.0 - 0.7 - 0.3f64).abs() < 1e-9);
+    }
+
+    fn hit(element: fs3_core::Element) -> SearchHit {
+        SearchHit {
+            similar: fs3_store::SimilarElement {
+                element,
+                blob_sha: "a".repeat(40),
+                parser_version: "test@1".to_string(),
+                source_kind: SourceKind::Raw,
+                smart: None,
+                distance: 0.25,
+            },
+            identity: Some("git:host/org/repo".to_string()),
+            path: Some("docs/plan.dd.json".to_string()),
+        }
+    }
+
+    #[test]
+    fn ddoc_metadata_is_serialized_on_rows_and_the_key_is_absent_on_code() {
+        let address = "docs/plan.dd.json#acceptance_criteria/ac-0001";
+        let mut meta = DdocMeta::new(
+            address,
+            "builder/plan",
+            vec!["acceptance_criteria".to_string(), "ac-0001".to_string()],
+            fs3_core::EmbedBasis::SchemaDeclared,
+        );
+        meta.state = Some("checked".to_string());
+        meta.gate_terminal = Some(true);
+        meta.derived_state = Some(DerivedState {
+            complete: false,
+            incomplete: vec!["dw-0001".to_string()],
+        });
+        let row = fs3_core::Element::new(
+            ElementKind::Row,
+            "ddoc_row",
+            "ac-0001",
+            address,
+            fs3_core::Span::new(1, 1),
+            "criterion",
+        )
+        .with_ddoc(meta);
+        let row = serde_json::to_value(render(&hit(row))).expect("row hit serializes");
+        assert_eq!(row["address"], address);
+        assert_eq!(row["ddoc"]["state_stored"], "checked");
+        assert_eq!(row["ddoc"]["state_derived"]["complete"], false);
+
+        let code = fs3_core::Element::new(
+            ElementKind::Function,
+            "function_item",
+            "run",
+            "src/lib.rs::run",
+            fs3_core::Span::new(1, 1),
+            "fn run() {}",
+        );
+        let code = serde_json::to_value(render(&hit(code))).expect("code hit serializes");
+        assert!(
+            code.get("ddoc").is_none(),
+            "the shipped code-hit wire shape must omit ddoc entirely: {code}"
+        );
+    }
+
+    #[test]
+    fn ddoc_filter_mapping_preserves_absent_open_and_closed() {
+        let mut filters = SearchFilters::default();
+        apply_ddoc_filters(&mut filters, &SearchRequest::default());
+        assert_eq!(filters.id_kinds, None);
+        assert_eq!(filters.gate_open, None);
+        assert_eq!(filters.ddoc_schema, None);
+
+        let request = SearchRequest {
+            id_kind: Some("ac".to_string()),
+            gate_open: Some(false),
+            ddoc_schema: Some("builder/plan".to_string()),
+            ..SearchRequest::default()
+        };
+        apply_ddoc_filters(&mut filters, &request);
+        assert_eq!(filters.id_kinds, Some(vec!["ac".to_string()]));
+        assert_eq!(filters.gate_open, Some(false));
+        assert_eq!(filters.ddoc_schema.as_deref(), Some("builder/plan"));
+
+        apply_ddoc_filters(
+            &mut filters,
+            &SearchRequest {
+                gate_open: Some(true),
+                ..SearchRequest::default()
+            },
+        );
+        assert_eq!(filters.gate_open, Some(true));
     }
 
     /// The decision table for [`EmptyBecause`], which is the whole of the

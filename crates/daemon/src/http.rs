@@ -22,14 +22,14 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 
-use fs3_core::Port;
+use fs3_core::{Port, catalog};
 
 use crate::answer::{Answer, IntoFailure, failed, ok};
 use crate::auth::Auth;
 use crate::conversations::{IntakeReport, IntakeRequest};
 use crate::read::{GetPayload, GetRequest, TreeRequest, TreeResult};
 use crate::roots::{RootReport, RootRequest};
-use crate::search::{SearchRequest, SearchResults};
+use crate::search::{SearchOutcome, SearchRequest, SearchResults};
 use crate::status::StatusReport;
 use crate::wiring::AppState;
 
@@ -51,6 +51,52 @@ impl Health {
     pub const OK: &'static str = "ok";
 }
 
+/// What `GET /refs` asks for.
+#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+pub struct RefsRequest {
+    /// Repository-relative source path whose incoming ddoc rows are wanted.
+    pub path: String,
+    /// Restrict to one repository identity, or `all`.
+    #[serde(default)]
+    pub repo: Option<String>,
+    /// The caller's working directory, used for default repository scope.
+    #[serde(default)]
+    pub cwd: Option<String>,
+    /// Maximum rows to return. Defaults to the search surface's limit ceiling.
+    #[serde(default)]
+    pub limit: Option<i64>,
+}
+
+/// One exact inverse-index answer.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct RefHit {
+    /// The source row's positional dd address; paste directly into `ddocs get`.
+    pub address: String,
+    /// The repository-relative file this row references.
+    pub path: String,
+    /// dd relation spelling, verbatim.
+    pub rel: String,
+    /// JSONPath at which the relation was declared.
+    pub location: String,
+}
+
+impl From<fs3_store::DdocFileRef> for RefHit {
+    fn from(row: fs3_store::DdocFileRef) -> Self {
+        RefHit {
+            address: row.address,
+            path: row.path,
+            rel: row.rel,
+            location: row.location,
+        }
+    }
+}
+
+/// Exact ddoc rows referencing one ordinary source path.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct RefsResult {
+    pub results: Vec<RefHit>,
+}
+
 /// Build the router. Separate from [`serve`] so tests get the real routes
 /// without owning a port or a runtime shutdown. Authentication is one outer
 /// layer, so every current and future route inherits it automatically.
@@ -67,6 +113,7 @@ pub fn router(state: AppState, auth: Auth) -> Router {
         .route("/ask", post(ask))
         .route("/search", get(search))
         .route("/get", get(get_address))
+        .route("/refs", get(refs))
         .route("/tree", get(tree))
         .with_state(state)
         .layer(middleware::from_fn_with_state(auth, crate::auth::require))
@@ -353,18 +400,11 @@ async fn search(
             // that, and the steer says the known thing instead of listing
             // suspects: guessing out loud next to a fact we hold is how a user
             // ends up rephrasing a query that was never the problem.
-            let next = match (&outcome.empty_because, outcome.results.is_empty()) {
-                (Some(reason), _) => reason.detail.as_str(),
-                (None, true) => {
-                    "nothing matched — widen with a shorter query, drop --min-score, check \
-                     `flowspace3 status` in case indexing has not finished, or run `flowspace3 \
-                     doctor`: a search only reads vectors written by the ACTIVE embedder, so a \
-                     provider change since indexing returns nothing from a full index"
-                }
-                (None, false) => {
-                    "read a hit in full with `flowspace3 get <address>`, browse its file with \
-                     `flowspace3 tree <address>`, or narrow with --path/--repo"
-                }
+            let ddoc_notice = ddoc_degradation_notice(&state, &scope).await;
+            let next = next_after_search(&outcome);
+            let next = match ddoc_notice {
+                Some(notice) => format!("{notice} — {next}"),
+                None => next,
             };
             let meta = serde_json::json!({
                 "scope": scope,
@@ -373,7 +413,7 @@ async fn search(
             let results = SearchResults {
                 results: outcome.results,
             };
-            let next = crate::scope::steer(&scope, next);
+            let next = crate::scope::steer(&scope, &next);
             let next = if crate::ask_hint::looks_like_question(&request.q) {
                 format!("{next} — {}", crate::ask_hint::HINT)
             } else {
@@ -391,6 +431,108 @@ async fn search(
             .0
             .with_meta(serde_json::json!({ "scope": scope }))
             .into(),
+    }
+}
+fn next_after_search(outcome: &SearchOutcome) -> String {
+    if let Some(reason) = &outcome.empty_because {
+        return reason.detail.clone();
+    }
+    if outcome.results.is_empty() {
+        return "nothing matched — widen with a shorter query, drop --min-score, check \
+                `flowspace3 status` in case indexing has not finished, or run `flowspace3 \
+                doctor`: a search only reads vectors written by the ACTIVE embedder, so a \
+                provider change since indexing returns nothing from a full index"
+            .to_string();
+    }
+    "read a hit in full with `flowspace3 get <address>`, browse its file with \
+     `flowspace3 tree <address>`, or narrow with --path/--repo"
+        .to_string()
+}
+
+/// Report unavailable ddocs tooling only when the request maps to one exact worktree.
+///
+/// Cwd-scoped searches carry that root in [`crate::scope::Scope::worktree`],
+/// which maps deterministically to the live tooling snapshot. Explicit-repo and
+/// all-repo scopes may cover several worktrees and deliberately stay silent: an
+/// absent snapshot elsewhere is not evidence about the corpus that answered.
+/// Store lookup failure also stays silent because tooling absence was not proven.
+async fn ddoc_degradation_notice(
+    state: &AppState,
+    scope: &crate::scope::Scope,
+) -> Option<&'static str> {
+    let root = scope.worktree.as_deref()?;
+    let worktree = fs3_store::find_worktree(&state.db, root).await.ok()??;
+    state.ddoc_tooling(worktree.id).await.is_absent().then_some(
+        "the `ddocs` binary is unavailable: rows are indexed and searchable, but link edges, \
+             gate-terminal membership and derived state are unavailable until `ddocs` is on PATH",
+    )
+}
+
+async fn refs(
+    State(state): State<AppState>,
+    Query(request): Query<RefsRequest>,
+) -> Answer<RefsResult> {
+    const COMMAND: &str = "refs";
+    if let Err(failure) = crate::schema::guard(&state.db).await {
+        return failed(&state, COMMAND, failure).await;
+    }
+
+    let path = request.path.trim();
+    if path.is_empty() {
+        return failed(
+            &state,
+            COMMAND,
+            fs3_core::envelope::Failure::new(
+                &catalog::QUERY_INVALID,
+                "refs needs a repository-relative source path",
+            ),
+        )
+        .await;
+    }
+    let limit = request.limit.unwrap_or(crate::search::MAX_LIMIT);
+    if !(1..=crate::search::MAX_LIMIT).contains(&limit) {
+        return failed(
+            &state,
+            COMMAND,
+            fs3_core::envelope::Failure::new(
+                &catalog::QUERY_INVALID,
+                format!(
+                    "--limit must be between 1 and {}, got {limit}",
+                    crate::search::MAX_LIMIT
+                ),
+            ),
+        )
+        .await;
+    }
+
+    let scope =
+        crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
+    match fs3_store::rows_referencing(
+        &state.db,
+        scope.repo.as_deref(),
+        path,
+        crate::scan::PARSER_VERSION,
+        limit,
+    )
+    .await
+    {
+        Ok(rows) => {
+            let result = RefsResult {
+                results: rows.into_iter().map(RefHit::from).collect(),
+            };
+            let next = if result.results.is_empty() {
+                "no indexed ddoc rows reference that source path — this is a successful empty answer"
+            } else {
+                "paste any address above into `ddocs get` or `flowspace3 get` to read the source row"
+            };
+            ok(&state, COMMAND, result)
+                .await
+                .0
+                .with_meta(serde_json::json!({ "scope": scope }))
+                .with_next_action(crate::scope::steer(&scope, next))
+                .into()
+        }
+        Err(error) => failed(&state, COMMAND, error.into_failure()).await,
     }
 }
 

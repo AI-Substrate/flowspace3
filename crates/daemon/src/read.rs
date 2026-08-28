@@ -300,29 +300,42 @@ pub async fn get(
     request: &GetRequest,
     scope: &Scope,
 ) -> Result<(GetPayload, String), Failure> {
-    let element = match address_of(&request.address)? {
+    let address = address_of(&request.address)?;
+    let depth = depth_of(request.depth, DEFAULT_GET_DEPTH)?;
+    let identities = fs3_store::repo_identities(&state.db).await.map_err(fail)?;
+
+    let (parts, path, whole_file, is_ddoc) = match address {
         Address::Conversation(conversation) => {
             let window = conversation_window(state, &conversation, request).await?;
-            // A conversation has no parse tree, so there is no parser version
-            // to report. Saying so beats reporting a code parser's version for
-            // content it never touched.
             return Ok((
                 GetPayload::Conversation(window),
                 CONVERSATION_SOURCE.to_string(),
             ));
         }
-        Address::Element(element) => element,
+        Address::Element(element) => {
+            let parts = element.split(&identities);
+            let path = parts.path().to_string();
+            let whole_file = parts.is_whole_file();
+            (parts, path, whole_file, false)
+        }
+        Address::Ddoc(ddoc) => {
+            let path = ddoc.file.clone();
+            let element = ddoc.render();
+            (
+                ElementParts {
+                    repo: None,
+                    element,
+                },
+                path,
+                false,
+                true,
+            )
+        }
     };
-    let depth = depth_of(request.depth, DEFAULT_GET_DEPTH)?;
-
-    let identities = fs3_store::repo_identities(&state.db).await.map_err(fail)?;
-    let parts = element.split(&identities);
     let repo = parts.repo.clone().or_else(|| scope.repo.clone());
 
-    let located = locate(state, &parts, repo.as_deref(), scope).await?;
-    let path = parts.path().to_string();
-
-    let (chain, node) = if parts.is_whole_file() {
+    let located = locate(state, &parts, &path, repo.as_deref(), scope).await?;
+    let (chain, node) = if whole_file {
         (Vec::new(), &located.root)
     } else {
         pick(&located, &parts, request.span)?
@@ -334,7 +347,11 @@ pub async fn get(
         .map_err(fail)?;
 
     let result = GetResult {
-        address: fs3_core::element_address(repo.as_deref(), &node.address),
+        address: if is_ddoc {
+            node.address.clone()
+        } else {
+            fs3_core::element_address(repo.as_deref(), &node.address)
+        },
         repo,
         path,
         root_path: Some(located.file.root_path.clone()),
@@ -569,10 +586,10 @@ async fn absolute_target(
 async fn locate(
     state: &AppState,
     parts: &ElementParts,
+    path: &str,
     repo: Option<&str>,
     scope: &Scope,
 ) -> Result<Located, Failure> {
-    let path = parts.path();
     if path.is_empty() {
         return Err(Failure::new(
             &catalog::QUERY_INVALID_ADDRESS,
@@ -892,6 +909,12 @@ fn element_address(text: &str) -> Result<fs3_core::ElementAddress, Failure> {
              `flowspace3 get {conversation}#t1` reads it"
         ))
         .with_detail("address", conversation.to_string())),
+        Address::Ddoc(ddoc) => Err(Failure::new(
+            &catalog::QUERY_INVALID,
+            format!("{ddoc} is a ddoc address, and this path browses code"),
+        )
+        .with_fix(format!("`flowspace3 get {ddoc}` reads that ddoc row"))
+        .with_detail("address", ddoc.to_string())),
     }
 }
 
@@ -1438,6 +1461,10 @@ mod tests {
         assert!(matches!(
             address_of("el:crates/store/src/lib.rs::migrate"),
             Ok(Address::Element(_))
+        ));
+        assert!(matches!(
+            address_of("docs/plan.dd.json#acceptance_criteria/ac-0001"),
+            Ok(Address::Ddoc(_))
         ));
     }
 

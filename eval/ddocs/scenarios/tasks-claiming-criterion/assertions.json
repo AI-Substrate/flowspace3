@@ -1,0 +1,8 @@
+{
+  "scenario": "tasks-claiming-criterion",
+  "rows": [
+    {"id":"R1","axis":"contract","type":"field-equals","params":{"field":"ok","value":true},"on_unavailable":"fail"},
+    {"id":"R2","axis":"groundedness","type":"result-addresses-include-ground-truth","params":{},"on_unavailable":"fail"},
+    {"id":"R3","axis":"metadata","type":"result-any-field-equals","params":{"field":"ddoc.id","value":"tk-0005"},"on_unavailable":"fail"}
+  ]
+}

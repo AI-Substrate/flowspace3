@@ -31,6 +31,7 @@
 
 use std::fmt;
 
+use crate::ddoc::{DdocAddress, DdocAddressError, minted_prefix};
 use crate::element::ADDRESS_SEGMENT;
 
 /// The prefix of an element address.
@@ -49,6 +50,8 @@ pub enum Address {
     Element(ElementAddress),
     /// A conversation, or one turn of it.
     Conversation(ConversationAddress),
+    /// A deterministic-document section or row, in dd's positional grammar.
+    Ddoc(DdocAddress),
 }
 
 /// Why a string is not an address.
@@ -60,6 +63,10 @@ pub enum AddressError {
     UnknownScheme(String),
     /// `conv:<guid>#t<ord>` with an ordinal that is not a number.
     InvalidTurn(String),
+    /// A malformed deterministic-document address.
+    InvalidDdoc(DdocAddressError),
+    /// A minted row id used where dd's positional grammar requires a section.
+    DdocShortForm(String),
 }
 
 impl fmt::Display for AddressError {
@@ -74,6 +81,11 @@ impl fmt::Display for AddressError {
             AddressError::InvalidTurn(text) => {
                 write!(f, "{text:?} is not a turn ordinal — expected `#t<number>`")
             }
+            AddressError::InvalidDdoc(error) => write!(f, "invalid ddoc address: {error}"),
+            AddressError::DdocShortForm(text) => write!(
+                f,
+                "{text:?} is a short ddoc row address — include its section: `<file>#<section>/<id>`"
+            ),
         }
     }
 }
@@ -105,6 +117,14 @@ impl Address {
             return ConversationAddress::parse(rest).map(Address::Conversation);
         }
 
+        if text.contains(crate::ddoc::DDOC_ADDRESS_SEPARATOR) {
+            let address = DdocAddress::parse(text).map_err(AddressError::InvalidDdoc)?;
+            if address.row_id().is_none() && minted_prefix(address.section()).is_some() {
+                return Err(AddressError::DdocShortForm(text.to_string()));
+            }
+            return Ok(Address::Ddoc(address));
+        }
+
         Err(AddressError::UnknownScheme(text.to_string()))
     }
 }
@@ -114,6 +134,7 @@ impl fmt::Display for Address {
         match self {
             Address::Element(element) => write!(f, "{ELEMENT_SCHEME}{}", element.locator),
             Address::Conversation(conversation) => write!(f, "{conversation}"),
+            Address::Ddoc(ddoc) => write!(f, "{ddoc}"),
         }
     }
 }
@@ -383,6 +404,47 @@ mod tests {
             Address::parse("conv:abc#tlast"),
             Err(AddressError::InvalidTurn("abc#tlast".to_string()))
         );
+    }
+
+    #[test]
+    fn positional_ddoc_addresses_parse_without_changing_existing_schemes() {
+        let row = "plan.dd.json#acceptance_criteria/ac-0001";
+        let Address::Ddoc(address) = Address::parse(row).expect("a positional ddoc row") else {
+            panic!("that is a ddoc address");
+        };
+        assert_eq!(address.file, "plan.dd.json");
+        assert_eq!(address.section(), "acceptance_criteria");
+        assert_eq!(address.row_id(), Some("ac-0001"));
+        assert_eq!(address.to_string(), row);
+
+        let nested = "docs/tasks.dd.json#done_when/tk-0001/assertions/required/dw-0002";
+        let Address::Ddoc(address) = Address::parse(nested).expect("an arbitrarily deep trail")
+        else {
+            panic!("that is a ddoc address");
+        };
+        assert_eq!(address.row_id(), Some("dw-0002"));
+        assert_eq!(address.to_string(), nested);
+
+        let section = "docs/reference.dd.json#rationale";
+        assert!(matches!(Address::parse(section), Ok(Address::Ddoc(_))));
+        assert!(matches!(
+            Address::parse("plan.dd.json#ac-0001"),
+            Err(AddressError::DdocShortForm(_))
+        ));
+
+        for existing in [
+            "el:git:github.com/AI-Substrate/flowspace3/src/lib.rs::run",
+            "el:src/lib.rs::run",
+            "conv:abc-123",
+            "conv:abc-123#t42",
+        ] {
+            assert_eq!(
+                Address::parse(existing)
+                    .expect("existing address")
+                    .to_string(),
+                existing
+            );
+        }
     }
 
     #[test]

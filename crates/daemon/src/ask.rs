@@ -199,6 +199,7 @@ impl<'a> IndexTools<'a> {
                     .unwrap_or(6)
                     .clamp(1, 15),
             ),
+            ..SearchRequest::default()
         };
 
         let results = crate::search::search(self.state, &request, &scope)

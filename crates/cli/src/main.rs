@@ -100,6 +100,32 @@ enum Command {
         /// Which vector space to search.
         #[arg(long, value_name = "SOURCE", value_parser = ["raw", "smart", "conversation", "all"])]
         source: Option<String>,
+        /// Only deterministic-document rows with this minted-id prefix.
+        #[arg(long, value_name = "PREFIX")]
+        id_kind: Option<String>,
+        /// Only deterministic-document rows known to be outside the terminal set.
+        #[arg(long, conflicts_with = "gate_closed")]
+        gate_open: bool,
+        /// Only deterministic-document rows known to be inside the terminal set.
+        #[arg(long, conflicts_with = "gate_open")]
+        gate_closed: bool,
+        /// Only deterministic-document rows declaring this schema.
+        #[arg(long, value_name = "SCHEMA")]
+        ddoc_schema: Option<String>,
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
+    /// List deterministic-document rows that reference one source file.
+    Refs {
+        /// Repository-relative source path.
+        path: String,
+        /// Only this repository identity, or `all`.
+        #[arg(long, value_name = "IDENTITY")]
+        repo: Option<String>,
+        /// Maximum rows to return.
+        #[arg(long, value_name = "N")]
+        limit: Option<i64>,
         /// Override the daemon URL from configuration.
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
@@ -425,6 +451,10 @@ async fn run(command: Command) -> Result<ExitCode> {
             limit,
             min_score,
             source,
+            id_kind,
+            gate_open,
+            gate_closed,
+            ddoc_schema,
             daemon_url,
         } => {
             let client = client_for(daemon_url)?;
@@ -434,8 +464,22 @@ async fn run(command: Command) -> Result<ExitCode> {
             push(&mut params, "limit", limit.map(|v| v.to_string()));
             push(&mut params, "min_score", min_score.map(|v| v.to_string()));
             push(&mut params, "source", source);
+            push_ddoc_search_filters(&mut params, id_kind, gate_open, gate_closed, ddoc_schema);
             push(&mut params, "cwd", here());
             emit(&client.search(&params).await)
+        }
+        Command::Refs {
+            path,
+            repo,
+            limit,
+            daemon_url,
+        } => {
+            let client = client_for(daemon_url)?;
+            let mut params = vec![("path".to_string(), path)];
+            push(&mut params, "repo", repo);
+            push(&mut params, "limit", limit.map(|value| value.to_string()));
+            push(&mut params, "cwd", here());
+            emit(&client.refs(&params).await)
         }
         Command::Ask {
             question,
@@ -633,6 +677,25 @@ fn push(params: &mut Vec<(String, String)>, name: &str, value: Option<String>) {
     }
 }
 
+fn push_ddoc_search_filters(
+    params: &mut Vec<(String, String)>,
+    id_kind: Option<String>,
+    gate_open: bool,
+    gate_closed: bool,
+    ddoc_schema: Option<String>,
+) {
+    push(params, "id_kind", id_kind);
+    let gate = if gate_open {
+        Some("true".to_string())
+    } else if gate_closed {
+        Some("false".to_string())
+    } else {
+        None
+    };
+    push(params, "gate_open", gate);
+    push(params, "ddoc_schema", ddoc_schema);
+}
+
 /// An absolute path, so the daemon never resolves a relative one against ITS
 /// working directory.
 ///
@@ -714,7 +777,7 @@ async fn ping(override_url: Option<String>) -> Result<ExitCode> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Cli, Command};
+    use super::{Cli, Command, push_ddoc_search_filters};
     use clap::Parser as _;
 
     #[test]
@@ -724,5 +787,68 @@ mod tests {
 
         let cli = Cli::try_parse_from(["flowspace3", "daemon"]).unwrap();
         assert!(matches!(cli.command, Command::Daemon { sandbox: false }));
+    }
+
+    #[test]
+    fn ddoc_search_flags_become_query_params_and_absence_stays_absent() {
+        let cli = Cli::try_parse_from([
+            "flowspace3",
+            "search",
+            "open criteria",
+            "--id-kind",
+            "ac",
+            "--gate-closed",
+            "--ddoc-schema",
+            "builder/plan",
+        ])
+        .expect("ddoc search flags parse");
+        let Command::Search {
+            id_kind,
+            gate_open,
+            gate_closed,
+            ddoc_schema,
+            ..
+        } = cli.command
+        else {
+            panic!("search command");
+        };
+        let mut params = Vec::new();
+        push_ddoc_search_filters(&mut params, id_kind, gate_open, gate_closed, ddoc_schema);
+        assert_eq!(
+            params,
+            [
+                ("id_kind".to_string(), "ac".to_string()),
+                ("gate_open".to_string(), "false".to_string()),
+                ("ddoc_schema".to_string(), "builder/plan".to_string()),
+            ]
+        );
+
+        let cli =
+            Cli::try_parse_from(["flowspace3", "search", "all rows"]).expect("flags are optional");
+        let Command::Search {
+            id_kind,
+            gate_open,
+            gate_closed,
+            ddoc_schema,
+            ..
+        } = cli.command
+        else {
+            panic!("search command");
+        };
+        let mut params = Vec::new();
+        push_ddoc_search_filters(&mut params, id_kind, gate_open, gate_closed, ddoc_schema);
+        assert!(params.is_empty(), "absent flags must add no query params");
+
+        assert!(
+            Cli::try_parse_from([
+                "flowspace3",
+                "search",
+                "contradiction",
+                "--gate-open",
+                "--gate-closed",
+            ])
+            .is_err(),
+            "open and closed are mutually exclusive"
+        );
     }
 }
