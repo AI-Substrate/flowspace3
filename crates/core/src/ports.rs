@@ -1,14 +1,36 @@
-//! The only two ports in fs3 v1.
+//! The ENRICHMENT ports of fs3, and the two that joined them.
 //!
 //! Workshop 001 rule 3: a trait earns its existence only when a second real
 //! implementation exists or is firmly planned. Embedding and summarisation each
 //! have two — online API and local model (PRD req 8) — so each gets a port.
 //! Everything else is concrete: the parser (tree-sitter direct *is* the point),
 //! git ops, the queue, and the store (Postgres is a requirement, not a
-//! variable). **A third port is stop-and-ask.**
+//! variable).
 //!
-//! Both traits are `#[async_trait]` rather than native `async fn`: native async
-//! fns in traits are still not object-safe, and these seams are used as
+//! A THIRD port — [`ChatProvider`] — was asked for and granted on 2026-08-28. It
+//! is not a second way to summarise: the agentic `ask` verb needs a model that
+//! takes a CONVERSATION and may answer with a TOOL CALL rather than prose, and
+//! it is routinely a different (larger, pricier) deployment from the one doing
+//! bulk enrichment. Without a port that choice cannot be expressed in config at
+//! all, and the two real implementations already exist — a hosted chat
+//! deployment and the offline fake.
+//!
+//! The rule admitted a FOURTH port on the same day, ruled by prime for plan 005:
+//! [`crate::ConversationSource`], which reads conversations out of the native
+//! agent-session stores and shipped FOUR real implementations on day one —
+//! claude, omp, the pij ledger and git-ai's metrics database. It lives in
+//! [`crate::conversation_source`] rather than here because it arrives with a
+//! family of types (input, session file, cursor, record) that would swamp this
+//! module, and because it is blocking rather than async: its implementations do
+//! file and sqlite IO and the composition root hands them to `spawn_blocking`.
+//!
+//! Two ports granted on one day, by two plans that did not know about each
+//! other, is worth noticing rather than smoothing over: the rule held in both
+//! cases because each arrived with real implementations and a choice that could
+//! not otherwise be expressed. **A FIFTH port is stop-and-ask.**
+//!
+//! The traits here are `#[async_trait]` rather than native `async fn`: native
+//! async fns in traits are still not object-safe, and these seams are used as
 //! `Arc<dyn Port>` by the composition root.
 
 use async_trait::async_trait;
@@ -207,6 +229,140 @@ pub trait Summarizer: Send + Sync {
     ///
     /// Required, with no default, for the reason
     /// [`Summarizer::concurrency_ceiling`] gives.
+    fn max_input_tokens(&self) -> usize;
+}
+
+/// One message in a chat exchange.
+///
+/// Deliberately provider-neutral. Core cannot see a wire type — it performs no
+/// IO — so the loop speaks this shape and an adapter translates it at the edge.
+/// The four roles are the whole protocol a tool loop needs: an instruction, the
+/// user's question, what the model said (possibly a tool call), and what a tool
+/// answered.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ChatMessage {
+    /// The standing instruction the loop opens with.
+    System(String),
+    /// The question being answered.
+    User(String),
+    /// What the model said last turn. Carries `tool_calls` because the protocol
+    /// requires the assistant's own request to be replayed back to it verbatim
+    /// alongside the results; dropping it makes the next turn incoherent.
+    Assistant {
+        /// Prose, absent when the model replied with tool calls alone.
+        content: Option<String>,
+        /// The calls the model asked for, empty when it answered in prose.
+        tool_calls: Vec<ToolCall>,
+    },
+    /// The result of one tool call, tied back to it by id.
+    ToolResult {
+        /// The [`ToolCall::id`] this answers.
+        tool_call_id: String,
+        /// What the tool produced — or an error message, which is a normal
+        /// result here rather than a failure. See [`ChatTurn`].
+        content: String,
+    },
+}
+
+/// One tool invocation the model asked for.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ToolCall {
+    /// Correlates this call with its [`ChatMessage::ToolResult`].
+    pub id: String,
+    /// Which tool: matched against the offered [`ToolSchema::name`]s.
+    pub name: String,
+    /// The arguments, as the JSON *string* the model emitted.
+    ///
+    /// Kept unparsed on purpose. A model can and does emit malformed JSON, and
+    /// that is not an error the loop should die on — it is a fact to hand back
+    /// so the model can correct itself. Parsing here would turn a recoverable
+    /// turn into a crash.
+    pub arguments: String,
+}
+
+/// A tool offered to the model: its name, what it is for, and its argument
+/// schema as JSON Schema.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ToolSchema {
+    /// The name the model will call back with.
+    pub name: String,
+    /// What the tool does. This is prompt text — the model chooses tools by
+    /// reading it, so vagueness here shows up as bad tool selection.
+    pub description: String,
+    /// JSON Schema for the arguments object.
+    pub parameters: serde_json::Value,
+}
+
+/// What one turn of the model produced.
+///
+/// Either prose or tool calls — the loop ends on the first, and continues on
+/// the second.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ChatTurn {
+    /// The model's prose, absent when it only asked for tools.
+    pub content: Option<String>,
+    /// The tools it wants run. Empty means this turn is the answer.
+    pub tool_calls: Vec<ToolCall>,
+    /// Tokens this turn cost, when the provider reports them.
+    ///
+    /// `None` is honest ignorance, not zero: a provider that reports nothing
+    /// must not read as free, or a token budget silently stops bounding.
+    pub tokens_used: Option<u64>,
+}
+
+/// A chat model that can be given tools and may answer by calling them.
+///
+/// The third port (see the module docs). It is not a second [`Summarizer`]:
+/// that one turns ONE element into a summary and never converses, while this
+/// carries a growing message list and may reply with a tool call instead of
+/// prose. The two are routinely different deployments — a cheap model enriches
+/// in bulk, a stronger one answers questions — and a port is how config says so.
+///
+/// ```
+/// use std::sync::Arc;
+/// use fs3_core::ChatProvider;
+///
+/// fn takes_a_port(_chat: Arc<dyn ChatProvider>) {}
+/// ```
+#[async_trait]
+pub trait ChatProvider: Send + Sync {
+    /// Take one turn: send the conversation and the offered tools, get back
+    /// prose or tool calls.
+    ///
+    /// # Errors
+    /// [`crate::Error::Provider`] when the backing model or API fails. A
+    /// malformed tool call from the model is NOT an error — it comes back as a
+    /// [`ChatTurn`] for the loop to answer.
+    async fn turn(&self, messages: &[ChatMessage], tools: &[ToolSchema]) -> Result<ChatTurn>;
+
+    /// Which model answered, for the trace and for support questions.
+    fn key(&self) -> String;
+
+    /// Whether this provider can actually produce an answer.
+    ///
+    /// `false` means the port is WIRED BUT NOT USABLE — the offline fake with
+    /// no script is the case that matters: it is a legal keyless production
+    /// value for the other two ports, where a fake embedder still yields real
+    /// vectors and search genuinely works. A fake CHAT model has no such
+    /// honest output. It can only emit a placeholder, and a placeholder
+    /// rendered into `answer` is a non-answer wearing an answer's clothes.
+    ///
+    /// Callers must refuse BEFORE running rather than publish that, because
+    /// the envelope's `ok` is the documented branch point for every machine
+    /// consumer: a run that cannot answer has to fail, not succeed quietly
+    /// with prose that reads like a finding.
+    ///
+    /// Defaults to `true`: a real provider can answer, and only a stand-in
+    /// knows it is one.
+    fn can_answer(&self) -> bool {
+        true
+    }
+
+    /// The most tokens this model accepts in the PROMPT of one call.
+    ///
+    /// The same declaration [`Summarizer::max_input_tokens`] makes, and it
+    /// bites harder here: a tool loop GROWS its prompt every turn, so the
+    /// caller must know the ceiling it is walking towards.
     fn max_input_tokens(&self) -> usize;
 }
 

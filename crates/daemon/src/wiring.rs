@@ -35,15 +35,26 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use fs3_core::{Config, DatabaseConfig, Embedder, Port, ProviderInstance, Summarizer};
+use fs3_core::{
+    ChatProvider, Config, DatabaseConfig, Embedder, Event, EventKind, Port, ProviderInstance,
+    Summarizer,
+};
 use fs3_providers::{
-    AzureCredential, AzureOpenAiConfig, AzureOpenAiEmbedder, AzureOpenAiSummarizer, OpenAiEmbedder,
-    OpenAiSummarizer,
+    AzureCredential, AzureOpenAiChatClient, AzureOpenAiConfig, AzureOpenAiEmbedder,
+    AzureOpenAiSummarizer, OpenAiEmbedder, OpenAiSummarizer,
 };
 // `PgPool` reaches the daemon through `fs3-store`, which owns the sqlx edge.
 // The daemon has no direct `sqlx` dependency, and the arch-check enforces that.
 use fs3_store::{PgPool, connect_lazy};
-use fs3_testkit::{FakeEmbedder, FakeSummarizer};
+use tokio::sync::broadcast;
+
+/// Events retained per subscriber before a lagging watcher is disconnected.
+///
+/// Producers only call [`broadcast::Sender::send`], which never waits. A
+/// subscriber that falls more than this many events behind receives `Lagged`
+/// and the HTTP handler closes its stream rather than slowing indexing.
+const EVENT_CAPACITY: usize = 256;
+use fs3_testkit::{FakeChatProvider, FakeEmbedder, FakeSummarizer};
 
 /// Everything an HTTP handler or worker needs, wired once at startup.
 #[derive(Clone)]
@@ -56,6 +67,12 @@ pub struct AppState {
     repo_embedders: BTreeMap<String, Arc<dyn Embedder>>,
     /// Repos that named a different summarizer, by repo identity.
     repo_summarizers: BTreeMap<String, Arc<dyn Summarizer>>,
+    /// One non-blocking fan-out for every live event-stream subscriber.
+    events: broadcast::Sender<Event>,
+    /// The chat model the `ask` verb drives unless a repo says otherwise.
+    pub agent: Arc<dyn ChatProvider>,
+    /// Repos that named a different chat model, by repo identity.
+    repo_agents: BTreeMap<String, Arc<dyn ChatProvider>>,
     /// The central store.
     ///
     /// The pool is lazy — connections are established on first use, so WIRING
@@ -123,12 +140,20 @@ impl AppState {
             summarizers.insert(name, build_summarizer(name, instance)?);
         }
 
+        let mut agents: BTreeMap<&str, Arc<dyn ChatProvider>> = BTreeMap::new();
+        for name in config.referenced_providers(Port::Agent) {
+            let instance = config.provider(name)?;
+            agents.insert(name, build_agent(name, instance)?);
+        }
+
         let embedder = Arc::clone(&embedders[config.selected(Port::Embedder, None)]);
         let summarizer = Arc::clone(&summarizers[config.selected(Port::Summarizer, None)]);
+        let agent = Arc::clone(&agents[config.selected(Port::Agent, None)]);
 
         // Flatten repo -> instance -> Arc now, so a query does one map lookup.
         let mut repo_embedders = BTreeMap::new();
         let mut repo_summarizers = BTreeMap::new();
+        let mut repo_agents = BTreeMap::new();
         for (repo, selection) in &config.repos {
             if let Some(name) = selection.embedder.as_deref() {
                 repo_embedders.insert(repo.clone(), Arc::clone(&embedders[name]));
@@ -136,9 +161,13 @@ impl AppState {
             if let Some(name) = selection.summarizer.as_deref() {
                 repo_summarizers.insert(repo.clone(), Arc::clone(&summarizers[name]));
             }
+            if let Some(name) = selection.agent.as_deref() {
+                repo_agents.insert(repo.clone(), Arc::clone(&agents[name]));
+            }
         }
 
         let db = build_store(&config.database)?;
+        let (events, _) = broadcast::channel(EVENT_CAPACITY);
 
         // Not an error worth refusing to serve over: a daemon that cannot name
         // its own binary can still index, search and answer. It just has no
@@ -155,10 +184,39 @@ impl AppState {
             summarizer,
             repo_embedders,
             repo_summarizers,
+            events,
+            agent,
+            repo_agents,
             db,
             config,
             install_path,
         })
+    }
+    /// Attach one live watcher to the daemon event fan-out.
+    #[must_use]
+    pub fn subscribe(&self) -> broadcast::Receiver<Event> {
+        self.events.subscribe()
+    }
+
+    /// Publish one event without ever waiting for a watcher.
+    ///
+    /// `send` failing means nobody is attached, which is the common idle
+    /// shape, not an indexing failure. The event is deliberately not retained:
+    /// `/status` is the snapshot for consumers that need current truth.
+    pub fn emit(&self, kind: EventKind) {
+        let _ = self.events.send(self.event(kind));
+    }
+
+    /// Stamp an event for one connection without broadcasting it.
+    #[must_use]
+    pub(crate) fn event(&self, kind: EventKind) -> Event {
+        Event::new(now(), kind)
+    }
+
+    /// Number of events one watcher may trail before the stream drops it.
+    #[must_use]
+    pub const fn event_capacity() -> usize {
+        EVENT_CAPACITY
     }
 
     /// The embedder to use for `repo` — its override, or the active default.
@@ -174,6 +232,17 @@ impl AppState {
     #[must_use]
     pub fn summarizer_for(&self, repo: &str) -> &Arc<dyn Summarizer> {
         self.repo_summarizers.get(repo).unwrap_or(&self.summarizer)
+    }
+
+    /// The chat model to use for `repo` — its override, or the active default.
+    ///
+    /// Takes `Option` because a question is not always asked from inside a
+    /// repository: `ask` can be scoped to every indexed repo at once, and there
+    /// is no per-repo override to consult in that case.
+    #[must_use]
+    pub fn agent_for(&self, repo: Option<&str>) -> &Arc<dyn ChatProvider> {
+        repo.and_then(|repo| self.repo_agents.get(repo))
+            .unwrap_or(&self.agent)
     }
 
     /// The `model_key` enrichment rows for `repo` are written under.
@@ -280,6 +349,37 @@ fn build_embedder(name: &str, instance: &ProviderInstance) -> Result<Arc<dyn Emb
     })
 }
 
+/// Build the chat model behind the `ask` verb.
+///
+/// Only two arms are real. `fake` keeps the offline stack whole — `ask` must
+/// work keyless, like every other verb — and Azure is the hosted case. An
+/// `openai` instance is refused rather than silently mis-wired: fs3 has no
+/// OpenAI chat adapter yet, and answering questions with the wrong client is a
+/// worse failure than a startup error that names the gap.
+fn build_agent(name: &str, instance: &ProviderInstance) -> Result<Arc<dyn ChatProvider>> {
+    Ok(match instance {
+        ProviderInstance::Fake => Arc::new(FakeChatProvider::default()),
+        ProviderInstance::AzureOpenAi {
+            endpoint,
+            deployment,
+            api_version,
+            api_key_env,
+            ..
+        } => Arc::new(AzureOpenAiChatClient::new(azure_config(
+            name,
+            endpoint,
+            deployment,
+            api_version,
+            api_key_env.as_deref(),
+        )?)),
+        ProviderInstance::OpenAi { .. } => anyhow::bail!(
+            "provider instance `{name}` is kind = \"openai\", which cannot serve the agent \
+             port: fs3 has no OpenAI chat adapter yet. Name an `azure_openai` instance in \
+             [agent] active, or `fake` to answer offline."
+        ),
+    })
+}
+
 fn build_summarizer(name: &str, instance: &ProviderInstance) -> Result<Arc<dyn Summarizer>> {
     Ok(match instance {
         ProviderInstance::Fake => Arc::new(FakeSummarizer::default()),
@@ -356,4 +456,35 @@ fn api_key(variable: &str, instance: &str) -> Result<String> {
              variable, or select an instance with `kind = \"fake\"` to run offline."
         )
     })
+}
+
+/// Current UTC time in the frozen event-wire spelling, without a date crate.
+fn now() -> String {
+    let elapsed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default();
+    let seconds = elapsed.as_secs();
+    let (days, rest) = (seconds / 86_400, seconds % 86_400);
+    let (year, month, day) = civil_from_days(days as i64);
+    format!(
+        "{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}.{:03}Z",
+        rest / 3600,
+        (rest % 3600) / 60,
+        rest % 60,
+        elapsed.subsec_millis()
+    )
+}
+
+/// Days since the Unix epoch to a civil date (Howard Hinnant's algorithm).
+fn civil_from_days(days: i64) -> (i64, u32, u32) {
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let year = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = (doy - (153 * mp + 2) / 5 + 1) as u32;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
+    (if month <= 2 { year + 1 } else { year }, month, day)
 }

@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "command": "gc",
+  "v": 1,
+  "data": {
+    "elements": 360,
+    "embeddings": 34,
+    "jobs": 0,
+    "summaries": 8,
+    "total": 402
+  },
+  "next_action": "reclaimed 402 row(s): 0 queued job(s), 360 element(s), 8 summary/summaries, 34 vector(s)"
+}

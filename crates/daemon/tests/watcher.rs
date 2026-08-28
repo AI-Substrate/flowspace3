@@ -27,6 +27,7 @@ mod support;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
+use fs3_core::views::roots::RootReport;
 use fs3_core::{Config, DatabaseConfig, IndexingConfig};
 use fs3_daemon::reconcile::Reconcile;
 use fs3_daemon::watch::WatcherSupervisor;
@@ -80,7 +81,7 @@ impl Stack {
         std::fs::write(&path, contents).expect("writing a fixture file");
     }
 
-    async fn add_root(&self) -> roots::RootReport {
+    async fn add_root(&self) -> RootReport {
         roots::add_root(&self.state, &self.root)
             .await
             .expect("registering the scratch root")

@@ -46,17 +46,20 @@
         {
           "id": "ac-0002",
           "claim": "A new worktree with K changed files becomes searchable without manual registration, and its scan enqueues enrichment only for divergent content (provider-call count proven for the unchanged remainder: zero).",
-          "state": "unchecked"
+          "state": "checked",
+          "receipt": "Auto-registration proven live in first light (run-20260828T035625Z): p1_auto_discovered=1 with no manual add, and one hand-registered root produced twenty auto-discovered worktrees. Zero-provider-cost for identical content proven in phase 1 and unchanged since: 305 files registered for 0 elements, 0 summaries, 0 vectors and 0 provider round trips (all 289 embed batches x smart, slowest 18ms), mechanism at enrich.rs:552-567."
         },
         {
           "id": "ac-0003",
           "claim": "Search from inside a worktree returns that worktree's version of a changed file; the same query from the main tree returns main's version; results carry which context they came from.",
-          "state": "unchecked"
+          "state": "unchecked",
+          "note": "OPEN BY DESIGN until the go-live run, and the validator's tk-e203-is-checked-but-ac-0003-is-not contradiction is expected: u-c's unit is delivered and independently re-verified (store pg_first_light 17/17, daemon first_light 14/14 on the composed tree), but this AC is a claim about LIVE retrieval and cannot be measured under the fake embedder first light ran with — a query quoting the marker's own body verbatim scored 0.1889 against unrelated files. Prime ruled (2026-08-28) that the live P3 measurement happens AFTER merge, because running it IS the feature going live for the fleet rather than a test. The receipt from that run closes this AC."
         },
         {
           "id": "ac-0004",
           "claim": "git worktree remove leads to the divergent-only content becoming unreferenced and GC-collectable, proven by before/after reference counts with zero orphaned paid enrichment.",
-          "state": "unchecked"
+          "state": "checked",
+          "receipt": "Proven live in first light (run-20260828T035625Z) with the detector driving it: git worktree remove alone now leads to p4_root_still_registered=0 and p4_deleted_content_still_served=0 with NO manual CLI call, and p4_served_after_gc=0. Phase 1 measured the mechanism it rides on: flowspace3 remove unmaps 305 files, gc reclaims 149 elements + 8 vectors, orphaned-paid 0 before and after, shared content untouched (repo_removed:false)."
         },
         {
           "id": "ac-0005",
@@ -67,7 +70,8 @@
         {
           "id": "ac-0006",
           "claim": "harness checks green on the composed branch; any new dependency edges are impl-guide-granted allowlist rows.",
-          "state": "unchecked"
+          "state": "checked",
+          "receipt": "harness checks green on the composed branch (9 gates) against a unique checks database. No allowlist rows were needed because no dependency edge was added: git diff 51ffc0c..HEAD over crates/testkit/arch-allowlist.toml and every Cargo.toml is empty."
         }
       ]
     },

@@ -1,9 +1,12 @@
-//! Deterministic fakes for both ports.
+//! Deterministic fakes for all three provider ports.
 
-use std::sync::Mutex;
+use std::{collections::VecDeque, sync::Mutex};
 
 use async_trait::async_trait;
-use fs3_core::{ADDRESS_SEGMENT, Element, Embedder, Error, Result, Summarizer, Summary};
+use fs3_core::{
+    ADDRESS_SEGMENT, ChatMessage, ChatProvider, ChatTurn, Element, Embedder, Error, Result,
+    Summarizer, Summary, ToolSchema,
+};
 
 /// Vector width the fakes produce. Wide enough that unrelated texts do not
 /// collide in every bucket, narrow enough to eyeball in a failing assertion.
@@ -349,9 +352,196 @@ impl Summarizer for FakeSummarizer {
     }
 }
 
+/// A [`ChatProvider`] that replays precise conversations without a model.
+///
+/// The script makes multi-turn tool use deterministic; every request is kept
+/// so a test can prove the growing conversation and offered schemas that
+/// actually reached the port. Once the script is exhausted, the fake answers
+/// with prose instead of inventing a tool call it cannot follow up.
+///
+/// An UNSCRIPTED fake is a different thing, and it reports itself as such
+/// through [`ChatProvider::can_answer`]. `kind = "fake"` is a legal keyless
+/// production value for the other two ports — a fake embedder emits real
+/// vectors and search genuinely works — but a fake chat model has no honest
+/// output at all. Its placeholder prose once reached callers as a real
+/// `answer` on an `ok: true` envelope, which is a non-answer that a machine
+/// consumer banks as a finding. It still answers when asked directly, so
+/// exhausting a script mid-test stays survivable, but a caller that checks
+/// first can refuse before spending anything.
+#[derive(Debug)]
+pub struct FakeChatProvider {
+    /// Whether this fake was given a script. Recorded at construction rather
+    /// than derived from the queue, which drains as a run proceeds — a fake
+    /// that answered three real turns has not become unusable on the fourth.
+    scripted: bool,
+    turns: Mutex<VecDeque<ChatTurn>>,
+    /// Message history passed to [`ChatProvider::turn`], in call order.
+    pub messages: Mutex<Vec<Vec<ChatMessage>>>,
+    /// Tool schemas passed to [`ChatProvider::turn`], in call order.
+    pub tools: Mutex<Vec<Vec<ToolSchema>>>,
+}
+
+impl Default for FakeChatProvider {
+    fn default() -> Self {
+        Self {
+            scripted: false,
+            turns: Mutex::new(VecDeque::new()),
+            messages: Mutex::new(Vec::new()),
+            tools: Mutex::new(Vec::new()),
+        }
+    }
+}
+
+impl FakeChatProvider {
+    /// A fake that returns `turns` in order before falling back to its offline
+    /// terminating answer.
+    pub fn scripted(turns: impl IntoIterator<Item = ChatTurn>) -> Self {
+        Self {
+            scripted: true,
+            turns: Mutex::new(turns.into_iter().collect()),
+            ..Self::default()
+        }
+    }
+
+    /// How many times [`ChatProvider::turn`] has been called.
+    pub fn call_count(&self) -> usize {
+        self.messages.lock().expect("fake chat messages lock").len()
+    }
+
+    /// Every conversation this fake received, in call order.
+    pub fn received_messages(&self) -> Vec<Vec<ChatMessage>> {
+        self.messages
+            .lock()
+            .expect("fake chat messages lock")
+            .clone()
+    }
+
+    /// Every tool-schema set this fake received, in call order.
+    pub fn received_tools(&self) -> Vec<Vec<ToolSchema>> {
+        self.tools.lock().expect("fake chat tools lock").clone()
+    }
+
+    fn offline_answer() -> ChatTurn {
+        ChatTurn {
+            content: Some("The offline fake has no scripted answer.".to_string()),
+            tool_calls: Vec::new(),
+            tokens_used: None,
+        }
+    }
+}
+
+#[async_trait]
+impl ChatProvider for FakeChatProvider {
+    async fn turn(&self, messages: &[ChatMessage], tools: &[ToolSchema]) -> Result<ChatTurn> {
+        self.messages
+            .lock()
+            .expect("fake chat messages lock")
+            .push(messages.to_vec());
+        self.tools
+            .lock()
+            .expect("fake chat tools lock")
+            .push(tools.to_vec());
+
+        Ok(self
+            .turns
+            .lock()
+            .expect("fake chat script lock")
+            .pop_front()
+            .unwrap_or_else(Self::offline_answer))
+    }
+
+    /// Stable model identity for traces produced without a hosted provider.
+    fn key(&self) -> String {
+        "fake@1".to_string()
+    }
+
+    /// An unscripted fake cannot answer anything.
+    ///
+    /// This is the whole reason the method exists on the port: the offline
+    /// fake is a legal keyless production value, and for the agent port that
+    /// means a daemon can be wired, healthy and completely unable to answer.
+    /// Saying so lets the caller refuse with a fix instead of publishing a
+    /// placeholder as a finding.
+    fn can_answer(&self) -> bool {
+        self.scripted
+    }
+
+    /// The fake stores text but never submits a bounded model prompt.
+    fn max_input_tokens(&self) -> usize {
+        usize::MAX
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn block_on<F: std::future::Future>(future: F) -> F::Output {
+        use std::task::{Context, Poll, Waker};
+
+        let mut context = Context::from_waker(Waker::noop());
+        let mut future = std::pin::pin!(future);
+        loop {
+            match future.as_mut().poll(&mut context) {
+                Poll::Ready(value) => return value,
+                Poll::Pending => std::hint::spin_loop(),
+            }
+        }
+    }
+
+    #[test]
+    fn an_unscripted_chat_answers_without_starting_a_tool_loop() {
+        let fake = FakeChatProvider::default();
+        let turn = block_on(fake.turn(&[ChatMessage::User("hello".into())], &[])).unwrap();
+
+        assert!(turn.content.is_some());
+        assert!(turn.tool_calls.is_empty());
+        assert_eq!(fake.call_count(), 1);
+    }
+
+    #[test]
+    fn a_chat_script_replays_tool_use_then_an_answer() {
+        let tool_turn = ChatTurn {
+            content: None,
+            tool_calls: vec![fs3_core::ToolCall {
+                id: "call-1".into(),
+                name: "search".into(),
+                arguments: r#"{"query":"config"}"#.into(),
+            }],
+            tokens_used: Some(11),
+        };
+        let answer_turn = ChatTurn {
+            content: Some("The config lives in core.".into()),
+            tool_calls: Vec::new(),
+            tokens_used: Some(7),
+        };
+        let fake = FakeChatProvider::scripted([tool_turn.clone(), answer_turn.clone()]);
+
+        assert_eq!(block_on(fake.turn(&[], &[])).unwrap(), tool_turn);
+        assert_eq!(block_on(fake.turn(&[], &[])).unwrap(), answer_turn);
+        assert!(
+            block_on(fake.turn(&[], &[])).unwrap().tool_calls.is_empty(),
+            "an exhausted script must terminate instead of fabricating another call"
+        );
+    }
+
+    #[test]
+    fn chat_requests_record_messages_and_tool_schemas() {
+        let fake = FakeChatProvider::default();
+        let messages = vec![ChatMessage::System("ground every claim".into())];
+        let tools = vec![ToolSchema {
+            name: "search".into(),
+            description: "Search indexed code".into(),
+            parameters: serde_json::json!({"type": "object"}),
+        }];
+
+        block_on(fake.turn(&messages, &tools)).unwrap();
+
+        assert_eq!(fake.received_messages(), [messages]);
+        assert_eq!(fake.received_tools(), [tools]);
+        assert_eq!(fake.key(), "fake@1");
+        assert_eq!(fake.max_input_tokens(), usize::MAX);
+    }
 
     #[test]
     fn hash_vectors_are_deterministic_and_normalised() {

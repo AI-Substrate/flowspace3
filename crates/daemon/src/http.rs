@@ -16,20 +16,32 @@
 //! underneath a running daemon.
 
 use anyhow::{Context, Result};
+use axum::body::{Body, Bytes};
 use axum::extract::{Query, State};
+use axum::http::{Response, header};
+use axum::middleware;
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use fs3_core::events::{EventKind, HEARTBEAT_MS, Hello};
 use serde::{Deserialize, Serialize};
+use std::convert::Infallible;
+use std::time::Duration;
+use tokio_stream::wrappers::ReceiverStream;
 
 use fs3_core::Port;
 
 use crate::answer::{Answer, IntoFailure, failed, ok};
+use crate::auth::Auth;
 use crate::conversations::{IntakeReport, IntakeRequest};
-use crate::read::{GetPayload, GetRequest, TreeRequest, TreeResult};
-use crate::roots::{RootReport, RootRequest};
-use crate::search::{SearchRequest, SearchResults};
-use crate::status::StatusReport;
+use crate::read::{GetRequest, TreeRequest};
+use crate::roots::RootRequest;
+use crate::search::SearchRequest;
 use crate::wiring::AppState;
+use fs3_core::views::read::{GetPayload, TreeResult};
+use fs3_core::views::remove::{GcCounts, RemoveReport};
+use fs3_core::views::roots::RootReport;
+use fs3_core::views::search::SearchResults;
+use fs3_core::views::status::StatusReport;
 
 /// What `GET /health` answers with.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -50,27 +62,112 @@ impl Health {
 }
 
 /// Build the router. Separate from [`serve`] so tests get the real routes
-/// without owning a port or a runtime shutdown.
-pub fn router(state: AppState) -> Router {
+/// without owning a port or a runtime shutdown. Authentication is one outer
+/// layer, so every current and future route inherits it automatically.
+pub fn router(state: AppState, auth: Auth) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/roots", post(add_root).get(status))
         .route("/status", get(status))
+        .route("/events", get(events))
         .route("/scan", post(scan))
         .route("/remove", post(remove))
         .route("/gc", post(gc))
         .route("/conversations", post(conversations).get(conversation_list))
         .route("/conversations/remove", post(conversation_remove))
+        .route("/conversations/ingest", post(conversation_ingest))
+        .route("/ask", post(ask))
         .route("/search", get(search))
         .route("/get", get(get_address))
         .route("/tree", get(tree))
         .with_state(state)
+        .layer(middleware::from_fn_with_state(auth, crate::auth::require))
+}
+
+/// `POST /ask` — answer a question by running a bounded, grounded tool loop.
+///
+/// Synchronous today: one request runs the whole loop and returns when it is
+/// done, which can be tens of seconds. The async-job posture with a streamed
+/// progress feed is the named follow-up, deferred until the event wire lands —
+/// the tool-call trace in the report is what that feed will carry.
+async fn ask(
+    State(state): State<AppState>,
+    Json(request): Json<crate::ask::AskRequest>,
+) -> Answer<crate::ask::AskReport> {
+    const COMMAND: &str = "ask";
+    if let Err(failure) = crate::schema::guard(&state.db).await {
+        return failed(&state, COMMAND, failure).await;
+    }
+
+    // Scope rides in `meta` exactly as it does for search, and for a sharper
+    // reason: an answer drawn from one repository when the caller expected all
+    // of them is indistinguishable from a wrong answer unless the scope is on
+    // the envelope.
+    let scope =
+        crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
+    let meta = serde_json::json!({ "scope": scope });
+
+    // The verdict rides the ENVELOPE, not the prose. A daemon wired to the
+    // offline fake is healthy and cannot answer anything, and it used to say
+    // so only in `grounded` and a next_action — while `ok` stayed true, which
+    // is the field our own documentation tells consumers to branch on. So a
+    // caller banked a placeholder as a finding. This is a failure, before any
+    // model call is made and before anything is spent.
+    let agent = state.agent_for(scope.repo.as_deref());
+    if !agent.can_answer() {
+        let failure = fs3_core::envelope::Failure::new(
+            &fs3_core::catalog::PROVIDER_CANNOT_ANSWER,
+            format!(
+                "the agent port is wired to `{}`, which cannot answer questions",
+                agent.key()
+            ),
+        );
+        return failed(&state, COMMAND, failure).await;
+    }
+
+    match crate::ask::ask(&state, &request, scope.clone()).await {
+        Ok(report) => {
+            let next = match (
+                &report.answer,
+                report.grounded && !report.citations.is_empty(),
+            ) {
+                (None, _) => {
+                    "the loop hit a bound before answering — raise [agent] max_iterations or \
+                     token_budget, or ask a narrower question"
+                }
+                // `grounded: false` survived a pushback, so the model answered
+                // from memory on purpose. Say so first and plainly: this is the
+                // one outcome a reader must not mistake for an ordinary answer.
+                // No citations means no address to check, so pointing at `get`
+                // would send the reader after something that does not exist.
+                (Some(_), false) => {
+                    "TREAT WITH SUSPICION — this answer cites no address that was read in full, \
+                     so there is nothing to verify it against; re-ask more narrowly, or check \
+                     `flowspace3 status` in case the index is empty"
+                }
+                (Some(_), true) => {
+                    "verify any claim with `flowspace3 get <address>` on the citations, or ask a \
+                     follow-up question"
+                }
+            };
+            ok(&state, COMMAND, report)
+                .await
+                .0
+                .with_meta(meta)
+                .with_next_action(crate::scope::steer(&scope, next))
+                .into()
+        }
+        Err(error) => {
+            let failure = crate::answer::IntoFailure::into_failure(error);
+            failed(&state, COMMAND, failure).await
+        }
+    }
 }
 
 async fn remove(
     State(state): State<AppState>,
     Json(request): Json<RootRequest>,
-) -> Answer<crate::remove::RemoveReport> {
+) -> Answer<RemoveReport> {
     const COMMAND: &str = "remove";
     if let Err(failure) = crate::schema::guard(&state.db).await {
         return failed(&state, COMMAND, failure).await;
@@ -167,7 +264,31 @@ async fn conversations(
     }
 }
 
-async fn gc(State(state): State<AppState>) -> Answer<crate::remove::GcCounts> {
+async fn conversation_ingest(
+    State(state): State<AppState>,
+    Json(request): Json<crate::convo_ingest::IngestRequest>,
+) -> Answer<crate::convo_ingest::IngestAccepted> {
+    const COMMAND: &str = "conversation ingest";
+    if let Err(failure) = crate::schema::guard(&state.db).await {
+        return failed(&state, COMMAND, failure).await;
+    }
+    // ENQUEUE ONLY. Ingest is fired from harness hooks, which run often and
+    // must not wait on a store read: the route validates the address, upserts
+    // one job, and returns. The runner does the reading.
+    match crate::convo_ingest::submit(&state, &request).await {
+        Ok(report) => {
+            let next = crate::convo_ingest::next_after_submit(&report);
+            ok(&state, COMMAND, report)
+                .await
+                .0
+                .with_next_action(next)
+                .into()
+        }
+        Err(failure) => failed(&state, COMMAND, failure).await,
+    }
+}
+
+async fn gc(State(state): State<AppState>) -> Answer<GcCounts> {
     const COMMAND: &str = "gc";
     if let Err(failure) = crate::schema::guard(&state.db).await {
         return failed(&state, COMMAND, failure).await;
@@ -182,6 +303,74 @@ async fn gc(State(state): State<AppState>) -> Answer<crate::remove::GcCounts> {
                 .into()
         }
         Err(failure) => failed(&state, COMMAND, failure).await,
+    }
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct EventQuery {
+    heartbeat_ms: Option<u64>,
+}
+
+/// A live NDJSON feed. Each response owns its heartbeat and bounded output
+/// queue; neither can block the daemon's shared event producer.
+async fn events(State(state): State<AppState>, Query(query): Query<EventQuery>) -> Response<Body> {
+    let heartbeat_ms = query.heartbeat_ms.unwrap_or(HEARTBEAT_MS).max(1);
+    let subscription = state.subscribe();
+    let (sender, receiver) = tokio::sync::mpsc::channel(AppState::event_capacity());
+
+    let mut hello = Hello::new(env!("CARGO_PKG_VERSION"));
+    hello.heartbeat_ms = heartbeat_ms;
+    sender
+        .try_send(Ok::<_, Infallible>(ndjson(&hello)))
+        .expect("a new subscriber queue accepts its hello");
+
+    tokio::spawn(stream_events(state, subscription, sender, heartbeat_ms));
+
+    Response::builder()
+        .header(header::CONTENT_TYPE, "application/x-ndjson")
+        .body(Body::from_stream(ReceiverStream::new(receiver)))
+        .expect("the event response has valid static headers")
+}
+
+fn ndjson(value: &impl Serialize) -> Bytes {
+    let mut line = serde_json::to_vec(value).expect("frozen event types always serialize");
+    line.push(b'\n');
+    Bytes::from(line)
+}
+
+async fn stream_events(
+    state: AppState,
+    mut subscription: tokio::sync::broadcast::Receiver<fs3_core::Event>,
+    sender: tokio::sync::mpsc::Sender<Result<Bytes, Infallible>>,
+    heartbeat_ms: u64,
+) {
+    let period = Duration::from_millis(heartbeat_ms);
+    let mut heartbeat = tokio::time::interval_at(tokio::time::Instant::now() + period, period);
+    heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    let mut sequence = 0;
+
+    loop {
+        let line = tokio::select! {
+            biased;
+            received = subscription.recv() => match received {
+                Ok(event) => {
+                    heartbeat.reset();
+                    ndjson(&event)
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Closed)
+                | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => break,
+            },
+            _ = heartbeat.tick() => {
+                sequence += 1;
+                ndjson(&state.event(EventKind::Heartbeat { seq: sequence }))
+            }
+        };
+
+        // Full means this connection is slower than the producer. Drop it;
+        // an indexing task must never await a dashboard's socket.
+        if sender.try_send(Ok::<_, Infallible>(line)).is_err() {
+            break;
+        }
     }
 }
 
@@ -258,6 +447,10 @@ async fn status(State(state): State<AppState>) -> Answer<StatusReport> {
     }
 }
 
+/// Advisory text for a result below the calibrated search confidence floor.
+const WEAK_MATCH_HINT: &str =
+    "Weak match: describe the component in its own vocabulary rather than asking a question.";
+
 async fn search(
     State(state): State<AppState>,
     Query(request): Query<SearchRequest>,
@@ -273,35 +466,69 @@ async fn search(
     // identical to a caller who cannot see which repository was asked.
     let scope =
         crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
-    let meta = serde_json::json!({ "scope": scope });
 
     match crate::search::search(&state, &request, &scope).await {
-        Ok(results) => {
-            let next = if results.results.is_empty() {
-                // The third cause is the one nobody guesses: vectors are only
-                // read under the model_key that wrote them, so searching with
-                // a different embedder than the one that indexed returns
-                // nothing while the index looks full. Naming doctor here is
-                // what turns that from a mystery into one command.
-                "nothing matched — widen with a shorter query, drop --min-score, check \
-                 `flowspace3 status` in case indexing has not finished, or run `flowspace3 \
-                 doctor`: a search only reads vectors written by the ACTIVE embedder, so a \
-                 provider change since indexing returns nothing from a full index"
+        Ok(outcome) => {
+            let weak_match = outcome.is_weak_match();
+            // The third cause is the one nobody guesses: vectors are only read
+            // under the model_key that wrote them, so searching with a
+            // different embedder than the one that indexed returns nothing
+            // while the index looks full. Naming doctor here is what turns
+            // that from a mystery into one command.
+            //
+            // When `empty_because` is present the surface knows more than
+            // that, and the steer says the known thing instead of listing
+            // suspects: guessing out loud next to a fact we hold is how a user
+            // ends up rephrasing a query that was never the problem.
+            let next = match (&outcome.empty_because, outcome.results.is_empty()) {
+                (Some(reason), _) => reason.detail.as_str(),
+                (None, true) => {
+                    "nothing matched — widen with a shorter query, drop --min-score, check \
+                     `flowspace3 status` in case indexing has not finished, or run `flowspace3 \
+                     doctor`: a search only reads vectors written by the ACTIVE embedder, so a \
+                     provider change since indexing returns nothing from a full index"
+                }
+                (None, false) => {
+                    "read a hit in full with `flowspace3 get <address>`, browse its file with \
+                     `flowspace3 tree <address>`, or narrow with --path/--repo"
+                }
+            };
+            let mut meta = serde_json::json!({
+                "scope": scope,
+                "empty_because": outcome.empty_because,
+                "truncation": {
+                    "limit": outcome.limit,
+                    "truncated": outcome.truncated,
+                },
+            });
+            if weak_match {
+                meta["hint"] = serde_json::Value::String(WEAK_MATCH_HINT.to_string());
+            }
+            let results = SearchResults {
+                results: outcome.results,
+            };
+            let next = crate::scope::steer(&scope, next);
+            let next = if crate::ask_hint::looks_like_question(&request.q) {
+                format!("{next} — {}", crate::ask_hint::HINT)
             } else {
-                "read a hit in full with `flowspace3 get <address>`, browse its file with \
-                 `flowspace3 tree <address>`, or narrow with --path/--repo"
+                next
+            };
+            let next = if weak_match {
+                format!("{WEAK_MATCH_HINT} — then: {next}")
+            } else {
+                next.to_string()
             };
             ok(&state, COMMAND, results)
                 .await
                 .0
                 .with_meta(meta)
-                .with_next_action(crate::scope::steer(&scope, next))
+                .with_next_action(next)
                 .into()
         }
         Err(failure) => failed::<SearchResults>(&state, COMMAND, failure)
             .await
             .0
-            .with_meta(meta)
+            .with_meta(serde_json::json!({ "scope": scope }))
             .into(),
     }
 }
@@ -397,14 +624,26 @@ fn next_after_scan(report: &RootReport) -> String {
 ///
 /// # Errors
 /// When the address cannot be bound or the server fails.
-pub async fn serve(state: AppState, address: &str) -> Result<()> {
+pub async fn serve(state: AppState, address: &str, auth: Auth) -> Result<()> {
     let listener = tokio::net::TcpListener::bind(address)
         .await
         .with_context(|| format!("cannot bind {address}"))?;
+    serve_listener(state, listener, auth).await
+}
+
+/// Serve on a listener whose port is already reserved.
+///
+/// Sandbox boot uses this to publish the exact ephemeral port without a
+/// release-and-rebind race.
+pub(crate) async fn serve_listener(
+    state: AppState,
+    listener: tokio::net::TcpListener,
+    auth: Auth,
+) -> Result<()> {
     let bound = listener.local_addr().context("cannot read bound address")?;
     tracing::info!(%bound, "fs3 daemon listening");
 
-    axum::serve(listener, router(state))
+    axum::serve(listener, router(state, auth))
         .with_graceful_shutdown(shutdown_signal())
         .await
         .context("daemon stopped unexpectedly")

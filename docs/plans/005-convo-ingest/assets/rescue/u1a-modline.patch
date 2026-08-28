@@ -1,0 +1,12 @@
+diff --git a/crates/providers/src/conversation_sources/mod.rs b/crates/providers/src/conversation_sources/mod.rs
+index 1e79a49..7124dcc 100644
+--- a/crates/providers/src/conversation_sources/mod.rs
++++ b/crates/providers/src/conversation_sources/mod.rs
+@@ -14,6 +14,7 @@
+ //!
+ //! [`ConversationSource`]: fs3_core::ConversationSource
+ 
++pub mod claude;
+ pub mod tail;
+ 
+ // One `pub mod` line per reader lands here. Keep them alphabetical.

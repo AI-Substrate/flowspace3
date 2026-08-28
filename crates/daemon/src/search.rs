@@ -21,6 +21,14 @@
 //! conversion is `1 - distance` and it happens exactly here, at the boundary,
 //! so `--min-score 0.7` is a number a human can reason about rather than a
 //! ceiling they have to invert in their head.
+//!
+//! # Snap-in recipe
+//!
+//! No new configuration, constructor, or route registration is required.
+//! The existing HTTP handler resolves `Scope` once, passes it unchanged to
+//! [`search`], and attaches the returned limit/weak-match facts to envelope
+//! metadata. The store call must receive both `scope.repo` and
+//! `scope.worktree`; dropping the latter restores cross-checkout leakage.
 
 use fs3_core::ElementKind;
 use fs3_core::catalog;
@@ -31,6 +39,7 @@ use serde::{Deserialize, Serialize};
 use crate::runner::fail;
 use crate::scope::Scope;
 use crate::wiring::AppState;
+use fs3_core::views::search::Hit;
 
 /// What a caller asks for.
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
@@ -67,6 +76,28 @@ pub struct SearchRequest {
 /// than a slow query.
 pub const MAX_LIMIT: i64 = 100;
 
+/// A best hit below this score is weak enough to warrant an advisory hint.
+///
+/// This is not a probability. Absolute similarity depends on both corpus and
+/// embedder. The value was calibrated on 2026-08-28 against the live
+/// flowspace3 index using Azure `text-embedding-3-small-no-rate` at 1024
+/// dimensions. The snapshot separated known-relevant from known-noise queries:
+///
+/// | expected | query | best score |
+/// |---|---|---:|
+/// | relevant | claim queued job once deduplicate key | 0.6985 |
+/// | relevant | remove root dereference worktree files | 0.6456 |
+/// | relevant | resolve caller cwd registered worktree scope | 0.6146 |
+/// | relevant | known relevant, mediocre matches | 0.5509–0.5554 |
+/// | noise | known irrelevant matches | 0.4431–0.4644 |
+/// | noise | quantum chromodynamics gluon confinement | 0.3118 |
+///
+/// The durable part is the labelled-query procedure, not these samples: the
+/// index grows, and changing either corpus or embedder invalidates the floor.
+/// False warnings teach callers to ignore the hint, so new relevant evidence
+/// below the current band moves this floor down, never up by taste.
+pub const WEAK_MATCH_SCORE_FLOOR: f64 = 0.50;
+
 /// The element kinds that answer a CODE search.
 ///
 /// Named exhaustively rather than as "everything except a turn", so that adding
@@ -79,42 +110,54 @@ const CODE_KINDS: [ElementKind; 4] = [
     ElementKind::Section,
 ];
 
-/// One hit, in the workshop-003 row shape.
+fn weak_match_score(best: Option<f64>) -> bool {
+    best.is_some_and(|score| score < WEAK_MATCH_SCORE_FLOOR)
+}
+/// Why an empty answer was empty, when "nothing matched" would be a guess.
+///
+/// Rides in `meta`, never in `data`: it is commentary about the answer rather
+/// than part of it, and a consumer that ignores it still reads the same
+/// result list. It exists at all because an empty `results` array is the most
+/// misread thing this surface produces — three unrelated causes, one shape,
+/// and only one of them is an answer.
 #[derive(Clone, Debug, PartialEq, Serialize)]
-pub struct Hit {
-    /// `el:<repo>/<path>::<container>::<name>` — the universal currency (D7).
-    pub address: String,
-    /// 1.0 is identical; highest first.
-    pub score: f64,
-    /// Which vector space won this hit: `raw` or `smart`.
-    pub match_field: String,
-    /// The element's universal category.
-    pub kind: String,
-    /// The grammar's own kind.
-    pub subkind: String,
-    /// The declaration's own name.
-    pub name: String,
-    /// Inclusive 1-based `[start, end]`.
-    pub span: [u32; 2],
-    /// The first lines of the element's own text.
-    pub snippet: String,
-    /// The summary, when there is one.
-    pub smart: Option<String>,
-    /// Concept tags from the summary (PRD req 36).
-    pub tags: Vec<String>,
-    /// The repository a live path holding this content belongs to.
-    pub repo: Option<String>,
-    /// A live path holding it, relative to its worktree root.
-    pub path: Option<String>,
+pub struct EmptyBecause {
+    /// The machine-readable cause: `below_floor` or `scan_incomplete`.
+    pub reason: &'static str,
+    /// One sentence stating what is actually known, for a human or an agent.
+    pub detail: String,
 }
 
-/// What `GET /search` answers with.
-#[derive(Clone, Debug, PartialEq, Serialize)]
-pub struct SearchResults {
-    /// Ranked hits, best first.
+/// A search's answer, plus the truth about it being empty when it is.
+///
+/// Carries the hits rather than [`SearchResults`] so that the wire type stays
+/// a pure payload: the emptiness commentary belongs in `meta`, and a struct
+/// that owned both would invite it into `data`.
+///
+/// [`Hit`] and [`SearchResults`] themselves live in `fs3_core::views::search`
+/// since tk-a106 — a consumer must be able to read a payload without depending
+/// on this crate — so this file uses them rather than defining them.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SearchOutcome {
+    /// The ranked hits, best first.
     pub results: Vec<Hit>,
+    /// Present only when `results` is empty AND the emptiness has a knowable
+    /// cause. `None` alongside an empty list means the index really was asked
+    /// and really had nothing nearer to offer.
+    pub empty_because: Option<EmptyBecause>,
+    /// The caller-visible result cap.
+    pub limit: i64,
+    /// Whether at least one additional legitimate result existed beyond the cap.
+    pub truncated: bool,
 }
 
+impl SearchOutcome {
+    /// Whether the best available result falls below the calibrated floor.
+    #[must_use]
+    pub fn is_weak_match(&self) -> bool {
+        weak_match_score(self.results.first().map(|hit| hit.score))
+    }
+}
 /// How many lines of an element's text a hit carries.
 const SNIPPET_LINES: usize = 5;
 
@@ -128,7 +171,7 @@ pub async fn search(
     state: &AppState,
     request: &SearchRequest,
     scope: &Scope,
-) -> Result<SearchResults, Failure> {
+) -> Result<SearchOutcome, Failure> {
     let query = request.q.trim();
     if query.is_empty() {
         return Err(Failure::new(
@@ -159,11 +202,18 @@ pub async fn search(
     // opinions at a point in time and code is current truth, so blending them
     // by default would answer "how does auth work" with somebody's guess about
     // it from three weeks ago.
-    let (source, kinds) = match request.source.as_deref() {
-        None | Some("all") => (None, Some(CODE_KINDS.to_vec())),
-        Some("raw") => (Some(SourceKind::Raw), Some(CODE_KINDS.to_vec())),
-        Some("smart") => (Some(SourceKind::Smart), Some(CODE_KINDS.to_vec())),
-        Some("conversation") => (None, Some(vec![ElementKind::Turn])),
+    //
+    // `code` rides along because the emptiness diagnostics below are only
+    // entitled to speak about file content: they reason from raw vectors
+    // reachable through `worktree_files`, and a turn has no row there. Telling
+    // a conversation search that its repository "has content indexed" would be
+    // true and irrelevant, which is the kind of confident irrelevance this
+    // whole change exists to remove.
+    let (source, kinds, code) = match request.source.as_deref() {
+        None | Some("all") => (None, Some(CODE_KINDS.to_vec()), true),
+        Some("raw") => (Some(SourceKind::Raw), Some(CODE_KINDS.to_vec()), true),
+        Some("smart") => (Some(SourceKind::Smart), Some(CODE_KINDS.to_vec()), true),
+        Some("conversation") => (None, Some(vec![ElementKind::Turn]), false),
         Some(other) => {
             return Err(Failure::new(
                 &catalog::QUERY_INVALID,
@@ -208,46 +258,155 @@ pub async fn search(
 
     let filters = SearchFilters {
         repo: scope.repo.clone(),
+        worktree: scope.worktree.clone(),
         path: request.path.as_deref().map(glob_to_like),
         source,
         kinds,
         max_distance,
-        limit,
+        limit: limit + 1,
     };
 
-    let hits = fs3_store::search_elements(&state.db, &model_key, &vector, &filters)
+    let mut hits = fs3_store::search_elements(&state.db, &model_key, &vector, &filters)
         .await
         .map_err(fail)?;
 
+    // The store scopes both candidate eligibility and representative
+    // resolution. If a future query shape defeats that invariant, never emit a
+    // repo-less address for a scoped search: drop it loudly so the missing
+    // provenance is diagnosable rather than becoming another checkout leak.
+    // This legitimacy guard runs after #44 widens retrieval, but before every
+    // early return: breadth first, legitimacy second.
+    let scoped = scope.repo.is_some() || scope.worktree.is_some() || request.path.is_some();
+    hits.retain(|hit| {
+        let resolved = hit.identity.is_some() || hit.root_path.is_some() || hit.path.is_some();
+        if scoped && !resolved {
+            tracing::warn!(
+                raw_hash = %hit.similar.element.raw_hash(),
+                repo = ?scope.repo,
+                path = ?request.path,
+                worktree = ?scope.worktree,
+                "scoped search representative resolved without live provenance; dropping hit"
+            );
+        }
+        !scoped || resolved
+    });
+
+    let truncated = hits.len() > limit as usize;
+    if !hits.is_empty() {
+        return Ok(SearchOutcome {
+            results: hits.iter().take(limit as usize).map(render).collect(),
+            empty_because: None,
+            limit,
+            truncated,
+        });
+    }
+
     // An empty result is the most misread signal we have: "not indexed yet",
-    // "indexed under a model this search cannot see", and "genuinely no match"
-    // all look identical, and only the last one is an answer. Returning the
-    // empty list for all three makes the first two into confident lies.
-    if hits.is_empty()
-        && let Some(failure) = nothing_to_search(state, &model_key).await
-    {
+    // "indexed under a model this search cannot see", "indexed, but not in the
+    // repository you are standing in", "the ranking never reached your
+    // content", and "genuinely no match" all look identical, and only the last
+    // one is an answer. Returning the empty list for all five makes the other
+    // four into confident lies.
+    if let Some(failure) = nothing_to_search(state, &model_key, &filters, code).await {
         return Err(failure);
     }
 
-    Ok(SearchResults {
-        results: hits.iter().map(render).collect(),
+    Ok(SearchOutcome {
+        results: Vec::new(),
+        empty_because: empty_because(&filters, code),
+        limit,
+        truncated: false,
     })
 }
 
-/// Why an empty result was empty — when the reason is not "no match".
+/// The true statement about an empty answer — and `None` when there is none.
 ///
-/// Returns `None` when the active model really does have an index, because
-/// then zero hits IS the answer and dressing it up as an error would be its
-/// own lie.
+/// Every branch here is limited to what the code path has actually PROVEN by
+/// the time it runs, because a confident wrong explanation is worse than the
+/// vague one it replaces.
+///
+/// A floor was set: rows may well have been found and then rejected for
+/// scoring below it, and the floor is the fact worth reporting rather than a
+/// shrug about the query.
+///
+/// No floor, and an anchor was applied: nothing could have been rejected —
+/// every vector is within a cosine distance of 1.0 of every other — and
+/// [`anchor_not_indexed`] has just proven the anchor holds indexed content.
+/// An empty answer there is not an absence of matches, it is an approximate
+/// nearest-neighbour scan that ran out of budget before reaching this
+/// anchor's share of the index. Saying "nothing matched" is the lie this
+/// function exists to stop telling.
+///
+/// No floor and no anchor, or a conversation search: nothing here has
+/// established that any reachable content exists — [`anchor_not_indexed`]
+/// declines to speak for turns, which have no `worktree_files` row — so there
+/// is no claim to make and `None` is the honest answer. The generic steer
+/// stands.
+fn empty_because(filters: &SearchFilters, code: bool) -> Option<EmptyBecause> {
+    if let Some(distance) = filters.max_distance
+        && distance < 1.0
+    {
+        return Some(EmptyBecause {
+            reason: "below_floor",
+            detail: format!(
+                "the active model has an index, but nothing in it scored at or above \
+                 --min-score {:.3}",
+                1.0 - distance
+            ),
+        });
+    }
+
+    if !code {
+        return None;
+    }
+
+    let anchor = match (
+        filters.worktree.as_deref(),
+        filters.repo.as_deref(),
+        filters.path.as_deref(),
+    ) {
+        (Some(worktree), Some(repo), Some(path)) => {
+            format!("checkout {worktree} of {repo} under paths matching {path}")
+        }
+        (Some(worktree), Some(repo), None) => format!("checkout {worktree} of {repo}"),
+        (Some(worktree), None, _) => format!("checkout {worktree}"),
+        (None, Some(repo), _) => repo.to_string(),
+        (None, None, Some(path)) => format!("paths matching {path}"),
+        (None, None, None) => return None,
+    };
+
+    Some(EmptyBecause {
+        reason: "scan_incomplete",
+        detail: format!(
+            "content IS indexed under {anchor} and no score floor was set, so this empty result \
+             is not an absence of matches: the approximate nearest-neighbour scan stopped before \
+             it reached that content. A scope holding a small share of a large index is where \
+             this happens — retry without --repo/--path to see what the index does hold"
+        ),
+    })
+}
+
+/// Why an empty result was empty — when the reason is an ERROR the caller can
+/// act on rather than a fact about the ranking.
+///
+/// Returns `None` when the active model has an index AND that index reaches
+/// the anchor the caller asked about, because from there on the emptiness is
+/// about scores and scan budgets — [`empty_because`]'s business, and a
+/// successful answer's, not a failure's.
 ///
 /// A store that cannot answer this also returns `None`: the search itself
 /// succeeded, and failing it now over a diagnostic query would turn a working
 /// empty result into an outage.
-async fn nothing_to_search(state: &AppState, model_key: &str) -> Option<Failure> {
+async fn nothing_to_search(
+    state: &AppState,
+    model_key: &str,
+    filters: &SearchFilters,
+    code: bool,
+) -> Option<Failure> {
     let models = fs3_store::embedding_models(&state.db).await.ok()?;
 
     if models.iter().any(|(key, _)| key == model_key) {
-        return None;
+        return anchor_not_indexed(state, model_key, filters, code).await;
     }
 
     // Vectors exist, but under other keys. This is the dangerous one: the
@@ -283,6 +442,71 @@ async fn nothing_to_search(state: &AppState, model_key: &str) -> Option<Failure>
     ))
 }
 
+/// The anchor leg: the model has an index, but does it reach HERE?
+///
+/// The cause nobody guesses and the store cannot volunteer. A central index
+/// holds several repositories; a search run inside one of them is answered
+/// under that repository's anchor; and a repository that was never added — or
+/// whose scan has not finished — produces exactly the same empty list as a
+/// question with no good answer. Naming it is the difference between
+/// `flowspace3 add .` and an afternoon of rephrasing the query.
+///
+/// Only asked for a CODE search with an anchor actually applied. With no
+/// repository, worktree, or path filter the previous check already established
+/// the index exists, and a second query would be work spent confirming it; for
+/// a conversation search the probe is simply the wrong question, because a
+/// turn reaches its repository through its conversation's anchor and has no
+/// `worktree_files` row to be found by.
+async fn anchor_not_indexed(
+    state: &AppState,
+    model_key: &str,
+    filters: &SearchFilters,
+    code: bool,
+) -> Option<Failure> {
+    let repo = filters.repo.as_deref();
+    let worktree = filters.worktree.as_deref();
+    let path = filters.path.as_deref();
+    if !code || (repo.is_none() && worktree.is_none() && path.is_none()) {
+        return None;
+    }
+
+    // Best-effort like its caller: a diagnostic that cannot run must not
+    // convert a successful empty answer into a failed command.
+    if fs3_store::anchor_has_vectors(&state.db, model_key, filters)
+        .await
+        .ok()?
+    {
+        return None;
+    }
+
+    let anchor = match (worktree, repo, path) {
+        (Some(worktree), Some(repo), Some(_)) => {
+            format!("checkout {worktree} of {repo} under the requested --path")
+        }
+        (Some(worktree), Some(repo), None) => format!("checkout {worktree} of {repo}"),
+        (Some(worktree), None, _) => format!("checkout {worktree}"),
+        (None, Some(repo), Some(_)) => format!("{repo} under the requested --path"),
+        (None, Some(repo), None) => repo.to_string(),
+        (None, None, _) => "the requested --path".to_string(),
+    };
+    Some(
+        Failure::new(
+            &catalog::QUERY_NO_INDEX,
+            format!(
+                "the index has content for the active model {model_key}, but none of it belongs \
+                 to {anchor} — so this search had nothing to rank, which is not the same as \
+                 nothing matching"
+            ),
+        )
+        .with_detail("active_model", model_key)
+        .with_detail("anchor", anchor)
+        .with_fix(
+            "index it with `flowspace3 add <path>` and wait for `flowspace3 status` to drain, \
+             or use `--repo all` to search everything the index holds",
+        ),
+    )
+}
+
 /// Turn a store hit into a workshop-003 row.
 fn render(hit: &SearchHit) -> Hit {
     let element = &hit.similar.element;
@@ -305,6 +529,7 @@ fn render(hit: &SearchHit) -> Hit {
             .unwrap_or_default(),
         repo: hit.identity.clone(),
         path: hit.path.clone(),
+        worktree: hit.root_path.clone(),
     }
 }
 
@@ -400,6 +625,7 @@ mod tests {
             .map(|n| format!("line {n}"))
             .collect::<Vec<_>>()
             .join("\n");
+
         let snippet = snippet(&body);
         assert_eq!(snippet.lines().count(), SNIPPET_LINES);
         assert!(snippet.starts_with("line 1"));
@@ -414,5 +640,124 @@ mod tests {
         assert!((score(1.0) - 0.0).abs() < f64::EPSILON);
         // and a min_score of 0.7 must become a distance ceiling of 0.3
         assert!((1.0 - 0.7 - 0.3f64).abs() < 1e-9);
+    }
+
+    #[test]
+    fn weak_match_is_advisory_only_below_the_calibrated_floor() {
+        assert!(weak_match_score(Some(WEAK_MATCH_SCORE_FLOOR - 0.01)));
+        assert!(!weak_match_score(Some(WEAK_MATCH_SCORE_FLOOR)));
+        assert!(!weak_match_score(Some(WEAK_MATCH_SCORE_FLOOR + 0.01)));
+        assert!(
+            !weak_match_score(None),
+            "zero results use their existing steer"
+        );
+    }
+    /// The decision table for [`EmptyBecause`], which is the whole of the
+    /// envelope-honesty promise: every claim it makes has to be one the code
+    /// path has already proven, and every case it cannot speak to has to stay
+    /// silent rather than guess.
+    ///
+    /// Driven directly rather than through a query because the interesting
+    /// input — a nearest-neighbour scan that stops before reaching content it
+    /// can prove is there — is provoked in a live index by squeezing pgvector's
+    /// scan budget, and pgvector randomises HNSW graph construction, so that
+    /// fixture is a coin flip. A flaky test that watches the right thing is
+    /// worth less than a stable one that watches the decision.
+    mod empty_answers {
+        use super::*;
+
+        fn anchored() -> SearchFilters {
+            SearchFilters {
+                repo: Some("git:example.com/one".to_string()),
+                kinds: Some(CODE_KINDS.to_vec()),
+                ..SearchFilters::default()
+            }
+        }
+
+        /// No floor, an anchor, and (by the time this runs) proof that the
+        /// anchor holds eligible content. Nothing could have been rejected on
+        /// score, so the scan is the only remaining explanation and the
+        /// envelope says so.
+        #[test]
+        fn an_anchored_search_with_no_floor_blames_the_scan_and_names_the_scope() {
+            let reason = empty_because(&anchored(), true).expect("a claim is available");
+            assert_eq!(reason.reason, "scan_incomplete");
+            assert!(reason.detail.contains("git:example.com/one"));
+            assert!(
+                !reason.detail.contains("nothing matched"),
+                "the shrug is what this replaces: {}",
+                reason.detail
+            );
+        }
+
+        /// A floor was set, so rows may well have been found and rejected. The
+        /// floor is the fact, and it takes precedence over the scan story even
+        /// with an anchor in play.
+        #[test]
+        fn a_floor_is_reported_as_the_floor() {
+            let filters = SearchFilters {
+                max_distance: Some(0.3),
+                ..anchored()
+            };
+            let reason = empty_because(&filters, true).expect("a claim is available");
+            assert_eq!(reason.reason, "below_floor");
+            assert!(
+                reason.detail.contains("0.700"),
+                "the floor is reported as the caller spelled it, not as a \
+                 distance: {}",
+                reason.detail
+            );
+        }
+
+        /// A floor of exactly zero excludes nothing, so it is not an
+        /// explanation — the scan story still applies.
+        #[test]
+        fn a_floor_of_zero_explains_nothing_and_is_not_offered_as_one() {
+            let filters = SearchFilters {
+                max_distance: Some(1.0),
+                ..anchored()
+            };
+            assert_eq!(
+                empty_because(&filters, true)
+                    .expect("a claim is available")
+                    .reason,
+                "scan_incomplete"
+            );
+        }
+
+        /// Unanchored, nothing has established that any reachable content
+        /// exists, so there is no claim to make.
+        #[test]
+        fn an_unanchored_search_makes_no_claim() {
+            let filters = SearchFilters {
+                kinds: Some(CODE_KINDS.to_vec()),
+                ..SearchFilters::default()
+            };
+            assert!(empty_because(&filters, false).is_none());
+            assert!(empty_because(&filters, true).is_none());
+        }
+
+        /// A conversation search is answered from turns, which have no
+        /// `worktree_files` row — the probe that would justify the scan claim
+        /// never ran, so the claim is not available.
+        #[test]
+        fn a_conversation_search_makes_no_claim_about_file_content() {
+            assert!(empty_because(&anchored(), false).is_none());
+        }
+
+        /// A `--path` filter is an anchor too, and the report names what was
+        /// actually narrowed rather than a repository nobody mentioned.
+        #[test]
+        fn a_path_filter_is_named_as_the_scope() {
+            let filters = SearchFilters {
+                repo: None,
+                path: Some("crates/store/%".to_string()),
+                kinds: Some(CODE_KINDS.to_vec()),
+                ..SearchFilters::default()
+            };
+            let reason = empty_because(&filters, true).expect("a claim is available");
+            assert_eq!(reason.reason, "scan_incomplete");
+            assert!(reason.detail.contains("crates/store/%"));
+        }
     }
 }

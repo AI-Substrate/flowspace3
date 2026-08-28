@@ -69,13 +69,17 @@ note() { printf '    %s\n' "$*"; }
 # ---------------------------------------------------------------- primitives
 sql() { docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -At -c "$1"; }
 sqlt() { docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -c "$1"; }
+# The binary under test. Defaults to whatever `flowspace3` PATH resolves to —
+# which is the INSTALLED release, not this tree's build. First light needs the
+# composed binary, so it is an override rather than an assumption.
+CLI=${FS3_PROBE_CLI:-flowspace3}
 fs3() {
   local command=$1
   shift
   if [[ -n "$DAEMON_URL" ]]; then
-    flowspace3 "$command" --daemon-url "$DAEMON_URL" "$@"
+    "$CLI" "$command" --daemon-url "$DAEMON_URL" "$@"
   else
-    flowspace3 "$command" "$@"
+    "$CLI" "$command" "$@"
   fi
 }
 
@@ -215,7 +219,7 @@ env_receipt() {
     echo "run_id=$RUN_ID"
     echo "date_utc=$(date -u +%FT%TZ)"
     echo "host=$(hostname)"
-    echo "flowspace3=$(flowspace3 --version 2>&1)"
+    echo "flowspace3=$("$CLI" --version 2>&1) [$CLI]"
     echo "git=$(git --version)"
     echo "docker=$(docker --version)"
     echo "cargo=$(cargo --version 2>/dev/null || echo absent)"
@@ -418,28 +422,73 @@ for cwd in "$MAIN_ROOT" "$WT"; do
   note "from $tag — get $VERSION_FILE resolved to span $(jq -c '.data.span // .data.parents[0].span // "none"' "$OUT/p3-get-from-$tag.json")"
 done
 
-# Is the ANSWER the same from both sides? Compare the result IDENTITIES only.
-# `meta.scope` always differs (it echoes the caller's cwd), and scores carry
-# float jitter — the query is embedded afresh per call, so the same question
-# scored 0.7730240968 and 0.7730564295 microseconds apart on one run. Neither
-# is a version difference, and a diff that reports them as one is a broken
-# predicate, not a finding.
-answer_identity() { jq -S '[.data.results[] | {address, path, name, kind, span, snippet}]' "$1"; }
-if diff -q <(answer_identity "$OUT/p3-marker-from-main.json") \
-          <(answer_identity "$OUT/p3-marker-from-worktree.json") >/dev/null; then
-  note "ANSWER P3a: search returns the IDENTICAL answer to both checkouts — no version resolution"
-  echo "p3_search_context_sensitive=0" >> "$OUT/receipt.env"
-else
-  note "ANSWER P3a: search answers DIFFER between checkouts — version resolution present"
-  echo "p3_search_context_sensitive=1" >> "$OUT/receipt.env"
-  diff <(answer_identity "$OUT/p3-marker-from-main.json") \
-       <(answer_identity "$OUT/p3-marker-from-worktree.json") > "$OUT/p3-answer-diff.txt" || true
+# EMBEDDER GATE — read this before trusting any p3_* number.
+#
+# P1, P2 and P4 measure bookkeeping: rows, jobs, registrations, reclamation.
+# They are true under any provider. P3 measures RETRIEVAL, which only means
+# anything when the vectors carry semantics — so under a FAKE embedder the
+# marker function ranks nowhere, both checkouts return the same garbage, and
+# the naive predicates read "no version resolution, no leak". Both zeros look
+# like results and are artifacts. Measured on the first composed run
+# (2026-08-28): 8 divergent vectors existed, and the best score for a query
+# quoting the function's own body verbatim was 0.1889 against unrelated files.
+#
+# So this refuses to emit a verdict it cannot support, and says which run would.
+# Two `set -e` traps here, both found by running it (amphibian, 2026-08-28) —
+# the script exited 1 mid-P3 on the NORMAL isolated-daemon shape:
+#   1. a command substitution whose pipeline ends in a non-matching `grep`
+#      returns 1, and an assignment adopts that status;
+#   2. `[[ -z X ]] && Y` as the LAST command of a line returns 1 when the test
+#      is false, which is the healthy case.
+# Both are silent until the boot line happens to fall outside the captured log
+# slice, which is exactly what a fresh isolated daemon does.
+embedder_from() { grep -oE 'embedder=[a-z_]+' "$1" 2>/dev/null | tail -1 | cut -d= -f2 || true; }
+EMBEDDER=$(embedder_from "$OUT/daemon-p1.log")
+if [[ -z "$EMBEDDER" ]]; then
+  EMBEDDER=$(embedder_from "$DAEMON_LOG")
 fi
-# Was the worktree-only function served to a caller standing in MAIN, where it
-# has never existed? That is the leak, stated as a number.
+echo "embedder=${EMBEDDER:-unknown}" >> "$OUT/receipt.env"
+
+answer_identity() { jq -S '[.data.results[] | {address, path, name, kind, span, snippet}]' "$1"; }
 P3_LEAK=$(jq -r --arg m "$MARKER" '[.data.results[]?|select(.name|startswith($m))]|length' "$OUT/p3-marker-from-main.json")
-note "ANSWER P3a2: worktree-only functions served to the MAIN checkout = $P3_LEAK"
-echo "p3_wrong_version_leak_to_main=$P3_LEAK" >> "$OUT/receipt.env"
+P3_FOUND=$(jq -r --arg m "$MARKER" '[.data.results[]?|select(.name|startswith($m))]|length' "$OUT/p3-marker-from-worktree.json")
+
+# Refuse on "fake" AND on "unknown". Absence of proof is not proof of a real
+# embedder: if the boot line was not found — a daemon logging somewhere this
+# script did not look, which `--sandbox` does by putting its log beside its own
+# temp config — then the semantics of every vector in the corpus are unverified,
+# and the P3 verdicts would be computed on faith. The whole point of this gate
+# is that a number nobody can defend is worse than a refusal, and that applies
+# to the precondition just as much as to the result.
+if [[ "$EMBEDDER" == "fake" || "$EMBEDDER" == "unknown" || -z "$EMBEDDER" ]]; then
+  reason=$([[ "$EMBEDDER" == "fake" ]] && echo "fake-embedder" || echo "embedder-unproven")
+  note "ANSWER P3: NOT MEASURABLE — embedder=${EMBEDDER:-unknown}, so retrieval semantics are not established"
+  note "           (p1/p2/p4 above are unaffected: they measure bookkeeping, not ranking)"
+  echo "p3_search_context_sensitive=unmeasurable-$reason" >> "$OUT/receipt.env"
+  echo "p3_wrong_version_leak_to_main=unmeasurable-$reason" >> "$OUT/receipt.env"
+  echo "p3_note=rerun against a daemon whose boot line proves a real embedder, over an already-embedded corpus" >> "$OUT/receipt.env"
+elif (( P3_FOUND == 0 )); then
+  # The control: the worktree's OWN divergent function must be findable FROM the
+  # worktree. If it is not, the run proves nothing about resolution — and a
+  # leak of 0 would be measuring absence, not exclusion.
+  note "ANSWER P3: NOT MEASURABLE — the probe's own function is not findable from its own worktree"
+  echo "p3_search_context_sensitive=unmeasurable-marker-not-retrievable" >> "$OUT/receipt.env"
+  echo "p3_wrong_version_leak_to_main=unmeasurable-marker-not-retrievable" >> "$OUT/receipt.env"
+else
+  if diff -q <(answer_identity "$OUT/p3-marker-from-main.json") \
+            <(answer_identity "$OUT/p3-marker-from-worktree.json") >/dev/null; then
+    note "ANSWER P3a: search returns the IDENTICAL answer to both checkouts — no version resolution"
+    echo "p3_search_context_sensitive=0" >> "$OUT/receipt.env"
+  else
+    note "ANSWER P3a: search answers DIFFER between checkouts — version resolution present"
+    echo "p3_search_context_sensitive=1" >> "$OUT/receipt.env"
+    diff <(answer_identity "$OUT/p3-marker-from-main.json") \
+         <(answer_identity "$OUT/p3-marker-from-worktree.json") > "$OUT/p3-answer-diff.txt" || true
+  fi
+  note "ANSWER P3a2: worktree-only functions served to the MAIN checkout = $P3_LEAK (found from its own worktree: $P3_FOUND)"
+  echo "p3_wrong_version_leak_to_main=$P3_LEAK" >> "$OUT/receipt.env"
+  echo "p3_marker_found_from_worktree=$P3_FOUND" >> "$OUT/receipt.env"
+fi
 if diff -q <(jq -S '.data' "$OUT/p3-get-from-main.json") \
           <(jq -S '.data' "$OUT/p3-get-from-worktree.json") >/dev/null; then
   note "ANSWER P3b: get returns the SAME version to both checkouts"
@@ -453,6 +502,74 @@ fi
 jq -r '.data.results[0] // {} | keys | join(", ")' "$OUT/p3-marker-from-worktree.json" > "$OUT/p3-result-fields.txt" 2>&1 || true
 note "result envelope fields: $(cat "$OUT/p3-result-fields.txt")"
 
+# RESOLVED-ROW INVARIANT — measurable under ANY embedder, because it checks
+# resolution rather than ranking.
+#
+# Every returned hit must name the checkout that served it and the path it lives
+# at. A row with a null path is a row the query admitted and then failed to
+# resolve, and it reaches the caller as a hit with no file behind it.
+#
+# This exists because the composed build shipped exactly that (2026-08-28):
+# the candidate gate proved a caller-anchored element carried the vector's
+# raw_hash, but the representative resolver then picked the globally lowest-id
+# element with that hash WITHOUT re-applying the caller scope — so with one
+# body embedded in several blobs, which is what content-addressed enrichment
+# exists to produce, it chose a foreign blob, the provenance LEFT JOINs found
+# nothing, and the row survived with identity, path and root all null.
+# Neither unit's tests could see it: it needs many checkouts of ONE repo, which
+# only became the normal shape once worktrees were auto-registered.
+#
+# The general rule it encodes: a scope filter over content-addressed storage
+# must be applied at every step that CHOOSES a row, not only where one is
+# ADMITTED.
+NULL_ROWS=0
+for f in "$OUT"/p3-marker-from-*.json "$OUT"/p3-shared-from-*.json; do
+  [[ -f "$f" ]] || continue
+  n=$(jq '[.data.results[]? | select(.path == null or .worktree == null)] | length' "$f" 2>/dev/null || echo 0)
+  NULL_ROWS=$((NULL_ROWS + n))
+done
+note "ANSWER P3c: hits returned without a resolved path/checkout = $NULL_ROWS (MUST be 0)"
+echo "p3_unresolved_rows=$NULL_ROWS" >> "$OUT/receipt.env"
+if (( NULL_ROWS > 0 )); then
+  note "  ^ these are hits with no file behind them — see the resolved-row invariant note in this script"
+  jq -c '.data.results[]? | select(.path == null or .worktree == null)' "$OUT"/p3-*-from-*.json \
+    > "$OUT/p3-unresolved-rows.json" 2>/dev/null || true
+fi
+
+# EXPOSURE, not a gate — read the distinction before adding a threshold to it.
+#
+# This counts a DATA SHAPE: raw_hashes that pass the candidate gate for the
+# caller (some caller-held blob carries an element with that hash) while the
+# globally lowest-id element carrying it sits in a blob the caller does NOT
+# hold. That is the population the resolver has to get right.
+#
+# It is deliberately NOT asserted to be zero, and the reason matters: the fix
+# changes which row a query CHOOSES, not which ids exist. This number stays
+# non-zero on any healthy multi-checkout database — the probe worktree creates
+# the shape by construction, because appending to a file changes the FILE blob
+# while leaving every pre-existing function's raw_hash identical. A "must be 0"
+# here would be a gate that can never go green, which is the same misleading
+# signal class as the fake-embedder zero this script already refuses to emit.
+#
+# So: p3_unresolved_rows is the PASS/FAIL invariant (a hit with no file behind
+# it is always wrong), and this is the exposure it was measured against — how
+# much of the corpus the resolver had the opportunity to get wrong. Restricted
+# to hashes that actually carry a raw vector, because only those can be
+# returned by a search at all. Amphibian's review measured 227 this way on a
+# 20-checkout database (assets/reviews/runtime/uc-resolver-mismatch.json).
+FOREIGN_REPS=$(sql "
+  with wt as (select id from worktrees where root_path = '$WT'),
+       held as (select distinct wf.blob_sha from worktree_files wf join wt on wf.worktree_id = wt.id),
+       gated as (select distinct e.raw_hash from elements e join held h on h.blob_sha = e.blob_sha
+                  where exists (select 1 from embeddings_1024 em
+                                 where em.source_hash = e.raw_hash and em.source_kind = 'raw')),
+       rep as (select distinct on (e.raw_hash) e.raw_hash, e.blob_sha
+                 from elements e where e.raw_hash in (select raw_hash from gated)
+                order by e.raw_hash, e.id)
+  select count(*) from rep left join held h on h.blob_sha = rep.blob_sha where h.blob_sha is null" 2>/dev/null || echo "unknown")
+note "P3d exposure: searchable raw_hashes whose representative sits in a blob the caller does NOT hold = $FOREIGN_REPS"
+note "  (expected NON-ZERO on a multi-checkout database — it is the population p3_unresolved_rows=0 was proven against)"
+echo "p3_foreign_representative_exposure=$FOREIGN_REPS" >> "$OUT/receipt.env"
 # The store's own answer.
 sqlt "select left(e.blob_sha,8) as blob, e.address, left(e.raw_text, 50) as raw_head
         from elements e where e.name like '${MARKER}%' order by e.address" > "$OUT/p3-elements-by-blob.txt"

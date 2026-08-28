@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "slug": "negative-deleted-path",
+  "title": "Honesty for a deleted source path",
+  "lane": "negative",
+  "request": {
+    "question": "What tests are currently defined in flowspace3 at crates/daemon/tests/config_discovery.rs?",
+    "cwd": null,
+    "repo": "git:github.com/AI-Substrate/flowspace3"
+  },
+  "assertions": "assertions.json",
+  "absence_proof": {
+    "class": "deleted-and-verified-path",
+    "verified_at": "2026-08-28",
+    "checks": [
+      "git commit 5e73135230442f3754e83a147a97a1909bb8c25e records D crates/daemon/tests/config_discovery.rs and A crates/daemon/tests/config_loading.rs.",
+      "The current worktree has no crates/daemon/tests/config_discovery.rs.",
+      "A scoped raw search for the deleted path at min-score 0.80 returned ok=true and count=0."
+    ]
+  },
+  "stability": {
+    "grade": "high",
+    "reason": "The negative names an exact deleted path with commit evidence rather than an open-ended concept.",
+    "refresh_trigger": "Re-prove if that exact path is reintroduced or history is rewritten. A citation to config_loading.rs may explain the move but must not be presented as content from the deleted path."
+  }
+}

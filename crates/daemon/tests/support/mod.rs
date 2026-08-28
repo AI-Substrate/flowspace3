@@ -4,13 +4,12 @@
 //! of it, which is what the allow is for.
 #![allow(dead_code)]
 
-use std::str::FromStr;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use axum::Router;
-use fs3_store::PgPool;
-use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
+use sqlx::postgres::PgPoolOptions;
+pub type FreshDatabase = fs3_testkit::FreshDatabase;
 
 /// Bind `127.0.0.1:0`, serve `router` on a background task, return its base URL.
 pub async fn spawn(router: Router) -> String {
@@ -39,6 +38,32 @@ pub fn temp_dir(label: &str) -> std::path::PathBuf {
     ));
     std::fs::create_dir_all(&path).expect("creating a temp directory");
     path
+}
+
+/// One test daemon's credential and isolated config directory.
+pub struct TestAuth {
+    pub auth: fs3_daemon::Auth,
+    pub key: String,
+    pub config_dir: std::path::PathBuf,
+}
+
+/// Give a test daemon its own config directory and mode-0600 key.
+pub fn auth(label: &str) -> TestAuth {
+    let config_dir = temp_dir(&format!("{label}-config"));
+    let key = format!("test-key-{}", unique_seed());
+    let key_path = fs3_core::daemon_key_path(&config_dir);
+    std::fs::write(&key_path, &key).expect("writing an isolated daemon key");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        std::fs::set_permissions(&key_path, std::fs::Permissions::from_mode(0o600))
+            .expect("restricting the isolated daemon key");
+    }
+    TestAuth {
+        auth: fs3_daemon::Auth::new(key.clone(), key_path),
+        key,
+        config_dir,
+    }
 }
 
 /// The database these tests may write to.
@@ -71,86 +96,6 @@ pub fn unique_seed() -> u128 {
     nanos
         ^ (u128::from(std::process::id()) << 64)
         ^ (u128::from(SEQUENCE.fetch_add(1, Ordering::Relaxed)) << 96)
-}
-
-/// A throwaway database, created empty and dropped again.
-///
-/// The daemon's tests need this even more than the store's: `claim_job` takes
-/// the best ready job in the WHOLE table, so a concurrent test's pending row
-/// would not merely coexist — the runner would claim it and run it.
-pub struct FreshDatabase {
-    name: String,
-    admin: PgPool,
-}
-
-impl FreshDatabase {
-    /// Create the database. Fails naming the command rather than skipping — a
-    /// silently-skipped integration test is how a regression reaches main.
-    pub async fn create(label: &str) -> Self {
-        let url = database_url();
-        let admin = PgPoolOptions::new()
-            .max_connections(1)
-            .acquire_timeout(fs3_store::CONNECT_TIMEOUT)
-            .connect(&url)
-            .await
-            .unwrap_or_else(|error| {
-                panic!(
-                    "daemon integration tests need Postgres at {url}: {error}\nStart it with:\n \
-                     {}\nThen re-run:\n    cargo test -p fs3-daemon\nPoint at another instance \
-                     with FS3_TEST_DATABASE_URL.",
-                    fs3_store::COMPOSE_UP
-                )
-            });
-
-        // Hex from a u128, so the identifier is safe by construction —
-        // `CREATE DATABASE` takes no bind parameters.
-        let label: String = label
-            .chars()
-            .filter(|c| c.is_ascii_alphanumeric())
-            .take(12)
-            .collect();
-        let name = format!("fs3_daemon_{label}_{:032x}", unique_seed());
-
-        sqlx::query(&format!("CREATE DATABASE {name}"))
-            .execute(&admin)
-            .await
-            .unwrap_or_else(|error| panic!("creating the throwaway database {name}: {error}"));
-
-        Self { name, admin }
-    }
-
-    /// The URL of this throwaway database.
-    pub fn url(&self) -> String {
-        database_url_named(&self.name)
-    }
-
-    /// A pool onto it.
-    pub async fn pool(&self) -> PgPool {
-        let options = PgConnectOptions::from_str(&database_url())
-            .expect("the configured database URL should parse")
-            .database(&self.name);
-        PgPoolOptions::new()
-            .max_connections(4)
-            .acquire_timeout(fs3_store::CONNECT_TIMEOUT)
-            .connect_with(options)
-            .await
-            .unwrap_or_else(|error| panic!("connecting to {}: {error}", self.name))
-    }
-
-    /// Explicit, because `Drop` cannot await. A test that panics before this
-    /// leaves one database behind — visible, harmless, and a truthful record
-    /// that the run failed.
-    pub async fn destroy(self, pool: PgPool) {
-        pool.close().await;
-        sqlx::query(&format!(
-            "DROP DATABASE IF EXISTS {} WITH (FORCE)",
-            self.name
-        ))
-        .execute(&self.admin)
-        .await
-        .unwrap_or_else(|error| panic!("dropping {}: {error}", self.name));
-        self.admin.close().await;
-    }
 }
 
 /// Drop a database by name — for tests that created one without a

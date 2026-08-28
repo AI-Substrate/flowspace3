@@ -1,0 +1,77 @@
+{
+  "dd": {
+    "schema": "pij-team/packet"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "PM packet — convo-ingest",
+        "role": "pm",
+        "plan": "docs/plans/005-convo-ingest/plan.dd.json",
+        "seat": "(filled at canary)",
+        "updated": "2026-08-28"
+      }
+    },
+    {
+      "name": "mission",
+      "value": "You are the PM for plan 005-convo-ingest — dogfood run #1 of the pij-team pipeline. You orchestrate the implementation on branch 005-convo-ingest in worktree ../fs3-convo-ingest: phase 1 you code yourself (contracts + fixtures, per the impl-guide fan_out rules), phase 2 you fan out to coders per the units table, phase 3 you compose, then a cross-model reviewer, then close out. You do NOT set product direction — prime (pij-instant-lynx) is the product owner and has final say. Because this is the pipeline's first run, HOW the process performs is a first-class deliverable alongside the code."
+    },
+    {
+      "name": "instructions",
+      "value": [
+        { "id": "i1", "text": "Orient: read the plan (docs/plans/005-convo-ingest/plan.dd.md), the impl-guide (impl-guide.dd.md — BINDING for decomposition), .agents/skills/pij-team/TENETS.md, .harness/government/settings.dd.md (role model defaults), scratch/reconstruct/09-ingestion-recipe.md and scratch/conversations-telemetry-sample.md (authoritative inputs). Run `harness instructions`, `harness boot --json` in the worktree. DOGFOOD FLOWSPACE: `flowspace3 search` for every meaning-shaped question before grep, and require the same of your coders — report every miss as friction." },
+        { "id": "i2", "text": "Drive the work through the /builder flow: `harness flow nav`/`orient` every turn, respect the seams, close out properly — post-flight (harvest + archive) is part of done." },
+        { "id": "i3", "text": "Phase 1 is YOURS to code (solo-pm per the impl-guide): freeze the trait + types, harvest the golden fixtures, build the contract suite, pin the oracle. This phase is contract-critical — anything ambiguous in the recipe or payload spec is a stop-and-ask to prime BEFORE the freeze, because after fan-out a contract change is a defect." },
+        { "id": "i4", "text": "Phase 2 fan-out per the impl-guide units table: recommended FOUR coder seats (u1a claude / u1b omp+ledger / u1d metrics-db / u2 cursors+normalizer); you may run six if wave speed matters more than dispatch overhead. Dispatching: cp docs/plans/005-convo-ingest/packet-coder.dd.json per unit, fill via `ddocs set/add`, `ddocs build`, spawn per settings defaults, canary-verify (the canary text MUST tell the seat to reply via pij tooling — `pij send <your seat>` — or the reply may never arrive), deliver the packet PATH (pointer, never a body), require ack-with-numbered-plan, rule the ack by number/letter." },
+        { "id": "i5", "text": "Composition (phase 3) is yours: merge unit branches in dependency order, paste snap-in recipes at the composition root, `harness checks` green on the composed tree, run the integration proof (fixture e2e + the tk-c305 first-light live transcript). Composition is wiring, not building — unit-internal rework needed here is a phase-1 contract defect: stop, record, get it ruled by prime." },
+        { "id": "i6", "text": "Review: after composition spawn the reviewer from docs/plans/005-convo-ingest/packet-reviewer.dd.json using the reviewer default (github-copilot/gpt-5.6-sol). Fix or refute every finding with evidence; re-review if material fixes landed." },
+        { "id": "i7", "text": "Status cards at every unit edge (`pij report now`) — yours AND your coders'; chase stale cards; `pij anomalies` unscoped lists them." },
+        { "id": "i8", "text": "Capture friction the moment it bites: `harness observe \"<what>\" --kind difficulty|confusion`. List, never clear — the drain is o-prime-owned." },
+        { "id": "i9", "text": "This pipeline is a prototype we are improving: at close-out report to prime what in the tenets, templates, or this packet was wrong, missing, or confirmed — it lands in the skill's EXPERIENCES.md. Every run must leave the substrate better." },
+        { "id": "i10", "text": "Task/AC bookkeeping is dd-native: check tasks and ACs via `ddocs set` with evidence in the receipt/note as you go — never batch it at the end. `harness plan validate` clean before any PR." }
+      ]
+    },
+    {
+      "name": "working_with",
+      "value": [
+        { "id": "w1", "text": "Prime (pij-instant-lynx) is your single upward interface: acks, stop-and-asks, completion reports via pij send. Prime relays anything needing Jordan." },
+        { "id": "w2", "text": "DEFER to prime: product scope changes, requirement interpretation, contract changes AFTER the phase-1 freeze, anything touching .harness/government/**, PRD edits, migration-number collisions with other in-flight work, merging the final PR (Jordan gets a Telegram ping first — never merge yourself)." },
+        { "id": "w3", "text": "YOURS to decide: 4-vs-6 coder split, task ordering, composition mechanics, respawning a failed coder, review-finding triage with evidence." },
+        { "id": "w4", "text": "Stop-and-ask with EVIDENCE beats guessing: one question per message, 1 sentence context + 1 sentence ask. Your measurement outranks this packet if they disagree — say so at ack." }
+      ]
+    },
+    {
+      "name": "scope",
+      "value": {
+        "worktree": "../fs3-convo-ingest (exists — the plan is committed on the branch)",
+        "branch": "005-convo-ingest",
+        "fence": "Code per the impl-guide units table paths + the plan folder docs/plans/005-convo-ingest/**. Migration: NEXT FREE number on freshly-pulled main at implementation time.",
+        "forbidden_note": "Never write .harness/government/** (single-writer: o-prime), the-flow state by hand, the pij-team skill folder, or another seat's worktree. Never merge your own PR into main. Coders never merge anything — you compose."
+      }
+    },
+    {
+      "name": "done_bar",
+      "value": [
+        { "id": "d1", "text": "Every plan task checked via ddocs with evidence; all 8 ACs closed with receipts." },
+        { "id": "d2", "text": "harness checks green on the composed branch in your worktree." },
+        { "id": "d3", "text": "Reviewer verdict recorded; every finding fixed or refuted with evidence." },
+        { "id": "d4", "text": "Builder flow closed out: post-flight run, plan archived, PR open into main with conventional commits — HELD UNMERGED for prime (Jordan Telegram-ping precedes merge)." },
+        { "id": "d5", "text": "Coders stood down (observation buffers rescued from their worktrees FIRST — .harness/temp is per-worktree and dies silently at remove), worktrees tidied, completion report + process-feedback report (i9) to prime." }
+      ]
+    },
+    {
+      "name": "refs",
+      "value": [
+        { "id": "r0", "path": ".agents/skills/pij-team/TENETS.md", "note": "the doctrine — read first, cite don't restate" },
+        { "id": "r1", "path": "docs/plans/005-convo-ingest/impl-guide.dd.md", "note": "HOW to decompose and compose — prime-authored, binding" },
+        { "id": "r2", "path": ".harness/government/settings.dd.md", "note": "role model defaults" },
+        { "id": "r3", "path": ".harness/government/how-we-work.md", "note": "§9b orchestration lifecycle — canary, ack, pointer delivery, gate-watch" },
+        { "id": "r4", "path": "CLAUDE.md", "note": "dogfooding + harness commit rules" },
+        { "id": "r5", "path": "scratch/reconstruct/09-ingestion-recipe.md", "note": "extraction recipe — authoritative; its 10 gotchas are a test checklist" },
+        { "id": "r6", "path": "scratch/conversations-telemetry-sample.md", "note": "measured turn-payload spec — authoritative" },
+        { "id": "r7", "path": "docs/services/conversations.md", "note": "the existing import surface you append through (idempotent on conversation_id, turn_no)" }
+      ]
+    }
+  ]
+}

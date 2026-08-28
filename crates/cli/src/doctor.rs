@@ -33,8 +33,8 @@ use std::process::Stdio;
 use std::time::{Duration, Instant};
 
 use fs3_core::envelope::{Envelope, Failure};
-use fs3_core::{Config, Port, ProviderInstance, catalog};
-use serde::{Deserialize, Serialize};
+use fs3_core::views::doctor::{DoctorReport, Step};
+use fs3_core::{Config, Effective, Port, ProviderInstance, catalog};
 
 /// Environment variable naming the container engine.
 ///
@@ -56,186 +56,10 @@ const STACK_POLL: Duration = Duration::from_millis(500);
 /// command three seconds of silence.
 const DAEMON_PROBE_TIMEOUT: Duration = Duration::from_secs(2);
 
-/// One step of the walk.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Step {
-    /// `engine`, `stack`, `database`, `schema`, `daemon`, `providers`, …
-    pub check: String,
-    /// What the reader should DO about this row. The vocabulary is closed, and
-    /// each word is a promise:
-    ///
-    /// | outcome | meaning | degrades the verdict? |
-    /// |---|---|---|
-    /// | `ok` | already fine | no |
-    /// | `repaired` | was broken; doctor fixed it | no |
-    /// | `info` | reported for awareness; nothing is wrong | **no** |
-    /// | `warn` | working, but not as it should be; decide something | yes |
-    /// | `down` | not running; start something | yes |
-    ///
-    /// `info` exists so a row can be *reported* without claiming the stack is
-    /// unhealthy. Without it the only way to surface a finding was `warn`,
-    /// which degrades — and a purely informational row degrading the whole
-    /// verdict is louder than it means to be, which is its own kind of
-    /// misleading.
-    pub outcome: String,
-    /// What doctor found.
-    pub found: String,
-    /// What doctor did about it, or what you should do — absent when there was
-    /// nothing to do.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub action: Option<String>,
-    /// This row's contribution to the envelope's `next_action`, when it is the
-    /// most important unmet thing.
-    ///
-    /// Carried by the ROW rather than computed from a chain of check names, so
-    /// a new row supplies its own steer without editing the steering logic —
-    /// and so the steer can never drift from the finding that produced it.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub steer: Option<String>,
-    /// How long the step took.
-    pub elapsed_ms: u128,
-}
-
-impl Step {
-    // The constructors are public because `Step` is a public struct with
-    // public fields — anyone can build one with a literal, so a private
-    // constructor bought nothing and only made another module reach for the
-    // literal and miss a field default.
-
-    /// Already fine.
-    pub fn ok(check: &str, found: impl Into<String>, started: Instant) -> Self {
-        Step {
-            check: check.to_string(),
-            outcome: "ok".to_string(),
-            found: found.into(),
-            action: None,
-            steer: None,
-            elapsed_ms: started.elapsed().as_millis(),
-        }
-    }
-
-    /// Found working but not as it should be — a finding, not a failure.
-    ///
-    /// Distinct from `down` because the subject is not absent, it is
-    /// misconfigured or running on a stand-in, and the reader's next move is
-    /// different: `down` means start something, `warn` means decide something.
-    pub fn warn(
-        check: &str,
-        found: impl Into<String>,
-        action: impl Into<String>,
-        started: Instant,
-    ) -> Self {
-        Step {
-            check: check.to_string(),
-            outcome: "warn".to_string(),
-            found: found.into(),
-            action: Some(action.into()),
-            steer: None,
-            elapsed_ms: started.elapsed().as_millis(),
-        }
-    }
-
-    /// Reported for awareness. Nothing is wrong and the verdict is untouched.
-    ///
-    /// For rows that inform rather than diagnose — a thing the reader may want
-    /// to act on, where not having acted is not a fault. Use `warn` when
-    /// something is genuinely not as it should be.
-    pub fn info(
-        check: &str,
-        found: impl Into<String>,
-        action: impl Into<String>,
-        started: Instant,
-    ) -> Self {
-        Step {
-            check: check.to_string(),
-            outcome: "info".to_string(),
-            found: found.into(),
-            action: Some(action.into()),
-            steer: None,
-            elapsed_ms: started.elapsed().as_millis(),
-        }
-    }
-
-    /// Attach this row's contribution to the envelope's `next_action`.
-    #[must_use]
-    pub fn with_steer(mut self, steer: impl Into<String>) -> Self {
-        self.steer = Some(steer.into());
-        self
-    }
-
-    /// Whether this row asks anything of the reader.
-    ///
-    /// `ok` and `repaired` do not: one was already fine and the other doctor
-    /// handled. Everything else is a row the reader may need to act on, which
-    /// is what makes it eligible to steer.
-    #[must_use]
-    pub fn asks_something(&self) -> bool {
-        !matches!(self.outcome.as_str(), "ok" | "repaired")
-    }
-
-    /// Whether this row means the stack is not fully up.
-    ///
-    /// `info` deliberately does not: it reports, it does not diagnose.
-    #[must_use]
-    pub fn degrades(&self) -> bool {
-        matches!(self.outcome.as_str(), "warn" | "down")
-    }
-
-    /// Found not running, and deliberately not started.
-    pub fn down(check: &str, found: impl Into<String>, started: Instant) -> Self {
-        Step {
-            check: check.to_string(),
-            outcome: "down".to_string(),
-            found: found.into(),
-            action: Some("not started — run `flowspace3 daemon &`".to_string()),
-            steer: None,
-            elapsed_ms: started.elapsed().as_millis(),
-        }
-    }
-
-    /// Found broken, and fixed.
-    pub fn repaired(
-        check: &str,
-        found: impl Into<String>,
-        action: impl Into<String>,
-        started: Instant,
-    ) -> Self {
-        Step {
-            check: check.to_string(),
-            outcome: "repaired".to_string(),
-            found: found.into(),
-            action: Some(action.into()),
-            steer: None,
-            elapsed_ms: started.elapsed().as_millis(),
-        }
-    }
-}
-
-/// What `flowspace3 doctor` answers with.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DoctorReport {
-    /// Every step, in dependency order.
-    pub steps: Vec<Step>,
-    /// Whether the STORE is usable now.
-    pub healthy: bool,
-    /// The whole stack's verdict: `ok`, or `degraded` when something doctor
-    /// cannot repair for you is not running.
-    ///
-    /// Separate from `healthy` because they answer different questions, and
-    /// conflating them is what made doctor say a plain "ok" on a machine with
-    /// no daemon running (Jordan, live, 2026-08-26). The store really was fine;
-    /// the stack was not usable. `ok: true` on the envelope stays either way —
-    /// the COMMAND succeeded, and it is the subject it reports on that is
-    /// degraded.
-    pub verdict: String,
-}
-
-impl DoctorReport {
-    /// Everything doctor checked is up.
-    pub const OK: &'static str = "ok";
-    /// Doctor ran fine; something it checked is not up.
-    pub const DEGRADED: &'static str = "degraded";
-}
+/// The actionable next step when the store is ready but the daemon is down.
+/// Shared with the combined-state ordering test so the asserted line is the
+/// exact line an operator or agent receives.
+const DAEMON_DOWN_STEER: &str = "the store is ready but the daemon is not running — start it with `flowspace3 daemon &`, then `flowspace3 add <path>`";
 
 /// Walk the chain, repairing as it goes.
 ///
@@ -246,11 +70,13 @@ impl DoctorReport {
 /// # Errors
 /// The failure of the step that could not be repaired, with its own catalog
 /// code and fix.
-pub async fn run(config: &Config) -> Envelope<DoctorReport> {
+pub async fn run(effective: &Effective, config_dir: &std::path::Path) -> Envelope<DoctorReport> {
     let mut steps = Vec::new();
+    let config_warning = check_config(effective);
 
-    match walk(config, &mut steps).await {
+    match walk(&effective.config, config_dir, &mut steps).await {
         Ok(messages) => {
+            insert_config_warning(&mut steps, config_warning);
             // `warn` counts as degraded: a stack running entirely on the
             // offline fake is working, and is almost never what the operator
             // believes they configured. Reporting a plain "ok" there is the
@@ -276,6 +102,7 @@ pub async fn run(config: &Config) -> Envelope<DoctorReport> {
             .with_messages(messages)
         }
         Err(failure) => {
+            insert_config_warning(&mut steps, config_warning);
             let mut envelope = Envelope::failed("doctor", failure);
             // The steps that DID pass are the useful half of a failed run, so
             // they ride along in meta rather than being discarded.
@@ -290,10 +117,54 @@ pub async fn run(config: &Config) -> Envelope<DoctorReport> {
     }
 }
 
+/// Report top-level sections this binary did not understand and therefore
+/// ignored. This is a warning rather than an error: refusing the whole file
+/// would make every additive config section a flag-day across installed
+/// versions, while silence would let a misspelled section survive indefinitely.
+fn check_config(effective: &Effective) -> Option<Step> {
+    let started = Instant::now();
+    let warnings: Vec<_> = effective.warnings().collect();
+    if warnings.is_empty() {
+        return None;
+    }
+
+    let found = warnings
+        .iter()
+        .map(|warning| format!("{}: {}", warning.key, warning.message))
+        .collect::<Vec<_>>()
+        .join("; ");
+    let action = warnings
+        .iter()
+        .map(|warning| warning.example.as_str())
+        .collect::<Vec<_>>()
+        .join("; ");
+    Some(
+        Step::warn("config", found, action, started).with_steer(
+            "unknown config sections were ignored — remove typos or upgrade flowspace3 for newer sections",
+        ),
+    )
+}
+
+/// Place config warnings after runtime checks but before the deliberately-last
+/// skills row. The warning stays actionable, while dependency blockers keep
+/// their priority in [`next_action`]. On an early failed walk there is no
+/// skills row, so appending still preserves the rows already reached.
+fn insert_config_warning(steps: &mut Vec<Step>, warning: Option<Step>) {
+    let Some(warning) = warning else {
+        return;
+    };
+    let before_skills = steps
+        .iter()
+        .position(|step| step.check == "skills")
+        .unwrap_or(steps.len());
+    steps.insert(before_skills, warning);
+}
+
 /// Returns the live user messages the walk observed, so doctor's own envelope
 /// carries them like every other command's does (req-0059).
 async fn walk(
     config: &Config,
+    config_dir: &std::path::Path,
     steps: &mut Vec<Step>,
 ) -> Result<Vec<fs3_core::UserMessage>, Failure> {
     let database_url = config.database.url.as_str();
@@ -319,9 +190,10 @@ async fn walk(
     // The daemon is the one step doctor deliberately does NOT repair. Starting
     // a foreground server from a diagnostic command would leave a process the
     // user did not ask for and cannot see; the honest move is to report it and
-    // name the command. It runs last because everything above it is what the
-    // daemon needs in order to start at all.
-    steps.push(check_daemon(daemon_url).await);
+    // name the command. Auth follows immediately: it proves both the on-disk
+    // credential and that the running daemon accepts those exact bytes.
+    steps.push(check_daemon(daemon_url, config_dir).await);
+    steps.push(check_auth(daemon_url, config_dir).await);
     steps.push(check_providers(config));
     // req-0054 / req-0059. Both read the store, so they walk after the schema
     // row that guarantees the tables exist, and after `daemon` and `providers`
@@ -699,30 +571,18 @@ async fn check_schema(database_url: &str) -> Result<Step, Failure> {
 
 /// Step 4: is the daemon answering?
 ///
-/// Reported, never repaired. Doctor starts the compose stack because a
-/// container is a background service the user already asked for by configuring
-/// it; a daemon is a FOREGROUND process, and spawning one from a diagnostic
-/// command would leave something running that the user did not ask for and
-/// cannot see. So this row says what it found and names the command.
-///
-/// Not an error either: a store that is ready with no daemon in front of it is
-/// a perfectly good outcome for `doctor` to report — it is the state right
-/// before you start one. The envelope stays `ok: true`, because the COMMAND
-/// succeeded; the STACK is what the verdict calls degraded.
-///
-/// This row exists because its absence was actively misleading: doctor said a
-/// plain "ok" on a machine with no daemon running (Jordan, live, 2026-08-26).
-async fn check_daemon(daemon_url: &str) -> Step {
+/// Reported, never repaired. The current key is attached when readable so the
+/// probe still gets the version echo; a 401 also proves that an fs3 daemon is
+/// answering, while the following auth row names the credential fault.
+async fn check_daemon(daemon_url: &str, config_dir: &std::path::Path) -> Step {
     let started = Instant::now();
     let url = format!("{}/health", daemon_url.trim_end_matches('/'));
 
-    let probe = reqwest::Client::builder()
+    let client = match reqwest::Client::builder()
         .timeout(DAEMON_PROBE_TIMEOUT)
         .build()
-        .map(|client| client.get(&url));
-
-    let response = match probe {
-        Ok(request) => request.send().await,
+    {
+        Ok(client) => client,
         Err(error) => {
             return Step::down(
                 "daemon",
@@ -731,11 +591,15 @@ async fn check_daemon(daemon_url: &str) -> Step {
             );
         }
     };
+    let mut request = client.get(&url);
+    if let Ok(key) = std::fs::read_to_string(fs3_core::daemon_key_path(config_dir))
+        && !key.trim().is_empty()
+    {
+        request = request.bearer_auth(key.trim());
+    }
 
-    match response {
+    match request.send().await {
         Ok(response) if response.status().is_success() => {
-            // The version echo is free — it is already in the health body — and
-            // it is the fastest way to see a stale binary still serving.
             let version = response
                 .json::<crate::HealthReport>()
                 .await
@@ -748,6 +612,11 @@ async fn check_daemon(daemon_url: &str) -> Step {
             };
             Step::ok("daemon", found, started)
         }
+        Ok(response) if response.status() == reqwest::StatusCode::UNAUTHORIZED => Step::ok(
+            "daemon",
+            format!("answering at {daemon_url} and requiring authentication"),
+            started,
+        ),
         Ok(response) => Step::down(
             "daemon",
             format!(
@@ -761,14 +630,123 @@ async fn check_daemon(daemon_url: &str) -> Step {
             format!("nothing is listening on {daemon_url}"),
             started,
         )
-        .with_steer(
-            "the store is ready but the daemon is not running — start it with `flowspace3 \
-             daemon &`, then `flowspace3 add <path>`",
+        .with_steer(DAEMON_DOWN_STEER),
+    }
+}
+
+/// Step 5: is daemon authentication securely configured and accepted?
+async fn check_auth(daemon_url: &str, config_dir: &std::path::Path) -> Step {
+    let started = Instant::now();
+    let key_path = fs3_core::daemon_key_path(config_dir);
+    let restart = format!(
+        "restart the fs3 daemon so it publishes a fresh mode-0600 key at {}",
+        key_path.display()
+    );
+    let key = match std::fs::read_to_string(&key_path) {
+        Ok(key) if !key.trim().is_empty() => key,
+        Ok(_) => {
+            return Step::warn(
+                "auth",
+                format!("{} is empty", key_path.display()),
+                &restart,
+                started,
+            )
+            .with_steer(restart);
+        }
+        Err(error) => {
+            return Step::warn(
+                "auth",
+                format!("cannot read {}: {error}", key_path.display()),
+                &restart,
+                started,
+            )
+            .with_steer(restart);
+        }
+    };
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        let mode = match std::fs::metadata(&key_path) {
+            Ok(metadata) => metadata.permissions().mode() & 0o777,
+            Err(error) => {
+                return Step::warn(
+                    "auth",
+                    format!("cannot inspect {}: {error}", key_path.display()),
+                    &restart,
+                    started,
+                )
+                .with_steer(restart);
+            }
+        };
+        if mode != 0o600 {
+            let action = format!("run `chmod 600 {}`", key_path.display());
+            return Step::warn(
+                "auth",
+                format!("{} has mode {mode:04o}, expected 0600", key_path.display()),
+                &action,
+                started,
+            )
+            .with_steer(action);
+        }
+    }
+
+    let url = format!("{}/health", daemon_url.trim_end_matches('/'));
+    let response = reqwest::Client::builder()
+        .timeout(DAEMON_PROBE_TIMEOUT)
+        .build()
+        .map(|client| client.get(url).bearer_auth(key.trim()));
+    let response = match response {
+        Ok(request) => request.send().await,
+        Err(error) => {
+            return Step::warn(
+                "auth",
+                format!("cannot construct the authenticated probe: {error}"),
+                &restart,
+                started,
+            )
+            .with_steer(restart);
+        }
+    };
+
+    match response {
+        Ok(response) if response.status().is_success() => Step::ok(
+            "auth",
+            format!(
+                "{} is mode 0600 and accepted by {daemon_url}",
+                key_path.display()
+            ),
+            started,
+        ),
+        Ok(response) if response.status() == reqwest::StatusCode::UNAUTHORIZED => Step::warn(
+            "auth",
+            format!("{} is stale: {daemon_url} rejected it", key_path.display()),
+            &restart,
+            started,
+        )
+        .with_steer(restart),
+        Ok(response) => Step::warn(
+            "auth",
+            format!(
+                "{daemon_url} answered {} to the authenticated probe",
+                response.status()
+            ),
+            "fix the daemon row above, then re-run `flowspace3 doctor`",
+            started,
+        ),
+        Err(_) => Step::info(
+            "auth",
+            format!(
+                "{} is mode 0600; daemon acceptance is not observable",
+                key_path.display()
+            ),
+            "start the daemon, then re-run `flowspace3 doctor` to prove acceptance",
+            started,
         ),
     }
 }
 
-/// Step 5: is a real provider configured, or is everything the offline fake?
+/// Step 6: is a real provider configured, or is everything the offline fake?
 ///
 /// A fresh install is NOT config-less — the defaults ship `[providers.fake]`
 /// with both ports naming it, and that is deliberate: it is what makes the
@@ -1190,6 +1168,58 @@ mod tests {
 
         assert_eq!(row.outcome, "warn", "{row:?}");
         assert!(row.found.contains("not a directory"), "{row:?}");
+    }
+
+    /// The warning must reach the same doctor row channel as every other
+    /// actionable finding; retaining it only in `Effective` would still leave
+    /// a mistyped section invisible to the operator.
+    #[test]
+    fn an_ignored_config_section_reaches_a_warning_row() {
+        let effective = fs3_core::resolve(fs3_core::Sources {
+            file_label: "/tmp/fs3/config.toml",
+            file_text: Some("[typo]\nactive = \"big\"\n"),
+            env: &[],
+        })
+        .unwrap();
+
+        let row = check_config(&effective).expect("the unknown section must produce a row");
+        assert_eq!(row.check, "config");
+        assert_eq!(row.outcome, "warn");
+        assert!(row.found.contains("[typo]"), "{row:?}");
+        assert!(row.found.contains("ignored"), "{row:?}");
+        assert!(row.degrades(), "an ignored section must be loud");
+        assert!(
+            row.steer.is_some(),
+            "the warning must tell the user what next"
+        );
+    }
+
+    /// A config warning is actionable, but it must not outrank the runtime
+    /// dependency that makes the product unusable. This combined state is the
+    /// regression: testing either row alone cannot prove priority.
+    #[test]
+    fn a_down_daemon_steers_before_an_ignored_config_section() {
+        let effective = fs3_core::resolve(fs3_core::Sources {
+            file_label: "/tmp/fs3/config.toml",
+            file_text: Some("[typo]\nactive = \"big\"\n"),
+            env: &[],
+        })
+        .unwrap();
+        let daemon = Step::down(
+            "daemon",
+            "nothing is listening on http://127.0.0.1:7373",
+            Instant::now(),
+        )
+        .with_steer(DAEMON_DOWN_STEER);
+        let skills = Step::info("skills", "current", "nothing to do", Instant::now());
+        let mut steps = vec![daemon, skills];
+        insert_config_warning(&mut steps, check_config(&effective));
+
+        assert_eq!(steps[1].check, "config", "{steps:?}");
+        assert_eq!(steps[2].check, "skills", "skills must remain last");
+        let observed = next_action(&steps);
+        assert_eq!(observed, DAEMON_DOWN_STEER);
+        assert!(!observed.contains("unknown config"), "{observed}");
     }
 
     /// req-0053: the skills row's asks are spec-verbatim; mixed states take the

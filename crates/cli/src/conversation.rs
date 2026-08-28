@@ -118,6 +118,11 @@ pub fn read(
         }
     }
 
+    // The FIRST turn as the FILE wrote it, captured before shaping fills
+    // anything in. `mint_guid` seeds from this rather than from the shaped
+    // turn, and that distinction is the whole identity contract — see there.
+    let seed_turn = turns.first().cloned();
+
     let turns: Vec<Value> = turns
         .into_iter()
         .enumerate()
@@ -128,7 +133,7 @@ pub fn read(
     // what the FILE says, because the flag is the more recent decision.
     let guid = guid
         .or(header.guid)
-        .unwrap_or_else(|| mint_guid(source, &turns));
+        .unwrap_or_else(|| mint_guid(source, seed_turn.as_ref()));
     let started_at = header
         .started_at
         .or_else(|| first_timestamp(&turns))
@@ -253,9 +258,25 @@ fn derive_title(turns: &[Value]) -> Option<String> {
 /// address and pays for all of it a second time. The seed is the source name
 /// plus the first turn, so a file that grows keeps its identity while two
 /// genuinely different transcripts do not collide.
-fn mint_guid(source: &str, turns: &[Value]) -> String {
+///
+/// # The seed is the turn AS THE FILE WROTE IT
+///
+/// `first` is the RAW first turn, before `shape_turn` has filled anything in,
+/// and that is load-bearing rather than incidental. A turn with no timestamp of
+/// its own gets one from `now()` at SECOND resolution — so seeding from the
+/// SHAPED turn made two imports of one transcript mint DIFFERENT guids whenever
+/// they straddled a second boundary, and the re-import became a COPY rather
+/// than a delta. Exactly the property this function exists to provide, holding
+/// only within one second.
+///
+/// It was found by a sibling plan's PM running the full suite and root-causing a
+/// test that had been dismissed as flaky — and the qualifier on that alarm is
+/// why it rang truthfully for hours without being believed. A file that DOES
+/// carry a timestamp still contributes it, because that value is the file's and
+/// is stable; what never enters the seed is a value this program invented.
+fn mint_guid(source: &str, first: Option<&Value>) -> String {
     let mut seed = String::from(source);
-    if let Some(first) = turns.first() {
+    if let Some(first) = first {
         seed.push('\n');
         seed.push_str(&first.to_string());
     }
@@ -354,6 +375,37 @@ mod tests {
         let once = import(text);
         let twice = import(text);
         assert_eq!(once.body["guid"], twice.body["guid"]);
+
+        // ACROSS A SECOND BOUNDARY, which is what this test was really for and
+        // could not previously see. A turn with no timestamp of its own gets
+        // one from `now()` at SECOND resolution, and the guid used to be seeded
+        // from the SHAPED turn — so two imports of one transcript that
+        // straddled a second minted DIFFERENT guids and the re-import became a
+        // COPY rather than a delta. The test was red for hours and was dismissed
+        // as flaky; a sibling plan's PM root-caused it. Sleeping past a second
+        // boundary makes the old defect deterministic instead of occasional.
+        let before = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("the clock is after 1970")
+            .as_secs();
+        while std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("the clock is after 1970")
+            .as_secs()
+            == before
+        {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        let next_second = import(text);
+        assert_eq!(
+            once.body["guid"], next_second.body["guid"],
+            "identity must not depend on WHEN the import ran — the guid is seeded \
+             from what the FILE said, never from a value this program invented"
+        );
+        assert_ne!(
+            once.body["turns"][0]["at"], next_second.body["turns"][0]["at"],
+            "and the timestamps really did differ, so the assertion above meant something"
+        );
 
         let other = import("{\"role\":\"user\",\"content\":\"different words\"}\n");
         assert_ne!(once.body["guid"], other.body["guid"]);

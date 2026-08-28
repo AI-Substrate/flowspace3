@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "slug": "answerable-legacy-flowspace-practices",
+  "title": "Legacy Flowspace MCP agent practices",
+  "lane": "answerable",
+  "request": {
+    "question": "What practices does the legacy Flowspace guide recommend to an LLM agent for controlling result volume and working with external repositories?",
+    "cwd": null,
+    "repo": "git:github.com/mcaps-microsoft/flowspace"
+  },
+  "assertions": "assertions.json",
+  "ground_truth": {
+    "verified_at": "2026-08-28",
+    "search_query": "what best practices should an LLM agent follow when using Flowspace MCP across external repositories",
+    "addresses": [
+      "el:git:github.com/mcaps-microsoft/flowspace/docs/howto/use-substrate-to-discover.md::Using Flowspace for Intelligent Code Discovery::Best Practices"
+    ],
+    "resolution": "Address returned ok=true via flowspace3 get at span [1056,1171]; it was the top search hit at score 0.7628120511642138.",
+    "source_facts": [
+      "Start with a limit of five or fewer and increase only after understanding output volume.",
+      "List repositories before file operations.",
+      "For external repositories, use Flowspace MCP rather than local Read or Edit operations."
+    ]
+  }
+}

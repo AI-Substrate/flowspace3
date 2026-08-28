@@ -1,0 +1,59 @@
+2026-08-28T04:01:42.198216Z  INFO fs3_daemon::watch: re-listed a changed directory directory=/Users/jordanknight/substrate/flowspace/fs3-worktree-diff/docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z events=128 enqueued=10 settled=Quiet
+2026-08-28T04:01:42.274816Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2b-divergent-paths.txt ms=40 left=11
+2026-08-28T04:01:42.285103Z  INFO fs3_daemon::runner: progress phase="working" scanned=7100 scan_left=9 summarized=9023 summarize_left=0 embedded=18238 embed_left=2 failed=0
+2026-08-28T04:01:42.291026Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2b-deltas.txt ms=67 left=10
+2026-08-28T04:01:42.341939Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2b-jobs.txt ms=93 left=11
+2026-08-28T04:01:42.356210Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x raw jobs=2 ms=38
+2026-08-28T04:01:42.378151Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2b-paid.txt ms=103 left=10
+2026-08-28T04:01:42.406510Z  INFO fs3_daemon::runner: done kind="embed" id=72821 left=9
+2026-08-28T04:01:42.433044Z  INFO fs3_daemon::runner: done kind="embed" id=72820 left=8
+2026-08-28T04:01:42.512356Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x raw jobs=2 ms=43
+2026-08-28T04:01:42.531490Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2b-reference-map.txt ms=81 left=8
+2026-08-28T04:01:42.551468Z  INFO fs3_daemon::runner: done kind="embed" id=72823 left=7
+2026-08-28T04:01:42.572862Z  INFO fs3_daemon::runner: done kind="embed" id=72822 left=6
+2026-08-28T04:01:42.630876Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=35
+2026-08-28T04:01:42.671298Z  INFO fs3_daemon::runner: done kind="embed" id=72824 left=6
+2026-08-28T04:01:42.691797Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-colliding-addresses.txt ms=106 left=5
+2026-08-28T04:01:42.757982Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=33
+2026-08-28T04:01:42.799734Z  INFO fs3_daemon::runner: done kind="embed" id=72825 left=5
+2026-08-28T04:01:42.811388Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-elements-by-blob.txt ms=105 left=4
+2026-08-28T04:01:42.891388Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=41
+2026-08-28T04:01:42.927332Z  INFO fs3_daemon::runner: done kind="embed" id=72826 left=4
+2026-08-28T04:01:42.944324Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-result-fields.txt ms=118 left=3
+2026-08-28T04:01:43.008344Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=31
+2026-08-28T04:01:43.023686Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-search-flags.txt ms=65 left=3
+2026-08-28T04:01:43.038268Z  INFO fs3_daemon::runner: done kind="embed" id=72827 left=2
+2026-08-28T04:01:43.072024Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T04:01:43.099596Z  INFO fs3_daemon::runner: done kind="embed" id=72828 left=1
+2026-08-28T04:01:43.131319Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-version-file-blobs.txt ms=78 left=1
+2026-08-28T04:01:43.171977Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=25
+2026-08-28T04:01:43.188709Z  INFO fs3_daemon::runner: done kind="embed" id=72829 left=0
+2026-08-28T04:01:43.200106Z  INFO fs3_daemon::runner: progress phase="idle" scanned=7109 scan_left=0 summarized=9023 summarize_left=0 embedded=18248 embed_left=0 failed=0
+2026-08-28T04:02:22.062496Z  INFO fs3_daemon::worktrees: unregistered a vanished git worktree root=/Users/jordanknight/substrate/flowspace/fs3-convo-u1b
+2026-08-28T04:02:22.084173Z  INFO fs3_daemon::worktrees: unregistered a vanished git worktree root=/Users/jordanknight/substrate/flowspace/fs3-convo-u1d
+2026-08-28T04:02:22.102343Z  INFO fs3_daemon::worktrees: unregistered a vanished git worktree root=/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T035625Z
+2026-08-28T04:02:26.861199Z  INFO fs3_daemon::watch: no longer watching root=/Users/jordanknight/substrate/flowspace/fs3-convo-u1b dropped_pending=0
+2026-08-28T04:02:26.861600Z  INFO fs3_daemon::watch: no longer watching root=/Users/jordanknight/substrate/flowspace/fs3-convo-u1d dropped_pending=0
+2026-08-28T04:02:26.861956Z  INFO fs3_daemon::watch: no longer watching root=/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T035625Z dropped_pending=0
+2026-08-28T04:02:37.237834Z  INFO fs3_daemon::watch: re-listed a changed directory directory=/Users/jordanknight/substrate/flowspace/fs3-daemon-sandbox/crates/daemon/tests/support events=2 enqueued=1 settled=Quiet
+2026-08-28T04:02:37.674955Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/daemon/tests/support/mod.rs ms=273 left=7
+2026-08-28T04:02:37.726456Z  INFO fs3_daemon::runner: progress phase="working" scanned=7110 scan_left=0 summarized=9023 summarize_left=6 embedded=18248 embed_left=1 failed=0
+2026-08-28T04:02:37.826925Z  INFO fs3_daemon::runner: batch kind="embed" subject=11 x raw jobs=1 ms=72
+2026-08-28T04:02:37.869360Z  INFO fs3_daemon::runner: done kind="embed" id=72837 left=6
+2026-08-28T04:02:38.047287Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/daemon/tests/support/mod.rs::spawn ms=107 left=6
+2026-08-28T04:02:38.164699Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/daemon/tests/support/mod.rs::auth ms=120 left=7
+2026-08-28T04:02:38.170150Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/daemon/tests/support/mod.rs::temp_dir ms=174 left=7
+2026-08-28T04:02:38.170167Z  INFO fs3_daemon::runner: batch kind="embed" subject=3 x smart jobs=3 ms=7
+2026-08-28T04:02:38.217746Z  INFO fs3_daemon::runner: done kind="embed" id=72840 left=5
+2026-08-28T04:02:38.232575Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/daemon/tests/support/mod.rs::unique_seed ms=137 left=5
+2026-08-28T04:02:38.299286Z  INFO fs3_daemon::runner: done kind="embed" id=72839 left=4
+2026-08-28T04:02:38.346983Z  INFO fs3_daemon::runner: done kind="embed" id=72838 left=3
+2026-08-28T04:02:38.495858Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T04:02:38.551205Z  INFO fs3_daemon::runner: done kind="embed" id=72841 left=2
+2026-08-28T04:02:38.556083Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/daemon/tests/support/mod.rs::drop_database ms=123 left=2
+2026-08-28T04:02:38.674277Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T04:02:38.739681Z  INFO fs3_daemon::runner: done kind="embed" id=72842 left=1
+2026-08-28T04:02:38.745185Z  INFO fs3_daemon::runner: done kind=summarize subject=crates/daemon/tests/support/mod.rs::hold ms=122 left=1
+2026-08-28T04:02:38.762747Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T04:02:38.771288Z  INFO fs3_daemon::runner: done kind="embed" id=72843 left=0
+2026-08-28T04:02:38.804328Z  INFO fs3_daemon::runner: progress phase="idle" scanned=7110 scan_left=0 summarized=9029 summarize_left=0 embedded=18255 embed_left=0 failed=0

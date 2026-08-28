@@ -14,6 +14,7 @@
 //! script parsing `flowspace3` output should never need a second shape for
 //! "the daemon is down".
 
+use std::path::Path;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
@@ -21,6 +22,70 @@ use fs3_core::catalog;
 use fs3_core::envelope::{Envelope, Failure};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
+/// The only way [`DaemonClient`] can build an HTTP request.
+///
+/// Keeping the raw reqwest client behind this private boundary makes
+/// authentication a property of request construction, not a convention each
+/// verb has to remember. The key is still read for every request so daemon
+/// restarts and key rotation do not require rebuilding the CLI client.
+mod authenticated {
+    use std::path::PathBuf;
+    use std::time::Duration;
+
+    use anyhow::{Context, Result};
+    use fs3_core::catalog;
+    use fs3_core::envelope::Failure;
+    use reqwest::{Method, RequestBuilder};
+
+    #[derive(Debug, Clone)]
+    pub(super) struct Client {
+        inner: reqwest::Client,
+        key_path: PathBuf,
+    }
+
+    impl Client {
+        pub(super) fn new(key_path: PathBuf, timeout: Duration) -> Result<Self> {
+            Ok(Self {
+                inner: reqwest::Client::builder()
+                    .timeout(timeout)
+                    .build()
+                    .context("building the HTTP client")?,
+                key_path,
+            })
+        }
+
+        pub(super) fn request(
+            &self,
+            method: Method,
+            url: &str,
+        ) -> std::result::Result<RequestBuilder, Failure> {
+            let key = std::fs::read_to_string(&self.key_path).map_err(|error| {
+                self.credential_failure(format!(
+                    "cannot read the daemon authentication key at {}: {error}",
+                    self.key_path.display()
+                ))
+            })?;
+            let key = key.trim();
+            if key.is_empty() {
+                return Err(self.credential_failure(format!(
+                    "the daemon authentication key at {} is empty",
+                    self.key_path.display()
+                )));
+            }
+            Ok(self.inner.request(method, url).bearer_auth(key))
+        }
+
+        fn credential_failure(&self, message: String) -> Failure {
+            Failure::new(&catalog::DAEMON_UNAUTHORIZED, message)
+                .with_fix(format!(
+                    "restart the fs3 daemon so it publishes a current key at {}, then retry",
+                    self.key_path.display()
+                ))
+                .with_detail("key_file", self.key_path.display().to_string())
+        }
+    }
+}
 
 /// The daemon's health response. Extra fields are tolerated so a newer daemon
 /// does not break an older CLI.
@@ -49,7 +114,7 @@ impl HealthReport {
 /// A client bound to one daemon URL.
 #[derive(Debug, Clone)]
 pub struct DaemonClient {
-    http: reqwest::Client,
+    http: authenticated::Client,
     base_url: String,
 }
 
@@ -66,16 +131,24 @@ impl DaemonClient {
     /// walk only.
     pub const SCAN_TIMEOUT: Duration = Duration::from_secs(300);
 
-    /// Build a client for `base_url`.
+    /// How long an agentic question may keep making model and tool round trips.
+    ///
+    /// This overrides the client-wide scan ceiling: a healthy agent loop can
+    /// legitimately run longer than a repository walk, and must not look like
+    /// an unreachable daemon while it is still producing an answer.
+    pub const ASK_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+
+    /// Build a client for `base_url`, reading this installation's daemon key
+    /// from `config_dir` immediately before every request.
     ///
     /// # Errors
     /// When the HTTP client cannot be constructed.
-    pub fn new(base_url: impl Into<String>) -> Result<Self> {
+    pub fn new(base_url: impl Into<String>, config_dir: &Path) -> Result<Self> {
         Ok(Self {
-            http: reqwest::Client::builder()
-                .timeout(Self::SCAN_TIMEOUT)
-                .build()
-                .context("building the HTTP client")?,
+            http: authenticated::Client::new(
+                fs3_core::daemon_key_path(config_dir),
+                Self::SCAN_TIMEOUT,
+            )?,
             base_url: base_url.into().trim_end_matches('/').to_string(),
         })
     }
@@ -92,23 +165,27 @@ impl DaemonClient {
     /// [`crate::DOCTOR_HINT`] — the CLI never starts infrastructure itself.
     pub async fn health(&self) -> Result<HealthReport> {
         let url = format!("{}/health", self.base_url);
-        let response = self
+        let request = self
             .http
-            .get(&url)
-            .timeout(Self::TIMEOUT)
-            .send()
-            .await
-            .map_err(|error| {
-                anyhow::anyhow!(
-                    "fs3 daemon is not reachable at {}: {error}\n{}",
-                    self.base_url,
-                    crate::DOCTOR_HINT
-                )
-            })?;
+            .request(reqwest::Method::GET, &url)
+            .map(|request| request.timeout(Self::TIMEOUT))
+            .map_err(|failure| anyhow::anyhow!(failure.render()))?;
+        let response = request.send().await.map_err(|error| {
+            anyhow::anyhow!(
+                "fs3 daemon is not reachable at {}: {error}\n{}",
+                self.base_url,
+                crate::DOCTOR_HINT
+            )
+        })?;
 
         let status = response.status();
         if !status.is_success() {
             let body = response.text().await.unwrap_or_default();
+            if let Ok(envelope) = serde_json::from_str::<Envelope>(&body)
+                && let Some(failure) = envelope.error
+            {
+                return Err(anyhow::anyhow!(failure.render()));
+            }
             return Err(anyhow::anyhow!(
                 "fs3 daemon at {} answered {status}: {}\n{}",
                 self.base_url,
@@ -159,6 +236,12 @@ impl DaemonClient {
             .await
     }
 
+    /// Pull a conversation out of a native agent session store.
+    pub async fn conversation_ingest(&self, body: &Value) -> Envelope {
+        self.post("conversation ingest", "/conversations/ingest", body)
+            .await
+    }
+
     /// List indexed conversations.
     pub async fn conversation_list(&self, query: &[(String, String)]) -> Envelope {
         self.get_json("conversation list", "/conversations", query)
@@ -185,6 +268,26 @@ impl DaemonClient {
         self.get_json("search", "/search", query).await
     }
 
+    /// Run one agentic question with its own long-lived request budget.
+    pub async fn ask(&self, params: &[(String, String)]) -> Envelope {
+        let url = format!("{}/ask", self.base_url);
+        let body = Value::Object(
+            params
+                .iter()
+                .map(|(name, value)| (name.clone(), Value::String(value.clone())))
+                .collect(),
+        );
+        // The authenticated request boundary owns the key; this verb only
+        // supplies its longer timeout and JSON body.
+        self.send(
+            "ask",
+            self.http
+                .request(reqwest::Method::POST, &url)
+                .map(|request| request.timeout(Self::ASK_TIMEOUT).json(&body)),
+        )
+        .await
+    }
+
     /// Read one address in full.
     pub async fn get(&self, query: &[(String, String)]) -> Envelope {
         self.get_json("get", "/get", query).await
@@ -195,16 +298,99 @@ impl DaemonClient {
         self.get_json("tree", "/tree", query).await
     }
 
+    /// Open the daemon's event stream, authenticated.
+    ///
+    /// The one door to `GET /events` for every consumer that needs it — the
+    /// `add` progress meter, `status --watch`, and the TUI's activity pane.
+    /// It exists because the key handling above is private and must stay that
+    /// way: three units reaching for `reqwest` directly would be three places
+    /// that can forget the `Authorization` header, and the failure mode is a
+    /// silent 401 that looks exactly like "the daemon has nothing to say"
+    /// (found by u-r, 2026-08-28, before it shipped).
+    ///
+    /// Returns the raw response rather than parsed events on purpose: this is a
+    /// STREAM, and the caller reads it line by line for as long as it wants to.
+    /// The wire is `fs3_core::events` — a `Hello` line, then one `Event` per
+    /// line — and `docs/services/event-stream.md` is its contract.
+    ///
+    /// No timeout is applied beyond the connect: a healthy stream is idle most
+    /// of the time, and the heartbeat is how a consumer tells idle from dead.
+    ///
+    /// # Errors
+    /// A missing or unreadable key, or a daemon that does not answer. Both come
+    /// back as a [`Failure`] carrying its own catalog code and fix, so a caller
+    /// renders them like any other failure instead of inventing prose.
+    pub async fn events(
+        &self,
+        heartbeat_ms: Option<u64>,
+    ) -> std::result::Result<reqwest::Response, Failure> {
+        let url = format!("{}/events", self.base_url);
+        let mut request = self.http.request(reqwest::Method::GET, &url)?;
+        if let Some(interval) = heartbeat_ms {
+            request = request.query(&[("heartbeat_ms", interval.to_string())]);
+        }
+
+        let response = request.send().await.map_err(|error| {
+            Failure::new(
+                &catalog::DAEMON_UNAVAILABLE,
+                format!("cannot open the event stream at {url}: {error}"),
+            )
+            .with_detail("daemon_url", self.base_url.clone())
+        })?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            if let Ok(envelope) = serde_json::from_str::<Envelope>(&body)
+                && let Some(failure) = envelope.error
+            {
+                return Err(failure);
+            }
+            return Err(Failure::new(
+                &catalog::DAEMON_UNAVAILABLE,
+                format!("the event stream at {url} answered {status}"),
+            )
+            .with_detail("status", status.as_u16()));
+        }
+
+        Ok(response)
+    }
+
     async fn get_json(&self, command: &str, path: &str, query: &[(String, String)]) -> Envelope {
         let url = format!("{}{path}", self.base_url);
-        let response = self.http.get(&url).query(query).send().await;
-        self.envelope(command, response).await
+        self.send(
+            command,
+            self.http
+                .request(reqwest::Method::GET, &url)
+                .map(|request| request.query(query)),
+        )
+        .await
     }
 
     async fn post(&self, command: &str, path: &str, body: &Value) -> Envelope {
         let url = format!("{}{path}", self.base_url);
-        let response = self.http.post(&url).json(body).send().await;
-        self.envelope(command, response).await
+        self.send(
+            command,
+            self.http
+                .request(reqwest::Method::POST, &url)
+                .map(|request| request.json(body)),
+        )
+        .await
+    }
+
+    async fn send(
+        &self,
+        command: &str,
+        request: std::result::Result<reqwest::RequestBuilder, Failure>,
+    ) -> Envelope {
+        let request = match request {
+            Ok(request) => request,
+            Err(failure) => {
+                let next = failure.fix.clone();
+                return Envelope::failed(command, failure).with_next_action(next);
+            }
+        };
+        self.envelope(command, request.send().await).await
     }
 
     /// Turn a transport outcome into an envelope, whatever happened.
@@ -258,5 +444,124 @@ impl DaemonClient {
                 .with_detail("body", body.chars().take(200).collect::<String>()),
             ),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+
+    use super::authenticated;
+
+    const TEST_KEY: &str = "client-auth-contract-key";
+
+    /// Authentication belongs to the request-construction boundary, not to a
+    /// hand-maintained list of verbs. `DaemonClient` cannot access the raw
+    /// reqwest client, so existing and future verbs all inherit this contract.
+    #[tokio::test]
+    async fn every_daemon_verb_inherits_authorization_from_the_request_boundary() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("an ephemeral port");
+        let address = listener.local_addr().expect("the socket is bound");
+        let probe = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("the client should connect");
+            stream
+                .set_read_timeout(Some(std::time::Duration::from_secs(3)))
+                .expect("setting the probe read timeout");
+
+            const MAX_HEADER_BYTES: usize = 16 * 1024;
+            let mut request = Vec::with_capacity(2048);
+            while !request.windows(4).any(|bytes| bytes == b"\r\n\r\n") {
+                assert!(
+                    request.len() < MAX_HEADER_BYTES,
+                    "the client sent more than {MAX_HEADER_BYTES} bytes without ending its HTTP headers"
+                );
+                let mut chunk = [0_u8; 1024];
+                let remaining = MAX_HEADER_BYTES - request.len();
+                let read_limit = remaining.min(chunk.len());
+                let read = stream
+                    .read(&mut chunk[..read_limit])
+                    .expect("the client should finish its HTTP headers within three seconds");
+                assert_ne!(
+                    read, 0,
+                    "the client closed the connection before ending its HTTP headers"
+                );
+                request.extend_from_slice(&chunk[..read]);
+            }
+            let request = String::from_utf8(request).expect("HTTP headers are valid UTF-8");
+            stream
+                .write_all(
+                    b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                )
+                .expect("the probe should answer");
+            request
+        });
+
+        let config = tempfile::tempdir().expect("a temp config directory");
+        let key_path = fs3_core::daemon_key_path(config.path());
+        std::fs::write(&key_path, TEST_KEY).expect("writing the isolated daemon key");
+        let client = authenticated::Client::new(key_path, std::time::Duration::from_secs(3))
+            .expect("an HTTP client");
+        client
+            .request(reqwest::Method::POST, &format!("http://{address}/contract"))
+            .expect("an authenticated request")
+            .send()
+            .await
+            .expect("the probe should answer");
+
+        let request = probe.join().expect("the probe thread should finish");
+        assert!(
+            request
+                .lines()
+                .any(|line| line.eq_ignore_ascii_case(&format!("authorization: Bearer {TEST_KEY}"))),
+            "the authenticated request boundary dropped the daemon key; every DaemonClient verb \
+             uses this boundary, so all verbs would fail with FS3-E-DAEMON-UNAUTHORIZED. \
+             Recorded request:\n{request}"
+        );
+    }
+
+    /// The network probe proves the boundary adds the key; this structural
+    /// half proves no verb quietly routes around that boundary. It discovers
+    /// functions from the source, so adding a verb cannot require updating a
+    /// hand-maintained test list.
+    #[test]
+    fn a_verb_that_bypasses_the_authenticated_boundary_is_named() {
+        let source = include_str!("client.rs");
+        let (prefix, implementation) = source
+            .split_once("impl DaemonClient {")
+            .expect("the DaemonClient implementation");
+        let implementation = implementation
+            .split_once("#[cfg(test)]")
+            .expect("the client tests follow the implementation")
+            .0;
+        let implementation_line = prefix.lines().count() + 1;
+        let mut function = "DaemonClient implementation";
+        let mut bypasses = Vec::new();
+
+        for (offset, line) in implementation.lines().enumerate() {
+            let signature = line.trim_start();
+            if let Some(rest) = signature
+                .strip_prefix("pub async fn ")
+                .or_else(|| signature.strip_prefix("async fn "))
+            {
+                function = rest.split('(').next().unwrap_or(function);
+            }
+            let raw_reqwest = line.contains("reqwest::Client") || line.contains("reqwest::get(");
+            let skips_send = line.contains("self.envelope(") && function != "send";
+            if raw_reqwest || skips_send || line.contains(".inner") {
+                let bypass = format!("{function} (client.rs:{})", implementation_line + offset);
+                if bypasses.last() != Some(&bypass) {
+                    bypasses.push(bypass);
+                }
+            }
+        }
+
+        assert!(
+            bypasses.is_empty(),
+            "daemon verb(s) bypassed the authenticated request boundary: {}. Every request must \
+             carry the current bearer key or the daemon refuses it with \
+             FS3-E-DAEMON-UNAUTHORIZED",
+            bypasses.join(", ")
+        );
     }
 }

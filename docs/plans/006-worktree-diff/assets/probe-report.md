@@ -304,6 +304,26 @@ queue's per-root visibility, revisit if the sweep shows up in a profile.
   the attributable queries are the defence, and the definitive run was taken at
   queue depth 0.
 
+## Where this sits in the pij-team flow
+
+This plan is the second validation run of the flow scaffolded by
+`harness team new` (`.harness/extensions/team/instructions.md`), and the first
+in **investigate-then-build** mode. The difference that mode makes is this
+document: the impl-guide could not freeze its seams up front, so phase 1 was
+the seam-freezing activity and this report is what prime signed off before any
+coder existed.
+
+It changed the answer. The plan provisionally named four units; the evidence
+ruled **two** — u-b was refuted outright (identical content already costs
+nothing, so only the trigger was missing) and u-d was absorbed into u-a (both
+ends were missing the same detector, not two mechanisms). A fifth candidate,
+a default result cap, turned out to already exist. Roughly half the
+provisionally-planned work did not need doing, and measuring first is what
+found that out.
+
+The receipt predicates in `assets/probes/out/run-*/receipt.env` became the
+units' done bars, so "done" was a re-run rather than an opinion — including the
+one the harness now refuses to answer under a fake embedder.
 ## Re-running this
 
 ```bash

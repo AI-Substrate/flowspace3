@@ -181,6 +181,44 @@ pub async fn create_database(admin: &PgPool, name: &str) -> Result<(), StoreErro
     Ok(())
 }
 
+/// Drop a database and terminate any sessions still connected to it.
+///
+/// The force is intentional for disposable databases: a crashed worker may
+/// leave a pool alive, and cleanup must not silently preserve the database.
+///
+/// # Errors
+/// [`StoreError::InvalidName`] when the name is not a plain identifier;
+/// [`StoreError::Query`] when Postgres refuses the operation.
+pub async fn drop_database(admin: &PgPool, name: &str) -> Result<(), StoreError> {
+    validate_database_name(name)?;
+    sqlx::query(&format!("DROP DATABASE IF EXISTS \"{name}\" WITH (FORCE)"))
+        .execute(admin)
+        .await?;
+    Ok(())
+}
+
+/// Replace the database path in a Postgres URL, preserving its query string.
+///
+/// # Errors
+/// [`StoreError::InvalidName`] when either the URL or replacement name is not
+/// usable as a database identifier.
+pub fn database_url(url: &str, name: &str) -> Result<String, StoreError> {
+    validate_database_name(name)?;
+    let (maintenance, _) = maintenance_url(url)?;
+    let (prefix, query) = maintenance
+        .split_once('?')
+        .map_or((maintenance.as_str(), None), |(prefix, query)| {
+            (prefix, Some(query))
+        });
+    let authority_end = prefix
+        .rfind('/')
+        .ok_or_else(|| StoreError::InvalidName(format!("{url:?} names no database")))?;
+    Ok(match query {
+        Some(query) => format!("{}/{name}?{query}", &prefix[..authority_end]),
+        None => format!("{}/{name}", &prefix[..authority_end]),
+    })
+}
+
 /// Split a database URL into `(maintenance url, database name)`.
 ///
 /// The maintenance URL points at `postgres`, the database every server has, so
@@ -341,6 +379,18 @@ mod tests {
             "postgres://h/postgres?sslmode=require&connect_timeout=5"
         );
         assert_eq!(name, "fs3");
+    }
+
+    #[test]
+    fn database_url_replaces_name_and_preserves_connection_query() {
+        assert_eq!(
+            database_url(
+                "postgres://flowspace3:pw@127.0.0.1:5433/original?sslmode=require",
+                "fs3_sandbox_123"
+            )
+            .unwrap(),
+            "postgres://flowspace3:pw@127.0.0.1:5433/fs3_sandbox_123?sslmode=require"
+        );
     }
 
     #[test]

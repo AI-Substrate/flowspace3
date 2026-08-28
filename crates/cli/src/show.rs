@@ -52,6 +52,15 @@ pub fn render(
             width = width - section.len()
         ));
     }
+    // Unknown sections are absent from the resolved TOML below. Put their
+    // warning beside the known-section provenance list — the exact place a
+    // reader scans to confirm that a recent edit took effect.
+    for warning in effective.warnings() {
+        out.push_str(&format!(
+            "# {} WARNING — {}\n",
+            warning.key, warning.message
+        ));
+    }
 
     out.push_str("#\n# resolved providers (secrets are never printed):\n");
     for port in Port::ALL {
@@ -169,6 +178,25 @@ mod tests {
     }
 
     #[test]
+    fn an_ignored_section_is_named_in_the_header() {
+        let effective = fs3_core::resolve(fs3_core::Sources {
+            file_label: "/tmp/fs3/config.toml",
+            file_text: Some("[typo]\nactive = \"nonsense\"\n\n[embedder]\nactive = \"fake\"\n"),
+            env: &[],
+        })
+        .unwrap();
+
+        let rendered = render(&effective, Path::new("/tmp/fs3"), true, false);
+        assert!(
+            rendered.contains(
+                "# [typo] WARNING — unknown top-level section was ignored by this binary; \
+                 none of its settings take effect"
+            ),
+            "{rendered}"
+        );
+    }
+
+    #[test]
     fn each_port_reports_the_instance_it_resolved_to() {
         let rendered = render(&effective(), Path::new("/tmp/fs3"), true, false);
         assert!(rendered.contains("#   embedder -> fake"), "{rendered}");
@@ -192,6 +220,7 @@ mod tests {
             RepoSelection {
                 embedder: None,
                 summarizer: Some("big".to_string()),
+                ..Default::default()
             },
         );
 

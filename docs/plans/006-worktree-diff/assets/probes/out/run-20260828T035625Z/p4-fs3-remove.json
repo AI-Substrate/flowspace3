@@ -1,0 +1,39 @@
+{
+  "ok": true,
+  "command": "remove",
+  "v": 1,
+  "data": {
+    "files": 0,
+    "jobs_killed": 0,
+    "reclaimable": {
+      "elements": 1304,
+      "embeddings": 0,
+      "jobs": 0,
+      "summaries": 0,
+      "total": 1304
+    },
+    "registered": [
+      "/Users/jordanknight/substrate/flowspace/flowspace3",
+      "/Users/jordanknight/substrate/flowspace/fs3-006-ua",
+      "/Users/jordanknight/substrate/flowspace/fs3-006-uc",
+      "/Users/jordanknight/substrate/flowspace/fs3-agentic-query",
+      "/Users/jordanknight/substrate/flowspace/fs3-ask-eval",
+      "/Users/jordanknight/substrate/flowspace/fs3-convo-ingest",
+      "/Users/jordanknight/substrate/flowspace/fs3-convo-u2",
+      "/Users/jordanknight/substrate/flowspace/fs3-daemon-auth",
+      "/Users/jordanknight/substrate/flowspace/fs3-daemon-sandbox",
+      "/Users/jordanknight/substrate/flowspace/fs3-epipe",
+      "/Users/jordanknight/substrate/flowspace/fs3-hi-goldenbase",
+      "/Users/jordanknight/substrate/flowspace/fs3-hi-u-r",
+      "/Users/jordanknight/substrate/flowspace/fs3-hi-u-t",
+      "/Users/jordanknight/substrate/flowspace/fs3-hi-u-w",
+      "/Users/jordanknight/substrate/flowspace/fs3-human-interface",
+      "/Users/jordanknight/substrate/flowspace/fs3-search-degenerate",
+      "/Users/jordanknight/substrate/flowspace/fs3-worktree-diff"
+    ],
+    "repo_removed": false,
+    "root_path": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T035625Z",
+    "was_registered": false
+  },
+  "next_action": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T035625Z is not registered. These are: /Users/jordanknight/substrate/flowspace/flowspace3, /Users/jordanknight/substrate/flowspace/fs3-006-ua, /Users/jordanknight/substrate/flowspace/fs3-006-uc, /Users/jordanknight/substrate/flowspace/fs3-agentic-query, /Users/jordanknight/substrate/flowspace/fs3-ask-eval, /Users/jordanknight/substrate/flowspace/fs3-convo-ingest, /Users/jordanknight/substrate/flowspace/fs3-convo-u2, /Users/jordanknight/substrate/flowspace/fs3-daemon-auth, /Users/jordanknight/substrate/flowspace/fs3-daemon-sandbox, /Users/jordanknight/substrate/flowspace/fs3-epipe, /Users/jordanknight/substrate/flowspace/fs3-hi-goldenbase, /Users/jordanknight/substrate/flowspace/fs3-hi-u-r, /Users/jordanknight/substrate/flowspace/fs3-hi-u-t, /Users/jordanknight/substrate/flowspace/fs3-hi-u-w, /Users/jordanknight/substrate/flowspace/fs3-human-interface, /Users/jordanknight/substrate/flowspace/fs3-search-degenerate, /Users/jordanknight/substrate/flowspace/fs3-worktree-diff — paths are stored as the daemon resolved them, so copy one exactly"
+}
