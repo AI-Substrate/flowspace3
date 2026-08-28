@@ -21,7 +21,7 @@ use std::sync::OnceLock;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use fs3_cli::{DaemonClient, daemon_url, doctor, render, settings, show, skill};
+use fs3_cli::{DaemonClient, doctor, render, settings, show, skill};
 use fs3_core::envelope::Envelope;
 use fs3_core::output::{OUTPUT_ENV, OutputMode};
 
@@ -554,7 +554,7 @@ async fn run(command: Command) -> Result<ExitCode> {
                 None => settings::config_dir()?,
             };
             let effective = settings::load_effective_from(&dir)?;
-            Ok(emit(&doctor::run(&effective.config).await))
+            Ok(emit(&doctor::run(&effective.config, &dir).await))
         }
         Command::Docs { command } => Ok(match command {
             DocsCommand::List => emit(&fs3_cli::docs::list()),
@@ -676,11 +676,12 @@ fn here() -> Option<String> {
 }
 
 fn client_for(override_url: Option<String>) -> Result<DaemonClient> {
+    let directory = settings::config_dir()?;
     let url = match override_url {
         Some(url) => url,
-        None => daemon_url()?,
+        None => settings::daemon_url_from(&directory)?,
     };
-    DaemonClient::new(url)
+    DaemonClient::new(url, &directory)
 }
 
 fn config_show(override_dir: Option<PathBuf>) -> Result<()> {

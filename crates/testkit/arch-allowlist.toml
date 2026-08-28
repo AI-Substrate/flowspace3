@@ -163,6 +163,9 @@ external = [
   # a one-method async trait dyn-able; core already carries it for the ports.
   "async-trait",
   "axum",
+  # The daemon mints a fresh 256-bit bearer key at each boot. `getrandom`
+  # reaches the host RNG directly, with no seed state or general PRNG surface.
+  "getrandom",
   # The live file watcher (ruling 2026-08-26: the daemon is host-native BECAUSE
   # watching cannot cross a container boundary). It belongs here rather than in
   # a leaf crate because watching is wiring — the supervisor reads the
