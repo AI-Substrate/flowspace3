@@ -21,6 +21,14 @@
 //! conversion is `1 - distance` and it happens exactly here, at the boundary,
 //! so `--min-score 0.7` is a number a human can reason about rather than a
 //! ceiling they have to invert in their head.
+//!
+//! # Snap-in recipe
+//!
+//! No new configuration, constructor, or route registration is required.
+//! The existing HTTP handler resolves `Scope` once, passes it unchanged to
+//! [`search`], and attaches the returned limit/weak-match facts to envelope
+//! metadata. The store call must receive both `scope.repo` and
+//! `scope.worktree`; dropping the latter restores cross-checkout leakage.
 
 use fs3_core::ElementKind;
 use fs3_core::catalog;
@@ -67,6 +75,28 @@ pub struct SearchRequest {
 /// than a slow query.
 pub const MAX_LIMIT: i64 = 100;
 
+/// A best hit below this score is weak enough to warrant an advisory hint.
+///
+/// This is not a probability. Absolute similarity depends on both corpus and
+/// embedder. The value was calibrated on 2026-08-28 against the live
+/// flowspace3 index using Azure `text-embedding-3-small-no-rate` at 1024
+/// dimensions. The snapshot separated known-relevant from known-noise queries:
+///
+/// | expected | query | best score |
+/// |---|---|---:|
+/// | relevant | claim queued job once deduplicate key | 0.6985 |
+/// | relevant | remove root dereference worktree files | 0.6456 |
+/// | relevant | resolve caller cwd registered worktree scope | 0.6146 |
+/// | relevant | known relevant, mediocre matches | 0.5509–0.5554 |
+/// | noise | known irrelevant matches | 0.4431–0.4644 |
+/// | noise | quantum chromodynamics gluon confinement | 0.3118 |
+///
+/// The durable part is the labelled-query procedure, not these samples: the
+/// index grows, and changing either corpus or embedder invalidates the floor.
+/// False warnings teach callers to ignore the hint, so new relevant evidence
+/// below the current band moves this floor down, never up by taste.
+pub const WEAK_MATCH_SCORE_FLOOR: f64 = 0.50;
+
 /// The element kinds that answer a CODE search.
 ///
 /// Named exhaustively rather than as "everything except a turn", so that adding
@@ -106,6 +136,8 @@ pub struct Hit {
     pub repo: Option<String>,
     /// A live path holding it, relative to its worktree root.
     pub path: Option<String>,
+    /// The registered worktree root that supplied this hit.
+    pub worktree: Option<String>,
 }
 
 /// What `GET /search` answers with.
@@ -113,6 +145,24 @@ pub struct Hit {
 pub struct SearchResults {
     /// Ranked hits, best first.
     pub results: Vec<Hit>,
+    /// The caller-visible result cap.
+    #[serde(skip)]
+    pub limit: i64,
+    /// Whether at least one additional result existed beyond [`Self::limit`].
+    #[serde(skip)]
+    pub truncated: bool,
+}
+
+impl SearchResults {
+    /// Whether the best available result falls below the calibrated floor.
+    #[must_use]
+    pub fn is_weak_match(&self) -> bool {
+        weak_match_score(self.results.first().map(|hit| hit.score))
+    }
+}
+
+fn weak_match_score(best: Option<f64>) -> bool {
+    best.is_some_and(|score| score < WEAK_MATCH_SCORE_FLOOR)
 }
 
 /// How many lines of an element's text a hit carries.
@@ -208,11 +258,12 @@ pub async fn search(
 
     let filters = SearchFilters {
         repo: scope.repo.clone(),
+        worktree: scope.worktree.clone(),
         path: request.path.as_deref().map(glob_to_like),
         source,
         kinds,
         max_distance,
-        limit,
+        limit: limit + 1,
     };
 
     let hits = fs3_store::search_elements(&state.db, &model_key, &vector, &filters)
@@ -229,8 +280,11 @@ pub async fn search(
         return Err(failure);
     }
 
+    let truncated = hits.len() > limit as usize;
     Ok(SearchResults {
-        results: hits.iter().map(render).collect(),
+        results: hits.iter().take(limit as usize).map(render).collect(),
+        limit,
+        truncated,
     })
 }
 
@@ -305,6 +359,7 @@ fn render(hit: &SearchHit) -> Hit {
             .unwrap_or_default(),
         repo: hit.identity.clone(),
         path: hit.path.clone(),
+        worktree: hit.root_path.clone(),
     }
 }
 
@@ -414,5 +469,16 @@ mod tests {
         assert!((score(1.0) - 0.0).abs() < f64::EPSILON);
         // and a min_score of 0.7 must become a distance ceiling of 0.3
         assert!((1.0 - 0.7 - 0.3f64).abs() < 1e-9);
+    }
+
+    #[test]
+    fn weak_match_is_advisory_only_below_the_calibrated_floor() {
+        assert!(weak_match_score(Some(WEAK_MATCH_SCORE_FLOOR - 0.01)));
+        assert!(!weak_match_score(Some(WEAK_MATCH_SCORE_FLOOR)));
+        assert!(!weak_match_score(Some(WEAK_MATCH_SCORE_FLOOR + 0.01)));
+        assert!(
+            !weak_match_score(None),
+            "zero results use their existing steer"
+        );
     }
 }
