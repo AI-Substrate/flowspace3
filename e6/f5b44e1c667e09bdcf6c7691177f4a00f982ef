@@ -1,0 +1,28 @@
+docs/plans/005-convo-ingest/packet-coder-u1a.dd.json
+  h_9e71e8b09f7cf2 1-194
+docs/plans/005-convo-ingest/packet-coder-u1a.dd.md
+  h_9e71e8b09f7cf2 1-95
+docs/plans/005-convo-ingest/packet-coder-u1b.dd.json
+  h_9e71e8b09f7cf2 1-198
+docs/plans/005-convo-ingest/packet-coder-u1b.dd.md
+  h_9e71e8b09f7cf2 1-96
+docs/plans/005-convo-ingest/packet-coder-u1d.dd.json
+  h_9e71e8b09f7cf2 1-194
+docs/plans/005-convo-ingest/packet-coder-u1d.dd.md
+  h_9e71e8b09f7cf2 1-95
+docs/plans/005-convo-ingest/packet-coder-u2.dd.json
+  h_9e71e8b09f7cf2 1-198
+docs/plans/005-convo-ingest/packet-coder-u2.dd.md
+  h_9e71e8b09f7cf2 1-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e6f5b44e1c667e09bdcf6c7691177f4a00f982ef",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
