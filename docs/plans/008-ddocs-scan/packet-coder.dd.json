@@ -1,0 +1,69 @@
+{
+  "dd": {
+    "schema": "pij-team/packet"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Coder packet — <unit name> (<plan slug>)",
+        "role": "coder",
+        "plan": "docs/plans/<ord>-<slug>/plan.dd.json",
+        "seat": "<pij seat name once spawned>",
+        "updated": "<date>"
+      }
+    },
+    {
+      "name": "mission",
+      "value": "You build ONE unit of plan <ord>-<slug>: <unit name> — <one-line responsibility from the impl-guide>. It must be independently written and tested behind the interface named below, so the PM can compose it without reading your internals. You report to the PM, not to prime."
+    },
+    {
+      "name": "instructions",
+      "value": [
+        { "id": "i1", "text": "Orient: read your unit's row in the impl-guide (impl-guide.dd.json), the plan phase/tasks you own, and the interface contract. Run `harness boot --json` in your worktree before changing anything. DOGFOOD FLOWSPACE: `flowspace3 search \"<question>\"` for every meaning-shaped question before grep (exact identifiers may still grep); report every miss or confusing envelope as friction." },
+        { "id": "i2", "text": "Ack FIRST: reply to the PM with your read of the unit + a numbered implementation plan before writing code. Corrections to the packet are welcome — bring evidence." },
+        { "id": "i3", "text": "Implement using the /builder implement discipline: work the tasks in order, keep the execution log honest, tests alongside code — your unit's test suite must prove the interface contract without the other units present." },
+        { "id": "i4", "text": "Stay inside your unit's paths (scope below). If the work forces you outside them, STOP and ask the PM — that is a composition concern, not yours to solve unilaterally." },
+        { "id": "i5", "text": "Commit with `harness commit` (conventional commits are binding), status card at start and end of each unit of work (`pij report now`)." },
+        { "id": "i6", "text": "Done = `harness checks` green in YOUR worktree + your unit's tests proving the contract. Report done to the PM with the evidence, then hold for composition questions — do not merge anything." },
+        { "id": "i7", "text": "Capture friction with `harness observe` the moment it bites; list, never clear the buffer." },
+        { "id": "i8", "text": "OMP seats: use your native tooling deliberately — your LSP (go-to-definition, find-references, rename, diagnostics) for symbol-level questions and refactors instead of text search, and your harness's structured edit/diagnostic surfaces over raw shell equivalents. If the LSP for this repo's language is not configured in your seat, report it as friction at ack time rather than silently falling back to grep for the whole packet." }
+      ]
+    },
+    {
+      "name": "working_with",
+      "value": [
+        { "id": "w1", "text": "The PM is your interface: acks, questions, done reports. You never message prime or Jordan directly unless the PM's seat is dead." },
+        { "id": "w2", "text": "DEFER to the PM: interface changes (they affect sibling units), dependency additions, schema/migration changes, anything outside your paths." },
+        { "id": "w3", "text": "Your evidence outranks the packet: if the brief is wrong, say so at ack or stop-and-ask with the measurement — do not silently code around it." }
+      ]
+    },
+    {
+      "name": "scope",
+      "value": {
+        "worktree": "<per impl-guide: own worktree ../fs3-<slug>-<unit>, or the pm's tree — pm fills this>",
+        "branch": "<branch name — pm fills>",
+        "fence": "<unit paths from the impl-guide row>",
+        "forbidden_note": "Never touch another unit's paths, .harness/government/**, or the plan's flow state. Never merge or open PRs — the PM composes. ABSOLUTE PATHS FOR EVERY FILE READ AND EDIT, ALWAYS: a spawned seat's file tools may resolve relative paths against the SPAWN directory (the main clone) while your shell resolves against your worktree — the same relative path then addresses two different files, the tool reports success either way, and your build goes green against a tree missing your change (proven 2026-08-28, three seats, DL-007/008). State your worktree root once at ack and prefix every path with it."
+      }
+    },
+    {
+      "name": "done_bar",
+      "value": [
+        { "id": "d1", "text": "Unit implements the interface contract in the impl-guide row, verbatim or with PM-ruled amendments." },
+        { "id": "d2", "text": "Unit test suite passes standalone and proves the contract." },
+        { "id": "d3", "text": "harness checks green in your worktree — AND prove the change is IN THE TREE YOU BUILT, not just that the build exited 0: cite tree-resident evidence (the lockfile carries your dependency, mtime/git status shows your file, the artifact names your module). An exit code is honest about what it built and silent about what it did not." },
+        { "id": "d4", "text": "The SNAP-IN RECIPE shipped with the unit (tenet 4): the exact wiring the composer will paste — config shape, construction call, registration line — as a doc comment or section in your unit's service page. Wire it in yourself ONLY when both hold: the wiring file is uncontended (no sibling unit touches it) AND your done bar is behavioural (unreachable unwired); the recipe still ships so composition verifies rather than re-derives. Otherwise the composer wires. (Amended 2026-08-28: the blanket never-wire rule contradicted a live probe-flip done bar.)" },
+        { "id": "d5", "text": "Done report to PM: what shipped, evidence, deviations, anything the composer must know — INCLUDING an explicit ASSUMPTIONS section: everything you assumed about the composition you do not own (who calls you, in what order, with what already in the store). A green gate proves your unit against YOUR assumptions; naming them is what lets the composer test them." }
+      ]
+    },
+    {
+      "name": "refs",
+      "value": [
+        { "id": "r0", "path": ".agents/skills/pij-team/TENETS.md", "note": "the doctrine — esp. tenets 2-6: fill contracts never widen them, ship the snap-in recipe, mechanical done" },
+        { "id": "r1", "path": "docs/plans/<ord>-<slug>/impl-guide.dd.json", "note": "your unit row + composition contract" },
+        { "id": "r2", "path": "CLAUDE.md", "note": "dogfooding + harness commit rules" }
+      ]
+    }
+  ]
+}
