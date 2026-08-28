@@ -110,7 +110,8 @@
         {
           "id": "ac-000d",
           "claim": "With no `ddocs` binary on PATH the whole pipeline still indexes rows and serves search; only edges, gate semantics and derived state are absent, and the envelope's `next_action` names the missing binary.",
-          "state": "unchecked"
+          "state": "unchecked",
+          "note": "NARROWED at composition, deliberately: the next_action fires for CWD-SCOPED searches only. The tooling snapshot is keyed by worktree_id and a search scope carries an optional root, so scope.worktree -> find_worktree -> id -> ddoc_tooling(id) is attributable; an explicit --repo or all-roots scope may span several worktrees and a failed lookup proves nothing. u4 stays SILENT in both, rather than warn on an unrelated or unprobed root. Accepted because the alternative trains people to ignore the notice, and because the cwd-scoped search is the shape an agent working in a repo actually runs. Limitation recorded rather than hidden."
         },
         {
           "id": "ac-000e",
