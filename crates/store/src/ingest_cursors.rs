@@ -310,6 +310,48 @@ pub async fn commit_poll(
     Ok(())
 }
 
+/// Which conversation this session is already being ingested into.
+///
+/// The reverse of [`sessions_for`], and the reason it exists is resolution:
+/// `None` means NO session row yet, so this is a first ingest and the caller
+/// mints exactly one conversation; `Some` means the mapping is already decided
+/// and there is nothing left to choose. Minting where a row exists is the A1
+/// failure — the ledger is keyed by session and would not move with the
+/// rebind, so the newly minted conversation would dedupe every record it was
+/// offered and stay permanently empty.
+///
+/// The asymmetry is deliberate and there is no mint helper here: this unit can
+/// answer WHICH conversation a session belongs to, it cannot invent one.
+/// Minting stays at the composition root, where the caller-supplied guid and
+/// the CLI live.
+///
+/// Reads the same row [`commit_poll`] defends, so the lookup and the guard
+/// cannot disagree.
+///
+/// # Errors
+/// [`StoreError::Query`] when the read fails; [`StoreError::Corrupt`] when the
+/// stored guid is not a conversation id.
+pub async fn conversation_for(
+    pool: &PgPool,
+    harness: Harness,
+    session_id: &str,
+) -> Result<Option<ConversationId>, StoreError> {
+    let stored: Option<String> = sqlx::query_scalar(
+        "SELECT conversation_id::text FROM ingest_cursors
+          WHERE harness = $1 AND session_id = $2",
+    )
+    .bind(harness.as_str())
+    .bind(session_id)
+    .fetch_optional(pool)
+    .await?;
+
+    stored.map(ConversationId::new).transpose().map_err(corrupt)
+}
+
+fn corrupt(error: fs3_core::Error) -> StoreError {
+    StoreError::Corrupt(error)
+}
+
 /// Forget a session's cursor and everything it had stored.
 ///
 /// The ledger goes with the cursor through the foreign key, so re-ingesting
