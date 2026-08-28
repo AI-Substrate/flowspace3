@@ -101,15 +101,29 @@ session** by pij id.
 
 ### Two things first light found that no fixture could
 
-**The `--folder` default is wrong for a worktree-resident seat.** The first run
-failed with `holds no session ending _01a045f4….jsonl`, because it looked under
-`-substrate-flowspace-flowspace3` while the session lives under
-`-substrate-flowspace-fs3-convo-ingest`. pij records a seat's `gitCommonDir`,
-which is the MAIN CLONE even when the seat works in a worktree, and omp slugs by
-the actual working directory. So the seat route's folder default is unreliable
-for exactly the fleet this product serves. Pass `--folder` explicitly until the
-resolver learns to locate a session by its (globally unique) id rather than by a
-folder-derived slug.
+**The `--folder` default is wrong for a worktree-resident seat — FOUND AND
+FIXED IN-PLAN.** The first run failed with `holds no session ending
+_01a045f4….jsonl`, because it looked under `-substrate-flowspace-flowspace3`
+while the session lives under `-substrate-flowspace-fs3-convo-ingest`. pij
+records a seat's `gitCommonDir`, which is the MAIN CLONE even when the seat
+works in a worktree, and omp slugs by the actual working directory. Every seat
+of this fleet is worktree-resident, so the default was wrong more often than
+right.
+
+The resolver now asks the STORE rather than the slug. When the folder-derived
+directory misses, it scans the store's slug directories for the session id —
+globally unique — and reads the working directory the session itself recorded:
+omp on its `session` header, claude on its content rows. It deliberately does
+NOT un-slug a directory name: a slug joins components with `-`, so
+`-substrate-flowspace-fs3-convo-ingest` is indistinguishable from three nested
+directories and inverting it would guess. The folder actually used comes back in
+the envelope.
+
+Proven live with the exact invocation that failed: the same
+`--folder <main clone>` call now completes, lands in the SAME conversation
+rather than a second one, and the conversation's `worktree` reads
+`/Users/jordanknight/substrate/flowspace/fs3-convo-ingest` — the discovered
+directory, not the one that was passed.
 
 **Ingest can starve behind enrichment.** The re-poll job sat `pending` while 500+
 `summarize` jobs drained, and landed only once they had. Submitting is instant;

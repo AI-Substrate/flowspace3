@@ -94,6 +94,9 @@ pub struct SessionIngest {
 pub struct IngestReport {
     /// Which store was read.
     pub harness: String,
+    /// The workspace the session was actually found under, which is not always
+    /// the one the caller named — see `discover_folder`.
+    pub folder: String,
     /// One row per session file, main first.
     pub sessions: Vec<SessionIngest>,
     /// Records read across every file.
@@ -202,6 +205,93 @@ pub fn next_after_submit(accepted: &IngestAccepted) -> String {
     )
 }
 
+/// Where a session was ACTUALLY recorded, asked of the store rather than
+/// inferred from a slug.
+///
+/// The seat route defaults `folder` to the git directory pij recorded, and pij
+/// registers a worktree-resident seat against its MAIN CLONE — while omp and
+/// claude slug by the seat's real working directory. For a fleet that works in
+/// worktrees, which is this one, the default is therefore wrong more often
+/// than it is right, and first light hit it on its first run.
+///
+/// The fix does NOT un-slug a directory name: a slug joins path components
+/// with `-`, so `-substrate-flowspace-fs3-convo-ingest` is ambiguous and
+/// inverting it would guess. Both stores record the working directory INSIDE
+/// the session — omp on its `session` header, claude on its content rows — so
+/// the session is asked instead, and the answer is exact.
+///
+/// Returns `None` when no store directory holds the id, which is a genuinely
+/// unknown session rather than a misaddressed one.
+fn discover_folder(harness: Harness, session_id: &str, home: &Path) -> Option<PathBuf> {
+    let (root, matches): (PathBuf, fn(&str, &str) -> bool) = match harness {
+        Harness::Omp => (home.join(".omp/agent/sessions"), |name, id| {
+            name.ends_with(&format!("_{id}.jsonl"))
+        }),
+        Harness::Claude => (home.join(".claude/projects"), |name, id| {
+            name == format!("{id}.jsonl")
+        }),
+        // The ledger is addressed by seat and the metrics store is one
+        // database: neither has a workspace-slugged directory to search.
+        Harness::PijLedger | Harness::MetricsDb => return None,
+    };
+
+    for slug_dir in std::fs::read_dir(&root).ok()?.flatten() {
+        let Ok(entries) = std::fs::read_dir(slug_dir.path()) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let Some(name) = name.to_str() else { continue };
+            if !matches(name, session_id) {
+                continue;
+            }
+            if let Some(cwd) = cwd_of(&entry.path()) {
+                return Some(cwd);
+            }
+        }
+    }
+    None
+}
+
+/// The working directory a session file records, from the first record that
+/// carries one.
+fn cwd_of(path: &Path) -> Option<PathBuf> {
+    let text = std::fs::read_to_string(path).ok()?;
+    for line in text.lines().take(64) {
+        let Ok(record) = serde_json::from_str::<serde_json::Value>(line) else {
+            continue;
+        };
+        if let Some(cwd) = record.get("cwd").and_then(serde_json::Value::as_str) {
+            return Some(PathBuf::from(cwd));
+        }
+    }
+    None
+}
+
+/// The native session id an input addresses.
+fn session_id_of(input: &IngestInput) -> &str {
+    match input {
+        IngestInput::Pij { id, .. } => id,
+        IngestInput::Native { session_id, .. } => session_id,
+    }
+}
+
+/// The same address, pointed at a different workspace.
+fn with_folder(input: IngestInput, folder: PathBuf) -> IngestInput {
+    match input {
+        IngestInput::Pij { id, .. } => IngestInput::Pij { id, folder },
+        IngestInput::Native {
+            session_id,
+            harness,
+            ..
+        } => IngestInput::Native {
+            session_id,
+            harness,
+            folder,
+        },
+    }
+}
+
 /// The conversation a session belongs to, derived rather than minted.
 ///
 /// A uuid-shaped value from `sha256("fs3-convo-v1:<harness>/<session_id>")`,
@@ -295,17 +385,39 @@ pub async fn ingest(state: &AppState, request: &IngestRequest) -> Result<IngestR
     let (input, harness) = address(request, &home)?;
     let folder = input_folder(&input);
     let remote = remote_url(&folder);
-    let files = tokio::task::spawn_blocking({
+    let mut folder = folder;
+    let mut input = input;
+    let mut resolved = tokio::task::spawn_blocking({
         let source = source_for(harness, &folder, &home, remote.as_deref())?;
         let input = input.clone();
         move || source.resolve(&input)
     })
     .await
-    .map_err(|error| join_failure(&error))?
-    .map_err(|error| reader_failure(&error.to_string()))?;
+    .map_err(|error| join_failure(&error))?;
+
+    // The folder we were handed may be the wrong one — see `discover_folder`.
+    // Ask the store where the session actually lives, then resolve again. Only
+    // once: a second miss is a session no store holds.
+    if resolved.is_err()
+        && let Some(found) = discover_folder(harness, session_id_of(&input), &home)
+        && found != folder
+    {
+        folder = found;
+        input = with_folder(input, folder.clone());
+        resolved = tokio::task::spawn_blocking({
+            let source = source_for(harness, &folder, &home, remote.as_deref())?;
+            let input = input.clone();
+            move || source.resolve(&input)
+        })
+        .await
+        .map_err(|error| join_failure(&error))?;
+    }
+
+    let files = resolved.map_err(|error| reader_failure(&error.to_string()))?;
 
     let mut report = IngestReport {
         harness: harness.to_string(),
+        folder: folder.to_string_lossy().to_string(),
         ..IngestReport::default()
     };
     let floor = state.config.indexing.turn_summary_min_bytes;
@@ -461,13 +573,14 @@ pub async fn ingest(state: &AppState, request: &IngestRequest) -> Result<IngestR
 #[must_use]
 pub fn next_after_ingest(report: &IngestReport) -> String {
     format!(
-        "read {}, appended {}, deduped {} across {} session file(s). \
+        "read {}, appended {}, deduped {} across {} session file(s) under {}. \
          `flowspace3 status` watches the queue drain; then \
          `flowspace3 search \"<question>\" --source conversation`.",
         report.records_read,
         report.turns_new,
         report.deduped,
-        report.sessions.len()
+        report.sessions.len(),
+        report.folder
     )
 }
 
@@ -686,5 +799,88 @@ mod tests {
         let home = Path::new("/Users/jordanknight");
         let folder = Path::new("/opt/work/repo");
         assert_eq!(workspace_slug(Harness::Omp, folder, home), "-opt-work-repo");
+    }
+
+    /// A scratch home holding one omp session under `slug`, whose `session`
+    /// header names `cwd`.
+    fn omp_home(slug: &str, session_id: &str, cwd: &str) -> PathBuf {
+        static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let unique = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("the clock is after 1970")
+            .as_nanos();
+        let home = std::env::temp_dir().join(format!("fs3-convo-ingest-{nanos}-{unique}"));
+        let dir = home.join(".omp/agent/sessions").join(slug);
+        std::fs::create_dir_all(&dir).expect("a scratch sessions directory");
+        let body = format!(
+            "{{\"type\":\"title\",\"title\":\"\"}}\n\
+             {{\"type\":\"session\",\"id\":\"{session_id}\",\"cwd\":\"{cwd}\"}}\n"
+        );
+        std::fs::write(
+            dir.join(format!("2026-08-28T01-21-14-690Z_{session_id}.jsonl")),
+            body,
+        )
+        .expect("a scratch session file");
+        home
+    }
+
+    #[test]
+    fn a_worktree_seat_is_found_even_though_pij_names_its_main_clone() {
+        // The defect first light hit on its first run: pij records a seat's
+        // gitCommonDir, which is the MAIN CLONE, while omp slugs by the seat's
+        // real working directory — its WORKTREE. Every seat of this fleet is
+        // worktree-resident, so the default is wrong more often than right.
+        let session = "01a045f4-edc2-7000-8dc7-47d6d5677147";
+        let worktree = "/Users/x/substrate/flowspace/fs3-convo-ingest";
+        let home = omp_home("-substrate-flowspace-fs3-convo-ingest", session, worktree);
+
+        // What pij would have handed us: the main clone.
+        let from_pij = Path::new("/Users/x/substrate/flowspace/flowspace3");
+        assert_eq!(
+            workspace_slug(Harness::Omp, from_pij, &home),
+            "-Users-x-substrate-flowspace-flowspace3",
+            "the clone-derived slug is not where the session lives"
+        );
+
+        let found = discover_folder(Harness::Omp, session, &home).expect("the session is found");
+        assert_eq!(
+            found,
+            PathBuf::from(worktree),
+            "discovery returns the cwd the STORE recorded, not an un-slugged guess"
+        );
+        std::fs::remove_dir_all(&home).ok();
+    }
+
+    #[test]
+    fn discovery_reads_the_stores_own_cwd_rather_than_inverting_a_slug() {
+        // The slug joins path components with `-`, so `fs3-convo-ingest` is
+        // indistinguishable from three nested directories. Inverting it would
+        // guess; asking the session cannot.
+        let session = "01a045f4-edc2-7000-8dc7-47d6d5677147";
+        let cwd = "/Users/x/substrate/flowspace/fs3-convo-ingest";
+        let home = omp_home("-substrate-flowspace-fs3-convo-ingest", session, cwd);
+        let found = discover_folder(Harness::Omp, session, &home).expect("found");
+        assert_ne!(
+            found,
+            PathBuf::from("/Users/x/substrate/flowspace/fs3/convo/ingest"),
+            "an un-slugged path would have split the hyphens into directories"
+        );
+        assert_eq!(found, PathBuf::from(cwd));
+        std::fs::remove_dir_all(&home).ok();
+    }
+
+    #[test]
+    fn a_session_no_store_holds_is_not_discovered() {
+        let home = omp_home(
+            "-somewhere",
+            "aaaaaaaa-0000-7000-8000-000000000000",
+            "/tmp/x",
+        );
+        assert!(
+            discover_folder(Harness::Omp, "ffffffff-0000-7000-8000-000000000000", &home).is_none(),
+            "an unknown session is unknown, not misaddressed"
+        );
+        std::fs::remove_dir_all(&home).ok();
     }
 }
