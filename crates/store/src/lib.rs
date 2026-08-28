@@ -48,8 +48,8 @@ pub use ddoc::{
 };
 pub use elements::{get_elements, upsert_element_tree};
 pub use embeddings::{
-    EMBEDDING_DIMENSIONS, NewEmbedding, SearchFilters, SearchHit, SimilarElement, SourceKind,
-    anchor_has_vectors, embedding_models, existing_embedding_hashes, put_embeddings,
+    AnchorScope, EMBEDDING_DIMENSIONS, NewEmbedding, SearchFilters, SearchHit, SimilarElement,
+    SourceKind, anchor_has_vectors, embedding_models, existing_embedding_hashes, put_embeddings,
     query_embeddings, search_elements,
 };
 pub use jobs::{

@@ -357,13 +357,16 @@ pub async fn search(
 /// scoring below it, and the floor is the fact worth reporting rather than a
 /// shrug about the query.
 ///
-/// No floor, and an anchor was applied: nothing could have been rejected —
-/// every vector is within a cosine distance of 1.0 of every other — and
-/// [`anchor_not_indexed`] has just proven the anchor holds indexed content.
-/// An empty answer there is not an absence of matches, it is an approximate
-/// nearest-neighbour scan that ran out of budget before reaching this
-/// anchor's share of the index. Saying "nothing matched" is the lie this
-/// function exists to stop telling.
+/// No floor, an anchor, and NO selective content predicate: nothing could have
+/// been rejected — every vector is within a cosine distance of 1.0 of every
+/// other — and [`anchor_not_indexed`] has just proven the anchor holds indexed
+/// content. An empty answer there is not an absence of matches, it is an
+/// approximate nearest-neighbour scan that ran out of budget before reaching
+/// this anchor's share of the index.
+///
+/// Source and ddoc predicates can legitimately admit zero rows. In that case
+/// the scan cause is unproven, so `None` keeps the generic filtered-empty steer
+/// rather than telling the caller to wait for a scan that may already be done.
 ///
 /// No floor and no anchor, or a conversation search: nothing here has
 /// established that any reachable content exists — [`anchor_not_indexed`]
@@ -385,6 +388,14 @@ fn empty_because(filters: &SearchFilters, code: bool) -> Option<EmptyBecause> {
     }
 
     if !code {
+        return None;
+    }
+
+    if filters.source.is_some()
+        || filters.id_kinds.is_some()
+        || filters.gate_open.is_some()
+        || filters.ddoc_schema.is_some()
+    {
         return None;
     }
 
@@ -490,7 +501,8 @@ async fn anchor_not_indexed(
 
     // Best-effort like its caller: a diagnostic that cannot run must not
     // convert a successful empty answer into a failed command.
-    if fs3_store::anchor_has_vectors(&state.db, model_key, filters)
+    let scope = fs3_store::AnchorScope { repo, path };
+    if fs3_store::anchor_has_vectors(&state.db, model_key, &scope)
         .await
         .ok()?
     {
