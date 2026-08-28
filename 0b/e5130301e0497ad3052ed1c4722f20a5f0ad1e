@@ -1,0 +1,21 @@
+docs/plans/008-ddocs-scan/impl-guide.dd.json
+  s_15d888f4b629c1::t_ebaae88d95dbb3 87
+docs/plans/008-ddocs-scan/impl-guide.dd.md
+  s_15d888f4b629c1::t_fbb38b541376f8 144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0be5130301e0497ad3052ed1c4722f20a5f0ad1e",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
