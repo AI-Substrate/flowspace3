@@ -14,9 +14,10 @@ use std::time::Duration;
 use fs3_core::{BlobRef, Element, ElementKind, Embedder, RepoIdentity, Span, Summary};
 use fs3_store::{
     EMBEDDING_DIMENSIONS, NewEmbedding, PgPool, SearchFilters, SourceKind, StoreError, claim_job,
-    create_database, database_exists, enqueue_job, find_worktree, list_worktrees, maintenance_url,
-    put_embeddings, put_smart_content, queue_depth, register_worktree, retry_job, schema_current,
-    search_elements, sync_worktree_files, upsert_element_tree, worktree_paths_for_blob,
+    complete_job, create_database, database_exists, enqueue_job, find_worktree, list_worktrees,
+    maintenance_url, put_embeddings, put_smart_content, queue_depth, register_worktree, retry_job,
+    schema_current, search_elements, sync_worktree_files, upsert_element_tree,
+    worktree_paths_for_blob,
 };
 use fs3_testkit::fakes::FakeEmbedder;
 use support::{FreshDatabase, PARSER_VERSION, unique_blob, unique_seed};
@@ -342,6 +343,56 @@ async fn a_retried_job_returns_to_the_queue_invisible_until_its_delay_elapses() 
     let again = claim_job(&pool, &["scan_file"]).await.unwrap().unwrap();
     assert_eq!(again.id, claimed.id);
     assert_eq!(again.attempts, 2, "claim increments; retry must not reset");
+
+    database.destroy(pool).await;
+}
+
+/// Equal-priority work is LIFO: a fresh edit must not wait behind a bootstrap
+/// backlog that happened to arrive first.
+#[tokio::test]
+async fn a_fresh_job_claims_ahead_of_an_old_equal_priority_backlog() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    for index in 0..3 {
+        enqueue_job(
+            &pool,
+            "scan_file",
+            &format!("scan:old:{index}"),
+            &serde_json::json!({ "generation": "old" }),
+            Duration::ZERO,
+        )
+        .await
+        .unwrap();
+    }
+    enqueue_job(
+        &pool,
+        "scan_file",
+        "scan:fresh",
+        &serde_json::json!({ "generation": "fresh" }),
+        Duration::ZERO,
+    )
+    .await
+    .unwrap();
+
+    let claimed = claim_job(&pool, &["scan_file"]).await.unwrap().unwrap();
+    assert_eq!(claimed.dedupe_key, "scan:fresh");
+
+    complete_job(&pool, claimed.id).await.unwrap();
+    enqueue_job(
+        &pool,
+        "scan_file",
+        "scan:future",
+        &serde_json::json!({ "generation": "future" }),
+        Duration::from_secs(60),
+    )
+    .await
+    .unwrap();
+    let ready = claim_job(&pool, &["scan_file"]).await.unwrap().unwrap();
+    assert!(
+        ready.dedupe_key.starts_with("scan:old:"),
+        "a newer id whose not_before is in the future must remain deferred"
+    );
 
     database.destroy(pool).await;
 }
