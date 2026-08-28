@@ -61,6 +61,7 @@ pub fn router(state: AppState) -> Router {
         .route("/gc", post(gc))
         .route("/conversations", post(conversations).get(conversation_list))
         .route("/conversations/remove", post(conversation_remove))
+        .route("/conversations/ingest", post(conversation_ingest))
         .route("/search", get(search))
         .route("/get", get(get_address))
         .route("/tree", get(tree))
@@ -157,6 +158,30 @@ async fn conversations(
     match crate::conversations::intake(&state, request).await {
         Ok(report) => {
             let next = crate::conversations::next_after_intake(&report);
+            ok(&state, COMMAND, report)
+                .await
+                .0
+                .with_next_action(next)
+                .into()
+        }
+        Err(failure) => failed(&state, COMMAND, failure).await,
+    }
+}
+
+async fn conversation_ingest(
+    State(state): State<AppState>,
+    Json(request): Json<crate::convo_ingest::IngestRequest>,
+) -> Answer<crate::convo_ingest::IngestAccepted> {
+    const COMMAND: &str = "conversation ingest";
+    if let Err(failure) = crate::schema::guard(&state.db).await {
+        return failed(&state, COMMAND, failure).await;
+    }
+    // ENQUEUE ONLY. Ingest is fired from harness hooks, which run often and
+    // must not wait on a store read: the route validates the address, upserts
+    // one job, and returns. The runner does the reading.
+    match crate::convo_ingest::submit(&state, &request).await {
+        Ok(report) => {
+            let next = crate::convo_ingest::next_after_submit(&report);
             ok(&state, COMMAND, report)
                 .await
                 .0

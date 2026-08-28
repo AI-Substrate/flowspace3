@@ -245,6 +245,31 @@ enum ConversationCommand {
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
     },
+    /// Pull a conversation out of a native agent session store, incrementally.
+    ///
+    /// Unlike `import`, which is handed a transcript, this READS the store the
+    /// harness already wrote — Claude Code and omp session jsonl, the pij seat
+    /// ledger, or git-ai's metrics database — and remembers where it stopped,
+    /// so running it again costs only the turns that are new.
+    Ingest {
+        /// The pij seat that had the conversation. Resolved through the
+        /// `pij sessions` join to a harness and a native session id.
+        #[arg(long, value_name = "SEAT", conflicts_with_all = ["session", "harness"])]
+        pij: Option<String>,
+        /// The harness's own session id, when you already know it.
+        #[arg(long, value_name = "ID", requires = "harness")]
+        session: Option<String>,
+        /// Which store to read: claude, omp, pij or metrics-db.
+        #[arg(long, value_name = "HARNESS", requires = "session")]
+        harness: Option<String>,
+        /// The workspace the conversation happened in. Defaults to where you
+        /// are standing, or to the git directory pij recorded for the seat.
+        #[arg(long, value_name = "PATH")]
+        folder: Option<String>,
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
     /// List indexed conversations, newest first.
     List {
         /// Only conversations anchored to this repository identity.
@@ -459,6 +484,28 @@ async fn run(command: Command) -> Result<ExitCode> {
             let import =
                 fs3_cli::conversation::read(&file, guid, repo, worktree.or_else(here), title)?;
             Ok(emit(&client.conversation_import(&import.body).await))
+        }
+        Command::Conversation {
+            command:
+                ConversationCommand::Ingest {
+                    pij,
+                    session,
+                    harness,
+                    folder,
+                    daemon_url,
+                },
+        } => {
+            let client = client_for(daemon_url)?;
+            // The folder defaults to where the caller is standing, which is
+            // almost always the workspace the conversation was about; the seat
+            // route falls back again to what pij recorded.
+            let body = serde_json::json!({
+                "pij_id": pij,
+                "session_id": session,
+                "harness": harness,
+                "folder": folder.or_else(here),
+            });
+            Ok(emit(&client.conversation_ingest(&body).await))
         }
         Command::Conversation {
             command:

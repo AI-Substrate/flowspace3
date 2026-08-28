@@ -50,7 +50,7 @@ use crate::runner::fail;
 use crate::wiring::AppState;
 
 /// What an ingest was asked for.
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct IngestRequest {
     /// The pij seat, when addressing by seat.
@@ -106,6 +106,100 @@ pub struct IngestReport {
     pub deduped: usize,
     /// Turns queued for enrichment.
     pub summarized: usize,
+}
+
+/// The job kind that does the reading.
+///
+/// Ingest is fired from HARNESS HOOKS, which run often and must not wait: the
+/// route ENQUEUES and returns, and the daemon's own runner does the work. The
+/// queue's dedupe key is the address, and `enqueue_job` upserts among live
+/// jobs, so a burst of hook firings collapses into ONE pending job rather than
+/// one job per firing — the same mechanism the watcher's debounce relies on.
+pub const INGEST_SESSION: &str = "ingest_session";
+
+/// What the route returns, immediately.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct IngestAccepted {
+    /// The address the job will resolve.
+    pub address: String,
+    /// The queue key it collapses on.
+    pub dedupe_key: String,
+    /// Always true — a refusal is a failure envelope, not this.
+    pub accepted: bool,
+}
+
+/// Enqueue an ingest and return without touching a session store.
+///
+/// # Errors
+/// [`catalog::QUERY_INVALID`] for an address that is not one of the two
+/// shapes; store failures mapped by their own codes.
+pub async fn submit(state: &AppState, request: &IngestRequest) -> Result<IngestAccepted, Failure> {
+    // Validated HERE rather than in the worker, so a mistyped address is a
+    // synchronous error the caller can see rather than a job that fails later
+    // where a hook will never look.
+    let address = match (&request.pij_id, &request.session_id, &request.harness) {
+        (Some(seat), None, None) => format!("pij/{seat}"),
+        (None, Some(session), Some(harness)) => {
+            let _: Harness = harness.parse().map_err(|error: fs3_core::Error| {
+                Failure::new(&catalog::QUERY_INVALID, error.to_string()).retryable(false)
+            })?;
+            format!("{harness}/{session}")
+        }
+        _ => {
+            return Err(Failure::new(
+                &catalog::QUERY_INVALID,
+                "address a conversation either by seat (--pij) or by session (--session with \
+                 --harness), never both and never neither"
+                    .to_string(),
+            )
+            .retryable(false));
+        }
+    };
+
+    let folder = request.folder.clone().unwrap_or_default();
+    let dedupe_key = format!("ingest:{address}@{folder}");
+    let payload = serde_json::to_value(request).map_err(|error| {
+        Failure::new(
+            &catalog::QUERY_INVALID,
+            format!("the ingest request is not serialisable: {error}"),
+        )
+    })?;
+
+    fs3_store::enqueue_job(
+        &state.db,
+        INGEST_SESSION,
+        &dedupe_key,
+        &payload,
+        std::time::Duration::ZERO,
+    )
+    .await
+    .map_err(fail)?;
+
+    Ok(IngestAccepted {
+        address,
+        dedupe_key,
+        accepted: true,
+    })
+}
+
+/// The runner's entry point: do the work the route enqueued.
+///
+/// # Errors
+/// Whatever [`ingest`] returns; a malformed payload is terminal.
+pub async fn run(state: &AppState, payload: serde_json::Value) -> Result<(), Failure> {
+    let request: IngestRequest = crate::runner::payload(payload)?;
+    ingest(state, &request).await.map(|_| ())
+}
+
+/// What to tell an operator who just submitted one.
+#[must_use]
+pub fn next_after_submit(accepted: &IngestAccepted) -> String {
+    format!(
+        "queued {} for ingest. `flowspace3 status` watches the queue drain; then \
+         `flowspace3 search \"<question>\" --source conversation`. Repeat firings of this \
+         address collapse into one job while it is still pending.",
+        accepted.address
+    )
 }
 
 /// The conversation a session belongs to, derived rather than minted.
@@ -259,22 +353,27 @@ pub async fn ingest(state: &AppState, request: &IngestRequest) -> Result<IngestR
         // a conversation began when its first turn did, and an ingest-time
         // stamp would make the same conversation start at a different moment
         // depending on when someone happened to run this.
-        let started_at = batch
-            .records
-            .first()
-            .map(|record| record.at.clone())
-            .unwrap_or_else(|| "1970-01-01T00:00:00Z".to_string());
-        let header = Conversation {
-            guid: guid.clone(),
-            repo_identity: remote.clone(),
-            worktree: Some(folder.to_string_lossy().to_string()),
-            base_sha: None,
-            title: Some(conversation_title(&file.session_id, file.kind)),
-            started_at,
-        };
-        fs3_store::upsert_conversation(&state.db, &header)
-            .await
-            .map_err(fail)?;
+        //
+        // And when this poll read NOTHING there is deliberately no fallback
+        // stamp: an epoch default would be a date nobody chose, absorbed
+        // silently, which is the pattern u2 caught in claude's ordinal and u1a
+        // then found again in its own timestamps. A poll with no records has
+        // nothing to date the conversation by, and the header it would be
+        // dating already exists — so the upsert is SKIPPED rather than fed a
+        // number.
+        if let Some(first) = batch.records.first() {
+            let header = Conversation {
+                guid: guid.clone(),
+                repo_identity: remote.clone(),
+                worktree: Some(folder.to_string_lossy().to_string()),
+                base_sha: None,
+                title: Some(conversation_title(&file.session_id, file.kind)),
+                started_at: first.at.clone(),
+            };
+            fs3_store::upsert_conversation(&state.db, &header)
+                .await
+                .map_err(fail)?;
+        }
 
         let ordinals: Vec<&str> = batch
             .records

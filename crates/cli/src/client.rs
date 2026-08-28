@@ -159,6 +159,12 @@ impl DaemonClient {
             .await
     }
 
+    /// Pull a conversation out of a native agent session store.
+    pub async fn conversation_ingest(&self, body: &Value) -> Envelope {
+        self.post("conversation ingest", "/conversations/ingest", body)
+            .await
+    }
+
     /// List indexed conversations.
     pub async fn conversation_list(&self, query: &[(String, String)]) -> Envelope {
         self.get_json("conversation list", "/conversations", query)

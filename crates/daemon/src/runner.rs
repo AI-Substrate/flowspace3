@@ -38,6 +38,7 @@ use tokio::task::JoinSet;
 
 use crate::answer::IntoFailure;
 use crate::batch;
+use crate::convo_ingest::INGEST_SESSION;
 use crate::enrich::{self, EMBED, SUMMARIZE};
 use crate::roots::SCAN_FILE;
 use crate::wiring::AppState;
@@ -46,19 +47,21 @@ use crate::wiring::AppState;
 ///
 /// Scans first: a scan produces enrichment work, so draining scans early keeps
 /// the LLM and embedding calls — the slow, parallel part — fed.
-pub const KINDS: &[&str] = &[SCAN_FILE, SUMMARIZE, EMBED];
+pub const KINDS: &[&str] = &[SCAN_FILE, INGEST_SESSION, SUMMARIZE, EMBED];
 
 /// The kinds claimed ONE AT A TIME, because their work cannot merge.
 ///
-/// `scan_file` reads one path; `summarize` is one call per element. Only
-/// `embed` batches, and it is drained separately — claiming it here too would
-/// have the two paths racing for the same rows.
+/// `scan_file` reads one path; `summarize` is one call per element;
+/// `ingest_session` reads one session file and must not interleave with
+/// another poll of the same conversation. Only `embed` batches, and it is
+/// drained separately — claiming it here too would have the two paths racing
+/// for the same rows.
 ///
 /// The two share this pool but NOT a width: `summarize` is provider-bound and
 /// takes its own lane below, while `scan_file` is local I/O and stays on
 /// `worker_concurrency`. Sharing one number meant a slow hosted model
 /// throttled local file reads for no reason.
-pub const SERIAL_KINDS: &[&str] = &[SCAN_FILE, SUMMARIZE];
+pub const SERIAL_KINDS: &[&str] = &[SCAN_FILE, INGEST_SESSION, SUMMARIZE];
 
 /// How many embed jobs one batched claim takes.
 ///
@@ -644,6 +647,7 @@ fn subject_of(kind: &str, payload: &serde_json::Value) -> String {
 async fn dispatch(state: &AppState, job: Job) -> Result<(), Failure> {
     match job.kind.as_str() {
         SCAN_FILE => crate::scan::run(state, job.payload).await,
+        INGEST_SESSION => crate::convo_ingest::run(state, job.payload).await,
         SUMMARIZE => enrich::summarize(state, job.payload).await,
         EMBED => enrich::embed(state, job.payload).await,
         other => Err(Failure::new(
