@@ -1,0 +1,69 @@
+crates/cli/src/doctor.rs
+  s_b668fefb3076c7::t_d97232ba935a20 36
+crates/core/src/lib.rs
+  s_a6b77772852964::t_1b29e2e2271cd3 27
+crates/core/src/views/doctor.rs
+  s_a6b77772852964::t_81aeee82133f4d 1-186
+crates/core/src/views/mod.rs
+  s_a6b77772852964::t_1100d78d19660b 1-35
+crates/core/src/views/read.rs
+  s_a6b77772852964::t_702103d8a2e037 1-162
+crates/core/src/views/remove.rs
+  s_a6b77772852964::t_586f8e8379648b 1-47
+crates/core/src/views/roots.rs
+  s_a6b77772852964::t_d925f752403902 1-65
+crates/core/src/views/search.rs
+  s_b668fefb3076c7::t_64b73150cfc677 1-39
+crates/core/src/views/status.rs
+  s_a6b77772852964::t_252124ec9a6a00 1-57
+crates/daemon/src/read.rs
+  s_b668fefb3076c7::t_4b70f0f446d3f1 43,45,51-53
+crates/daemon/src/remove.rs
+  s_b668fefb3076c7::t_f93fb98767f0e1 11,13-25,67,86
+crates/daemon/src/roots.rs
+  s_a6b77772852964::t_433c8170a3b995 35
+crates/daemon/src/search.rs
+  s_b668fefb3076c7::t_86c22c85047105 29,34
+crates/daemon/src/status.rs
+  s_b668fefb3076c7::t_e14864e2dd891e 12
+crates/daemon/tests/conversation_query.rs
+  s_b668fefb3076c7::t_6fb5e677dc6b37 15,18
+crates/daemon/tests/watcher.rs
+  s_b668fefb3076c7::t_16d0ea1186fe0a 30,84
+crates/cli/tests/doctor_daemon.rs
+  s_15d888f4b629c1::t_6797853e06a0ee 13,56,199,267,280-281,286-287
+crates/daemon/src/http.rs
+  s_b668fefb3076c7::t_802a5a631d78f9 28-30,32-36,77,174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4559b3fc6231056d1c2f49f545a6ae953ab830a8",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a6b77772852964": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "c800c9ff-86e7-4a5f-bdc3-f63517243af6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_b668fefb3076c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0e0064-8d84-48e6-b499-eca0c65baafc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
