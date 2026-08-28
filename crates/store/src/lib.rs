@@ -61,8 +61,8 @@ pub use refs::{
     sync_worktree_files, worktree_file_map, worktree_paths_for_blob,
 };
 pub use roots::{
-    Reclaimed, Removal, collect_garbage, raw_hash_is_referenced, reclaimable, remove_root,
-    worktree_exists,
+    Reclaimed, Removal, collect_garbage, raw_hash_is_referenced, reclaimable,
+    referenced_source_hashes, remove_root, worktree_exists,
 };
 pub use smart::{
     MissingEnrichment, MissingVector, get_smart_content, missing_embeddings, missing_enrichment,

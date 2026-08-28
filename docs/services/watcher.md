@@ -19,7 +19,9 @@ One pass, in order:
 1. **diff roots** — `list_worktrees` vs live handles; start what is new, drop what is gone
 2. **absorb** — drain the channel `notify` has been filling from its own thread
 3. **sweep** — ask the debouncer which directories have gone quiet
-4. **re-list** — walk each one, blob-diff it, enqueue `scan_file` for what actually changed
+4. **re-list** — ask discovery whether a walk from the ROOT would have reached
+   this directory at all; if not, refuse it and stop. Otherwise walk it,
+   blob-diff it, and enqueue `scan_file` for what actually changed
 
 ## Why the unit of work is a DIRECTORY
 
@@ -69,6 +71,9 @@ with the config and **had no reader until this landed**.
 | **Ignore filter before the debouncer** | `.git` is the loudest thing on a developer's disk and is in nobody's `.gitignore`; without a pre-filter every `git status` would buy a directory walk. Matched on whole path components, so `src/target_types.rs` survives. This is a noise filter, not the indexing rule — `discover` still owns what is worth scanning. |
 | **Never canonicalize an event path** | `canonicalize` fails on a path that has been deleted, which is precisely when the watcher needs to reason about it. Event paths are normalised lexically; only *roots* are canonicalized, at registration, where the path is guaranteed present. |
 | **Nested settled directories are pruned** | `discover` recurses, so walking both `/repo/src` and `/repo/src/deep` parses the same files twice for nothing. |
+| **The re-list asks discovery about REACHABILITY, not just contents** | `relist` calls `discovery::discover_subtree(root, directory, …)`, and `Ok(None)` — "a walk from the root would never have descended here" — returns before `record_walk`. Walking the settled directory *as its own root* was the defect (DL-035): a trailing-slash `.gitignore` pattern like `scratch/` matches a directory named `scratch` and never the path `scratch/old/notes.md`, so a walk starting below it is never offered the entry that would refuse it, accepts every file, and `record_walk` merges them into `worktree_files` — where the next full walk reaps them again. Measured: 886 gitignored files admitted from one event, 4,436 paid vectors and 222 paid summaries, all garbage. The hidden filter (`.claude/`, `.harness/`) had the identical hole. |
+| **Discovery answers it, not the watcher** | The reachability question is decided by running discovery's own walker from the root, depth-limited to the ancestor chain — inside `fs3-parsers`, beside the rules it consults. Re-implementing gitignore, hidden-file and deny-list semantics here would be a second copy of the indexing rule in the one module this page already insists must never own it. |
+| **Subtree paths are already worktree-relative** | `discover_subtree` reports paths relative to the ROOT, so `relist` no longer rebases them (`join_relative` is gone). The prefix survives only to tell `record_walk` which slice of the map this walk is entitled to replace. One keying convention, so a subtree walk and a full walk cannot disagree about what a path is called. |
 | **Write the worktree map back after a re-list** | The blob diff compares against `worktree_files`, and only `add`/`scan` used to write it — so every file the WATCHER discovered was absent from it and re-enqueued on every later event in its directory, forever. Measured on a live daemon before the fix: `src/second.rs` scanned **five** times, `src/third.rs` three, for three unrelated edits. `record_walk` writes the map back with the walked subtree replaced by what the walk found. |
 | **Reconstruct the WHOLE map, never hand over a subtree** | `sync_worktree_files` deletes every path absent from what it is given, so passing one subdirectory's files would reap the entire rest of the worktree. Everything outside the walked prefix is carried through verbatim. The prefix test is a path-boundary test, not a string one — `src` must not swallow `src2`, because "under the prefix and not found" means DELETED. |
 | **Enqueue through `roots.rs`'s shape only** | One `SCAN_FILE` kind, one `ScanFileJob::dedupe_key` (`scan:{worktree}:{path}` — path-shaped, so a file edited twice before the queue drains collapses to one pending scan of the latest content). No parallel queue. |
@@ -124,6 +129,18 @@ with the config and **had no reader until this landed**.
   through *both* filters asserting they agree — pinning the decision, not the
   data — including the toggle axis, which neither side's current tests touch.
   See `docs/services/discovery.md`.
+- **An event inside an unindexed tree is refused, and says so at DEBUG.** A
+  write under `scratch/`, `.claude/` or `node_modules/` that gets past the
+  component pre-filter still reaches the debouncer and still settles; what it
+  no longer does is enter the worktree map. The refusal is logged
+  (`"an event inside a directory fs3 does not index"`) rather than silent,
+  because "my file is not indexed" and "fs3 never looked" are the same symptom
+  to a user and different bugs to fix. Note the ordering trap this closes:
+  CREATING such a directory dirties its PARENT, whose own re-list makes the
+  correct decision — so the defect only ever showed on events inside a tree
+  that ALREADY existed, which is why
+  `an_event_inside_an_ignored_tree_never_enters_the_worktree_map` builds its
+  ignored trees before `add_root`.
 - **Deletions are reaped only inside a re-listed directory.** A file deleted
   from a directory that then settles leaves the map at the next pass. A file in
   a directory that never fires an event again — because the whole directory was

@@ -240,3 +240,72 @@ async fn remaining_counts_live_work_and_ignores_settled_history() {
     let pool = state.db.clone();
     database.destroy(pool).await;
 }
+
+/// Money NOT spent has to say so.
+///
+/// The reference guard drops embed items for content no registered root holds.
+/// A guard that works silently is indistinguishable from a provider that was
+/// never going to be called: the rows are identical either way — no vectors,
+/// no failures, jobs completed — and the only place the saving exists at all
+/// is the log. That is precisely this binary's subject.
+///
+/// [`stack_with_jobs`] enqueues exactly the shape the guard refuses: bare
+/// hashes nothing maps. So a drain over it must narrate the refusal, and must
+/// say HOW MUCH it refused rather than merely that it happened.
+///
+/// Summed across lines rather than read off one: the batch planner may merge
+/// the three jobs into one call or not, and how many lines the guard prints is
+/// its business. What it owes a reader is the total.
+#[tokio::test]
+async fn the_embed_spend_guard_says_what_it_refused_to_buy() {
+    let (database, state) = stack_with_jobs("streaming_guard", 3).await;
+    let log = Captured::default();
+
+    {
+        let _guard = log.install();
+        runner::drain(&state, 1).await;
+    }
+
+    let lines = log.lines();
+    let guard: Vec<&String> = lines
+        .iter()
+        .filter(|line| line.contains("skipping embeds for content no registered root holds"))
+        .collect();
+    assert!(
+        !guard.is_empty(),
+        "the guard saved three provider inputs and said nothing about it: {lines:#?}"
+    );
+
+    let total = |key: &str| -> i64 {
+        guard
+            .iter()
+            .map(|line| {
+                field(line, key)
+                    .unwrap_or_else(|| panic!("a guard line with no {key}: {line}"))
+                    .parse::<i64>()
+                    .expect("a count is a number")
+            })
+            .sum()
+    };
+
+    assert_eq!(
+        total("dropped"),
+        3,
+        "every unheld item is counted: {guard:#?}"
+    );
+    assert_eq!(
+        total("kept"),
+        0,
+        "and nothing survived to be bought: {guard:#?}"
+    );
+    assert_eq!(
+        field(guard[0], "kind").as_deref(),
+        Some("raw"),
+        "the kind is named, because raw and smart hashes live in different \
+         spaces and a reader chasing a bill needs to know which one: {}",
+        guard[0]
+    );
+
+    let pool = state.db.clone();
+    database.destroy(pool).await;
+}

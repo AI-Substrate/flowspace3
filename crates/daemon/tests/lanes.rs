@@ -99,12 +99,22 @@ async fn stack(
 }
 
 /// Enqueue `n` embed jobs, each big enough that the token budget cuts them
-/// apart into separate provider calls.
+/// apart into separate provider calls — and register a root that HOLDS their
+/// content, without which none of them reaches the provider at all.
+///
+/// The hold is a precondition of the measurement, not decoration: the embed
+/// handler refuses to pay for content no registered root maps, so a lane fed
+/// unheld hashes records a peak of ZERO concurrent calls and reads exactly
+/// like a lane that does not work. It lives inside this helper rather than in
+/// each test so the two cannot drift apart.
 async fn enqueue_wide(state: &AppState, n: usize) {
+    let items = support::items(0..u32::try_from(n).expect("a small lane"));
+    support::hold(state, "lane", &items).await;
+
     // One item per job, but each job is its own batch because they are all
     // distinct repos — grouping is by identity, so this is the honest way to
     // produce parallel batches rather than one merged call.
-    for i in 0..n {
+    for (i, (hash, text)) in items.iter().enumerate() {
         fs3_store::enqueue_job(
             &state.db,
             "embed",
@@ -112,7 +122,7 @@ async fn enqueue_wide(state: &AppState, n: usize) {
             &json!({
                 "identity": format!("git:repo{i}"),
                 "source": "raw",
-                "items": [[format!("{i:064x}"), format!("fn f{i}() {{}}")]],
+                "items": [[hash, text]],
             }),
             Duration::ZERO,
         )
