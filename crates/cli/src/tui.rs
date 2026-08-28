@@ -51,7 +51,7 @@ pub async fn run(client: DaemonClient) -> Result<()> {
 
     let snapshot_task = spawn_snapshot_worker(client.clone(), message_tx.clone());
     let search_task = spawn_search_worker(client.clone(), query_rx, message_tx.clone());
-    let stream_task = spawn_event_worker(client.base_url().to_string(), message_tx);
+    let stream_task = spawn_event_worker(client, message_tx);
 
     let mut app = App::default();
     let outcome = run_loop(&mut terminal.terminal, &mut app, &message_rx, &query_tx);
@@ -233,11 +233,10 @@ fn decode_envelope<T: DeserializeOwned>(envelope: Envelope) -> Result<T, String>
         .map_err(|error| format!("daemon returned unexpected data: {error}"))
 }
 
-fn spawn_event_worker(base_url: String, tx: Sender<WorkerMessage>) -> JoinHandle<()> {
+fn spawn_event_worker(client: DaemonClient, tx: Sender<WorkerMessage>) -> JoinHandle<()> {
     tokio::spawn(async move {
-        let http = reqwest::Client::new();
         loop {
-            let outcome = consume_event_stream(&http, &base_url, &tx).await;
+            let outcome = consume_event_stream(&client, &tx).await;
             let reason = outcome
                 .err()
                 .unwrap_or_else(|| "event stream ended".to_string());
@@ -251,24 +250,20 @@ fn spawn_event_worker(base_url: String, tx: Sender<WorkerMessage>) -> JoinHandle
 
 /// The one composition seam for u-w's live endpoint.
 ///
-/// The parser, reconnect policy, and UI know nothing about how the request is
-/// built. Composition changes this single request line if u-w's concrete
-/// endpoint helper differs from the frozen `GET /events` contract.
-fn event_stream_request(http: &reqwest::Client, base_url: &str) -> reqwest::RequestBuilder {
-    http.get(format!("{base_url}/events"))
+/// Authentication and transport stay private to [`DaemonClient`]. The parser,
+/// reconnect policy, and UI only receive its raw streamed response.
+async fn event_source(client: &DaemonClient) -> Result<reqwest::Response, String> {
+    client
+        .events(None)
+        .await
+        .map_err(|failure| failure.render())
 }
 
 async fn consume_event_stream(
-    http: &reqwest::Client,
-    base_url: &str,
+    client: &DaemonClient,
     tx: &Sender<WorkerMessage>,
 ) -> Result<(), String> {
-    let mut response = event_stream_request(http, base_url)
-        .send()
-        .await
-        .map_err(|error| format!("cannot reach {base_url}/events: {error}"))?
-        .error_for_status()
-        .map_err(|error| format!("{base_url}/events refused the stream: {error}"))?;
+    let mut response = event_source(client).await?;
 
     let mut decoder = EventDecoder::default();
     loop {

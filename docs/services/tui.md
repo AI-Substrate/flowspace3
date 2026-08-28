@@ -65,18 +65,19 @@ The unit consists of these exact composition hooks:
 
 ### Named event-source composition seam
 
-`crates/cli/src/tui.rs::event_stream_request` is the one source seam. **This is
-the line the composer changes** if u-w exposes a concrete request helper:
+`crates/cli/src/tui.rs::event_source` is the one source seam. **This is the line
+the composer changes** if u-w changes its concrete client helper:
 
 ```rust
-http.get(format!("{base_url}/events"))
+client.events(None).await.map_err(|failure| failure.render())
 ```
 
-The base URL is copied from the same `DaemonClient` used for snapshots. The
-NDJSON decoder, heartbeat timeout, reconnect loop, state transitions, and UI
-must not change during composition. The recorded fixture at
-`crates/cli/tests/fixtures/tui-events.ndjson` is test input only; production
-always targets the live endpoint.
+`DaemonClient::events` owns the base URL, rereads `daemon.key` immediately
+before every connection, sends the bearer token, and returns the raw response
+without an overall read timeout. The NDJSON decoder, heartbeat timeout,
+reconnect loop, state transitions, and UI must not change during composition.
+The recorded fixture at `crates/cli/tests/fixtures/tui-events.ndjson` is test
+input only; production always targets the live endpoint.
 
 ## Assumptions at unit handoff
 
@@ -87,5 +88,5 @@ always targets the live endpoint.
   snapshot after reconnect.
 - Additive event kinds deserialize as `EventKind::Unknown`; the dashboard skips
   them without dropping the stream.
-- The daemon endpoint needs no authentication beyond the existing local daemon
-  contract.
+- Every daemon HTTP request goes through `DaemonClient`; its private key handling
+  rereads `daemon.key` on reconnect so key rotation heals.
