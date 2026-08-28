@@ -1,0 +1,25 @@
+docs/plans/005-convo-ingest/assets/tasks/phase-3/tasks.dd.json
+  s_15d888f4b629c1::t_ca24302ac61b31 80,84-85
+docs/plans/005-convo-ingest/assets/tasks/phase-3/tasks.dd.md
+  s_15d888f4b629c1::t_5f054f65c16ba6 43
+docs/plans/005-convo-ingest/plan.dd.json
+  s_15d888f4b629c1::t_700f58c5e01ef2 44-45,50-51,56-57,62-63,68-69,74-75,80-81,86-87
+docs/plans/005-convo-ingest/plan.dd.md
+  s_15d888f4b629c1::t_dedd65f358db9c 56-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "67393be1ba326d9beb7f30f16eb1b240b7089bf0",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
