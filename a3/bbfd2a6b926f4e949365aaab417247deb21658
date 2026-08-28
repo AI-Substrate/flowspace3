@@ -1,0 +1,33 @@
+docs/plans/005-convo-ingest/assets/successor-context-pm2.md
+  s_15d888f4b629c1::t_6112f9801bb565 1-52
+crates/testkit/fixtures/conversations/claude/a5a5588f-0979-439f-a1bf-ddf185a089c7.jsonl
+  s_15d888f4b629c1::t_c6a23b5ca484c2 1-148
+crates/testkit/fixtures/conversations/claude/a5a5588f-0979-439f-a1bf-ddf185a089c7/subagents/agent-aa8ccc51dce0404a8.jsonl
+  s_15d888f4b629c1::t_390539472f167e 1-40
+crates/testkit/fixtures/conversations/claude/a5a5588f-0979-439f-a1bf-ddf185a089c7/subagents/agent-aa8ccc51dce0404a8.meta.json
+  s_15d888f4b629c1::t_19debaa606d525 1
+crates/testkit/fixtures/conversations/claude/b1d6f4fb-bd8e-4a10-a018-4205f4058b8e.jsonl
+  s_15d888f4b629c1::t_a154ad7c81c54a 1-35
+crates/testkit/fixtures/conversations/claude/b1d6f4fb-bd8e-4a10-a018-4205f4058b8e/tool-results/b8e9hq4my.txt
+  s_15d888f4b629c1::t_4711ded4cbbbff 1-283
+docs/plans/005-convo-ingest/impl-guide.dd.json
+  s_15d888f4b629c1::t_05c6004d73f757 17,29-83,112-131
+docs/plans/005-convo-ingest/impl-guide.dd.md
+  s_15d888f4b629c1::t_e11285c514b391 23,25-35,52-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a3bbfd2a6b926f4e949365aaab417247deb21658",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
