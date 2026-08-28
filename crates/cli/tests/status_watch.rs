@@ -11,6 +11,14 @@ const STREAM: &str = concat!(
     "{\"stream\":\"fs3.events\",\"v\":1,\"daemon\":\"0.4.0\",\"heartbeat_ms\":15000}\n",
     "{\"v\":1,\"at\":\"2026-08-28T03:11:05.001Z\",\"kind\":\"job_done\",\"job\":\"scan_file\",\"subject\":\"src/lib.rs\",\"ms\":12,\"left\":0}\n",
 );
+const INCOMPATIBLE_STREAM: &str = concat!(
+    "{\"stream\":\"fs3.events\",\"v\":2,\"daemon\":\"9.0.0\",\"heartbeat_ms\":15000}\n",
+    "{\"v\":2,\"at\":\"2026-08-28T03:11:05.001Z\",\"kind\":\"job_done\",\"job\":\"scan_file\",\"subject\":\"src/lib.rs\",\"ms\":12,\"left\":0}\n",
+);
+const DRIFTED_EVENT_STREAM: &str = concat!(
+    "{\"stream\":\"fs3.events\",\"v\":1,\"daemon\":\"0.4.0\",\"heartbeat_ms\":15000}\n",
+    "{\"v\":2,\"at\":\"2026-08-28T03:11:05.001Z\",\"kind\":\"job_done\",\"job\":\"scan_file\",\"subject\":\"src/lib.rs\",\"ms\":12,\"left\":0}\n",
+);
 
 fn flowspace3(config_dir: &Path) -> Command {
     let key_path = fs3_core::daemon_key_path(config_dir);
@@ -29,7 +37,7 @@ fn flowspace3(config_dir: &Path) -> Command {
 }
 
 /// Serve exactly one finite stream, then close. EOF is the watch's test exit.
-fn serve_once() -> (String, std::thread::JoinHandle<String>) {
+fn serve_once(body: &'static str) -> (String, std::thread::JoinHandle<String>) {
     let listener = TcpListener::bind("127.0.0.1:0").expect("binds an ephemeral port");
     let address = listener.local_addr().expect("bound address");
     let server = std::thread::spawn(move || {
@@ -41,8 +49,8 @@ fn serve_once() -> (String, std::thread::JoinHandle<String>) {
         let read = stream.read(&mut request).expect("reads request");
         let request = String::from_utf8_lossy(&request[..read]).to_string();
         let response = format!(
-            "HTTP/1.1 200 OK\r\nContent-Type: application/x-ndjson\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{STREAM}",
-            STREAM.len()
+            "HTTP/1.1 200 OK\r\nContent-Type: application/x-ndjson\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
         );
         stream
             .write_all(response.as_bytes())
@@ -92,7 +100,7 @@ fn output_with_deadline(mut command: Command) -> Output {
 
 #[test]
 fn json_watch_copies_daemon_ndjson_byte_for_byte() {
-    let (url, server) = serve_once();
+    let (url, server) = serve_once(STREAM);
     let config = tempfile::tempdir().expect("temporary config");
     let mut command = flowspace3(config.path());
     command.args(["status", "--watch", "--json", "--daemon-url", &url]);
@@ -115,7 +123,7 @@ fn json_watch_copies_daemon_ndjson_byte_for_byte() {
 
 #[test]
 fn human_watch_is_a_terse_feed_not_an_envelope() {
-    let (url, server) = serve_once();
+    let (url, server) = serve_once(STREAM);
     let config = tempfile::tempdir().expect("temporary config");
     let mut command = flowspace3(config.path());
     command.args(["status", "--watch", "--human", "--daemon-url", &url]);
@@ -136,5 +144,46 @@ fn human_watch_is_a_terse_feed_not_an_envelope() {
     assert!(
         !stdout.contains("\"ok\""),
         "watch is never envelope-shaped: {stdout}"
+    );
+}
+
+#[test]
+fn incompatible_version_is_rejected_for_humans_but_raw_json_is_untouched() {
+    for (mode, succeeds) in [("--human", false), ("--json", true)] {
+        let (url, server) = serve_once(INCOMPATIBLE_STREAM);
+        let config = tempfile::tempdir().expect("temporary config");
+        let mut command = flowspace3(config.path());
+        command.args(["status", "--watch", mode, "--daemon-url", &url]);
+        let output = output_with_deadline(command);
+        server.join().expect("server finishes");
+
+        assert_eq!(output.status.success(), succeeds, "mode {mode}");
+        if succeeds {
+            assert_eq!(output.stdout, INCOMPATIBLE_STREAM.as_bytes());
+            assert!(output.stderr.is_empty());
+        } else {
+            let stderr = String::from_utf8(output.stderr).expect("utf-8 stderr");
+            assert!(
+                stderr.contains("unsupported event stream version v2"),
+                "{stderr}"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_version_drift_after_a_compatible_hello_is_rejected() {
+    let (url, server) = serve_once(DRIFTED_EVENT_STREAM);
+    let config = tempfile::tempdir().expect("temporary config");
+    let mut command = flowspace3(config.path());
+    command.args(["status", "--watch", "--human", "--daemon-url", &url]);
+    let output = output_with_deadline(command);
+    server.join().expect("server finishes");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).expect("utf-8 stderr");
+    assert!(
+        stderr.contains("unsupported event line version v2"),
+        "{stderr}"
     );
 }
