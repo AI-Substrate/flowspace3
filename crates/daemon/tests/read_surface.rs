@@ -480,6 +480,78 @@ async fn ddoc_degradation_notice_uses_live_worktree_tooling() {
 }
 
 #[tokio::test]
+async fn zero_match_ddoc_filter_does_not_claim_the_repo_is_unindexed() {
+    let stack = Stack::create("search_ddoc_gate_diagnostic").await;
+    let fixture = stack
+        .index_ddoc(
+            "docs/plan.dd.json",
+            r#"{
+                "dd": {"schema": "builder/plan"},
+                "sections": [{"name": "tasks", "value": [
+                    {"id": "tk-0001", "title": "Derived open", "state": "checked"}
+                ]}]
+            }"#,
+        )
+        .await;
+    let mut tree = fs3_store::get_elements(
+        &stack.state.db,
+        &fixture.blob,
+        fs3_daemon::scan::PARSER_VERSION,
+    )
+    .await
+    .expect("read stored ddoc")
+    .expect("ddoc tree exists");
+    let meta = tree.children[0].children[0]
+        .ddoc
+        .as_mut()
+        .expect("task metadata");
+    meta.gate_terminal = Some(true);
+    meta.derived_state = Some(fs3_core::DerivedState {
+        complete: false,
+        incomplete: vec!["dw-0001".to_string()],
+    });
+    fs3_store::upsert_element_tree(
+        &stack.state.db,
+        &fixture.blob,
+        fs3_daemon::scan::PARSER_VERSION,
+        &tree,
+        |_| false,
+    )
+    .await
+    .expect("store derived-open task");
+    stack.embed_ddoc(&fixture, "derived gate diagnostic").await;
+
+    let common = [("q", "derived gate diagnostic"), ("cwd", "/srv/read-ddoc")];
+    let open = stack
+        .search(&[common[0], common[1], ("gate_open", "true")])
+        .await;
+    assert!(open.ok, "known-open filter answers: {:?}", open.error);
+    assert_eq!(data(&open)["results"].as_array().unwrap().len(), 1);
+
+    let closed = stack
+        .search(&[common[0], common[1], ("gate_open", "false")])
+        .await;
+    assert!(
+        closed.ok,
+        "zero-match content filter must not become QUERY_NO_INDEX: {:?}",
+        closed.error
+    );
+    assert_eq!(data(&closed)["results"], serde_json::json!([]));
+    let meta = closed.meta.as_ref().expect("search scope metadata");
+    assert!(
+        meta["empty_because"].is_null(),
+        "a selective content filter does not prove ANN starvation: {meta}"
+    );
+    let next = closed.next_action.as_deref().expect("empty search steers");
+    assert!(!next.contains("scan_incomplete"));
+    assert!(
+        !next.contains("flowspace3 add"),
+        "must not steer to re-index: {next}"
+    );
+    stack.destroy().await;
+}
+
+#[tokio::test]
 async fn refs_with_no_rows_is_a_successful_empty_answer() {
     let stack = Stack::create("refs_empty").await;
     let _ = stack
