@@ -10,6 +10,29 @@ after they have already produced verdicts.
 
 ---
 
+## Rulings that have already changed this rubric
+
+Recorded here rather than silently folded in, because a rubric that quietly
+drops a rejected idea loses the lesson that rejected it.
+
+- **R3 stands; the brief's "monotonic in store order" is struck as a ledger
+  criterion** (PM3, 2026-08-28). It was never a requirement of the consumer.
+- **The lexicographic remedy in R3 was WRONG and I could not have seen why.**
+  I offered two fixes: zero-pad the pij seq, or rule that ordinals are opaque.
+  PM3 ruled against padding with evidence I had no access to — the committed
+  expectations are BYTE-PINNED to the unpadded strings (`build_pij`
+  stringifies `seq` with `id_key seq`, ordinals 118..167), so padding would
+  fail `assert_ordinals_are_a_subsequence` against the very fixture it was
+  meant to protect. The remedy would have broken the thing it guarded. The
+  ruling took the other half: **ordinals are opaque identities, nothing ever
+  orders them, and any comparison other than equality is meaningless** — a
+  written rule in every service page instead of a padded string. Flagging the
+  trap was right; picking the remedy from outside the fixture's constraints
+  was not, and that is a reviewer's standing hazard worth naming: a remedy
+  proposed without sight of what is pinned can cost more than the trap.
+- **Unclosable item 1 (metrics-db rowid across VACUUM) is CLOSED**, by PM3
+  reading the git-ai schema — see that item below.
+
 ## What the consumer ACTUALLY requires
 
 Stated from the code that consumes ordinals — `fs3_core::prepare_batch` and
@@ -60,9 +83,14 @@ Ordinal monotonicity matters to the reader's own cursor, not to the ledger.
 — `"10" < "9"`. Nothing in my unit orders ordinals today (`BTreeSet` is used
 for membership only, and the ledger's own ordering query is on `turn_no`). The
 day someone adds "resume from `MAX(ordinal)`" or an `ORDER BY ordinal` that
-means something, that reader silently regresses. Either zero-pad at derivation
-or record "ordinals are opaque, never ordered" as a rule. I mention it because
-it costs nothing now and is expensive to discover later.
+means something, that reader silently regresses.
+
+**RULED (PM3, 2026-08-28):** ordinals are OPAQUE IDENTITIES — nothing orders
+them and any comparison other than equality is meaningless — written into every
+service page beside the derivation. My other suggestion, zero-padding at
+derivation, was rejected with evidence: the expectations are byte-pinned to the
+unpadded strings, so padding would fail the fixture assertion it was meant to
+protect. See the rulings section at the top.
 
 ### R4. Group-derived ordinals carry an extra dependency. THE SHARP ONE.
 
@@ -114,14 +142,25 @@ than smuggle it in as a defect.
 Declared in advance, because a clean bill I cannot lean on is worse than a
 hedge.
 
-1. **Whether the underlying store guarantees its own id is stable.** The
-   specific worry is metrics-db: **sqlite `rowid` is not stable across `VACUUM`
-   unless the column is an `INTEGER PRIMARY KEY` alias.** If git-ai ever vacuums
-   its metrics database, rowids can be renumbered — which breaks R1 for every
-   stored ordinal at once and produces both failure directions simultaneously.
-   Answering this needs the git-ai schema, not the reader's code. I will flag it
-   and say I cannot close it.
-2. **Whether a store reuses an id after deletion.** Same class of question.
+1. ~~**Whether the underlying store guarantees its own id is stable.**~~
+   **CLOSED 2026-08-28 by PM3, with the schema.** The worry was that sqlite
+   `rowid` is not stable across `VACUUM` unless the column is an
+   `INTEGER PRIMARY KEY` alias, which would break R1 for every stored
+   metrics-db ordinal at once and produce both failure directions together.
+   git-ai's table is
+   `CREATE TABLE metrics ( id INTEGER PRIMARY KEY AUTOINCREMENT, event_json
+   TEXT NOT NULL, ... )` — an explicit `INTEGER PRIMARY KEY`, so it IS the
+   rowid alias and `VACUUM` cannot renumber it; sqlite only renumbers tables
+   without one. `AUTOINCREMENT` additionally guarantees an id is never reused
+   after a delete, which closes item 2 for this store as well. **Metrics-db
+   ordinals are durable.** u1d has been told to derive from the named `id`
+   column rather than the bare `rowid` keyword, and to quote that schema line
+   in its service page — it is a load-bearing property of a database we do not
+   control.
+2. **Whether a store reuses an id after deletion.** Same class of question, and
+   now closed for metrics-db only, by the `AUTOINCREMENT` above. Still open for
+   claude, omp and the pij ledger: I can see what a reader DERIVES from, but
+   not whether the store that mints it will ever mint it twice.
 3. **Whether the grouping rule is genuinely deterministic** for inputs I have no
    fixture for. I can only judge the cases the committed fixtures exercise; a
    derivation can be correct on every fixture and wrong on a shape nobody
