@@ -76,6 +76,46 @@ pub fn scan_ddoc_bytes(
     Ok(tree)
 }
 
+fn earns_enrichment(element: &Element, min_lines: u32) -> bool {
+    match element.kind {
+        ElementKind::File => false,
+        ElementKind::Row => element.raw_text.lines().count() >= min_lines as usize,
+        _ => needs_summary(element, min_lines),
+    }
+}
+
+async fn persist_tree(
+    state: &AppState,
+    blob: &BlobRef,
+    tree: &mut fs3_core::ElementTree,
+    tooling: &DdocTooling,
+    is_ddoc: bool,
+    enrich_policy: &impl Fn(&Element) -> bool,
+) -> Result<(), Failure> {
+    fs3_store::upsert_element_tree(&state.db, blob, PARSER_VERSION, &tree.root, enrich_policy)
+        .await
+        .map_err(fail)?;
+
+    if is_ddoc && let Some(graph) = &tooling.graph {
+        let refs = ddoc::file_refs(graph, &tree.path, tree);
+        let outcome = fs3_store::replace_file_refs(&state.db, blob, PARSER_VERSION, &refs)
+            .await
+            .map_err(fail)?;
+        if ddoc::record_unattached(tree, &outcome.unattached) > 0 {
+            fs3_store::upsert_element_tree(
+                &state.db,
+                blob,
+                PARSER_VERSION,
+                &tree.root,
+                enrich_policy,
+            )
+            .await
+            .map_err(fail)?;
+        }
+    }
+    Ok(())
+}
+
 /// Parse one file and record it.
 ///
 /// # Errors
@@ -121,8 +161,11 @@ pub async fn run(state: &AppState, value: serde_json::Value) -> Result<(), Failu
     // file duplicates what its parts already say; everything else earns a
     // summary once it clears the configured line floor.
     let min_lines = state.config.indexing.summary_min_lines;
-    let enrich_policy =
-        |element: &Element| element.kind != ElementKind::File && needs_summary(element, min_lines);
+    let enrich_policy = |element: &Element| earns_enrichment(element, min_lines);
+    let path = Path::new(&job.path);
+    let is_ddoc = fs3_parsers::is_ddoc_source(path);
+    let tooling = state.ddoc_tooling(job.worktree_id).await;
+    let tooling = tooling.as_ref();
 
     // The skip. Cheap, and correct for every branch and checkout at once: these
     // exact bytes have been parsed by this parser, by anyone, on any branch.
@@ -143,6 +186,18 @@ pub async fn run(state: &AppState, value: serde_json::Value) -> Result<(), Failu
         .await
         .map_err(fail)?
     {
+        if is_ddoc && ddoc::needs_reenrichment(&stored, tooling) {
+            let mut tree = fs3_core::ElementTree {
+                path: job.path.clone(),
+                blob: blob.clone(),
+                has_error: false,
+                root: stored,
+            };
+            let findings = ddoc::validate(Path::new(&worktree.root_path), &absolute).await;
+            ddoc::enrich_tree(&mut tree, tooling, &findings);
+            persist_tree(state, &blob, &mut tree, tooling, true, &enrich_policy).await?;
+            return enrich::enqueue_for_tree(state, &job, &tree.root, &enrich_policy).await;
+        }
         return enrich::enqueue_for_tree(state, &job, &stored, &enrich_policy).await;
     }
 
@@ -151,38 +206,13 @@ pub async fn run(state: &AppState, value: serde_json::Value) -> Result<(), Failu
     // `ddocs --json links` walks the whole corpus per call, so a per-file probe
     // is quadratic. A missing entry is the honest absent snapshot: rows still
     // index, and edges, gate membership and derived state are simply absent.
-    let tooling = state.ddoc_tooling(job.worktree_id).await;
-    let tooling = tooling.as_ref();
-    let mut tree = scan_ddoc_bytes(Path::new(&job.path), &bytes, tooling).map_err(fail)?;
-    if fs3_parsers::is_ddoc_source(Path::new(&job.path)) {
+    let mut tree = scan_ddoc_bytes(path, &bytes, tooling).map_err(fail)?;
+    if is_ddoc {
         let findings = ddoc::validate(Path::new(&worktree.root_path), &absolute).await;
         ddoc::enrich_tree(&mut tree, tooling, &findings);
     }
 
-    fs3_store::upsert_element_tree(&state.db, &blob, PARSER_VERSION, &tree.root, &enrich_policy)
-        .await
-        .map_err(fail)?;
-
-    // Only a successful graph snapshot is authoritative enough to replace
-    // refs. An empty slice clears stale refs; an absent graph preserves the
-    // last known snapshot rather than turning tooling failure into deletion.
-    if let Some(graph) = &tooling.graph {
-        let refs = ddoc::file_refs(graph, &tree.path, &tree);
-        let outcome = fs3_store::replace_file_refs(&state.db, &blob, PARSER_VERSION, &refs)
-            .await
-            .map_err(fail)?;
-        if ddoc::record_unattached(&mut tree, &outcome.unattached) > 0 {
-            fs3_store::upsert_element_tree(
-                &state.db,
-                &blob,
-                PARSER_VERSION,
-                &tree.root,
-                &enrich_policy,
-            )
-            .await
-            .map_err(fail)?;
-        }
-    }
+    persist_tree(state, &blob, &mut tree, tooling, is_ddoc, &enrich_policy).await?;
 
     // Every element gets a raw-content vector; only enrich-marked ones get a
     // summary. Both are queued rather than done inline, so a slow provider
@@ -215,12 +245,36 @@ mod tests {
     #[test]
     fn the_enrichment_policy_excludes_file_roots_and_small_elements() {
         let min_lines = 10;
-        let policy = |el: &Element| el.kind != ElementKind::File && needs_summary(el, min_lines);
+        let policy = |element: &Element| earns_enrichment(element, min_lines);
 
         assert!(!policy(&element(ElementKind::File, 400)));
         assert!(!policy(&element(ElementKind::Function, 9)));
         assert!(policy(&element(ElementKind::Function, 10)));
         assert!(policy(&element(ElementKind::Container, 40)));
+    }
+
+    #[test]
+    fn ddoc_enrichment_uses_row_text_not_document_span() {
+        let span = Span::new(1, 100);
+        let short = Element::new(
+            ElementKind::Row,
+            "ddoc_row",
+            "short",
+            "doc#rows/short",
+            span,
+            "one line",
+        );
+        let long = Element::new(
+            ElementKind::Row,
+            "ddoc_row",
+            "long",
+            "doc#rows/long",
+            span,
+            "line\n".repeat(10),
+        );
+
+        assert!(!earns_enrichment(&short, 10));
+        assert!(earns_enrichment(&long, 10));
     }
 
     #[test]
