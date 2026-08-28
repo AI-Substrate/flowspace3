@@ -1,0 +1,16 @@
+crates/daemon/fixtures/ddocs/file-link-corpus/notes.dd.json
+  h_9e71e8b09f7cf2 2
+crates/daemon/src/ddoc.rs
+  h_9e71e8b09f7cf2 437-443
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "077590237f1d44c64a087db2a60ed5f9c94a7dfb",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
