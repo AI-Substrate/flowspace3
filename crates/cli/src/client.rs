@@ -207,14 +207,15 @@ impl DaemonClient {
                 .map(|(name, value)| (name.clone(), Value::String(value.clone())))
                 .collect(),
         );
-        let response = self
-            .http
-            .post(&url)
-            .timeout(Self::ASK_TIMEOUT)
-            .json(&body)
-            .send()
-            .await;
-        self.envelope("ask", response).await
+        // Through `send`, not `envelope` directly: `send` is what attaches this
+        // daemon boot's key, and a verb that skips it is refused with
+        // FS3-E-DAEMON-UNAUTHORIZED. The only thing ask needs of its own is the
+        // longer timeout, which rides on the request builder.
+        self.send(
+            "ask",
+            self.http.post(&url).timeout(Self::ASK_TIMEOUT).json(&body),
+        )
+        .await
     }
 
     /// Read one address in full.
