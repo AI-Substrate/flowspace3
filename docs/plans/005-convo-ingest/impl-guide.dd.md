@@ -36,6 +36,128 @@ MEASURED 2026-08-28, correcting the recipe (fixture harvest, evidence in each fi
 
 PM RULING 2026-08-28 (phase 1 close, tk-c105 — READ THIS BEFORE YOU CHASE AN ORACLE FAILURE): the pinned reconvo.py is a WEAKER oracle than this document assumed, and the expectation files say so in their own headers. Three facts, all measured. (1) It has no claude-native reader at all: its READERS map is {metrics, omp, pij-ledger}, and its 'dialect: claude' is claude-via-git-ai-metrics-db, a different store. The claude fixtures therefore carry a STRUCTURAL claim only, labelled PM-derived-not-oracle (prime ruling: fabricating a claude oracle from the same head that froze the contract would launder one interpretation into fake independence). The mirror strengthening was checked and does not apply — metrics.sqlite3 mirrors the SAME claude session id over a DISJOINT window (08:03:36..08:10:16 vs the claude-native harvest's 22:54:13..23:00:11). The independent semantic check for claude is tk-c305 first light. (2) Where it does read a store, it drops record types fs3 must keep: read_omp handles only type=='message', so omp's first-class compaction record — which ac-0005 says is never dropped — is absent from the oracle output BY CONSTRUCTION. The oracle claim is therefore a SUBSET claim, never equality: every oracle turn must appear in your reader's output, in order; emitting MORE is expected and is not a divergence. (3) Only prose kinds (assistant, human, pij_in) can be compared by text — the oracle renders tool calls and receipts through its own python helpers, and reproducing a python rendering would prove imitation, not agreement. Non-prose kinds are held to their COUNT. The mechanical done-bar every reader gets regardless of oracle coverage is the STRUCTURAL claim: your emitted RawRecord::ordinal values must be an in-order, repeat-free subsequence of the record ids the store holds. All of this is code, not prose: fs3_testkit::Expectations::{verify_fixtures_unchanged, assert_ordinals_are_a_subsequence, assert_oracle_prose_appears}, over crates/testkit/fixtures/conversations/*/expectations.json, each assertion proven RED in crates/testkit/tests/conversation_expectations.rs. Regenerate with `python3 docs/plans/005-convo-ingest/assets/inputs/tools/oracle_expectations.py` (`--check` fails on drift); the driver verifies the oracle's pinned sha on every run and NEVER edits it. Editing a fixture without regenerating is a failing testkit test, not a mystery reader bug.
 
+
+PRIME RULING 2026-08-28 (composition, thinking blocks — READ THIS BEFORE YOU
+DROP OR KEEP ANY BLOCK): v1 DROPS `thinking`, AT THE READER, IN EVERY READER.
+The rule was already in the payload spec; what changed is that its stated
+justification was wrong TWICE and the measured position is recorded here.
+
+THE MEASUREMENTS, in blocks AND in bytes, across the committed fixtures. Block
+counts alone caused both wrong justifications, so both are given:
+
+| store | thinking blocks | thinking BYTES | prose text bytes | note |
+| --- | --- | --- | --- | --- |
+| claude | 21 | **0** | 790 | 23,508 bytes of encrypted `signature` |
+| omp | 31 | **42,161** | 76,579 | reasoning is real prose here |
+
+Claude WRITES THE BLOCK AND WITHHOLDS THE TEXT: the reasoning is kept encrypted
+in the signature and never lands in the session jsonl. Dropping thinking in
+claude therefore removes 21 EMPTY blocks — zero index bytes, zero embed spend.
+In omp the reasoning is real, at 36% of prose bytes, and there a cost argument
+holds.
+
+THE TWO WRONG JUSTIFICATIONS, recorded so neither is re-derived. (1) The
+vendored spec says thinking blocks are "absent in claude data anyway" and that
+thinking "exists only in omp" — wrong about the BLOCKS, and accidentally right
+about the TEXT. (2) The first correction, which the PM carried to prime, said
+thinking is dropped as a cost decision because 4:1 block dominance would make
+the claude index mostly model reasoning — wrong, because those blocks carry no
+bytes. u1a found its own error, owned it, and pinned the fact in code before
+reporting: `claude_does_not_persist_thinking_text` asserts 21 blocks and 0 bytes
+and names what to reopen if claude ever starts persisting the text.
+
+THE RULING AND ITS ACTUAL GROUNDS (prime, approved wording):
+(a) STRUCTURAL, and load-bearing: once a reader concatenates content blocks into
+    one body string the block TYPE IS GONE. `RawRecord` has no thinking
+    representation and neither does `fs3_core::conversation`, so no downstream
+    normaliser can implement "drop thinking" however the labour is divided. The
+    drop is only implementable where the type still exists — the reader.
+(b) CONSISTENCY AND SAFETY: the harnesses must not diverge, and a claude reader
+    that concatenated would silently BEGIN indexing model scratch the day claude
+    starts persisting text, with no code change to notice. The tripwire test is
+    what makes that a detected event rather than a surprise.
+(c) COST, FOR OMP ONLY: 42,161 bytes of reasoning against 76,579 of prose. NO
+    cost claim is made about claude in either direction.
+
+The vendored input is NOT edited (prime, reversing an earlier instruction):
+`assets/inputs/` is sha-pinned in `SHA256SUMS` so the copies provably match what
+was vendored, and rewriting a source document in its author's voice would
+launder a correction into it. Corrections live here, where implementers read.
+
+NAMED AND DEFERRED (prime): storing thinking DISTINGUISHABLY — its own
+`TurnItem` or turn kind, retained but separable from prose and excludable from
+embedding — is the honest long-term shape and is a change to the FROZEN
+contract, so it is a re-plan and belongs to the live-capture / v1.1 plan. Carry
+this distinction into it: the deferral is MOOT FOR CLAUDE, which has no thinking
+text to store, and REAL for omp and any future harness that persists reasoning.
+The binding constraint is that the distinction must survive the reader, because
+that is the only place it exists.
+
+PM RULING 2026-08-28 (composition — ORDINALS ARE OPAQUE): a reader's ordinal is
+an opaque identity. Nothing orders ordinals; comparisons other than equality are
+meaningless. u2's ledger numbers turns by POSITION IN THE BATCH SLICE and relies
+on records ARRIVING in store order, which is already the reader contract, so
+ordinal monotonicity is a reader-cursor property and never a ledger one. The
+trap this closes: the pij-ledger ordinal is a `seq` rendered as a DECIMAL
+STRING, so lexicographic order is not numeric order — "10" sorts before "9".
+Zero-padding was proposed and REFUSED: the committed expectations pin those
+ordinals as the strings "118".."167" because `build_pij` stringifies `seq`, so
+padding would fail `assert_ordinals_are_a_subsequence` against a byte-pinned
+fixture — the remedy would break the thing it protects. Any future
+resume-from-max-ordinal or order-by-ordinal must not use these values.
+
+PM RULING 2026-08-28 (composition — THE GROUPING RULE IS PART OF THE PERSISTED
+CONTRACT): u2 observed, from first principles about what its own dedupe
+consumes, that two of the four frozen derivations are GROUP-derived (claude
+first-uuid-of-group, metrics-db first-rowid-of-group) and two are RECORD-derived
+(omp record `id`, pij `seq`). A group-derived ordinal depends on a datum AND on
+the rule that decides group membership, so widening an allowlist, admitting a
+new block kind into a merge, or un-skipping a previously dropped record CHANGES
+THE ORDINAL of every affected record — every stored record then looks new and
+the conversation silently doubles. Claude and metrics-db therefore freeze their
+GROUPING RULE in their service pages exactly as they freeze the derivation:
+which records merge, on what key, and that changing that set changes every
+ordinal. omp and pij carry strictly less risk and freeze the derivation alone.
+
+MEASURED 2026-08-28 (composition — THE STRUCTURAL EXPECTATIONS DO NOT CATCH A
+BROKEN MERGE): both group-derived readers mutation-checked their own suites and
+found the same hole, independently. u1a: reverting the keyed merge to an
+adjacent-run fold yields 20 assistant turns instead of 13, and
+`assert_ordinals_are_a_subsequence` STILL PASSES. u1d: a mutation that stops
+merging emits 22 records where 16 are correct, and BOTH
+`assert_ordinals_are_a_subsequence` and `assert_oracle_prose_appears` STILL
+PASS. This is not a defect in those assertions — a subsequence claim catches
+invented, reordered and duplicated ordinals, which is what it advertises — but
+it means the merge arithmetic is held ONLY by each unit's own count test. The
+committed expectations cannot detect the exact failure the grouping-rule freeze
+exists to prevent.
+
+MEASURED 2026-08-28 (composition, tk-c301 — the join): recipe §2 says the uuid
+SHAPE routes the store (v4 → claude/copilot, v7 `01a0…` → omp). Measured against
+the live registry (908 rows: pi 800, claude 65, copilot 41, codex 2) that is NOT
+sufficient — claude and copilot are BOTH v4 and live in DIFFERENT stores, and a
+copilot session exists only inside the git-ai metrics database. So the
+registry's `harness` FIELD routes and the uuid shape is kept as a CONSISTENCY
+CHECK; a row whose shape contradicts its harness is refused rather than guessed
+at. Two further measured facts, both pinned by tests: pij spells omp as `pi`, so
+an implementation trusting `Harness::as_str()` to round-trip against the
+registry gets an empty join and no error; and the version nibble is read from
+the uuid FORMAT rather than by matching the `01a0` prefix, which is an artefact
+of when these v7 ids happened to be minted and ages out.
+
+MEASURED 2026-08-28 (composition — metrics-db rowids survive VACUUM): u2 raised
+that sqlite rowids are not stable across `VACUUM` unless the column is an
+INTEGER PRIMARY KEY alias, and said plainly it could not close the question from
+u1d's code because it needed the git-ai schema. The PM read the schema:
+`CREATE TABLE metrics ( id INTEGER PRIMARY KEY AUTOINCREMENT, event_json TEXT
+NOT NULL, … )`. That is the rowid alias, so `VACUUM` cannot renumber it —
+sqlite only renumbers tables WITHOUT an explicit INTEGER PRIMARY KEY — and
+AUTOINCREMENT further guarantees an id is never reused after a delete.
+Metrics-db ordinals are durable, and u1d names the `id` column in all four
+queries rather than the bare `rowid` keyword so the property is visible where it
+is relied on.
+
+
 <a id="fan-out"></a>
 
 ## Fan out
