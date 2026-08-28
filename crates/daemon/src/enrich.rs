@@ -139,21 +139,18 @@ pub fn source_kind_of(source: &str) -> Result<SourceKind, Failure> {
 
 /// Whether this element's own text earns a raw vector.
 ///
-/// Everything does, with ONE exception: a file element that has parsed children.
-/// Its `raw_text` is the concatenation of those children, so its vector is a
-/// blurred average of texts that are already indexed individually — it carries
-/// nothing they do not, it is the largest text in the tree to store, and
-/// because it contains every token in the file it competes with every one of
-/// its own parts on every query about that file. A search for "validate an
-/// expired session token" should answer with the function, not with the file
-/// the function is in.
+/// Empty text never earns a vector: it contributes no meaning, and resolving
+/// one shared empty hash among many structural elements produces an arbitrary
+/// hit that looks authoritative.
 ///
-/// A file with NO children is the opposite case: prose, an unknown language, a
-/// grammar fs3 does not have. There the file element IS the content, and
-/// skipping it would make the file unsearchable. That is why the rule is
-/// "covered by its children", not "is a file".
+/// Non-empty elements do, with one further exception: a file element that has
+/// parsed children. Its `raw_text` is the concatenation of those children, so
+/// its vector is a noisier duplicate of vectors we already write. A file with
+/// NO children is the opposite case: prose, an unknown language, a grammar fs3
+/// does not have. There the file element IS the content.
 fn earns_raw_vector(element: &Element) -> bool {
-    element.kind != fs3_core::ElementKind::File || element.children.is_empty()
+    !element.raw_text.is_empty()
+        && (element.kind != fs3_core::ElementKind::File || element.children.is_empty())
 }
 
 /// Queue the enrichment a freshly-scanned tree earns.
@@ -918,5 +915,29 @@ mod tests {
         // A turn earns a raw vector on its own terms — the file-element
         // exception is about parsed children, which a turn never has.
         assert!(earns_raw_vector(&element));
+    }
+
+    #[test]
+    fn empty_structural_container_has_no_raw_vector_while_its_row_does() {
+        let row = Element::new(
+            fs3_core::ElementKind::Row,
+            "ddoc_row",
+            "ac-0001",
+            "plan.dd.json#criteria/ac-0001",
+            fs3_core::Span::new(1, 20),
+            "criterion text",
+        );
+        let container = Element::new(
+            fs3_core::ElementKind::Container,
+            "ddoc_section",
+            "criteria",
+            "plan.dd.json#criteria",
+            fs3_core::Span::new(1, 20),
+            "",
+        )
+        .with_children(vec![row.clone()]);
+
+        assert!(!earns_raw_vector(&container));
+        assert!(earns_raw_vector(&row));
     }
 }

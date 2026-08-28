@@ -9,9 +9,10 @@ use fs3_core::{
     RepoIdentity, Span,
 };
 use fs3_store::{
-    DdocCitation, DdocFileRef, EMBEDDING_DIMENSIONS, MIGRATOR, NewEmbedding, PgPool, SearchFilters,
-    SearchHit, SourceKind, get_elements, put_embeddings, register_worktree, replace_file_refs,
-    rows_citing, rows_referencing, search_elements, sync_worktree_files, upsert_element_tree,
+    AnchorScope, DdocCitation, DdocFileRef, EMBEDDING_DIMENSIONS, MIGRATOR, NewEmbedding, PgPool,
+    SearchFilters, SearchHit, SourceKind, anchor_has_vectors, get_elements, put_embeddings,
+    register_worktree, replace_file_refs, rows_citing, rows_referencing, search_elements,
+    sync_worktree_files, upsert_element_tree,
 };
 use fs3_testkit::fakes::FakeEmbedder;
 use support::{FreshDatabase, PARSER_VERSION, unique_blob};
@@ -345,6 +346,38 @@ async fn search_filter_ddoc_schema_selects_and_none_is_noop() {
 
     assert_eq!(all.len(), fixture.rows.len());
     assert_eq!(filtered, vec!["docs/plan.dd.json#criteria/zz-0003"]);
+    fixture.destroy().await;
+}
+
+#[tokio::test]
+async fn ddoc_content_predicates_cannot_change_anchor_existence() {
+    let fixture = SearchFixture::create().await;
+    let filtered = fixture
+        .search(SearchFilters {
+            ddoc_schema: Some("schema/that-is-not-indexed".to_string()),
+            ..SearchFilters::default()
+        })
+        .await;
+    assert!(
+        filtered.is_empty(),
+        "the ddoc content filter matches nothing"
+    );
+
+    let exists = anchor_has_vectors(
+        &fixture.pool,
+        EMBEDDER,
+        &AnchorScope {
+            repo: None,
+            worktree: None,
+            path: None,
+        },
+    )
+    .await
+    .expect("the scope probe should run");
+    assert!(
+        exists,
+        "an empty ddoc content filter must not erase an indexed anchor"
+    );
     fixture.destroy().await;
 }
 

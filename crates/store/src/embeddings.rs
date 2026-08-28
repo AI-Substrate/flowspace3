@@ -361,6 +361,21 @@ pub struct SearchFilters {
     pub limit: i64,
 }
 
+/// Ownership scope for [`anchor_has_vectors`].
+///
+/// Deliberately cannot represent ranked, kind, source-state, or ddoc-content
+/// predicates: this probe answers whether a scope has searchable content, not
+/// whether a content filter matches it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct AnchorScope<'a> {
+    /// Repository identity to probe.
+    pub repo: Option<&'a str>,
+    /// Registered worktree root to probe.
+    pub worktree: Option<&'a str>,
+    /// Live repository-relative path pattern to probe.
+    pub path: Option<&'a str>,
+}
+
 impl Default for SearchFilters {
     fn default() -> Self {
         SearchFilters {
@@ -688,38 +703,25 @@ pub async fn search_elements(
         .collect()
 }
 
-/// Does `model_key` hold reachable content that `filters`' non-vector gates
-/// admit?
+/// Does `model_key` hold reachable content in `scope`?
 ///
-/// The question [`search_elements`] cannot answer for itself. A search that
-/// comes back empty has two very different causes — nothing eligible is
-/// indexed HERE, or something is and the ranking did not reach it — and the
-/// row shape looks identical for both, so the surface has to ask separately
-/// before it is entitled to say which one happened.
+/// This answers an OWNERSHIP question, not whether content predicates matched.
+/// [`AnchorScope`] makes every content filter unrepresentable so a legitimate
+/// empty result cannot become a false "repository is not indexed" diagnosis
+/// when a new predicate is added.
 ///
-/// This is [`search_elements`] with the vector taken out: the same anchor, the
-/// same kind gate, the same source-space gate, and nothing else. That
-/// correspondence is the whole value. A coarser probe — "does this repository
-/// have any vectors at all" — answers `true` for a repository holding only
-/// content the caller's filters exclude, and the surface would then report a
-/// starved scan where the truth was an empty filter. A diagnostic that is
-/// confidently wrong is worse than the shrug it replaced.
-///
-/// Raw vectors and live paths only, which is what makes it cheap and is why
-/// the caller must not ask it about conversations: a turn reaches its
-/// repository through its conversation's anchor and has no `worktree_files`
-/// row at all.
+/// Raw vectors and live paths only, which is what makes it cheap and excludes
+/// conversations: a turn reaches its repository through its conversation's
+/// anchor and has no `worktree_files` row at all.
 ///
 /// # Errors
 /// [`StoreError::Query`] on failure.
 pub async fn anchor_has_vectors(
     pool: &PgPool,
     model_key: &str,
-    filters: &SearchFilters,
+    scope: &AnchorScope<'_>,
 ) -> Result<bool, StoreError> {
-    // Bind map: $1 model, $2 repo, $3 path, $4 kinds, $5 source,
-    // $6 worktree, $7 id_kinds, $8 gate_open, $9 ddoc_schema.
-    // This probe must mirror every non-vector search gate.
+    // Bind map: $1 model, $2 repo, $3 path, $4 worktree. Content predicates have no slot.
     let found: bool = sqlx::query_scalar(
         "SELECT EXISTS (
              SELECT 1
@@ -732,39 +734,13 @@ pub async fn anchor_has_vectors(
                 AND e.source_kind = 'raw'
                 AND ($2::text IS NULL OR r.identity = $2)
                 AND ($3::text IS NULL OR f.path LIKE $3)
-                AND ($6::text IS NULL OR w.root_path = $6)
-                AND ($4::text[] IS NULL OR el.kind = ANY($4))
-                AND ($5::text IS NULL OR $5 <> 'smart'
-                     OR EXISTS (SELECT 1 FROM smart_content sc
-                                 WHERE sc.raw_hash = el.raw_hash))
-                AND ($7::text[] IS NULL OR el.ddoc->>'id_kind' = ANY($7))
-                AND ($8::boolean IS NULL
-                     OR (CASE
-                           WHEN jsonb_typeof(el.ddoc->'derived_state') = 'object'
-                           THEN (el.ddoc->'derived_state'->>'complete')::boolean
-                           ELSE (el.ddoc->>'gate_terminal')::boolean
-                         END IS NOT NULL
-                         AND CASE
-                           WHEN jsonb_typeof(el.ddoc->'derived_state') = 'object'
-                           THEN (el.ddoc->'derived_state'->>'complete')::boolean
-                           ELSE (el.ddoc->>'gate_terminal')::boolean
-                         END = NOT $8))
-                AND ($9::text IS NULL OR el.ddoc->>'schema' = $9))",
+                AND ($4::text IS NULL OR w.root_path = $4)
+                )",
     )
     .bind(model_key)
-    .bind(filters.repo.as_deref())
-    .bind(filters.path.as_deref())
-    .bind(
-        filters
-            .kinds
-            .as_ref()
-            .map(|kinds| kinds.iter().map(|kind| kind.as_str()).collect::<Vec<_>>()),
-    )
-    .bind(filters.source.map(SourceKind::as_str))
-    .bind(filters.worktree.as_deref())
-    .bind(filters.id_kinds.as_deref())
-    .bind(filters.gate_open)
-    .bind(filters.ddoc_schema.as_deref())
+    .bind(scope.repo)
+    .bind(scope.path)
+    .bind(scope.worktree)
     .fetch_one(pool)
     .await?;
 

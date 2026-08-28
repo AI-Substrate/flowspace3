@@ -431,7 +431,7 @@ async fn get_by_dd_address_resolves_the_same_row_the_parser_produced() {
 }
 
 #[tokio::test]
-async fn ddoc_degradation_notice_uses_live_worktree_tooling() {
+async fn ddoc_notice_distinguishes_unprobed_absent_and_healthy_after_restart() {
     let stack = Stack::create("search_ddoc_tooling").await;
     let fixture = stack
         .index_ddoc(
@@ -447,6 +447,57 @@ async fn ddoc_degradation_notice_uses_live_worktree_tooling() {
     stack.embed_ddoc(&fixture, "tooling state probe").await;
     let query = [("q", "tooling state probe"), ("cwd", "/srv/read-ddoc")];
 
+    let ddocs = Command::new("ddocs")
+        .args(["--json", "version"])
+        .output()
+        .expect("the pinned ddocs binary is installed");
+    assert!(
+        ddocs.status.success(),
+        "the restart fixture has healthy ddocs"
+    );
+
+    // A restarted daemon begins with a fresh in-memory snapshot map over the
+    // persisted registered root. Nobody has probed yet, which is not evidence
+    // that the healthy binary above is unavailable.
+    let mut restarted = AppState::from_config(Config {
+        database: DatabaseConfig {
+            url: stack.database.url(),
+        },
+        ..Config::default()
+    })
+    .expect("fresh restart state wires");
+    restarted.embedder = Arc::new(FakeEmbedder {
+        dimensions: fs3_store::EMBEDDING_DIMENSIONS,
+        ..FakeEmbedder::default()
+    });
+    restarted.summarizer = Arc::new(FakeSummarizer::default());
+    assert!(restarted.ddoc_snapshot(fixture.worktree).await.is_none());
+    let auth = support::auth("ddoc-restart-unprobed");
+    let base = support::spawn(router(restarted, auth.auth)).await;
+    let unprobed: Envelope = reqwest::Client::new()
+        .get(format!("{base}/search"))
+        .query(&query)
+        .bearer_auth(auth.key)
+        .send()
+        .await
+        .expect("fresh daemon answers")
+        .json()
+        .await
+        .expect("fresh daemon returns an envelope");
+    assert_eq!(data(&unprobed)["results"][0]["address"], fixture.address);
+    assert!(
+        !unprobed
+            .next_action
+            .as_deref()
+            .expect("search steers")
+            .contains("`ddocs` binary is unavailable"),
+        "never-probed is unknown and must stay silent"
+    );
+
+    stack
+        .state
+        .set_ddoc_tooling(fixture.worktree, fs3_daemon::ddoc::DdocTooling::absent())
+        .await;
     let absent = stack.search(&query).await;
     let absent_results = data(&absent)["results"].clone();
     assert_eq!(absent_results[0]["address"], fixture.address);
@@ -475,6 +526,78 @@ async fn ddoc_degradation_notice_uses_live_worktree_tooling() {
             .expect("search steers")
             .contains("`ddocs` binary is unavailable"),
         "healthy live tooling must not emit the degradation notice"
+    );
+    stack.destroy().await;
+}
+
+#[tokio::test]
+async fn zero_match_ddoc_filter_does_not_claim_the_repo_is_unindexed() {
+    let stack = Stack::create("search_ddoc_gate_diagnostic").await;
+    let fixture = stack
+        .index_ddoc(
+            "docs/plan.dd.json",
+            r#"{
+                "dd": {"schema": "builder/plan"},
+                "sections": [{"name": "tasks", "value": [
+                    {"id": "tk-0001", "title": "Derived open", "state": "checked"}
+                ]}]
+            }"#,
+        )
+        .await;
+    let mut tree = fs3_store::get_elements(
+        &stack.state.db,
+        &fixture.blob,
+        fs3_daemon::scan::PARSER_VERSION,
+    )
+    .await
+    .expect("read stored ddoc")
+    .expect("ddoc tree exists");
+    let meta = tree.children[0].children[0]
+        .ddoc
+        .as_mut()
+        .expect("task metadata");
+    meta.gate_terminal = Some(true);
+    meta.derived_state = Some(fs3_core::DerivedState {
+        complete: false,
+        incomplete: vec!["dw-0001".to_string()],
+    });
+    fs3_store::upsert_element_tree(
+        &stack.state.db,
+        &fixture.blob,
+        fs3_daemon::scan::PARSER_VERSION,
+        &tree,
+        |_| false,
+    )
+    .await
+    .expect("store derived-open task");
+    stack.embed_ddoc(&fixture, "derived gate diagnostic").await;
+
+    let common = [("q", "derived gate diagnostic"), ("cwd", "/srv/read-ddoc")];
+    let open = stack
+        .search(&[common[0], common[1], ("gate_open", "true")])
+        .await;
+    assert!(open.ok, "known-open filter answers: {:?}", open.error);
+    assert_eq!(data(&open)["results"].as_array().unwrap().len(), 1);
+
+    let closed = stack
+        .search(&[common[0], common[1], ("gate_open", "false")])
+        .await;
+    assert!(
+        closed.ok,
+        "zero-match content filter must not become QUERY_NO_INDEX: {:?}",
+        closed.error
+    );
+    assert_eq!(data(&closed)["results"], serde_json::json!([]));
+    let meta = closed.meta.as_ref().expect("search scope metadata");
+    assert!(
+        meta["empty_because"].is_null(),
+        "a selective content filter does not prove ANN starvation: {meta}"
+    );
+    let next = closed.next_action.as_deref().expect("empty search steers");
+    assert!(!next.contains("scan_incomplete"));
+    assert!(
+        !next.contains("flowspace3 add"),
+        "must not steer to re-index: {next}"
     );
     stack.destroy().await;
 }
