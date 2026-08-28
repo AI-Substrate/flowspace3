@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "suite": "ask",
+  "report_contract": "w-agentic-query/ask-contract@2026-08-28",
+  "report_contract_path": "../../docs/briefs/w-ask-eval/ask-contract.md",
+  "subject_prompt": "prompts/subject.md",
+  "responsiveness_rubric": "responsiveness-rubric.json",
+  "report_shape_assertions": "report-contract-assertions.json",
+  "request_variables": {
+    "${REPO_ROOT:git:github.com/AI-Substrate/flowspace3}": "Resolve from `flowspace3 status`; fail setup rather than substituting another checkout."
+  },
+  "counts": {
+    "answerable": 4,
+    "negative": 3,
+    "scoped-zero": 1
+  },
+  "control_counts": {
+    "negative": 4,
+    "true-absence": 3,
+    "scope-trap": 1
+  },
+  "mix_rationale": "Four answerables exercise Rust implementation/test evidence, evaluation policy, control-plane policy, and a legacy external repository. Three true-absence negatives make refusal honesty measurable across never-indexed, deleted-path, and explicit-scope classes. One dual-tagged scoped-zero negative control isolates cross-repo widening in its own denominator, so strength at recovery cannot mask weak refusal honesty (or vice versa).",
+  "scenarios": [
+    "scenarios/answerable-flowspace3-claim-locking/scenario.json",
+    "scenarios/answerable-harness-unknown/scenario.json",
+    "scenarios/answerable-pij-revive-liveness/scenario.json",
+    "scenarios/answerable-legacy-flowspace-practices/scenario.json",
+    "scenarios/negative-never-indexed-repo/scenario.json",
+    "scenarios/negative-deleted-path/scenario.json",
+    "scenarios/negative-explicit-scope/scenario.json",
+    "scenarios/scoped-zero-widening/scenario.json"
+  ]
+}

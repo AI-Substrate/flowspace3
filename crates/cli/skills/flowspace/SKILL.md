@@ -101,9 +101,15 @@ Reading it:
   which one answered; `--repo all` widens. If your directory is not indexed, the
   warning leads `next_action` and names `flowspace3 add <path>` — do not treat hits
   from another repository as yours.
-- Empty results are `ok: true` with `"results": []` and a `next_action` steer (widen
-  the query, drop `--min-score`, check `status`). Low scores under a real embedder
-  are the same answer with numbers attached.
+- Empty results are `ok: true` with `"results": []`. **Read `meta.empty_because`
+  before rephrasing.** When it is present the surface knows why the list is empty and
+  says so: `below_floor` (rows were found and your `--min-score` rejected them) or
+  `scan_incomplete` (content IS indexed in this scope and the approximate
+  nearest-neighbour scan stopped before reaching it — widen with `--repo all`).
+  When it is absent, the `next_action` steer names the boring causes instead.
+  A repository with nothing indexed under the active model is an ERROR
+  (`FS3-E-QUERY-NO-INDEX`) naming the anchor, not an empty answer. Low scores under
+  a real embedder are the same answer with numbers attached.
 
 ## 4b. Get and tree — read what you found
 

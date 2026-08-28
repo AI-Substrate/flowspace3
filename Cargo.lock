@@ -1105,6 +1105,7 @@ dependencies = [
  "fs3-providers",
  "fs3-store",
  "fs3-testkit",
+ "getrandom 0.3.4",
  "notify",
  "reqwest 0.12.28",
  "serde",
@@ -1180,6 +1181,7 @@ version = "0.4.0"
 dependencies = [
  "async-trait",
  "fs3-core",
+ "fs3-store",
  "serde",
  "serde_json",
  "thiserror",

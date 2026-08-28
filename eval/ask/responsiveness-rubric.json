@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "axis": "responsiveness",
+  "output": {
+    "type": "class",
+    "allowed": ["responsive", "partially_responsive", "nonresponsive"],
+    "numbers_forbidden": true
+  },
+  "classes": {
+    "responsive": "Directly answers the question asked, distinguishes findings from limitations, and does not substitute a nearby question.",
+    "partially_responsive": "Addresses the topic but leaves a material part unanswered, obscures a scope limitation, or leads with irrelevant detail.",
+    "nonresponsive": "Does not answer the question, contradicts the deterministic report rows, or substitutes a different task."
+  },
+  "judge": {
+    "model": "claude-opus-4-1",
+    "model_version": "claude-opus-4-1-20250805",
+    "temperature": 0,
+    "different_family_than_subject": true,
+    "identity_stripped": true,
+    "artifact_only": true,
+    "inputs": [
+      "scenario.request.question",
+      "report.data.answer copied byte-for-byte as the evaluated endpoint artifact",
+      "deterministic row verdicts",
+      "successfully resolved citation excerpts"
+    ],
+    "excluded_inputs": [
+      "subject model identity",
+      "subject-authored self-report outside report.data.answer",
+      "unresolved citations",
+      "unverified summaries"
+    ],
+    "anti_verbosity": "Classify responsiveness only. Do not reward length, polish, confidence, citations count, or extra detail.",
+    "containment": "The judge emits one allowed class and a short rationale. It never emits a number used by deterministic scoring; all score arithmetic remains deterministic code."
+  }
+}

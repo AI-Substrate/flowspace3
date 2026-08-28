@@ -1,0 +1,17 @@
+{
+  "scenario": "answerable-legacy-flowspace-practices",
+  "rows": [
+    {"id":"B1","axis":"boundedness","type":"field-equals-request","params":{"field":"question","request_field":"question"},"on_unavailable":"fail"},
+    {"id":"B2","axis":"boundedness","type":"field-non-null","params":{"field":"answer"},"on_unavailable":"fail"},
+    {"id":"B3","axis":"boundedness","type":"field-equals","params":{"field":"stopped","value":"answered"},"on_unavailable":"fail"},
+    {"id":"B4","axis":"boundedness","type":"field-u32-min","params":{"field":"iterations","min":1},"on_unavailable":"fail"},
+    {"id":"B5","axis":"boundedness","type":"field-non-empty","params":{"field":"model"},"on_unavailable":"fail"},
+    {"id":"G0","axis":"groundedness","type":"field-equals","params":{"field":"grounded","value":true,"evaluate_before":"citation-resolution"},"on_unavailable":"fail"},
+    {"id":"G1","axis":"groundedness","type":"citations-all-resolve","params":{},"on_unavailable":"fail"},
+    {"id":"G2","axis":"groundedness","type":"citations-include-any","params":{"addresses":["el:git:github.com/mcaps-microsoft/flowspace/docs/howto/use-substrate-to-discover.md::Using Flowspace for Intelligent Code Discovery::Best Practices"]},"on_unavailable":"fail"},
+    {"id":"G3","axis":"groundedness","type":"answer-matches-all","params":{"patterns":["(?i)(limit.{0,20}5|five or (fewer|less)|small limits)","(?i)external repositor(y|ies).*(MCP|Flowspace)|(MCP|Flowspace).*external repositor(y|ies)"]},"on_unavailable":"fail"},
+    {"id":"G4","axis":"groundedness","type":"cited-source-matches-all","params":{"patterns":["Start with limit=5 or less","For external repos, ONLY use Flowspace MCP tools"]},"on_unavailable":"fail"},
+    {"id":"R1","axis":"recovery","type":"trace-failure-recovers","params":{},"on_not_applicable":"unknown","on_unavailable":"unknown"},
+    {"id":"C1","axis":"cost","type":"field-u64-observed","params":{"field":"tokens_used","budget_compliance":false},"on_null":"unknown","on_unavailable":"fail"}
+  ]
+}

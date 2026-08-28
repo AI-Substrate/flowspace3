@@ -62,3 +62,24 @@ Candidate admission now asks whether any eligible mapping exists without choosin
 - Daemon `conversation_query`: 7/7 passed.
 - Final isolated `harness checks`: 9/9 gates passed.
 - One parallel daemon-suite attempt collided while creating a temporary git fixture (`git commit` reported a clean existing repo); it was captured as harness friction and is not counted as proof. The full sequential rerun passed.
+
+## Final-main integration — query breadth and ask
+
+Merged final `origin/main` at `c6ad8b4`, including scoped-search starvation (#44), authenticated HTTP (#43), daemon sandbox (#48), ask (#45), and ask evaluation fixtures (#46).
+
+- Breadth precedes legitimacy: pgvector iterative scan runs inside the store transaction; the provenance guard runs after retrieval and before every non-empty early return.
+- `SearchOutcome` now carries additive `limit` and `truncated` facts. Search still fetches `limit + 1`, trims only legitimate hits, and the HTTP handler emits `meta.truncation` beside `meta.empty_because`.
+- Question-shape and weak-match hints remain independent. When both apply, the scope/base steer receives the ask hint, then the weak-match hint leads the combined `next_action`; `meta.hint` remains the machine-stable weak-match field.
+- Starvation diagnostics now include `worktree` in `anchor_has_vectors` and name the concrete checkout. #44 retrieval breadth and u-c row legitimacy agreed: no product ruling was required.
+- #46 `scoped-zero-widening` remains valid. The first scoped search is still a successful zero, potentially with stricter checkout exclusion; its explicit `min-score 0.60` gives `empty_because=below_floor`. W1 decides to widen from missing evidence plus scope sequence, not by parsing that reason, so `repo=all` recovery is unchanged. The ground truth is re-explained, not invalidated.
+- `flowspace3 daemon --sandbox` proved unique database, forced fake providers, ephemeral port, isolated credentials/logs, and an authenticated status call. Harness-supervisor SIGTERM exited 1 and left the database behind, so cleanup-on-exit is incomplete outside Ctrl-C; the database/config were removed manually and the gap was captured.
+
+### Final integration proof
+
+- Store `pg_first_light`: 19/19 passed.
+- Daemon `first_light`: 14/14 passed sequentially, including simultaneous weak-match and ask hints plus `empty_because`/truncation.
+- Daemon `conversation_query`: 7/7 passed.
+- Daemon `ask`: 4/4 passed.
+- New #44 `search_scope_starvation`: 6/6 passed.
+- Search unit policies: 10/10 passed.
+- Final integrated `harness checks`: 9/9 gates passed.
