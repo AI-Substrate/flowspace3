@@ -1,0 +1,24 @@
+crates/daemon/src/roots.rs
+  h_9e71e8b09f7cf2 152-164,171,218,224,275
+crates/daemon/src/worktrees.rs
+  h_9e71e8b09f7cf2 82-87
+crates/daemon/tests/worktree_lifecycle.rs
+  h_9e71e8b09f7cf2 72-82,88-99
+crates/store/src/jobs.rs
+  h_9e71e8b09f7cf2 20-38,103-120,123-124,128,135
+crates/store/src/lib.rs
+  h_9e71e8b09f7cf2 53-54
+docs/services/worktree-lifecycle.md
+  h_9e71e8b09f7cf2 11-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7418850b9349b929a7e09326ea81e025f317fb23",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
