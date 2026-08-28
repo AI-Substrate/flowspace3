@@ -44,6 +44,29 @@
 //! dedupe ledger recognises the record it already stored. The last uuid of a
 //! group changes as the group grows and would defeat that.
 //!
+//! ### FROZEN: the GROUPING RULE, not just the datum
+//!
+//! The ordinal is first-uuid-of-GROUP, so it depends on the rule that decides
+//! group membership as much as on the uuid itself. That rule is:
+//!
+//! > A group is every record of type `assistant` sharing one `message.id`.
+//! > Membership is decided by RECORD TYPE and `message.id` ALONE — never by
+//! > which content blocks a record holds, and never by payload policy.
+//!
+//! Widen the merged record types, merge on a different key, or let a payload
+//! rule decide membership, and a group's FIRST element changes — so its
+//! ordinal changes, so every stored record of every affected conversation
+//! looks new on the next poll, and the conversation SILENTLY DOUBLES. Of the
+//! four readers, this derivation and metrics-db's are group-derived while
+//! omp's and pij's are record-derived, so this one carries strictly more of
+//! this risk.
+//!
+//! This is exactly why dropping `thinking` (below) discards a block's TEXT but
+//! never its line's membership: the first block of a group is routinely a
+//! thinking block — `9ccf07af` in the committed fixture is one — and skipping
+//! those lines outright would move that group's ordinal to `82ab2abe` and
+//! double every claude conversation already stored.
+//!
 //! ## 3. A group split across two polls yields two turns, permanently
 //!
 //! A live session can be polled mid-message: blocks 1-2 land in poll N and
@@ -74,22 +97,30 @@
 //! `truncated` — a tool result that cannot be read is not a reason to fail an
 //! entire ingest.
 //!
-//! # This reader is LOSSLESS; payload policy belongs to the normaliser
+//! # Payload policy is the normaliser's, with ONE exception that cannot be
 //!
-//! The v1 payload policy — head-truncating tool results to 512 B, eliding
-//! write-family tool bodies to a path plus a length, dropping `thinking`
-//! blocks — is the NORMALISER's job, per the plan-005 impl-guide: what is left
-//! for it is to "apply the payload policy, drop what v1 does not store". So
-//! everything here is verbatim: `thinking` and `text` blocks both reach
-//! [`RawRecord::body`], tool inputs are whole, and a resolved spill is its full
-//! bytes with `truncated: false`. A reader that applied the policy itself
-//! would destroy data the policy might later want back, and a policy applied
-//! twice in two crates is a policy that will drift.
+//! Head-truncating tool results to 512 B and eliding write-family tool bodies
+//! to a path plus a length are the NORMALISER's job, settled by the frozen
+//! contract itself: `fs3_core::conversation_source`'s rustdoc ends "what is
+//! left for the normaliser is genuinely pure: assign the ordinal, apply the
+//! payload policy, drop what v1 does not store". So tool inputs are whole
+//! here, a resolved spill is its full bytes, and [`ToolInput::Elided`] is
+//! never minted by this reader.
 //!
-//! Note for whoever owns that policy: `thinking` blocks are NOT absent from
-//! claude data, whatever the payload spec's parenthetical says. The committed
-//! fixture holds 21 of them against 5 `text` blocks, so dropping them is a real
-//! content decision about the majority of assistant prose, not a no-op.
+//! The exception is `thinking`, and it is structural rather than a preference:
+//! **a block's type survives only until the blocks are concatenated into one
+//! body string.** After that no downstream normaliser can tell which prose was
+//! thinking, so the rule is only implementable at the reader. Dropping it here
+//! is prime's ruling for plan 005 (option A), and the omp reader does the same,
+//! so one harness cannot index model reasoning while another does not.
+//!
+//! Why it is dropped, correctly stated: NOT because it is absent. The payload
+//! spec claimed "(absent in claude data anyway)" and that is false — the
+//! committed fixtures hold 21 `thinking` blocks against 5 `text`. It is dropped
+//! because that 4:1 dominance would make the claude index mostly model
+//! reasoning and multiply the embed bill. Storing thinking DISTINGUISHABLY, as
+//! its own item or turn kind, is the honest long-term shape and is deferred by
+//! name to the live-capture/v1.1 plan — a deferral, not an oversight.
 //!
 //! # The record-type allowlist is a BEHAVIOUR, not an enumeration
 //!
@@ -329,10 +360,11 @@ enum Block {
         #[serde(default)]
         text: String,
     },
-    Thinking {
-        #[serde(default)]
-        thinking: String,
-    },
+    /// Carries no fields BY DESIGN: the text is dropped (prime ruling A4), and
+    /// binding it would be a field this reader never reads. The variant itself
+    /// must stay — the record still counts towards its merge group, and the
+    /// group's first uuid is the persisted ordinal.
+    Thinking,
     ToolUse {
         #[serde(default)]
         id: String,
@@ -514,9 +546,21 @@ fn blocks_of(
             for block in blocks {
                 match block {
                     Block::Text { text } => push_prose(&mut body, text),
-                    // Verbatim: dropping thinking is the normaliser's policy
-                    // call, and this reader does not pre-empt it.
-                    Block::Thinking { thinking } => push_prose(&mut body, thinking),
+                    // DROPPED (plan 005, prime ruling A4): thinking is model
+                    // scratch, and at 21 blocks against 5 of prose in the
+                    // fixtures it would make the claude index mostly model
+                    // reasoning and multiply the embed bill.
+                    //
+                    // It must be dropped HERE and cannot be dropped
+                    // downstream: once blocks are concatenated into one body
+                    // string the block's type is gone, so no normaliser can
+                    // recover which prose was thinking.
+                    //
+                    // The line still COUNTS TOWARDS ITS GROUP — only its text
+                    // is discarded. Group membership must never depend on
+                    // payload policy, because the group's first uuid is the
+                    // persisted ordinal (see the module docs).
+                    Block::Thinking => {}
                     Block::ToolUse { name, input, .. } => {
                         items.push(TurnItem::ToolCall {
                             tool: name.clone(),
@@ -614,10 +658,10 @@ fn flatten(content: &Content) -> String {
         Content::Blocks(blocks) => {
             let mut out = String::new();
             for block in blocks {
-                match block {
-                    Block::Text { text } => push_prose(&mut out, text),
-                    Block::Thinking { thinking } => push_prose(&mut out, thinking),
-                    _ => {}
+                // Only prose is kept: a tool result is no place for model
+                // scratch either, and other block kinds carry no text.
+                if let Block::Text { text } = block {
+                    push_prose(&mut out, text);
                 }
             }
             out

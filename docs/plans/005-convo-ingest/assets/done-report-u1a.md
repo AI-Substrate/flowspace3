@@ -162,3 +162,74 @@ This is what lets the tests run against a scratch directory.
   "fresh" tag returned the same one. The symptom is inverted — the edit reports
   success, echoes correct content, then appears to have reverted — which reads
   as a flaky tool rather than a misdirected write. Absolute paths always.
+
+---
+
+# Revision 2 — after the A3/A4/A5 rulings (2026-08-28)
+
+`harness checks` **green** again: docs, lock, testdb, fmt, clippy, prodguard
+×2, `cargo test --all`, arch. **19 tests** (was 15). Disk 279Gi avail.
+
+## What changed
+
+**A3 — no change.** Confirmed correct: payload policy is the normaliser's, per
+the frozen contract's own rustdoc. This reader never mints `ToolInput::Elided`
+and never truncates. u2's `shape_turn` owns it.
+
+**A4 — thinking is now DROPPED at the reader** (prime ruling, option A),
+matching the omp reader. The structural reason is the load-bearing one: a
+block's type survives only until blocks are concatenated into one body string,
+so the rule is only implementable at the reader.
+
+**A5 — documented**, as required: the tool-name fallback is permanent, because
+a rescan that could resolve the real name is deduped away. Stated in the
+service page as a fact beside the split-group case.
+
+**Required addition 1 — the distinguishing test shipped.**
+`an_adjacent_run_fold_cannot_pass_this` pins the count of *distinct assistant
+ordinals* and names the continuation blocks that must never become ordinals.
+Re-verified by re-running the mutation after the thinking change: it fails,
+along with 4 others, and `emitted_ordinals_are_a_subsequence` **still passes** —
+the done-bar gap is reproducible, not incidental.
+
+**Required addition 2 — the grouping rule is frozen**, in both the service page
+and the module docs: *a group is every `assistant` record sharing one
+`message.id`; membership is decided by record type and `message.id` alone,
+never by content blocks and never by payload policy*, with the silent-doubling
+consequence spelled out.
+
+## NEW MEASUREMENT — the A4 justification is wrong, and part of that is mine
+
+**Claude does not persist thinking TEXT at all.** All 21 thinking blocks in the
+committed fixtures carry an encrypted `signature` of 452-2068 bytes and a
+`thinking` field of length **zero** — 0 bytes of reasoning prose across the
+whole fixture set. Not a harvest artefact: provenance records 0 credential
+redactions, and its body cap leaves a `…[fixture-truncated]` suffix rather than
+an empty string.
+
+So dropping thinking removes 21 EMPTY blocks from this store and saves no index
+bytes and no embed spend. The cost/noise justification does not hold for claude.
+
+**My error, owned:** I reported "21 thinking blocks against 5 text blocks" and
+let it read as prose *volume*. It is a count of BLOCKS. I never measured bytes,
+and the bytes are zero. The block count is correct and was independently
+reproduced, but it does not support the cost conclusion drawn from it.
+
+The ruling still lands on option A, for reasons that survive: structural
+necessity, cross-harness consistency with u1b, and safety if Anthropic ever
+begins persisting the text. Recommend the vendored spec record it that way and
+drop the cost claim for claude.
+
+`claude_does_not_persist_thinking_text` pins 21 blocks / 0 bytes so this cannot
+rot. Note the consequence for testing: the drop rule itself must be proved from
+a **synthetic** session, because the committed fixtures contain no reasoning for
+a broken reader to leak.
+
+## Assumption A11 (new)
+
+**Dropping thinking discards a block's TEXT, never its line's group
+MEMBERSHIP.** The first block of a group is routinely a thinking block
+(`9ccf07af` in the fixture), so a reader that skipped thinking *lines* would
+move that group's ordinal to `82ab2abe` and silently double every stored claude
+conversation. `dropping_thinking_does_not_move_an_ordinal` guards it. This is
+the concrete instance of u2's frozen-grouping-rule warning.

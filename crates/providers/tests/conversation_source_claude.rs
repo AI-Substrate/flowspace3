@@ -362,6 +362,184 @@ fn a_merged_turn_is_reported_under_its_first_block_not_its_last() {
     );
 }
 
+/// The distinguishing test the structural done-bar cannot provide.
+///
+/// Counting turns is not enough and neither is the subsequence assertion: an
+/// adjacent-run fold yields 20 valid, in-order, repeat-free ordinals and
+/// passes `assert_ordinals_are_a_subsequence` while reporting a conversation
+/// that never happened. This pins the number of DISTINCT ordinals emitted for
+/// the assistant projection, which the fold cannot satisfy.
+#[test]
+fn an_adjacent_run_fold_cannot_pass_this() {
+    let (_scratch, root) = scratch_store("no-fold");
+    let records = read_all(&ClaudeSource::new(&root), &native(MAIN));
+
+    let agent: Vec<&str> = records
+        .iter()
+        .filter(|record| record.role == fs3_core::TurnRole::Agent)
+        .map(|record| record.ordinal.as_str())
+        .collect();
+
+    assert_eq!(
+        agent.len(),
+        13,
+        "keyed grouping yields one turn per message.id; an adjacent-run fold yields 20 \
+         because every interleaved tool_result splits a message in half"
+    );
+    // The blocks that a fold would promote into turns of their own.
+    for continuation in [
+        "3bf9025b-b99f-4570-beba-7f0ffdb6bf74",
+        "82ab2abe-25cd-4331-aa98-b0d4031948f5",
+    ] {
+        assert!(
+            !agent.contains(&continuation),
+            "block {continuation} belongs to a message already begun and must never be an \
+             ordinal of its own — if it is, the merge has regressed to a fold and every \
+             stored ordinal for this store has changed"
+        );
+    }
+}
+
+// -------------------------------------------------------------- thinking
+
+/// Prime ruling A4: thinking is dropped AT THE READER.
+///
+/// It cannot be dropped downstream — once blocks are concatenated into one body
+/// string the block's type is gone — so this is the only place the rule can
+/// live, and the only place it can be tested.
+///
+/// Driven from a synthetic session rather than the committed fixtures, and
+/// deliberately: claude does NOT persist thinking text (see the test below), so
+/// the fixtures contain no reasoning for a broken reader to leak. Testing the
+/// rule needs a record that actually carries some.
+#[test]
+fn a_thinking_block_never_reaches_a_turn_body() {
+    let (_scratch, root) = scratch_store("thinking");
+    let session = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    let secret = "the model second-guessing itself at length";
+
+    append(
+        &root.join(format!("{session}.jsonl")),
+        &format!(
+            concat!(
+                r#"{{"type":"assistant","uuid":"a-1","timestamp":"2026-08-28T00:00:00.000Z","#,
+                r#""message":{{"id":"msg_x","role":"assistant","content":"#,
+                r#"[{{"type":"thinking","thinking":"{secret}","signature":"sig"}}]}}}}"#,
+                "\n",
+                r#"{{"type":"assistant","uuid":"a-2","timestamp":"2026-08-28T00:00:01.000Z","#,
+                r#""message":{{"id":"msg_x","role":"assistant","content":"#,
+                r#"[{{"type":"text","text":"the answer"}}]}}}}"#,
+                "\n"
+            ),
+            secret = secret
+        ),
+    );
+
+    let records = read_all(&ClaudeSource::new(&root), &native(session));
+
+    assert_eq!(records.len(), 1, "both blocks are one message");
+    assert!(
+        !records[0].body.contains(secret),
+        "model reasoning reached a turn body — it must be dropped at the reader, because \
+         after blocks are concatenated no normaliser can tell which prose was thinking"
+    );
+    assert_eq!(
+        records[0].body, "the answer",
+        "the surviving prose is unaffected by the drop"
+    );
+    assert_eq!(
+        records[0].ordinal, "a-1",
+        "the dropped block's RECORD still owns the group's ordinal"
+    );
+}
+
+/// MEASURED: claude does not persist thinking TEXT at all.
+///
+/// Every one of the 21 thinking blocks in the committed fixtures carries an
+/// encrypted `signature` of 452-2068 bytes and a `thinking` field of length
+/// ZERO. The harvest did not do this — its provenance records 0 credential
+/// redactions, and its body cap leaves a `…[fixture-truncated]` suffix rather
+/// than an empty string.
+///
+/// This is pinned because it is load-bearing for a decision made above this
+/// unit: dropping thinking removes 21 EMPTY blocks from this store and saves no
+/// index bytes whatsoever. If this test ever fails, claude has begun persisting
+/// reasoning text, the cost argument becomes real for the first time, and the
+/// v1.1 question of storing thinking distinguishably should be reopened.
+#[test]
+fn claude_does_not_persist_thinking_text() {
+    let mut blocks = 0usize;
+    let mut bytes = 0usize;
+
+    for name in [
+        format!("{MAIN}.jsonl"),
+        format!("{SPILLED}.jsonl"),
+        format!("{MAIN}/subagents/agent-aa8ccc51dce0404a8.jsonl"),
+    ] {
+        let text = std::fs::read_to_string(fixtures_root().join("claude").join(&name))
+            .expect("a committed fixture");
+        for line in text.lines() {
+            let Ok(value) = serde_json::from_str::<serde_json::Value>(line) else {
+                continue;
+            };
+            let Some(content) = value["message"]["content"].as_array() else {
+                continue;
+            };
+            for block in content {
+                if block["type"] == "thinking" {
+                    blocks += 1;
+                    bytes += block["thinking"].as_str().unwrap_or_default().len();
+                }
+            }
+        }
+    }
+
+    assert_eq!(blocks, 21, "the fixtures' thinking-block count");
+    assert_eq!(
+        bytes, 0,
+        "claude stores an encrypted signature and an EMPTY thinking field, so dropping \
+         thinking removes no prose from this store — the cost justification for the drop \
+         does not hold here, whatever it is worth for other harnesses"
+    );
+}
+
+/// Dropping thinking must remove TEXT, never group MEMBERSHIP.
+///
+/// The first block of `msg_011CeU5WTE6uaCEikVXuAQhT` is a thinking block, so a
+/// reader that skipped thinking LINES rather than their content would move this
+/// group's ordinal from `9ccf07af` to `82ab2abe` — and every claude
+/// conversation already stored would look new and silently double.
+#[test]
+fn dropping_thinking_does_not_move_an_ordinal() {
+    let (_scratch, root) = scratch_store("thinking-ordinal");
+    let records = read_all(&ClaudeSource::new(&root), &native(MAIN));
+
+    let merged = records
+        .iter()
+        .find(|record| record.ordinal == "9ccf07af-ba99-4554-bfb4-b02591244f76")
+        .expect(
+            "the group's ordinal is its first RECORD's uuid even though that record's only \
+             content block is dropped — grouping must not depend on payload policy",
+        );
+
+    // The group still carries the work of its surviving blocks, so the record
+    // is the merged turn and not a husk left behind by the drop.
+    assert!(
+        merged
+            .items
+            .iter()
+            .any(|item| matches!(item, TurnItem::ToolCall { .. })),
+        "the ordinal survived the drop AND still names the merged turn"
+    );
+    assert!(
+        !records
+            .iter()
+            .any(|record| record.ordinal == "82ab2abe-25cd-4331-aa98-b0d4031948f5"),
+        "the second block must not have become the group's ordinal — that is the exact \
+         shape of a silent doubling"
+    );
+}
+
 // ------------------------------------------------------------- allowlist
 
 #[test]

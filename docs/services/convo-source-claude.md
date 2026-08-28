@@ -41,6 +41,35 @@ reader to emitting an in-order, repeat-free subsequence of the ids the store
 actually wrote, and those are the per-line uuids. `message.id` appears nowhere
 in that set, so it would fail on every record.
 
+## FROZEN: the GROUPING RULE, not just the datum
+
+The derivation above is *first-uuid-of-**group***, so it depends on the rule
+that decides group membership every bit as much as on the uuid. That rule is
+frozen too, and carries the same consequence:
+
+> **A group is every record of type `assistant` sharing one `message.id`.
+> Membership is decided by RECORD TYPE and `message.id` ALONE — never by which
+> content blocks a record holds, and never by payload policy.**
+
+Widen the set of merged record types, merge on a different key, or let a
+payload rule decide membership, and a group's **first element changes** — so
+its ordinal changes, so every stored record of every affected conversation
+looks new on the next poll, **and the conversation silently doubles.**
+
+Of the four readers in this plan, this derivation and metrics-db's are
+*group-derived* while omp's and pij's are *record-derived*, so this one carries
+strictly more of that risk: a record-derived ordinal can only be broken by
+changing the field, while this one can also be broken by changing what counts
+as a neighbour.
+
+**The live example, which is not hypothetical.** Dropping `thinking` (below)
+discards a block's TEXT but never its line's membership. The first block of a
+group is routinely a thinking block — `9ccf07af` in the committed fixture is
+one — so a reader that skipped thinking *lines* instead of their *content*
+would move that group's ordinal to `82ab2abe` and double every claude
+conversation already stored. `dropping_thinking_does_not_move_an_ordinal`
+exists to make that failure loud.
+
 ---
 
 ## The dialect
@@ -96,6 +125,30 @@ page needs:
 
 Nothing is lost and nothing duplicates: one assistant message simply reads as
 two turns. Accepted for v1 by PM ruling (plan 005, wave 1).
+
+### A tool result's NAME can fall back to its id, permanently
+
+A `tool_result` record names only the `tool_use_id` of the call it answers.
+The tool's name — `Bash`, `Write` — lives on the `tool_use` block that made the
+call, and `toolUseResult` never carries it (checked across every committed
+fixture). So the name is recovered from the `tool_use` seen **in the same
+batch**, and where that is not available the `tool_use_id` is used as the tool
+name instead.
+
+In practice a call and its result are adjacent, so the lookup almost always
+hits. It misses when a poll lands exactly between them — the call was consumed
+by the previous batch and is no longer in view. Carrying the map across polls
+would need reader-side state that the frozen contract has nowhere to put.
+
+**When that happens the stored turn keeps the id as its tool name FOREVER.**
+A later rescan would re-read the call and the result together and resolve the
+real name — but the dedupe ledger has already seen that ordinal, so the rescan
+is dropped and the stored turn is never revisited. This is the same permanence
+shape as the split-group case above, and for the same reason: **a rescan
+repairs nothing, because dedupe is what a rescan is for.**
+
+It affects the `tool` field of a `ToolResult` item only. The ordinal, the
+dedupe and the turn's prose are unaffected.
 
 ### The record-type allowlist is a BEHAVIOUR, not an enumeration
 
@@ -157,22 +210,65 @@ zero, and a reader that resolves once loses it.
 ## This reader is LOSSLESS; payload policy belongs to the normaliser
 
 The v1 payload policy — head-truncating tool results to 512 B, eliding
-write-family tool bodies to a path plus a length, dropping `thinking` blocks —
-is the **normaliser's** job, per the plan-005 impl-guide: what is left for it is
-to "apply the payload policy, drop what v1 does not store".
+write-family tool bodies to a path plus a length — is the **normaliser's** job.
+That is settled by the frozen contract itself, not merely by convention:
+`fs3_core::conversation_source`'s rustdoc, explaining why records are already
+semantic, ends "what is left for the normaliser is genuinely pure: assign the
+ordinal, apply the payload policy, drop what v1 does not store."
 
-So everything here is verbatim: `thinking` and `text` blocks both reach
-`RawRecord::body`, tool inputs are whole, and a resolved spill is its full
-bytes. A reader that applied the policy itself would destroy data the policy
-might later want back, and a policy applied in two crates is a policy that will
-drift.
+So everything here is verbatim: tool inputs are whole and a resolved spill is
+its full bytes. `ToolInput::Elided` is minted by the normaliser and never by
+this reader, and the 512-byte cut happens once, downstream. A reader that
+applied the policy itself would destroy data the policy might later want back,
+and a policy applied in two crates is a policy that will drift.
 
-**One measured note for whoever owns that policy:** the payload spec says to
-drop `thinking` blocks and adds "(absent in claude data anyway; cannot be a
-contract)". That parenthetical is **false** for this store. The committed
-fixtures hold **21 `thinking` blocks against 5 `text` blocks**, so dropping
-them is a real content decision about the majority of assistant prose, not a
-no-op. The rule may well still be right; its stated justification is not.
+### `thinking` blocks are DROPPED at the reader
+
+**Ruled by prime, 2026-08-28 (plan 005, option A). `thinking` blocks never
+reach `RawRecord::body`.** The omp reader does the same, so one harness cannot
+index model reasoning while another does not.
+
+**Why it must happen here and cannot happen downstream:** a block's type
+survives only until the blocks are concatenated into one body string. After
+that, no normaliser can tell which prose was thinking — and neither the
+normaliser nor the core conversation types have any concept of a thinking block
+to work with. A rule that is only implementable at the reader must be applied
+at the reader. This is the load-bearing reason.
+
+**What the justification is NOT.** Two different cost-shaped rationales have
+been attached to this rule and both are false for this store; they are recorded
+here so neither is reintroduced:
+
+1. The payload spec says thinking is "(absent in claude data anyway; cannot be
+   a contract)". False — the committed fixtures hold **21 thinking blocks**
+   against 5 `text` blocks.
+2. It was then argued that this 4:1 dominance would make the claude index
+   mostly model reasoning and multiply the embed bill. Also false, and the
+   correction is mine: that is a count of BLOCKS, not of bytes.
+
+**Measured: claude does not persist thinking TEXT at all.** Every one of those
+21 blocks carries an encrypted `signature` of 452-2068 bytes and a `thinking`
+field of length **zero** — 0 bytes of reasoning prose across the entire claude
+fixture set. The harvest did not do this: its provenance records 0 credential
+redactions, and its body cap leaves a visible `…[fixture-truncated]` suffix
+rather than an empty string. The store writes the block and withholds the text.
+
+So for claude the drop removes 21 empty blocks and saves no index bytes and no
+embed spend. It is done for **structural correctness and cross-harness
+consistency**, not for cost — and because a reader that concatenated thinking
+would silently begin indexing model scratch the day Anthropic starts persisting
+it, with no code change to notice.
+
+`claude_does_not_persist_thinking_text` pins the 21-blocks/0-bytes measurement
+so this cannot rot; if it ever fails, claude has begun persisting reasoning and
+the v1.1 question of storing thinking distinguishably (deferred by name to the
+live-capture plan) should be reopened. The drop rule itself is proved by
+`a_thinking_block_never_reaches_a_turn_body`, which must be driven from a
+**synthetic** session — the committed fixtures contain no reasoning for a
+broken reader to leak, so they cannot prove that rule.
+
+**The drop discards a block's TEXT, never its line's group MEMBERSHIP** — see
+the frozen grouping rule below, which this would otherwise break.
 
 ### Roles and sources
 
@@ -249,7 +345,7 @@ inside a claude dialect.
 
 ## Proof
 
-`cargo test -p fs3-providers --test conversation_source_claude` — 15 tests.
+`cargo test -p fs3-providers --test conversation_source_claude` — **19 tests**.
 
 - `the_claude_reader_satisfies_the_conversation_source_contract` — the shared
   five-case suite (`fs3_testkit::conversation_source_contract`), driven through
@@ -262,13 +358,26 @@ inside a claude dialect.
 - `assistant_blocks_merge_by_message_id_to_the_count_the_fixture_pins` — asserts
   against `extras.distinct_assistant_message_ids` in the expectations file
   rather than a literal, so the fixture pins the arithmetic.
-- `a_message_interrupted_by_its_own_tool_result_stays_one_turn` — the
-  mutation-checked shape guard.
+- `a_message_interrupted_by_its_own_tool_result_stays_one_turn` and
+  `an_adjacent_run_fold_cannot_pass_this` — the shape guards.
+- `dropping_thinking_does_not_move_an_ordinal` — the frozen grouping rule.
+- `a_thinking_block_never_reaches_a_turn_body` (synthetic) and
+  `claude_does_not_persist_thinking_text` (measured) — the drop rule and the
+  measurement that corrects its justification.
+
+### The structural done-bar does not catch the bug this unit most feared
 
 **The mutation check was verified by performing the mutation**, not asserted.
 Changing the merge to an adjacent-run fold (closing open groups at each `user`
-record) turns 13 assistant turns into 20 and fails four tests. Notably
-`emitted_ordinals_are_a_subsequence_of_what_the_store_holds` still **passed**
-under the broken implementation — a subsequence of 20 ordinals is still a valid
-subsequence — which is exactly why the shape guard exists and why a count-only
-test would not have been enough.
+record) turns 13 assistant turns into 20 and fails four tests.
+
+But `emitted_ordinals_are_a_subsequence_of_what_the_store_holds` **still
+passed** under the broken implementation — a subsequence of 20 ordinals is
+still a valid, in-order, repeat-free subsequence. So the committed structural
+expectation, which is the plan's mechanical done-bar for a reader, **cannot
+distinguish a correct merge from a broken one.**
+
+That is why `an_adjacent_run_fold_cannot_pass_this` exists and why it pins the
+SHAPE — the count of distinct assistant ordinals, and the specific continuation
+blocks that must never become ordinals of their own — rather than a total.
+A count-only test written against the wrong number would have passed too.
