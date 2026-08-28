@@ -176,3 +176,72 @@ understand the interim. No action from me.
 
 Holding on 005-convo-u2, working tree clean, gate green, available for
 composition questions.
+
+---
+
+# Addendum — the A1 refusal (third report)
+
+Commit `023dcea`, `harness commit`, direct-verified.
+
+## What it does
+
+`commit_poll` reads the stored `conversation_id` for `(harness, session_id)`
+inside its own transaction and returns `StoreError::SessionRebound` when it
+differs from the one it was handed. Nothing is written — not the cursor, not
+the ledger.
+
+Two details that were not in the ruling but are the reason the guard actually
+holds:
+
+- **Compared as `uuid`, not as text.** `SELECT ... WHERE conversation_id <>
+  $3::uuid` lets Postgres decide identity. Comparing the rendered strings would
+  refuse a caller whose only crime was spelling a guid in a different case.
+- **`FOR UPDATE`.** Without it, two concurrent FIRST polls of one session both
+  see no row and both insert, under different conversations — the guard would
+  read clean and the rebind would happen anyway, one row later.
+
+`StoreError::SessionRebound` is a new variant rather than a reuse. That follows
+the crate's own convention: `Dimensions` exists for exactly this reason — a
+failure the caller can act on, where a retry is not the fix, earns its own
+variant with a self-explaining message. It carries both conversations so the
+message names what happened rather than that something did.
+
+## Evidence
+
+| suite | count |
+| --- | --- |
+| `cargo test -p fs3-store --test pg_ingest_cursors` | 17 passed |
+| `cargo test -p fs3-core conversation_normalize` | 16 passed |
+| `harness checks` | all gates ok |
+
+**Mutation check 4:** delete the refusal so the upsert silently rebinds again —
+`a_session_may_not_be_rebound_to_another_conversation` fails and **nothing else
+does** (16 passed, 1 failed). Reverted with `git checkout`, clean `git status`
+confirmed before the gate.
+
+The test asserts four things, because the refusal is only useful if it is
+total: the error is returned, the cursor still points where the accepted poll
+left it, the refused poll's ordinal is absent from the ledger, and the second
+conversation holds zero turns.
+
+Disk: Avail 36Gi at gate completion, lowest observed 31Gi. `CARGO_INCREMENTAL=0`
+throughout; `cargo clean` had already reclaimed 6.7GiB from this worktree.
+
+## A lesson for the recipe format, from PM3's composition
+
+Applying recipe step 2 required one edit the recipe did not anticipate:
+deleting the daemon's `shape` body removed the last NON-TEST use of
+`ToolInput` and `TurnItem` in that file, so the top-level import had to lose
+them and the test module had to gain them, or `clippy -D warnings` fails on an
+unused import.
+
+The recipe named the symbols to delete precisely. What it could not see is
+which IMPORTS those symbols were keeping alive — a deletion recipe is
+incomplete until it names the imports it orphans.
+
+Generalised, for whoever maintains the packet template: a snap-in recipe that
+deletes code should state, per deleted symbol, what else in the file depended
+on it — imports first, since those are the ones a compiler turns into a gate
+failure rather than a runtime surprise. This belongs in the template, not only
+in this page, because the next unit to ship a deletion recipe will not have
+read this one.
