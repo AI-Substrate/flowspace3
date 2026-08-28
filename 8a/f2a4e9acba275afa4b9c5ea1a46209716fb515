@@ -1,0 +1,18 @@
+crates/store/src/embeddings.rs
+  h_9e71e8b09f7cf2 362-374,624,626-629,631-633,640,642,655,658-659
+crates/store/src/lib.rs
+  h_9e71e8b09f7cf2 51-52
+crates/store/tests/pg_ddoc.rs
+  h_9e71e8b09f7cf2 12-15,352-382
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8af2a4e9acba275afa4b9c5ea1a46209716fb515",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
