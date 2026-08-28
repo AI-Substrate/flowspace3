@@ -43,7 +43,7 @@
           "id": "tk-e203",
           "title": "u-c RULED — search honours the checkout it is asked from (crates/daemon/src/search.rs): (1) apply scope.worktree the way read.rs:619 already does, so a divergent path resolves to the asking checkout's version; (2) per-result provenance naming the checkout that served each hit; (3) truncation visibility — the default cap of 10 ALREADY exists at search.rs:141, so name the cap and what was truncated in the envelope rather than building a cap.",
           "state": "unchecked",
-          "success": "probe.sh flips p3_search_context_sensitive 0->1 and p3_wrong_version_leak_to_main 1->0 while p3_get_context_sensitive stays 1; envelope names the cap when it bites; assertions compare result identity or rank order, never raw scores (DL-002).",
+          "success": "probe.sh flips p3_search_context_sensitive 0->1 and p3_wrong_version_leak_to_main 1->0 while p3_get_context_sensitive stays 1; a hit that exists only in a non-caller checkout is excluded by default; the envelope names the cap when it bites and carries the weak-match hint in meta/hint (question-shape hint moved to w-agentic-query); assertions compare result identity or rank order, never raw scores (DL-002).",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
           ]
