@@ -516,9 +516,11 @@ async fn a_repository_with_no_index_is_named_rather_than_answered_with_silence()
 async fn the_envelope_carries_the_explanation_for_an_empty_answer() {
     let (database, state, identity) = crowded("search-starvation-envelope").await;
 
-    let base = support::spawn(fs3_daemon::http::router(state.clone())).await;
+    let auth = support::auth("search-starvation-envelope");
+    let base = support::spawn(fs3_daemon::http::router(state.clone(), auth.auth)).await;
     let envelope: serde_json::Value = reqwest::Client::new()
         .get(format!("{base}/search"))
+        .bearer_auth(&auth.key)
         .query(&[
             ("q", QUESTION),
             ("repo", identity.as_str()),
