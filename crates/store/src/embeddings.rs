@@ -483,6 +483,31 @@ pub async fn search_elements(
                    -- element and be rendered with an `el:` address. The kind
                    -- has to be pinned on BOTH sides of the query.
                    AND ($8::text[] IS NULL OR el.kind = ANY($8))
+                   -- The candidate gate above proves that SOME element with
+                   -- this raw hash is anchored in the caller scope. Without
+                   -- repeating that anchor here, the global lowest-id element
+                   -- may come from a foreign blob; the LEFT JOIN provenance
+                   -- lookups then return nulls and detach the hit from its repo.
+                   -- Scoping the representative also makes shared content
+                   -- report the caller's own path and address.
+                   AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
+                        OR EXISTS (
+                             SELECT 1
+                               FROM worktree_files f
+                               JOIN worktrees w ON w.id = f.worktree_id
+                               JOIN repos r     ON r.id = w.repo_id
+                              WHERE f.blob_sha = el.blob_sha
+                                AND ($6::text IS NULL OR r.identity = $6)
+                                AND ($7::text IS NULL OR f.path LIKE $7)
+                                AND ($9::text IS NULL OR w.root_path = $9))
+                        OR EXISTS (
+                             SELECT 1
+                               FROM turns t
+                               JOIN conversations c ON c.guid = t.conversation_id
+                              WHERE t.blob_sha = el.blob_sha
+                                AND ($6::text IS NULL OR c.repo_identity = $6)
+                                AND ($7::text IS NULL OR c.worktree LIKE $7)
+                                AND ($9::text IS NULL OR c.worktree = $9)))
                  ORDER BY el.id
                  LIMIT 1
            ) e ON TRUE
