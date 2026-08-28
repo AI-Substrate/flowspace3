@@ -1,0 +1,18 @@
+crates/daemon/fixtures/ddocs/derived-nonstandard/schema.json
+  h_9e71e8b09f7cf2 1-42
+crates/daemon/fixtures/ddocs/derived-nonstandard/source.dd.json
+  h_9e71e8b09f7cf2 1-33
+crates/daemon/src/ddoc.rs
+  h_9e71e8b09f7cf2 34,45-47,216,231-232,299-313,318-324,330-337,558,568-606
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6b6f9c8bdb31f7b916e10b857dddb74d1319daae",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
