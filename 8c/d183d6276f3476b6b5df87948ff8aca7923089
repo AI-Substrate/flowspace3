@@ -1,0 +1,16 @@
+docs/plans/008-ddocs-scan/impl-guide.dd.json
+  h_9e71e8b09f7cf2 86
+docs/plans/008-ddocs-scan/impl-guide.dd.md
+  h_9e71e8b09f7cf2 143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8cd183d6276f3476b6b5df87948ff8aca7923089",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
