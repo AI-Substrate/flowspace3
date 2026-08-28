@@ -116,6 +116,20 @@ enum Command {
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
     },
+    /// List deterministic-document rows that reference one source file.
+    Refs {
+        /// Repository-relative source path.
+        path: String,
+        /// Only this repository identity, or `all`.
+        #[arg(long, value_name = "IDENTITY")]
+        repo: Option<String>,
+        /// Maximum rows to return.
+        #[arg(long, value_name = "N")]
+        limit: Option<i64>,
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
     /// Ask an agentic question of the index.
     Ask {
         /// The question.
@@ -453,6 +467,19 @@ async fn run(command: Command) -> Result<ExitCode> {
             push_ddoc_search_filters(&mut params, id_kind, gate_open, gate_closed, ddoc_schema);
             push(&mut params, "cwd", here());
             emit(&client.search(&params).await)
+        }
+        Command::Refs {
+            path,
+            repo,
+            limit,
+            daemon_url,
+        } => {
+            let client = client_for(daemon_url)?;
+            let mut params = vec![("path".to_string(), path)];
+            push(&mut params, "repo", repo);
+            push(&mut params, "limit", limit.map(|value| value.to_string()));
+            push(&mut params, "cwd", here());
+            emit(&client.refs(&params).await)
         }
         Command::Ask {
             question,

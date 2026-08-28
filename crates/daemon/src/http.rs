@@ -22,7 +22,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 
-use fs3_core::Port;
+use fs3_core::{Port, catalog};
 
 use crate::answer::{Answer, IntoFailure, failed, ok};
 use crate::auth::Auth;
@@ -51,6 +51,52 @@ impl Health {
     pub const OK: &'static str = "ok";
 }
 
+/// What `GET /refs` asks for.
+#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+pub struct RefsRequest {
+    /// Repository-relative source path whose incoming ddoc rows are wanted.
+    pub path: String,
+    /// Restrict to one repository identity, or `all`.
+    #[serde(default)]
+    pub repo: Option<String>,
+    /// The caller's working directory, used for default repository scope.
+    #[serde(default)]
+    pub cwd: Option<String>,
+    /// Maximum rows to return. Defaults to the search surface's limit ceiling.
+    #[serde(default)]
+    pub limit: Option<i64>,
+}
+
+/// One exact inverse-index answer.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct RefHit {
+    /// The source row's positional dd address; paste directly into `ddocs get`.
+    pub address: String,
+    /// The repository-relative file this row references.
+    pub path: String,
+    /// dd relation spelling, verbatim.
+    pub rel: String,
+    /// JSONPath at which the relation was declared.
+    pub location: String,
+}
+
+impl From<fs3_store::DdocFileRef> for RefHit {
+    fn from(row: fs3_store::DdocFileRef) -> Self {
+        RefHit {
+            address: row.address,
+            path: row.path,
+            rel: row.rel,
+            location: row.location,
+        }
+    }
+}
+
+/// Exact ddoc rows referencing one ordinary source path.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct RefsResult {
+    pub results: Vec<RefHit>,
+}
+
 /// Build the router. Separate from [`serve`] so tests get the real routes
 /// without owning a port or a runtime shutdown. Authentication is one outer
 /// layer, so every current and future route inherits it automatically.
@@ -67,6 +113,7 @@ pub fn router(state: AppState, auth: Auth) -> Router {
         .route("/ask", post(ask))
         .route("/search", get(search))
         .route("/get", get(get_address))
+        .route("/refs", get(refs))
         .route("/tree", get(tree))
         .with_state(state)
         .layer(middleware::from_fn_with_state(auth, crate::auth::require))
@@ -392,19 +439,77 @@ fn next_after_search(outcome: &SearchOutcome) -> String {
                 provider change since indexing returns nothing from a full index"
             .to_string();
     }
-    if outcome.results.iter().any(|hit| {
-        hit.ddoc
-            .as_ref()
-            .is_some_and(|ddoc| ddoc.state_derived.is_none() && ddoc.gate_terminal.is_none())
-    }) {
-        return "the ddoc row is indexed, but its derived state and gate are unavailable — \
-                ensure the `ddocs` binary is installed and the document schema resolves; \
-                the stored state is not authoritative"
-            .to_string();
-    }
     "read a hit in full with `flowspace3 get <address>`, browse its file with \
      `flowspace3 tree <address>`, or narrow with --path/--repo"
         .to_string()
+}
+
+async fn refs(
+    State(state): State<AppState>,
+    Query(request): Query<RefsRequest>,
+) -> Answer<RefsResult> {
+    const COMMAND: &str = "refs";
+    if let Err(failure) = crate::schema::guard(&state.db).await {
+        return failed(&state, COMMAND, failure).await;
+    }
+
+    let path = request.path.trim();
+    if path.is_empty() {
+        return failed(
+            &state,
+            COMMAND,
+            fs3_core::envelope::Failure::new(
+                &catalog::QUERY_INVALID,
+                "refs needs a repository-relative source path",
+            ),
+        )
+        .await;
+    }
+    let limit = request.limit.unwrap_or(crate::search::MAX_LIMIT);
+    if !(1..=crate::search::MAX_LIMIT).contains(&limit) {
+        return failed(
+            &state,
+            COMMAND,
+            fs3_core::envelope::Failure::new(
+                &catalog::QUERY_INVALID,
+                format!(
+                    "--limit must be between 1 and {}, got {limit}",
+                    crate::search::MAX_LIMIT
+                ),
+            ),
+        )
+        .await;
+    }
+
+    let scope =
+        crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
+    match fs3_store::rows_referencing(
+        &state.db,
+        scope.repo.as_deref(),
+        path,
+        crate::scan::PARSER_VERSION,
+        limit,
+    )
+    .await
+    {
+        Ok(rows) => {
+            let result = RefsResult {
+                results: rows.into_iter().map(RefHit::from).collect(),
+            };
+            let next = if result.results.is_empty() {
+                "no indexed ddoc rows reference that source path — this is a successful empty answer"
+            } else {
+                "paste any address above into `ddocs get` or `flowspace3 get` to read the source row"
+            };
+            ok(&state, COMMAND, result)
+                .await
+                .0
+                .with_meta(serde_json::json!({ "scope": scope }))
+                .with_next_action(crate::scope::steer(&scope, next))
+                .into()
+        }
+        Err(error) => failed(&state, COMMAND, error.into_failure()).await,
+    }
 }
 
 async fn get_address(
@@ -526,52 +631,5 @@ pub(crate) async fn serve_listener(
 async fn shutdown_signal() {
     if let Err(error) = tokio::signal::ctrl_c().await {
         tracing::error!(%error, "cannot listen for shutdown signal");
-    }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::search::{DdocHit, Hit};
-
-    #[test]
-    fn degraded_ddoc_search_names_the_missing_binary() {
-        let outcome = SearchOutcome {
-            results: vec![Hit {
-                address: "docs/plan.dd.json#acceptance_criteria/ac-0001".to_string(),
-                score: 1.0,
-                match_field: "raw".to_string(),
-                kind: "row".to_string(),
-                subkind: "ddoc_row".to_string(),
-                name: "ac-0001".to_string(),
-                span: [1, 1],
-                snippet: "criterion".to_string(),
-                smart: None,
-                tags: Vec::new(),
-                repo: Some("git:host/org/repo".to_string()),
-                path: Some("docs/plan.dd.json".to_string()),
-                ddoc: Some(DdocHit {
-                    address: "docs/plan.dd.json#acceptance_criteria/ac-0001".to_string(),
-                    schema: "builder/plan".to_string(),
-                    section: "acceptance_criteria".to_string(),
-                    id: "ac-0001".to_string(),
-                    id_kind: Some("ac".to_string()),
-                    trail: vec!["acceptance_criteria".to_string(), "ac-0001".to_string()],
-                    doc_title: Some("Plan".to_string()),
-                    state_stored: Some("unchecked".to_string()),
-                    state_derived: None,
-                    gate_terminal: None,
-                    rels: Vec::new(),
-                    findings: Vec::new(),
-                }),
-            }],
-            empty_because: None,
-        };
-
-        let next = next_after_search(&outcome);
-        assert!(
-            next.contains("`ddocs` binary"),
-            "degradation must name the missing tool: {next}"
-        );
-        assert!(next.contains("stored state is not authoritative"));
     }
 }

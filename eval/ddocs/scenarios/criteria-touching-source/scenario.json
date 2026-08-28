@@ -4,10 +4,10 @@
   "title": "Which criteria touch this source file",
   "lane": "ddoc-search",
   "request": {
-    "query": "which acceptance criteria touch crates/core/src/address.rs",
+    "command": "refs",
+    "path": "crates/core/src/address.rs",
     "repo": "git:github.com/AI-Substrate/flowspace3",
-    "id_kind": "ac",
-    "source_path": "crates/core/src/address.rs"
+    "limit": 100
   },
   "assertions": "assertions.json",
   "ground_truth": {

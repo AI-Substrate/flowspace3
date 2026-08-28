@@ -37,6 +37,19 @@ If a row is indexed before ddocs enrichment is available, relationships may be e
 and derived state and gate membership may be absent. The row remains a valid search
 answer; the response's `next_action` identifies the missing enrichment.
 
+## Source-file references
+
+The inverse index answers which ddoc rows reference one repository-relative source path.
+It is exact and unranked:
+
+```bash
+flowspace3 refs crates/core/src/address.rs
+```
+
+An empty `results` array is a successful answer: the current corpus may contain no file
+edges, including while dd PR #12 remains unmerged. Every non-empty result carries the
+row's positional `address`, ready for `ddocs get` or `flowspace3 get`.
+
 ## Filters
 
 - `--id-kind ac` selects the raw minted-id prefix without treating the prefix set as

@@ -145,7 +145,7 @@ impl Stack {
 
     /// Store the exact tree produced by the pure ddoc parser, without relying
     /// on the composition-owned scan dispatch.
-    async fn index_ddoc(&self, path: &str, source: &str) -> String {
+    async fn index_ddoc(&self, path: &str, source: &str) -> (String, fs3_core::BlobRef) {
         let tree = fs3_parsers::scan_ddoc(Path::new(path), source.as_bytes(), None)
             .expect("the ddoc fixture parses");
         let address = tree
@@ -176,7 +176,7 @@ impl Stack {
         )
         .await
         .expect("storing parsed ddoc tree");
-        address
+        (address, tree.blob)
     }
 
     async fn call(
@@ -208,6 +208,10 @@ impl Stack {
 
     async fn get(&self, query: &[(&str, &str)]) -> Envelope {
         self.call("GET", "/get", None, query).await
+    }
+
+    async fn refs(&self, query: &[(&str, &str)]) -> Envelope {
+        self.call("GET", "/refs", None, query).await
     }
 
     async fn tree(&self, query: &[(&str, &str)]) -> Envelope {
@@ -294,7 +298,7 @@ async fn get_reads_one_element_with_its_children_and_parents() {
 #[tokio::test]
 async fn get_by_dd_address_resolves_the_same_row_the_parser_produced() {
     let stack = Stack::create("read_get_ddoc_row").await;
-    let address = stack
+    let (address, _) = stack
         .index_ddoc(
             "docs/plan.dd.json",
             r#"{
@@ -323,6 +327,75 @@ async fn get_by_dd_address_resolves_the_same_row_the_parser_produced() {
             .expect("row text")
             .contains("Agents can resolve this row")
     );
+    stack.destroy().await;
+}
+
+#[tokio::test]
+async fn refs_with_no_rows_is_a_successful_empty_answer() {
+    let stack = Stack::create("refs_empty").await;
+    let _ = stack
+        .index_ddoc(
+            "docs/plan.dd.json",
+            r#"{
+                "dd": {"schema": "builder/plan"},
+                "sections": [{"name": "acceptance_criteria", "value": [
+                    {"id": "ac-0001", "claim": "No file edge yet", "state": "unchecked"}
+                ]}]
+            }"#,
+        )
+        .await;
+
+    let envelope = stack.refs(&[("path", "src/lib.rs")]).await;
+    assert!(
+        envelope.ok,
+        "empty inverse lookup is not an error: {:?}",
+        envelope.error
+    );
+    assert_eq!(data(&envelope)["results"], serde_json::json!([]));
+    assert!(
+        envelope
+            .next_action
+            .as_deref()
+            .is_some_and(|next| next.contains("successful empty answer"))
+    );
+    stack.destroy().await;
+}
+
+#[tokio::test]
+async fn refs_returns_the_source_rows_pasteable_dd_address() {
+    let stack = Stack::create("refs_cited").await;
+    let (address, blob) = stack
+        .index_ddoc(
+            "docs/plan.dd.json",
+            r#"{
+                "dd": {"schema": "builder/plan"},
+                "sections": [{"name": "acceptance_criteria", "value": [
+                    {"id": "ac-0001", "claim": "Covers source", "state": "unchecked"}
+                ]}]
+            }"#,
+        )
+        .await;
+    fs3_store::replace_file_refs(
+        &stack.state.db,
+        &blob,
+        fs3_daemon::scan::PARSER_VERSION,
+        &[fs3_store::DdocFileRef {
+            element_id: 0,
+            address: address.clone(),
+            path: "src/lib.rs".to_string(),
+            rel: "ref".to_string(),
+            location: "$.sections[0].value[0].source".to_string(),
+        }],
+    )
+    .await
+    .expect("attach file ref");
+
+    let envelope = stack.refs(&[("path", "src/lib.rs")]).await;
+    let results = data(&envelope)["results"].as_array().expect("ref results");
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0]["address"], address);
+    assert_eq!(results[0]["path"], "src/lib.rs");
+    assert_eq!(results[0]["rel"], "ref");
     stack.destroy().await;
 }
 
