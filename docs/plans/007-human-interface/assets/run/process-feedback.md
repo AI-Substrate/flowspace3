@@ -74,3 +74,87 @@ the first half cost. PM seat: `pij-near-carp`. Prime: `pij-instant-lynx`.
 - **A criterion checked before its risk has passed is a criterion nobody
   re-checks.** ac-0002 was provable at the end of phase 1 and was deliberately
   left unchecked, because it must hold after the renderer lands.
+
+---
+
+# Part 2 — what the rest of the run taught, written at close-out
+
+## The three template changes I would make tomorrow
+
+1. **A unit must declare what it READS, not only what it owns.** The
+   impl-guide's zero-shared-files claim was false because it listed unit PATHS
+   and never asked what each unit CONSUMES. u-r needed types that lived inside
+   u-w's fence. Consumption is where fences actually collide.
+2. **A packet needs a TRIPWIRE field.** "The check that proves this plan's
+   invariant still holds, and what a red one means." I added it by hand to all
+   three coder packets and it worked — every coder stopped correctly on a red
+   golden instead of investigating it away. It should not depend on the PM
+   remembering.
+3. **The canary should ask for `pij whoami` output, not for an identity.** All
+   three seats mis-stated their own id, because a seat cannot see the id the
+   registry minted for it. Prime confirmed `pij whoami` is the canonical answer,
+   and the reviewer's canary used it and was clean.
+
+## The two rules this run produced, both learned the hard way
+
+- **A ruling is not closed when the PM has the answer — it is closed when the
+  BLOCKED WORKER has it.** Prime approved u-w's dependency; I recorded it in the
+  impl-guide and did not relay it, and u-w sat blocked for an hour before asking
+  again. (DL-007.)
+- **A ruling recorded where it was made is not recorded where it is READ.** The
+  goldens exemption was fully reasoned in PROVENANCE.md while the first-light
+  transcript still flatly claimed no golden was modified. The reviewer caught it,
+  I fixed it — and then made the same mistake again by adding a NOTE to ac-0003
+  while its claim still asserted ssh. Two instances in one session, from one
+  cause: the checked surface is the claim, not the explanation beside it.
+
+## What the cross-model review was worth
+
+Seven findings. The two HIGHs were both against the PM, and neither was
+reachable by the gate:
+
+- The broken-pipe contract was missing because the test that proves it had never
+  been on this branch — a gate only runs what is present, so ABSENCE is
+  invisible to it. `flowspace3 status | head` panicked with exit 101.
+- Standing PRD req 59 messages were swallowed in human mode by my own
+  duplicate-diagnosis fix, because no render surface draws messages and nothing
+  asserted they survive rendering.
+
+Both now carry the test that would have caught them. The four MEDIUMs went back
+to the units that owned them; all four returned fixed with proofs, and none
+needed arguing. **A reviewer that reads the diff against the PROMISES finds what
+a gate cannot: things that are absent, and things that are claimed.**
+
+## Hazards this run hit that the tenets do not yet name
+
+1. **The base moves under a plan.** Main gained daemon authentication, then five
+   more commits, while three coders built. The first symptom was a coder's live
+   smoke test failing against a door that had been locked. Suggested encoding: a
+   staleness signal when the branch is behind `origin/main` on `crates/`.
+2. **A merge that deletes a test deletes the evidence that it deleted
+   something.** Both of my silent losses this session took a test with them.
+   Cheap check: warn when a merge REMOVES test files present on the merge-base.
+3. **A streaming test with no deadline fails by looking like work.** u-w's hung
+   for 58 minutes; my own goldens harness cost 900 seconds to the same shape. A
+   bounded stub helper in the testkit would have prevented both.
+4. **A shared worktree cannot host a reviewer and a reconciling PM at once.** I
+   invalidated two of the reviewer's gate runs by merging main underneath it.
+   Either give the reviewer its own checkout, or the PM freezes the tree while a
+   review round runs. My scheduling error, and a template-level fix.
+5. **A false production alarm costs more than a missing one.** The migration
+   guard reported "production version 13 -> blank" when it had merely failed to
+   PARSE a config that a newer binary had written. Two seats stopped work
+   believing they might have written to production. They were right to stop —
+   which is exactly why the alarm must not be able to cry wolf.
+
+## What the architecture actually bought, measured
+
+Three coders working simultaneously inside one crate produced **two conflicts**
+across the entire convergence — `Cargo.lock` and the arch allowlist, both
+additive. `crates/cli/src/main.rs` auto-merged every single time, because the
+packets carried an identical line-level map of who may touch which region. The
+named composition risk (u-t's fixture-to-live swap) cost nothing, because by
+composition time u-t had already been pointed at the real client seam.
+
+That is tenet 1 and tenet 3 paying out in the currency they promised: the
+architecture, not the orchestration, is what made three parallel agents cheap.
