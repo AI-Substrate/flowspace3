@@ -1,0 +1,16 @@
+docs/plans/008-ddocs-scan/plan.dd.json
+  h_9e71e8b09f7cf2 108-109,202
+docs/plans/008-ddocs-scan/plan.dd.md
+  h_9e71e8b09f7cf2 89,157-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "006284b05ff5c1a23c37b225b88758fdc3c7c268",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
