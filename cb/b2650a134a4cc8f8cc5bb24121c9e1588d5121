@@ -1,0 +1,19 @@
+crates/providers/src/conversation_sources/metrics_db.rs
+  s_59d749bfeff5de::t_909ea2b9575477 867-877,879-883,887
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cbb2650a134a4cc8f8cc5bb24121c9e1588d5121",
+  "prompts": {},
+  "sessions": {
+    "s_59d749bfeff5de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae4199d-c737-4ac3-a856-7e69531e4bab",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
