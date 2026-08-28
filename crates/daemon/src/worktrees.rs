@@ -9,6 +9,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result, anyhow, bail};
 use fs3_store::RegisteredWorktree;
@@ -160,7 +161,7 @@ where
     // waiting for its second absence observation.
     missing.retain(|root, _| registered_paths.contains(root));
 
-    let mut register = BTreeSet::new();
+    let mut register = BTreeMap::new();
     for roots in anchors.values() {
         let anchor = &roots[0];
         for candidate in enumerate(anchor)? {
@@ -178,15 +179,42 @@ where
             // worktrees are additions.
             let checkout_is_registered = roots.iter().any(|root| root.starts_with(&candidate));
             if !checkout_is_registered && !registered_paths.contains(&candidate) {
-                register.insert(candidate);
+                register.insert(candidate.clone(), checkout_created_at(&candidate)?);
             }
         }
     }
 
     Ok(WorktreePlan {
-        register: register.into_iter().collect(),
+        register: newest_first(register.into_iter().collect()),
         remove,
     })
+}
+
+/// Prefer filesystem birth time for the checkout marker. Git's porcelain has
+/// no checkout-creation timestamp. On platforms without birth time, a linked
+/// worktree's `.git` marker-file mtime is the closest stable signal; the main
+/// checkout's mutable `.git` directory is conservatively treated as oldest.
+fn checkout_created_at(root: &Path) -> Result<SystemTime> {
+    let marker = root.join(".git");
+    let metadata = marker
+        .metadata()
+        .with_context(|| format!("reading checkout marker {}", marker.display()))?;
+    match metadata.created() {
+        Ok(created) => Ok(created),
+        Err(_) if metadata.is_file() => metadata
+            .modified()
+            .with_context(|| format!("reading checkout marker time {}", marker.display())),
+        Err(_) => Ok(UNIX_EPOCH),
+    }
+}
+
+fn newest_first(mut appeared: Vec<(PathBuf, SystemTime)>) -> Vec<PathBuf> {
+    appeared.sort_by(|(left_path, left_time), (right_path, right_time)| {
+        right_time
+            .cmp(left_time)
+            .then_with(|| left_path.cmp(right_path))
+    });
+    appeared.into_iter().map(|(path, _)| path).collect()
 }
 
 /// Ask git for the linked worktrees belonging to `anchor`'s repository.
@@ -247,6 +275,7 @@ fn parse_porcelain(output: &[u8]) -> Vec<PathBuf> {
 mod tests {
     use std::cell::Cell;
     use std::io;
+    use std::time::Duration;
 
     use super::*;
 
@@ -323,6 +352,7 @@ mod tests {
         let linked = temp.path().join("linked");
         std::fs::create_dir_all(&main).unwrap();
         std::fs::create_dir_all(&linked).unwrap();
+        std::fs::write(linked.join(".git"), "gitdir: /tmp/admin\n").unwrap();
         let main = main.canonicalize().unwrap();
         let linked = linked.canonicalize().unwrap();
         let rows = [registered("git:example/repo", &main)];
@@ -337,6 +367,26 @@ mod tests {
 
         assert_eq!(plan.register, vec![linked]);
         assert!(plan.remove.is_empty());
+    }
+
+    #[test]
+    fn appeared_worktrees_are_newest_first_with_a_stable_tie_break() {
+        let oldest = UNIX_EPOCH + Duration::from_secs(1);
+        let newest = UNIX_EPOCH + Duration::from_secs(2);
+        let appeared_oldest_first = vec![
+            (PathBuf::from("/old"), oldest),
+            (PathBuf::from("/new-z"), newest),
+            (PathBuf::from("/new-a"), newest),
+        ];
+
+        assert_eq!(
+            newest_first(appeared_oldest_first),
+            vec![
+                PathBuf::from("/new-a"),
+                PathBuf::from("/new-z"),
+                PathBuf::from("/old"),
+            ]
+        );
     }
 
     #[test]
