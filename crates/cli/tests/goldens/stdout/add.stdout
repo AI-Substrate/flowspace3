@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "command": "add",
+  "v": 1,
+  "data": {
+    "enqueued": 456,
+    "files": 456,
+    "identity": "git:github.com/AI-Substrate/flowspace3",
+    "identity_source": "remote",
+    "pruned": [
+      {
+        "fix": "nothing to do — build output is not indexed",
+        "path": "/srv/api/target",
+        "reason": "gitignored"
+      }
+    ],
+    "removed": 0,
+    "root_path": "/srv/api",
+    "skipped": [
+      {
+        "count": 12,
+        "reason": "gitignored"
+      },
+      {
+        "count": 3,
+        "reason": "binary"
+      }
+    ],
+    "unchanged": 0,
+    "worktree_id": 7
+  },
+  "next_action": "456 scan jobs queued — poll `flowspace3 status` until the queue is empty, then search"
+}

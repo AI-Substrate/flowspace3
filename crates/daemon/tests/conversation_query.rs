@@ -12,9 +12,10 @@
 
 mod support;
 
+use fs3_core::views::read::GetPayload;
 use fs3_core::{Config, DatabaseConfig, Turn, TurnRole, TurnSource};
 use fs3_daemon::conversations::{IntakeRequest, intake};
-use fs3_daemon::read::{GetPayload, GetRequest, TreeRequest};
+use fs3_daemon::read::{GetRequest, TreeRequest};
 use fs3_daemon::scope::Scope;
 use fs3_daemon::search::{SearchRequest, search};
 use fs3_daemon::wiring::AppState;

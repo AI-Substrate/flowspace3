@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "command": "status",
+  "v": 1,
+  "data": {
+    "last_error": null,
+    "queue": [
+      {
+        "count": 44,
+        "kind": "embed",
+        "state": "pending",
+        "with_error": 0
+      }
+    ],
+    "roots": [
+      {
+        "files": 456,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/srv/api"
+      }
+    ],
+    "schema_ahead": []
+  },
+  "next_action": "44 job(s) still queued — `flowspace3 status` again in a moment",
+  "messages": [
+    {
+      "key": "update.restart-pending",
+      "source": "update",
+      "severity": "warning",
+      "text": "a newer flowspace3 is installed and waiting for a daemon restart",
+      "next_action": "restart the daemon: `flowspace3 doctor upgrade`",
+      "created": "2026-08-28T02:00:00Z"
+    }
+  ]
+}

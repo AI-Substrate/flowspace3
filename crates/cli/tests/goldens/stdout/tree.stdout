@@ -1,0 +1,39 @@
+{
+  "ok": true,
+  "command": "tree",
+  "v": 1,
+  "data": {
+    "entries": [
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/",
+        "files": 761,
+        "kind": "repository",
+        "name": "git:github.com/AI-Substrate/flowspace3"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/harness-engineering/",
+        "files": 1772,
+        "kind": "repository",
+        "name": "git:github.com/AI-Substrate/harness-engineering"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/pij/",
+        "files": 1356,
+        "kind": "repository",
+        "name": "git:github.com/AI-Substrate/pij"
+      }
+    ],
+    "kind": "index",
+    "repo": null,
+    "showing": 3,
+    "target": "index",
+    "total": 4
+  },
+  "meta": {
+    "scope": {
+      "repo": null,
+      "source": "all"
+    }
+  },
+  "next_action": "showing 3 of 4 — narrow with a path (`flowspace3 tree <dir>`) or raise --limit"
+}

@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "command": "conversation list",
+  "v": 1,
+  "data": {
+    "conversations": []
+  },
+  "next_action": "nothing is indexed yet — `flowspace3 conversation import <file>` stores a transcript"
+}

@@ -1,0 +1,6 @@
+{"stream":"fs3.events","v":1,"daemon":"0.4.0","heartbeat_ms":15000}
+{"v":1,"at":"2026-08-28T03:11:05.001Z","kind":"job_done","job":"embed","subject":"batch of 32","ms":940,"left":0}
+{"v":1,"at":"2026-08-28T03:11:06.001Z","kind":"reindex_started","plan":"full"}
+{"v":1,"at":"2026-08-28T03:11:07.001Z","kind":"queue","rows":[{"kind":"embed","state":"pending","count":3}]}
+{"v":1,"at":"2026-08-28T03:11:08.001Z","kind":"root_changed","change":"added","root":"git:github.com/AI-Substrate/flowspace3","root_path":"/srv/api","files":456}
+{"v":1,"at":"2026-08-28T03:11:20.000Z","kind":"heartbeat","seq":1}
