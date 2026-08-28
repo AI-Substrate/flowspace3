@@ -1,0 +1,220 @@
+#!/usr/bin/env bash
+set -o pipefail
+
+STOP_POLLS=20
+TERM_POLLS=12
+START_POLLS=40
+HEALTH_POLLS=20
+POLL_SECONDS=0.25
+
+pane_id="-"
+old_pid="-"
+new_pid="-"
+health="not-checked"
+force=0
+binary=""
+tmux_bin="${DAEMON_RESTART_TMUX_BIN:-tmux}"
+tmux_socket="${DAEMON_RESTART_TMUX_SOCKET:-}"
+
+summary() {
+  printf 'SUMMARY pane=%s old_pid=%s new_pid=%s binary=%s health=%s\n' \
+    "$pane_id" "$old_pid" "$new_pid" "${binary:--}" "$health"
+}
+
+fail() {
+  printf 'daemon-restart: ERROR: %s\n' "$1" >&2
+  summary
+  exit 1
+}
+
+usage() {
+  cat <<'EOF'
+Usage: daemon-restart [--binary <absolute-path>] [--force]
+
+Find the tmux pane running `flowspace3 daemon`, stop that process, restart it
+in the same pane, and verify authenticated health through `flowspace3 ping`.
+
+  --binary <path>  Relaunch with this absolute executable path.
+  --force          Allow SIGKILL if the positively identified daemon ignores
+                   both Ctrl-C and SIGTERM.
+EOF
+}
+
+while (($# > 0)); do
+  case "$1" in
+    --binary)
+      (($# >= 2)) || fail "--binary requires an absolute path"
+      binary="$2"
+      shift 2
+      ;;
+    --force)
+      force=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      fail "unknown argument: $1"
+      ;;
+  esac
+done
+
+if [[ -z "$binary" ]]; then
+  binary=$(command -v flowspace3 2>/dev/null) || fail "flowspace3 is not on PATH; pass --binary <absolute-path>"
+fi
+[[ "$binary" == /* ]] || fail "binary path must be absolute: $binary"
+[[ -x "$binary" ]] || fail "binary is not executable: $binary"
+
+command -v "$tmux_bin" >/dev/null 2>&1 || fail "tmux is not installed; start the daemon inside tmux before using this tool"
+command -v pgrep >/dev/null 2>&1 || fail "pgrep is required to inspect tmux pane process trees"
+command -v ps >/dev/null 2>&1 || fail "ps is required to inspect tmux pane process trees"
+
+TMUX_ARGS=()
+if [[ -n "$tmux_socket" ]]; then
+  TMUX_ARGS=(-L "$tmux_socket")
+fi
+
+tmux_cmd() {
+  "$tmux_bin" "${TMUX_ARGS[@]}" "$@"
+}
+
+is_alive() {
+  kill -0 "$1" 2>/dev/null
+}
+
+descendants=()
+collect_descendants() {
+  local parent="$1" child
+  while IFS= read -r child; do
+    [[ -n "$child" ]] || continue
+    descendants+=("$child")
+    collect_descendants "$child"
+  done < <(pgrep -P "$parent" 2>/dev/null || true)
+}
+
+process_is_daemon() {
+  local pid="$1" comm args
+  comm=$(ps -p "$pid" -o comm= 2>/dev/null) || return 1
+  comm=${comm##*/}
+  [[ "$comm" == "flowspace3" ]] || return 1
+  args=$(ps -ww -p "$pid" -o args= 2>/dev/null) || return 1
+  [[ "$args" =~ (^|[[:space:]])[^[:space:]]*flowspace3[[:space:]]+daemon([[:space:]]|$) ]]
+}
+
+candidate_panes=()
+candidate_pids=()
+candidate_targets=()
+find_candidates() {
+  local pane pane_root target pid
+  candidate_panes=()
+  candidate_pids=()
+  candidate_targets=()
+  while IFS='|' read -r pane pane_root target; do
+    [[ -n "$pane" && -n "$pane_root" ]] || continue
+    descendants=()
+    collect_descendants "$pane_root"
+    for pid in "${descendants[@]}"; do
+      if process_is_daemon "$pid"; then
+        candidate_panes+=("$pane")
+        candidate_pids+=("$pid")
+        candidate_targets+=("$target")
+      fi
+    done
+  done < <(tmux_cmd list-panes -a -F '#{pane_id}|#{pane_pid}|#{session_name}:#{window_index}.#{pane_index}' 2>/dev/null) || return 1
+}
+
+if ! find_candidates; then
+  fail "tmux has no reachable server; start a pane and run 'flowspace3 daemon' there"
+fi
+
+case "${#candidate_pids[@]}" in
+  0)
+    fail "no tmux pane is running 'flowspace3 daemon'; start it in a tmux pane, then retry"
+    ;;
+  1)
+    pane_id="${candidate_panes[0]}"
+    old_pid="${candidate_pids[0]}"
+    ;;
+  *)
+    printf 'daemon-restart: multiple daemon candidates found; refusing to guess:\n' >&2
+    for ((i = 0; i < ${#candidate_pids[@]}; i++)); do
+      printf '  pane=%s target=%s pid=%s\n' \
+        "${candidate_panes[i]}" "${candidate_targets[i]}" "${candidate_pids[i]}" >&2
+    done
+    fail "stop all but one candidate and retry"
+    ;;
+esac
+
+printf 'daemon-restart: found pane=%s target=%s pid=%s\n' \
+  "$pane_id" "${candidate_targets[0]}" "$old_pid"
+printf 'daemon-restart: sending Ctrl-C to pane=%s\n' "$pane_id"
+tmux_cmd send-keys -t "$pane_id" C-c || fail "could not send Ctrl-C to pane $pane_id"
+
+wait_for_exit() {
+  local pid="$1" polls="$2" n
+  for ((n = 0; n < polls; n++)); do
+    is_alive "$pid" || return 0
+    sleep "$POLL_SECONDS"
+  done
+  ! is_alive "$pid"
+}
+
+if ! wait_for_exit "$old_pid" "$STOP_POLLS"; then
+  printf 'daemon-restart: pid=%s did not exit after Ctrl-C; sending SIGTERM\n' "$old_pid"
+  kill -TERM "$old_pid" 2>/dev/null || fail "could not SIGTERM the positively identified daemon pid $old_pid"
+  if ! wait_for_exit "$old_pid" "$TERM_POLLS"; then
+    if ((force == 0)); then
+      fail "pid $old_pid ignored SIGTERM; rerun with --force to permit SIGKILL"
+    fi
+    printf 'daemon-restart: pid=%s ignored SIGTERM; --force permits SIGKILL\n' "$old_pid"
+    kill -KILL "$old_pid" 2>/dev/null || fail "could not SIGKILL daemon pid $old_pid"
+    wait_for_exit "$old_pid" "$TERM_POLLS" || fail "daemon pid $old_pid remains after SIGKILL"
+  fi
+fi
+
+shell_quote() {
+  local value="$1"
+  printf "'%s'" "${value//\'/\'\\\'\'}"
+}
+
+launch_command="$(shell_quote "$binary") daemon"
+printf 'daemon-restart: launching %s in pane=%s\n' "$binary" "$pane_id"
+tmux_cmd send-keys -t "$pane_id" -l "$launch_command" || fail "could not type the daemon command into pane $pane_id"
+tmux_cmd send-keys -t "$pane_id" Enter || fail "could not execute the daemon command in pane $pane_id"
+
+for ((n = 0; n < START_POLLS; n++)); do
+  descendants=()
+  pane_root=$(tmux_cmd display-message -p -t "$pane_id" '#{pane_pid}' 2>/dev/null) || fail "pane $pane_id disappeared before restart"
+  collect_descendants "$pane_root"
+  matches=()
+  for pid in "${descendants[@]}"; do
+    if [[ "$pid" != "$old_pid" ]] && process_is_daemon "$pid"; then
+      matches+=("$pid")
+    fi
+  done
+  if ((${#matches[@]} == 1)); then
+    new_pid="${matches[0]}"
+    break
+  fi
+  if ((${#matches[@]} > 1)); then
+    fail "restart produced multiple daemon processes in pane $pane_id: ${matches[*]}"
+  fi
+  sleep "$POLL_SECONDS"
+done
+[[ "$new_pid" != "-" ]] || fail "no replacement 'flowspace3 daemon' appeared in pane $pane_id"
+printf 'daemon-restart: replacement pid=%s is running in pane=%s\n' "$new_pid" "$pane_id"
+
+for ((n = 0; n < HEALTH_POLLS; n++)); do
+  if "$binary" ping >/dev/null 2>&1; then
+    health="ok"
+    printf 'daemon-restart: authenticated health check passed via %s ping\n' "$binary"
+    summary
+    exit 0
+  fi
+  sleep "$POLL_SECONDS"
+done
+
+health="failed"
+fail "replacement pid $new_pid did not pass authenticated health through '$binary ping'"
