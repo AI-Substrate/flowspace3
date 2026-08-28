@@ -17,6 +17,7 @@
 //! break every other reader's expectations too.
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use fs3_core::{
     ConversationSource, Harness, IngestInput, SessionKind, SourceCursor, TurnItem, TurnRole,
@@ -42,19 +43,33 @@ const COPILOT: &str = "222c2c9d-5798-48cf-9dbd-cd4a52324c53";
 /// `std::env::temp_dir` and a unique name rather than a `tempfile` dependency:
 /// this unit's one dependency edge is spent on `rusqlite`, and the repo's own
 /// testkit already does exactly this.
+///
+/// The name carries THREE sources of uniqueness — pid, nanos and a
+/// process-static counter — and the counter is the one that is easy to think
+/// unnecessary. `cargo` runs these tests in parallel, so two threads in THIS
+/// process can read the same nanosecond; the pid does not separate them, and
+/// the first `Drop` then deletes a directory another test is still reading.
+/// Today every call site passes a distinct label, which would also prevent it —
+/// but that is an unenforced convention, and the first copy-pasted label
+/// reintroduces a one-in-three flake whose symptom is a scratch file vanishing
+/// mid-test with `os error 2`. The counter makes it structurally impossible
+/// instead of conventionally unlikely. Precedent:
+/// `crates/testkit/src/fake_source.rs`.
 struct Scratch {
     directory: PathBuf,
 }
 
 impl Scratch {
     fn new(label: &str) -> Self {
+        static NEXT: AtomicUsize = AtomicUsize::new(0);
         let unique = format!(
-            "fs3-metrics-db-{label}-{}-{}",
+            "fs3-metrics-db-{label}-{}-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .expect("clock is after the epoch")
-                .as_nanos()
+                .as_nanos(),
+            NEXT.fetch_add(1, Ordering::Relaxed),
         );
         let directory = std::env::temp_dir().join(unique);
         std::fs::create_dir_all(&directory).expect("scratch directory");
