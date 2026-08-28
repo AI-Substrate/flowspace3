@@ -42,17 +42,38 @@ use sqlx::Row;
 
 use crate::{PgPool, StoreError};
 
-/// What the ledger knows, as one consistent snapshot.
+/// What one poll needs to know, as one consistent snapshot.
 ///
 /// Both answers come from ONE transaction because they are used together: a
 /// `seen` set read before another poll's commit and a high-water mark read
 /// after it would number a batch on top of turns it also decided to store.
+///
+/// A snapshot is PER POLL. Caching one across polls numbers the second batch
+/// on top of the first — the optimisation a future reader adds in good faith,
+/// named here so it is refused in review.
+///
+/// # What this fixes, and what it does NOT
+///
+/// Numbering from the conversation's stored turns fixes COLLISION: a tailed
+/// turn lands ABOVE whatever the conversation already holds instead of
+/// silently vanishing into an idempotent conflict.
+///
+/// It does NOT fix DEDUPE across ingest paths. Turns that arrived by
+/// `fs3_cli::conversation` transcript import carry no ordinal — there is no
+/// ledger row and nothing to match them on — so tailing the same session
+/// afterwards APPENDS the same content beside them rather than recognising
+/// it. That is deliberate v1 behaviour, not an oversight: the alternative is
+/// matching turns by content hash across two paths that disagree about
+/// payload shaping, which is a plan of its own. Import a transcript or tail
+/// the session, not both.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct LedgerView {
-    /// Which of the asked-about ordinals are already stored.
+    /// Which of the asked-about ordinals are already stored. Scoped to the
+    /// SESSION: an ordinal means nothing outside the session that minted it.
     pub seen: BTreeSet<String>,
-    /// The number the next new turn takes — the high-water mark plus one, and
-    /// 1 for a conversation nothing has been stored for yet.
+    /// The number the next new turn takes. Scoped to the CONVERSATION, whose
+    /// primary key it is — the stored turns' high-water mark plus one, and 1
+    /// for a conversation that holds no turns at all.
     pub next_turn_no: u32,
 }
 
@@ -99,11 +120,33 @@ pub async fn load_cursor(
         .transpose()
 }
 
-/// Which of `ordinals` are already stored, and what number comes next.
+/// Which of `ordinals` are already stored, and what number the next turn takes.
 ///
 /// Asks about the batch's ordinals rather than loading the whole ledger: a
 /// long-running seat is thousands of rows and a poll only ever needs to know
 /// about the handful it just read.
+///
+/// # Two different scopes, on purpose
+///
+/// `seen` is scoped to the SESSION, because an ordinal is the store's natural
+/// id and means nothing outside the session that minted it — two sessions
+/// sharing a conversation must not dedupe against each other.
+///
+/// `next_turn_no` is scoped to the CONVERSATION, and comes from the stored
+/// turns rather than from this ledger. `turn_no` is the conversation's primary
+/// key, so the conversation is the thing that owns the number; deriving it
+/// from a per-session ledger was an INFERENCE about a one-session-per-
+/// conversation mapping, and it fails in two ordinary ways. A conversation
+/// previously filled by `fs3_cli::conversation` transcript import has turns
+/// but no ledger, so an inferred mark would restart at 1 — and because
+/// [`crate::conversations::append_turns`] is idempotent on
+/// `(conversation_id, turn_no)`, every colliding turn would be SILENTLY
+/// dropped while this module recorded it as stored. A second session on one
+/// conversation fails the same way by a different door. Asking the turns
+/// themselves cannot be forgotten and cannot drift. (Ruled by the plan-005 PM
+/// on 2026-08-28.)
+///
+/// This fixes COLLISION, not DEDUPE — see the note on [`LedgerView`].
 ///
 /// # Errors
 /// [`StoreError::Query`] when the read fails; [`StoreError::Corrupt`] when a
@@ -112,6 +155,7 @@ pub async fn ledger_view(
     pool: &PgPool,
     harness: Harness,
     session_id: &str,
+    conversation: &ConversationId,
     ordinals: &[&str],
 ) -> Result<LedgerView, StoreError> {
     let mut tx = pool.begin().await?;
@@ -128,12 +172,12 @@ pub async fn ledger_view(
     .into_iter()
     .collect();
 
+    // The conversation's own high-water mark, from the rows that hold the
+    // number. An index-only scan of the turns primary key.
     let highest: i32 = sqlx::query_scalar(
-        "SELECT COALESCE(MAX(turn_no), 0) FROM ingest_ledger
-          WHERE harness = $1 AND session_id = $2",
+        "SELECT COALESCE(MAX(turn_no), 0) FROM turns WHERE conversation_id = $1::uuid",
     )
-    .bind(harness.as_str())
-    .bind(session_id)
+    .bind(conversation.as_str())
     .fetch_one(&mut *tx)
     .await?;
 
@@ -141,7 +185,7 @@ pub async fn ledger_view(
 
     let highest = u32::try_from(highest).map_err(|_| {
         StoreError::Corrupt(fs3_core::Error::InvalidConfig(format!(
-            "ledger turn_no {highest} for {harness}/{session_id} is not a position in a sequence"
+            "turn_no {highest} in conversation {conversation} is not a position in a sequence"
         )))
     })?;
 

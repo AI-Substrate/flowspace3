@@ -1,26 +1,37 @@
 //! Cursors and the ordinal ledger, against a real Postgres.
 //!
-//! The load-bearing test in this file is
-//! [`a_rescan_after_rotation_appends_nothing_through_the_store`]. Everything
-//! else is ordinary round-tripping; that one is the whole reason the ledger
-//! exists. A reader whose file rotated restarts from zero and hands back the
-//! WHOLE conversation with `rescanned = true`, and if the ledger cannot
-//! recognise those records the conversation is stored a second time — silently,
-//! because a duplicated conversation looks exactly like a busy one.
+//! The load-bearing tests in this file are
+//! [`a_rescan_after_rotation_appends_nothing_through_the_store`] and
+//! [`two_sessions_on_one_conversation_number_above_each_other`]. The first is
+//! why the ledger exists: a reader whose file rotated restarts from zero and
+//! hands back the WHOLE conversation, and if the ledger cannot recognise those
+//! records the conversation is stored twice — silently, because a duplicated
+//! conversation looks exactly like a busy one.
 //!
-//! It is mutation-checked at the seam it guards: drop the `seen` lookup from
-//! `fs3_core::prepare_batch` and this fails on the turn count, not on a
-//! detail.
+//! The second is why the high-water mark comes from the stored TURNS rather
+//! than from the ledger. `turn_no` is the conversation's primary key, so a
+//! per-session mark was an inference about a one-session-per-conversation
+//! mapping; where that mapping does not hold, two sessions both number from 1,
+//! `append_turns` drops the collisions idempotently, and this module records
+//! them as stored. Turns that vanish while every call reports success.
+//!
+//! Both are mutation-checked at the seam they guard: drop the `seen` lookup
+//! from `fs3_core::prepare_batch` and the first fails on the turn count; put
+//! the high-water mark back on `ingest_ledger` and the second fails on the
+//! turn numbers.
 
 mod support;
 
 use std::collections::BTreeSet;
 
-use fs3_core::{Conversation, ConversationId, Harness, SourceCursor, prepare_batch};
+use fs3_core::{
+    Conversation, ConversationId, Element, Harness, RawRecord, SourceCursor, Turn, TurnRole,
+    TurnSource, prepare_batch,
+};
 use fs3_store::ingest_cursors::{
     commit_poll, forget_session, ledger_view, load_cursor, sessions_for,
 };
-use fs3_store::{PgPool, delete_conversation, upsert_conversation};
+use fs3_store::{PgPool, append_turns, delete_conversation, upsert_conversation};
 use support::FreshDatabase;
 
 const SESSION: &str = "9f2c0a44-1f1e-4d2a-9a3c-2b7d8e5f0011";
@@ -41,16 +52,30 @@ fn conversation(guid: &ConversationId) -> Conversation {
     }
 }
 
-fn record(ordinal: &str, body: &str) -> fs3_core::RawRecord {
-    fs3_core::RawRecord {
+fn record(ordinal: &str, body: &str) -> RawRecord {
+    RawRecord {
         ordinal: ordinal.to_string(),
         parent_ordinal: None,
         at: "2026-08-28T09:00:00Z".to_string(),
-        role: fs3_core::TurnRole::Agent,
-        source: fs3_core::TurnSource::System,
+        role: TurnRole::Agent,
+        source: TurnSource::System,
         body: body.to_string(),
         items: Vec::new(),
         head_sha: None,
+    }
+}
+
+/// A turn as another ingest path would have written it — no ordinal anywhere,
+/// which is exactly what a transcript import leaves behind.
+fn imported_turn(turn_no: u32, body: &str) -> Turn {
+    Turn {
+        turn_no,
+        role: TurnRole::Human,
+        source: TurnSource::Human,
+        head_sha: None,
+        at: "2026-08-28T08:00:00Z".to_string(),
+        body: body.to_string(),
+        items: Vec::new(),
     }
 }
 
@@ -61,6 +86,40 @@ async fn seeded(database: &FreshDatabase, guid: &ConversationId) -> PgPool {
         .await
         .expect("the conversation header should store");
     pool
+}
+
+/// Store turns the way the orchestrator will, and report how many were new.
+///
+/// The size gate is a literal `false`: these tests are about numbering, and a
+/// verdict they do not assert on should not be one they have to compute.
+async fn append(pool: &PgPool, guid: &ConversationId, turns: &[Turn]) -> usize {
+    append_turns(pool, guid, turns, |_: &Element| false)
+        .await
+        .expect("turns should append")
+        .accepted
+        .len()
+}
+
+/// One full poll: look, decide, store, record. The sequence the snap-in recipe
+/// prescribes, so these tests fail if that sequence stops working.
+async fn poll(
+    pool: &PgPool,
+    harness: Harness,
+    session: &str,
+    guid: &ConversationId,
+    records: &[RawRecord],
+    cursor: &SourceCursor,
+) -> (usize, usize) {
+    let ordinals: Vec<&str> = records.iter().map(|r| r.ordinal.as_str()).collect();
+    let view = ledger_view(pool, harness, session, guid, &ordinals)
+        .await
+        .expect("the ledger view should read");
+    let prepared = prepare_batch(records, &view.seen, view.next_turn_no);
+    let accepted = append(pool, guid, &prepared.turns).await;
+    commit_poll(pool, harness, session, guid, cursor, &prepared.ledger)
+        .await
+        .expect("the poll should commit");
+    (accepted, prepared.deduped)
 }
 
 /// A cursor that only lives inside one process makes the SECOND ingest a full
@@ -167,45 +226,38 @@ async fn a_rescan_after_rotation_appends_nothing_through_the_store() {
         record("r3", "third"),
     ];
 
-    // Poll one: nothing is known, so everything is new.
-    let view = ledger_view(&pool, Harness::Omp, SESSION, &["r1", "r2", "r3"])
-        .await
-        .unwrap();
-    assert_eq!(view.next_turn_no, 1, "an untouched session starts at 1");
+    let before = SourceCursor::ByteOffset {
+        device: 1,
+        inode: 2,
+        offset: 300,
+    };
+    let (accepted, deduped) = poll(&pool, Harness::Omp, SESSION, &guid, &whole, &before).await;
+    assert_eq!(accepted, 3, "the first ingest stores everything");
+    assert_eq!(deduped, 0);
 
-    let first = prepare_batch(&whole, &view.seen, view.next_turn_no);
-    assert_eq!(first.turns.len(), 3);
-    commit_poll(
-        &pool,
-        Harness::Omp,
-        SESSION,
-        &guid,
-        &SourceCursor::ByteOffset {
-            device: 1,
-            inode: 2,
-            offset: 300,
-        },
-        &first.ledger,
-    )
-    .await
-    .unwrap();
+    // The file rotated: the reader restarts from zero, so the same three
+    // records come back under a NEW inode.
+    let after = SourceCursor::ByteOffset {
+        device: 1,
+        inode: 99,
+        offset: 300,
+    };
+    let (accepted, deduped) = poll(&pool, Harness::Omp, SESSION, &guid, &whole, &after).await;
 
-    // Poll two: the file rotated. The reader restarts from zero and hands back
-    // everything it can see, with a NEW inode.
-    let view = ledger_view(&pool, Harness::Omp, SESSION, &["r1", "r2", "r3"])
-        .await
-        .unwrap();
-    assert_eq!(view.seen.len(), 3, "the ledger remembers all three");
-    assert_eq!(view.next_turn_no, 4);
-
-    let rescan = prepare_batch(&whole, &view.seen, view.next_turn_no);
-
-    assert!(
-        rescan.turns.is_empty(),
+    assert_eq!(
+        accepted, 0,
         "a rescan of an unchanged conversation must append ZERO turns — storing \
          them again duplicates the whole conversation and looks like a busy session"
     );
-    assert_eq!(rescan.deduped, 3);
+    assert_eq!(deduped, 3);
+
+    let stored: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM turns WHERE conversation_id = $1::uuid")
+            .bind(guid.as_str())
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(stored, 3, "and the conversation still holds exactly three");
 
     database.destroy(pool).await;
 }
@@ -219,27 +271,23 @@ async fn a_rescan_that_grew_stores_only_the_delta() {
     let pool = seeded(&database, &guid).await;
 
     let first_pass = [record("r1", "first"), record("r2", "second")];
-    let view = ledger_view(&pool, Harness::Claude, SESSION, &["r1", "r2"])
-        .await
-        .unwrap();
-    let prepared = prepare_batch(&first_pass, &view.seen, view.next_turn_no);
-    commit_poll(
+    poll(
         &pool,
         Harness::Claude,
         SESSION,
         &guid,
+        &first_pass,
         &SourceCursor::Seq { seq: 2 },
-        &prepared.ledger,
     )
-    .await
-    .unwrap();
+    .await;
 
     let after_rotation = [
         record("r1", "first"),
         record("r2", "second"),
         record("r3", "third"),
     ];
-    let view = ledger_view(&pool, Harness::Claude, SESSION, &["r1", "r2", "r3"])
+    let ordinals: Vec<&str> = after_rotation.iter().map(|r| r.ordinal.as_str()).collect();
+    let view = ledger_view(&pool, Harness::Claude, SESSION, &guid, &ordinals)
         .await
         .unwrap();
     let prepared = prepare_batch(&after_rotation, &view.seen, view.next_turn_no);
@@ -255,11 +303,130 @@ async fn a_rescan_that_grew_stores_only_the_delta() {
     database.destroy(pool).await;
 }
 
+/// TWO SESSIONS, ONE CONVERSATION. The second must number ABOVE the first's
+/// turns, not restart at 1.
+///
+/// This is the failure that made the high-water mark come from the turns:
+/// `append_turns` is idempotent on `(conversation_id, turn_no)`, so a second
+/// session numbering from 1 would have its turns dropped on conflict while
+/// `commit_poll` recorded them as stored — turns that vanish while every call
+/// reports success. Mutation-check: point `ledger_view` back at
+/// `ingest_ledger` and this fails on the numbers.
+#[tokio::test]
+async fn two_sessions_on_one_conversation_number_above_each_other() {
+    let guid = id('f');
+    let database = FreshDatabase::create().await;
+    let pool = seeded(&database, &guid).await;
+
+    let main = [
+        record("m1", "from the main file"),
+        record("m2", "and again"),
+    ];
+    let (accepted, _) = poll(
+        &pool,
+        Harness::Claude,
+        "session-one",
+        &guid,
+        &main,
+        &SourceCursor::Seq { seq: 2 },
+    )
+    .await;
+    assert_eq!(accepted, 2);
+
+    // A different session, same conversation. Its ordinals are its own.
+    let other = [record("o1", "from the other session")];
+    let ordinals: Vec<&str> = other.iter().map(|r| r.ordinal.as_str()).collect();
+    let view = ledger_view(&pool, Harness::Claude, "session-two", &guid, &ordinals)
+        .await
+        .unwrap();
+
+    assert!(
+        view.seen.is_empty(),
+        "another session's ordinals are not this session's"
+    );
+    assert_eq!(
+        view.next_turn_no, 3,
+        "but the NUMBER comes from the conversation, which already holds two turns"
+    );
+
+    let prepared = prepare_batch(&other, &view.seen, view.next_turn_no);
+    let accepted = append(&pool, &guid, &prepared.turns).await;
+
+    assert_eq!(
+        accepted, 1,
+        "the second session's turn is stored rather than dropped on conflict"
+    );
+
+    let stored: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM turns WHERE conversation_id = $1::uuid")
+            .bind(guid.as_str())
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(stored, 3, "all three turns are really there");
+
+    database.destroy(pool).await;
+}
+
+/// A conversation filled by transcript import is then TAILED. The tailed turns
+/// must land above the imported ones.
+///
+/// The import path writes no ledger rows — there is no ordinal to write — so
+/// an inferred per-session mark would start at 1 and every tailed turn would
+/// collide with an imported one and be dropped in silence.
+#[tokio::test]
+async fn tailing_a_previously_imported_conversation_appends_above_the_import() {
+    let guid = id('a');
+    let database = FreshDatabase::create().await;
+    let pool = seeded(&database, &guid).await;
+
+    // The import: three turns, no ledger, no cursor, no ordinals.
+    let imported = [
+        imported_turn(1, "imported one"),
+        imported_turn(2, "imported two"),
+        imported_turn(3, "imported three"),
+    ];
+    assert_eq!(append(&pool, &guid, &imported).await, 3);
+
+    // Now tail the live session for the first time.
+    let tailed = [record("t1", "live turn")];
+    let (accepted, deduped) = poll(
+        &pool,
+        Harness::Omp,
+        SESSION,
+        &guid,
+        &tailed,
+        &SourceCursor::Seq { seq: 1 },
+    )
+    .await;
+
+    assert_eq!(
+        accepted, 1,
+        "the tailed turn is stored, not dropped onto an imported turn's number"
+    );
+    assert_eq!(deduped, 0);
+
+    let numbers: Vec<i32> = sqlx::query_scalar(
+        "SELECT turn_no FROM turns WHERE conversation_id = $1::uuid ORDER BY turn_no",
+    )
+    .bind(guid.as_str())
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        numbers,
+        vec![1, 2, 3, 4],
+        "dense from 1, with the tailed turn at 4"
+    );
+
+    database.destroy(pool).await;
+}
+
 /// An ordinal's number is assigned once and never moves. A retried poll must
 /// not renumber a turn that is already stored under its original number.
 #[tokio::test]
 async fn a_retried_poll_leaves_an_ordinals_number_where_it_was() {
-    let guid = id('f');
+    let guid = id('b');
     let database = FreshDatabase::create().await;
     let pool = seeded(&database, &guid).await;
 
@@ -288,11 +455,19 @@ async fn a_retried_poll_leaves_an_ordinals_number_where_it_was() {
     .await
     .expect("a retry must not error");
 
-    let view = ledger_view(&pool, Harness::PijLedger, SESSION, &["r1", "r2"])
-        .await
-        .unwrap();
+    let numbers: Vec<i32> = sqlx::query_scalar(
+        "SELECT turn_no FROM ingest_ledger
+          WHERE harness = $1 AND session_id = $2 ORDER BY ordinal",
+    )
+    .bind(Harness::PijLedger.as_str())
+    .bind(SESSION)
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+
     assert_eq!(
-        view.next_turn_no, 3,
+        numbers,
+        vec![1, 2],
         "the original numbers stand — a retry may not renumber stored turns"
     );
 
@@ -303,7 +478,7 @@ async fn a_retried_poll_leaves_an_ordinals_number_where_it_was() {
 /// forgetting that is a full re-read next time.
 #[tokio::test]
 async fn an_empty_poll_still_advances_the_cursor() {
-    let guid = id('a');
+    let guid = id('c');
     let database = FreshDatabase::create().await;
     let pool = seeded(&database, &guid).await;
 
@@ -339,7 +514,7 @@ async fn an_empty_poll_still_advances_the_cursor() {
 /// first read rather than a dedupe against turns that no longer exist.
 #[tokio::test]
 async fn forgetting_a_session_takes_its_ledger() {
-    let guid = id('b');
+    let guid = id('d');
     let database = FreshDatabase::create().await;
     let pool = seeded(&database, &guid).await;
 
@@ -362,11 +537,10 @@ async fn forgetting_a_session_takes_its_ledger() {
         load_cursor(&pool, Harness::Omp, SESSION).await.unwrap(),
         None
     );
-    let view = ledger_view(&pool, Harness::Omp, SESSION, &["r1"])
+    let view = ledger_view(&pool, Harness::Omp, SESSION, &guid, &["r1"])
         .await
         .unwrap();
     assert!(view.seen.is_empty(), "the ledger went with the cursor");
-    assert_eq!(view.next_turn_no, 1, "and a re-ingest starts over");
 
     database.destroy(pool).await;
 }
@@ -374,7 +548,7 @@ async fn forgetting_a_session_takes_its_ledger() {
 /// Forgetting something that was never tailed is not an error, and says so.
 #[tokio::test]
 async fn forgetting_an_untailed_session_reports_nothing_reclaimed() {
-    let guid = id('c');
+    let guid = id('e');
     let database = FreshDatabase::create().await;
     let pool = seeded(&database, &guid).await;
 
@@ -391,7 +565,7 @@ async fn forgetting_an_untailed_session_reports_nothing_reclaimed() {
 /// that appends to nothing. The cascade is what keeps that impossible.
 #[tokio::test]
 async fn removing_a_conversation_forgets_how_to_resume_it() {
-    let guid = id('d');
+    let guid = id('f');
     let database = FreshDatabase::create().await;
     let pool = seeded(&database, &guid).await;
 
@@ -413,10 +587,16 @@ async fn removing_a_conversation_forgets_how_to_resume_it() {
         None,
         "the cursor went with the conversation"
     );
-    let view = ledger_view(&pool, Harness::Omp, SESSION, &["r1"])
-        .await
-        .unwrap();
-    assert!(view.seen.is_empty(), "and so did its ledger");
+
+    let orphans: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM ingest_ledger WHERE harness = $1 AND session_id = $2",
+    )
+    .bind(Harness::Omp.as_str())
+    .bind(SESSION)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(orphans, 0, "and so did its ledger");
 
     database.destroy(pool).await;
 }
@@ -425,7 +605,7 @@ async fn removing_a_conversation_forgets_how_to_resume_it() {
 /// separately (recipe gotcha 6). The composer needs to find them all.
 #[tokio::test]
 async fn every_session_tailed_for_a_conversation_is_listed() {
-    let guid = id('e');
+    let guid = id('a');
     let database = FreshDatabase::create().await;
     let pool = seeded(&database, &guid).await;
 
@@ -464,7 +644,7 @@ async fn every_session_tailed_for_a_conversation_is_listed() {
 /// remembering. A fifth store is a stop-and-ask, and this is where it stops.
 #[tokio::test]
 async fn an_unknown_harness_is_refused_by_the_database() {
-    let guid = id('f');
+    let guid = id('b');
     let database = FreshDatabase::create().await;
     let pool = seeded(&database, &guid).await;
 
@@ -489,7 +669,7 @@ async fn an_unknown_harness_is_refused_by_the_database() {
 /// thousands of rows and a poll only cares about the handful it just read.
 #[tokio::test]
 async fn the_ledger_answers_only_about_the_ordinals_it_was_asked_about() {
-    let guid = id('a');
+    let guid = id('c');
     let database = FreshDatabase::create().await;
     let pool = seeded(&database, &guid).await;
 
@@ -504,7 +684,7 @@ async fn the_ledger_answers_only_about_the_ordinals_it_was_asked_about() {
     .await
     .unwrap();
 
-    let view = ledger_view(&pool, Harness::Omp, SESSION, &["r2", "unheard-of"])
+    let view = ledger_view(&pool, Harness::Omp, SESSION, &guid, &["r2", "unheard-of"])
         .await
         .unwrap();
 
@@ -513,20 +693,18 @@ async fn the_ledger_answers_only_about_the_ordinals_it_was_asked_about() {
         BTreeSet::from(["r2".to_string()]),
         "only the asked-about ordinals come back"
     );
-    assert_eq!(
-        view.next_turn_no, 4,
-        "but the high-water mark is the whole session"
-    );
 
     database.destroy(pool).await;
 }
 
-/// Two sessions of the same store must not dedupe against each other: the
-/// ordinal namespace is per conversation, and `uuid` collisions across two
-/// claude sessions are ordinary.
+/// Two sessions of the same store must not dedupe against each other: an
+/// ordinal is the store's natural id and means nothing outside the session
+/// that minted it. Kept alongside
+/// [`two_sessions_on_one_conversation_number_above_each_other`], which proves
+/// the other half — that they DO share the numbering axis.
 #[tokio::test]
 async fn two_sessions_keep_separate_ledgers() {
-    let guid = id('b');
+    let guid = id('d');
     let database = FreshDatabase::create().await;
     let pool = seeded(&database, &guid).await;
 
@@ -541,15 +719,20 @@ async fn two_sessions_keep_separate_ledgers() {
     .await
     .unwrap();
 
-    let view = ledger_view(&pool, Harness::Claude, "session-two", &["shared-ordinal"])
-        .await
-        .unwrap();
+    let view = ledger_view(
+        &pool,
+        Harness::Claude,
+        "session-two",
+        &guid,
+        &["shared-ordinal"],
+    )
+    .await
+    .unwrap();
 
     assert!(
         view.seen.is_empty(),
         "another session's ordinal is not this session's"
     );
-    assert_eq!(view.next_turn_no, 1);
 
     database.destroy(pool).await;
 }

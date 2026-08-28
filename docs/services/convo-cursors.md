@@ -38,6 +38,19 @@ means a rescan RECOVERS a record's existing position instead of minting a
 second number for the same content, at identical row count. (Improvement on
 the original brief, ruled by the plan PM at ack, N4.)
 
+**The high-water mark comes from the stored TURNS, not from the ledger**
+(`ledger_view`, PM ruling 2026-08-28). `turn_no` is the conversation's primary
+key, so the conversation owns the number; deriving it from a per-session
+ledger was an INFERENCE about a one-session-per-conversation mapping, and
+inferences about mappings break when a plan grows a feature. Two ordinary
+cases break it: a conversation previously filled by `fs3_cli::conversation`
+transcript import has turns but no ledger, and two sessions can share one
+conversation. In both, an inferred mark restarts at 1, `append_turns` drops
+the collisions idempotently, and `commit_poll` records them as stored — turns
+that vanish while every call reports success. The `seen` set stays scoped to
+the SESSION, because an ordinal means nothing outside the session that minted
+it; only the numbering axis is shared.
+
 **Cursor and ledger commit in ONE transaction** (`commit_poll`). A cursor that
 advanced without its ledger rows leaves the next rescan unable to recognise
 turns that ARE stored, so it appends the conversation again under fresh
@@ -94,6 +107,14 @@ code change and never a migration.
   5433. Boot is looking for a compose service in a worktree that never ran
   compose. Do NOT `docker compose up` to "fix" it — `container_name` is pinned,
   so a second up can take the whole fleet's database down.
+- **Numbering fixes COLLISION, not DEDUPE across ingest paths.** Turns that
+  arrived by transcript import carry no ordinal — there is no ledger row and
+  nothing to match them on — so tailing the same session afterwards appends
+  the same content beside them rather than recognising it. Deliberate v1
+  behaviour, named here so it does not read as an oversight: the alternative
+  is matching turns by content hash across two paths that disagree about
+  payload shaping, which is a plan of its own. Import a transcript or tail the
+  session, not both.
 
 ## How to verify it works
 
@@ -104,18 +125,22 @@ export FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5433/fs3
 cargo test -p fs3-core conversation_normalize        # 16 tests
 
 # The durable half, against a real database.
-cargo test -p fs3-store --test pg_ingest_cursors     # 14 tests
+cargo test -p fs3-store --test pg_ingest_cursors     # 16 tests
 
 # The regression oracle for the payload-policy move: unmodified, must be green.
 cargo test -p fs3-daemon --lib conversations         # 8 tests
 ```
 
-The two load-bearing tests, both mutation-checked:
+The three load-bearing tests, all mutation-checked:
 
 - `a_rescan_after_rotation_appends_nothing_through_the_store` — delete the
   `seen` lookup in `prepare_batch` and this fails on the turn count, together
   with `a_rescan_that_grew_stores_only_the_delta` and the two in-memory
   equivalents.
+- `two_sessions_on_one_conversation_number_above_each_other` — point
+  `ledger_view`'s high-water query back at `ingest_ledger` and this fails on
+  the numbers, together with
+  `tailing_a_previously_imported_conversation_appends_above_the_import`.
 - `an_oversized_tool_result_is_cut_to_its_head_and_says_so` — delete the
   `head.truncate(...)` in `shape_turn` and five truncation tests fail,
   including the multi-byte boundary cases.
@@ -196,7 +221,9 @@ let batch = tokio::task::spawn_blocking(move || source.read_incremental(&file, c
 
 // 3. What does the ledger already know about exactly these records?
 let ordinals: Vec<&str> = batch.records.iter().map(|r| r.ordinal.as_str()).collect();
-let view = fs3_store::ingest_cursors::ledger_view(&pool, harness, &session_id, &ordinals).await?;
+let view = fs3_store::ingest_cursors::ledger_view(
+    &pool, harness, &session_id, &conversation_id, &ordinals,
+).await?;
 
 // 4. Decide — pure. Dedupes the rescan, numbers the rest, shapes the payloads.
 let prepared = fs3_core::prepare_batch(&batch.records, &view.seen, view.next_turn_no);
@@ -212,14 +239,34 @@ fs3_store::ingest_cursors::commit_poll(
 ).await?;
 ```
 
-Ordering note: `upsert_conversation` must have run before step 6 —
-`ingest_cursors.conversation_id` is a real foreign key, on purpose, so a cursor
-cannot outlive the conversation it resumes.
+**Ordering — this is a mis-wiring trap.** `upsert_conversation` must run before
+**step 3**, not merely before step 6. `ledger_view` reads the conversation's
+own high-water mark, so the conversation must exist before its number can be
+read; and `ingest_cursors.conversation_id` is a real foreign key, so the
+cursor cannot outlive the conversation it resumes.
 
-Reporting note: `prepared.deduped` is the count a rescan suppressed. It is
-worth putting in the CLI envelope — "read 412, appended 0, deduped 412" is the
-line that tells an operator a rotation was handled rather than a poll being
-mysteriously idle.
+**Serialise per CONVERSATION, not per session.** `ledger_view` and
+`commit_poll` are separate transactions, so a snapshot can go stale between
+them. Two concurrent polls of two DIFFERENT sessions on the SAME conversation
+would both read the same high-water mark and collide — the same silent drop,
+arriving by another door. This unit does not serialise for you; the
+orchestrator must.
+
+**Do NOT cache a `LedgerView` across polls.** It is a per-poll snapshot taken
+after the read, with that batch's ordinals. Reusing one numbers the second
+batch on top of the first. Named because it is the optimisation a future
+reader adds in good faith.
+
+**Compare the counts.** `append_turns` returns `Appended { accepted, already_stored }`,
+so a shortfall is visible: `accepted.len() + already_stored` should equal
+`prepared.turns.len()`. Anything else means turns were dropped on conflict,
+which is the failure class conversation-scoped numbering exists to prevent —
+treat it as an anomaly, not a success.
+
+**Reporting.** `prepared.deduped` is the count a rescan suppressed. It belongs
+in the CLI envelope — "read 412, appended 0, deduped 412" is the line that
+tells an operator a rotation was handled rather than a poll being mysteriously
+idle.
 
 ### 4. Config
 
