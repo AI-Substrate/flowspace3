@@ -199,7 +199,7 @@ pub async fn run(state: &AppState, value: serde_json::Value) -> Result<(), Failu
 /// Bumping it re-mints every element row and costs nothing in the content layer
 /// — enrichment is keyed by `raw_hash`, so a re-parse that produces the same
 /// text pays for no LLM calls (workshop 002, decision D2).
-pub const PARSER_VERSION: &str = "fs3-parsers@1";
+pub const PARSER_VERSION: &str = "fs3-parsers@2";
 
 #[cfg(test)]
 mod tests {
