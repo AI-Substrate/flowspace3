@@ -130,6 +130,53 @@ way. A reader that diverges here is a defect wearing a dialect's clothes.
    packets, one defect shape — it is a property of how the packets were written,
    and it belongs in the process report.
 
+## u2's five disclosed assumptions — the orchestrator honours all of them
+
+Source: `assets/reports/u2-assumptions.md` on branch `005-convo-u2` (commit
+`da20efc`), volunteered after the unit reported done. Ordered by cost of late
+discovery. A1 and A2 are the expensive ones and both fail SILENTLY.
+
+**A1 — a session is assumed to resolve to the SAME conversation forever, and
+nothing enforced it.** `commit_poll` upserted `ON CONFLICT (harness,
+session_id) DO UPDATE SET conversation_id`, so it would silently REBIND. The
+ledger has no conversation column — it is keyed `(harness, session_id,
+ordinal)` — so ledger rows do NOT move with the rebind: afterwards the ledger
+swears every record is stored while the new conversation holds nothing,
+`prepare_batch` dedupes the whole batch to zero, and that conversation stays
+permanently empty while every call reports success. Triggered by any path that
+MINTS a conversation id rather than looking one up.
+  - **Ruled**: `commit_poll` REFUSES a conversation change (u2 applying it) —
+    a session moving conversations is a bug, not an update.
+  - **Mine at the composition root**: resolution is a LOOKUP, never a mint.
+    Both halves, because either alone leaves the other's mistake live.
+
+**A2 — a reader's ordinal derivation is a PERSISTED CONTRACT.** If any reader
+changes how it derives an ordinal, every stored record looks new and the
+conversation silently doubles; `forget_session` does not rescue it, it re-reads
+from zero and duplicates anyway. Broadcast to all three reader seats as a fleet
+rule while they were still in context, and each states its derivation in its
+service page as a frozen fact with the doubling consequence spelled out. The
+derivations, now frozen: claude = first line uuid of a merged group; omp =
+the record-level `id` (8-hex handle, never the session uuid, never the inner
+message id); pij ledger = `seq` rendered as a decimal string; metrics-db =
+first rowid of a group, rowid otherwise.
+
+**A3** — numbering follows arrival order: one batch per session file per call,
+and never merge or sort after `prepare_batch`.
+
+**A4** — `rescanned` is deliberately NOT consulted and must never become an
+`if`. The reason is the one I would have missed: dedupe also covers the crash
+window between `append_turns` and `commit_poll`, where `rescanned` is FALSE and
+the batch is still a duplicate.
+
+**A5** — `forget_session` is a resume-reset, not an undo. A CLI reset verb must
+delete turns too, or say plainly that it will duplicate them.
+
+u2 also recorded what it did NOT assume — nothing about config shape, envelope,
+scheduling, poll order, or concurrency beyond the per-conversation serialisation
+already in the recipe. That absence is deliberate, which tells me those
+questions are mine rather than forgotten.
+
 ## Recipe step 2 is mine (prime ruling, condition 3)
 
 In `crates/daemon/src/conversations.rs`: delete the private `shape`,
