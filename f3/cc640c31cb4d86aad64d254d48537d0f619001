@@ -1,0 +1,56 @@
+docs/plans/007-human-interface/impl-guide.dd.json
+  s_15d888f4b629c1::t_dc351d056704db 9-63
+  s_15d888f4b629c1::t_2c2709b0fcfdd1 6-8
+  s_15d888f4b629c1::t_17a7b129da7789 64-66
+  s_15d888f4b629c1::t_a3bc09af4db905 1-5,67
+docs/plans/007-human-interface/assets/tasks/phase-2/tasks.dd.json
+  s_15d888f4b629c1::t_4f79dff8777c95 1-22
+docs/plans/007-human-interface/assets/tasks/phase-1/tasks.dd.json
+  s_15d888f4b629c1::t_61f6cd0f71dc5e 2-23
+  s_15d888f4b629c1::t_b535a50370f887 1
+  s_15d888f4b629c1::t_501d735ad76d56 24
+docs/plans/007-human-interface/plan.dd.json
+  s_15d888f4b629c1::t_ae9d64fa2f02fd 2-75
+  s_15d888f4b629c1::t_297f5d6673634d 1
+  s_15d888f4b629c1::t_e956aac771a928 76
+docs/plans/007-human-interface/assets/tasks/phase-3/tasks.dd.json
+  s_15d888f4b629c1::t_7e85bf0730546a 1-22
+docs/plans/007-human-interface/assets/tasks/phase-1/tasks.dd.md
+  s_15d888f4b629c1::t_a2bedeca61156e 1-48
+docs/plans/007-human-interface/assets/tasks/phase-2/tasks.dd.md
+  s_15d888f4b629c1::t_329be513667393 1-46
+docs/plans/007-human-interface/assets/tasks/phase-3/tasks.dd.md
+  s_15d888f4b629c1::t_2775626d974f22 1-46
+docs/plans/007-human-interface/impl-guide.dd.md
+  s_15d888f4b629c1::t_83ea313933983b 1-80
+docs/plans/007-human-interface/packet-coder.dd.json
+  s_15d888f4b629c1::t_5c65d0c447fae8 1-68
+docs/plans/007-human-interface/packet-coder.dd.md
+  s_15d888f4b629c1::t_e812ca8b1179ea 1-79
+docs/plans/007-human-interface/packet-pm.dd.json
+  s_15d888f4b629c1::t_8d02d6a6de1cfa 1-73
+docs/plans/007-human-interface/packet-pm.dd.md
+  s_15d888f4b629c1::t_d40611736132c5 1-84
+docs/plans/007-human-interface/packet-reviewer.dd.json
+  s_15d888f4b629c1::t_2fb1b1be990d8b 1-63
+docs/plans/007-human-interface/packet-reviewer.dd.md
+  s_15d888f4b629c1::t_1c2587936b3bdb 1-74
+docs/plans/007-human-interface/plan.dd.md
+  s_15d888f4b629c1::t_7fb55a3777ea3d 1-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f3cc640c31cb4d86aad64d254d48537d0f619001",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
