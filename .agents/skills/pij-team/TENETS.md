@@ -105,3 +105,21 @@ and the retro record (132 drained observations).
     and drained into structure — a template edit, a rule, a check — the same
     day, so dispatch N+1 inherits everything run N learned. This is why the
     pipeline is templated: templates are the improvable substrate.
+14. **A measurement has preconditions, and a predicate must REFUSE when they
+    fail.** A misleading zero is worse than a refusal: a leak probe that
+    reads 0 under fake embeddings is measuring garbage ranking against
+    garbage, and a must-be-0 gate over a population that can never be
+    nonzero passes forever. Probes check their own preconditions (the right
+    provider, a population that can exercise the claim, a control that
+    proves the instrument works) and emit `unmeasurable-<reason>` instead of
+    a number. Same law as three-valued eval rows: missing instrumentation
+    never masquerades as a result. (Added 2026-08-28, leopon/006.)
+15. **Composition is where EMERGENT defects appear — run the composed
+    artifact.** Units can each be correct against their own assumptions and
+    the pair still wrong: one unit's success can create the very population
+    that exposes a sibling's gap (auto-registration made many-checkouts
+    normal; many-checkouts broke scoped resolution). Neither unit's tests
+    can see it, so composition includes an adversarial RUN on a realistic
+    corpus — three defects in one day were caught only by running the
+    composed artifact, all three invisible to passing tests.
+    (Added 2026-08-28, leopon/006 + DL-004 + flea/008.)
