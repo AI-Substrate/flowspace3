@@ -1,0 +1,24 @@
+docs/plans/007-human-interface/packet-coder-u-r.dd.json
+  h_9e71e8b09f7cf2 1-186
+docs/plans/007-human-interface/packet-coder-u-r.dd.md
+  h_9e71e8b09f7cf2 1-93
+docs/plans/007-human-interface/packet-coder-u-t.dd.json
+  h_9e71e8b09f7cf2 1-194
+docs/plans/007-human-interface/packet-coder-u-t.dd.md
+  h_9e71e8b09f7cf2 1-95
+docs/plans/007-human-interface/packet-coder-u-w.dd.json
+  h_9e71e8b09f7cf2 1-190
+docs/plans/007-human-interface/packet-coder-u-w.dd.md
+  h_9e71e8b09f7cf2 1-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e06894bfce61e98dc01d5ea791f5a10416b69b4b",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
