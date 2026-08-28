@@ -14,7 +14,8 @@
 //! (`fs3_cli::render`). The two views cannot disagree, because one is made out
 //! of the other.
 
-use std::io::{IsTerminal, Write};
+use std::fmt;
+use std::io::{self, IsTerminal, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::OnceLock;
@@ -376,11 +377,18 @@ fn main() -> ExitCode {
 
     match outcome {
         Ok(code) => code,
+        // The reader hung up. `flowspace3 search … | head` ends this way every
+        // time, and it is a normal end to a command rather than a failure of
+        // it: exit 0, say nothing (main, 086f812).
+        Err(error) if is_broken_pipe(&error) => ExitCode::SUCCESS,
         Err(error) => {
             // `{error:#}` prints the whole anyhow context chain on one line,
             // so the doctor suggestion is never truncated away.
-            eprintln!("flowspace3: {error:#}");
-            ExitCode::from(EXIT_ERROR)
+            match write_stderr(format_args!("flowspace3: {error:#}\n")) {
+                Ok(()) => ExitCode::from(EXIT_ERROR),
+                Err(error) if error.kind() == io::ErrorKind::BrokenPipe => ExitCode::SUCCESS,
+                Err(_) => ExitCode::from(EXIT_ERROR),
+            }
         }
     }
 }
@@ -437,15 +445,15 @@ async fn run(command: Command) -> Result<ExitCode> {
                 }
                 OutputMode::Json => client.add(&path).await,
             };
-            Ok(emit(&envelope))
+            emit(&envelope)
         }
         Command::Remove { path, daemon_url } => {
             let client = client_for(daemon_url)?;
-            Ok(emit(&client.remove(&display(&path)).await))
+            emit(&client.remove(&display(&path)).await)
         }
         Command::Gc { daemon_url } => {
             let client = client_for(daemon_url)?;
-            Ok(emit(&client.gc().await))
+            emit(&client.gc().await)
         }
         Command::Scan { path, daemon_url } => {
             let client = client_for(daemon_url)?;
@@ -456,7 +464,7 @@ async fn run(command: Command) -> Result<ExitCode> {
                 }
                 OutputMode::Json => client.scan(&path).await,
             };
-            Ok(emit(&envelope))
+            emit(&envelope)
         }
         Command::Status {
             watch: watching,
@@ -468,7 +476,7 @@ async fn run(command: Command) -> Result<ExitCode> {
                 watch::run(&client, heartbeat_ms, output_mode() == OutputMode::Human).await?;
                 Ok(ExitCode::SUCCESS)
             } else {
-                Ok(emit(&client.status().await))
+                emit(&client.status().await)
             }
         }
         Command::Tui { daemon_url } => {
@@ -493,7 +501,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             push(&mut params, "min_score", min_score.map(|v| v.to_string()));
             push(&mut params, "source", source);
             push(&mut params, "cwd", here());
-            Ok(emit(&client.search(&params).await))
+            emit(&client.search(&params).await)
         }
         Command::Get {
             address,
@@ -512,7 +520,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             push(&mut params, "after", after.map(|v| v.to_string()));
             push(&mut params, "repo", repo);
             push(&mut params, "cwd", here());
-            Ok(emit(&client.get(&params).await))
+            emit(&client.get(&params).await)
         }
         Command::Tree {
             target,
@@ -528,7 +536,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             push(&mut params, "limit", limit.map(|v| v.to_string()));
             push(&mut params, "repo", repo);
             push(&mut params, "cwd", here());
-            Ok(emit(&client.tree(&params).await))
+            emit(&client.tree(&params).await)
         }
         Command::Conversation {
             command:
@@ -548,7 +556,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             // recent decision.
             let import =
                 fs3_cli::conversation::read(&file, guid, repo, worktree.or_else(here), title)?;
-            Ok(emit(&client.conversation_import(&import.body).await))
+            emit(&client.conversation_import(&import.body).await)
         }
         Command::Conversation {
             command:
@@ -562,18 +570,18 @@ async fn run(command: Command) -> Result<ExitCode> {
             let mut params = Vec::new();
             push(&mut params, "repo", repo);
             push(&mut params, "path", path);
-            Ok(emit(&client.conversation_list(&params).await))
+            emit(&client.conversation_list(&params).await)
         }
         Command::Conversation {
             command: ConversationCommand::Remove { guid, daemon_url },
         } => {
             let client = client_for(daemon_url)?;
-            Ok(emit(&client.conversation_remove(&guid).await))
+            emit(&client.conversation_remove(&guid).await)
         }
         Command::Doctor {
             config_dir: _,
             command: Some(DoctorCommand::InstallSkill),
-        } => Ok(emit(&skill::install()?)),
+        } => emit(&skill::install()?),
         Command::Doctor {
             config_dir,
             command: Some(DoctorCommand::Upgrade),
@@ -583,7 +591,7 @@ async fn run(command: Command) -> Result<ExitCode> {
                 None => settings::config_dir()?,
             };
             let effective = settings::load_effective_from(&dir)?;
-            Ok(emit(&fs3_cli::upgrade::upgrade(&effective.config).await))
+            emit(&fs3_cli::upgrade::upgrade(&effective.config).await)
         }
         Command::Doctor {
             config_dir,
@@ -594,12 +602,12 @@ async fn run(command: Command) -> Result<ExitCode> {
                 None => settings::config_dir()?,
             };
             let effective = settings::load_effective_from(&dir)?;
-            Ok(emit(&doctor::run(&effective.config, &dir).await))
+            emit(&doctor::run(&effective.config, &dir).await)
         }
-        Command::Docs { command } => Ok(match command {
+        Command::Docs { command } => match command {
             DocsCommand::List => emit(&fs3_cli::docs::list()),
             DocsCommand::Get { topic } => emit(&fs3_cli::docs::get(&topic)),
-        }),
+        },
         Command::AgentsStartHere => {
             let envelope = fs3_cli::docs::get("agents");
             let envelope = match envelope.data {
@@ -610,7 +618,7 @@ async fn run(command: Command) -> Result<ExitCode> {
                 ),
                 None => envelope,
             };
-            Ok(emit(&envelope))
+            emit(&envelope)
         }
         Command::Config {
             command: ConfigCommand::Show { config_dir },
@@ -649,7 +657,7 @@ async fn run(command: Command) -> Result<ExitCode> {
 ///
 /// A renderer that declines, or bytes that will not round-trip, fall through to
 /// the JSON — the reader sees the answer either way.
-fn emit<T: serde::Serialize>(envelope: &Envelope<T>) -> ExitCode {
+fn emit<T: serde::Serialize>(envelope: &Envelope<T>) -> Result<ExitCode> {
     // Whether a human screen was drawn, which decides what stderr still owes
     // the reader below.
     let mut rendered = false;
@@ -666,13 +674,18 @@ fn emit<T: serde::Serialize>(envelope: &Envelope<T>) -> ExitCode {
             match screen {
                 Some(text) => {
                     rendered = true;
-                    let mut stdout = anstream::stdout();
-                    let _ = write!(stdout, "{text}");
+                    // Through anstream, which owns the colour decision and
+                    // strips at write time — and fallibly, because the reader
+                    // may have walked away mid-screen exactly as they may
+                    // mid-JSON.
+                    write!(anstream::stdout().lock(), "{text}")?;
                 }
-                None => println!("{json}"),
+                None => write_stdout(format_args!("{json}\n"))?,
             }
         }
-        Err(error) => eprintln!("flowspace3: cannot render the response: {error}"),
+        Err(error) => write_stderr(format_args!(
+            "flowspace3: cannot render the response: {error}\n"
+        ))?,
     }
 
     // The stderr copies exist for the JSON path: an agent gets the news in the
@@ -683,19 +696,48 @@ fn emit<T: serde::Serialize>(envelope: &Envelope<T>) -> ExitCode {
     // a careful error surface becomes noise (found by u-r, 2026-08-28).
     if !rendered {
         for message in &envelope.messages {
-            eprintln!("flowspace3: {}", message.render());
+            write_stderr(format_args!("flowspace3: {}\n", message.render()))?;
         }
     }
 
-    match &envelope.error {
+    Ok(match &envelope.error {
         None => ExitCode::SUCCESS,
         Some(failure) => {
             if !rendered {
-                eprintln!("{}", failure.render());
+                write_stderr(format_args!("{}\n", failure.render()))?;
             }
             ExitCode::from(EXIT_ERROR)
         }
-    }
+    })
+}
+
+/// Write to stdout, and let a closed pipe be an error rather than a panic.
+///
+/// `println!` panics when the reader has gone away, which turns
+/// `flowspace3 search … | head` — an ordinary thing a person does — into a
+/// crash with a Rust backtrace. Main's commit 086f812 replaced every macro on
+/// this path for that reason; this plan's human layer goes through the same
+/// door, and `crates/cli/tests/epipe.rs` holds both of us to it.
+fn write_stdout(arguments: fmt::Arguments<'_>) -> io::Result<()> {
+    io::stdout().lock().write_fmt(arguments)
+}
+
+/// Write to stderr, fallibly, for the same reason as [`write_stdout`].
+fn write_stderr(arguments: fmt::Arguments<'_>) -> io::Result<()> {
+    io::stderr().lock().write_fmt(arguments)
+}
+
+/// Whether this failure is really "the reader hung up".
+///
+/// Anywhere in the chain: the error may arrive wrapped in context by the time
+/// it reaches `main`, and a pipe that closed is a normal end to a command
+/// rather than a failure of it.
+fn is_broken_pipe(error: &anyhow::Error) -> bool {
+    error.chain().any(|cause| {
+        cause
+            .downcast_ref::<io::Error>()
+            .is_some_and(|error| error.kind() == io::ErrorKind::BrokenPipe)
+    })
 }
 
 fn push(params: &mut Vec<(String, String)>, name: &str, value: Option<String>) {
