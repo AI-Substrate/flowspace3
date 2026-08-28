@@ -25,9 +25,13 @@ async fn health_returns_200_and_status_ok_under_the_fake_provider() {
     .expect("the offline configuration must parse");
 
     let state = AppState::from_config(config).expect("the fake arms need nothing to wire");
-    let base = support::spawn(http::router(state)).await;
+    let auth = support::auth("health-fake");
+    let base = support::spawn(http::router(state, auth.auth)).await;
 
-    let response = reqwest::get(format!("{base}/health"))
+    let response = reqwest::Client::new()
+        .get(format!("{base}/health"))
+        .bearer_auth(&auth.key)
+        .send()
         .await
         .expect("the daemon should answer");
 
@@ -61,9 +65,13 @@ async fn the_router_serves_health_without_a_reachable_database() {
     .expect("config parses");
 
     let state = AppState::from_config(config).expect("a lazy pool needs no connection");
-    let base = support::spawn(http::router(state)).await;
+    let auth = support::auth("health-no-database");
+    let base = support::spawn(http::router(state, auth.auth)).await;
 
-    let body: serde_json::Value = reqwest::get(format!("{base}/health"))
+    let body: serde_json::Value = reqwest::Client::new()
+        .get(format!("{base}/health"))
+        .bearer_auth(&auth.key)
+        .send()
         .await
         .expect("the daemon should answer")
         .json()
@@ -144,9 +152,10 @@ async fn the_real_binaries_agree_through_a_discovered_config() {
         .expect("the daemon binary should start"),
     );
 
-    // Readiness is observed, never assumed. A port that never opens is a
-    // failure with the reason attached, not a hang.
+    // Readiness is observed, never assumed. The daemon publishes daemon.key
+    // before binding, so any open listener must already accept those bytes.
     let health = format!("http://127.0.0.1:{port}/health");
+    let client = reqwest::Client::new();
     let mut answered = None;
     for _ in 0..100 {
         if let Ok(exited) = daemon.0.try_wait()
@@ -154,7 +163,9 @@ async fn the_real_binaries_agree_through_a_discovered_config() {
         {
             panic!("the daemon exited before serving {health}: {status}");
         }
-        if let Ok(response) = reqwest::get(&health).await
+        let key = std::fs::read_to_string(fs3_core::daemon_key_path(&directory));
+        if let Ok(key) = key
+            && let Ok(response) = client.get(&health).bearer_auth(key.trim()).send().await
             && response.status() == 200
         {
             answered = Some(response.json::<serde_json::Value>().await.expect("JSON"));

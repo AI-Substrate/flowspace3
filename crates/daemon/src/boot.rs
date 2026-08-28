@@ -76,6 +76,10 @@ pub fn run() -> Result<()> {
     let logging = logging::init(&configuration.config.daemon);
 
     let address = bind_address(&configuration.config.daemon.url)?;
+    // Publish this boot's credential before anything can bind the listener.
+    // A client can therefore never reach a daemon whose accepted key is not
+    // already the bytes visible at daemon.key.
+    let auth = crate::auth::generate(&directory)?;
     tracing::info!(
         config = %directory.display(),
         // Named once, at startup, so "where are the logs" is answerable from
@@ -114,7 +118,87 @@ pub fn run() -> Result<()> {
         .enable_all()
         .build()
         .context("starting the Tokio runtime")?
-        .block_on(serve(configuration.config, address, logging))
+        .block_on(serve(configuration.config, address, logging, auth, None))
+}
+
+/// Run an isolated daemon until it is asked to stop.
+///
+/// Ambient configuration chooses only the Postgres server and ordinary tuning
+/// knobs. Process-owned values replace every stateful or spend-bearing seam.
+pub fn run_sandbox() -> Result<()> {
+    let ambient_directory = config::config_dir().context("locating the fs3 config directory")?;
+    let mut configuration = config::load_effective_from(&ambient_directory)
+        .with_context(|| format!("loading configuration from {}", ambient_directory.display()))?;
+    let base_database_url = configuration.config.database.url.clone();
+
+    let listener =
+        std::net::TcpListener::bind("127.0.0.1:0").context("reserving a sandbox daemon port")?;
+    listener
+        .set_nonblocking(true)
+        .context("making the sandbox listener nonblocking")?;
+    let port = listener
+        .local_addr()
+        .context("reading the sandbox daemon port")?
+        .port();
+
+    let sandbox_directory = tempfile::Builder::new()
+        .prefix("flowspace3-sandbox-")
+        .tempdir()
+        .context("creating the sandbox runtime directory")?;
+    force_sandbox_config(&mut configuration.config, port, sandbox_directory.path());
+
+    let logging = logging::init(&configuration.config.daemon);
+    let auth = crate::auth::generate(sandbox_directory.path())?;
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .context("starting the Tokio runtime")?;
+
+    let (database, outcome) = runtime.block_on(async move {
+        let listener = tokio::net::TcpListener::from_std(listener)
+            .context("adopting the reserved sandbox daemon port")?;
+        let database = fs3_testkit::FreshDatabase::create_from(&base_database_url, "sandbox")
+            .await
+            .context("creating the sandbox database")?;
+        configuration.config.database.url = database.url();
+
+        tracing::info!(
+            "sandbox=true embedder=fake summarizer=fake db={} port={port} config={}",
+            database.name(),
+            sandbox_directory.path().display()
+        );
+        let outcome = serve(
+            configuration.config,
+            format!("127.0.0.1:{port}"),
+            logging,
+            auth,
+            Some(listener),
+        )
+        .await;
+        Ok::<_, anyhow::Error>((database, outcome))
+    })?;
+
+    // Stop every worker before dropping its database. Otherwise a worker may
+    // wake between DROP DATABASE and runtime teardown and emit a false failure.
+    runtime.shutdown_timeout(Duration::from_secs(1));
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .context("starting the sandbox cleanup runtime")?
+        .block_on(database.cleanup())
+        .context("dropping the sandbox database after clean shutdown")?;
+    outcome
+}
+
+fn force_sandbox_config(config: &mut Config, port: u16, directory: &std::path::Path) {
+    let defaults = Config::default();
+    config.daemon.url = format!("http://127.0.0.1:{port}");
+    config.daemon.log_dir = directory.join("logs").to_string_lossy().into_owned();
+    config.providers = defaults.providers;
+    config.embedder = defaults.embedder;
+    config.summarizer = defaults.summarizer;
+    config.repos.clear();
+    config.update.auto = false;
 }
 
 /// Refuse to boot when a TEST spawned us and nobody said which store to use.
@@ -170,7 +254,13 @@ fn refuse_a_defaulted_store_under_test(configuration: &fs3_core::Effective) -> R
     )
 }
 
-async fn serve(configuration: Config, address: String, logging: Logging) -> Result<()> {
+async fn serve(
+    configuration: Config,
+    address: String,
+    logging: Logging,
+    auth: crate::auth::Auth,
+    listener: Option<tokio::net::TcpListener>,
+) -> Result<()> {
     let state = AppState::from_config(configuration).context("wiring the composition root")?;
     let database = redact_url_password(&state.config.database.url);
 
@@ -403,7 +493,10 @@ async fn serve(configuration: Config, address: String, logging: Logging) -> Resu
     reconcilers.push(Box::new(crate::gc::GcSupervisor::new(state.db.clone())));
     tokio::spawn(crate::reconcile::run_forever(reconcilers, cadence));
 
-    http::serve(state, &address).await
+    match listener {
+        Some(listener) => http::serve_listener(state, listener, auth).await,
+        None => http::serve(state, &address, auth).await,
+    }
 }
 
 /// Turn the configured daemon URL into a bind address, refusing any host that
@@ -467,7 +560,7 @@ fn is_loopback(host: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::bind_address;
+    use super::{bind_address, force_sandbox_config};
 
     #[test]
     fn bind_address_strips_scheme_and_path() {
@@ -515,5 +608,44 @@ mod tests {
             bind_address("http://LocalHost:7373").unwrap(),
             "LocalHost:7373"
         );
+    }
+
+    #[test]
+    fn sandbox_forces_fake_providers_and_process_owned_endpoints() {
+        let mut config = fs3_core::Config::from_toml_str(
+            r#"
+            [providers.paid]
+            kind = "openai"
+            model = "text-embedding-3-small"
+
+            [embedder]
+            active = "paid"
+
+            [summarizer]
+            active = "paid"
+
+            [repos."github.com/acme/repo"]
+            embedder = "paid"
+            summarizer = "paid"
+            "#,
+        )
+        .unwrap();
+        let directory = std::path::Path::new("/tmp/fs3-sandbox-unit");
+
+        force_sandbox_config(&mut config, 41234, directory);
+
+        assert_eq!(config.daemon.url, "http://127.0.0.1:41234");
+        assert_eq!(config.daemon.log_dir, "/tmp/fs3-sandbox-unit/logs");
+        assert_eq!(
+            config.selected(fs3_core::Port::Embedder, None),
+            fs3_core::DEFAULT_PROVIDER
+        );
+        assert_eq!(
+            config.selected(fs3_core::Port::Summarizer, None),
+            fs3_core::DEFAULT_PROVIDER
+        );
+        assert_eq!(config.providers.len(), 1);
+        assert!(config.repos.is_empty());
+        assert!(!config.update.auto);
     }
 }

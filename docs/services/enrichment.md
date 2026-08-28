@@ -5,7 +5,8 @@ vector of the element's own text, and a vector of that summary. Two job kinds
 (`summarize`, `embed`), one handler module (`crates/daemon/src/enrich.rs`), two
 provider ports (`fs3_core::Summarizer`, `fs3_core::Embedder`).
 
-This page is about the part that is easy to get wrong: **size**.
+This page is about the two parts that are easy to get wrong: **whether to buy
+at all**, and **size**.
 
 ## What it is
 
@@ -21,6 +22,74 @@ This page is about the part that is easy to get wrong: **size**.
 - Everything is keyed by content (`raw_hash`, or the summary's `text_hash`),
   never by element id. The same function body on forty branches is one summary
   and one pair of vectors.
+
+## The spend guards: is this still worth buying?
+
+Before either handler asks what FITS, it asks whether the content is still
+worth paying for at all. Two different questions get confused here, and only
+one of them is about money:
+
+| guard | question | where |
+| --- | --- | --- |
+| dedupe | "has this text already been bought?" | `existing_embedding_hashes`, top of `embed_items` |
+| reference | "does anything still hold this content?" | `raw_hash_is_referenced` (summarize) · `referenced_source_hashes` (embed) |
+
+The dedupe filter LOOKS like a spend guard and is not. It asks whether a hash
+is already in `embeddings_1024`, never whether the content behind it is still
+mapped by a live root — so a NEW hash for dead content sails straight through
+it to the provider.
+
+`summarize` has had the reference guard since roots became removable (req-0057);
+`embed` did not, and the asymmetry was invisible for exactly that reason.
+Measured when the watcher pulled a gitignored tree into the index (DL-035/036):
+**4,436 raw vectors bought for content the next full walk unreferenced**, with
+the ~26,000 summaries beside them saved purely because the other handler
+already had the guard.
+
+Both legs ask the same predicate GC uses at level two —
+`held_by_a_live_root!` in `crates/store/src/roots.rs`, one macro, so the point
+of spend and the collector cannot disagree about what "referenced" means.
+
+### Two hash spaces, two questions
+
+`referenced_source_hashes` takes a `SourceKind` because raw and smart hashes
+live in different spaces. A `raw` hash IS an element's `raw_hash`. A `smart`
+hash is a summary's `text_hash`, which reaches an element only through the
+`smart_content` row — so asking the raw question of a smart batch would answer
+"unreferenced" for every summary vector still waiting to be bought, and the
+guard would quietly delete the index instead of protecting the bill.
+
+### Why it is a batch query
+
+`raw_hash_is_referenced` answers one text at a time, which is the right shape
+for `summarize` — one job, one text, one guard. An `embed` job carries a batch,
+so the per-item shape would be sixteen round trips to decide one provider call.
+`referenced_source_hashes` asks once with `ANY($1)` and hands back the
+survivors: one round trip per job, whatever the batch size.
+
+The order inside `embed_items` is deliberate — dedupe first (cheapest, purely
+local to the model key), then the reference query, then `embedder_for`. The
+provider is reached only by items that survive both.
+
+### Seeing it work
+
+Money not spent leaves no rows, so the only evidence it exists is the log:
+
+```
+INFO skipping embeds for content no registered root holds dropped=3 kept=0 kind=raw
+```
+
+`dropped` is counted after the filter rather than as `offered - live.len()`,
+because a merged batch may carry one hash twice and a count that assumed
+otherwise would report spending that never happened. Pinned by
+`streaming.rs::the_embed_spend_guard_says_what_it_refused_to_buy`, which reads
+the line a human would have read.
+
+**Not yet done, named rather than hidden**: there is no JSON log format in this
+repo — `logging.rs` builds `tracing_subscriber::fmt::layer()` for both stdout
+and the file — so the count is structured fields on a text line, not a `--json`
+record. Making it one means introducing a JSON subscriber for the whole daemon,
+which is a logging decision, not an enrichment one.
 
 ## The size cliffs, and the guard
 
@@ -154,6 +223,14 @@ FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5433/flowspace3
 
 # the counting convention itself (no database needed)
 cargo test -p fs3-core --lib tokens
+
+# the reference guard: unheld content never reaches the provider
+FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5433/flowspace3_test \
+  cargo test -p fs3-daemon --test embed_dedupe
+
+# and the log line that is the only evidence it fired
+FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5433/flowspace3_test \
+  cargo test -p fs3-daemon --test streaming
 ```
 
 The tests assert on what ARRIVED at the provider (`FakeEmbedder::received`),
@@ -165,7 +242,11 @@ a missing guard is a failing test rather than a hopeful comment.
 
 - `crates/core/src/tokens.rs` — the counting convention and `fit_to_cap`
 - `crates/core/src/ports.rs` — `max_input_tokens` on both ports
-- `crates/daemon/src/enrich.rs` — both guards, at the two points of spend
+- `crates/daemon/src/enrich.rs` — all four guards, at the two points of spend:
+  dedupe and reference before the buy, `fit_to_cap` and the prompt budget
+  inside it
+- `crates/store/src/roots.rs` — `held_by_a_live_root!`,
+  `raw_hash_is_referenced`, `referenced_source_hashes`
 - `crates/daemon/src/batch.rs` — the request budget and the merge rules
 - `crates/daemon/src/boot.rs` — the requeue sweep
 - `crates/store/src/jobs.rs` — `fail_job`, `requeue_failed`
@@ -182,3 +263,14 @@ a missing guard is a failing test rather than a hopeful comment.
   which would be an unbounded trickle of claims that can only fail again.
 - **The fake has to enforce what it declares.** An earlier `FakeEmbedder`
   accepted anything, so no test in the repo could have caught this class at all.
+- **A dedupe filter is not a spend guard.** "Already bought" and "still worth
+  buying" are different questions, and the first one passes every new hash
+  through — which is how a watcher defect two crates away turned into 4,436
+  paid vectors.
+- **A test that enqueues bare synthetic hashes is now testing the guard.** With
+  the reference guard in place, an embed test whose content nothing holds never
+  reaches the provider, so every assertion about the call is really asserting on
+  an empty list. `support::hold` registers a root that holds the items;
+  `lanes.rs` and `oversize.rs` both had to take it up, and `lanes` is the
+  cautionary one — an unheld lane records a peak of ZERO concurrent calls and
+  reads exactly like a lane that does not work.

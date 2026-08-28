@@ -5,16 +5,24 @@
 
 ## What it is
 
-One function:
+Two functions, one walker:
 
 ```rust
 fs3_parsers::discovery::discover(root: &Path, settings: &DiscoverySettings) -> Result<Discovery, DiscoveryError>
+fs3_parsers::discovery::discover_subtree(root: &Path, directory: &Path, settings: &DiscoverySettings) -> Result<Option<Discovery>, DiscoveryError>
 ```
 
-It walks `root` and returns two sorted lists: `files` (what fs3 will scan) and
-`skipped` (what it looked at and refused, with a reason). Each `DiscoveredFile`
-carries the `/`-separated **relative** path, the size in bytes, the
-`LanguageFamily` that routed it, and the `Language` grammar when fs3 has one.
+`discover` walks `root` and returns two sorted lists: `files` (what fs3 will
+scan) and `skipped` (what it looked at and refused, with a reason). Each
+`DiscoveredFile` carries the `/`-separated **relative** path, the size in
+bytes, the `LanguageFamily` that routed it, and the `Language` grammar when
+fs3 has one.
+
+`discover_subtree` answers the watcher's question — "re-list just this
+directory" — and answers it with the decisions a walk of the whole `root`
+would have made. `Ok(None)` means a root walk would never have descended
+there at all. Paths come back relative to `root`, exactly as `discover`
+reports them, so a subtree result and a whole-root result key the same way.
 
 This is the front of the pipeline: `discover` decides *whether* to look at a
 file, `scan` (same crate) decides *what is in it*.
@@ -49,6 +57,9 @@ the scanner's budget.
 | **`exclude` outranks `force_include`** | An explicit refusal beats an explicit inclusion. Force-include overrides *git*, not judgement. |
 | **Binary is decided by content** | A NUL in the first 8 KiB, the same test `git diff` uses. The PNG someone committed as `logo.md` is caught by the sniff, not by its extension. |
 | **Sequential walk** | The win came from *not visiting* files, not from visiting them on more threads, and a deterministic order makes the result assertable. `ignore::WalkParallel` is a drop-in if a measurement ever asks. |
+| **A subtree walk still starts at the ROOT** | `discover_subtree` prunes to the ancestor chain and the subtree rather than moving the walk root, because moving it silently changes the answer. Every directory-shaped refusal — a trailing-slash `.gitignore` pattern, the hidden filter, the deny list — is decided when the walker is offered the DIRECTORY entry, and a walk that starts below one is never offered it. Measured cost of getting this wrong (DL-035): one watcher event under `scratch/` pulled 886 gitignored files into the index, 4,436 paid vectors and 222 paid summaries, all reaped again by the next full walk. |
+| **Reachability is answered by RUNNING the walker, not by re-deciding** | `descends_to` builds the same `walker()` the real passes use, caps it at the directory's own depth and prunes it to the chain, then asks whether the directory came back. Re-implementing gitignore, hidden-file and deny-list semantics to answer "would we have gone here?" is a second implementation that can disagree with the first — which is the entire defect. There is exactly one `WalkBuilder` configuration in the crate and all three traversals (default pass, force-include pass, reachability probe) are built by it. |
+| **The force-include pass is probed only when there is one** | `descends_to` asks the ignores-off pass as well, since a `force_include` glob can legitimately reach into a denied tree — but only when `force_include` is non-empty, so the common case still pays one probe. Saying yes there costs a walk that finds nothing (the globs themselves are still applied per file), never a file nobody asked for. |
 
 ## Upgrade note — case-sensitive volumes (v0.2.0)
 
@@ -177,6 +188,9 @@ cargo test -p fs3-parsers --test discovery_fixtures
 # The standard deny list, against a tree with NO .gitignore at all
 cargo test -p fs3-parsers --test discovery_standard_ignores
 
+# The subtree walk: reachability, root-relative keys, and the DL-035 cases
+cargo test -p fs3-parsers --test discovery_subtree
+
 # The architecture edge this added (fs3-parsers -> ignore)
 cargo run -p fs3-testkit --bin fs3-arch-check
 ```
@@ -190,9 +204,13 @@ this repo's own root `.gitignore` cannot fake a pass.
 
 ## Code pointers
 
-- `crates/parsers/src/discovery.rs` — `discover`, `DiscoverySettings`,
-  `STANDARD_IGNORES`, `LanguageFamily`, `SkipReason`; the pure `verdict` is the
-  per-file policy, and the `filter_entry` closure in `walk` is the deny list.
+- `crates/parsers/src/discovery.rs` — `discover`, `discover_subtree`,
+  `DiscoverySettings`, `STANDARD_IGNORES`, `LanguageFamily`, `SkipReason`; the
+  pure `verdict` is the per-file policy, `walker` is the one `WalkBuilder`
+  configuration (its `filter_entry` closure holds the deny list, the hidden
+  filter, the `.git` refusal and the subtree restriction), `walk` drives it,
+  `collect` judges what comes back, and `descends_to`/`reached` answer
+  reachability by running it depth-limited.
 - `crates/parsers/src/lib.rs` — `Language::for_extension`, the grammar table
   discovery defers to.
 - `crates/core/src/config.rs` — `ScanConfig`, the `[scan]` section

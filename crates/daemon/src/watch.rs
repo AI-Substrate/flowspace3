@@ -273,21 +273,38 @@ impl WatcherSupervisor {
         };
 
         let settings = DiscoverySettings::from(&self.state.config.scan);
-        let discovered = match discovery::discover(&settled.directory, &settings) {
-            Ok(discovered) => discovered,
-            // The directory is gone — the everyday case for a delete or a
-            // rename, and not an error. Its files are handled by the full-walk
-            // backstop; see the module docs.
-            Err(discovery::DiscoveryError::NotADirectory(_)) => return Ok(0),
-            Err(error) => {
-                return Err(anyhow::Error::new(error)
-                    .context(format!("re-listing {}", settled.directory.display())));
-            }
-        };
+        let discovered =
+            match discovery::discover_subtree(&settled.root, &settled.directory, &settings) {
+                Ok(Some(discovered)) => discovered,
+                // A walk from the ROOT would never have descended here: an
+                // event inside a gitignored, hidden or denied tree. Returning
+                // before `record_walk` is the whole fix — those files never
+                // enter `worktree_files`, so they never enter the ping-pong
+                // where this pass admits them and the next full walk reaps
+                // them, buying a summary and a vector for each one on the way
+                // past. Measured before it existed: 886 gitignored files, 4,436
+                // paid vectors, all of it garbage by the next walk.
+                Ok(None) => {
+                    tracing::debug!(
+                        directory = %settled.directory.display(),
+                        "an event inside a directory fs3 does not index"
+                    );
+                    return Ok(0);
+                }
+                // The directory is gone — the everyday case for a delete or a
+                // rename, and not an error. Its files are handled by the full-walk
+                // backstop; see the module docs.
+                Err(discovery::DiscoveryError::NotADirectory(_)) => return Ok(0),
+                Err(error) => {
+                    return Err(anyhow::Error::new(error)
+                        .context(format!("re-listing {}", settled.directory.display())));
+                }
+            };
 
-        // Discovery reports paths relative to the directory it walked; the
-        // store keys on paths relative to the WORKTREE ROOT, so they are
-        // rebased before anything else touches them.
+        // Discovery reports subtree paths relative to the WORKTREE ROOT, which
+        // is already the shape the store keys on, so nothing is rebased here.
+        // The prefix survives for `record_walk`, which needs to know which
+        // slice of the worktree map this walk is entitled to replace.
         let prefix = worktree_relative(&settled.root, &settled.directory);
         let known = fs3_store::worktree_file_map(&self.state.db, watched.worktree_id)
             .await
@@ -300,8 +317,7 @@ impl WatcherSupervisor {
             Vec::with_capacity(discovered.files.len());
 
         for file in &discovered.files {
-            let relative = join_relative(&prefix, &file.path);
-            let absolute = settled.directory.join(&file.path);
+            let absolute = settled.root.join(&file.path);
 
             let blob = match fs3_git::blob_id(&absolute) {
                 Ok(blob) => blob,
@@ -311,8 +327,8 @@ impl WatcherSupervisor {
                 Err(error) => return Err(anyhow::Error::new(error).context("hashing a file")),
             };
 
-            let unchanged = known.get(&relative).map(String::as_str) == Some(blob.as_str());
-            walked.push((relative.clone(), blob.clone()));
+            let unchanged = known.get(&file.path).map(String::as_str) == Some(blob.as_str());
+            walked.push((file.path.clone(), blob.clone()));
             // The whole reason over-reporting is free: content keying means an
             // unchanged file enqueues nothing at all, so a directory walk
             // triggered by one edit costs one job, not a directory's worth.
@@ -323,7 +339,7 @@ impl WatcherSupervisor {
             let job = ScanFileJob {
                 worktree_id: watched.worktree_id,
                 identity: watched.identity.clone(),
-                path: relative,
+                path: file.path.clone(),
                 blob: blob.as_str().to_string(),
             };
             fs3_store::enqueue_job(
@@ -382,9 +398,9 @@ impl WatcherSupervisor {
 
         for (path, blob) in known {
             // Everything the walk found is under the prefix by construction
-            // (`join_relative` builds it that way), so one check covers both
-            // "this subtree is being replaced" and "this exact path was just
-            // re-listed".
+            // (discovery reports the subtree's paths relative to the worktree
+            // root), so one check covers both "this subtree is being replaced"
+            // and "this exact path was just re-listed".
             if under_prefix(path, prefix) {
                 continue;
             }
@@ -505,8 +521,8 @@ pub fn diff_roots(desired: &[DesiredRoot], actual: &[PathBuf]) -> RootPlan {
 /// The `/`-separated path of `directory` relative to `root`, or empty when
 /// they are the same.
 ///
-/// Empty rather than `"."`: it is a PREFIX, and `join_relative` is what turns
-/// it back into a path, so the empty case has to be the one that adds nothing.
+/// Empty rather than `"."`: it is a PREFIX into the worktree map, and the
+/// empty case has to be the one that covers everything.
 fn worktree_relative(root: &Path, directory: &Path) -> String {
     directory
         .strip_prefix(root)
@@ -534,15 +550,6 @@ fn under_prefix(path: &str, prefix: &str) -> bool {
         || (path.len() > prefix.len()
             && path.starts_with(prefix)
             && path.as_bytes()[prefix.len()] == b'/')
-}
-
-/// Join a worktree-relative prefix to a discovery-relative path.
-fn join_relative(prefix: &str, path: &str) -> String {
-    if prefix.is_empty() {
-        path.to_string()
-    } else {
-        format!("{prefix}/{path}")
-    }
 }
 
 #[cfg(test)]
@@ -621,19 +628,13 @@ mod tests {
     #[test]
     fn a_directory_at_the_root_has_an_empty_prefix() {
         assert_eq!(worktree_relative(Path::new("/r"), Path::new("/r")), "");
-        assert_eq!(join_relative("", "src/lib.rs"), "src/lib.rs");
     }
 
     #[test]
-    fn a_nested_directory_prefixes_the_discovered_path() {
+    fn a_nested_directory_names_its_slice_of_the_worktree_map() {
         assert_eq!(
             worktree_relative(Path::new("/r"), Path::new("/r/crates/core")),
             "crates/core"
-        );
-        assert_eq!(
-            join_relative("crates/core", "src/lib.rs"),
-            "crates/core/src/lib.rs",
-            "the store keys on worktree-relative paths; discovery reports walk-relative ones"
         );
     }
 

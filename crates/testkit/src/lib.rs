@@ -31,6 +31,7 @@ pub mod discovery_filter;
 pub mod expectations;
 pub mod fake_source;
 pub mod fakes;
+pub mod fresh_database;
 pub mod spawn;
 
 pub use contract::{embedder_contract, sample_element, summarizer_contract};
@@ -41,4 +42,5 @@ pub use fake_source::{
     FAKE_CHILDREN_DIR, FAKE_MAIN_FILE, FakeConversationSource, FakeDefect, FakeSourceFixture,
 };
 pub use fakes::{FakeEmbedder, FakeSummarizer};
+pub use fresh_database::FreshDatabase;
 pub use spawn::{TestDatabase, flowspace3_binary, sealed};

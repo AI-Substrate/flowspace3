@@ -4,13 +4,12 @@
 //! of it, which is what the allow is for.
 #![allow(dead_code)]
 
-use std::str::FromStr;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use axum::Router;
-use fs3_store::PgPool;
-use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
+use sqlx::postgres::PgPoolOptions;
+pub type FreshDatabase = fs3_testkit::FreshDatabase;
 
 /// Bind `127.0.0.1:0`, serve `router` on a background task, return its base URL.
 pub async fn spawn(router: Router) -> String {
@@ -39,6 +38,32 @@ pub fn temp_dir(label: &str) -> std::path::PathBuf {
     ));
     std::fs::create_dir_all(&path).expect("creating a temp directory");
     path
+}
+
+/// One test daemon's credential and isolated config directory.
+pub struct TestAuth {
+    pub auth: fs3_daemon::Auth,
+    pub key: String,
+    pub config_dir: std::path::PathBuf,
+}
+
+/// Give a test daemon its own config directory and mode-0600 key.
+pub fn auth(label: &str) -> TestAuth {
+    let config_dir = temp_dir(&format!("{label}-config"));
+    let key = format!("test-key-{}", unique_seed());
+    let key_path = fs3_core::daemon_key_path(&config_dir);
+    std::fs::write(&key_path, &key).expect("writing an isolated daemon key");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        std::fs::set_permissions(&key_path, std::fs::Permissions::from_mode(0o600))
+            .expect("restricting the isolated daemon key");
+    }
+    TestAuth {
+        auth: fs3_daemon::Auth::new(key.clone(), key_path),
+        key,
+        config_dir,
+    }
 }
 
 /// The database these tests may write to.
@@ -73,86 +98,6 @@ pub fn unique_seed() -> u128 {
         ^ (u128::from(SEQUENCE.fetch_add(1, Ordering::Relaxed)) << 96)
 }
 
-/// A throwaway database, created empty and dropped again.
-///
-/// The daemon's tests need this even more than the store's: `claim_job` takes
-/// the best ready job in the WHOLE table, so a concurrent test's pending row
-/// would not merely coexist — the runner would claim it and run it.
-pub struct FreshDatabase {
-    name: String,
-    admin: PgPool,
-}
-
-impl FreshDatabase {
-    /// Create the database. Fails naming the command rather than skipping — a
-    /// silently-skipped integration test is how a regression reaches main.
-    pub async fn create(label: &str) -> Self {
-        let url = database_url();
-        let admin = PgPoolOptions::new()
-            .max_connections(1)
-            .acquire_timeout(fs3_store::CONNECT_TIMEOUT)
-            .connect(&url)
-            .await
-            .unwrap_or_else(|error| {
-                panic!(
-                    "daemon integration tests need Postgres at {url}: {error}\nStart it with:\n \
-                     {}\nThen re-run:\n    cargo test -p fs3-daemon\nPoint at another instance \
-                     with FS3_TEST_DATABASE_URL.",
-                    fs3_store::COMPOSE_UP
-                )
-            });
-
-        // Hex from a u128, so the identifier is safe by construction —
-        // `CREATE DATABASE` takes no bind parameters.
-        let label: String = label
-            .chars()
-            .filter(|c| c.is_ascii_alphanumeric())
-            .take(12)
-            .collect();
-        let name = format!("fs3_daemon_{label}_{:032x}", unique_seed());
-
-        sqlx::query(&format!("CREATE DATABASE {name}"))
-            .execute(&admin)
-            .await
-            .unwrap_or_else(|error| panic!("creating the throwaway database {name}: {error}"));
-
-        Self { name, admin }
-    }
-
-    /// The URL of this throwaway database.
-    pub fn url(&self) -> String {
-        database_url_named(&self.name)
-    }
-
-    /// A pool onto it.
-    pub async fn pool(&self) -> PgPool {
-        let options = PgConnectOptions::from_str(&database_url())
-            .expect("the configured database URL should parse")
-            .database(&self.name);
-        PgPoolOptions::new()
-            .max_connections(4)
-            .acquire_timeout(fs3_store::CONNECT_TIMEOUT)
-            .connect_with(options)
-            .await
-            .unwrap_or_else(|error| panic!("connecting to {}: {error}", self.name))
-    }
-
-    /// Explicit, because `Drop` cannot await. A test that panics before this
-    /// leaves one database behind — visible, harmless, and a truthful record
-    /// that the run failed.
-    pub async fn destroy(self, pool: PgPool) {
-        pool.close().await;
-        sqlx::query(&format!(
-            "DROP DATABASE IF EXISTS {} WITH (FORCE)",
-            self.name
-        ))
-        .execute(&self.admin)
-        .await
-        .unwrap_or_else(|error| panic!("dropping {}: {error}", self.name));
-        self.admin.close().await;
-    }
-}
-
 /// Drop a database by name — for tests that created one without a
 /// [`FreshDatabase`] handle.
 pub async fn drop_database(name: &str) {
@@ -167,4 +112,93 @@ pub async fn drop_database(name: &str) {
         .await
         .unwrap_or_else(|error| panic!("dropping {name}: {error}"));
     admin.close().await;
+}
+
+/// `(hash, text)` pairs shaped like the real thing: the hash is the content
+/// hash of the text, exactly as an element's `raw_hash` is, so [`hold`] can
+/// make the very same items referenced.
+pub fn items(range: std::ops::Range<u32>) -> Vec<(String, String)> {
+    range
+        .map(|n| {
+            let text = format!("fn f{n}() {{}}");
+            (fs3_core::content_hash(text.as_bytes()), text)
+        })
+        .collect()
+}
+
+/// Register a root that holds these texts.
+///
+/// The embed handler refuses to pay for content no registered root maps
+/// (req-0057), so a test that enqueues bare hashes is testing the guard rather
+/// than whatever it meant to test. One file element per batch with the items as
+/// its children is the shape a real scan produces, and it is what makes
+/// `elements.raw_hash` — the column the guard reads — carry exactly these
+/// hashes.
+///
+/// # Why the root is keyed by CONTENT and not by `label` alone
+///
+/// Calling this twice in one test must hold both batches, and the obvious
+/// shape does the opposite. [`fs3_store::sync_worktree_files`] REPLACES a
+/// worktree's file list, and [`fs3_store::upsert_element_tree`] replaces a
+/// blob's tree — so a second call under the same root and the same blob key
+/// silently unholds the first batch, and the test that depended on it fails
+/// somewhere else entirely. A digest of the items decides both the root and
+/// the blob instead: different content is a different root, identical content
+/// is the same root written twice with the same bytes. `label` survives only
+/// to keep the paths readable when a test fails.
+pub async fn hold(state: &fs3_daemon::wiring::AppState, label: &str, items: &[(String, String)]) {
+    // The item hashes, not the texts: they are already content-derived, and a
+    // blob key is 40 hex characters whatever went into it.
+    let digest = fs3_core::content_hash(
+        items
+            .iter()
+            .map(|(hash, _)| hash.as_str())
+            .collect::<Vec<_>>()
+            .join("\n")
+            .as_bytes(),
+    );
+    let root = format!("/srv/{label}-{}", &digest[..8]);
+    let identity = fs3_core::RepoIdentity::from_path(std::path::Path::new(&root));
+    let worktree = fs3_store::register_worktree(&state.db, &identity, &root, Some("main"))
+        .await
+        .expect("registering a root");
+    let blob = fs3_core::BlobRef::new(digest[..40].to_string()).expect("a blob key");
+    fs3_store::sync_worktree_files(
+        &state.db,
+        worktree,
+        &[("src/held.rs".to_string(), blob.clone())],
+    )
+    .await
+    .expect("mapping the file to the root");
+
+    let file = fs3_core::Element::new(
+        fs3_core::ElementKind::File,
+        "rust",
+        "held.rs",
+        "src/held.rs",
+        fs3_core::Span::new(1, 1 + u32::try_from(items.len()).expect("a small batch")),
+        "// src/held.rs\n",
+    )
+    .with_children(
+        items
+            .iter()
+            .enumerate()
+            .map(|(index, (_, text))| {
+                fs3_core::Element::new(
+                    fs3_core::ElementKind::Function,
+                    "function_item",
+                    format!("f{index}"),
+                    format!("src/held.rs::f{index}"),
+                    fs3_core::Span::new(1, 1),
+                    text,
+                )
+            })
+            .collect(),
+    );
+
+    fs3_store::upsert_element_tree(&state.db, &blob, "test-parser@1", &file, |element| {
+        element.kind != fs3_core::ElementKind::File
+    })
+    .await
+    .expect("storing the parse");
 }

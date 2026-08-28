@@ -44,7 +44,13 @@ fn working() -> Arc<FakeEmbedder> {
 }
 
 /// Enqueue one embed job carrying a single item.
+///
+/// The item is the `n`th of [`support::items`], so [`support::hold`] over the
+/// same range makes it referenced — without which the reference guard drops
+/// the batch before the provider and every claim here settles as a free
+/// success rather than as the merge it is testing.
 async fn enqueue(state: &AppState, n: u32) {
+    let (hash, text) = support::items(n..n + 1).remove(0);
     fs3_store::enqueue_job(
         &state.db,
         "embed",
@@ -52,7 +58,7 @@ async fn enqueue(state: &AppState, n: u32) {
         &json!({
             "identity": IDENTITY,
             "source": "raw",
-            "items": [[format!("{n:064x}"), format!("fn f{n}() {{}}")]],
+            "items": [[hash, text]],
         }),
         std::time::Duration::ZERO,
     )
@@ -84,6 +90,7 @@ async fn states(state: &AppState) -> Vec<(String, i32)> {
 #[tokio::test]
 async fn many_jobs_become_one_call_and_are_settled_individually() {
     let (database, state, embedder) = stack("batch_merge", working()).await;
+    support::hold(&state, "batch-merge", &support::items(0..8)).await;
     for n in 0..8 {
         enqueue(&state, n).await;
     }
@@ -126,6 +133,7 @@ async fn a_failed_batch_puts_every_job_it_carried_back() {
         ..FakeEmbedder::failing_after(0)
     });
     let (database, state, _) = stack("batch_failure", embedder).await;
+    support::hold(&state, "batch-failure", &support::items(0..4)).await;
     for n in 0..4 {
         enqueue(&state, n).await;
     }
@@ -151,6 +159,7 @@ async fn a_failed_batch_puts_every_job_it_carried_back() {
 #[tokio::test]
 async fn a_suspect_job_is_embedded_alone() {
     let (database, state, embedder) = stack("batch_poison", working()).await;
+    support::hold(&state, "batch-poison", &support::items(0..3)).await;
     for n in 0..3 {
         enqueue(&state, n).await;
     }

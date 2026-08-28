@@ -430,6 +430,119 @@ pub enum DiscoveryError {
 /// [`DiscoveryError::NotADirectory`] if `root` is not a directory, and
 /// [`DiscoveryError::Glob`] if a configured glob does not compile.
 pub fn discover(root: &Path, settings: &DiscoverySettings) -> Result<Discovery, DiscoveryError> {
+    collect(root, root, settings)
+}
+
+/// Walk only the part of `root` that lives under `directory`, making exactly
+/// the decisions a walk of the whole `root` would have made.
+///
+/// The watcher's question, and the reason it is answered HERE rather than in
+/// the daemon: a filesystem event names a directory, re-listing the whole
+/// worktree per event is the cost a debouncer exists to avoid — and walking
+/// that directory *as its own root* silently changes the answer. Every
+/// directory-shaped refusal is decided when the walker is offered the
+/// DIRECTORY entry, and a walk that starts below one is never offered it:
+/// `scratch/` matches a directory named `scratch`, never the path
+/// `scratch/old/notes.md`, and the hidden filter, the `.git` refusal and
+/// [`DiscoverySettings::standard_ignores`] all prune the same way. Measured
+/// before this existed: one event under an ignored tree pulled 886 gitignored
+/// files into the index, every one of them reaped again by the next full walk.
+///
+/// So the walk still starts at `root` — one walker configuration, one verdict,
+/// nothing to drift — and is pruned to `directory` plus the ancestors leading
+/// to it. It reads the chain's own listings and the subtree, never a sibling.
+///
+/// `Ok(None)` means a walk from `root` would never have descended here: the
+/// caller has an event for a directory fs3 does not index, which is different
+/// from a directory that holds nothing worth indexing. A `directory` outside
+/// `root` answers `None` for the same reason — it is not part of that walk.
+///
+/// Paths in the result are relative to `root`, exactly as [`discover`] reports
+/// them, so a subtree result and a whole-root result key the same way.
+///
+/// # Errors
+/// [`DiscoveryError::NotADirectory`] if `root` or `directory` is not a
+/// directory, and [`DiscoveryError::Glob`] if a configured glob does not
+/// compile.
+pub fn discover_subtree(
+    root: &Path,
+    directory: &Path,
+    settings: &DiscoverySettings,
+) -> Result<Option<Discovery>, DiscoveryError> {
+    if !directory.is_dir() {
+        return Err(DiscoveryError::NotADirectory(directory.to_path_buf()));
+    }
+    if !descends_to(root, directory, settings)? {
+        return Ok(None);
+    }
+    collect(root, directory, settings).map(Some)
+}
+
+/// Would a walk from `root` have reached `directory` at all?
+///
+/// Answered by running the real walker — depth-limited to the directory's own
+/// depth and pruned to its ancestor chain — rather than by re-deciding
+/// gitignore, hidden files and the deny list here. A second implementation of
+/// those rules is one that can disagree with the first, which is the entire
+/// defect this function exists to close.
+///
+/// Both passes are asked, because both can reach a directory: the default one,
+/// and — only when there are `force_include` globs to justify the second walk —
+/// the pass that turns ignores off to reach what the repo insisted on anyway.
+/// A force-included subtree still faces the globs themselves in [`collect`], so
+/// saying yes here costs a walk that finds nothing, never a file nobody asked
+/// for.
+fn descends_to(
+    root: &Path,
+    directory: &Path,
+    settings: &DiscoverySettings,
+) -> Result<bool, DiscoveryError> {
+    if !root.is_dir() {
+        return Err(DiscoveryError::NotADirectory(root.to_path_buf()));
+    }
+    if directory == root {
+        return Ok(true);
+    }
+    let Ok(relative) = directory.strip_prefix(root) else {
+        return Ok(false);
+    };
+    let depth = relative.components().count();
+    Ok(reached(root, directory, depth, settings, true)
+        || (!settings.force_include.is_empty() && reached(root, directory, depth, settings, false)))
+}
+
+/// One depth-limited probe along the chain: does `directory` survive to be
+/// yielded as an entry?
+fn reached(
+    root: &Path,
+    directory: &Path,
+    depth: usize,
+    settings: &DiscoverySettings,
+    honour_ignores: bool,
+) -> bool {
+    // The probe never reports prunes: it walks the chain, not a tree, so the
+    // only directory it could name is one the caller already has in hand.
+    let ledger: Arc<Mutex<BTreeSet<String>>> = Arc::new(Mutex::new(BTreeSet::new()));
+    walker(
+        root,
+        settings,
+        honour_ignores,
+        Some(directory.to_path_buf()),
+        &ledger,
+    )
+    .max_depth(Some(depth))
+    .build()
+    .filter_map(Result::ok)
+    .any(|entry| entry.path() == directory)
+}
+
+/// The body behind [`discover`] and [`discover_subtree`]: walk `root`,
+/// optionally restricted to `directory`, and judge what comes back.
+fn collect(
+    root: &Path,
+    directory: &Path,
+    settings: &DiscoverySettings,
+) -> Result<Discovery, DiscoveryError> {
     if !root.is_dir() {
         return Err(DiscoveryError::NotADirectory(root.to_path_buf()));
     }
@@ -450,10 +563,16 @@ pub fn discover(root: &Path, settings: &DiscoverySettings) -> Result<Discovery, 
     // makes a discovery result comparable.
     let pruned: Arc<Mutex<BTreeSet<String>>> = Arc::new(Mutex::new(BTreeSet::new()));
 
+    // `None` rather than `Some(root)` for a whole-root walk: the restriction
+    // would answer yes for every entry, and the common case should not pay two
+    // path comparisons per file to be told so.
+    let within = (directory != root).then(|| directory.to_path_buf());
+
     walk(
         root,
         settings,
         true,
+        within.clone(),
         &pruned,
         &mut |absolute, relative, bytes| {
             collector.consider(absolute, relative, bytes);
@@ -472,6 +591,7 @@ pub fn discover(root: &Path, settings: &DiscoverySettings) -> Result<Discovery, 
             root,
             settings,
             false,
+            within,
             &pruned,
             &mut |absolute, relative, bytes| {
                 if force_include
@@ -614,24 +734,66 @@ fn verdict(
 
 /// Visit every file under `root`, handing back `(absolute, relative, size)`.
 ///
+/// `within` restricts the traversal to one subtree without moving the walk
+/// root — see [`discover_subtree`] for why those are not the same thing.
+///
+/// The deny list is applied in [`walker`], as a `filter_entry` prune, rather
+/// than as a verdict per file: not descending into `node_modules` is the
+/// entire saving, and a pruned directory costs one string comparison instead
+/// of a hundred thousand ledger rows. Each directory it refuses is recorded in
+/// `pruned` — the directory, never its contents — so the absence has a name.
+fn walk(
+    root: &Path,
+    settings: &DiscoverySettings,
+    honour_ignores: bool,
+    within: Option<PathBuf>,
+    pruned: &Arc<Mutex<BTreeSet<String>>>,
+    visit: &mut dyn FnMut(&Path, &Path, Option<u64>),
+) {
+    for entry in walker(root, settings, honour_ignores, within, pruned).build() {
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(error) => {
+                // A path-bearing error is a file fs3 saw and could not read;
+                // a pathless one cannot be attributed to anything, so it has
+                // nowhere honest to go in the ledger.
+                if let ignore::Error::WithPath { path, .. } = &error
+                    && let Ok(relative) = path.strip_prefix(root)
+                {
+                    visit(path, relative, None);
+                }
+                continue;
+            }
+        };
+        if !entry.file_type().is_some_and(|kind| kind.is_file()) {
+            continue;
+        }
+        let Ok(relative) = entry.path().strip_prefix(root) else {
+            continue;
+        };
+        let bytes = entry.metadata().ok().map(|metadata| metadata.len());
+        visit(entry.path(), relative, bytes);
+    }
+}
+
+/// The one walker configuration in this crate.
+///
+/// Every traversal — the default pass, the force-include pass, and the
+/// [`descends_to`] probe — is built here, so "what fs3 refuses to walk" has a
+/// single answer that no caller can restate slightly differently.
+///
 /// `honour_ignores` off strips gitignore, `.ignore` files, parent ignores
 /// **and the standard deny list** — that is the force-include pass, whose
 /// whole job is to reach what the defaults refuse. The hidden filter and the
 /// `.git` refusal survive both passes: nothing indexes a git object database,
 /// at any setting.
-///
-/// The deny list is applied here, as a `filter_entry` prune, rather than as a
-/// verdict per file: not descending into `node_modules` is the entire saving,
-/// and a pruned directory costs one string comparison instead of a hundred
-/// thousand ledger rows. Each directory it refuses is recorded in `pruned` —
-/// the directory, never its contents — so the absence has a name.
-fn walk(
+fn walker(
     root: &Path,
     settings: &DiscoverySettings,
     honour_ignores: bool,
+    within: Option<PathBuf>,
     pruned: &Arc<Mutex<BTreeSet<String>>>,
-    visit: &mut dyn FnMut(&Path, &Path, Option<u64>),
-) {
+) -> WalkBuilder {
     let honour = honour_ignores && settings.respect_gitignore;
     // Deliberately keyed off `honour_ignores`, not `honour`: the deny list is
     // fs3's own opinion and must hold in a repo with no `.gitignore` at all —
@@ -667,6 +829,17 @@ fn walk(
             if entry.depth() == 0 {
                 return true;
             }
+            let is_dir = entry.file_type().is_some_and(|kind| kind.is_dir());
+            // The subtree restriction, before anything that needs a readable
+            // name: it is pure path comparison, it is the cheapest refusal
+            // here, and a directory with a non-UTF-8 name must not slip past
+            // it on the way to the early return below.
+            if !within
+                .as_ref()
+                .is_none_or(|target| on_the_way_to(entry.path(), target, is_dir))
+            {
+                return false;
+            }
             let Some(name) = entry.file_name().to_str() else {
                 return true;
             };
@@ -681,7 +854,7 @@ fn walk(
             if name.eq_ignore_ascii_case(".git") {
                 return false;
             }
-            if !entry.file_type().is_some_and(|kind| kind.is_dir()) {
+            if !is_dir {
                 return true;
             }
             // Whole component, never substring: `src/target_types.rs` is a
@@ -703,31 +876,21 @@ fn walk(
             }
             false
         });
+    builder
+}
 
-    for entry in builder.build() {
-        let entry = match entry {
-            Ok(entry) => entry,
-            Err(error) => {
-                // A path-bearing error is a file fs3 saw and could not read;
-                // a pathless one cannot be attributed to anything, so it has
-                // nowhere honest to go in the ledger.
-                if let ignore::Error::WithPath { path, .. } = &error
-                    && let Ok(relative) = path.strip_prefix(root)
-                {
-                    visit(path, relative, None);
-                }
-                continue;
-            }
-        };
-        if !entry.file_type().is_some_and(|kind| kind.is_file()) {
-            continue;
-        }
-        let Ok(relative) = entry.path().strip_prefix(root) else {
-            continue;
-        };
-        let bytes = entry.metadata().ok().map(|metadata| metadata.len());
-        visit(entry.path(), relative, bytes);
-    }
+/// Is this entry on the way to `target`, or inside it?
+///
+/// A directory earns the walk if it leads to the target (an ancestor) or lives
+/// under it; anything else — a sibling, an uncle — is pruned unvisited, which
+/// is what keeps a subtree walk from costing a whole-root one. A FILE only
+/// earns it inside the target: the files sitting in the ancestor directories
+/// are outside the subtree the caller asked about.
+///
+/// `Path::starts_with` compares components, not bytes, so `src2/x.rs` is
+/// correctly not under `src`.
+fn on_the_way_to(path: &Path, target: &Path, is_dir: bool) -> bool {
+    path.starts_with(target) || (is_dir && target.starts_with(path))
 }
 
 /// `/`-separated relative path — the shape that survives a Windows walk and a

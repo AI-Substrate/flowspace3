@@ -14,6 +14,7 @@
 //! script parsing `flowspace3` output should never need a second shape for
 //! "the daemon is down".
 
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use anyhow::{Context, Result};
@@ -51,6 +52,7 @@ impl HealthReport {
 pub struct DaemonClient {
     http: reqwest::Client,
     base_url: String,
+    key_path: PathBuf,
 }
 
 impl DaemonClient {
@@ -66,17 +68,19 @@ impl DaemonClient {
     /// walk only.
     pub const SCAN_TIMEOUT: Duration = Duration::from_secs(300);
 
-    /// Build a client for `base_url`.
+    /// Build a client for `base_url`, reading this installation's daemon key
+    /// from `config_dir` immediately before every request.
     ///
     /// # Errors
     /// When the HTTP client cannot be constructed.
-    pub fn new(base_url: impl Into<String>) -> Result<Self> {
+    pub fn new(base_url: impl Into<String>, config_dir: &Path) -> Result<Self> {
         Ok(Self {
             http: reqwest::Client::builder()
                 .timeout(Self::SCAN_TIMEOUT)
                 .build()
                 .context("building the HTTP client")?,
             base_url: base_url.into().trim_end_matches('/').to_string(),
+            key_path: fs3_core::daemon_key_path(config_dir),
         })
     }
 
@@ -92,23 +96,25 @@ impl DaemonClient {
     /// [`crate::DOCTOR_HINT`] — the CLI never starts infrastructure itself.
     pub async fn health(&self) -> Result<HealthReport> {
         let url = format!("{}/health", self.base_url);
-        let response = self
-            .http
-            .get(&url)
-            .timeout(Self::TIMEOUT)
-            .send()
-            .await
-            .map_err(|error| {
-                anyhow::anyhow!(
-                    "fs3 daemon is not reachable at {}: {error}\n{}",
-                    self.base_url,
-                    crate::DOCTOR_HINT
-                )
-            })?;
+        let request = self
+            .authorize(self.http.get(&url).timeout(Self::TIMEOUT))
+            .map_err(|failure| anyhow::anyhow!(failure.render()))?;
+        let response = request.send().await.map_err(|error| {
+            anyhow::anyhow!(
+                "fs3 daemon is not reachable at {}: {error}\n{}",
+                self.base_url,
+                crate::DOCTOR_HINT
+            )
+        })?;
 
         let status = response.status();
         if !status.is_success() {
             let body = response.text().await.unwrap_or_default();
+            if let Ok(envelope) = serde_json::from_str::<Envelope>(&body)
+                && let Some(failure) = envelope.error
+            {
+                return Err(anyhow::anyhow!(failure.render()));
+            }
             return Err(anyhow::anyhow!(
                 "fs3 daemon at {} answered {status}: {}\n{}",
                 self.base_url,
@@ -203,14 +209,52 @@ impl DaemonClient {
 
     async fn get_json(&self, command: &str, path: &str, query: &[(String, String)]) -> Envelope {
         let url = format!("{}{path}", self.base_url);
-        let response = self.http.get(&url).query(query).send().await;
-        self.envelope(command, response).await
+        self.send(command, self.http.get(&url).query(query)).await
     }
 
     async fn post(&self, command: &str, path: &str, body: &Value) -> Envelope {
         let url = format!("{}{path}", self.base_url);
-        let response = self.http.post(&url).json(body).send().await;
-        self.envelope(command, response).await
+        self.send(command, self.http.post(&url).json(body)).await
+    }
+
+    async fn send(&self, command: &str, request: reqwest::RequestBuilder) -> Envelope {
+        let request = match self.authorize(request) {
+            Ok(request) => request,
+            Err(failure) => {
+                let next = failure.fix.clone();
+                return Envelope::failed(command, failure).with_next_action(next);
+            }
+        };
+        self.envelope(command, request.send().await).await
+    }
+
+    fn authorize(
+        &self,
+        request: reqwest::RequestBuilder,
+    ) -> std::result::Result<reqwest::RequestBuilder, Failure> {
+        let key = std::fs::read_to_string(&self.key_path).map_err(|error| {
+            self.credential_failure(format!(
+                "cannot read the daemon authentication key at {}: {error}",
+                self.key_path.display()
+            ))
+        })?;
+        let key = key.trim();
+        if key.is_empty() {
+            return Err(self.credential_failure(format!(
+                "the daemon authentication key at {} is empty",
+                self.key_path.display()
+            )));
+        }
+        Ok(request.bearer_auth(key))
+    }
+
+    fn credential_failure(&self, message: String) -> Failure {
+        Failure::new(&catalog::DAEMON_UNAUTHORIZED, message)
+            .with_fix(format!(
+                "restart the fs3 daemon so it publishes a current key at {}, then retry",
+                self.key_path.display()
+            ))
+            .with_detail("key_file", self.key_path.display().to_string())
     }
 
     /// Turn a transport outcome into an envelope, whatever happened.

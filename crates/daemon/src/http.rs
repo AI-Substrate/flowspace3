@@ -17,6 +17,7 @@
 
 use anyhow::{Context, Result};
 use axum::extract::{Query, State};
+use axum::middleware;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
@@ -24,6 +25,7 @@ use serde::{Deserialize, Serialize};
 use fs3_core::Port;
 
 use crate::answer::{Answer, IntoFailure, failed, ok};
+use crate::auth::Auth;
 use crate::conversations::{IntakeReport, IntakeRequest};
 use crate::read::{GetPayload, GetRequest, TreeRequest, TreeResult};
 use crate::roots::{RootReport, RootRequest};
@@ -50,8 +52,9 @@ impl Health {
 }
 
 /// Build the router. Separate from [`serve`] so tests get the real routes
-/// without owning a port or a runtime shutdown.
-pub fn router(state: AppState) -> Router {
+/// without owning a port or a runtime shutdown. Authentication is one outer
+/// layer, so every current and future route inherits it automatically.
+pub fn router(state: AppState, auth: Auth) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/roots", post(add_root).get(status))
@@ -66,6 +69,7 @@ pub fn router(state: AppState) -> Router {
         .route("/get", get(get_address))
         .route("/tree", get(tree))
         .with_state(state)
+        .layer(middleware::from_fn_with_state(auth, crate::auth::require))
 }
 
 async fn remove(
@@ -298,23 +302,38 @@ async fn search(
     // identical to a caller who cannot see which repository was asked.
     let scope =
         crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
-    let meta = serde_json::json!({ "scope": scope });
 
     match crate::search::search(&state, &request, &scope).await {
-        Ok(results) => {
-            let next = if results.results.is_empty() {
-                // The third cause is the one nobody guesses: vectors are only
-                // read under the model_key that wrote them, so searching with
-                // a different embedder than the one that indexed returns
-                // nothing while the index looks full. Naming doctor here is
-                // what turns that from a mystery into one command.
-                "nothing matched — widen with a shorter query, drop --min-score, check \
-                 `flowspace3 status` in case indexing has not finished, or run `flowspace3 \
-                 doctor`: a search only reads vectors written by the ACTIVE embedder, so a \
-                 provider change since indexing returns nothing from a full index"
-            } else {
-                "read a hit in full with `flowspace3 get <address>`, browse its file with \
-                 `flowspace3 tree <address>`, or narrow with --path/--repo"
+        Ok(outcome) => {
+            // The third cause is the one nobody guesses: vectors are only read
+            // under the model_key that wrote them, so searching with a
+            // different embedder than the one that indexed returns nothing
+            // while the index looks full. Naming doctor here is what turns
+            // that from a mystery into one command.
+            //
+            // When `empty_because` is present the surface knows more than
+            // that, and the steer says the known thing instead of listing
+            // suspects: guessing out loud next to a fact we hold is how a user
+            // ends up rephrasing a query that was never the problem.
+            let next = match (&outcome.empty_because, outcome.results.is_empty()) {
+                (Some(reason), _) => reason.detail.as_str(),
+                (None, true) => {
+                    "nothing matched — widen with a shorter query, drop --min-score, check \
+                     `flowspace3 status` in case indexing has not finished, or run `flowspace3 \
+                     doctor`: a search only reads vectors written by the ACTIVE embedder, so a \
+                     provider change since indexing returns nothing from a full index"
+                }
+                (None, false) => {
+                    "read a hit in full with `flowspace3 get <address>`, browse its file with \
+                     `flowspace3 tree <address>`, or narrow with --path/--repo"
+                }
+            };
+            let meta = serde_json::json!({
+                "scope": scope,
+                "empty_because": outcome.empty_because,
+            });
+            let results = SearchResults {
+                results: outcome.results,
             };
             ok(&state, COMMAND, results)
                 .await
@@ -326,7 +345,7 @@ async fn search(
         Err(failure) => failed::<SearchResults>(&state, COMMAND, failure)
             .await
             .0
-            .with_meta(meta)
+            .with_meta(serde_json::json!({ "scope": scope }))
             .into(),
     }
 }
@@ -422,14 +441,26 @@ fn next_after_scan(report: &RootReport) -> String {
 ///
 /// # Errors
 /// When the address cannot be bound or the server fails.
-pub async fn serve(state: AppState, address: &str) -> Result<()> {
+pub async fn serve(state: AppState, address: &str, auth: Auth) -> Result<()> {
     let listener = tokio::net::TcpListener::bind(address)
         .await
         .with_context(|| format!("cannot bind {address}"))?;
+    serve_listener(state, listener, auth).await
+}
+
+/// Serve on a listener whose port is already reserved.
+///
+/// Sandbox boot uses this to publish the exact ephemeral port without a
+/// release-and-rebind race.
+pub(crate) async fn serve_listener(
+    state: AppState,
+    listener: tokio::net::TcpListener,
+    auth: Auth,
+) -> Result<()> {
     let bound = listener.local_addr().context("cannot read bound address")?;
     tracing::info!(%bound, "fs3 daemon listening");
 
-    axum::serve(listener, router(state))
+    axum::serve(listener, router(state, auth))
         .with_graceful_shutdown(shutdown_signal())
         .await
         .context("daemon stopped unexpectedly")

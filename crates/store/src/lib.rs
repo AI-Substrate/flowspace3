@@ -36,8 +36,8 @@ pub mod smart;
 pub mod updates;
 
 pub use admin::{
-    SchemaStatus, create_database, database_exists, is_missing_database, maintenance_url,
-    schema_current,
+    SchemaStatus, create_database, database_exists, database_url, drop_database,
+    is_missing_database, maintenance_url, schema_current,
 };
 pub use conversations::{
     AnchorFilter, Appended, ConversationSummary, Removed, TurnOutline, append_turns,
@@ -46,7 +46,8 @@ pub use conversations::{
 pub use elements::{get_elements, upsert_element_tree};
 pub use embeddings::{
     EMBEDDING_DIMENSIONS, NewEmbedding, SearchFilters, SearchHit, SimilarElement, SourceKind,
-    embedding_models, existing_embedding_hashes, put_embeddings, query_embeddings, search_elements,
+    anchor_has_vectors, embedding_models, existing_embedding_hashes, put_embeddings,
+    query_embeddings, search_elements,
 };
 pub use jobs::{
     Job, QueueDepth, claim_job, claim_jobs, complete_job, enqueue_job, fail_job, jobs_remaining,
@@ -62,8 +63,8 @@ pub use refs::{
     sync_worktree_files, worktree_file_map, worktree_paths_for_blob,
 };
 pub use roots::{
-    Reclaimed, Removal, collect_garbage, raw_hash_is_referenced, reclaimable, remove_root,
-    worktree_exists,
+    Reclaimed, Removal, collect_garbage, raw_hash_is_referenced, reclaimable,
+    referenced_source_hashes, remove_root, worktree_exists,
 };
 pub use smart::{
     MissingEnrichment, MissingVector, get_smart_content, missing_embeddings, missing_enrichment,

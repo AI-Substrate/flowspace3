@@ -121,12 +121,19 @@ mechanisms, because neither alone is enough:
 1. **GC reaps unreferenced pending jobs.** One definition of unreferenced, one
    reaper. But GC is slow by design and the runner drains fast, so most of a
    removed repo's backlog would be paid for inside the window.
-2. **The summarize handler re-checks at the point of spend.** Same predicate,
-   immediately before the provider call. This also covers the case GC can never
-   reach: a job already *claimed* when the removal landed.
+2. **Both enrichment handlers re-check at the point of spend.** Same predicate,
+   immediately before the provider call: `summarize` asks
+   `raw_hash_is_referenced` for its one text, `embed` asks
+   `referenced_source_hashes` for its whole batch in one query and keeps the
+   survivors. This also covers the case GC can never reach: a job already
+   *claimed* when the removal landed.
 
-Both ask about `raw_hash`, not blob — one raw hash stays worth paying for while
-any of its blobs is still referenced.
+Both ask about the CONTENT key, never the blob — one raw hash stays worth
+paying for while any of its blobs is still referenced. For a summary's own
+vector the key is the summary's `text_hash`, which reaches an element through
+the `smart_content` row; `referenced_source_hashes` takes a `SourceKind` for
+exactly that reason, because asking the raw question of a smart batch would
+call every summary vector unreferenced and stop buying them.
 
 ## Where the code is
 
@@ -149,6 +156,10 @@ any of its blobs is still referenced.
   that symlinks it.** The CLI canonicalises, which fails once the directory is
   gone, so the raw path may not match what was stored. The envelope lists the
   registered roots, which makes it recoverable rather than invisible.
-- **`embed` has no spend guard**, only `summarize`. Embedding is far cheaper per
-  call and its jobs are batched, so the GC reap covers it proportionately; the
-  hook is the same predicate if that stops being true.
+- **`embed`'s spend guard landed 2026-08-28** (DL-036). This entry used to say
+  it had none, on the reasoning that embedding is cheap per call and batched, so
+  the GC reap covered it proportionately. A watcher defect (DL-035) disproved
+  the proportion: one event inside a gitignored tree bought **4,436 raw vectors**
+  for content the next full walk unreferenced, while the ~26,000 summaries
+  beside them cost nothing — saved only because `summarize` already had the
+  guard. `embed_items` now runs the same predicate over its batch.
