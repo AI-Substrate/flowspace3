@@ -1,0 +1,21 @@
+docs/plans/006-worktree-diff/packet-reviewer.dd.json
+  s_b668fefb3076c7::t_4c79976b18fb43 66-73
+docs/plans/006-worktree-diff/packet-reviewer.dd.md
+  s_b668fefb3076c7::t_4895edcf8908c4 41-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e60b07677f4fbf96bc25191217c9873de9bd8520",
+  "prompts": {},
+  "sessions": {
+    "s_b668fefb3076c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0e0064-8d84-48e6-b499-eca0c65baafc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
