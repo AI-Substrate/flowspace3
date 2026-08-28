@@ -23,7 +23,9 @@ fs3-daemon.workspace = true
 
 anyhow.workspace = true
 clap.workspace = true
-reqwest.workspace = true
+reqwest = { workspace = true, features = ["stream"] }
+crossterm = "0.28"
+ratatui = "0.29"
 # PRD req-0053: content hash of the bundled skill. Already locked through
 # fs3-core, so this adds no Cargo.lock churn.
 sha2.workspace = true

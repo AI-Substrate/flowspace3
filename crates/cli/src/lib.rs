@@ -12,6 +12,7 @@ pub mod render;
 pub mod settings;
 pub mod show;
 pub mod skill;
+pub mod tui;
 pub mod upgrade;
 
 pub use client::{DaemonClient, HealthReport};
