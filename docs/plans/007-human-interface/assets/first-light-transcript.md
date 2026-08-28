@@ -89,9 +89,22 @@ test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ```
 
 Twelve verbs byte-identical to the goldens captured from the binary built at
-`1ce572b` — before any of this plan's code existed — and the two documentation
-verbs shape-asserted (see `crates/cli/tests/goldens/PROVENANCE.md`). No golden
-file was modified by any unit at any point in this plan.
+`1ce572b` — before any of this plan's code existed.
+
+Two golden files, `stdout/docs-list.stdout` and `stdout/agents-start-here.stdout`,
+were DELETED by the PM in this branch, and the byte assertion for those two verbs
+was replaced with a shape assertion. That was a ruled, deliberate change, not a
+drift: their payload is the bundled documentation, which ac-0005 rewrites on
+purpose and which main's authentication work rewrote again underneath us, so the
+byte alarm misfires there by design (o-prime ruling, 2026-08-28; the reasoning and
+the loss it accepts are written up in `crates/cli/tests/goldens/PROVENANCE.md`).
+
+Stated precisely, because an earlier draft of this line was not: **no golden was
+ever RE-CAPTURED, and no unit modified one.** Twelve of the fifteen captured
+files still hold their original bytes; two were removed with a ruling and a
+replacement assertion; the fifteenth (`usage-error-prints-no-envelope.stdout`,
+0 bytes) is untouched. The distinction matters — re-capturing would have hidden a
+change, and removing with a ruling records one.
 
 ## Part 2 — the stream, the meter, and the TUI
 

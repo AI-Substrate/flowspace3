@@ -45,7 +45,8 @@
         {
           "id": "ac-0002",
           "claim": "The JSON envelope is UNCHANGED for agents: existing envelope tests pass unmodified, and the piped output of every covered verb is byte-identical to pre-plan main for identical store state.",
-          "state": "unchecked"
+          "state": "unchecked",
+          "note": "SCOPE AMENDED 2026-08-28 (o-prime ruling, raised by u-r, upheld under review): byte-identity is asserted for the verbs whose payload the DAEMON COMPUTES. docs list and agents-start-here are EXEMPT and shape-asserted instead — their payload is the bundled documentation, which ac-0005 rewrites by design and which main rewrote again mid-plan, so a byte alarm there fires on editorial improvement rather than on contract drift. Their two captured stdout goldens were deleted with this ruling; twelve remain byte-frozen from the pre-plan binary; nothing was ever re-captured. Rationale and the accepted loss: crates/cli/tests/goldens/PROVENANCE.md."
         },
         {
           "id": "ac-0003",
