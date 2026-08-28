@@ -75,3 +75,31 @@ another repo is a legitimate scope-trap negative-control variant: it must test
 that the loop WIDENS rather than concluding absence. Because an ungrounded
 answer receives one in-conversation refusal, that path may consume one extra
 iteration; fixtures assert an iteration ceiling, never an exact count.
+
+## Refusal when the port cannot answer (added 2026-08-28)
+
+`ask` can now fail before any model call. When the agent port is wired to a
+provider that cannot answer — the offline `fake` with no script, which is a
+legal keyless production value — the envelope is:
+
+    ok: false, error.code = FS3-E-PROVIDER-CANNOT-ANSWER, data absent
+
+This closes a reported defect rather than adding a feature. That configuration
+previously returned `ok: true` with `answer` set to the fake's placeholder
+prose and `citations: []`. A machine consumer branching on `ok` — which this
+contract and the bundled skill both instruct — banked a non-answer as a
+finding. `grounded: false` and a suspicious `next_action` were both present
+and both insufficient: neither is where a machine looks. **The verdict rides
+the envelope, not the prose.**
+
+For fixtures:
+
+- No scenario may assert `ok: true` against a daemon whose agent port is the
+  fake — that assertion would encode the defect.
+- A run that returns this code is an ENVIRONMENT fault, not a subject fault:
+  the daemon under test is misconfigured, and the correct disposition is
+  UNKNOWN (excluded from every denominator), never a subject failure.
+- The distinction is worth a probe of its own. A suite that never sees this
+  code cannot tell "the subject answered well" from "the subject was never
+  asked", and the eval should be able to prove it was actually talking to a
+  real model.

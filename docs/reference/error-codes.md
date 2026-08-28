@@ -124,6 +124,15 @@ tree-sitter could not produce a tree for a file it has a grammar for.
 
 ## PROVIDER
 
+### `FS3-E-PROVIDER-CANNOT-ANSWER`
+
+The agent port is configured with a provider that cannot answer questions.
+
+**Fix**: point `[agent] active` at a real chat deployment (`flowspace3 config show` names the current one, `flowspace3 docs get providers` sets one up). The offline `fake` runs the rest of the stack without keys, but it cannot answer a question.
+
+| retryable | status |
+| --- | --- |
+| false | 500 |
 ### `FS3-E-PROVIDER-FAILED`
 
 The configured embedder or summarizer refused the call.

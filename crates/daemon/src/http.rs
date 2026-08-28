@@ -95,6 +95,24 @@ async fn ask(
         crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
     let meta = serde_json::json!({ "scope": scope });
 
+    // The verdict rides the ENVELOPE, not the prose. A daemon wired to the
+    // offline fake is healthy and cannot answer anything, and it used to say
+    // so only in `grounded` and a next_action — while `ok` stayed true, which
+    // is the field our own documentation tells consumers to branch on. So a
+    // caller banked a placeholder as a finding. This is a failure, before any
+    // model call is made and before anything is spent.
+    let agent = state.agent_for(scope.repo.as_deref());
+    if !agent.can_answer() {
+        let failure = fs3_core::envelope::Failure::new(
+            &fs3_core::catalog::PROVIDER_CANNOT_ANSWER,
+            format!(
+                "the agent port is wired to `{}`, which cannot answer questions",
+                agent.key()
+            ),
+        );
+        return failed(&state, COMMAND, failure).await;
+    }
+
     match crate::ask::ask(&state, &request, scope.clone()).await {
         Ok(report) => {
             let next = match (
