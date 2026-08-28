@@ -1,0 +1,20 @@
+docs/plans/008-ddocs-scan/packet-coder-u2.dd.json
+  h_9e71e8b09f7cf2 74-85
+docs/plans/008-ddocs-scan/packet-coder-u2.dd.md
+  h_9e71e8b09f7cf2 49-51
+docs/plans/008-ddocs-scan/packet-coder-u4.dd.json
+  h_9e71e8b09f7cf2 74-85
+docs/plans/008-ddocs-scan/packet-coder-u4.dd.md
+  h_9e71e8b09f7cf2 49-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d78eee31faabe75a5373eb072281de184d1d752b",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
