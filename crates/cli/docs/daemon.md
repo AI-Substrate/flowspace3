@@ -20,21 +20,24 @@ flowspace3 daemon --sandbox
 ```
 
 It creates and migrates a uniquely named database beside the configured one,
-forces both providers to the offline fake regardless of ambient configuration,
-reserves an ephemeral loopback port, and uses process-owned credential and log
-directories. Its first line names the complete posture:
-The configured database itself need not exist; only its Postgres server and
-credentials are reused to create the child through the maintenance database.
+loads daemon configuration only from its new process-owned directory, forces
+embedder, summarizer, and agent surfaces to the offline fake, reserves an
+ephemeral loopback port, and owns its credential and log directories. Ambient
+per-surface selections never reach wiring. Its ready line is emitted only after
+provider wiring, store migration, listener bind, and atomic key publication all
+succeed:
 
 ```text
 sandbox=true embedder=fake summarizer=fake db=fs3_sandbox_<unique> port=<n> config=<dir>
 ```
 
-Ctrl-C is a clean shutdown and drops the database. Point a client at the
+SIGINT and SIGTERM both stop dequeueing immediately, finish only jobs already
+in flight, then drop the database. A second signal cancels the remaining
+in-flight jobs but still unwinds through database cleanup. Every exit reports
+whether the database was dropped; a failed drop names it and prints the
+`docker exec flowspace3-db psql ...` cleanup command. Point a client at the
 printed port and set `FS3_CONFIG_DIR` to the printed directory so it reads this
-sandbox's bearer key. A killed process cannot run async cleanup, so the same
-boot line deliberately leaves the unique database name visible for manual
-removal.
+sandbox's bearer key.
 
 Real providers over a real, read-only index are a separate capability: the
 daemon must mechanically disable add, scan, enrichment, reconciliation, and
@@ -52,16 +55,17 @@ not reproduce these steps—use `--sandbox`.
 
 ## What it does at boot
 
-1. Reads configuration from the same directory the CLI uses.
-2. Generates a fresh 256-bit bearer key and atomically publishes it as
-   `daemon.key` in that directory with mode `0600`, before binding any socket.
+1. Reads configuration from the directory the CLI uses.
+2. Stages a fresh 256-bit bearer key beside `daemon.key` with mode `0600`; the
+   published key remains unchanged at this point.
 3. Refuses any `daemon.url` that is not loopback. Authentication is still
    defense in depth for a local surface that fronts every indexed repo; a typo
    must never publish it to another interface.
-4. Migrates the store, and refuses to serve if it cannot — a writer that cannot
-   reach its own schema has nothing useful to do.
-5. Requeues any job left `running` by a previous process that died holding it.
-6. Starts the workers, then listens.
+4. Wires providers, migrates the store, and performs boot recovery.
+5. Binds the listener. A bind failure discards the staged key without touching
+   the credential used by an existing daemon.
+6. Atomically publishes the staged key, starts workers, then starts the accept
+   loop. Publication is after bind but before the first request can be served.
 
 ## Watching it work
 

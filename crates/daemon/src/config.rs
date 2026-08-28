@@ -84,6 +84,20 @@ pub fn config_dir() -> Result<PathBuf, ConfigError> {
 /// # Errors
 /// [`ConfigError::Unreadable`] or [`ConfigError::Invalid`].
 pub fn load_effective_from(dir: &Path) -> Result<Effective, ConfigError> {
+    let env = env_overrides(std::env::vars());
+    load_effective(dir, &env)
+}
+
+/// Load only `config.toml` from `dir`, ignoring every ambient `FS3_*` override.
+///
+/// The sandbox uses this with its process-owned directory. Its safety posture
+/// must be determined solely by the configuration it minted, never by the shell
+/// that happened to launch it.
+pub(crate) fn load_isolated_from(dir: &Path) -> Result<Config, ConfigError> {
+    Ok(load_effective(dir, &[])?.config)
+}
+
+fn load_effective(dir: &Path, env: &[(String, String)]) -> Result<Effective, ConfigError> {
     let path = dir.join(CONFIG_FILE_NAME);
     let text = match std::fs::read_to_string(&path) {
         Ok(text) => Some(text),
@@ -92,11 +106,10 @@ pub fn load_effective_from(dir: &Path) -> Result<Effective, ConfigError> {
     };
 
     let label = path.display().to_string();
-    let env = env_overrides(std::env::vars());
     resolve(Sources {
         file_label: &label,
         file_text: text.as_deref(),
-        env: &env,
+        env,
     })
     .map_err(|source| ConfigError::Invalid { path, source })
 }
