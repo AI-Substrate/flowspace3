@@ -1,0 +1,37 @@
+eval/ask/scenarios/negative-deleted-path/assertions.json
+  s_59d749bfeff5de::t_bad35431c6dacf 9
+eval/ask/scenarios/negative-explicit-scope/assertions.json
+  s_59d749bfeff5de::t_4c65740a67b091 9
+eval/ask/scenarios/negative-never-indexed-repo/assertions.json
+  s_59d749bfeff5de::t_e93f404badbb82 9
+docs/briefs/w-ask-eval/ask-contract.md
+  s_b668fefb3076c7::t_ad0fc1f004479f 25,27-30,35-38,51-58,60-62
+eval/ask/report-contract-assertions.json
+  s_b668fefb3076c7::t_67a131797c3ebe 9,15-17
+eval/ask/scenarios/scoped-zero-widening/assertions.json
+  s_b668fefb3076c7::t_7e2176a271e6c4 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9fbe57755dcc286d791df6b3a94a8360ae7b5b26",
+  "prompts": {},
+  "sessions": {
+    "s_59d749bfeff5de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae4199d-c737-4ac3-a856-7e69531e4bab",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_b668fefb3076c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0e0064-8d84-48e6-b499-eca0c65baafc",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
