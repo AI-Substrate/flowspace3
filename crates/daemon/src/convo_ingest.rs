@@ -206,13 +206,27 @@ pub async fn run(state: &AppState, payload: serde_json::Value) -> Result<(), Fai
     let report = ingest(state, &request).await?;
 
     // A contended file was NOT read by this run, and the poll that held the
-    // lock may have read before the bytes this job was fired for existed.
-    // Settling successfully here would lose that delta until something else
-    // happened to fire another ingest. Re-queue instead: the dedupe upsert
-    // collapses it against any firing that arrives meanwhile, and the delay
-    // gives the holder time to finish rather than immediately contending again.
+    // lock may have read BEFORE the bytes this job was fired for existed.
+    // Settling successfully would lose that delta until something else happened
+    // to fire an ingest.
+    //
+    // This is a RETRYABLE FAILURE rather than a self-enqueue. Round 4 of review
+    // showed why the enqueue could not work: `enqueue_job`'s conflict target
+    // covers pending AND RUNNING rows, so re-queueing from inside the running
+    // job collides with that very row and only moves its deadline — and the
+    // runner then settles the same row `done`. The intended retry never
+    // existed. Failing retryably hands the job to the machinery that already
+    // knows how to back off and re-run it.
     if report.contended > 0 {
-        submit_after(state, &request, std::time::Duration::from_secs(5)).await?;
+        return Err(Failure::new(
+            &catalog::QUEUE_JOB_FAILED,
+            format!(
+                "{} session file(s) were being polled by another ingest of the same \
+                 conversation; this run did not read them",
+                report.contended
+            ),
+        )
+        .retryable(true));
     }
     Ok(())
 }
@@ -558,35 +572,16 @@ pub async fn ingest(state: &AppState, request: &IngestRequest) -> Result<IngestR
                 .await
                 .map_err(fail)?;
 
-                // THE BACKSTOP, and it is not the one that was here before. The
-                // previous version compared `accepted + already_stored` against
-                // `prepared.turns.len()`, which cross-model review showed is an
-                // ARITHMETIC IDENTITY: `fs3_store::conversations` defines
-                // `already_stored` as `turns.len() - accepted.len()`, so that check
-                // could not fail for any input. It was a safety property in a comment
-                // and nothing in the code.
-                //
-                // The check that CAN fire is the one u2 actually described: turns the
-                // ledger said were new, which the turns table already had. That means
-                // the two disagree about what is stored — a concurrent poll numbering
-                // against the same high-water mark, or a ledger that lost rows a cursor
-                // advanced past.
-                if appended.already_stored > 0 {
-                    return Err(Failure::new(
-                    &catalog::QUERY_INVALID,
-                    format!(
-                        "ingest anomaly for {}/{}: the ledger said all {} turns were new, and the \
-                     store already had {} of them — the ordinal ledger and the turns table \
-                     disagree about what is in conversation {}. Another poll of this \
-                     conversation probably numbered against the same high-water mark.",
-                        harness,
-                        file.session_id,
-                        prepared.turns.len(),
-                        appended.already_stored,
-                        guid.as_str()
-                    ),
-                )
-                .retryable(false));
+                // THE BACKSTOP. See `ledger_disagreement` for why it reads
+                // `already_stored` alone.
+                if let Some(detail) = ledger_disagreement(
+                    prepared.turns.len(),
+                    appended.already_stored,
+                    harness,
+                    &file.session_id,
+                    &guid,
+                ) {
+                    return Err(Failure::new(&catalog::QUERY_INVALID, detail).retryable(false));
                 }
 
                 // Record the poll even when nothing was appended: the reader still
@@ -646,6 +641,39 @@ pub async fn ingest(state: &AppState, request: &IngestRequest) -> Result<IngestR
     }
 
     Ok(report)
+}
+
+/// Whether the ordinal ledger and the turns table disagree about what is stored.
+///
+/// `prepare_batch` removes every seen and within-batch duplicate BEFORE
+/// `append_turns`, so `already_stored` counts ONLY turns the ledger classified
+/// as new. Any nonzero value is therefore a disagreement: a concurrent poll
+/// numbering against the same high-water mark, or a ledger that lost rows a
+/// cursor advanced past.
+///
+/// It is a function rather than an inline `if` so the condition itself is
+/// testable. Two rounds of cross-model review landed on this guard — the first
+/// version was an arithmetic identity that could never fire, the second added a
+/// `deduped == 0` qualifier that silenced it on the ordinary
+/// rescan-plus-growth batch — and neither defect was reachable from a test
+/// while the condition lived inside the pipeline.
+#[must_use]
+pub fn ledger_disagreement(
+    prepared: usize,
+    already_stored: usize,
+    harness: Harness,
+    session_id: &str,
+    guid: &ConversationId,
+) -> Option<String> {
+    (already_stored > 0).then(|| {
+        format!(
+            "ingest anomaly for {harness}/{session_id}: the ledger said {prepared} turns were \
+             new, and the store already had {already_stored} of them — the ordinal ledger and \
+             the turns table disagree about what is in conversation {}. Another poll of this \
+             conversation probably numbered against the same high-water mark.",
+            guid.as_str()
+        )
+    })
 }
 
 /// The operator-facing next step, which must carry `deduped`.
@@ -902,6 +930,39 @@ mod tests {
         )
         .expect("a scratch session file");
         home
+    }
+
+    #[test]
+    fn the_anomaly_guard_fires_on_a_mixed_batch_too() {
+        // The guard has been wrong twice, and BOTH defects were invisible while
+        // the condition lived inline in the pipeline. Round 1: it compared
+        // accepted + already_stored against prepared.turns.len(), which is an
+        // arithmetic identity. Round 2: it added `deduped == 0`, which silenced
+        // it on the ordinary rescan-plus-growth batch — one already-seen
+        // ordinal makes deduped nonzero, and a colliding NEW turn would then be
+        // classified already-stored while the cursor committed past it.
+        //
+        // `prepare_batch` removes every seen record BEFORE `append_turns`, so
+        // `already_stored` counts only turns the ledger called new. The batch
+        // having ALSO deduped something is irrelevant, which is exactly what
+        // the second defect got wrong — so the mixed case is pinned here.
+        let guid = conversation_guid(Harness::Omp, "a-session");
+
+        assert!(
+            ledger_disagreement(3, 0, Harness::Omp, "a-session", &guid).is_none(),
+            "nothing already stored is the healthy shape"
+        );
+
+        let mixed = ledger_disagreement(1, 1, Harness::Omp, "a-session", &guid)
+            .expect("a batch that also deduped still reports a disagreement");
+        assert!(
+            mixed.contains("the store already had 1 of them"),
+            "and it says what disagreed: {mixed}"
+        );
+
+        let clean = ledger_disagreement(4, 2, Harness::Claude, "b-session", &guid)
+            .expect("a batch that deduped nothing reports one too");
+        assert!(clean.contains("4 turns were new"));
     }
 
     #[test]

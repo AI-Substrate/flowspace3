@@ -792,15 +792,12 @@ fn copilot_row(
             // Tool requests ride along on the message that made them, which is
             // where a reader of the transcript expects to find them.
             let mut items = Vec::new();
+            let mut requested: Vec<(String, String)> = Vec::new();
             if let Some(requests) = data
                 .and_then(|data| data.get("toolRequests"))
                 .and_then(Value::as_array)
             {
                 for request in requests {
-                    // When the request carries its own id, remember it against
-                    // the record this turn is about to become: that is an EXACT
-                    // association, and it is what a later tool.execution_start
-                    // should prefer over any name-based guess.
                     let named = request
                         .get("toolName")
                         .or_else(|| request.get("name"))
@@ -812,7 +809,7 @@ fn copilot_row(
                         .or_else(|| request.get("toolCallId"))
                         .and_then(Value::as_str)
                     {
-                        open_calls.insert(id.to_owned(), (records.len(), named.clone()));
+                        requested.push((id.to_owned(), named.clone()));
                     }
                     items.push(TurnItem::ToolCall {
                         tool: named,
@@ -823,6 +820,12 @@ fn copilot_row(
                 }
             }
 
+            // The id association is registered AFTER the record is emitted, and
+            // only if it was. `copilot_record` returns `None` for a row this
+            // reader cannot date, so registering against `records.len()` first
+            // — which round 4 of review caught — leaves an index one past the
+            // end that a later completion dereferences and PANICS on.
+            let before = records.len();
             records.extend(copilot_record(
                 row,
                 TurnRole::Agent,
@@ -830,6 +833,11 @@ fn copilot_row(
                 body,
                 items,
             ));
+            if records.len() > before {
+                for (id, named) in requested {
+                    open_calls.insert(id, (before, named));
+                }
+            }
         }
         "tool.execution_start" => {
             // NOT a turn, and NOT an item — the assistant.message that requested
