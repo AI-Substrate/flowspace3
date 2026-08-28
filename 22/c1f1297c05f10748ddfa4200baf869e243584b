@@ -1,0 +1,321 @@
+.agents/skills/pij-team/EXPERIENCES.md
+  s_b668fefb3076c7::t_74d72a66a8cc66 54-433,436-443
+.agents/skills/pij-team/SKILL.md
+  s_b668fefb3076c7::t_a91c56c686ec69 89-94
+.agents/skills/pij-team/TENETS.md
+  s_b668fefb3076c7::t_bf7aa2dd746fe0 108-125
+.agents/skills/pij-team/templates/packet-coder.dd.json
+  s_b668fefb3076c7::t_f0be18aa8ce832 29-30,47,55-57
+.agents/skills/pij-team/templates/packet-pm.dd.json
+  s_b668fefb3076c7::t_3f08f07e9771a8 26-27
+.agents/skills/pij-team/templates/packet-reviewer.dd.json
+  s_b668fefb3076c7::t_22c496ecf3a579 24,26
+.harness/government/briefs/backlog.md
+  s_b668fefb3076c7::t_63c812e24429ea 1-187
+.harness/government/briefs/w-agentic-query-poc.md
+  s_b668fefb3076c7::t_58a5395c78a0fb 1-48
+.harness/government/briefs/w-ask-eval.md
+  s_b668fefb3076c7::t_11034703165059 1-52
+.harness/government/briefs/w-daemon-auth.md
+  s_b668fefb3076c7::t_71db40b20d1e33 1-35
+.harness/government/briefs/w-daemon-restart.md
+  s_b668fefb3076c7::t_ec262da5cc84bf 1-42
+.harness/government/briefs/w-daemon-sandbox.md
+  s_b668fefb3076c7::t_be6431e9209b91 1-47
+.harness/government/briefs/w-ddocs-scan.md
+  s_b668fefb3076c7::t_6f9d92dc1655f9 1-67
+.harness/government/briefs/w-disk-usage.md
+  s_b668fefb3076c7::t_85884c7ec43172 1-48
+.harness/government/briefs/w-epipe.md
+  s_b668fefb3076c7::t_0a588e8441634b 1-24
+.harness/government/briefs/w-ingest-lane.md
+  s_b668fefb3076c7::t_999eece4d4aaeb 1-30
+.harness/government/briefs/w-retro-drain.md
+  s_b668fefb3076c7::t_0ef49ba8826a66 1-57
+.harness/government/briefs/w-search-degenerate-query.md
+  s_b668fefb3076c7::t_13eb87bc9af0ef 1-68
+.harness/government/briefs/w-team-tidy.md
+  s_b668fefb3076c7::t_bf3f24c741143f 1-52
+.harness/government/briefs/w-tui-poc.md
+  s_b668fefb3076c7::t_f926ad1d5d9bc5 1-64
+.harness/government/briefs/w-watcher-ignore-successor.md
+  s_b668fefb3076c7::t_6ad10d7ab701de 1-35
+.harness/government/briefs/w-watcher-ignore.md
+  s_b668fefb3076c7::t_fceb8d61f44d5a 1-71
+.harness/government/how-we-work.md
+  s_b668fefb3076c7::t_cf68dc6008fbcc 2-31,44,48-53,59-63,67-70,74-78,82,84-85,89-92,96,100,106-113,117
+.harness/government/settings.dd.json
+  s_b668fefb3076c7::t_909a9f5e2c6425 11,22,29,31
+.harness/government/settings.dd.md
+  s_b668fefb3076c7::t_dcff29ea00a0ba 14,22-23
+AGENTS.md
+  s_b668fefb3076c7::t_1472cae643a8f5 6-12
+Cargo.lock
+  s_b668fefb3076c7::t_19619da4b8c0d9 40-58,389-394,513-539,580,720-758,775-786,803-815,822,827-837,927,1191,1195-1196,1201-1202,1208,1249,1838,2646,2651-2659,2680-2692,2705-2713,2915-2920,2954-2962,3294-3299,3644-3664,3688,3888-3900,3910,4198-4218,4276-4281,4559-4580,4638-4648,4652-4662,4755,4760,5163-5173,5176,5178-5184,5296-5305
+Cargo.toml
+  s_b668fefb3076c7::t_05f8173ad6bf0a 91
+crates/cli/Cargo.toml
+  s_b668fefb3076c7::t_498a90ac34933c 25-28,30-32
+crates/cli/docs/agents.md
+  s_b668fefb3076c7::t_0bfc1d45883e29 9-16
+crates/cli/docs/read.md
+  s_b668fefb3076c7::t_69593e6ed0b7b9 7-13
+crates/cli/docs/search.md
+  s_b668fefb3076c7::t_0db31cf4fb0b00 10-16
+crates/cli/skills/flowspace/SKILL.md
+  s_b668fefb3076c7::t_3c789babe74fff 3,13-19,136-200,209-216,228-229
+crates/cli/src/client.rs
+  s_b668fefb3076c7::t_31af4afbd83198 295-352
+crates/cli/src/doctor.rs
+  s_b668fefb3076c7::t_d8453927f52d9e 36
+crates/cli/src/lib.rs
+  s_b668fefb3076c7::t_511512d58ce422 11,15,17
+crates/cli/src/main.rs
+  s_b668fefb3076c7::t_b57a6544b8b3a1 3-15,18,21,25,27,39-47,99-110,222-236,380-381,384-388,408-410,424-442,444-456,459,465,473-480,492-512,514,516-517,639-649,687-702,704-707,709-728,734-745,753-755,761-767,772,777-781,841,849,865-866,871
+crates/cli/src/render/mod.rs
+  s_b668fefb3076c7::t_36065309f48dbc 1-121
+crates/cli/src/render/progress.rs
+  s_b668fefb3076c7::t_fa7f5d9121c1a4 1-152
+crates/cli/src/render/surfaces/doctor.rs
+  s_b668fefb3076c7::t_881e75207c92ea 1-66
+crates/cli/src/render/surfaces/failure.rs
+  s_b668fefb3076c7::t_de6d76218a3a88 1-72
+crates/cli/src/render/surfaces/lists.rs
+  s_b668fefb3076c7::t_524aec66a56737 1-102
+crates/cli/src/render/surfaces/mod.rs
+  s_b668fefb3076c7::t_8fa3b5211ffe60 1-8
+crates/cli/src/render/surfaces/read.rs
+  s_b668fefb3076c7::t_9daaa71c5629e1 1-124
+crates/cli/src/render/surfaces/remove.rs
+  s_b668fefb3076c7::t_7776378ffc8353 1-64
+crates/cli/src/render/surfaces/roots.rs
+  s_b668fefb3076c7::t_4f4035f1d4a1fd 1-58
+crates/cli/src/render/surfaces/search.rs
+  s_b668fefb3076c7::t_05207999f18dfe 1-94
+crates/cli/src/render/surfaces/status.rs
+  s_b668fefb3076c7::t_304ab82775fde3 1-121
+crates/cli/src/render/theme.rs
+  s_b668fefb3076c7::t_2e76ada4b34492 1-209
+crates/cli/src/skill.rs
+  s_b668fefb3076c7::t_edd0b66df9adc9 177-192
+crates/cli/src/watch.rs
+  s_b668fefb3076c7::t_70e89713a90210 1-130
+crates/cli/tests/doctor_daemon.rs
+  s_b668fefb3076c7::t_a606dbd4698db0 13,44,78,249,317,330-331,336-337
+crates/cli/tests/envelope_goldens.rs
+  s_b668fefb3076c7::t_a83817a886274e 1-455
+crates/cli/tests/fixtures/scan-progress.ndjson
+  s_b668fefb3076c7::t_46915aef502c47 1-4
+crates/cli/tests/fixtures/tui-events.ndjson
+  s_b668fefb3076c7::t_6bb1e101ec792f 1-6
+crates/cli/tests/goldens/PROVENANCE.md
+  s_b668fefb3076c7::t_db199f52144084 1-164
+crates/cli/tests/goldens/responses/add.json
+  s_b668fefb3076c7::t_a60f985231f0fa 1
+crates/cli/tests/goldens/responses/conversation-list.json
+  s_b668fefb3076c7::t_6d10a70656bdb9 1
+crates/cli/tests/goldens/responses/error-not-found.json
+  s_b668fefb3076c7::t_24695cf2ed4bdb 1
+crates/cli/tests/goldens/responses/error-query-empty.json
+  s_b668fefb3076c7::t_4d97d047529dd6 1
+crates/cli/tests/goldens/responses/gc.json
+  s_b668fefb3076c7::t_f85820125064c9 1
+crates/cli/tests/goldens/responses/get.json
+  s_b668fefb3076c7::t_4a41b73a3adbd5 1
+crates/cli/tests/goldens/responses/messages.json
+  s_b668fefb3076c7::t_8371150d45ff4d 1
+crates/cli/tests/goldens/responses/remove.json
+  s_b668fefb3076c7::t_33f5a533eb8a6f 1
+crates/cli/tests/goldens/responses/scan.json
+  s_b668fefb3076c7::t_aa32c50d7864e5 1
+crates/cli/tests/goldens/responses/search.json
+  s_b668fefb3076c7::t_60bb1babd15aa6 1
+crates/cli/tests/goldens/responses/status.json
+  s_b668fefb3076c7::t_ba3fcfcc42d997 1
+crates/cli/tests/goldens/responses/tree.json
+  s_b668fefb3076c7::t_4f3b4009e59193 1
+crates/cli/tests/goldens/stdout/add.stdout
+  s_b668fefb3076c7::t_891b13abe2d91f 1-33
+crates/cli/tests/goldens/stdout/conversation-list.stdout
+  s_b668fefb3076c7::t_2e5df0954cc412 1-9
+crates/cli/tests/goldens/stdout/error-not-found.stdout
+  s_b668fefb3076c7::t_2a6c2021b6ee2e 1-21
+crates/cli/tests/goldens/stdout/error-query-empty.stdout
+  s_b668fefb3076c7::t_9e685cbfacf290 1-17
+crates/cli/tests/goldens/stdout/gc.stdout
+  s_b668fefb3076c7::t_42f661e2a874c6 1-13
+crates/cli/tests/goldens/stdout/get.stdout
+  s_b668fefb3076c7::t_3188f5b1868522 1-46
+crates/cli/tests/goldens/stdout/remove.stdout
+  s_b668fefb3076c7::t_5fcc1078dbe6fb 1-21
+crates/cli/tests/goldens/stdout/scan.stdout
+  s_b668fefb3076c7::t_144aa7d8cb984d 1-18
+crates/cli/tests/goldens/stdout/search.stdout
+  s_b668fefb3076c7::t_cabd40f24d2282 1-73
+crates/cli/tests/goldens/stdout/status-with-messages.stdout
+  s_b668fefb3076c7::t_aa12fccec809ef 1-35
+crates/cli/tests/goldens/stdout/status.stdout
+  s_b668fefb3076c7::t_7c6a2082bf0141 1-87
+crates/cli/tests/goldens/stdout/tree.stdout
+  s_b668fefb3076c7::t_25f7309874d4bc 1-39
+crates/cli/tests/messages_visible.rs
+  s_b668fefb3076c7::t_3b6afe183847a2 1-131
+crates/cli/tests/render_output.rs
+  s_b668fefb3076c7::t_f261838d5b0f84 1-479
+crates/cli/tests/render_progress.rs
+  s_b668fefb3076c7::t_e4e65a4d480729 1-117
+crates/cli/tests/status_watch.rs
+  s_b668fefb3076c7::t_ec4e8ce3150402 1-189
+crates/core/src/events.rs
+  s_b668fefb3076c7::t_077f6aa1d04402 1-326
+crates/core/src/lib.rs
+  s_b668fefb3076c7::t_f2801191ce8494 24,28,33,60,66
+crates/core/src/output.rs
+  s_b668fefb3076c7::t_db337211dc5c06 1-165
+crates/core/src/views/doctor.rs
+  s_b668fefb3076c7::t_9e22bfcf6b0c2f 1-186
+crates/core/src/views/mod.rs
+  s_b668fefb3076c7::t_502d005012bbcb 1-153
+crates/core/src/views/read.rs
+  s_b668fefb3076c7::t_8c947d69f3687d 1-162
+crates/core/src/views/remove.rs
+  s_b668fefb3076c7::t_6623cab206726d 1-47
+crates/core/src/views/roots.rs
+  s_b668fefb3076c7::t_9a07e2e2bd7b87 1-65
+crates/core/src/views/status.rs
+  s_b668fefb3076c7::t_f2408e48773991 1-57
+crates/daemon/Cargo.toml
+  s_b668fefb3076c7::t_a00d06f3702754 46
+crates/daemon/src/http.rs
+  s_b668fefb3076c7::t_1f616ccd490be6 19,21,25,27-29,36-38,40-44,72,151,248,266-333
+crates/daemon/src/read.rs
+  s_b668fefb3076c7::t_c535cc56050c7e 43,45,51-53
+crates/daemon/src/remove.rs
+  s_b668fefb3076c7::t_31dd277afe7a96 6,12,14-26,61,68,70-79,96
+crates/daemon/src/roots.rs
+  s_b668fefb3076c7::t_969451db84d6fc 28,35-36,41-42,44-53,56-98,101,103-104,152-159,162-163,168,170-172,179,185,188,198-213,215-217,219,221-222,227,232,235-242,261
+crates/daemon/src/runner.rs
+  s_b668fefb3076c7::t_83ddcedf80c061 33,311-315,324-338,429,432-448,465-472,478,480-486,492,494-500,565-598,617-635,654-659,668-675,684-694
+crates/daemon/src/search.rs
+  s_f5a59eaabcfb7d::t_d87d9fbd3dcbfe 42,136-139
+crates/daemon/src/status.rs
+  s_b668fefb3076c7::t_e4fb2406c8a10a 12
+crates/daemon/src/wiring.rs
+  s_b668fefb3076c7::t_3b5798159a15e3 39-40,49-56,70-71,170,187,195-220,460-490
+crates/daemon/tests/conversation_query.rs
+  s_b668fefb3076c7::t_719f6646422dd5 15,18
+crates/daemon/tests/event_stream.rs
+  s_b668fefb3076c7::t_c9788ef046faba 1-388
+crates/daemon/tests/watcher.rs
+  s_b668fefb3076c7::t_70a403d9c80bbc 30,84
+crates/testkit/arch-allowlist.toml
+  s_b668fefb3076c7::t_95ede9dd6ca183 196-201,233,235-238,245
+docs/plans/007-human-interface/assets/first-light-transcript.md
+  s_b668fefb3076c7::t_f4b5bb25f8e877 1-227
+docs/plans/007-human-interface/assets/first-light.md
+  s_b668fefb3076c7::t_4f877aa53398be 1-47
+docs/plans/007-human-interface/assets/inputs/README.md
+  s_b668fefb3076c7::t_5ce3904afdfcb1 1-57
+docs/plans/007-human-interface/assets/inputs/tui-poc-VERDICT.md
+  s_b668fefb3076c7::t_71dbef31e137f3 1-71
+docs/plans/007-human-interface/assets/reviews/review-007.dd.json
+  s_b668fefb3076c7::t_5081a9266b0731 1-141
+docs/plans/007-human-interface/assets/reviews/review-007.dd.md
+  s_b668fefb3076c7::t_6c1b118e3896f4 1-48
+docs/plans/007-human-interface/assets/run/buffers/pm-session-buffer.md
+  s_b668fefb3076c7::t_57bae6ba2619c2 1-144
+docs/plans/007-human-interface/assets/run/buffers/u-r-session-buffer.md
+  s_b668fefb3076c7::t_9119b02ede094c 1-48
+docs/plans/007-human-interface/assets/run/buffers/u-t-session-buffer.md
+  s_b668fefb3076c7::t_75c1a99c5d5788 1-60
+docs/plans/007-human-interface/assets/run/buffers/u-w-session-buffer.md
+  s_b668fefb3076c7::t_4f16fdab4059d2 1-12
+docs/plans/007-human-interface/assets/run/pm-ack.md
+  s_b668fefb3076c7::t_229c55ed83422a 1-93
+docs/plans/007-human-interface/assets/run/process-feedback.md
+  s_b668fefb3076c7::t_d484cf722baab1 1-160
+docs/plans/007-human-interface/assets/tasks/phase-1/tasks.dd.json
+  s_b668fefb3076c7::t_72547160735cd5 1-89
+docs/plans/007-human-interface/assets/tasks/phase-1/tasks.dd.md
+  s_b668fefb3076c7::t_02db9fb719c258 1-49
+docs/plans/007-human-interface/assets/tasks/phase-2/tasks.dd.json
+  s_b668fefb3076c7::t_82baca2d026794 1-60
+docs/plans/007-human-interface/assets/tasks/phase-2/tasks.dd.md
+  s_b668fefb3076c7::t_7c9ad3394f2306 1-46
+docs/plans/007-human-interface/assets/tasks/phase-3/tasks.dd.json
+  s_b668fefb3076c7::t_dc511993024a85 1-61
+docs/plans/007-human-interface/assets/tasks/phase-3/tasks.dd.md
+  s_b668fefb3076c7::t_cfb8650b217d33 1-46
+docs/plans/007-human-interface/impl-guide.dd.json
+  s_b668fefb3076c7::t_fe3f86918acb4a 1-117
+docs/plans/007-human-interface/impl-guide.dd.md
+  s_b668fefb3076c7::t_c33af89ea48207 1-86
+docs/plans/007-human-interface/packet-coder-u-r.dd.json
+  s_b668fefb3076c7::t_23e89c0eef5404 1-186
+docs/plans/007-human-interface/packet-coder-u-r.dd.md
+  s_b668fefb3076c7::t_03638039d37d1d 1-93
+docs/plans/007-human-interface/packet-coder-u-t.dd.json
+  s_b668fefb3076c7::t_7700ced732929f 1-194
+docs/plans/007-human-interface/packet-coder-u-t.dd.md
+  s_b668fefb3076c7::t_049d5797c07ab4 1-95
+docs/plans/007-human-interface/packet-coder-u-w.dd.json
+  s_b668fefb3076c7::t_ec287c18bca9a2 1-190
+docs/plans/007-human-interface/packet-coder-u-w.dd.md
+  s_b668fefb3076c7::t_6f82c76e124728 1-94
+docs/plans/007-human-interface/packet-coder.dd.json
+  s_b668fefb3076c7::t_fe244457a1fa55 1-68
+docs/plans/007-human-interface/packet-coder.dd.md
+  s_b668fefb3076c7::t_bd65edd0d8a6af 1-79
+docs/plans/007-human-interface/packet-pm.dd.json
+  s_b668fefb3076c7::t_190d015d212092 1-75
+docs/plans/007-human-interface/packet-pm.dd.md
+  s_b668fefb3076c7::t_7c8f0dcf90e338 1-86
+docs/plans/007-human-interface/packet-reviewer.dd.json
+  s_b668fefb3076c7::t_699ed3bca6999b 1-127
+docs/plans/007-human-interface/packet-reviewer.dd.md
+  s_b668fefb3076c7::t_6aadd2f4745573 1-79
+docs/plans/007-human-interface/plan.dd.json
+  s_b668fefb3076c7::t_8e482d42cfcb75 1-110
+docs/plans/007-human-interface/plan.dd.md
+  s_b668fefb3076c7::t_b96042829c8c30 1-70
+docs/services/event-stream.md
+  s_b668fefb3076c7::t_09c68fbea0b2b2 1-163
+docs/services/human-render.md
+  s_b668fefb3076c7::t_3ac97d16187504 1-72
+docs/services/tui.md
+  s_b668fefb3076c7::t_7f86081aa2f152 1-97
+crates/core/src/views/search.rs
+  s_15d888f4b629c1::t_75c8da2768e390 1-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "22c1f1297c05f10748ddfa4200baf869e243584b",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_b668fefb3076c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0e0064-8d84-48e6-b499-eca0c65baafc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_f5a59eaabcfb7d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a8ee5f-0c77-4a73-9109-a12db9cd18a8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
