@@ -1,6 +1,7 @@
 {
   "dd": {
-    "schema": "builder/tasks"
+    "schema": "builder/tasks",
+    "sweep_exclude": true
   },
   "sections": [
     {

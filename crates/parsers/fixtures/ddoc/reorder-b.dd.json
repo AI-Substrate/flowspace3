@@ -1,6 +1,7 @@
 {
   "dd": {
-    "schema": "builder/plan"
+    "schema": "builder/plan",
+    "sweep_exclude": true
   },
   "sections": [
     {
