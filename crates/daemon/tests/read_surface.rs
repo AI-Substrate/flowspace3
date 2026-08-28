@@ -431,7 +431,7 @@ async fn get_by_dd_address_resolves_the_same_row_the_parser_produced() {
 }
 
 #[tokio::test]
-async fn ddoc_degradation_notice_uses_live_worktree_tooling() {
+async fn ddoc_notice_distinguishes_unprobed_absent_and_healthy_after_restart() {
     let stack = Stack::create("search_ddoc_tooling").await;
     let fixture = stack
         .index_ddoc(
@@ -447,6 +447,57 @@ async fn ddoc_degradation_notice_uses_live_worktree_tooling() {
     stack.embed_ddoc(&fixture, "tooling state probe").await;
     let query = [("q", "tooling state probe"), ("cwd", "/srv/read-ddoc")];
 
+    let ddocs = Command::new("ddocs")
+        .args(["--json", "version"])
+        .output()
+        .expect("the pinned ddocs binary is installed");
+    assert!(
+        ddocs.status.success(),
+        "the restart fixture has healthy ddocs"
+    );
+
+    // A restarted daemon begins with a fresh in-memory snapshot map over the
+    // persisted registered root. Nobody has probed yet, which is not evidence
+    // that the healthy binary above is unavailable.
+    let mut restarted = AppState::from_config(Config {
+        database: DatabaseConfig {
+            url: stack.database.url(),
+        },
+        ..Config::default()
+    })
+    .expect("fresh restart state wires");
+    restarted.embedder = Arc::new(FakeEmbedder {
+        dimensions: fs3_store::EMBEDDING_DIMENSIONS,
+        ..FakeEmbedder::default()
+    });
+    restarted.summarizer = Arc::new(FakeSummarizer::default());
+    assert!(restarted.ddoc_snapshot(fixture.worktree).await.is_none());
+    let auth = support::auth("ddoc-restart-unprobed");
+    let base = support::spawn(router(restarted, auth.auth)).await;
+    let unprobed: Envelope = reqwest::Client::new()
+        .get(format!("{base}/search"))
+        .query(&query)
+        .bearer_auth(auth.key)
+        .send()
+        .await
+        .expect("fresh daemon answers")
+        .json()
+        .await
+        .expect("fresh daemon returns an envelope");
+    assert_eq!(data(&unprobed)["results"][0]["address"], fixture.address);
+    assert!(
+        !unprobed
+            .next_action
+            .as_deref()
+            .expect("search steers")
+            .contains("`ddocs` binary is unavailable"),
+        "never-probed is unknown and must stay silent"
+    );
+
+    stack
+        .state
+        .set_ddoc_tooling(fixture.worktree, fs3_daemon::ddoc::DdocTooling::absent())
+        .await;
     let absent = stack.search(&query).await;
     let absent_results = data(&absent)["results"].clone();
     assert_eq!(absent_results[0]["address"], fixture.address);
