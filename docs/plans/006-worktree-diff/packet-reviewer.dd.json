@@ -63,6 +63,14 @@
         {
           "id": "i11",
           "text": "WHAT IS OUT OF SCOPE, so you do not report it as a gap: diff-scoped scanning (ruled out on P2a evidence — identical content already costs zero), a default result cap (already exists at search.rs:141), and the question-shape hint (moved to w-agentic-query so it ships with the ask verb). Each was ruled with evidence; if you think a ruling was WRONG, say so as a finding with the counter-evidence rather than re-opening it as an omission."
+        },
+        {
+          "id": "i12",
+          "text": "LSP CAVEAT, binding (fleet ruling 2026-08-28): you are a fresh spawn, so rust-analyzer auto-detects and LSP-first applies to you — use go-to-definition, find-references and symbols for navigation, and expect it to work. But OMP diagnostics can FALSE-NEGATIVE: a deliberate Rust E0425 returned OK with empty items while cargo check caught it (upstream defect, filed). So LSP is for NAVIGATION; COMPILE TRUTH stays with cargo check and the gate. NEVER cite empty LSP diagnostics as evidence that code compiles. Note also that both coders worked WITHOUT LSP (it was absent fleet-wide while they built) and traced references by exact-identifier sweep, which they disclosed — so cross-crate callsite coverage is the place where their tooling was weakest and your find-references is strongest."
+        },
+        {
+          "id": "i13",
+          "text": "WHAT FIRST LIGHT PROVED AND WHAT IT DID NOT — read this before judging the ACs, because the receipt in the plan folder is deliberately partial. Composed run 20260828T035625Z on a private database with FAKE providers: p1_auto_discovered 0->1, p1_unchanged_reconcile_jobs=0, p4_root_still_registered 1->0, p4_deleted_content_still_served 1->0, p4_served_after_gc=0, p3_get_context_sensitive=1. Live behaviour observed: ONE root registered by hand, TWENTY auto-registered by the detector, ~15k jobs drained, zero spend. The P3 predicates are NOT proven by that run and the harness now says so rather than emitting a zero — a fake embedder makes retrieval meaningless (a query quoting the marker's own body verbatim scored 0.1889 against unrelated files). u-c's proof is therefore its own suites, which I re-ran independently on the composed tree: fs3-store pg_first_light 17/17 and fs3-daemon first_light 14/14. The live P3 measurement happens AFTER merge, as the go-live record. Judge ac-0003 on that basis and say plainly if you think it is insufficient."
         }
       ]
     },
