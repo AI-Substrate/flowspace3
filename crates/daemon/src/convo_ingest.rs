@@ -499,6 +499,16 @@ pub async fn ingest(state: &AppState, request: &IngestRequest) -> Result<IngestR
                         base_sha: None,
                         title: Some(conversation_title(&file.session_id, file.kind)),
                         started_at: first.at.clone(),
+                        // The link the reader discovered, made DURABLE.
+                        // Derived rather than looked up: the parent's
+                        // conversation id is the same deterministic function of
+                        // (harness, its session id) that the parent's own row
+                        // uses, so this needs no query and cannot race a parent
+                        // that has not been ingested yet.
+                        parent: file
+                            .parent_session_id
+                            .as_deref()
+                            .map(|parent| conversation_guid(harness, parent)),
                     };
                     fs3_store::upsert_conversation(&state.db, &header)
                         .await

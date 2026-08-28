@@ -136,6 +136,9 @@ pub async fn intake(state: &AppState, request: IntakeRequest) -> Result<IntakeRe
         base_sha: request.base_sha,
         title: request.title,
         started_at: request.started_at,
+        // The transcript-import surface knows nothing about session sidecars;
+        // the parent link is established by the ingest path (plan 005).
+        parent: None,
     };
 
     fs3_store::upsert_conversation(&state.db, &header)
@@ -194,6 +197,10 @@ pub struct ConversationRow {
     pub turns: i64,
     /// When it began, RFC 3339 in UTC.
     pub started_at: String,
+    /// `conv:<guid>` of the conversation this is a child of, for a claude
+    /// subagent sidecar. Absent for everything else.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent: Option<String>,
 }
 
 /// What `conversation list` answers with.
@@ -250,6 +257,10 @@ pub async fn list(state: &AppState, request: &ListRequest) -> Result<Conversatio
                 worktree: row.worktree,
                 turns: row.turns,
                 started_at: row.started_at,
+                // The navigable half of the link: `conv:<guid>` is what `get`
+                // and `tree` take, so a child's parent is one copy-paste away
+                // rather than a guid the caller has to re-address.
+                parent: row.parent.as_ref().map(ConversationId::address),
             })
             .collect(),
     })

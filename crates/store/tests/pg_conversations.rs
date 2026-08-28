@@ -51,6 +51,7 @@ fn conversation(guid: &ConversationId, repo: Option<&str>) -> Conversation {
         base_sha: Some("0123456789abcdef0123456789abcdef01234567".to_string()),
         title: Some("a conversation".to_string()),
         started_at: "2026-08-27T09:00:00Z".to_string(),
+        parent: None,
     }
 }
 
@@ -736,6 +737,77 @@ async fn the_size_gate_verdict_is_stored_per_turn() {
     assert!(
         verdicts[guid.turn_address(2).as_str()],
         "one over the floor does"
+    );
+
+    database.destroy(pool).await;
+}
+
+/// A claude subagent sidecar is a SEPARATE conversation that knows its parent,
+/// and the link survives the ingest job that established it.
+///
+/// Cross-model review found (F-002) that ac-0004's promised link lived only in
+/// an in-memory `SessionFile` and an `IngestReport` the async worker discarded:
+/// after the job settled, nothing could navigate from a child to its parent.
+/// This asserts the durable half — write the two conversations the way ingest
+/// does, then read the relationship back through the SAME public list API a CLI
+/// caller uses, with no in-memory state left over.
+#[tokio::test]
+async fn a_child_conversation_knows_its_parent_after_the_job_settles() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let parent_guid = ConversationId::new("11111111-1111-4111-8111-111111111111").unwrap();
+    let child_guid = ConversationId::new("22222222-2222-4222-8222-222222222222").unwrap();
+
+    let mut parent = conversation(&parent_guid, None);
+    parent.title = Some("session main".to_string());
+    upsert_conversation(&pool, &parent).await.unwrap();
+
+    let mut child = conversation(&child_guid, None);
+    child.title = Some("subagent agent-a018".to_string());
+    child.parent = Some(parent_guid.clone());
+    upsert_conversation(&pool, &child).await.unwrap();
+
+    let listed = list_conversations(&pool, AnchorFilter::default())
+        .await
+        .expect("listing reads the relationship back");
+
+    let stored_child = listed
+        .iter()
+        .find(|row| row.guid == child_guid)
+        .expect("the child is listed");
+    assert_eq!(
+        stored_child.parent.as_ref(),
+        Some(&parent_guid),
+        "the child navigates to its parent through the public API, not through ingest state"
+    );
+
+    let stored_parent = listed
+        .iter()
+        .find(|row| row.guid == parent_guid)
+        .expect("the parent is listed");
+    assert_eq!(
+        stored_parent.parent, None,
+        "a main session has no parent; the column is null for the common case"
+    );
+
+    // A later poll that does not know the parent must not ERASE one an earlier
+    // poll established — the ingest path re-upserts the header on every poll,
+    // and only the poll that resolved the sidecar carries the link.
+    let mut forgetful = conversation(&child_guid, None);
+    forgetful.parent = None;
+    upsert_conversation(&pool, &forgetful).await.unwrap();
+
+    let relisted = list_conversations(&pool, AnchorFilter::default())
+        .await
+        .expect("listing again");
+    assert_eq!(
+        relisted
+            .iter()
+            .find(|row| row.guid == child_guid)
+            .and_then(|row| row.parent.as_ref()),
+        Some(&parent_guid),
+        "the link is learned once and never forgotten"
     );
 
     database.destroy(pool).await;

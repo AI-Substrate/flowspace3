@@ -385,6 +385,15 @@ pub struct Conversation {
     pub title: Option<String>,
     /// When the conversation began, RFC 3339 in UTC.
     pub started_at: String,
+    /// The conversation this one is a child of, for a claude subagent sidecar.
+    ///
+    /// `None` for everything else — every omp session, every pij ledger, every
+    /// metrics-db session and every claude MAIN file. A sidecar is a SEPARATE
+    /// conversation (folding it into the parent's sequence makes both
+    /// unreadable, which is why `SessionKind` exists), but a related one, and
+    /// until plan 005 that relationship survived only in memory.
+    #[serde(default)]
+    pub parent: Option<ConversationId>,
 }
 
 /// Whether a turn's stored form earns its own LLM summary (workshop 005).

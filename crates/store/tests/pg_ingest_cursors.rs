@@ -49,6 +49,7 @@ fn conversation(guid: &ConversationId) -> Conversation {
         base_sha: None,
         title: Some("a tailed conversation".to_string()),
         started_at: "2026-08-28T09:00:00Z".to_string(),
+        parent: None,
     }
 }
 
