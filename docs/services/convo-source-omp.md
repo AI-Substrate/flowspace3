@@ -36,6 +36,41 @@ the committed expectations are generated with `id_key="id"` for omp and
 `id_key="seq"` for pij, both stringified, so any other rendering fails
 `assert_ordinals_are_a_subsequence` before it can reach a database.
 
+### An ordinal is an OPAQUE IDENTITY. Nothing ever orders one.
+
+Equality is the only meaningful comparison. `<`, `>`, `sort`, `max`,
+`ORDER BY`, "resume from the highest ordinal" — all meaningless here, and all
+plausible-looking.
+
+The trap is specific and someone will walk into it in good faith: pij's ordinal
+is a **decimal string**, so lexicographic order is not numeric order — `"10"`
+sorts before `"9"`, and `"118".."167"` happens to sort correctly only because
+every value in that range is the same width. The obvious remedy, zero-padding
+at derivation, is **RULED AGAINST** (PM3, 2026-08-28): the committed
+expectations pin these ordinals as the strings `118` through `167`, because the
+driver stringifies `seq` under `id_key="seq"`. Padding would change every one of
+them and fail `assert_ordinals_are_a_subsequence` against a byte-pinned fixture.
+The remedy would break the thing it was protecting.
+
+Ordering is carried by **arrival order**, not by the ordinal. `read_incremental`
+returns records in store order — that is the trait's contract, and the
+normaliser numbers turns by position in the slice. Nothing needs to sort an
+ordinal, and nothing may start to.
+
+### Why these two derivations are the low-risk pair
+
+Both are **record-derived**: the omp record-level `id`, and the pij `seq`. They
+depend on a datum and nothing else.
+
+The other two readers' ordinals are **group-derived** (claude's first-uuid-of-
+group, metrics-db's first-rowid-of-group), so they depend on a datum *and* on
+the grouping rule — which means widening an allowlist there silently changes
+every ordinal and doubles the conversation.
+
+Here it does not. The record allowlist below can change without touching a
+single ordinal. What is frozen on this side is the derivation alone; there is no
+grouping rule to freeze with it.
+
 ---
 
 ## omp
