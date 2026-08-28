@@ -1,0 +1,16 @@
+crates/core/src/conversation_join.rs
+  h_9e71e8b09f7cf2 1-321
+crates/core/src/lib.rs
+  h_9e71e8b09f7cf2 19,49-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c9a05d48336ad00f7d3dd6cdaa27a6fb75c67528",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
