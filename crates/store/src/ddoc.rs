@@ -16,7 +16,7 @@
 //! let outcome = fs3_store::replace_file_refs(
 //!     &state.db,
 //!     &blob,
-//!     fs3_parsers::PARSER_VERSION,
+//!     crate::scan::PARSER_VERSION,
 //!     &file_refs,
 //! ).await?;
 //! ```
@@ -28,7 +28,7 @@
 //!     &state.db,
 //!     scope.repo.as_deref(),
 //!     target_path,
-//!     fs3_parsers::PARSER_VERSION,
+//!     crate::scan::PARSER_VERSION,
 //!     limit,
 //! ).await?;
 //! ```
@@ -41,7 +41,7 @@
 //!     &state.db,
 //!     scope.repo.as_deref(),
 //!     target_address,
-//!     fs3_parsers::PARSER_VERSION,
+//!     crate::scan::PARSER_VERSION,
 //!     limit,
 //! ).await?;
 //! ```
