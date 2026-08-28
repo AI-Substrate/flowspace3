@@ -12,7 +12,7 @@
 | title | Reviewer packet — 008-ddocs-scan |
 | role | reviewer |
 | plan | docs/plans/008-ddocs-scan/plan.dd.json |
-| seat | &lt;pij seat name once spawned&gt; |
+| seat | pij-regular-rodent |
 | updated | 2026-08-28 |
 
 <a id="mission"></a>

@@ -12,7 +12,7 @@
 | title | Coder packet — agent-facing surface — search, get, docs, eval fixtures (008-ddocs-scan) |
 | role | coder |
 | plan | docs/plans/008-ddocs-scan/plan.dd.json |
-| seat | &lt;pij seat name once spawned&gt; |
+| seat | pij-sudden-pigeon |
 | updated | 2026-08-28 |
 
 <a id="mission"></a>

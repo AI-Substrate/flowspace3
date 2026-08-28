@@ -12,7 +12,7 @@
 | title | Coder packet — ddocs adapter — edges, schema facts, derived state, degradation (008-ddocs-scan) |
 | role | coder |
 | plan | docs/plans/008-ddocs-scan/plan.dd.json |
-| seat | &lt;pij seat name once spawned&gt; |
+| seat | pij-supreme-tapir |
 | updated | 2026-08-28 |
 
 <a id="mission"></a>

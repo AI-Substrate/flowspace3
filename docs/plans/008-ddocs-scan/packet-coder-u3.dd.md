@@ -12,7 +12,7 @@
 | title | Coder packet — ddoc persistence, filters, and the inverse index (008-ddocs-scan) |
 | role | coder |
 | plan | docs/plans/008-ddocs-scan/plan.dd.json |
-| seat | &lt;pij seat name once spawned&gt; |
+| seat | pij-shallow-boa |
 | updated | 2026-08-28 |
 
 <a id="mission"></a>

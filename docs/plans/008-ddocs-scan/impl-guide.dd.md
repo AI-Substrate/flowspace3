@@ -40,7 +40,7 @@ pub enum ElementKind { File, Container, Function, Section, Turn, Row }   // Row 
 pub struct Element {
     // ...all existing fields unchanged...
     /// Present only on elements parsed from a *.dd.json. None for all code elements.
-    pub ddoc: Option<DdocMeta>,
+    pub ddoc: Option<Box<DdocMeta>>,   // AMENDED - see the boxing ruling below
 }
 ```
 
@@ -103,6 +103,12 @@ Pinned toolchain, measured 2026-08-28, NO unit may change it and every done rece
 **Second amendment, same source.** The graph edge field `kind` (`"document"` vs `"file"`) is the NEWEST field on our dependency list and it arrived with the file-links work — dd PR #12, re-confirmed OPEN and unmerged on 2026-08-28. It does not exist on dd main today. `parse_graph` MUST treat an absent `kind` as `"document"` rather than erroring or skipping the edge, and the recorded fixture carrying `kind: "file"` edges is a fixture we author, not one dd can currently produce.
 
 **Standing dependency contract with dd.** dd o-prime has accepted these six shapes as a contract on their side and undertaken to warn us BEFORE any of them moves: `dd.schema`, `dd.sweep_exclude`, `sections[].name`/`.value`, the minted-id prefix set (WATCH — not frozen), the schema shape types `text`/`string`/`state`/`enum`/`link` plus `gate_terminal`, and the graph edge fields `from`/`to`/`address`/`rel`/`kind`/`location` (WATCH HARDER — `kind` is post-PR-#12). The frozen Rust types go back to dd when wave 0 closes.
+
+**Third amendment, 2026-08-28, recorded AFTER the fact — a drift the reviewer caught, and it was mine.** The wave-0 contract above originally read `pub ddoc: Option<DdocMeta>`. The composed code has `Option<Box<crate::ddoc::DdocMeta>>` (`crates/core/src/element.rs`), with a `with_ddoc` builder that boxes. I made that change myself while authoring wave 0 and never amended this document, so for the whole plan the frozen contract disagreed with the code it was freezing.
+
+The change is right and I would make it again: `DdocMeta` carries a dozen fields a code element never uses, and an `ElementTree` holds hundreds of elements, so an inline `Option` would make every function in every Rust file pay that footprint for a document feature it does not have; boxed, it pays one null pointer, and the field is `skip_serializing_if` so no wire shape moved. What was wrong was doing it silently. Tenet 2 says coders fill contracts and never widen them, and a PM who edits the contract without recording the edit has broken the same rule with more authority — for the rest of the plan, any coder checking its work against this document would have found a mismatch and had to guess which artefact was stale.
+
+Recorded here rather than by quietly correcting the type above, so the drift and its ruling both survive.
 
 <a id="fan-out"></a>
 

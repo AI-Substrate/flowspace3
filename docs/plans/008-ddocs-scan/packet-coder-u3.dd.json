@@ -9,7 +9,7 @@
         "title": "Coder packet — ddoc persistence, filters, and the inverse index (008-ddocs-scan)",
         "role": "coder",
         "plan": "docs/plans/008-ddocs-scan/plan.dd.json",
-        "seat": "<pij seat name once spawned>",
+        "seat": "pij-shallow-boa",
         "updated": "2026-08-28"
       }
     },

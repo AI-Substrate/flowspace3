@@ -35,6 +35,16 @@ The asymmetry that makes this worth doing: dd holds the document side of the gra
 
 Contract answers measured by dd o-prime (pij-mental-dajeil) against dd main a53b79d on 2026-08-28, and binding on this plan: rows do NOT nest inside rows — the shape is section → (optional dynamic-key map) → row, so the walker recurses STRUCTURALLY and treats any object carrying a string `id` as a row, without assuming a depth. Prose-ness is DECLARED by the schema's shape type, never inferred from a field name: `text` is the prose type, `string` is the catch-all that still carries prose, and `state`/`enum`/`int`/`number`/`bool`/`link`/ids are metadata that dilute the vector. `ddocs --json links <path>` walks the WHOLE corpus per call (measured: scanned 111 to answer about one file), so edges come from one corpus-level `ddocs --json graph`, sliced by us, never from a per-file call on the watcher path. Ids are document-unique but the address grammar is positional, so `file#id` does NOT resolve (measured: E450) and the short citation form is never emitted. `dd.sweep_exclude` means index normally and exclude only from corpus health reporting.
 
+**Where the evidence for this plan's claims lives.** Every claim below is backed by an artefact committed in this repository, because a claim that lives only in a seat's transcript does not survive that seat standing down — a defect the reviewer caught in this plan's own bookkeeping:
+
+- `assets/done-reports.md` — every coder's NAMED mutations verbatim (u1 ten, u3 twelve plus a follow-up, u2 nineteen, u4 eleven), each seat's exact sealed-gate command line, and the toolchain each independently OBSERVED. This is what backs any statement that a test was mutation-checked.
+- `assets/integration-proof.md` — the live run on this repo's own ddoc corpus with the branch-built binary: 529 rows from 36 `.dd.json`, zero `.dd.md`, the reorder proof measured on the embeddings table, and both halves of the degradation proof.
+- `assets/observations.md` — 29 observations from five seats, rescued verbatim before any worktree was tidied, never cleared.
+- `assets/tasks/phase-1/tasks.dd.json` — every task's `done_when` row carries a receipt naming a file:line or the mutation that defends it.
+- `assets/brief-ddocs-scan.md` — the domain brief this plan was built from.
+
+The `harness checks` verdicts referenced in this plan were taken on the composed branch with sealed inputs (a private pre-minted database, an isolated `FS3_CONFIG_DIR`, and the pinned toolchain reported as observed rather than assumed).
+
 <a id="goals"></a>
 
 ## Goals
@@ -133,6 +143,16 @@ Contract answers measured by dd o-prime (pij-mental-dajeil) against dd main a53b
 10. This repo's own corpus is the live fixture, so a change to our own plan documents can move the test. Retired by: unit tests use committed fixtures under crates/parsers/fixtures; the live corpus is used for the integration proof only.
 
 11. ASSUMPTION, unproven until wave 1: that a ddoc row fits the existing `Element`/`elements` pipeline with one additive typed field, rather than needing a parallel table. This is what buys us embedding, search, get and enrichment for free. If it fails, the plan's cost roughly doubles — so it is proven first, in wave 1, not discovered at composition.
+
+---
+
+## Limitations found by cross-model review, recorded rather than fixed
+
+12. DUPLICATE CONTENT AT TWO PATHS BREAKS `get` FOR THAT CONTENT. The element tree is keyed on (blob, parser_version) while one blob can legitimately appear at N paths, and `get_elements` assumes exactly one file root. Measured both ways: identical `a.dd.json` + `nested/b.dd.json` produce one blob with two file roots, and identical `c.rs` + `nested/d.rs` do exactly the same. PRE-EXISTING and not ddoc-specific — but ddocs make it far likelier, because templated plans, copied packets and recorded fixtures duplicate content in a way source files rarely do. Escalated to o-prime for its own owner and packet; fixing it means changing how the store models a tree's identity, which is an architecture change well outside a plan about scanning documents.
+
+13. DUPLICATE-TEXT ROWS COLLAPSE IN SEMANTIC SEARCH. Embedding identity is `raw_hash` and the search join resolves a vector hit to the lowest-id element carrying that hash, so two rows with identical text share one embedding and only one is ever returned. Measured on this repo: 31 raw_hashes are shared across 116 of 531 distinct ddoc row addresses (22%) — for example `packet-coder-u1/u2/u3/u4.dd.json#refs/r5` are four distinct rows with identical text, and semantic search can surface only one of them. This is the direct flip side of the property that makes a reorder free: content-keyed enrichment is what avoids re-embedding, and it is also what collapses genuinely distinct rows. The plan claims one chunk per row, which is true of STORAGE and addressing (all four rows exist and all four resolve by address) but not of semantic retrieval. Not fixed here: the honest fix is a row-owner expansion at the query layer, which is a change to shared search behaviour affecting code elements equally.
+
+14. DERIVED STATE COVERS ASSERTION LISTS ONLY, NOT ROLLUPS ACROSS DOCUMENTS. A phase row carrying `derives` edges to a tasks section gets `derived_state: null`, so its gate answer falls back to the stored claim. Deliberate: computing a rollup across linked documents is exactly the traversal dd is building its `derive` verb for (outbound `derives`, inbound `satisfies`), flowspace3 has committed to consuming that verb and deleting its own port the day it merges, and shipping a second rollup implementation now is the drifting-second-implementation dd explicitly warned against.
 
 <a id="open-questions"></a>
 

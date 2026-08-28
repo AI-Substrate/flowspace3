@@ -9,7 +9,7 @@
         "title": "Reviewer packet — 008-ddocs-scan",
         "role": "reviewer",
         "plan": "docs/plans/008-ddocs-scan/plan.dd.json",
-        "seat": "<pij seat name once spawned>",
+        "seat": "pij-regular-rodent",
         "updated": "2026-08-28"
       }
     },
