@@ -1,0 +1,14 @@
+docs/plans/006-worktree-diff/assets/probes/probe.sh
+  h_9e71e8b09f7cf2 27-38,76-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8a570e6b22707254218b41c118c3802a5de51a79",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
