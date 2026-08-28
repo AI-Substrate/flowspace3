@@ -16,6 +16,7 @@ pub mod catalog;
 pub mod classify;
 pub mod config;
 pub mod conversation;
+pub mod conversation_normalize;
 pub mod conversation_source;
 pub mod element;
 pub mod envelope;
@@ -43,6 +44,9 @@ pub use config::{
 };
 pub use conversation::{
     Conversation, ConversationId, ToolInput, Turn, TurnItem, TurnRole, TurnSource, earns_summary,
+};
+pub use conversation_normalize::{
+    OUTPUT_HEAD_BYTES, PreparedBatch, normalize_record, prepare_batch, shape_turn,
 };
 pub use conversation_source::{
     ConversationSource, Harness, IngestInput, RawRecord, ReadBatch, SessionFile, SessionKind,

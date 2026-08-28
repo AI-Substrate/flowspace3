@@ -26,6 +26,7 @@ pub mod admin;
 pub mod conversations;
 pub mod elements;
 pub mod embeddings;
+pub mod ingest_cursors;
 pub mod jobs;
 pub mod messages;
 pub mod read;
