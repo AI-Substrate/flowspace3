@@ -44,11 +44,12 @@
         {
           "id": "tk-a303",
           "title": "Reviewer pass (settings default); findings fixed or refuted with evidence; PR into main held unmerged for prime.",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Review record + verdict; PR open.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0006"
-          ]
+          ],
+          "receipt": "Reviewer pij-elaborate-wolf (gpt-5.6-sol): APPROVE. Two HIGH findings against the PM (missing broken-pipe contract; standing PRD-59 messages swallowed in human mode) and four MEDIUM against the units, every one fixed with the test that would have caught it. Verdict and evidence: assets/reviews/review-007.dd.md. PR #52 merged."
         }
       ]
     },
