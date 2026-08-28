@@ -313,13 +313,19 @@ async fn search_filter_ddoc_schema_selects_and_none_is_noop() {
     fixture.destroy().await;
 }
 
-async fn stored_ddoc(pool: &PgPool, blob: &BlobRef, path: &str, ids: &[&str]) {
+async fn stored_ddoc(
+    pool: &PgPool,
+    blob: &BlobRef,
+    parser_version: &str,
+    path: &str,
+    ids: &[&str],
+) {
     let rows = ids
         .iter()
         .enumerate()
         .map(|(order, id)| row(path, id, "builder/plan", Some(false), order as u32))
         .collect();
-    upsert_element_tree(pool, blob, PARSER_VERSION, &ddoc_tree(path, rows), |_| true)
+    upsert_element_tree(pool, blob, parser_version, &ddoc_tree(path, rows), |_| true)
         .await
         .expect("store inverse-index source rows");
 }
@@ -339,9 +345,16 @@ async fn rows_referencing_without_file_edges_is_empty() {
     let database = FreshDatabase::create().await;
     let pool = database.migrated_pool().await;
     let blob = unique_blob();
-    stored_ddoc(&pool, &blob, "docs/plan.dd.json", &["ac-0001"]).await;
+    stored_ddoc(
+        &pool,
+        &blob,
+        PARSER_VERSION,
+        "docs/plan.dd.json",
+        &["ac-0001"],
+    )
+    .await;
 
-    let rows = rows_referencing(&pool, None, "src/lib.rs", 20)
+    let rows = rows_referencing(&pool, None, "src/lib.rs", PARSER_VERSION, 20)
         .await
         .expect("an edge-free corpus is valid");
     assert!(rows.is_empty());
@@ -354,7 +367,9 @@ async fn rows_referencing_returns_seeded_rows_in_stable_order() {
     let pool = database.migrated_pool().await;
     let blob = unique_blob();
     let path = "docs/plan.dd.json";
-    stored_ddoc(&pool, &blob, path, &["ac-0002", "ac-0001"]).await;
+    stored_ddoc(&pool, &blob, PARSER_VERSION, path, &["ac-0002", "ac-0001"]).await;
+    let other_parser_version = "test-parser@other";
+    stored_ddoc(&pool, &blob, other_parser_version, path, &["ac-dead"]).await;
 
     let identity = RepoIdentity::from_path(Path::new("/srv/inverse-index"));
     let worktree = register_worktree(&pool, &identity, "/srv/inverse-index", None)
@@ -381,10 +396,29 @@ async fn rows_referencing_returns_seeded_rows_in_stable_order() {
         .expect("replace file refs");
     assert_eq!(outcome.attached, 2);
     assert!(outcome.unattached.is_empty());
+    let other_outcome = replace_file_refs(
+        &pool,
+        &blob,
+        other_parser_version,
+        &[file_ref(
+            "docs/plan.dd.json#criteria/ac-dead",
+            "src/lib.rs",
+            "$.criteria[0].source",
+        )],
+    )
+    .await
+    .expect("replace retained-generation file refs");
+    assert_eq!(other_outcome.attached, 1);
 
-    let rows = rows_referencing(&pool, Some(identity.key()), "src/lib.rs", 20)
-        .await
-        .expect("read inverse index");
+    let rows = rows_referencing(
+        &pool,
+        Some(identity.key()),
+        "src/lib.rs",
+        PARSER_VERSION,
+        20,
+    )
+    .await
+    .expect("read inverse index");
     assert_eq!(
         rows.iter()
             .map(|row| row.address.as_str())
@@ -395,10 +429,16 @@ async fn rows_referencing_returns_seeded_rows_in_stable_order() {
         ]
     );
     assert!(
-        rows_referencing(&pool, Some("git:example.invalid/other"), "src/lib.rs", 20)
-            .await
-            .expect("repo-scoped miss is valid")
-            .is_empty()
+        rows_referencing(
+            &pool,
+            Some("git:example.invalid/other"),
+            "src/lib.rs",
+            PARSER_VERSION,
+            20,
+        )
+        .await
+        .expect("repo-scoped miss is valid")
+        .is_empty()
     );
     database.destroy(pool).await;
 }
@@ -408,7 +448,14 @@ async fn replace_file_refs_reports_unattached_without_losing_attached_edges() {
     let database = FreshDatabase::create().await;
     let pool = database.migrated_pool().await;
     let blob = unique_blob();
-    stored_ddoc(&pool, &blob, "docs/plan.dd.json", &["ac-0001"]).await;
+    stored_ddoc(
+        &pool,
+        &blob,
+        PARSER_VERSION,
+        "docs/plan.dd.json",
+        &["ac-0001"],
+    )
+    .await;
 
     let missing = "docs/plan.dd.json#criteria/ac-dead";
     let outcome = replace_file_refs(
@@ -437,14 +484,14 @@ async fn replace_file_refs_reports_unattached_without_losing_attached_edges() {
     assert_eq!(outcome.attached, 1);
     assert_eq!(outcome.unattached, vec![missing]);
     assert_eq!(
-        rows_referencing(&pool, None, "src/lib.rs", 20)
+        rows_referencing(&pool, None, "src/lib.rs", PARSER_VERSION, 20)
             .await
             .expect("attached edge remains")
             .len(),
         1
     );
     assert!(
-        rows_referencing(&pool, None, "src/missing.rs", 20)
+        rows_referencing(&pool, None, "src/missing.rs", PARSER_VERSION, 20)
             .await
             .expect("missing edge lookup is valid")
             .is_empty()
