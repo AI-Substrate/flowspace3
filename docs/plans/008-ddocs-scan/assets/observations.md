@@ -294,9 +294,43 @@ survived is a worse record than one that shows what was believed and why it chan
 
 ---
 
+## Reviewer — cross-model review
+
+Note the shape of DL-001: `harness boot` reports degraded because the shared compose `db` is not
+running, but the reviewer packet FORBIDS touching the shared database and mandates an isolated one.
+So the tool's readiness check and the packet's isolation rule disagree, and the seat has to know
+which to obey. Three of five seats hit this same mismatch independently (u2 DL-001, u3's boot note,
+reviewer DL-001) — it is the single most-repeated friction of the plan.
+
+### CONF-001 — confusion/degrading (reviewer, pij-regular-rodent)
+
+**What happened.** harness doctor reports extensions degraded because transient scratch convention files are unprotected
+
+**Workaround.** treat as harness-state warning and continue read-only review
+
+**Suggested encoding.** name the affected paths in concise doctor output and whether a reviewer may safely proceed
+
+### DL-001 — difficulty/degrading (reviewer, pij-regular-rodent)
+
+**What happened.** harness boot degraded because the shared db service is not running, while the reviewer packet requires isolated verification without touching the shared database
+
+**Workaround.** use a pre-minted isolated database and FS3_CONFIG_DIR for targeted verification
+
+**Suggested encoding.** make reviewer boot distinguish shared-stack absence from isolated-review readiness
+
+### DL-002 — difficulty/annoying (reviewer, pij-regular-rodent)
+
+**What happened.** pij inbox --wait cannot run under the supervised process required for long-lived waits because pij reports E-AMBIG outside the agent tool shell
+
+**Workaround.** rely on pushed pij turns to the tmux seat
+
+**Suggested encoding.** let pij inbox accept an explicit seat/session id for supervised waits
+
+---
+
 ## What this record cost, and why it was worth keeping
 
-Five seats, 29 observations, none cleared. Three findings were reported independently by more than
+Six seats, 32 observations, none cleared. Three findings were reported independently by more than
 one seat, which is what promoted them from incidental to structural. Four of u2's are findings about
 `ddocs` rather than about flowspace3, and every one of those forced an amendment to a contract the
 PM had frozen — which is the strongest evidence in this plan for the rule that a brief's job is not
