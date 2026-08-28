@@ -1,0 +1,64 @@
+crates/cli/docs/providers.md
+  h_9e71e8b09f7cf2 3-6,25,32-34,37-38,140-186,193,196-197
+crates/cli/src/render/mod.rs
+  h_9e71e8b09f7cf2 50
+crates/cli/src/render/surfaces/ask.rs
+  h_9e71e8b09f7cf2 1-264
+crates/cli/src/render/surfaces/mod.rs
+  h_9e71e8b09f7cf2 1
+crates/cli/src/show.rs
+  h_9e71e8b09f7cf2 98-101,103,105,210-260
+crates/core/src/agent.rs
+  h_9e71e8b09f7cf2 105-110,119-128,137,193-197,355-368,375,532-543,631-634,641-687
+crates/core/src/config.rs
+  h_9e71e8b09f7cf2 678-700,741,755,764-774,799-844,1798-1842
+crates/daemon/src/ask.rs
+  h_9e71e8b09f7cf2 81-86,237,250,252,388
+crates/daemon/src/boot.rs
+  h_9e71e8b09f7cf2 185,219,285-293,660-662,683-686
+crates/daemon/src/runner.rs
+  h_9e71e8b09f7cf2 47,49-50,53,55-60,166,168-171,174-192,210,279,281-283,285-293,297,308-351
+crates/daemon/src/wiring.rs
+  h_9e71e8b09f7cf2 44-45,332,334-347,390-403,422,424-437,494,497-500,505-531
+crates/daemon/tests/ask.rs
+  h_9e71e8b09f7cf2 19-22,25,59-198,350-390
+crates/daemon/tests/config_wiring.rs
+  h_9e71e8b09f7cf2 137-225
+crates/daemon/tests/lanes.rs
+  h_9e71e8b09f7cf2 3-6,16,22-26,30,85-161,283-423
+crates/providers/Cargo.toml
+  h_9e71e8b09f7cf2 7
+crates/providers/src/chat.rs
+  h_9e71e8b09f7cf2 114,126-129,141-143,316,320-326
+crates/providers/src/lib.rs
+  h_9e71e8b09f7cf2 49-50
+crates/providers/src/openai_compat.rs
+  h_9e71e8b09f7cf2 1,3-6,8-12,14-16,18-20,43,45-47,50-52,78,91,103-109,141-297,321-334,611-818
+crates/providers/tests/chat_stub.rs
+  h_9e71e8b09f7cf2 17,87-88,178-216
+crates/providers/tests/openai_compat_stub.rs
+  h_9e71e8b09f7cf2 11,13-14,272-351
+crates/providers/tests/openrouter_contract.rs
+  h_9e71e8b09f7cf2 1-67
+docs/briefs/w-ask-eval/ask-contract.md
+  h_9e71e8b09f7cf2 26,31-33,82-97
+docs/briefs/w-ingest-lane.md
+  h_9e71e8b09f7cf2 1-31
+docs/briefs/w-openrouter.md
+  h_9e71e8b09f7cf2 1-58
+docs/plans/prd/providers-roster.md
+  h_9e71e8b09f7cf2 2,9
+docs/services/openai-compat.md
+  h_9e71e8b09f7cf2 2,4,6,8-9,11,13-33,36-43,46-53,55-64,66-70,73,75-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3a8cd5c7f2f55f5a6ade1364ef9baec978bdd380",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
