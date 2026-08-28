@@ -31,11 +31,8 @@
 # silent in exactly the case it exists for is worse than no diagnostic.
 set -Eeuo pipefail
 
-# FS3_PROBE_TRACE=1 writes an xtrace beside the evidence. Off by default — it
-# is large — but it is the difference between "it exited 1 somewhere in P3" and
-# a line number, and this script has now cost two diagnosis sessions for want
-# of one. Wired below, once the evidence directory exists.
-TRACE=${FS3_PROBE_TRACE:-0}
+# (There is no trace knob. See the note above `say` for why xtrace cannot work
+# in this script on this shell without destroying the evidence it captures.)
 
 # ---------------------------------------------------------------- parameters
 MAIN_ROOT=/Users/jordanknight/substrate/flowspace/flowspace3
@@ -73,16 +70,16 @@ MARKER="poctest_${RUN_ID}"
 
 mkdir -p "$OUT"
 exec > >(tee -a "$OUT/transcript.log") 2>&1
-if [[ "$TRACE" == "1" ]]; then
-  # macOS system bash is 3.2, where `exec {fd}>file` and BASH_XTRACEFD do not
-  # exist — both are 4.1+. stderr is already tee'd into the transcript above,
-  # so xtrace lands there with everything else, in order. (Written the 4.1 way
-  # first, which failed at launch with "exec: {trace_fd}: not found" — the same
-  # class as every other incapable shape today: right idea, wrong mechanism for
-  # the environment it actually runs in.)
-  PS4='+ ${BASH_SOURCE##*/}:${LINENO}: '
-  set -x
-fi
+# NO XTRACE HERE, deliberately, and this is the third shape of the same mistake
+# so it gets written down rather than re-attempted. On bash 3.2 (macOS system
+# bash) xtrace can only go to stderr — `exec {fd}>` and BASH_XTRACEFD are 4.1+
+# — and this script captures CLI output with `> file 2>&1`. So enabling xtrace
+# writes trace lines INSIDE the captured envelopes, `jq` then fails on the
+# corrupted artifact, and the run dies of its own instrumentation.
+#
+# The ERR trap plus `set -E` already reports the failing line, code and command,
+# which is all the trace was ever wanted for. A diagnostic that damages the
+# evidence is worse than none.
 
 say() { printf '\n=== %s — %s\n' "$(date -u +%FT%TZ)" "$*"; }
 note() { printf '    %s\n' "$*"; }
