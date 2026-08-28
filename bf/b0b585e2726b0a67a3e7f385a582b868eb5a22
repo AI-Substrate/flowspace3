@@ -1,0 +1,19 @@
+crates/cli/tests/render_progress.rs
+  s_15d888f4b629c1::t_da3dfe9de1dd26 6-7,29-34,75-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "bfb0b585e2726b0a67a3e7f385a582b868eb5a22",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
