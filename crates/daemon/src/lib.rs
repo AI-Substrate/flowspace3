@@ -40,7 +40,7 @@ pub use config::{
     ConfigError, SecretsLoaded, config_dir, load_config, load_effective_from, load_secrets,
 };
 pub use gc::GcSupervisor;
-pub use http::{router, serve};
+pub use http::router;
 pub use logging::{Logging, Roller, RollingWriter};
 pub use reconcile::{Pass, Reconcile};
 pub use runner::{drain, run_forever};

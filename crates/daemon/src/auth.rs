@@ -1,9 +1,9 @@
 //! Loopback authentication for every daemon HTTP request.
 //!
-//! The daemon mints one opaque bearer key per boot and atomically publishes it
-//! in the resolved config directory before the listener is bound. The CLI reads
-//! that file for each request, so a daemon restart rotates credentials without
-//! leaving a long-lived client stuck on stale state.
+//! Each boot stages a fresh opaque bearer key beside its destination. Boot
+//! binds the listener first, then atomically publishes the staged bytes before
+//! the accept loop starts. A failed bind therefore cannot clobber the live
+//! daemon's key, and no request can reach a daemon whose key is unpublished.
 
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
@@ -46,12 +46,38 @@ impl Auth {
     }
 }
 
-/// Mint and atomically publish a fresh 256-bit key for this daemon boot.
+/// A fresh daemon credential staged beside its eventual destination.
+///
+/// Holding this value has no externally visible effect: [`publish`](Self::publish)
+/// is the only operation that replaces `daemon.key`.
+pub(crate) struct StagedAuth {
+    key: String,
+    key_path: PathBuf,
+    temporary: tempfile::NamedTempFile,
+}
+
+impl StagedAuth {
+    /// Atomically publish the staged key after the listener has been bound.
+    ///
+    /// Boot must call this before starting the accept loop. That order preserves
+    /// both edge invariants: a bind loser leaves the winner's key untouched, and
+    /// a bound daemon never answers with a key clients cannot yet read.
+    pub(crate) fn publish(self) -> Result<Auth> {
+        self.temporary
+            .persist(&self.key_path)
+            .map_err(|error| error.error)
+            .with_context(|| format!("publishing {} atomically", self.key_path.display()))?;
+
+        Ok(Auth::new(self.key, self.key_path))
+    }
+}
+
+/// Mint and stage a fresh 256-bit key without publishing it.
 ///
 /// The temporary file is created in the destination directory, restricted to
-/// the owner, flushed, synced, and renamed over the prior key. The listener is
-/// bound only after this function returns.
-pub fn generate(config_dir: &Path) -> Result<Auth> {
+/// the owner, flushed, and synced. Dropping the result removes only that
+/// unpublished temporary file.
+pub(crate) fn stage(config_dir: &Path) -> Result<StagedAuth> {
     std::fs::create_dir_all(config_dir)
         .with_context(|| format!("creating config directory {}", config_dir.display()))?;
 
@@ -74,12 +100,12 @@ pub fn generate(config_dir: &Path) -> Result<Auth> {
         .as_file()
         .sync_all()
         .with_context(|| format!("syncing {}", key_path.display()))?;
-    temporary
-        .persist(&key_path)
-        .map_err(|error| error.error)
-        .with_context(|| format!("publishing {} atomically", key_path.display()))?;
 
-    Ok(Auth::new(key, key_path))
+    Ok(StagedAuth {
+        key,
+        key_path,
+        temporary,
+    })
 }
 
 #[cfg(unix)]
@@ -133,7 +159,10 @@ mod tests {
 
     async fn server() -> (String, String, tempfile::TempDir) {
         let directory = tempfile::tempdir().expect("an isolated config directory");
-        let auth = generate(directory.path()).expect("publishing the isolated daemon key");
+        let auth = stage(directory.path())
+            .expect("staging the isolated daemon key")
+            .publish()
+            .expect("publishing the isolated daemon key");
         let key = auth.key.to_string();
         let app = Router::new()
             .route(
@@ -150,24 +179,28 @@ mod tests {
     }
 
     #[test]
-    fn generation_publishes_a_fresh_mode_0600_key() {
+    fn staging_is_invisible_and_publish_replaces_with_mode_0600() {
         let directory = tempfile::tempdir().expect("an isolated config directory");
-        let first = generate(directory.path()).expect("the first key");
-        let first_bytes = std::fs::read_to_string(first.key_path()).expect("reading the key");
-        assert_eq!(first_bytes.len(), 64, "256 bits encoded as lowercase hex");
-        assert!(first_bytes.bytes().all(|byte| byte.is_ascii_hexdigit()));
+        let key_path = fs3_core::daemon_key_path(directory.path());
+        std::fs::write(&key_path, "winner-key").expect("writing the winner's key");
 
-        let second = generate(directory.path()).expect("the rotated key");
-        let second_bytes = std::fs::read_to_string(second.key_path()).expect("reading the key");
-        assert_ne!(
-            first_bytes, second_bytes,
-            "each boot rotates the credential"
+        let staged = stage(directory.path()).expect("staging the replacement key");
+        assert_eq!(
+            std::fs::read_to_string(&key_path).expect("reading the winner's key"),
+            "winner-key",
+            "staging before a bind must not disturb the serving daemon"
         );
+
+        let auth = staged.publish().expect("publishing after the bind");
+        let published = std::fs::read_to_string(auth.key_path()).expect("reading the key");
+        assert_eq!(published.len(), 64, "256 bits encoded as lowercase hex");
+        assert!(published.bytes().all(|byte| byte.is_ascii_hexdigit()));
+        assert_ne!(published, "winner-key");
 
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt as _;
-            let mode = std::fs::metadata(second.key_path())
+            let mode = std::fs::metadata(auth.key_path())
                 .expect("key metadata")
                 .permissions()
                 .mode()

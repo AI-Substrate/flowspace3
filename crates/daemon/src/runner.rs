@@ -25,6 +25,7 @@
 //! at most. Notification is an optimisation to measure, not a design to start
 //! from.
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -32,9 +33,8 @@ use fs3_core::catalog;
 use fs3_core::envelope::Failure;
 use fs3_core::events::{EventKind, QueueDepth as EventQueueDepth};
 use fs3_store::{Job, PgPool};
-use std::collections::BTreeMap;
 
-use tokio::sync::Semaphore;
+use tokio::sync::{Semaphore, watch};
 use tokio::task::JoinSet;
 
 use crate::answer::IntoFailure;
@@ -135,6 +135,18 @@ const IDLE_POLL: Duration = Duration::from_millis(250);
 /// from "stuck" without waiting.
 const PROGRESS_EVERY: Duration = Duration::from_secs(5);
 
+/// The process-wide shutdown phase shared by HTTP and every queue lane.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Shutdown {
+    /// Accept requests and dequeue work.
+    #[default]
+    Running,
+    /// Stop dequeueing and finish only work already in flight.
+    Draining,
+    /// A second signal: cancel remaining work and unwind through cleanup.
+    Forced,
+}
+
 /// What one drain pass did — the shape the e2e test asserts against.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Drained {
@@ -170,11 +182,16 @@ impl Drained {
 /// nothing, and one public drain still promises to consume all work that becomes
 /// ready during the pass.
 pub async fn drain(state: &AppState, workers: usize) -> Drained {
+    let (_shutdown_tx, shutdown) = watch::channel(Shutdown::Running);
+    let mut general_shutdown = shutdown.clone();
+    let mut ingest_shutdown = shutdown;
     let mut total = Drained::default();
 
     loop {
-        let (general, ingest) =
-            tokio::join!(drain_general(state, workers), drain_ingest(state, workers));
+        let (general, ingest) = tokio::join!(
+            drain_general(state, workers, &mut general_shutdown),
+            drain_ingest(state, workers, &mut ingest_shutdown)
+        );
         total.absorb(general);
         total.absorb(ingest);
         if general.total() == 0 && ingest.total() == 0 {
@@ -188,7 +205,11 @@ pub async fn drain(state: &AppState, workers: usize) -> Drained {
 /// "Empty" means nothing is *ready*: a job backing off is not ready, so a drain
 /// can finish while retries are still pending. Errors are per-job and never
 /// abort the pass: one unreadable file must not stop a repository from indexing.
-async fn drain_general(state: &AppState, workers: usize) -> Drained {
+async fn drain_general(
+    state: &AppState,
+    workers: usize,
+    shutdown: &mut watch::Receiver<Shutdown>,
+) -> Drained {
     let mut total = Drained::default();
     let mut tasks = JoinSet::new();
     let workers = workers.max(1);
@@ -200,24 +221,28 @@ async fn drain_general(state: &AppState, workers: usize) -> Drained {
     let mut summarize_lanes: BTreeMap<usize, Arc<Semaphore>> = BTreeMap::new();
 
     loop {
-        // Embed first, and batched: it is the only kind whose work merges, and
-        // draining it here rather than through the per-job loop is what turns
-        // k jobs into one provider call.
-        let embedded = drain_embed(state).await;
-        total.absorb(embedded);
+        if *shutdown.borrow() == Shutdown::Forced {
+            tasks.shutdown().await;
+            return total;
+        }
 
-        while tasks.len() < workers {
+        // Embed first, and batched: it is the only kind whose work merges.
+        // Once draining begins no lane may make another claim.
+        let embedded = if *shutdown.borrow() == Shutdown::Running {
+            drain_embed(state, shutdown).await
+        } else {
+            Drained::default()
+        };
+        total.absorb(embedded);
+        while *shutdown.borrow() == Shutdown::Running && tasks.len() < workers {
             match fs3_store::claim_job(&state.db, GENERAL_KINDS).await {
                 Ok(Some(job)) => {
                     let state = state.clone();
                     // The SUMMARIZE lane. Held for the whole call so the count
                     // is requests in flight, and clamped per identity by the
-                    // summarizer's own ceiling — a repo on a single-GPU box
-                    // must not be given Azure's width, and Azure must not be
-                    // dropped to that box's because another repo uses it.
+                    // summarizer's own ceiling.
                     let lane = (job.kind == SUMMARIZE).then(|| {
                         let summarizer = state.summarizer_for(&summarize_identity(&job.payload));
-                        // Keyed by INSTANCE, not repo — see the embed lane.
                         let instance = Arc::as_ptr(summarizer).cast::<()>() as usize;
                         let width = state
                             .config
@@ -240,27 +265,38 @@ async fn drain_general(state: &AppState, workers: usize) -> Drained {
                 }
                 Ok(None) => break,
                 Err(error) => {
-                    // The store is gone. Nothing else in this pass can work
-                    // either, so stop rather than spin.
                     tracing::error!(%error, "cannot claim jobs");
                     break;
                 }
             }
         }
 
-        // Exit BEFORE reporting, so a pass with nothing to do stays silent and
-        // an idle daemon still prints nothing at all.
-        if tasks.is_empty() && embedded.total() == 0 {
-            return total;
+        if tasks.is_empty() {
+            if embedded.total() == 0 || *shutdown.borrow() != Shutdown::Running {
+                return total;
+            }
+            if last_report.is_none_or(|at| at.elapsed() >= PROGRESS_EVERY) {
+                report_progress(state, "working").await;
+                last_report = Some(std::time::Instant::now());
+            }
+            continue;
         }
 
-        if let Some(result) = tasks.join_next().await {
-            match result {
-                Ok(outcome) => total.absorb(outcome),
-                // A panicking handler is a defect, and losing the job's row
-                // would hide it. The row stays `running` and the reconciler
-                // sweep is what recovers the work.
-                Err(error) => tracing::error!(%error, "a job handler panicked"),
+        tokio::select! {
+            result = tasks.join_next() => {
+                if let Some(result) = result {
+                    match result {
+                        Ok(outcome) => total.absorb(outcome),
+                        // A panicking handler leaves its row `running` for boot recovery.
+                        Err(error) => tracing::error!(%error, "a job handler panicked"),
+                    }
+                }
+            }
+            changed = shutdown.changed() => {
+                if changed.is_err() || *shutdown.borrow() == Shutdown::Forced {
+                    tasks.shutdown().await;
+                    return total;
+                }
             }
         }
 
@@ -282,33 +318,73 @@ async fn drain_general(state: &AppState, workers: usize) -> Drained {
 /// set. That distinction is the starvation guarantee: even while a provider call
 /// keeps the general drain inside `await`, ingest continues polling Postgres.
 pub async fn run_forever(state: AppState, workers: usize) {
+    let (_shutdown_tx, shutdown) = watch::channel(Shutdown::Running);
+    run_until_shutdown(state, workers, shutdown).await;
+}
+
+pub async fn run_until_shutdown(
+    state: AppState,
+    workers: usize,
+    shutdown: watch::Receiver<Shutdown>,
+) {
+    let reporter_state = state.clone();
+    let mut reporter_shutdown = shutdown.clone();
     tokio::join!(
-        run_general_forever(state.clone(), workers),
-        run_ingest_forever(state, workers)
+        run_general_forever(state.clone(), workers, shutdown.clone()),
+        run_ingest_forever(state, workers, shutdown),
+        async move {
+            while *reporter_shutdown.borrow() == Shutdown::Running
+                && reporter_shutdown.changed().await.is_ok()
+            {}
+            if *reporter_shutdown.borrow() != Shutdown::Running {
+                let in_flight = fs3_store::queue_depth(&reporter_state.db)
+                    .await
+                    .map(|rows| {
+                        rows.into_iter()
+                            .filter(|row| row.state == "running")
+                            .map(|row| row.depth)
+                            .sum::<i64>()
+                    })
+                    .unwrap_or(0);
+                tracing::info!(in_flight, "draining {in_flight} in-flight");
+            }
+        }
     );
 }
 
-async fn run_general_forever(state: AppState, workers: usize) {
-    // `drain_general` reports its own progress while it works. This loop owns
-    // the closing summary, only after a run with real work.
+async fn run_general_forever(
+    state: AppState,
+    workers: usize,
+    mut shutdown: watch::Receiver<Shutdown>,
+) {
     let mut worked = false;
 
-    loop {
-        if drain_general(&state, workers).await.total() == 0 {
+    while *shutdown.borrow() == Shutdown::Running {
+        if drain_general(&state, workers, &mut shutdown).await.total() == 0 {
             if std::mem::take(&mut worked) {
                 report_progress(&state, "idle").await;
             }
-            tokio::time::sleep(IDLE_POLL).await;
+            tokio::select! {
+                () = tokio::time::sleep(IDLE_POLL) => {}
+                _ = shutdown.changed() => {}
+            }
             continue;
         }
         worked = true;
     }
 }
 
-async fn run_ingest_forever(state: AppState, workers: usize) {
-    loop {
-        if drain_ingest(&state, workers).await.total() == 0 {
-            tokio::time::sleep(IDLE_POLL).await;
+async fn run_ingest_forever(
+    state: AppState,
+    workers: usize,
+    mut shutdown: watch::Receiver<Shutdown>,
+) {
+    while *shutdown.borrow() == Shutdown::Running {
+        if drain_ingest(&state, workers, &mut shutdown).await.total() == 0 {
+            tokio::select! {
+                () = tokio::time::sleep(IDLE_POLL) => {}
+                _ = shutdown.changed() => {}
+            }
         }
     }
 }
@@ -319,13 +395,22 @@ async fn run_ingest_forever(state: AppState, workers: usize) {
 /// resolve to one conversation are still serialized by `convo_ingest`'s
 /// Postgres advisory lock on the canonical conversation GUID; the queue key only
 /// collapses repeated submissions of the same address while one is live.
-async fn drain_ingest(state: &AppState, workers: usize) -> Drained {
+async fn drain_ingest(
+    state: &AppState,
+    workers: usize,
+    shutdown: &mut watch::Receiver<Shutdown>,
+) -> Drained {
     let mut total = Drained::default();
     let mut tasks = JoinSet::new();
     let workers = workers.max(1);
 
     loop {
-        while tasks.len() < workers {
+        if *shutdown.borrow() == Shutdown::Forced {
+            tasks.shutdown().await;
+            return total;
+        }
+
+        while *shutdown.borrow() == Shutdown::Running && tasks.len() < workers {
             match fs3_store::claim_job(&state.db, &[INGEST_SESSION]).await {
                 Ok(Some(job)) => {
                     let state = state.clone();
@@ -339,12 +424,24 @@ async fn drain_ingest(state: &AppState, workers: usize) -> Drained {
             }
         }
 
-        let Some(result) = tasks.join_next().await else {
+        if tasks.is_empty() {
             return total;
-        };
-        match result {
-            Ok(outcome) => total.absorb(outcome),
-            Err(error) => tracing::error!(%error, "an ingest handler panicked"),
+        }
+        tokio::select! {
+            result = tasks.join_next() => {
+                if let Some(result) = result {
+                    match result {
+                        Ok(outcome) => total.absorb(outcome),
+                        Err(error) => tracing::error!(%error, "an ingest handler panicked"),
+                    }
+                }
+            }
+            changed = shutdown.changed() => {
+                if changed.is_err() || *shutdown.borrow() == Shutdown::Forced {
+                    tasks.shutdown().await;
+                    return total;
+                }
+            }
         }
     }
 }
@@ -360,7 +457,7 @@ async fn drain_ingest(state: &AppState, workers: usize) -> Drained {
 /// `done` while half its elements have no row is exactly the silent hole the
 /// reconciler cannot see, because the queue's own memory says the work is
 /// finished.
-async fn drain_embed(state: &AppState) -> Drained {
+async fn drain_embed(state: &AppState, shutdown: &mut watch::Receiver<Shutdown>) -> Drained {
     let jobs = match fs3_store::claim_jobs(&state.db, EMBED, EMBED_CLAIM).await {
         Ok(jobs) if jobs.is_empty() => return Drained::default(),
         Ok(jobs) => jobs,
@@ -474,17 +571,24 @@ async fn drain_embed(state: &AppState) -> Drained {
         });
     }
 
-    while let Some(finished) = running.join_next().await {
-        match finished {
-            Ok((job_ids, Some(failure))) => {
-                for id in job_ids {
-                    broken.entry(id).or_insert_with(|| failure.clone());
+    while !running.is_empty() {
+        tokio::select! {
+            finished = running.join_next() => match finished {
+                Some(Ok((job_ids, Some(failure)))) => {
+                    for id in job_ids {
+                        broken.entry(id).or_insert_with(|| failure.clone());
+                    }
+                }
+                Some(Ok((_, None))) | None => {}
+                // A panicking batch leaves its rows `running` for boot recovery.
+                Some(Err(error)) => tracing::error!(%error, "an embed batch panicked"),
+            },
+            changed = shutdown.changed() => {
+                if changed.is_err() || *shutdown.borrow() == Shutdown::Forced {
+                    running.shutdown().await;
+                    return total;
                 }
             }
-            Ok((_, None)) => {}
-            // A panicking batch leaves its rows `running` for the reconciler
-            // sweep, exactly as the serial path does.
-            Err(error) => tracing::error!(%error, "an embed batch panicked"),
         }
     }
 

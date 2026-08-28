@@ -620,37 +620,38 @@ fn next_after_scan(report: &RootReport) -> String {
     }
 }
 
-/// Serve until the process is asked to stop.
+/// Serve on an already-bound listener until the shared shutdown state changes.
 ///
-/// # Errors
-/// When the address cannot be bound or the server fails.
-pub async fn serve(state: AppState, address: &str, auth: Auth) -> Result<()> {
-    let listener = tokio::net::TcpListener::bind(address)
-        .await
-        .with_context(|| format!("cannot bind {address}"))?;
-    serve_listener(state, listener, auth).await
-}
-
-/// Serve on a listener whose port is already reserved.
-///
-/// Sandbox boot uses this to publish the exact ephemeral port without a
-/// release-and-rebind race.
+/// Boot publishes the daemon key immediately before calling this function, so
+/// starting the accept loop here cannot expose a daemon with unpublished
+/// credentials.
 pub(crate) async fn serve_listener(
     state: AppState,
     listener: tokio::net::TcpListener,
     auth: Auth,
+    mut shutdown: tokio::sync::watch::Receiver<crate::runner::Shutdown>,
 ) -> Result<()> {
     let bound = listener.local_addr().context("cannot read bound address")?;
     tracing::info!(%bound, "fs3 daemon listening");
 
-    axum::serve(listener, router(state, auth))
-        .with_graceful_shutdown(shutdown_signal())
-        .await
-        .context("daemon stopped unexpectedly")
-}
-
-async fn shutdown_signal() {
-    if let Err(error) = tokio::signal::ctrl_c().await {
-        tracing::error!(%error, "cannot listen for shutdown signal");
+    let mut forced = shutdown.clone();
+    let server = std::future::IntoFuture::into_future(
+        axum::serve(listener, router(state, auth)).with_graceful_shutdown(async move {
+            while *shutdown.borrow() == crate::runner::Shutdown::Running
+                && shutdown.changed().await.is_ok()
+            {}
+        }),
+    );
+    tokio::pin!(server);
+    tokio::select! {
+        result = &mut server => result.context("daemon stopped unexpectedly"),
+        () = async move {
+            while *forced.borrow() != crate::runner::Shutdown::Forced
+                && forced.changed().await.is_ok()
+            {}
+        } => {
+            tracing::warn!("forced shutdown abandoned active HTTP requests");
+            Ok(())
+        }
     }
 }
