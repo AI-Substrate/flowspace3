@@ -1,0 +1,23 @@
+crates/core/src/ports.rs
+  s_15d888f4b629c1::t_5584546a2048fd 1,10-18,27-32,235-348
+crates/providers/src/lib.rs
+  s_15d888f4b629c1::t_cb3023c7efd437 28,39-42
+crates/testkit/src/lib.rs
+  s_15d888f4b629c1::t_8f919ece0860a5 6-9,45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6ea35b7db5c2b5e55431a3ccf81e88f87012e5c6",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
