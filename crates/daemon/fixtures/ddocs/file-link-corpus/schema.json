@@ -1,0 +1,33 @@
+{
+  "dd_schema": 1,
+  "description": "A nested document citing ordinary repository files: one structured repo-root path, one inline Markdown href, and the negative controls that must stay silent.",
+  "sections": {
+    "meta": {
+      "required": true,
+      "shape": {
+        "type": "object",
+        "required": ["title"],
+        "fields": {
+          "title": { "type": "string" }
+        }
+      }
+    },
+    "tasks": {
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["id"],
+          "fields": {
+            "id": { "type": "string" },
+            "implemented_by": { "type": "link", "target": "file", "rel": "implemented_by" },
+            "notes": { "type": "text" }
+          }
+        }
+      }
+    },
+    "summary": {
+      "shape": { "type": "text" }
+    }
+  }
+}
