@@ -33,6 +33,19 @@
 //! ).await?;
 //! ```
 //!
+//! An address argument uses the same explicit generation through
+//! [`rows_citing`]:
+//!
+//! ```ignore
+//! let citations = fs3_store::rows_citing(
+//!     &state.db,
+//!     scope.repo.as_deref(),
+//!     target_address,
+//!     fs3_parsers::PARSER_VERSION,
+//!     limit,
+//! ).await?;
+//! ```
+//!
 //! Surface every [`FileRefOutcome::unattached`] address as a row finding. A
 //! source miss must not hide the rest of a broken-but-indexable document.
 
@@ -53,6 +66,19 @@ pub struct DdocFileRef {
     /// dd relation spelling, verbatim.
     pub rel: String,
     /// JSONPath into the ddoc source, verbatim.
+    pub location: String,
+}
+
+/// One ddoc row whose stored relation cites another dd address.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DdocCitation {
+    /// Database id of the citing row.
+    pub element_id: i64,
+    /// Positional dd address of the citing row.
+    pub address: String,
+    /// dd relation spelling, verbatim.
+    pub rel: String,
+    /// JSONPath of the relation in the citing document.
     pub location: String,
 }
 
@@ -202,6 +228,72 @@ pub async fn rows_referencing(
                 element_id: row.try_get("element_id")?,
                 address: row.try_get("address")?,
                 path: row.try_get("target_path")?,
+                rel: row.try_get("rel")?,
+                location: row.try_get("location")?,
+            })
+        })
+        .collect()
+}
+
+/// Ddoc rows from `parser_version` whose stored relations cite
+/// `target_address`, in deterministic order.
+///
+/// This is exact edge traversal, not ranked search. `repo` limits citing rows
+/// through live worktree ownership; no matching relation returns an empty
+/// vector.
+///
+/// The corpus currently has hundreds, not millions, of relation-bearing rows.
+/// A direct JSON-array expansion keeps the read obvious and avoids an
+/// unmeasured GIN index's migration and write cost; add one only after an
+/// `EXPLAIN ANALYZE` at real corpus scale shows this scan is the bottleneck.
+///
+/// # Errors
+///
+/// [`StoreError::Query`] when Postgres refuses the lookup.
+pub async fn rows_citing(
+    pool: &PgPool,
+    repo: Option<&str>,
+    target_address: &str,
+    parser_version: &str,
+    limit: i64,
+) -> Result<Vec<DdocCitation>, StoreError> {
+    let rows = sqlx::query(
+        "SELECT elements.id AS element_id, elements.address,
+                edge.value->>'rel' AS rel,
+                edge.value->>'location' AS location
+           FROM elements
+           CROSS JOIN LATERAL jsonb_array_elements(
+                CASE
+                  WHEN jsonb_typeof(elements.ddoc->'rels') = 'array'
+                  THEN elements.ddoc->'rels'
+                  ELSE '[]'::jsonb
+                END
+           ) AS edge(value)
+          WHERE edge.value->>'target' = $1
+            AND elements.parser_version = $3
+            AND ($2::text IS NULL OR EXISTS (
+                 SELECT 1
+                   FROM worktree_files files
+                   JOIN worktrees ON worktrees.id = files.worktree_id
+                   JOIN repos ON repos.id = worktrees.repo_id
+                  WHERE files.blob_sha = elements.blob_sha
+                    AND repos.identity = $2))
+          ORDER BY elements.address, edge.value->>'rel',
+                   edge.value->>'location', elements.id
+          LIMIT $4",
+    )
+    .bind(target_address)
+    .bind(repo)
+    .bind(parser_version)
+    .bind(limit)
+    .fetch_all(pool)
+    .await?;
+
+    rows.iter()
+        .map(|row| {
+            Ok(DdocCitation {
+                element_id: row.try_get("element_id")?,
+                address: row.try_get("address")?,
                 rel: row.try_get("rel")?,
                 location: row.try_get("location")?,
             })
