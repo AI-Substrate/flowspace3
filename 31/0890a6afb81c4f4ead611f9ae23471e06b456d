@@ -1,0 +1,19 @@
+docs/plans/006-worktree-diff/assets/probes/probe.sh
+  s_f5a59eaabcfb7d::t_3efd6b3af6d095 456-465,467-469
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "310890a6afb81c4f4ead611f9ae23471e06b456d",
+  "prompts": {},
+  "sessions": {
+    "s_f5a59eaabcfb7d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a8ee5f-0c77-4a73-9109-a12db9cd18a8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
