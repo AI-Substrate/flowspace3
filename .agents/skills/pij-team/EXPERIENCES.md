@@ -431,6 +431,199 @@ we hand the pattern to pij and the harness. Also `harness observe` each one.
   Both failures were silent — the command succeeded and the text was wrong —
   so verification of delivered prose beats trust in exit codes.
 
+- 2026-08-28 (silkworm, #42 conflict resolution): TWO PLANS GRANTED "THE
+  THIRD PORT" ON THE SAME DAY, not knowing about each other (#45 ChatProvider,
+  005 ConversationSource) — both doc comments claimed third, both guards said
+  a fourth is stop-and-ask, and BOTH grants were legitimate for the same
+  reason (real implementation, a choice not otherwise expressible). The
+  resolver did not pick a side: four ports now stand, guard reads
+  a-FIFTH-is-stop-and-ask, both grants named and dated, plus a sentence
+  noting the coincidence is worth noticing. Two lessons: the port-count
+  guard WORKED twice independently (the discipline is the count's reason,
+  not the number); and a merge resolver choosing LEGIBLE over TIDY turns a
+  conflict into a governance record. Also ruled there: merge-over-rebase
+  when the branch's merge structure IS the composition record — a rebase
+  destroys who-contributed-what to buy nothing a merge does not give.
+
+- 2026-08-28 (carp/007 close-out harvest — the measured run): THE NUMBER:
+  three coders simultaneously in ONE crate produced TWO conflicts across the
+  entire convergence, both additive (Cargo.lock + allowlist); main.rs
+  auto-merged every time because every packet carried the identical
+  line-level collision map. Tenets 1+3 paying out in their promised
+  currency. Template changes landed from this run: coder packet now carries
+  a TRIPWIRE field (the check proving the plan invariant + what red MEANS —
+  every 007 coder stopped correctly on a red golden) and a READS
+  DECLARATION (what a unit consumes that it does not own — the
+  zero-shared-files claim was false because only ownership was mapped;
+  consumption is where fences collide). Also confirmed the hard way:
+  DL-011's reviewer-own-checkout rule exists for the PM too — carp
+  invalidated two reviewer gate runs by merging main under a shared tree;
+  the PM freezes the tree during a review round or the reviewer gets its
+  own checkout. And the review-value line worth quoting whole: "a reviewer
+  that reads the diff against the PROMISES finds what a gate cannot:
+  things that are absent, and things that are claimed."
+
+- 2026-08-28 (carp/007 teardown): A SQUASH MERGE ORPHANS EVERYTHING
+  COMMITTED AFTER IT. The PR merged, then the PM kept committing close-out
+  artifacts to the branch (rescued coder buffers, the reviewer's APPROVE
+  receipt, the final task receipt) — all of it existed ONLY on the branch,
+  and the ruled tidy-behind-merge would have deleted the very record the
+  close-out exists to preserve. Caught because the PM checked what was on
+  main BEFORE removing, not after; recovered with a docs-only follow-up PR.
+  Rule: after a squash merge, anything you commit goes through a new PR
+  before any teardown — and the encoding candidate is a tidy warning when
+  the branch carries commits dated after the merged sha.
+
+- 2026-08-28 (nigel/008 wave 0 → silkworm/005): THE KNOWN FLAKE WAS A
+  DEFECT WEARING A FLAKE LABEL. the_same_transcript_mints_the_same_guid sat
+  on an ignore-if-red-alone advisory (DL-013) all day; a PM running the full
+  suite in an unrelated plan root-caused it instead of waving it through:
+  the guid is seeded from a now()-filled second-resolution timestamp, so
+  re-import idempotence — the property the plan's docstring itself calls
+  load-bearing — held only within one second. "An alarm with a qualifier is
+  an alarm with an off switch," proven in the field: the qualifier was the
+  off switch, and the alarm was ringing truthfully the whole time. Rules:
+  a flake advisory must carry an expiry or a root-cause owner, never stand
+  as a permanent waiver; and the fix converts the flaky test into the
+  regression proof (force the boundary the flake straddled).
+
+- 2026-08-28 (flea, #55): AMEND BEFORE HARNESS COMMIT, NEVER AFTER — a
+  message amend after `harness commit` orphans the refs/notes/ai note on
+  the pre-amend sha, silently losing attribution for the commit that
+  ships. (Ownership routes to o-prime not git per DL-011, so nothing is
+  truly lost, but the note is.) Flea flagged it in its own PR body rather
+  than leaving it to be found. Same family as verify-delivered-prose:
+  the mutation after the verified step is where silent loss lives.
+
+- 2026-08-28 (silkworm's triptych, self-reported): AN ALARM WITH A
+  QUALIFIER IS AN ALARM WITH AN OFF SWITCH — violated three ways in one
+  session by the people who wrote it: (1) a check shipped that could not
+  fail; (2) a qualifier added that silenced a check on the exact case it
+  existed for; (3) a red test collectively waved through as a known flake
+  for hours while it rang truthfully (the guid defect: SILENT and
+  EXPENSIVE — every re-import stored the whole conversation again under a
+  new address and paid the provider twice, on the plan whose subject was
+  incremental ingest). The doctrine is only as good as the day you
+  re-apply it to yourself; the fix's rule is the keeper: A VALUE THE
+  PROGRAM INVENTED NEVER ENTERS AN IDENTITY SEED.
+
+- 2026-08-28 (pij#19 arc, three governments, ~2h from recurrence to causal
+  closure): a phantom pij seat can mint MID-SESSION whenever a seat spawns a
+  LOGICAL internal subagent (no OS fork — a read-only critic task suffices),
+  and the alias is MESSAGE-CAPABLE (it speaks the subagent's output as if a
+  seat). Fleet doctrine: canary identity is POINT-IN-TIME proof — address
+  only the canaried id forever; never close an alias (it shares the live
+  seat's PID/pane); traffic from an uncanaried id sharing a known spawnId is
+  the subagent speaking, discard but understand. The method is the bigger
+  lesson: recurrence report → containment held under uncertainty → control
+  pair (only differing variable isolated) → finder self-corrected its own
+  attribution TWICE on the record (wrong processes, wrong delta) → corrected
+  aim handed to a third government → two-arm controlled falsifier closed
+  causality. Correlation directed the search; only the controlled test
+  closed the ticket; and the chain was trustworthy because every error in
+  it was self-reported, not discovered.
+
+- 2026-08-28 (nigel/008 wave 1): THE ACK REALLY IS THE CONTROL POINT —
+  three defects surfaced at ack, none in a diff: a coder caught the
+  impl-guide contradicting its own packet (docker compose vs the no-compose
+  rule); a coder kept `turn` in a widened CHECK the PM's frozen DDL sketch
+  had omitted (copying the sketch verbatim would have broken conversation
+  indexing); and a coder's SELF-SPAWNED read-only critic found a real bug
+  neither PM nor coder had seen (schema-declared string sections falling
+  through to the unschema'd embed basis). Corollary proven the same wave:
+  cd-first spawning made isolation structural — both wave-2 seats
+  ready-pinged from their OWN worktrees with their own branches in the
+  footer; "nobody has to be careful" is the goal state of every encoding.
+
+- 2026-08-28 (leopon, gate-contention compliance): ONE LAW PAYS IN
+  CURRENCIES YOU DID NOT APPLY IT FOR. Leopon isolated its test databases
+  for SPEND reasons (the shared test DB held 15 roots and a 6,520-job
+  backlog burning real provider calls); when the shared-DB CONTENTION
+  defect surfaced fleet-wide hours later, every one of its gate verdicts
+  was already clean — the seal-ambient-inputs law had bought
+  determinism it was never asked for. Its phrasing is the keeper:
+  per-seat isolation is not a nicety, it is what makes a green verdict
+  MEAN anything.
+
+- 2026-08-28 (nigel/008 wave 2, six contract corrections in one day —
+  four overturning PM rulings): A PM RULING FROM MEMORY OR A SINGLE PROBE
+  IS EXACTLY AS UNRELIABLE AS A STALE BRIEF — and it stays cheap only
+  because contradicting it costs a coder nothing. The sharpest three: a
+  flat probe corpus could not distinguish "these are the same thing" from
+  "these coincide here" (nested-document counterexample overturned an
+  address ruling); a singular Arc<RwLock<...>> was not stale but
+  permanently WRONG for every root but one (the daemon serves many
+  worktrees); and "probe once at boot" was unimplementable, not
+  suboptimal (sync from_config vs async probe) — the PM had ruled a shape
+  it never tried to write. Every reversal recorded on the fleet channel
+  rather than quietly amended. Corollary to "the ack is the control
+  point": the control point only works while dissent is free.
+
+- 2026-08-28 (leopon, guard misdirection): TAG YOUR INFERENCES — THE TAG
+  PAYS EXACTLY WHEN THE INFERENCE IS WRONG. Leopon marked "the harness
+  keeps a second parser" as [INFERENCE]; that one tag converted a
+  plausible fleet-wide misdirection into "here is exactly what to verify",
+  and the verification overturned it (the guard reuses fs3's own resolve —
+  the strictness was WHICH TREE builds the guard binary). The class it
+  named alongside: TRUE STATEMENTS THAT POINT AWAY FROM THE CAUSE — the
+  guard blaming the config file, the schema alarm saying what moved but
+  not who — both accurate, both misdirecting; error messages must name the
+  LAYER, not just the fact. And the tell for reviewers of any inference
+  about a binary's behaviour: ask WHERE THE BINARY COMES FROM before
+  believing anything about what it does.
+
+- 2026-08-28 (leopon, run-three hardening — two lessons, both its own rule
+  applied to its own code): (1) DENY-LISTS FAIL OPEN ON THE CASE NOBODY
+  THOUGHT OF. The embedder gate refused fake and unknown — then production
+  reported `offline`, a third value meaning exactly "no real vectors",
+  and it sailed through. When the thing gated is "do I have grounds to
+  answer at all", allow-list the states that PROVE grounds and refuse
+  everything else BY NAME. The coda kept honestly: the author wrote tenet
+  14 in the morning and implemented its structurally-incapable shape the
+  same day — a right rule does not protect you from a wrong shape.
+  (2) TRUE WHEN READ, STALE WHEN ACTED ON — a new category, distinct from
+  a wrong reading: every check that samples a mutable system has it, and
+  the fix is not more careful parsing but ASKING THE THING THAT IS
+  RUNNING rather than the record of what ran (gate now pings the live
+  daemon; the receipt records WHICH source answered).
+
+- 2026-08-28 (leopon + lynx, same error at different altitudes): READING
+  THE INTENT OF A MECHANISM INSTEAD OF WHAT IT ACTUALLY DOES. Three
+  instances in one evening: tenet 14 implemented as a deny-list (cannot
+  keep the promise); `trap ERR` without `set -E` (not inherited by
+  functions/subshells — the abort reporter was structurally incapable of
+  firing in the case it existed for, and two runs died silently behind
+  it); and the o-prime reading "claimed one at a time" as the worker
+  count when it described the claim call (dispatching a build for
+  parallelism that already existed). All three failures INVISIBLE: a
+  deny-list letting a case through looks like a pass, a trap that never
+  fires looks like a clean death, a wrong attribution looks like a
+  diagnosis. The countermeasure is the same audit in both directions —
+  walk what the system actually does, not what its words say: for every
+  mechanism ask WHAT INVOKES IT (tenet 17), and for every plan to build
+  ask DOES IT ALREADY EXIST (louse's check, the sixth sighting's
+  prevention).
+
+- 2026-08-28 (nigel/008 review round 1 — the frozen contract as the failure
+  point): EVERYONE DID THEIR JOB AGAINST A WRONG SPECIFICATION. The gate
+  filter answered from the stored claim — the exact field the plan exists
+  to distrust — because the PM's frozen contract defined it that way; the
+  coder implemented faithfully, mutation-checked twelve ways, the PM
+  reviewed and approved, and it reached a green composed branch. No
+  diligence INSIDE a plan can catch the plan itself being wrong — that is
+  what cross-model review is FOR. Paired ruling worth keeping: additive
+  reads over persisted data may land under review pressure; identity-model
+  changes may not — same reviewer, same session, opposite rulings, the
+  difference is structural risk not effort.
+
+- 2026-08-28 (leopon, section F of 006's process feedback): THE CLAUSE
+  DEFINES THE BOUNDARY, AND TASTE DECIDES WHERE INSIDE IT YOU STAND. A
+  probe wait is not a predicate, so extending it to get a pass was LEGAL
+  under the binding clause — and still wrong, because "I extended the
+  timeout and then it passed" is a sentence no closing receipt may
+  provoke. Recording that (a) was legal and (b) was right, as doctrine:
+  rules bound the space; they do not pick the point in it.
+
 ## Template improvement ideas
 
 - 2026-08-28 (carp's 007 fan-out — two dispatch patterns worth template rank):
