@@ -149,13 +149,26 @@ impl ScanFileJob {
 /// Discovery failures (an unreadable root, an uncompilable glob), git failures,
 /// and store failures, each mapped to its own catalog code by the caller.
 pub async fn add_root(state: &AppState, root: &Path) -> Result<RootReport, RootError> {
-    scan_root(state, root, "added").await
+    scan_root(state, root, "added", fs3_store::JOB_PRIORITY_DEFAULT).await
+}
+
+/// Register a newly discovered root and promote its initial scan work.
+///
+/// Kept crate-private: explicit add/rescan and watcher paths remain ordinary
+/// background work; only the lifecycle detector may select the raised lane.
+pub(crate) async fn add_root_with_priority(
+    state: &AppState,
+    root: &Path,
+    priority: fs3_store::JobPriority,
+) -> Result<RootReport, RootError> {
+    scan_root(state, root, "added", priority).await
 }
 
 async fn scan_root(
     state: &AppState,
     root: &Path,
     change: &'static str,
+    priority: fs3_store::JobPriority,
 ) -> Result<RootReport, RootError> {
     let root = canonical(root)?;
     let identity = fs3_git::repo_identity(&root)?;
@@ -202,12 +215,13 @@ async fn scan_root(
                 path: path.clone(),
                 blob: blob.as_str().to_string(),
             };
-            fs3_store::enqueue_job(
+            fs3_store::enqueue_job_with_priority(
                 &state.db,
                 SCAN_FILE,
                 &job.dedupe_key(),
                 &serde_json::to_value(&job).expect("a scan job always serialises"),
                 Duration::ZERO,
+                priority,
             )
             .await?;
             progress.enqueued += 1;
@@ -258,7 +272,7 @@ pub async fn rescan_root(state: &AppState, root: &Path) -> Result<RootReport, Ro
     if fs3_store::find_worktree(&state.db, &path).await?.is_none() {
         return Err(RootError::NotRegistered(path));
     }
-    scan_root(state, &root, "rescanned").await
+    scan_root(state, &root, "rescanned", fs3_store::JOB_PRIORITY_DEFAULT).await
 }
 
 /// The path→blob map the store already holds for this worktree.
