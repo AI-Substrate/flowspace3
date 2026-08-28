@@ -42,6 +42,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ddocs is not published in the reachable npm feed and has no v0.1.0
+      # tag. The immutable commit is the reproducibility anchor; the version
+      # assertion below is only a weaker smoke check because ddocs payloads
+      # have changed before without moving 0.1.0.
+      - name: Check out pinned ddocs source
+        uses: actions/checkout@v4
+        with:
+          repository: AI-Substrate/dd
+          ref: de01b77a67d0cff961e31ad8189054dd4b5c686b
+          path: .ci/dd
+
+      - name: Install pinned Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.7.0
+
+      - name: Install pinned ddocs
+        run: |
+          npm ci --prefix .ci/dd --no-audit --no-fund
+          npm install --global --no-audit --no-fund ./.ci/dd
+          version="$(ddocs --json version | node -e 'process.stdout.write(JSON.parse(require("node:fs").readFileSync(0, "utf8")).data.version)')"
+          test "$version" = "0.1.0"
+          echo "ddocs $version installed from de01b77a67d0cff961e31ad8189054dd4b5c686b"
+
       - name: Wait for postgres
         run: |
           timeout 60 bash -c 'until printf "" >> /dev/tcp/127.0.0.1/5433; do sleep 1; done'
