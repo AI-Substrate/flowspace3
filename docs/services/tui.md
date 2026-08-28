@@ -49,6 +49,11 @@ EOF, a partial line, an HTTP failure, or a two-heartbeat silence marks the pane
 `DISCONNECTED`; the worker reconnects every two seconds without blocking input
 or drawing.
 
+Worker delivery is bounded to 256 messages. Snapshot, search, and connection
+state coalesce; under event pressure the oldest queued activity is discarded
+first. The draw loop applies at most 32 messages per frame, so a producer flood
+cannot postpone repaint or keyboard handling until the queue empties.
+
 ## Snap-in recipe
 
 The unit consists of these exact composition hooks:
