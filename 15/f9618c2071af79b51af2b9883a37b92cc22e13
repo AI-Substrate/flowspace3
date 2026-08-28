@@ -1,0 +1,32 @@
+docs/plans/007-human-interface/assets/reviews/review-007.dd.json
+  h_9e71e8b09f7cf2 15,35,43,51,59,67,75,83,99-100,105-106,111-112,117-118,123-124,129-130,135-136
+docs/plans/007-human-interface/assets/reviews/review-007.dd.md
+  h_9e71e8b09f7cf2 18,27-33,42-48
+docs/plans/007-human-interface/assets/run/buffers/pm-session-buffer.md
+  h_9e71e8b09f7cf2 1-144
+docs/plans/007-human-interface/assets/run/buffers/u-r-session-buffer.md
+  h_9e71e8b09f7cf2 1-48
+docs/plans/007-human-interface/assets/run/buffers/u-t-session-buffer.md
+  h_9e71e8b09f7cf2 1-60
+docs/plans/007-human-interface/assets/run/buffers/u-w-session-buffer.md
+  h_9e71e8b09f7cf2 1-12
+docs/plans/007-human-interface/assets/tasks/phase-3/tasks.dd.json
+  h_9e71e8b09f7cf2 47,51-52
+docs/plans/007-human-interface/assets/tasks/phase-3/tasks.dd.md
+  h_9e71e8b09f7cf2 40
+docs/plans/007-human-interface/plan.dd.json
+  h_9e71e8b09f7cf2 12,105
+docs/plans/007-human-interface/plan.dd.md
+  h_9e71e8b09f7cf2 15,70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "15f9618c2071af79b51af2b9883a37b92cc22e13",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
