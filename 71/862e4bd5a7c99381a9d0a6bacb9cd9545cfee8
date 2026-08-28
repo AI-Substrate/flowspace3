@@ -1,0 +1,14 @@
+docs/plans/005-convo-ingest/assets/reviewer-brief.md
+  h_9e71e8b09f7cf2 1-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "71862e4bd5a7c99381a9d0a6bacb9cd9545cfee8",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
