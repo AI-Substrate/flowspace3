@@ -434,6 +434,13 @@ mod tests {
         graph.edges.push(document_edge);
         let bytes = include_bytes!("../fixtures/ddocs/file-link-corpus/notes.dd.json");
         let tree = file_tree(bytes);
+        assert!(
+            tree.root.children[1].children[0]
+                .ddoc
+                .as_ref()
+                .unwrap()
+                .sweep_excluded
+        );
         let refs = file_refs(&graph, &tree.path, &tree);
         assert_eq!(refs.len(), 2);
         assert_eq!(
