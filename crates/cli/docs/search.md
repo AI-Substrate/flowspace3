@@ -9,7 +9,7 @@ index, and the nearest elements come back ranked.
 
 ## Output shape
 
-A terminal receives the human search table. A pipe, file, CI capture, or agent
+A TTY (terminal) receives the human search table. A pipe, file, CI capture, or agent
 subprocess receives the JSON envelope with no flag. `--json` forces JSON
 anywhere. A harness inside a PTY such as tmux should export `FS3_OUTPUT=json`
 because the terminal probe otherwise looks human.

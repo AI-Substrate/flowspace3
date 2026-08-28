@@ -6,6 +6,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::time::{Duration, Instant};
 
+const TEST_KEY: &str = "isolated-render-test-key";
+
 fn binary() -> PathBuf {
     PathBuf::from(env!("CARGO_BIN_EXE_flowspace3"))
 }
@@ -15,7 +17,18 @@ fn goldens() -> PathBuf {
 }
 
 fn command(config: &Path) -> Command {
+    write_test_key(config);
     fs3_testkit::sealed(&binary(), config, fs3_testkit::TestDatabase::Unreachable)
+}
+
+fn write_test_key(config: &Path) {
+    let path = fs3_core::daemon_key_path(config);
+    std::fs::write(&path, TEST_KEY).unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600)).unwrap();
+    }
 }
 
 struct Case {
@@ -168,6 +181,12 @@ fn serve(body: Vec<u8>) -> (String, std::thread::JoinHandle<()>) {
                     let mut request = [0_u8; 4096];
                     let read = stream.read(&mut request).unwrap_or(0);
                     let request = String::from_utf8_lossy(&request[..read]);
+                    assert!(
+                        request
+                            .to_ascii_lowercase()
+                            .contains(&format!("authorization: bearer {TEST_KEY}")),
+                        "request did not carry the isolated daemon key: {request}"
+                    );
                     if request.starts_with("GET /events ") {
                         let _ = stream.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
                         continue;
@@ -305,4 +324,25 @@ fn a_human_mode_usage_error_still_writes_nothing_to_stdout() {
     assert_eq!(output.status.code(), Some(2));
     assert!(output.stdout.is_empty());
     assert!(!output.stderr.is_empty());
+}
+
+#[test]
+fn agents_start_here_teaches_every_output_mode_rule() {
+    let case = CASES
+        .iter()
+        .find(|case| case.name == "agents-start-here")
+        .unwrap();
+    let output = run(case, Mode::Default);
+    assert_eq!(output.status.code(), Some(0));
+    let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    let text = envelope["data"]["text"].as_str().unwrap();
+    for rule in [
+        "TTY (terminal)",
+        "pipe, file, CI capture",
+        "JSON envelope with no flag",
+        "`--json` forces",
+        "`FS3_OUTPUT=json`",
+    ] {
+        assert!(text.contains(rule), "agent guide omitted {rule:?}:\n{text}");
+    }
 }

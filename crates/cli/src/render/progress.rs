@@ -7,8 +7,8 @@
 
 use std::future::Future;
 use std::io::Write;
-use std::time::Duration;
 
+use crate::DaemonClient;
 use fs3_core::envelope::Envelope;
 use fs3_core::events::{Event, EventKind, Hello, STREAM_NAME, STREAM_VERSION};
 
@@ -17,8 +17,11 @@ use fs3_core::events::{Event, EventKind, Hello, STREAM_NAME, STREAM_VERSION};
 /// The POST and subscription start in the same `select!`; stream setup cannot
 /// add latency to the answer. Once the POST settles the stream is cancelled,
 /// its line is erased, and only then is the envelope returned.
-pub async fn while_pending(base_url: &str, operation: impl Future<Output = Envelope>) -> Envelope {
-    let progress = consume(base_url);
+pub async fn while_pending(
+    client: &DaemonClient,
+    operation: impl Future<Output = Envelope>,
+) -> Envelope {
+    let progress = consume(client);
     tokio::pin!(operation);
     tokio::pin!(progress);
 
@@ -28,18 +31,10 @@ pub async fn while_pending(base_url: &str, operation: impl Future<Output = Envel
     }
 }
 
-async fn consume(base_url: &str) {
-    let client = match reqwest::Client::builder()
-        .connect_timeout(Duration::from_millis(50))
-        .build()
-    {
-        Ok(client) => client,
+async fn consume(client: &DaemonClient) {
+    let mut response = match client.events(None).await {
+        Ok(response) => response,
         Err(_) => return,
-    };
-    let url = format!("{}/events", base_url.trim_end_matches('/'));
-    let mut response = match client.get(url).send().await {
-        Ok(response) if response.status().is_success() => response,
-        _ => return,
     };
 
     let mut bytes = Vec::new();

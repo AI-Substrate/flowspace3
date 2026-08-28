@@ -5,7 +5,7 @@ A Rust workspace building **flowspace3**: semantic code search you run locally
 
 ## CLI output is audience-aware
 
-- A terminal receives human-readable output by default.
+- A TTY (terminal) receives human-readable output by default.
 - A pipe, file, CI capture, or agent subprocess receives the JSON envelope with no flag.
 - `--json` forces JSON anywhere.
 - Export `FS3_OUTPUT=json` when a harness runs inside a PTY (for example tmux) and its terminal probe looks human; this pins the machine shape once.

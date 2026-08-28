@@ -12,7 +12,7 @@ authoritative guides and outlive this page — where the two disagree, the binar
 
 ## Output contract for agents
 
-A real terminal gets human-readable output. A pipe, file, CI capture, or agent
+A real TTY (terminal) gets human-readable output. A pipe, file, CI capture, or agent
 subprocess keeps receiving the JSON envelope with no flag. `--json` forces JSON
 anywhere. A harness running inside a PTY such as tmux looks human to a terminal
 probe, so export `FS3_OUTPUT=json` once to pin the machine shape.

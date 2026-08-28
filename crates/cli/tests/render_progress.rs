@@ -3,6 +3,8 @@ use std::net::TcpListener;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
+const TEST_KEY: &str = "isolated-render-test-key";
+
 fn binary() -> PathBuf {
     PathBuf::from(env!("CARGO_BIN_EXE_flowspace3"))
 }
@@ -24,6 +26,12 @@ fn serve() -> (String, std::thread::JoinHandle<()>) {
                     let mut request = [0_u8; 4096];
                     let read = stream.read(&mut request).unwrap_or(0);
                     let request = String::from_utf8_lossy(&request[..read]);
+                    assert!(
+                        request
+                            .to_ascii_lowercase()
+                            .contains(&format!("authorization: bearer {TEST_KEY}")),
+                        "request did not carry the isolated daemon key: {request}"
+                    );
                     if request.starts_with("GET /events ") {
                         event_seen = true;
                         let events = events.clone();
@@ -64,6 +72,13 @@ fn serve() -> (String, std::thread::JoinHandle<()>) {
 #[test]
 fn add_progress_is_stderr_only_and_is_erased_without_waiting_for_the_stream() {
     let config = tempfile::tempdir().unwrap();
+    let key_path = fs3_core::daemon_key_path(config.path());
+    std::fs::write(&key_path, TEST_KEY).unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        std::fs::set_permissions(key_path, std::fs::Permissions::from_mode(0o600)).unwrap();
+    }
     let (url, server) = serve();
     let started = Instant::now();
     let output = fs3_testkit::sealed(
