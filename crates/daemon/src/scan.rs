@@ -31,15 +31,93 @@
 //! same value for a search hit to resolve to a path. Passing the blob explicitly
 //! rather than reading `tree.blob` is what makes the choice visible.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use fs3_core::envelope::Failure;
 use fs3_core::{BlobRef, Element, ElementKind, catalog, needs_summary};
 
+use crate::ddoc::{self, DdocTooling};
 use crate::enrich;
 use crate::roots::ScanFileJob;
 use crate::runner::{fail, payload};
 use crate::wiring::AppState;
+
+/// Parse bytes through the ddoc-specific path when their suffix requires it.
+///
+/// `tooling` is one corpus snapshot supplied by the composition root. This
+/// function never probes: calling the corpus graph once per file is quadratic.
+pub fn scan_ddoc_bytes(
+    path: &Path,
+    bytes: &[u8],
+    tooling: &DdocTooling,
+) -> Result<fs3_core::ElementTree, fs3_parsers::ScanError> {
+    if !fs3_parsers::is_ddoc_source(path) {
+        return fs3_parsers::scan(path, bytes);
+    }
+
+    #[derive(serde::Deserialize)]
+    struct Header {
+        #[serde(default)]
+        dd: Option<Dd>,
+    }
+    #[derive(serde::Deserialize)]
+    struct Dd {
+        #[serde(default)]
+        schema: String,
+    }
+
+    let header = serde_json::from_slice::<Header>(bytes).ok();
+    let facts = header
+        .as_ref()
+        .and_then(|header| header.dd.as_ref())
+        .and_then(|dd| tooling.facts_for(&dd.schema));
+    let mut tree = fs3_parsers::scan_ddoc(path, bytes, facts)?;
+    ddoc::enrich_tree(&mut tree, tooling, &[]);
+    Ok(tree)
+}
+
+fn earns_enrichment(element: &Element, min_lines: u32) -> bool {
+    if element.raw_text.is_empty() {
+        return false;
+    }
+    match element.kind {
+        ElementKind::File => false,
+        ElementKind::Row => element.raw_text.lines().count() >= min_lines as usize,
+        _ => needs_summary(element, min_lines),
+    }
+}
+
+async fn persist_tree(
+    state: &AppState,
+    blob: &BlobRef,
+    tree: &mut fs3_core::ElementTree,
+    tooling: &DdocTooling,
+    is_ddoc: bool,
+    enrich_policy: &impl Fn(&Element) -> bool,
+) -> Result<(), Failure> {
+    fs3_store::upsert_element_tree(&state.db, blob, PARSER_VERSION, &tree.root, enrich_policy)
+        .await
+        .map_err(fail)?;
+
+    if is_ddoc && let Some(graph) = &tooling.graph {
+        let refs = ddoc::file_refs(graph, &tree.path, tree);
+        let outcome = fs3_store::replace_file_refs(&state.db, blob, PARSER_VERSION, &refs)
+            .await
+            .map_err(fail)?;
+        if ddoc::record_unattached(tree, &outcome.unattached) > 0 {
+            fs3_store::upsert_element_tree(
+                &state.db,
+                blob,
+                PARSER_VERSION,
+                &tree.root,
+                enrich_policy,
+            )
+            .await
+            .map_err(fail)?;
+        }
+    }
+    Ok(())
+}
 
 /// Parse one file and record it.
 ///
@@ -86,8 +164,11 @@ pub async fn run(state: &AppState, value: serde_json::Value) -> Result<(), Failu
     // file duplicates what its parts already say; everything else earns a
     // summary once it clears the configured line floor.
     let min_lines = state.config.indexing.summary_min_lines;
-    let enrich_policy =
-        |element: &Element| element.kind != ElementKind::File && needs_summary(element, min_lines);
+    let enrich_policy = |element: &Element| earns_enrichment(element, min_lines);
+    let path = Path::new(&job.path);
+    let is_ddoc = fs3_parsers::is_ddoc_source(path);
+    let tooling = state.ddoc_tooling(job.worktree_id).await;
+    let tooling = tooling.as_ref();
 
     // The skip. Cheap, and correct for every branch and checkout at once: these
     // exact bytes have been parsed by this parser, by anyone, on any branch.
@@ -108,14 +189,31 @@ pub async fn run(state: &AppState, value: serde_json::Value) -> Result<(), Failu
         .await
         .map_err(fail)?
     {
+        if is_ddoc && !tooling.is_absent() {
+            // A presented ddoc consumes the whole current snapshot. Trying to
+            // enumerate schema, graph, validation, or producer changes here
+            // would retain stale parse-level decisions by omission.
+            let mut tree = scan_ddoc_bytes(path, &bytes, tooling).map_err(fail)?;
+            let findings = ddoc::validate(Path::new(&worktree.root_path), &absolute).await;
+            ddoc::enrich_tree(&mut tree, tooling, &findings);
+            persist_tree(state, &blob, &mut tree, tooling, true, &enrich_policy).await?;
+            return enrich::enqueue_for_tree(state, &job, &tree.root, &enrich_policy).await;
+        }
         return enrich::enqueue_for_tree(state, &job, &stored, &enrich_policy).await;
     }
 
-    let tree = fs3_parsers::scan(std::path::Path::new(&job.path), &bytes).map_err(fail)?;
+    // One snapshot per registered worktree, captured at the corpus event that
+    // enqueued this batch (`add_root`/`rescan_root`), never probed per file —
+    // `ddocs --json links` walks the whole corpus per call, so a per-file probe
+    // is quadratic. A missing entry is the honest absent snapshot: rows still
+    // index, and edges, gate membership and derived state are simply absent.
+    let mut tree = scan_ddoc_bytes(path, &bytes, tooling).map_err(fail)?;
+    if is_ddoc {
+        let findings = ddoc::validate(Path::new(&worktree.root_path), &absolute).await;
+        ddoc::enrich_tree(&mut tree, tooling, &findings);
+    }
 
-    fs3_store::upsert_element_tree(&state.db, &blob, PARSER_VERSION, &tree.root, enrich_policy)
-        .await
-        .map_err(fail)?;
+    persist_tree(state, &blob, &mut tree, tooling, is_ddoc, &enrich_policy).await?;
 
     // Every element gets a raw-content vector; only enrich-marked ones get a
     // summary. Both are queued rather than done inline, so a slow provider
@@ -133,7 +231,10 @@ pub async fn run(state: &AppState, value: serde_json::Value) -> Result<(), Failu
 /// this version and re-mints its element tree. That scan and parse work is not
 /// free. Enrichment remains keyed by `raw_hash`, so unchanged text pays for no
 /// new provider calls (workshop 002, decision D2).
-pub const PARSER_VERSION: &str = "fs3-parsers@1";
+///
+/// Bumped to @2 by workshop 008: the ddoc grammar produces row elements that a
+/// @1 parse never emitted, so an existing corpus must be re-minted to gain them.
+pub const PARSER_VERSION: &str = "fs3-parsers@2";
 
 #[cfg(test)]
 mod tests {
@@ -149,11 +250,88 @@ mod tests {
     #[test]
     fn the_enrichment_policy_excludes_file_roots_and_small_elements() {
         let min_lines = 10;
-        let policy = |el: &Element| el.kind != ElementKind::File && needs_summary(el, min_lines);
+        let policy = |element: &Element| earns_enrichment(element, min_lines);
 
         assert!(!policy(&element(ElementKind::File, 400)));
         assert!(!policy(&element(ElementKind::Function, 9)));
         assert!(policy(&element(ElementKind::Function, 10)));
         assert!(policy(&element(ElementKind::Container, 40)));
+    }
+
+    #[test]
+    fn ddoc_enrichment_uses_row_text_not_document_span() {
+        let span = Span::new(1, 100);
+        let short = Element::new(
+            ElementKind::Row,
+            "ddoc_row",
+            "short",
+            "doc#rows/short",
+            span,
+            "one line",
+        );
+        let long = Element::new(
+            ElementKind::Row,
+            "ddoc_row",
+            "long",
+            "doc#rows/long",
+            span,
+            "line\n".repeat(10),
+        );
+        let container = Element::new(
+            ElementKind::Container,
+            "ddoc_section",
+            "rows",
+            "doc#rows",
+            span,
+            "",
+        )
+        .with_children(vec![long.clone()]);
+
+        assert!(!earns_enrichment(&container, 10));
+        assert!(!earns_enrichment(&short, 10));
+        assert!(earns_enrichment(&long, 10));
+    }
+
+    #[test]
+    fn ddoc_dispatch_produces_rows_not_a_whole_document_only_tree() {
+        let bytes = include_bytes!("../../parsers/fixtures/ddoc/plain.dd.json");
+        let tree = scan_ddoc_bytes(
+            Path::new("docs/plain.dd.json"),
+            bytes,
+            &DdocTooling::absent(),
+        )
+        .unwrap();
+        assert!(!tree.root.children.is_empty());
+        assert!(
+            tree.root
+                .children
+                .iter()
+                .flat_map(|section| &section.children)
+                .any(|element| element.kind == ElementKind::Row)
+        );
+    }
+
+    #[test]
+    fn ddoc_facts_are_selected_by_exact_schema_not_map_order() {
+        let bytes = include_bytes!("../../parsers/fixtures/ddoc/plain.dd.json");
+        let mut tooling = DdocTooling::absent();
+        tooling.facts.insert(
+            "not/builder-plan".to_owned(),
+            fs3_core::DdocSchemaFacts {
+                schema: "not/builder-plan".to_owned(),
+                prose_fields: std::collections::BTreeMap::from([(
+                    "acceptance_criteria".to_owned(),
+                    vec!["claim".to_owned()],
+                )]),
+                string_fields: std::collections::BTreeMap::new(),
+                gate_terminal: std::collections::BTreeSet::new(),
+            },
+        );
+        let tree = scan_ddoc_bytes(Path::new("docs/plain.dd.json"), bytes, &tooling).unwrap();
+        let row = &tree.root.children[1].children[0];
+        assert_eq!(
+            row.ddoc.as_ref().unwrap().embed_basis,
+            fs3_core::EmbedBasis::Fallback
+        );
     }
 }

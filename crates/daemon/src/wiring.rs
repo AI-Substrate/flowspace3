@@ -56,6 +56,7 @@ use tokio::sync::broadcast;
 /// and the HTTP handler closes its stream rather than slowing indexing.
 const EVENT_CAPACITY: usize = 256;
 use fs3_testkit::{FakeChatProvider, FakeEmbedder, FakeSummarizer};
+use tokio::sync::RwLock;
 
 /// Everything an HTTP handler or worker needs, wired once at startup.
 #[derive(Clone)]
@@ -99,6 +100,21 @@ pub struct AppState {
     /// the daemon carries only the messages that concern every installation
     /// rather than guessing at somebody else's.
     pub install_path: String,
+    /// One `ddocs` tooling snapshot per registered worktree, keyed by
+    /// `worktree_id` (workshop 008).
+    ///
+    /// Per-worktree rather than singular because graph paths are normalised
+    /// against each root's own `data.root`: a shared snapshot would not merely
+    /// go stale for a second root, it would be permanently WRONG for it, and a
+    /// wrong answer is worse than an absent one.
+    ///
+    /// Refreshed only at corpus events (`add_root`, `rescan_root`) — never per
+    /// file, because `ddocs --json graph` walks the whole corpus per call.
+    /// A batch therefore sees the graph as of that event; a row added mid-batch
+    /// may lack edges until the next one. That staleness is accepted
+    /// deliberately: the alternative is quadratic, and no cheap corpus-change
+    /// detector exists.
+    pub ddocs: Arc<RwLock<BTreeMap<i64, Arc<crate::ddoc::DdocTooling>>>>,
 }
 
 impl std::fmt::Debug for AppState {
@@ -191,6 +207,7 @@ impl AppState {
             db,
             config,
             install_path,
+            ddocs: Arc::new(RwLock::new(BTreeMap::new())),
         })
     }
     /// Attach one live watcher to the daemon event fan-out.
@@ -233,6 +250,39 @@ impl AppState {
     #[must_use]
     pub fn summarizer_for(&self, repo: &str) -> &Arc<dyn Summarizer> {
         self.repo_summarizers.get(repo).unwrap_or(&self.summarizer)
+    }
+
+    /// The `ddocs` snapshot for a worktree, or the absent one.
+    ///
+    /// A missing entry is not an error: it means no corpus event has probed
+    /// this worktree yet, or the binary was unavailable when one did. Rows
+    /// still index; edges, gate membership and derived state are absent.
+    pub async fn ddoc_tooling(&self, worktree_id: i64) -> Arc<crate::ddoc::DdocTooling> {
+        self.ddoc_snapshot(worktree_id)
+            .await
+            .unwrap_or_else(|| Arc::new(crate::ddoc::DdocTooling::absent()))
+    }
+
+    /// The snapshot for a worktree, or `None` when it has never been PROBED.
+    ///
+    /// The distinction matters to exactly one caller and not at all to the
+    /// others. For indexing, unprobed and absent are the same thing: neither
+    /// can supply edges, so [`AppState::ddoc_tooling`] flattens them. For a
+    /// DIAGNOSTIC they are opposite claims — "nobody has looked" is not
+    /// evidence that the binary is missing, and a daemon restarted against an
+    /// indexed corpus starts with every entry unprobed. Anything that reports
+    /// tooling absence to a user must use THIS method and stay silent on
+    /// `None`.
+    pub async fn ddoc_snapshot(&self, worktree_id: i64) -> Option<Arc<crate::ddoc::DdocTooling>> {
+        self.ddocs.read().await.get(&worktree_id).cloned()
+    }
+
+    /// Replace one worktree's snapshot after a corpus event.
+    pub async fn set_ddoc_tooling(&self, worktree_id: i64, tooling: crate::ddoc::DdocTooling) {
+        self.ddocs
+            .write()
+            .await
+            .insert(worktree_id, Arc::new(tooling));
     }
 
     /// The chat model to use for `repo` — its override, or the active default.

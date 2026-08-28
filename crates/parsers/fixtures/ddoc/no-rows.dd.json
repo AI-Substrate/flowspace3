@@ -1,0 +1,15 @@
+{
+  "dd": {
+    "schema": "custom/reference",
+    "sweep_exclude": true
+  },
+  "sections": [
+    {
+      "name": "rationale",
+      "value": {
+        "title": "Why this exists",
+        "text": "A section with no ids remains retrievable."
+      }
+    }
+  ]
+}

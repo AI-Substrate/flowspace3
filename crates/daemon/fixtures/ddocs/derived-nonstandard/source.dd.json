@@ -1,0 +1,33 @@
+{
+  "dd": {
+    "schema": "review/nonstandard-derived",
+    "sweep_exclude": true
+  },
+  "sections": [
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-0001",
+          "state": "checked",
+          "result": "#gates/release/backend/tk-0001"
+        }
+      ]
+    },
+    {
+      "name": "gates",
+      "value": {
+        "release": {
+          "backend": {
+            "tk-0001": [
+              {
+                "id": "gt-0001",
+                "state": "unchecked"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

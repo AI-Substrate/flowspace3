@@ -1308,6 +1308,7 @@ mod tests {
             repo: Some("git:example/repo".to_string()),
             path: Some("src/lib.rs".to_string()),
             worktree: Some(worktree.to_string()),
+            ddoc: None,
         }
     }
 

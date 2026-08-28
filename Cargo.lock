@@ -1281,6 +1281,7 @@ dependencies = [
  "fs3-core",
  "fs3-testkit",
  "ignore",
+ "serde_json",
  "thiserror",
  "tree-sitter",
  "tree-sitter-md",

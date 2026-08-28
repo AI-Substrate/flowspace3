@@ -1,0 +1,28 @@
+{
+  "command": "ddocs graph",
+  "status": "ok",
+  "timestamp": "2026-08-28T06:59:09.392Z",
+  "data": {
+    "root": "/Users/jordanknight/substrate/flowspace/fs3-ddocs-u2",
+    "mermaid": "",
+    "nodes": [],
+    "edges": [
+      {
+        "target": "builder/plan/section/meta",
+        "from": "/Users/jordanknight/substrate/flowspace/fs3-ddocs-u2/docs/plans/001-fs3-foundations/assets/backpressure.dd.json",
+        "to": "/Users/jordanknight/substrate/flowspace/fs3-ddocs-u2/docs/plans/001-fs3-foundations/plan.dd.json",
+        "address": "../plan.dd.json#meta",
+        "location": "$.sections[meta].value.plan",
+        "rel": "ref",
+        "sameDocument": false
+      }
+    ],
+    "counts": {
+      "nodes": 0,
+      "edges": 1,
+      "issues": 0
+    },
+    "issues": []
+  },
+  "next_action": "2 document(s) could not be scanned — the graph may be incomplete."
+}

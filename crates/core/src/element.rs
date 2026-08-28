@@ -47,6 +47,15 @@ pub enum ElementKind {
     /// spend guard and GC all root at `elements`, so a turn that is not an
     /// element is a turn nothing can find, enrich or collect.
     Turn,
+    /// One row of a deterministic document — the addressable instance inside a
+    /// section of a `*.dd.json` (workshop 008).
+    ///
+    /// It earns a place in a CLOSED enum on the same terms as the others: it
+    /// is a RETRIEVAL UNIT. "Which acceptance criterion covers X" wants the
+    /// criterion, not the plan that contains it, and search, the spend guard
+    /// and GC all root at `elements` — a row that is not an element is a row
+    /// nothing can find, enrich or collect.
+    Row,
 }
 
 impl ElementKind {
@@ -58,6 +67,7 @@ impl ElementKind {
             ElementKind::Function => "function",
             ElementKind::Section => "section",
             ElementKind::Turn => "turn",
+            ElementKind::Row => "row",
         }
     }
 }
@@ -207,6 +217,18 @@ pub struct Element {
     pub sibling_order: u32,
     /// Declarations nested directly inside this one, in source order.
     pub children: Vec<Element>,
+    /// Deterministic-document metadata, present only on elements parsed from a
+    /// `*.dd.json` (workshop 008). `None` for every code element.
+    ///
+    /// BOXED deliberately: a ddoc row carries a dozen fields a code element
+    /// never uses, and a tree holds hundreds of elements. Inline, every
+    /// function in every Rust file would pay that footprint for a document
+    /// feature it does not have; boxed, it pays one null pointer.
+    ///
+    /// Skipped when absent, so a wire consumer of a code element sees exactly
+    /// the shape it saw before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ddoc: Option<Box<crate::ddoc::DdocMeta>>,
 }
 
 impl Element {
@@ -230,6 +252,7 @@ impl Element {
             raw_text,
             sibling_order: 0,
             children: Vec::new(),
+            ddoc: None,
         }
     }
 
@@ -237,6 +260,13 @@ impl Element {
     #[must_use]
     pub fn with_sibling_order(mut self, sibling_order: u32) -> Self {
         self.sibling_order = sibling_order;
+        self
+    }
+
+    /// Attach deterministic-document metadata, making this a ddoc row.
+    #[must_use]
+    pub fn with_ddoc(mut self, ddoc: crate::ddoc::DdocMeta) -> Self {
+        self.ddoc = Some(Box::new(ddoc));
         self
     }
 

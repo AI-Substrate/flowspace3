@@ -23,6 +23,8 @@ pub mod conversation;
 pub mod conversation_join;
 pub mod conversation_normalize;
 pub mod conversation_source;
+pub mod ddoc;
+pub mod ddoc_envelope;
 pub mod element;
 pub mod envelope;
 pub mod error;
@@ -65,6 +67,11 @@ pub use conversation_normalize::{
 pub use conversation_source::{
     ConversationSource, Harness, IngestInput, RawRecord, ReadBatch, SessionFile, SessionKind,
     SourceCursor,
+};
+pub use ddoc::{
+    DDOC_ADDRESS_SEPARATOR, DDOC_GENERATED_BANNER, DDOC_GENERATED_SUFFIX, DDOC_SOURCE_SUFFIX,
+    DdocAddress, DdocAddressError, DdocMeta, DdocRel, DdocSchemaFacts, DerivedState, EmbedBasis,
+    default_gate_terminal, derive_state, minted_prefix,
 };
 pub use element::{
     ADDRESS_SEGMENT, BlobRef, Element, ElementKind, ElementTree, PreOrder, Span, content_hash,

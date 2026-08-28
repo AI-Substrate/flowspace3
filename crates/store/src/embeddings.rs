@@ -14,6 +14,7 @@
 use fs3_core::{Element, ElementKind};
 use pgvector::Vector;
 use sqlx::Row;
+use sqlx::types::Json;
 use std::collections::HashSet;
 
 use crate::elements::kind_from_str;
@@ -286,7 +287,8 @@ pub async fn query_embeddings(
          SELECT n.source_kind, n.distance,
                 s.text, s.tags, s.extras,
                 e.blob_sha, e.parser_version, e.kind, e.subkind, e.name,
-                e.address, e.span_start, e.span_end, e.sibling_order, e.raw_text
+                e.address, e.span_start, e.span_end, e.sibling_order, e.raw_text,
+                e.ddoc
            FROM nearest n
            LEFT JOIN LATERAL (
                 SELECT sc.raw_hash, sc.text, sc.tags, sc.extras
@@ -298,7 +300,7 @@ pub async fn query_embeddings(
            JOIN LATERAL (
                 SELECT el.id, el.blob_sha, el.parser_version, el.kind, el.subkind,
                        el.name, el.address, el.span_start, el.span_end,
-                       el.sibling_order, el.raw_text
+                       el.sibling_order, el.raw_text, el.ddoc
                   FROM elements el
                  WHERE el.raw_hash = COALESCE(s.raw_hash, n.source_hash)
                  ORDER BY el.id
@@ -348,8 +350,30 @@ pub struct SearchFilters {
     /// Cosine DISTANCE ceiling — a hit further than this is not returned.
     /// Expressed as the caller's minimum score: `1.0 - min_score`.
     pub max_distance: Option<f64>,
+    /// Only ddoc rows carrying one of these raw minted-id prefixes.
+    pub id_kinds: Option<Vec<String>>,
+    /// `true` selects known non-terminal rows; `false` known terminal rows.
+    /// Rows whose gate membership is unknown match neither value.
+    pub gate_open: Option<bool>,
+    /// Only ddoc rows declaring this schema, verbatim.
+    pub ddoc_schema: Option<String>,
     /// How many hits to return.
     pub limit: i64,
+}
+
+/// Ownership scope for [`anchor_has_vectors`].
+///
+/// Deliberately cannot represent ranked, kind, source-state, or ddoc-content
+/// predicates: this probe answers whether a scope has searchable content, not
+/// whether a content filter matches it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct AnchorScope<'a> {
+    /// Repository identity to probe.
+    pub repo: Option<&'a str>,
+    /// Registered worktree root to probe.
+    pub worktree: Option<&'a str>,
+    /// Live repository-relative path pattern to probe.
+    pub path: Option<&'a str>,
 }
 
 impl Default for SearchFilters {
@@ -361,6 +385,9 @@ impl Default for SearchFilters {
             source: None,
             max_distance: None,
             kinds: None,
+            id_kinds: None,
+            gate_open: None,
+            ddoc_schema: None,
             limit: 10,
         }
     }
@@ -438,6 +465,10 @@ pub async fn search_elements(
     // there is ONE statement text whatever the caller asked for. A query built
     // by string concatenation would have a different plan per flag combination
     // and could not be read as a single thing.
+    // Bind map: $1 vector, $2 model, $3 limit, $4 source, $5 distance,
+    // $6 repo, $7 path, $8 kinds, $9 worktree, $10 id_kinds,
+    // $11 gate_open, $12 ddoc_schema. Keep SQL and binds in this order: these
+    // types overlap, so a shifted parameter can compile and answer incorrectly.
     let rows = sqlx::query(
         "WITH nearest AS (
              SELECT source_hash, source_kind, vector <=> $1 AS distance
@@ -460,6 +491,23 @@ pub async fn search_elements(
                                   WHERE candidate.text_hash = e.source_hash
                                     AND candidate.raw_hash = admitted.raw_hash)))
                         AND ($8::text[] IS NULL OR admitted.kind = ANY($8))
+                        -- Every ddoc classification must belong to this SAME
+                        -- admitted element; raw hashes are shared deliberately.
+                        AND ($10::text[] IS NULL
+                             OR admitted.ddoc->>'id_kind' = ANY($10))
+                        AND ($11::boolean IS NULL
+                             OR (CASE
+                                   WHEN jsonb_typeof(admitted.ddoc->'derived_state') = 'object'
+                                   THEN (admitted.ddoc->'derived_state'->>'complete')::boolean
+                                   ELSE (admitted.ddoc->>'gate_terminal')::boolean
+                                 END IS NOT NULL
+                                 AND CASE
+                                   WHEN jsonb_typeof(admitted.ddoc->'derived_state') = 'object'
+                                   THEN (admitted.ddoc->'derived_state'->>'complete')::boolean
+                                   ELSE (admitted.ddoc->>'gate_terminal')::boolean
+                                 END = NOT $11))
+                        AND ($12::text IS NULL
+                             OR admitted.ddoc->>'schema' = $12)
                         -- The caller worktree belongs here, before LIMIT:
                         -- filtering a ranked page afterwards both under-fills
                         -- it and can leak a foreign version beyond the cap.
@@ -488,6 +536,7 @@ pub async fn search_elements(
                 s.text, s.tags, s.extras,
                 e.blob_sha, e.parser_version, e.kind, e.subkind, e.name,
                 e.address, e.span_start, e.span_end, e.sibling_order, e.raw_text,
+                e.ddoc,
                 COALESCE(live.identity, anchored.identity) AS identity,
                 COALESCE(live.root_path, anchored.root_path) AS root_path,
                 live.path
@@ -505,6 +554,21 @@ pub async fn search_elements(
                           FROM elements choice
                          WHERE choice.raw_hash = sc.raw_hash
                            AND ($8::text[] IS NULL OR choice.kind = ANY($8))
+                           AND ($10::text[] IS NULL
+                                OR choice.ddoc->>'id_kind' = ANY($10))
+                           AND ($11::boolean IS NULL
+                                OR (CASE
+                                      WHEN jsonb_typeof(choice.ddoc->'derived_state') = 'object'
+                                      THEN (choice.ddoc->'derived_state'->>'complete')::boolean
+                                      ELSE (choice.ddoc->>'gate_terminal')::boolean
+                                    END IS NOT NULL
+                                    AND CASE
+                                      WHEN jsonb_typeof(choice.ddoc->'derived_state') = 'object'
+                                      THEN (choice.ddoc->'derived_state'->>'complete')::boolean
+                                      ELSE (choice.ddoc->>'gate_terminal')::boolean
+                                    END = NOT $11))
+                           AND ($12::text IS NULL
+                                OR choice.ddoc->>'schema' = $12)
                            AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
                                 OR EXISTS (
                                      SELECT 1
@@ -529,16 +593,26 @@ pub async fn search_elements(
            JOIN LATERAL (
                 SELECT el.id, el.blob_sha, el.parser_version, el.kind, el.subkind,
                        el.name, el.address, el.span_start, el.span_end,
-                       el.sibling_order, el.raw_text, el.raw_hash
+                       el.sibling_order, el.raw_text, el.raw_hash, el.ddoc
                   FROM elements el
                  WHERE el.raw_hash = COALESCE(s.raw_hash, n.source_hash)
-                   -- Critic finding 4, and it is not belt-and-braces: this
-                   -- resolver takes the LOWEST-id element carrying the hash, so
-                   -- a turn that shares its text with code — which is exactly
-                   -- what the dedupe makes common — would resolve to the code
-                   -- element and be rendered with an `el:` address. The kind
-                   -- has to be pinned on BOTH sides of the query.
+                   -- The resolver repeats every element gate: a shared hash
+                   -- must not resolve to the lowest-id row of another kind or
+                   -- another ddoc classification.
                    AND ($8::text[] IS NULL OR el.kind = ANY($8))
+                   AND ($10::text[] IS NULL OR el.ddoc->>'id_kind' = ANY($10))
+                   AND ($11::boolean IS NULL
+                        OR (CASE
+                              WHEN jsonb_typeof(el.ddoc->'derived_state') = 'object'
+                              THEN (el.ddoc->'derived_state'->>'complete')::boolean
+                              ELSE (el.ddoc->>'gate_terminal')::boolean
+                            END IS NOT NULL
+                            AND CASE
+                              WHEN jsonb_typeof(el.ddoc->'derived_state') = 'object'
+                              THEN (el.ddoc->'derived_state'->>'complete')::boolean
+                              ELSE (el.ddoc->>'gate_terminal')::boolean
+                            END = NOT $11))
+                   AND ($12::text IS NULL OR el.ddoc->>'schema' = $12)
                    -- The candidate gate above proves that SOME element with
                    -- this raw hash is anchored in the caller scope. Without
                    -- repeating that anchor here, the global lowest-id element
@@ -606,6 +680,9 @@ pub async fn search_elements(
             .map(|kinds| kinds.iter().map(|kind| kind.as_str()).collect::<Vec<_>>()),
     )
     .bind(filters.worktree.as_deref())
+    .bind(filters.id_kinds.as_deref())
+    .bind(filters.gate_open)
+    .bind(filters.ddoc_schema.as_deref())
     .fetch_all(&mut *tx)
     .await?;
 
@@ -626,35 +703,25 @@ pub async fn search_elements(
         .collect()
 }
 
-/// Does `model_key` hold reachable content that `filters`' non-vector gates
-/// admit?
+/// Does `model_key` hold reachable content in `scope`?
 ///
-/// The question [`search_elements`] cannot answer for itself. A search that
-/// comes back empty has two very different causes — nothing eligible is
-/// indexed HERE, or something is and the ranking did not reach it — and the
-/// row shape looks identical for both, so the surface has to ask separately
-/// before it is entitled to say which one happened.
+/// This answers an OWNERSHIP question, not whether content predicates matched.
+/// [`AnchorScope`] makes every content filter unrepresentable so a legitimate
+/// empty result cannot become a false "repository is not indexed" diagnosis
+/// when a new predicate is added.
 ///
-/// This is [`search_elements`] with the vector taken out: the same anchor, the
-/// same kind gate, the same source-space gate, and nothing else. That
-/// correspondence is the whole value. A coarser probe — "does this repository
-/// have any vectors at all" — answers `true` for a repository holding only
-/// content the caller's filters exclude, and the surface would then report a
-/// starved scan where the truth was an empty filter. A diagnostic that is
-/// confidently wrong is worse than the shrug it replaced.
-///
-/// Raw vectors and live paths only, which is what makes it cheap and is why
-/// the caller must not ask it about conversations: a turn reaches its
-/// repository through its conversation's anchor and has no `worktree_files`
-/// row at all.
+/// Raw vectors and live paths only, which is what makes it cheap and excludes
+/// conversations: a turn reaches its repository through its conversation's
+/// anchor and has no `worktree_files` row at all.
 ///
 /// # Errors
 /// [`StoreError::Query`] on failure.
 pub async fn anchor_has_vectors(
     pool: &PgPool,
     model_key: &str,
-    filters: &SearchFilters,
+    scope: &AnchorScope<'_>,
 ) -> Result<bool, StoreError> {
+    // Bind map: $1 model, $2 repo, $3 path, $4 worktree. Content predicates have no slot.
     let found: bool = sqlx::query_scalar(
         "SELECT EXISTS (
              SELECT 1
@@ -667,25 +734,13 @@ pub async fn anchor_has_vectors(
                 AND e.source_kind = 'raw'
                 AND ($2::text IS NULL OR r.identity = $2)
                 AND ($3::text IS NULL OR f.path LIKE $3)
-                AND ($6::text IS NULL OR w.root_path = $6)
-                AND ($4::text[] IS NULL OR el.kind = ANY($4))
-                -- A smart-space search reads summary vectors, so eligibility
-                -- means the summary exists — not merely that the element does.
-                AND ($5::text IS NULL OR $5 <> 'smart'
-                     OR EXISTS (SELECT 1 FROM smart_content sc
-                                 WHERE sc.raw_hash = el.raw_hash)))",
+                AND ($4::text IS NULL OR w.root_path = $4)
+                )",
     )
     .bind(model_key)
-    .bind(filters.repo.as_deref())
-    .bind(filters.path.as_deref())
-    .bind(
-        filters
-            .kinds
-            .as_ref()
-            .map(|kinds| kinds.iter().map(|kind| kind.as_str()).collect::<Vec<_>>()),
-    )
-    .bind(filters.source.map(SourceKind::as_str))
-    .bind(filters.worktree.as_deref())
+    .bind(scope.repo)
+    .bind(scope.path)
+    .bind(scope.worktree)
     .fetch_one(pool)
     .await?;
 
@@ -694,7 +749,7 @@ pub async fn anchor_has_vectors(
 
 fn similar_from_row(row: &sqlx::postgres::PgRow) -> Result<SimilarElement, StoreError> {
     let kind: String = row.try_get("kind")?;
-    let element = Element::new(
+    let mut element = Element::new(
         kind_from_str(&kind)?,
         row.try_get::<String, _>("subkind")?,
         row.try_get::<String, _>("name")?,
@@ -706,6 +761,9 @@ fn similar_from_row(row: &sqlx::postgres::PgRow) -> Result<SimilarElement, Store
         row.try_get::<String, _>("raw_text")?,
     )
     .with_sibling_order(row.try_get::<i32, _>("sibling_order")? as u32);
+    element.ddoc = row
+        .try_get::<Option<Json<fs3_core::DdocMeta>>, _>("ddoc")?
+        .map(|Json(meta)| Box::new(meta));
 
     // Decoded by the same function `get_smart_content` uses. Two decoders is
     // how `extras` came to be dropped on one path and kept on the other, and

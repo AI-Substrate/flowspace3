@@ -307,6 +307,8 @@ pub enum SkipReason {
     Excluded,
     /// A data/config format, with `index_config_formats` off (PRD req 43).
     ConfigFormat,
+    /// A generated `*.dd.md` projection whose `*.dd.json` source is indexed.
+    GeneratedSibling,
     /// An extension fs3 has no opinion about — the observable no-grammar
     /// outcome PRD req 43 demands.
     UnsupportedExtension,
@@ -327,6 +329,7 @@ impl SkipReason {
         match self {
             SkipReason::Excluded => "excluded",
             SkipReason::ConfigFormat => "config-format",
+            SkipReason::GeneratedSibling => "generated-sibling",
             SkipReason::UnsupportedExtension => "unsupported-extension",
             SkipReason::TooLarge => "too-large",
             SkipReason::TooSmall => "too-small",
@@ -716,12 +719,23 @@ fn verdict(
         return Err(SkipReason::Excluded);
     }
     let family = LanguageFamily::for_path(relative);
-    match family {
-        LanguageFamily::Unknown => return Err(SkipReason::UnsupportedExtension),
-        LanguageFamily::Config if !settings.index_config_formats => {
-            return Err(SkipReason::ConfigFormat);
-        }
-        _ => {}
+    if family == LanguageFamily::Unknown {
+        return Err(SkipReason::UnsupportedExtension);
+    }
+    // A deterministic document is the one deliberate exception to the JSON
+    // exclusion. Keep it ahead of that branch: both full discovery and the
+    // watcher subtree path share this verdict.
+    if !crate::is_ddoc_source(relative)
+        && family == LanguageFamily::Config
+        && !settings.index_config_formats
+    {
+        return Err(SkipReason::ConfigFormat);
+    }
+    // Discovery has paths and sizes but has not opened text yet, so empty bytes
+    // deliberately select only the suffix half of the shared helper. A caller
+    // that owns bytes can additionally reject a renamed projection by banner.
+    if crate::is_generated_sibling(relative, b"") {
+        return Err(SkipReason::GeneratedSibling);
     }
     if bytes > settings.max_file_bytes {
         return Err(SkipReason::TooLarge);

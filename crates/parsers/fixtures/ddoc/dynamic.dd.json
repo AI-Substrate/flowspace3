@@ -1,0 +1,28 @@
+{
+  "dd": {
+    "schema": "builder/tasks",
+    "sweep_exclude": true
+  },
+  "sections": [
+    {
+      "name": "done_when",
+      "value": {
+        "tk-0001": {
+          "assertions": {
+            "required": [
+              {
+                "id": "dw-0002",
+                "text": "The full dynamic trail is retained",
+                "state": "unchecked",
+                "field_with_id": {
+                  "id": "dw-dead",
+                  "text": "This is row-owned data, not a nested row"
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

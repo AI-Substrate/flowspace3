@@ -1,0 +1,8 @@
+{
+  "scenario": "criteria-touching-source",
+  "rows": [
+    {"id":"R1","axis":"contract","type":"field-equals","params":{"field":"ok","value":true},"on_unavailable":"fail"},
+    {"id":"R2","axis":"absence","type":"results-empty","params":{},"on_unavailable":"fail"},
+    {"id":"R3","axis":"absence","type":"ground-truth-addresses-empty","params":{"reason":"dd-pr-12-file-edges-not-yet-produced"},"on_unavailable":"fail"}
+  ]
+}

@@ -288,6 +288,11 @@ impl DaemonClient {
         .await
     }
 
+    /// Read deterministic-document rows that reference one source path.
+    pub async fn refs(&self, query: &[(String, String)]) -> Envelope {
+        self.get_json("refs", "/refs", query).await
+    }
+
     /// Read one address in full.
     pub async fn get(&self, query: &[(String, String)]) -> Envelope {
         self.get_json("get", "/get", query).await

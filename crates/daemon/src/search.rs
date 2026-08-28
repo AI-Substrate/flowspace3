@@ -4,6 +4,14 @@
 //! query with the SAME embedder that wrote the vectors, hand the vector and the
 //! filters to the store, render what comes back.
 //!
+//! # Snap-in recipe
+//!
+//! This surface needs no new config, constructor, service, or route registration.
+//! Keep the existing `GET /search` route deserializing [`SearchRequest`] and the
+//! existing `GET /get` route deserializing [`crate::read::GetRequest`]. Parsed ddoc
+//! rows already arrive at `SearchHit.similar.element.ddoc`; [`render`] copies that
+//! value into [`Hit::ddoc`] and passes the element's dd address through verbatim.
+//!
 //! # Why the query embedder must be the repo's
 //!
 //! Vectors are only comparable within one model's space: cosine distance
@@ -30,16 +38,16 @@
 //! metadata. The store call must receive both `scope.repo` and
 //! `scope.worktree`; dropping the latter restores cross-checkout leakage.
 
-use fs3_core::ElementKind;
 use fs3_core::catalog;
 use fs3_core::envelope::Failure;
+use fs3_core::{DdocMeta, ElementKind};
 use fs3_store::{SearchFilters, SearchHit, SourceKind};
 use serde::{Deserialize, Serialize};
 
 use crate::runner::fail;
 use crate::scope::Scope;
 use crate::wiring::AppState;
-use fs3_core::views::search::Hit;
+use fs3_core::views::search::{DdocHit, Hit};
 
 /// What a caller asks for.
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
@@ -66,6 +74,16 @@ pub struct SearchRequest {
     /// How many hits.
     #[serde(default)]
     pub limit: Option<i64>,
+    /// Restrict ddoc rows to one raw minted-id prefix.
+    #[serde(default)]
+    pub id_kind: Option<String>,
+    /// Select known-open (`true`) or known-closed (`false`) ddoc rows.
+    /// Unknown gate state matches neither value; absent means no gate filter.
+    #[serde(default)]
+    pub gate_open: Option<bool>,
+    /// Restrict ddoc rows to one declared schema, verbatim.
+    #[serde(default)]
+    pub ddoc_schema: Option<String>,
 }
 
 /// The largest `--limit` a caller may ask for.
@@ -103,11 +121,12 @@ pub const WEAK_MATCH_SCORE_FLOOR: f64 = 0.50;
 /// Named exhaustively rather than as "everything except a turn", so that adding
 /// a content type is a decision someone makes here rather than an accident that
 /// silently starts blending it into code results.
-const CODE_KINDS: [ElementKind; 4] = [
+const CODE_KINDS: [ElementKind; 5] = [
     ElementKind::File,
     ElementKind::Container,
     ElementKind::Function,
     ElementKind::Section,
+    ElementKind::Row,
 ];
 
 fn weak_match_score(best: Option<f64>) -> bool {
@@ -256,7 +275,7 @@ pub async fn search(
             )
         })?;
 
-    let filters = SearchFilters {
+    let mut filters = SearchFilters {
         repo: scope.repo.clone(),
         worktree: scope.worktree.clone(),
         path: request.path.as_deref().map(glob_to_like),
@@ -264,7 +283,10 @@ pub async fn search(
         kinds,
         max_distance,
         limit: limit + 1,
+        ..SearchFilters::default()
     };
+
+    apply_ddoc_filters(&mut filters, request);
 
     let mut hits = fs3_store::search_elements(&state.db, &model_key, &vector, &filters)
         .await
@@ -329,13 +351,16 @@ pub async fn search(
 /// scoring below it, and the floor is the fact worth reporting rather than a
 /// shrug about the query.
 ///
-/// No floor, and an anchor was applied: nothing could have been rejected —
-/// every vector is within a cosine distance of 1.0 of every other — and
-/// [`anchor_not_indexed`] has just proven the anchor holds indexed content.
-/// An empty answer there is not an absence of matches, it is an approximate
-/// nearest-neighbour scan that ran out of budget before reaching this
-/// anchor's share of the index. Saying "nothing matched" is the lie this
-/// function exists to stop telling.
+/// No floor, an anchor, and NO selective content predicate: nothing could have
+/// been rejected — every vector is within a cosine distance of 1.0 of every
+/// other — and [`anchor_not_indexed`] has just proven the anchor holds indexed
+/// content. An empty answer there is not an absence of matches, it is an
+/// approximate nearest-neighbour scan that ran out of budget before reaching
+/// this anchor's share of the index.
+///
+/// Source and ddoc predicates can legitimately admit zero rows. In that case
+/// the scan cause is unproven, so `None` keeps the generic filtered-empty steer
+/// rather than telling the caller to wait for a scan that may already be done.
 ///
 /// No floor and no anchor, or a conversation search: nothing here has
 /// established that any reachable content exists — [`anchor_not_indexed`]
@@ -357,6 +382,14 @@ fn empty_because(filters: &SearchFilters, code: bool) -> Option<EmptyBecause> {
     }
 
     if !code {
+        return None;
+    }
+
+    if filters.source.is_some()
+        || filters.id_kinds.is_some()
+        || filters.gate_open.is_some()
+        || filters.ddoc_schema.is_some()
+    {
         return None;
     }
 
@@ -472,7 +505,12 @@ async fn anchor_not_indexed(
 
     // Best-effort like its caller: a diagnostic that cannot run must not
     // convert a successful empty answer into a failed command.
-    if fs3_store::anchor_has_vectors(&state.db, model_key, filters)
+    let scope = fs3_store::AnchorScope {
+        repo,
+        worktree,
+        path,
+    };
+    if fs3_store::anchor_has_vectors(&state.db, model_key, &scope)
         .await
         .ok()?
     {
@@ -530,6 +568,26 @@ fn render(hit: &SearchHit) -> Hit {
         repo: hit.identity.clone(),
         path: hit.path.clone(),
         worktree: hit.root_path.clone(),
+        ddoc: element.ddoc.as_deref().map(ddoc_hit),
+    }
+}
+
+/// Map stored ddoc metadata into the consumer-owned search view.
+fn ddoc_hit(meta: &DdocMeta) -> DdocHit {
+    DdocHit {
+        address: meta.address.clone(),
+        schema: meta.schema.clone(),
+        section: meta.section.clone(),
+        id: meta.id.clone(),
+        id_kind: meta.id_kind.clone(),
+        trail: meta.trail.clone(),
+        doc_title: meta.doc_title.clone(),
+        embed_basis: meta.embed_basis,
+        state_stored: meta.state.clone(),
+        state_derived: meta.derived_state.clone(),
+        gate_terminal: meta.gate_terminal,
+        rels: meta.rels.clone(),
+        findings: meta.findings.clone(),
     }
 }
 
@@ -548,10 +606,17 @@ fn render(hit: &SearchHit) -> Hit {
 /// repository for it would be a lie.
 fn address_of(hit: &SearchHit) -> String {
     let element = &hit.similar.element;
-    if element.kind == ElementKind::Turn {
+    if element.kind == ElementKind::Turn || element.kind == ElementKind::Row {
         return element.address.clone();
     }
     fs3_core::element_address(hit.identity.as_deref(), &element.address)
+}
+
+/// Apply only ddoc-specific predicates, preserving the gate's three states.
+fn apply_ddoc_filters(filters: &mut SearchFilters, request: &SearchRequest) {
+    filters.id_kinds = request.id_kind.clone().map(|kind| vec![kind]);
+    filters.gate_open = request.gate_open;
+    filters.ddoc_schema.clone_from(&request.ddoc_schema);
 }
 
 /// The first few lines of an element's text.
@@ -606,6 +671,7 @@ fn glob_to_like(glob: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use fs3_core::DerivedState;
 
     #[test]
     fn a_glob_becomes_a_like_pattern_with_its_metacharacters_escaped() {
@@ -640,6 +706,142 @@ mod tests {
         assert!((score(1.0) - 0.0).abs() < f64::EPSILON);
         // and a min_score of 0.7 must become a distance ceiling of 0.3
         assert!((1.0 - 0.7 - 0.3f64).abs() < 1e-9);
+    }
+
+    fn hit(element: fs3_core::Element) -> SearchHit {
+        SearchHit {
+            similar: fs3_store::SimilarElement {
+                element,
+                blob_sha: "a".repeat(40),
+                parser_version: "test@1".to_string(),
+                source_kind: SourceKind::Raw,
+                smart: None,
+                distance: 0.25,
+            },
+            identity: Some("git:host/org/repo".to_string()),
+            root_path: Some("/checkout".to_string()),
+            path: Some("docs/plan.dd.json".to_string()),
+        }
+    }
+
+    #[test]
+    fn ddoc_metadata_is_serialized_on_rows_and_the_key_is_absent_on_code() {
+        let address = "docs/plan.dd.json#acceptance_criteria/ac-0001";
+        let mut meta = DdocMeta::new(
+            address,
+            "builder/plan",
+            vec!["acceptance_criteria".to_string(), "ac-0001".to_string()],
+            fs3_core::EmbedBasis::SchemaDeclared,
+        );
+        meta.state = Some("checked".to_string());
+        meta.gate_terminal = Some(true);
+        meta.derived_state = Some(DerivedState {
+            complete: false,
+            incomplete: vec!["dw-0001".to_string()],
+        });
+        let row = fs3_core::Element::new(
+            ElementKind::Row,
+            "ddoc_row",
+            "ac-0001",
+            address,
+            fs3_core::Span::new(1, 1),
+            "criterion",
+        )
+        .with_ddoc(meta);
+        let row = serde_json::to_value(render(&hit(row))).expect("row hit serializes");
+        assert_eq!(row["address"], address);
+        assert_eq!(row["ddoc"]["state_stored"], "checked");
+        assert_eq!(row["ddoc"]["state_derived"]["complete"], false);
+
+        let code = fs3_core::Element::new(
+            ElementKind::Function,
+            "function_item",
+            "run",
+            "src/lib.rs::run",
+            fs3_core::Span::new(1, 1),
+            "fn run() {}",
+        );
+        let code = serde_json::to_value(render(&hit(code))).expect("code hit serializes");
+        assert!(
+            code.get("ddoc").is_none(),
+            "the shipped code-hit wire shape must omit ddoc entirely: {code}"
+        );
+    }
+
+    #[test]
+    fn embed_basis_surfaces_schema_declared_and_fallback_rows_only() {
+        let source = br#"{
+            "dd": {"schema": "builder/plan"},
+            "sections": [{"name": "acceptance_criteria", "value": [
+                {"id": "ac-0001", "claim": "Visible basis", "state": "unchecked"}
+            ]}]
+        }"#;
+        let facts = fs3_core::DdocSchemaFacts {
+            schema: "builder/plan".to_string(),
+            prose_fields: std::collections::BTreeMap::from([(
+                "acceptance_criteria".to_string(),
+                vec!["claim".to_string()],
+            )]),
+            ..fs3_core::DdocSchemaFacts::default()
+        };
+        let row = |facts| {
+            fs3_parsers::scan_ddoc(std::path::Path::new("docs/plan.dd.json"), source, facts)
+                .expect("ddoc parses")
+                .root
+                .iter()
+                .find(|element| element.kind == ElementKind::Row)
+                .expect("row exists")
+                .clone()
+        };
+
+        let declared = serde_json::to_value(render(&hit(row(Some(&facts)))))
+            .expect("schema-declared row serializes");
+        assert_eq!(declared["ddoc"]["embed_basis"], "schema_declared");
+
+        let fallback =
+            serde_json::to_value(render(&hit(row(None)))).expect("fallback row serializes");
+        assert_eq!(fallback["ddoc"]["embed_basis"], "fallback");
+
+        let code = fs3_core::Element::new(
+            ElementKind::Function,
+            "function_item",
+            "run",
+            "src/lib.rs::run",
+            fs3_core::Span::new(1, 1),
+            "fn run() {}",
+        );
+        let code = serde_json::to_value(render(&hit(code))).expect("code hit serializes");
+        assert!(code.get("ddoc").is_none());
+        assert!(!code.to_string().contains("embed_basis"));
+    }
+
+    #[test]
+    fn ddoc_filter_mapping_preserves_absent_open_and_closed() {
+        let mut filters = SearchFilters::default();
+        apply_ddoc_filters(&mut filters, &SearchRequest::default());
+        assert_eq!(filters.id_kinds, None);
+        assert_eq!(filters.gate_open, None);
+        assert_eq!(filters.ddoc_schema, None);
+
+        let request = SearchRequest {
+            id_kind: Some("ac".to_string()),
+            gate_open: Some(false),
+            ddoc_schema: Some("builder/plan".to_string()),
+            ..SearchRequest::default()
+        };
+        apply_ddoc_filters(&mut filters, &request);
+        assert_eq!(filters.id_kinds, Some(vec!["ac".to_string()]));
+        assert_eq!(filters.gate_open, Some(false));
+        assert_eq!(filters.ddoc_schema.as_deref(), Some("builder/plan"));
+
+        apply_ddoc_filters(
+            &mut filters,
+            &SearchRequest {
+                gate_open: Some(true),
+                ..SearchRequest::default()
+            },
+        );
+        assert_eq!(filters.gate_open, Some(true));
     }
 
     #[test]
