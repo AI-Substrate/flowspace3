@@ -41,6 +41,32 @@ pub fn temp_dir(label: &str) -> std::path::PathBuf {
     path
 }
 
+/// One test daemon's credential and isolated config directory.
+pub struct TestAuth {
+    pub auth: fs3_daemon::Auth,
+    pub key: String,
+    pub config_dir: std::path::PathBuf,
+}
+
+/// Give a test daemon its own config directory and mode-0600 key.
+pub fn auth(label: &str) -> TestAuth {
+    let config_dir = temp_dir(&format!("{label}-config"));
+    let key = format!("test-key-{}", unique_seed());
+    let key_path = fs3_core::daemon_key_path(&config_dir);
+    std::fs::write(&key_path, &key).expect("writing an isolated daemon key");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        std::fs::set_permissions(&key_path, std::fs::Permissions::from_mode(0o600))
+            .expect("restricting the isolated daemon key");
+    }
+    TestAuth {
+        auth: fs3_daemon::Auth::new(key.clone(), key_path),
+        key,
+        config_dir,
+    }
+}
+
 /// The database these tests may write to.
 ///
 /// No fallback: `FS3_TEST_DATABASE_URL` must be set explicitly, or the run

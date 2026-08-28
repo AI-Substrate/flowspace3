@@ -17,6 +17,7 @@
 
 use anyhow::{Context, Result};
 use axum::extract::{Query, State};
+use axum::middleware;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
@@ -24,6 +25,7 @@ use serde::{Deserialize, Serialize};
 use fs3_core::Port;
 
 use crate::answer::{Answer, IntoFailure, failed, ok};
+use crate::auth::Auth;
 use crate::conversations::{IntakeReport, IntakeRequest};
 use crate::read::{GetPayload, GetRequest, TreeRequest, TreeResult};
 use crate::roots::{RootReport, RootRequest};
@@ -50,8 +52,9 @@ impl Health {
 }
 
 /// Build the router. Separate from [`serve`] so tests get the real routes
-/// without owning a port or a runtime shutdown.
-pub fn router(state: AppState) -> Router {
+/// without owning a port or a runtime shutdown. Authentication is one outer
+/// layer, so every current and future route inherits it automatically.
+pub fn router(state: AppState, auth: Auth) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/roots", post(add_root).get(status))
@@ -65,6 +68,7 @@ pub fn router(state: AppState) -> Router {
         .route("/get", get(get_address))
         .route("/tree", get(tree))
         .with_state(state)
+        .layer(middleware::from_fn_with_state(auth, crate::auth::require))
 }
 
 async fn remove(
@@ -397,14 +401,14 @@ fn next_after_scan(report: &RootReport) -> String {
 ///
 /// # Errors
 /// When the address cannot be bound or the server fails.
-pub async fn serve(state: AppState, address: &str) -> Result<()> {
+pub async fn serve(state: AppState, address: &str, auth: Auth) -> Result<()> {
     let listener = tokio::net::TcpListener::bind(address)
         .await
         .with_context(|| format!("cannot bind {address}"))?;
     let bound = listener.local_addr().context("cannot read bound address")?;
     tracing::info!(%bound, "fs3 daemon listening");
 
-    axum::serve(listener, router(state))
+    axum::serve(listener, router(state, auth))
         .with_graceful_shutdown(shutdown_signal())
         .await
         .context("daemon stopped unexpectedly")
