@@ -22,8 +22,33 @@ use fs3_daemon::conversations::{ListRequest, list};
 use fs3_daemon::convo_ingest::{IngestRequest, conversation_guid, ingest, run};
 use fs3_daemon::wiring::AppState;
 
-const SESSION: &str = "a5a5588f-0979-439f-a1bf-ddf185a089c7";
+/// One session id per test. They share a process — `HOME` is global and the
+/// ingest lock is keyed on the conversation — so two tests on ONE session id
+/// contend with each other and one of them fails retryably. That is the reader
+/// working; it was this file racing. (Found in CI, which runs the three in
+/// parallel; locally they happened to interleave harmlessly.)
+const SESSION_LINK: &str = "a5a5588f-0979-439f-a1bf-ddf185a089c7";
+const SESSION_RERUN: &str = "b6b6699a-1a8a-4a3b-8b4c-ee2f96b19aa8";
+const SESSION_CONTENDED: &str = "c7c77aab-2b9b-4b4c-9c5d-ff3fa7c2abb9";
 const SIDECAR: &str = "agent-a01869bcb5e09448b";
+
+/// The ONE home every test in this file shares.
+///
+/// `std::env::set_var` is process-wide, so each test setting its own would race
+/// the others. One directory, written once, holding every session tree.
+fn shared_home() -> std::path::PathBuf {
+    static ONCE: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();
+    ONCE.get_or_init(|| {
+        let home = support::temp_dir("convo-ingest-home");
+        for session in [SESSION_LINK, SESSION_RERUN, SESSION_CONTENDED] {
+            session_tree(&home, session).expect("a scratch session tree");
+        }
+        // SAFETY: set once, to one value, before any test reads it.
+        unsafe { std::env::set_var("HOME", &home) };
+        home
+    })
+    .clone()
+}
 
 async fn stack(label: &str) -> (support::FreshDatabase, AppState) {
     let database = support::FreshDatabase::create(label).await;
@@ -39,9 +64,9 @@ async fn stack(label: &str) -> (support::FreshDatabase, AppState) {
 }
 
 /// One claude record, enough to be a turn the reader will emit.
-fn record(uuid: &str, kind: &str, text: &str) -> String {
+fn record(session: &str, uuid: &str, kind: &str, text: &str) -> String {
     format!(
-        r#"{{"type":"{kind}","uuid":"{uuid}","parentUuid":null,"sessionId":"{SESSION}","cwd":"{cwd}","timestamp":"2026-08-27T09:00:00Z","message":{{"role":"{role}","content":[{{"type":"text","text":"{text}"}}]}}}}"#,
+        r#"{{"type":"{kind}","uuid":"{uuid}","parentUuid":null,"sessionId":"{session}","cwd":"{cwd}","timestamp":"2026-08-27T09:00:00Z","message":{{"role":"{role}","content":[{{"type":"text","text":"{text}"}}]}}}}"#,
         cwd = "/srv/work/repo",
         role = if kind == "user" { "user" } else { "assistant" },
     )
@@ -52,17 +77,23 @@ fn record(uuid: &str, kind: &str, text: &str) -> String {
 /// Built rather than copied from the committed fixtures: those are byte-pinned
 /// and asserted unchanged, and this needs a `cwd` that matches the folder the
 /// ingest is asked for.
-fn session_tree(home: &Path) -> std::io::Result<()> {
+fn session_tree(home: &Path, session: &str) -> std::io::Result<()> {
     let slug = "-srv-work-repo";
     let projects = home.join(".claude/projects").join(slug);
-    std::fs::create_dir_all(projects.join(SESSION).join("subagents"))?;
+    std::fs::create_dir_all(projects.join(session).join("subagents"))?;
 
     std::fs::write(
-        projects.join(format!("{SESSION}.jsonl")),
+        projects.join(format!("{session}.jsonl")),
         format!(
             "{}\n{}\n",
-            record("11111111-1111-4111-8111-111111111111", "user", "parent ask"),
             record(
+                session,
+                "11111111-1111-4111-8111-111111111111",
+                "user",
+                "parent ask"
+            ),
+            record(
+                session,
                 "22222222-2222-4222-8222-222222222222",
                 "assistant",
                 "parent answer"
@@ -71,12 +102,17 @@ fn session_tree(home: &Path) -> std::io::Result<()> {
     )?;
     std::fs::write(
         projects
-            .join(SESSION)
+            .join(session)
             .join("subagents")
             .join(format!("{SIDECAR}.jsonl")),
         format!(
             "{}\n",
-            record("33333333-3333-4333-8333-333333333333", "user", "child ask"),
+            record(
+                session,
+                "33333333-3333-4333-8333-333333333333",
+                "user",
+                "child ask"
+            ),
         ),
     )?;
     Ok(())
@@ -85,16 +121,13 @@ fn session_tree(home: &Path) -> std::io::Result<()> {
 #[tokio::test]
 async fn a_sidecar_is_ingested_as_a_child_that_names_its_parent() {
     let (database, state) = stack("convo-ingest-sidecar").await;
-    let home = support::temp_dir("convo-ingest-home");
-    session_tree(&home).expect("a scratch session tree");
-    // SAFETY: single-threaded test; the reader resolves its store beneath HOME.
-    unsafe { std::env::set_var("HOME", &home) };
+    let _home = shared_home();
 
     let report = ingest(
         &state,
         &IngestRequest {
             pij_id: None,
-            session_id: Some(SESSION.to_string()),
+            session_id: Some(SESSION_LINK.to_string()),
             harness: Some("claude".to_string()),
             folder: Some("/srv/work/repo".to_string()),
         },
@@ -122,7 +155,7 @@ async fn a_sidecar_is_ingested_as_a_child_that_names_its_parent() {
     let parent = listed
         .conversations
         .iter()
-        .find(|row| row.title.as_deref() == Some(&format!("session {SESSION}")))
+        .find(|row| row.title.as_deref() == Some(&format!("session {SESSION_LINK}")))
         .expect("the main session is its own conversation");
 
     assert_eq!(
@@ -134,7 +167,6 @@ async fn a_sidecar_is_ingested_as_a_child_that_names_its_parent() {
     );
     assert_eq!(parent.parent, None, "a main session has no parent");
 
-    std::fs::remove_dir_all(&home).ok();
     database.destroy(state.db.clone()).await;
 }
 
@@ -148,14 +180,11 @@ async fn a_sidecar_is_ingested_as_a_child_that_names_its_parent() {
 #[tokio::test]
 async fn re_running_an_ingest_stores_nothing_a_second_time() {
     let (database, state) = stack("convo-ingest-rerun").await;
-    let home = support::temp_dir("convo-ingest-rerun-home");
-    session_tree(&home).expect("a scratch session tree");
-    // SAFETY: single-threaded test; the reader resolves its store beneath HOME.
-    unsafe { std::env::set_var("HOME", &home) };
+    let _home = shared_home();
 
     let request = IngestRequest {
         pij_id: None,
-        session_id: Some(SESSION.to_string()),
+        session_id: Some(SESSION_RERUN.to_string()),
         harness: Some("claude".to_string()),
         folder: Some("/srv/work/repo".to_string()),
     };
@@ -194,7 +223,6 @@ async fn re_running_an_ingest_stores_nothing_a_second_time() {
         "the conversation holds exactly what the first run put in it"
     );
 
-    std::fs::remove_dir_all(&home).ok();
     database.destroy(state.db.clone()).await;
 }
 
@@ -206,17 +234,14 @@ async fn re_running_an_ingest_stores_nothing_a_second_time() {
 #[tokio::test]
 async fn a_contended_conversation_fails_retryably_rather_than_settling_done() {
     let (database, state) = stack("convo-ingest-contended").await;
-    let home = support::temp_dir("convo-ingest-contended-home");
-    session_tree(&home).expect("a scratch session tree");
-    // SAFETY: single-threaded test; the reader resolves its store beneath HOME.
-    unsafe { std::env::set_var("HOME", &home) };
+    let _home = shared_home();
 
     // Hold the lock the way a concurrent poll would, on its own connection.
-    let guid = conversation_guid(Harness::Claude, SESSION);
+    let guid = conversation_guid(Harness::Claude, SESSION_CONTENDED);
     let holder =
         fs3_store::ingest_cursors::try_with_conversation_lock(&state.db, &guid, || async {
             let payload = serde_json::json!({
-                "session_id": SESSION,
+                "session_id": SESSION_CONTENDED,
                 "harness": "claude",
                 "folder": "/srv/work/repo",
             });
@@ -232,6 +257,5 @@ async fn a_contended_conversation_fails_retryably_rather_than_settling_done() {
         "and it must be RETRYABLE, so the runner re-runs it: {failure:?}"
     );
 
-    std::fs::remove_dir_all(&home).ok();
     database.destroy(state.db.clone()).await;
 }
