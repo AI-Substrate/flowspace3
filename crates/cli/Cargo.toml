@@ -22,6 +22,10 @@ fs3-store.workspace = true
 fs3-daemon.workspace = true
 
 anyhow.workspace = true
+anstream = "1"
+comfy-table = { version = "8", default-features = false, features = ["custom_styling"] }
+owo-colors = "4"
+textwrap = { version = "0.16", default-features = false, features = ["unicode-width", "smawk", "terminal_size"] }
 clap.workspace = true
 reqwest.workspace = true
 # PRD req-0053: content hash of the bundled skill. Already locked through

@@ -4,6 +4,13 @@ Search finds an address. `get` reads what is AT it, and `tree` browses what is
 around it. Together they are why an agent using fs3 does not need to shell out
 to `cat` and `ls` after a search.
 
+## Output shape
+
+A terminal receives the human reading view. A pipe, file, CI capture, or agent
+subprocess receives the JSON envelope with no flag. `--json` forces JSON
+anywhere. A harness inside a PTY such as tmux should export `FS3_OUTPUT=json`
+because the terminal probe otherwise looks human.
+
 ```bash
 flowspace3 search "how does the queue avoid two workers taking the same job"
 flowspace3 get el:git:github.com/org/repo/crates/store/src/jobs.rs::claim_job

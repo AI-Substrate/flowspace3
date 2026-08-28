@@ -1,0 +1,94 @@
+use comfy_table::{Cell, CellAlignment, ColumnConstraint, Width};
+use fs3_core::{envelope::Envelope, views::search::SearchResults};
+use owo_colors::OwoColorize;
+use serde_json::Value;
+
+use crate::render::{WIDTH, theme};
+
+const METER_CELLS: usize = 8;
+
+#[must_use]
+pub fn render(envelope: &Envelope<Value>) -> Option<String> {
+    let results: SearchResults = serde_json::from_value(envelope.data.clone()?).ok()?;
+    let count = results.results.len();
+    let mut out = theme::title(
+        "search",
+        &format!("{count} hit{}", if count == 1 { "" } else { "s" }),
+    );
+    out.push_str("\n\n");
+    if results.results.is_empty() {
+        out.push_str(&format!(
+            "{}{}\n",
+            theme::GUTTER,
+            "no hits — widen with --limit, drop --min-score, or `--repo all`".bright_black()
+        ));
+    } else {
+        let mut table = theme::table(WIDTH);
+        table.set_header([
+            theme::header("#"),
+            theme::header("score"),
+            theme::header("kind"),
+            theme::header("element"),
+            theme::header("tags"),
+        ]);
+        table
+            .column_mut(1)
+            .expect("search table has a score column")
+            .set_constraint(ColumnConstraint::Absolute(Width::Fixed(15)));
+        for (index, hit) in results.results.iter().enumerate() {
+            let mut kind = format!("{}", hit.kind.bright_white());
+            if !hit.subkind.is_empty() && hit.subkind != hit.kind {
+                kind.push_str(&format!("\n{}", hit.subkind.bright_black()));
+            }
+            if !hit.match_field.is_empty() {
+                kind.push_str(&format!("\n{}", hit.match_field.blue()));
+            }
+            let mut element = format!("{}", hit.name.bold().bright_white());
+            element.push_str(&format!(
+                "  {}\n{}",
+                format!("[{}-{}]", hit.span[0], hit.span[1]).bright_black(),
+                hit.address.bright_black()
+            ));
+            if let Some(blurb) = hit
+                .smart
+                .as_deref()
+                .filter(|value| !value.trim().is_empty())
+                .or_else(|| {
+                    hit.snippet
+                        .lines()
+                        .map(str::trim)
+                        .find(|line| !line.is_empty())
+                })
+            {
+                element.push_str(&format!("\n{}", blurb.bright_black()));
+            }
+            let tags = if hit.tags.is_empty() {
+                format!("{}", "—".bright_black())
+            } else {
+                hit.tags
+                    .iter()
+                    .map(|tag| format!("{}", tag.cyan()))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            };
+            table.add_row([
+                Cell::new(index + 1).set_alignment(CellAlignment::Right),
+                Cell::new(theme::score_meter(hit.score, METER_CELLS)),
+                Cell::new(kind),
+                Cell::new(element),
+                Cell::new(tags),
+            ]);
+        }
+        out.push_str(&theme::block(&table));
+    }
+    append_next(&mut out, envelope);
+    Some(out)
+}
+
+fn append_next(out: &mut String, envelope: &Envelope<Value>) {
+    if let Some(next) = &envelope.next_action {
+        out.push('\n');
+        out.push_str(&theme::next_action(next, usize::from(WIDTH)));
+        out.push('\n');
+    }
+}

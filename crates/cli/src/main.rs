@@ -14,7 +14,7 @@
 //! (`fs3_cli::render`). The two views cannot disagree, because one is made out
 //! of the other.
 
-use std::io::IsTerminal;
+use std::io::{IsTerminal, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::OnceLock;
@@ -418,7 +418,14 @@ async fn run(command: Command) -> Result<ExitCode> {
         Command::Ping { daemon_url: url } => ping(url).await,
         Command::Add { path, daemon_url } => {
             let client = client_for(daemon_url)?;
-            Ok(emit(&client.add(&display(&path)).await))
+            let path = display(&path);
+            let envelope = match output_mode() {
+                OutputMode::Human => {
+                    render::progress::while_pending(client.base_url(), client.add(&path)).await
+                }
+                OutputMode::Json => client.add(&path).await,
+            };
+            Ok(emit(&envelope))
         }
         Command::Remove { path, daemon_url } => {
             let client = client_for(daemon_url)?;
@@ -430,7 +437,14 @@ async fn run(command: Command) -> Result<ExitCode> {
         }
         Command::Scan { path, daemon_url } => {
             let client = client_for(daemon_url)?;
-            Ok(emit(&client.scan(&display(&path)).await))
+            let path = display(&path);
+            let envelope = match output_mode() {
+                OutputMode::Human => {
+                    render::progress::while_pending(client.base_url(), client.scan(&path)).await
+                }
+                OutputMode::Json => client.scan(&path).await,
+            };
+            Ok(emit(&envelope))
         }
         Command::Status { daemon_url } => {
             let client = client_for(daemon_url)?;
@@ -620,7 +634,10 @@ fn emit<T: serde::Serialize>(envelope: &Envelope<T>) -> ExitCode {
                     .and_then(render::render),
             };
             match screen {
-                Some(text) => print!("{text}"),
+                Some(text) => {
+                    let mut stdout = anstream::stdout();
+                    let _ = write!(stdout, "{text}");
+                }
                 None => println!("{json}"),
             }
         }

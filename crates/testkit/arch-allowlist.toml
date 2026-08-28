@@ -219,13 +219,17 @@ external = [
 internal = ["fs3-core", "fs3-daemon", "fs3-store", "fs3-testkit@dev"]
 external = [
   "anyhow",
+  "anstream",
   "clap",
+  "comfy-table",
   "reqwest",
+  "owo-colors",
   # PRD req-0053: sha256 of the bundled skill's content — pure computation, no IO.
   "sha2",
   "serde",
   "serde_json",
   "tokio",
+  "textwrap",
   "toml",
   # DEV only: doctor's daemon row is probed against a stub /health server — a
   # fake, not a mock (workshop 001 rule 5).
