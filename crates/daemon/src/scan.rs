@@ -77,6 +77,9 @@ pub fn scan_ddoc_bytes(
 }
 
 fn earns_enrichment(element: &Element, min_lines: u32) -> bool {
+    if element.raw_text.is_empty() {
+        return false;
+    }
     match element.kind {
         ElementKind::File => false,
         ElementKind::Row => element.raw_text.lines().count() >= min_lines as usize,
@@ -186,13 +189,11 @@ pub async fn run(state: &AppState, value: serde_json::Value) -> Result<(), Failu
         .await
         .map_err(fail)?
     {
-        if is_ddoc && ddoc::needs_reenrichment(&stored, tooling) {
-            let mut tree = fs3_core::ElementTree {
-                path: job.path.clone(),
-                blob: blob.clone(),
-                has_error: false,
-                root: stored,
-            };
+        if is_ddoc && !tooling.is_absent() {
+            // A presented ddoc consumes the whole current snapshot. Trying to
+            // enumerate schema, graph, validation, or producer changes here
+            // would retain stale parse-level decisions by omission.
+            let mut tree = scan_ddoc_bytes(path, &bytes, tooling).map_err(fail)?;
             let findings = ddoc::validate(Path::new(&worktree.root_path), &absolute).await;
             ddoc::enrich_tree(&mut tree, tooling, &findings);
             persist_tree(state, &blob, &mut tree, tooling, true, &enrich_policy).await?;
@@ -272,7 +273,17 @@ mod tests {
             span,
             "line\n".repeat(10),
         );
+        let container = Element::new(
+            ElementKind::Container,
+            "ddoc_section",
+            "rows",
+            "doc#rows",
+            span,
+            "",
+        )
+        .with_children(vec![long.clone()]);
 
+        assert!(!earns_enrichment(&container, 10));
         assert!(!earns_enrichment(&short, 10));
         assert!(earns_enrichment(&long, 10));
     }
