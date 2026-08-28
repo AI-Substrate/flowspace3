@@ -251,8 +251,11 @@ async function runNew(ctx: V2VerbContext): Promise<VerbResult> {
     const folder = scaffolded.data.folder;
     const seeded: string[] = [];
     for (const name of TEMPLATES) {
-      if (!fsWrite.copy(join(templateDir, name), folder, { confineRoot: worktree })) {
-        throw new Error(`could not copy template ${name} into ${folder}`);
+      // `confineRoot` confines the SOURCE: the bytes must come from inside the
+      // skill's template folder, resolved, so a swapped symlink cannot redirect
+      // the read into something else on the way past.
+      if (!fsWrite.copy(join(templateDir, name), folder, { confineRoot: templateDir })) {
+        throw new Error(`could not copy template ${name} from ${templateDir} into ${folder}`);
       }
       seeded.push(join(folder, name));
     }
