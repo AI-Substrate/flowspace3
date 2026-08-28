@@ -1,0 +1,31 @@
+crates/core/src/lib.rs
+  s_59d749bfeff5de::t_ddeb513a0029b9 21,52-56
+crates/core/src/ddoc.rs
+  s_15d888f4b629c1::t_e4bc54ce547d58 1-667
+crates/core/src/element.rs
+  s_15d888f4b629c1::t_a558785df711bf 50-58,70,220-231,255,266-272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f13186b8adb466fe4100a752d1174114283b1482",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_59d749bfeff5de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae4199d-c737-4ac3-a856-7e69531e4bab",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
