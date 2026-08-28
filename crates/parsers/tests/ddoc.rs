@@ -145,6 +145,24 @@ fn missing_schema_facts_use_the_explicit_fallback() {
 }
 
 #[test]
+fn a_resolved_section_with_no_prose_embeds_only_its_parent_trail() {
+    let schema = DdocSchemaFacts {
+        schema: "fixture/no-prose".into(),
+        ..DdocSchemaFacts::default()
+    };
+    let tree = scan_ddoc(Path::new("docs/plain.dd.json"), PLAIN, Some(&schema)).unwrap();
+    let first = rows(&tree)[0];
+
+    assert_eq!(
+        first.ddoc.as_deref().unwrap().embed_basis,
+        EmbedBasis::SchemaDeclared
+    );
+    assert_eq!(first.raw_text, "acceptance_criteria");
+    assert!(!first.raw_text.contains("claim:"));
+    assert!(!first.raw_text.contains("note:"));
+}
+
+#[test]
 fn a_string_only_schema_section_stays_schema_declared() {
     let schema = DdocSchemaFacts {
         schema: "fixture/string-only".into(),

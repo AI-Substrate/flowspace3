@@ -277,18 +277,19 @@ fn row_text(
     }
 
     if let Some(facts) = facts {
-        let prose_fields = facts.prose_fields.get(section);
-        let string_fields = facts.string_fields.get(section);
-        if prose_fields.is_some() || string_fields.is_some() {
-            append_fields(&mut lines, row, prose_fields.map_or(&[], Vec::as_slice), "");
-            append_fields(
-                &mut lines,
-                row,
-                string_fields.map_or(&[], Vec::as_slice),
-                "context ",
-            );
-            return (lines.join("\n"), EmbedBasis::SchemaDeclared);
-        }
+        append_fields(
+            &mut lines,
+            row,
+            facts.prose_fields.get(section).map_or(&[], Vec::as_slice),
+            "",
+        );
+        append_fields(
+            &mut lines,
+            row,
+            facts.string_fields.get(section).map_or(&[], Vec::as_slice),
+            "context ",
+        );
+        return (lines.join("\n"), EmbedBasis::SchemaDeclared);
     }
 
     for (field, value) in row {
