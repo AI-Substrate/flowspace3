@@ -41,6 +41,14 @@ fn config_for(daemon_url: &str) -> fs3_core::Config {
 
 /// Run doctor against a credential that belongs only to this test invocation.
 async fn run(config: &fs3_core::Config) -> fs3_core::Envelope<doctor::DoctorReport> {
+    // Doctor now reads the whole `Effective` — it reports how configuration was
+    // LOADED as well as what it says. These tests care only about the config,
+    // so they wrap it in an otherwise-empty Effective.
+    let effective = fs3_core::Effective {
+        config: config.clone(),
+        layers: Default::default(),
+        has_file: false,
+    };
     let directory = tempfile::tempdir().expect("an isolated config directory");
     let key_path = fs3_core::daemon_key_path(directory.path());
     std::fs::write(&key_path, "doctor-test-key").expect("writing the daemon key");
@@ -50,7 +58,7 @@ async fn run(config: &fs3_core::Config) -> fs3_core::Envelope<doctor::DoctorRepo
         std::fs::set_permissions(&key_path, std::fs::Permissions::from_mode(0o600))
             .expect("restricting the daemon key");
     }
-    doctor::run(config, directory.path()).await
+    doctor::run(&effective, directory.path()).await
 }
 
 #[tokio::test]

@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "slug": "answerable-pij-revive-liveness",
+  "title": "Pij reboot-stale attachment classification",
+  "lane": "answerable",
+  "request": {
+    "question": "Why can pij not treat a live PID or tmux pane id alone as proof that an old attachment survived a reboot, and what does it do when liveness remains uncertain?",
+    "cwd": null,
+    "repo": "git:github.com/AI-Substrate/pij"
+  },
+  "assertions": "assertions.json",
+  "ground_truth": {
+    "verified_at": "2026-08-28",
+    "search_query": "how does pij decide whether a peer is alive or stale",
+    "addresses": [
+      "el:git:github.com/AI-Substrate/pij/docs/how/pij-reboot-rehydrate.md::Coming back after a reboot::\"Is that old attachment dead?\""
+    ],
+    "resolution": "Address returned ok=true via flowspace3 get at span [73,144].",
+    "source_facts": [
+      "Operating systems recycle PIDs and new tmux servers recycle pane ids, so either identifier can name an unrelated process after reboot.",
+      "An uncertain classification blocks writes; revive --print remains read-only, while --assume-dead is an explicit operator override.",
+      "A terminal observation of unavailable proves nothing and does not count."
+    ]
+  }
+}

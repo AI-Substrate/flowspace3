@@ -6,12 +6,16 @@
 //! **zero doubles**.
 //!
 //! Workshop 001 rule 3 — a trait earns its existence only when a second real
-//! implementation exists or is firmly planned. fs3 has three ports:
-//! [`Embedder`], [`Summarizer`] and [`ConversationSource`] — the last ruled by
-//! prime on 2026-08-28 (plan 005) and shipping four real implementations on
-//! day one. A FOURTH is stop-and-ask.
+//! implementation exists or is firmly planned. fs3 has FOUR ports:
+//! [`Embedder`], [`Summarizer`], [`ChatProvider`] and [`ConversationSource`].
+//! The last two were asked for and granted on the same day, 2026-08-28, by two
+//! plans that did not know about each other: `ask` needs a CHAT model, which is
+//! a different model from the one that summarises in bulk, and plan 005's
+//! readers ship four real implementations of a session store on day one. A
+//! FIFTH is stop-and-ask.
 
 pub mod address;
+pub mod agent;
 pub mod catalog;
 pub mod classify;
 pub mod config;
@@ -33,6 +37,9 @@ pub mod update;
 pub use address::{
     Address, AddressError, ConversationAddress, ElementAddress, ElementParts, element_address,
     element_path,
+};
+pub use agent::{
+    AgentAnswer, AgentBounds, SYSTEM_PROMPT, StopReason, ToolBox, ToolOutcome, TraceEntry, ask,
 };
 pub use catalog::{Area, Code};
 pub use classify::{category_hint, classify, is_declaration_shaped};
@@ -67,7 +74,9 @@ pub use logging::{
     LOG_FILE_NAME, LOGGING_SOURCE, resolve_log_dir, rolled_name, unwritable_message,
 };
 pub use messages::{Severity, UserMessage};
-pub use ports::{Embedder, Summarizer, Summary};
+pub use ports::{
+    ChatMessage, ChatProvider, ChatTurn, Embedder, Summarizer, Summary, ToolCall, ToolSchema,
+};
 pub use skew::{SCHEMA_SOURCE, SchemaSkew};
 pub use tokens::{BYTES_PER_TOKEN, estimate_tokens, fit_to_cap};
 pub use update::{UPDATE_SOURCE, UpdateState, Version, is_upgrade};

@@ -1,6 +1,6 @@
 ---
 name: flowspace
-description: Use flowspace3 as a semantic search tool over the central code index — detect it, ask meaning-shaped questions of indexed code, read the JSON envelope, follow up on el: addresses. Use when locating where something happens by meaning rather than exact text, or when asked to search the flowspace index.
+description: Use flowspace3 as a semantic search tool over the central code index — detect it, search by meaning, read the JSON envelope, follow up on el: addresses, and use `flowspace3 ask` when a question needs an ANSWER assembled across several places rather than a list of hits. Use when locating where something happens by meaning rather than exact text, when asking how or why something works, or when asked to search the flowspace index.
 ---
 
 # flowspace — search code by meaning
@@ -126,6 +126,71 @@ content out of the index, so you never guess which checkout on disk it came from
 address matches several (`struct Rect` and `impl Rect` share one address by design —
 the error lists the candidates and the span to pass).
 
+## 4c. Ask — when you want an answer, not hits
+
+```bash
+flowspace3 ask "how does the watcher decide what to rescan?"
+```
+
+`search` hands you ranked places to look. `ask` runs a bounded agent loop that does
+the looking for you: it searches, reads the addresses that matter, and returns a
+written answer citing what it read — or says plainly that it could not find it.
+
+**It is not a faster search. It is a slower, dearer one that thinks.** A search is
+one embedding and a query; an ask is many model calls, typically 15–30 seconds and
+real tokens. Reach for it when the answer lives in several places at once and you
+would otherwise read five files to assemble it. For "where is X handled", search.
+
+### Scope it, or you pay to read the world
+
+**A bare ask is about the repository you are standing in**, exactly like search.
+That default is usually right and always cheap.
+
+| flag | effect |
+|---|---|
+| *(none)* | the repository you are standing in |
+| `--repo <identity>` | one named repository |
+| `--repo all` | EVERY indexed repository — more searching, more tokens, slower |
+
+Use `--repo all` deliberately, when the answer genuinely crosses repositories
+("compare how A and B each do X"), not as a default. Widening multiplies the work on
+a many-repo index, and a question whose answer is local gets no better for it.
+
+The loop narrows further on its own — it passes path globs and its own repo argument
+to the same filters `search` exposes — so a question phrased with real nouns
+("the daemon's job queue", not "the queue") scopes itself.
+
+### Reading the report
+
+```json
+{ "ok": true, "command": "ask", "v": 1,
+  "data": {
+    "answer": "The watcher rescans at directory granularity…",
+    "grounded": true,
+    "citations": ["el:git:github.com/org/repo/crates/daemon/src/watch.rs::relist"],
+    "trace": [ { "iteration": 1, "tool": "search", "failed": false, "evidence": true } ],
+    "stopped": "answered", "iterations": 5, "tokens_used": null,
+    "model": "gpt-4o" } }
+```
+
+- **`citations` is what the loop actually READ**, recorded by the tool layer — not
+  the model's own "Sources:" list, which is prose and can be wrong. Verify any claim
+  by running `get` on one.
+- **`grounded: false` means the answer rests on nothing the loop read.** The loop
+  pushes back once and demands evidence before allowing it, so a `false` here is a
+  model that insisted. Treat that answer as a guess.
+- **`stopped`** is `answered`, `max_iterations` or `token_budget`. Only `answered`
+  carries an answer; a bounded run returns `null` rather than inventing one, and the
+  fix is a narrower question or higher `[agent]` bounds.
+- **`trace[].evidence`** distinguishes a call that WORKED AND FOUND NOTHING
+  (`failed: false, evidence: false`) from one that BROKE (`failed: true`). Both are
+  survivable — bad tool calls are fed back to the model, which corrects itself.
+- **"I could not find it" is a correct answer**, not a failure. The verb is built to
+  prefer an honest not-found over a plausible invention, because a confident wrong
+  answer about your own codebase is worse than no answer: you cannot tell it from a
+  right one.
+- `tokens_used: null` means the provider reported no usage. Null is not zero.
+
 ## 5. Why semantic — the judgment
 
 - **The index** answers meaning-shaped questions — "where do we handle X", "how does
@@ -134,9 +199,14 @@ the error lists the candidates and the span to pass).
   what the code says.
 - **Your own grep/ripgrep** answers exact-identifier lookups: a symbol, an error
   string, a literal. Exact text matching is grep's job; do not ask the index to do it.
-- The question decides: if you can phrase it without knowing any identifier, ask the
-  index; if you already hold an exact string, grep. When one side comes back empty or
-  weak, try the other — that loop, not a rule, is the judgment.
+- **`ask`** answers questions that need assembling — "how does X work", "why is Y
+  done this way", "compare how A and B do Z" — where the reply you want is prose with
+  citations rather than a list of places. It costs model calls and tens of seconds,
+  so it earns its keep on synthesis, not on lookup.
+- The question decides: if you already hold an exact string, grep. If you can phrase
+  it without knowing any identifier and you want somewhere to look, search. If you
+  want the answer itself and it spans several places, ask. When one side comes back
+  empty or weak, try the other — that loop, not a rule, is the judgment.
 
 ## 6. Failure paths
 
@@ -148,4 +218,6 @@ not a restatement of what went wrong. **Trust the fix field.**
 | Empty results although the index looks full | the active embedder may not be the one that built the index — vectors are only read under the model key that wrote them. Check what is active (`doctor`); if they disagree, re-index: `flowspace3 add .` |
 | Daemon down | `FS3-E-DAEMON-UNAVAILABLE` → `flowspace3 daemon &` (doctor diagnoses but never starts one) |
 | Repo not indexed | `status` shows no root for it → `flowspace3 add /abs/path` |
+| `ask` returned `grounded: false` | it answered without reading anything — treat it as a guess. Check `status` in case nothing is indexed here, then re-ask more narrowly |
+| `ask` stopped at a bound | `stopped` names which; ask a narrower question, or raise `[agent] max_iterations` / `token_budget` |
 | Anything else | `ok: false` → run the `fix`; `retryable: false` means stop and fix something, do not loop |
