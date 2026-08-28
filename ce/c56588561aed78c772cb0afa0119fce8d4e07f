@@ -1,0 +1,14 @@
+crates/daemon/tests/convo_ingest_sidecar.rs
+  h_9e71e8b09f7cf2 25-32,35-52,67,69,80,83,86,90-96,105,110-115,124,130,158,183,187,237,240,244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cec56588561aed78c772cb0afa0119fce8d4e07f",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
