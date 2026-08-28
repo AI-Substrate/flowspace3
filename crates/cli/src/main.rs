@@ -6,6 +6,8 @@
 //! later, and building it now would mean two output paths to keep honest
 //! instead of one.
 
+use std::fmt;
+use std::io::{self, Write as _};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -344,11 +346,15 @@ fn main() -> ExitCode {
 
     match outcome {
         Ok(code) => code,
+        Err(error) if is_broken_pipe(&error) => ExitCode::SUCCESS,
         Err(error) => {
             // `{error:#}` prints the whole anyhow context chain on one line,
             // so the doctor suggestion is never truncated away.
-            eprintln!("flowspace3: {error:#}");
-            ExitCode::from(EXIT_ERROR)
+            match write_stderr(format_args!("flowspace3: {error:#}\n")) {
+                Ok(()) => ExitCode::from(EXIT_ERROR),
+                Err(error) if error.kind() == io::ErrorKind::BrokenPipe => ExitCode::SUCCESS,
+                Err(_) => ExitCode::from(EXIT_ERROR),
+            }
         }
     }
 }
@@ -368,23 +374,23 @@ async fn run(command: Command) -> Result<ExitCode> {
         Command::Ping { daemon_url: url } => ping(url).await,
         Command::Add { path, daemon_url } => {
             let client = client_for(daemon_url)?;
-            Ok(emit(&client.add(&display(&path)).await))
+            emit(&client.add(&display(&path)).await)
         }
         Command::Remove { path, daemon_url } => {
             let client = client_for(daemon_url)?;
-            Ok(emit(&client.remove(&display(&path)).await))
+            emit(&client.remove(&display(&path)).await)
         }
         Command::Gc { daemon_url } => {
             let client = client_for(daemon_url)?;
-            Ok(emit(&client.gc().await))
+            emit(&client.gc().await)
         }
         Command::Scan { path, daemon_url } => {
             let client = client_for(daemon_url)?;
-            Ok(emit(&client.scan(&display(&path)).await))
+            emit(&client.scan(&display(&path)).await)
         }
         Command::Status { daemon_url } => {
             let client = client_for(daemon_url)?;
-            Ok(emit(&client.status().await))
+            emit(&client.status().await)
         }
         Command::Search {
             query,
@@ -403,7 +409,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             push(&mut params, "min_score", min_score.map(|v| v.to_string()));
             push(&mut params, "source", source);
             push(&mut params, "cwd", here());
-            Ok(emit(&client.search(&params).await))
+            emit(&client.search(&params).await)
         }
         Command::Get {
             address,
@@ -422,7 +428,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             push(&mut params, "after", after.map(|v| v.to_string()));
             push(&mut params, "repo", repo);
             push(&mut params, "cwd", here());
-            Ok(emit(&client.get(&params).await))
+            emit(&client.get(&params).await)
         }
         Command::Tree {
             target,
@@ -438,7 +444,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             push(&mut params, "limit", limit.map(|v| v.to_string()));
             push(&mut params, "repo", repo);
             push(&mut params, "cwd", here());
-            Ok(emit(&client.tree(&params).await))
+            emit(&client.tree(&params).await)
         }
         Command::Conversation {
             command:
@@ -458,7 +464,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             // recent decision.
             let import =
                 fs3_cli::conversation::read(&file, guid, repo, worktree.or_else(here), title)?;
-            Ok(emit(&client.conversation_import(&import.body).await))
+            emit(&client.conversation_import(&import.body).await)
         }
         Command::Conversation {
             command:
@@ -472,18 +478,18 @@ async fn run(command: Command) -> Result<ExitCode> {
             let mut params = Vec::new();
             push(&mut params, "repo", repo);
             push(&mut params, "path", path);
-            Ok(emit(&client.conversation_list(&params).await))
+            emit(&client.conversation_list(&params).await)
         }
         Command::Conversation {
             command: ConversationCommand::Remove { guid, daemon_url },
         } => {
             let client = client_for(daemon_url)?;
-            Ok(emit(&client.conversation_remove(&guid).await))
+            emit(&client.conversation_remove(&guid).await)
         }
         Command::Doctor {
             config_dir: _,
             command: Some(DoctorCommand::InstallSkill),
-        } => Ok(emit(&skill::install()?)),
+        } => emit(&skill::install()?),
         Command::Doctor {
             config_dir,
             command: Some(DoctorCommand::Upgrade),
@@ -493,7 +499,7 @@ async fn run(command: Command) -> Result<ExitCode> {
                 None => settings::config_dir()?,
             };
             let effective = settings::load_effective_from(&dir)?;
-            Ok(emit(&fs3_cli::upgrade::upgrade(&effective.config).await))
+            emit(&fs3_cli::upgrade::upgrade(&effective.config).await)
         }
         Command::Doctor {
             config_dir,
@@ -504,12 +510,12 @@ async fn run(command: Command) -> Result<ExitCode> {
                 None => settings::config_dir()?,
             };
             let effective = settings::load_effective_from(&dir)?;
-            Ok(emit(&doctor::run(&effective.config, &dir).await))
+            emit(&doctor::run(&effective.config, &dir).await)
         }
-        Command::Docs { command } => Ok(match command {
+        Command::Docs { command } => match command {
             DocsCommand::List => emit(&fs3_cli::docs::list()),
             DocsCommand::Get { topic } => emit(&fs3_cli::docs::get(&topic)),
-        }),
+        },
         Command::AgentsStartHere => {
             let envelope = fs3_cli::docs::get("agents");
             let envelope = match envelope.data {
@@ -520,7 +526,7 @@ async fn run(command: Command) -> Result<ExitCode> {
                 ),
                 None => envelope,
             };
-            Ok(emit(&envelope))
+            emit(&envelope)
         }
         Command::Config {
             command: ConfigCommand::Show { config_dir },
@@ -543,23 +549,41 @@ async fn run(command: Command) -> Result<ExitCode> {
 /// conditions print BEFORE the failure, because a message like "a newer binary
 /// is waiting for a restart" is very often the explanation for the failure
 /// underneath it.
-fn emit<T: serde::Serialize>(envelope: &Envelope<T>) -> ExitCode {
+fn emit<T: serde::Serialize>(envelope: &Envelope<T>) -> Result<ExitCode> {
     match serde_json::to_string_pretty(envelope) {
-        Ok(json) => println!("{json}"),
-        Err(error) => eprintln!("flowspace3: cannot render the response: {error}"),
+        Ok(json) => write_stdout(format_args!("{json}\n"))?,
+        Err(error) => write_stderr(format_args!(
+            "flowspace3: cannot render the response: {error}\n"
+        ))?,
     }
 
     for message in &envelope.messages {
-        eprintln!("flowspace3: {}", message.render());
+        write_stderr(format_args!("flowspace3: {}\n", message.render()))?;
     }
 
-    match &envelope.error {
+    Ok(match &envelope.error {
         None => ExitCode::SUCCESS,
         Some(failure) => {
-            eprintln!("{}", failure.render());
+            write_stderr(format_args!("{}\n", failure.render()))?;
             ExitCode::from(EXIT_ERROR)
         }
-    }
+    })
+}
+
+fn write_stdout(arguments: fmt::Arguments<'_>) -> io::Result<()> {
+    io::stdout().lock().write_fmt(arguments)
+}
+
+fn write_stderr(arguments: fmt::Arguments<'_>) -> io::Result<()> {
+    io::stderr().lock().write_fmt(arguments)
+}
+
+fn is_broken_pipe(error: &anyhow::Error) -> bool {
+    error.chain().any(|cause| {
+        cause
+            .downcast_ref::<io::Error>()
+            .is_some_and(|error| error.kind() == io::ErrorKind::BrokenPipe)
+    })
 }
 
 fn push(params: &mut Vec<(String, String)>, name: &str, value: Option<String>) {
@@ -613,7 +637,7 @@ fn config_show(override_dir: Option<PathBuf>) -> Result<()> {
     };
     let effective = settings::load_effective_from(&dir)?;
 
-    print!(
+    write_stdout(format_args!(
         "{}",
         show::render(
             &effective,
@@ -621,7 +645,7 @@ fn config_show(override_dir: Option<PathBuf>) -> Result<()> {
             settings::config_path(&dir).exists(),
             settings::secrets_path(&dir).exists(),
         )
-    );
+    ))?;
     Ok(())
 }
 
@@ -637,12 +661,12 @@ async fn ping(override_url: Option<String>) -> Result<ExitCode> {
         );
     }
 
-    println!(
-        "healthy - fs3 daemon {} at {} (embedder: {}, summarizer: {})",
+    write_stdout(format_args!(
+        "healthy - fs3 daemon {} at {} (embedder: {}, summarizer: {})\n",
         health.version,
         client.base_url(),
         health.embedder,
         health.summarizer
-    );
+    ))?;
     Ok(ExitCode::SUCCESS)
 }
