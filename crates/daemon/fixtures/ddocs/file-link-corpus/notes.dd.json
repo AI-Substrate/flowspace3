@@ -1,5 +1,5 @@
 {
-  "dd": { "schema": "render/filelinks", "spec": "dd@1" },
+  "dd": { "schema": "render/filelinks", "spec": "dd@1", "sweep_exclude": true },
   "sections": [
     { "name": "meta", "value": { "title": "Nested file links" } },
     {
