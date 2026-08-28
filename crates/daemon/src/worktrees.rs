@@ -130,22 +130,28 @@ where
 
     for worktree in registered {
         let root = PathBuf::from(&worktree.root_path);
-        match exists(&root)
-            .with_context(|| format!("checking registered root {}", root.display()))?
-        {
-            true => {
+        match exists(&root) {
+            Ok(true) => {
                 missing.remove(&root);
                 anchors
                     .entry(worktree.identity.as_str())
                     .or_default()
                     .push(root);
             }
-            false => {
+            Ok(false) => {
                 let observations = missing.entry(root.clone()).or_default();
                 *observations = observations.saturating_add(1);
                 if *observations >= MISSING_PASSES_BEFORE_REMOVE {
                     remove.push(root);
                 }
+            }
+            Err(error) => {
+                // Ambiguity breaks consecutiveness. Keeping the previous
+                // observation would turn false -> unknown -> false into two
+                // absences and could unregister content during a remount.
+                missing.remove(&root);
+                return Err(error)
+                    .with_context(|| format!("checking registered root {}", root.display()));
             }
         }
     }
@@ -378,6 +384,34 @@ mod tests {
         )
         .unwrap_err();
         assert!(error.to_string().contains("checking registered root"));
+    }
+
+    #[test]
+    fn an_error_between_absences_resets_the_streak() {
+        let root = PathBuf::from("/intermittent/worktree");
+        let rows = [registered("git:example/repo", &root)];
+        let mut missing = BTreeMap::new();
+
+        let first =
+            plan_reconciliation(&rows, &mut missing, |_| Ok(Vec::new()), |_| Ok(false)).unwrap();
+        assert!(first.remove.is_empty());
+
+        let ambiguous = plan_reconciliation(
+            &rows,
+            &mut missing,
+            |_| Ok(Vec::new()),
+            |_| Err(io::Error::from(io::ErrorKind::PermissionDenied)),
+        );
+        assert!(ambiguous.is_err());
+        assert!(
+            missing.is_empty(),
+            "an unknown observation breaks the streak"
+        );
+
+        let after_error =
+            plan_reconciliation(&rows, &mut missing, |_| Ok(Vec::new()), |_| Ok(false)).unwrap();
+        assert!(after_error.remove.is_empty());
+        assert_eq!(missing.get(&root), Some(&1));
     }
 
     #[test]
