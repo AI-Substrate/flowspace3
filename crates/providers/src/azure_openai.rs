@@ -160,7 +160,7 @@ impl AzureCredential {
 #[derive(Clone, Debug)]
 pub struct AzureOpenAiConfig {
     endpoint: String,
-    deployment: String,
+    pub(crate) deployment: String,
     api_version: String,
     credential: AzureCredential,
 }
@@ -186,9 +186,9 @@ impl AzureOpenAiConfig {
 
 /// Shared HTTP plumbing: one client, one deployment, one credential.
 #[derive(Debug)]
-struct AzureOpenAiClient {
+pub(crate) struct AzureOpenAiClient {
     http: reqwest::Client,
-    config: AzureOpenAiConfig,
+    pub(crate) config: AzureOpenAiConfig,
     /// The most recent Entra token, so a batch of requests costs one token
     /// acquisition rather than one per call. This matters more than it looks:
     /// `AzureCliCredential` shells out to `az` and does not cache, so an
@@ -197,7 +197,7 @@ struct AzureOpenAiClient {
 }
 
 impl AzureOpenAiClient {
-    fn new(config: AzureOpenAiConfig) -> Self {
+    pub(crate) fn new(config: AzureOpenAiConfig) -> Self {
         Self {
             http: reqwest::Client::new(),
             config,
@@ -206,7 +206,7 @@ impl AzureOpenAiClient {
     }
 
     /// `{endpoint}/openai/deployments/{deployment}/{route}?api-version=…`
-    fn url(&self, route: &str) -> String {
+    pub(crate) fn url(&self, route: &str) -> String {
         format!(
             "{}/openai/deployments/{}/{route}?api-version={}",
             self.config.endpoint.trim_end_matches('/'),
@@ -273,7 +273,7 @@ impl AzureOpenAiClient {
 
     /// `post`, but keeping a rejection distinguishable from a transport
     /// failure so a caller can decide whether the *request* was the problem.
-    async fn try_post<Req: Serialize, Res: for<'de> Deserialize<'de>>(
+    pub(crate) async fn try_post<Req: Serialize, Res: for<'de> Deserialize<'de>>(
         &self,
         route: &str,
         body: &Req,

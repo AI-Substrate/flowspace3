@@ -35,8 +35,12 @@ use sqlx::Row;
 const NO_DAEMON: &str = "http://127.0.0.1:1";
 
 /// A doctor config pointing at `database_url`, with no daemon listening.
-fn doctor_config(database_url: &str) -> Config {
-    Config {
+///
+/// Returns the whole `Effective` because doctor reports how configuration was
+/// LOADED as well as what it says. These tests exercise the store and daemon
+/// rows, so the load provenance is empty.
+fn doctor_config(database_url: &str) -> fs3_core::Effective {
+    let config = Config {
         database: DatabaseConfig {
             url: database_url.to_string(),
         },
@@ -45,6 +49,11 @@ fn doctor_config(database_url: &str) -> Config {
             ..fs3_core::DaemonConfig::default()
         },
         ..Config::default()
+    };
+    fs3_core::Effective {
+        config,
+        layers: Default::default(),
+        has_file: false,
     }
 }
 
@@ -251,13 +260,15 @@ impl Stack {
 /// Call the router the daemon actually serves, so the test cannot pass against
 /// a shape the binary does not have.
 async fn call(state: &AppState, method: &str, path: &str, body: Option<Value>) -> Envelope {
-    let base = support::spawn(fs3_daemon::router(state.clone())).await;
+    let auth = support::auth("first-light-call");
+    let base = support::spawn(fs3_daemon::router(state.clone(), auth.auth)).await;
     let client = reqwest::Client::new();
     let url = format!("{base}{path}");
     let request = match method {
         "POST" => client.post(&url).json(&body.unwrap_or(Value::Null)),
         _ => client.get(&url),
-    };
+    }
+    .bearer_auth(&auth.key);
     let response = request.send().await.expect("the daemon answers");
     let status = response.status();
     let envelope: Envelope = response
@@ -483,7 +494,7 @@ async fn add_scan_enrich_and_search_answer_end_to_end() {
     let weak = call(
         &stack.state,
         "GET",
-        "/search?q=quantum%20chromodynamics%20gluon%20confinement&limit=3",
+        "/search?q=how%20does%20quantum%20chromodynamics%20gluon%20confinement&limit=3",
         None,
     )
     .await;
@@ -505,6 +516,13 @@ async fn add_scan_enrich_and_search_answer_end_to_end() {
             .expect("search carries a steer")
             .contains("Weak match:"),
         "a consumer that ignores meta still receives the advisory"
+    );
+    assert!(
+        weak.next_action
+            .as_deref()
+            .expect("search carries a steer")
+            .contains("flowspace3 ask"),
+        "a question-shaped weak match preserves both independent hints"
     );
 
     let empty = call(
@@ -533,13 +551,17 @@ async fn add_scan_enrich_and_search_answer_end_to_end() {
         empty.meta.as_ref().expect("empty search carries metadata")["truncation"]["truncated"],
         false
     );
+    assert_eq!(
+        empty.meta.as_ref().expect("empty search carries metadata")["empty_because"]["reason"],
+        "below_floor"
+    );
     assert!(
         empty
             .next_action
             .as_deref()
             .expect("empty search carries a steer")
-            .starts_with("nothing matched"),
-        "the pre-existing zero-result steer is unchanged"
+            .contains("--min-score 1.000"),
+        "the known floor reason replaces the generic zero-result steer"
     );
 
     stack.destroy().await;
@@ -761,11 +783,13 @@ async fn a_behind_database_is_rejected_then_repaired_by_doctor_then_works() {
         );
     }
 
-    // `/health` is the exception, and deliberately: it is how a CLI decides
-    // whether the daemon exists at all, so it must answer before anything
-    // behind it can be wrong.
-    let base = support::spawn(fs3_daemon::router(stack.state.clone())).await;
-    let health = reqwest::get(format!("{base}/health"))
+    // `/health` is independent of schema state, but not of daemon auth.
+    let auth = support::auth("behind-schema-health");
+    let base = support::spawn(fs3_daemon::router(stack.state.clone(), auth.auth)).await;
+    let health = reqwest::Client::new()
+        .get(format!("{base}/health"))
+        .bearer_auth(&auth.key)
+        .send()
         .await
         .expect("health answers")
         .status();
@@ -774,7 +798,12 @@ async fn a_behind_database_is_rejected_then_repaired_by_doctor_then_works() {
     // --- doctor repairs it -------------------------------------------------
     // No daemon is listening in this test, so doctor reports the stack as
     // degraded — correctly. What is under test is the SCHEMA row.
-    let report = fs3_cli::doctor::run(&doctor_config(&stack.database.url())).await;
+    let doctor_auth = support::auth("doctor-behind-schema");
+    let report = fs3_cli::doctor::run(
+        &doctor_config(&stack.database.url()),
+        &doctor_auth.config_dir,
+    )
+    .await;
     assert!(report.ok, "doctor failed: {:?}", report.error);
     let data = report.data.expect("doctor reports its steps");
     assert!(data.healthy);
@@ -844,7 +873,8 @@ async fn doctor_creates_a_database_that_is_not_there() {
     );
     probe.close().await;
 
-    let report = fs3_cli::doctor::run(&doctor_config(&url)).await;
+    let doctor_auth = support::auth("doctor-create-database");
+    let report = fs3_cli::doctor::run(&doctor_config(&url), &doctor_auth.config_dir).await;
     assert!(report.ok, "doctor failed: {:?}", report.error);
     let data = report.data.expect("doctor reports its steps");
 
@@ -996,6 +1026,7 @@ async fn a_repo_override_resolves_to_a_different_instance_than_the_default() {
         fs3_core::RepoSelection {
             embedder: Some("second".to_string()),
             summarizer: Some("second".to_string()),
+            ..Default::default()
         },
     );
 

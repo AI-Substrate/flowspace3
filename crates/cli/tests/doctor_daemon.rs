@@ -39,9 +39,31 @@ fn config_for(daemon_url: &str) -> fs3_core::Config {
     }
 }
 
+/// Run doctor against a credential that belongs only to this test invocation.
+async fn run(config: &fs3_core::Config) -> fs3_core::Envelope<doctor::DoctorReport> {
+    // Doctor now reads the whole `Effective` — it reports how configuration was
+    // LOADED as well as what it says. These tests care only about the config,
+    // so they wrap it in an otherwise-empty Effective.
+    let effective = fs3_core::Effective {
+        config: config.clone(),
+        layers: Default::default(),
+        has_file: false,
+    };
+    let directory = tempfile::tempdir().expect("an isolated config directory");
+    let key_path = fs3_core::daemon_key_path(directory.path());
+    std::fs::write(&key_path, "doctor-test-key").expect("writing the daemon key");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        std::fs::set_permissions(&key_path, std::fs::Permissions::from_mode(0o600))
+            .expect("restricting the daemon key");
+    }
+    doctor::run(&effective, directory.path()).await
+}
+
 #[tokio::test]
 async fn doctor_reports_degraded_when_no_daemon_is_listening() {
-    let report = doctor::run(&config_for(NOTHING_LISTENING)).await;
+    let report = run(&config_for(NOTHING_LISTENING)).await;
 
     assert!(
         report.ok,
@@ -101,19 +123,32 @@ async fn doctor_reports_ok_when_the_daemon_answers() {
     tokio::spawn(async move {
         let app = axum::Router::new().route(
             "/health",
-            axum::routing::get(|| async {
-                axum::Json(serde_json::json!({
-                    "status": "ok",
-                    "version": "9.9.9",
-                    "embedder": "fake",
-                    "summarizer": "fake"
-                }))
+            axum::routing::get(|headers: axum::http::HeaderMap| async move {
+                let accepted = headers
+                    .get(axum::http::header::AUTHORIZATION)
+                    .and_then(|value| value.to_str().ok())
+                    == Some("Bearer doctor-test-key");
+                let status = if accepted {
+                    axum::http::StatusCode::OK
+                } else {
+                    axum::http::StatusCode::UNAUTHORIZED
+                };
+                (
+                    status,
+                    axum::Json(serde_json::json!({
+                        "status": "ok",
+                        "version": "9.9.9",
+                        "embedder": "fake",
+                        "summarizer": "fake"
+                    })),
+                )
             }),
         );
+
         axum::serve(listener, app).await.expect("serves");
     });
 
-    let report = doctor::run(&config_for(&format!("http://{address}"))).await;
+    let report = run(&config_for(&format!("http://{address}"))).await;
     assert!(report.ok, "doctor failed: {:?}", report.error);
     let data = report.data.expect("doctor reports its steps");
 
@@ -154,6 +189,21 @@ async fn doctor_reports_ok_when_the_daemon_answers() {
          way to see a stale binary still serving: {}",
         row.found
     );
+
+    let auth = data
+        .steps
+        .iter()
+        .find(|step| step.check == "auth")
+        .expect("doctor must prove daemon authentication");
+    assert_eq!(auth.outcome, "ok", "the current mode-0600 key is accepted");
+    assert!(
+        auth.found.contains("daemon.key"),
+        "the row names the file: {auth:?}"
+    );
+    assert!(
+        auth.found.contains("accepted"),
+        "acceptance is observed: {auth:?}"
+    );
 }
 
 /// A fresh install is not config-less — the defaults ship `[providers.fake]`
@@ -167,7 +217,7 @@ async fn doctor_reports_ok_when_the_daemon_answers() {
 /// deterministic fake.
 #[tokio::test]
 async fn doctor_warns_when_only_the_offline_fake_is_configured() {
-    let report = doctor::run(&config_for(NOTHING_LISTENING)).await;
+    let report = run(&config_for(NOTHING_LISTENING)).await;
     let data = report.data.expect("doctor reports its steps");
 
     let row = data
@@ -216,7 +266,7 @@ async fn doctor_warns_when_a_real_provider_has_no_key() {
     );
     config.embedder.active = "cloud".to_string();
 
-    let report = doctor::run(&config).await;
+    let report = run(&config).await;
     let data = report.data.expect("doctor reports its steps");
     let row = data
         .steps
@@ -240,7 +290,7 @@ async fn doctor_warns_when_an_active_names_no_configured_instance() {
     let mut config = config_for(NOTHING_LISTENING);
     config.summarizer.active = "a-name-nobody-configured".to_string();
 
-    let report = doctor::run(&config).await;
+    let report = run(&config).await;
     let data = report.data.expect("doctor reports its steps");
     let row = data
         .steps
@@ -298,7 +348,7 @@ fn an_informational_row_reports_without_degrading_the_verdict() {
 /// informationally — a stale or missing skill never degrades the verdict.
 #[tokio::test]
 async fn doctor_walks_the_skills_row_last_and_informationally() {
-    let report = doctor::run(&config_for(NOTHING_LISTENING)).await;
+    let report = run(&config_for(NOTHING_LISTENING)).await;
     assert!(report.ok, "doctor failed: {:?}", report.error);
     let data = report.data.expect("doctor reports its steps");
 

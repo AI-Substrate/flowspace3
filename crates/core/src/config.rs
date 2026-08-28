@@ -42,6 +42,15 @@ pub const CONFIG_FILE_NAME: &str = "config.toml";
 /// loaded into the environment at startup, never merged into [`Config`].
 pub const SECRETS_FILE_NAME: &str = "secrets.env";
 
+/// The daemon's per-boot bearer key inside the resolved config directory.
+pub const DAEMON_KEY_FILE_NAME: &str = "daemon.key";
+
+/// Where the daemon publishes its bearer key and every client reads it.
+#[must_use]
+pub fn daemon_key_path(config_dir: &std::path::Path) -> std::path::PathBuf {
+    config_dir.join(DAEMON_KEY_FILE_NAME)
+}
+
 /// Subdirectory of the user's config home when [`CONFIG_DIR_ENV`] is unset.
 pub const DEFAULT_CONFIG_SUBDIR: &str = "flowspace3";
 
@@ -87,7 +96,13 @@ pub const REDACTED: &str = "<redacted>";
 /// [summarizer]
 /// active = "offline"
 ///
-/// # A repo may name a different instance for either port.
+/// [agent]
+/// active = "offline"
+/// max_iterations = 8
+/// token_budget = 80000
+/// tool_result_max_chars = 7000
+///
+/// # A repo may name a different instance for any port.
 /// [repos."github.com/AI-Substrate/flowspace3"]
 /// summarizer = "offline"
 ///
@@ -118,6 +133,8 @@ pub struct Config {
     pub embedder: PortSelection,
     /// Which instance the [`crate::Summarizer`] port uses by default.
     pub summarizer: PortSelection,
+    /// Which instance drives agentic queries, and the bounds on one query loop.
+    pub agent: AgentConfig,
     /// Per-repo overrides of those choices, keyed by repo identity. Global
     /// file, per-repo *data* — not a second config file (PRD req 28).
     pub repos: BTreeMap<String, RepoSelection>,
@@ -130,7 +147,7 @@ pub struct Config {
 }
 
 impl Default for Config {
-    /// A fresh machine: one offline fake in the registry, both ports naming it.
+    /// A fresh machine: one offline fake in the registry, all ports naming it.
     fn default() -> Self {
         Self {
             daemon: DaemonConfig::default(),
@@ -138,6 +155,7 @@ impl Default for Config {
             providers: default_providers(),
             embedder: PortSelection::default(),
             summarizer: PortSelection::default(),
+            agent: AgentConfig::default(),
             repos: BTreeMap::new(),
             indexing: IndexingConfig::default(),
             scan: ScanConfig::default(),
@@ -157,6 +175,7 @@ pub const SECTIONS: &[&str] = &[
     "providers",
     "embedder",
     "summarizer",
+    "agent",
     "repos",
     "indexing",
     "scan",
@@ -188,15 +207,16 @@ impl Config {
     pub fn selected(&self, port: Port, repo: Option<&str>) -> &str {
         repo.and_then(|repo| self.repos.get(repo))
             .and_then(|selection| selection.get(port))
-            .unwrap_or_else(|| self.selection(port).active.as_str())
+            .unwrap_or_else(|| self.selection(port))
     }
 
-    /// The port's default selection.
+    /// The port's default instance name.
     #[must_use]
-    pub fn selection(&self, port: Port) -> &PortSelection {
+    pub fn selection(&self, port: Port) -> &str {
         match port {
-            Port::Embedder => &self.embedder,
-            Port::Summarizer => &self.summarizer,
+            Port::Embedder => self.embedder.active.as_str(),
+            Port::Summarizer => self.summarizer.active.as_str(),
+            Port::Agent => self.agent.active.as_str(),
         }
     }
 
@@ -222,7 +242,7 @@ impl Config {
     /// you never select must not cost an API key.
     #[must_use]
     pub fn referenced_providers(&self, port: Port) -> Vec<&str> {
-        let mut names = vec![self.selection(port).active.as_str()];
+        let mut names = vec![self.selection(port)];
         for selection in self.repos.values() {
             if let Some(name) = selection.get(port)
                 && !names.contains(&name)
@@ -246,8 +266,8 @@ impl Config {
         }
 
         for port in Port::ALL {
-            let active = &self.selection(port).active;
-            if !self.providers.contains_key(active.as_str()) {
+            let active = self.selection(port);
+            if !self.providers.contains_key(active) {
                 problems.push(unknown_instance(
                     &format!("{port}.active"),
                     active,
@@ -483,11 +503,13 @@ pub enum Port {
     Embedder,
     /// [`crate::Summarizer`].
     Summarizer,
+    /// Agentic query execution.
+    Agent,
 }
 
 impl Port {
-    /// Both ports, in the order `config show` prints them.
-    pub const ALL: [Port; 2] = [Port::Embedder, Port::Summarizer];
+    /// All ports, in the order `config show` prints them.
+    pub const ALL: [Port; 3] = [Port::Embedder, Port::Summarizer, Port::Agent];
 }
 
 impl std::fmt::Display for Port {
@@ -495,6 +517,7 @@ impl std::fmt::Display for Port {
         f.write_str(match self {
             Port::Embedder => "embedder",
             Port::Summarizer => "summarizer",
+            Port::Agent => "agent",
         })
     }
 }
@@ -502,8 +525,8 @@ impl std::fmt::Display for Port {
 /// Which registry instance a port uses.
 ///
 /// The section carries a *name*, not a shape: choosing and configuring are
-/// separate concerns, so two ports can share one instance (and one HTTP client)
-/// by naming it twice.
+/// separate concerns, so ports can share one instance (and one HTTP client) by
+/// naming it more than once.
 ///
 /// ```toml
 /// [embedder]
@@ -525,10 +548,59 @@ impl Default for PortSelection {
     }
 }
 
+/// Provider selection and hard bounds for one agentic query loop.
+///
+/// This repeats [`PortSelection::active`] rather than flattening that type:
+/// serde's `flatten` cannot uphold `deny_unknown_fields`. Keeping the field
+/// directly on this type preserves typo rejection and the intended flat TOML
+/// shape instead of introducing a misleading `[agent.selection]` table.
+///
+/// ```toml
+/// [agent]
+/// active = "azure-luna"
+/// max_iterations = 8
+/// token_budget = 80000
+/// tool_result_max_chars = 7000
+/// ```
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct AgentConfig {
+    /// The provider instance that drives the loop.
+    pub active: String,
+    /// Maximum model/tool turns before the loop must stop.
+    pub max_iterations: u32,
+    /// Total tokens the loop may spend across all model calls.
+    pub token_budget: u64,
+    /// Maximum characters retained from one tool result.
+    pub tool_result_max_chars: usize,
+}
+
+impl AgentConfig {
+    /// Eight turns covers the prototype's useful loops without permitting an
+    /// accidental unbounded conversation.
+    pub const DEFAULT_MAX_ITERATIONS: u32 = 8;
+    /// Whole-loop allowance proven by the prototype.
+    pub const DEFAULT_TOKEN_BUDGET: u64 = 80_000;
+    /// Enough evidence for the model without feeding whole files back to it.
+    pub const DEFAULT_TOOL_RESULT_MAX_CHARS: usize = 7_000;
+}
+
+impl Default for AgentConfig {
+    fn default() -> Self {
+        Self {
+            active: DEFAULT_PROVIDER.to_string(),
+            max_iterations: Self::DEFAULT_MAX_ITERATIONS,
+            token_budget: Self::DEFAULT_TOKEN_BUDGET,
+            tool_result_max_chars: Self::DEFAULT_TOOL_RESULT_MAX_CHARS,
+        }
+    }
+}
+
 /// One repo's overrides of the default selections.
 ///
 /// Keyed by repo identity in [`Config::repos`], so a monorepo of Rust can use a
-/// different summarizer from a repo of prose without a second config file.
+/// different provider instance from a repo of prose without a second config
+/// file.
 ///
 /// ```toml
 /// [repos."github.com/AI-Substrate/flowspace3"]
@@ -543,6 +615,9 @@ pub struct RepoSelection {
     /// Instance name for the summarizer port, or `None` to use the default.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summarizer: Option<String>,
+    /// Instance name for the agent port, or `None` to use the default.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent: Option<String>,
 }
 
 impl RepoSelection {
@@ -552,6 +627,7 @@ impl RepoSelection {
         match port {
             Port::Embedder => self.embedder.as_deref(),
             Port::Summarizer => self.summarizer.as_deref(),
+            Port::Agent => self.agent.as_deref(),
         }
     }
 }
@@ -1058,11 +1134,18 @@ pub struct Sources<'a> {
 }
 
 /// A merged configuration plus the story of where each section came from.
+///
+/// [`layers`](Self::layers) also retains unrecognised top-level sections. They
+/// are inert — [`config`](Self::config) contains only this binary's known
+/// shape — but retaining their origin lets [`warnings`](Self::warnings) make a
+/// newer config file visible to an older binary instead of making it a
+/// flag-day.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Effective {
     /// The configuration to run with.
     pub config: Config,
-    /// Highest layer that touched each top-level section.
+    /// Highest layer that touched each top-level section, including unknown
+    /// sections which were ignored.
     pub layers: BTreeMap<String, Layer>,
     /// Whether there was a config FILE at all.
     ///
@@ -1081,6 +1164,34 @@ impl Effective {
     #[must_use]
     pub fn layer(&self, section: &str) -> Layer {
         self.layers.get(section).copied().unwrap_or(Layer::Defaults)
+    }
+
+    /// Non-fatal findings produced while resolving the configuration file.
+    ///
+    /// Unknown TOP-LEVEL file sections are tolerated for forward
+    /// compatibility: an older installed binary must not stop working because
+    /// a newer checkout added a section to the machine-wide file. A mistyped
+    /// section stays loud because none of it takes effect and doctor reports
+    /// this warning. Known sections remain `deny_unknown_fields`, so the
+    /// likelier and more dangerous typo — `[embedder] activ = "big"` — still
+    /// fails hard instead of silently selecting the wrong provider.
+    ///
+    /// Environment overrides are intentionally stricter: an unknown
+    /// `FS3_SECTION__KEY` cannot be forward-compatible file content written by
+    /// another binary, so it is a current human typo and fails during resolve.
+    pub fn warnings(&self) -> impl Iterator<Item = Problem> + '_ {
+        self.layers
+            .keys()
+            .filter(|section| !SECTIONS.contains(&section.as_str()))
+            .map(|section| {
+                Problem::file(
+                    format!("[{section}]"),
+                    "unknown top-level section was ignored by this binary; none of its settings take effect",
+                    format!(
+                        "remove [{section}] if it is a typo, or upgrade flowspace3 if a newer binary supports it"
+                    ),
+                )
+            })
     }
 }
 
@@ -1213,7 +1324,7 @@ where
 /// a key that does not exist, a value of the wrong type, or a parsed value that
 /// cannot work.
 pub fn resolve(sources: Sources<'_>) -> Result<Effective> {
-    let file_table = match sources.file_text {
+    let mut file_table = match sources.file_text {
         None => Table::new(),
         Some(text) => text.parse::<Table>().map_err(|error| {
             Error::InvalidConfig(render(&[Problem::file(
@@ -1223,6 +1334,19 @@ pub fn resolve(sources: Sources<'_>) -> Result<Effective> {
             )]))
         })?,
     };
+
+    // Unknown TOP-LEVEL sections belong to a possibly newer config schema.
+    // Keep their provenance for doctor, but remove them before serde sees the
+    // table. Nested structs retain `deny_unknown_fields`: this narrowly removes
+    // the cross-version flag-day without making misspelled real keys inert.
+    let mut unknown_layers: BTreeMap<String, Layer> = BTreeMap::new();
+    file_table.retain(|section, _| {
+        let known = SECTIONS.contains(&section);
+        if !known {
+            unknown_layers.insert(section.to_owned(), Layer::File);
+        }
+        known
+    });
 
     let mut merged = default_table();
     merge_tables(&mut merged, file_table.clone());
@@ -1259,6 +1383,7 @@ pub fn resolve(sources: Sources<'_>) -> Result<Effective> {
         };
         layers.insert((*section).to_string(), layer);
     }
+    layers.extend(unknown_layers);
 
     Ok(Effective {
         config,
@@ -1629,6 +1754,83 @@ mod tests {
     }
 
     #[test]
+    fn the_agent_port_defaults_to_the_offline_instance() {
+        let config = Config::from_toml_str("").unwrap();
+
+        assert_eq!(config.agent.active, DEFAULT_PROVIDER);
+        assert_eq!(config.selected(Port::Agent, None), DEFAULT_PROVIDER);
+        assert_eq!(
+            config.provider(config.selected(Port::Agent, None)).unwrap(),
+            &ProviderInstance::Fake
+        );
+    }
+
+    #[test]
+    fn the_agent_port_resolves_a_named_instance() {
+        let config = Config::from_toml_str(
+            r#"
+            [providers.luna]
+            kind = "openai"
+            model = "gpt-4o"
+
+            [agent]
+            active = "luna"
+            "#,
+        )
+        .unwrap();
+
+        assert_eq!(config.selected(Port::Agent, None), "luna");
+        assert!(matches!(
+            config.provider(config.selected(Port::Agent, None)).unwrap(),
+            ProviderInstance::OpenAi { .. }
+        ));
+    }
+
+    #[test]
+    fn the_agent_loop_bounds_parse_from_the_flat_section() {
+        let config = Config::from_toml_str(
+            r#"
+            [agent]
+            max_iterations = 12
+            token_budget = 64000
+            tool_result_max_chars = 4096
+            "#,
+        )
+        .unwrap();
+
+        assert_eq!(config.agent.max_iterations, 12);
+        assert_eq!(config.agent.token_budget, 64_000);
+        assert_eq!(config.agent.tool_result_max_chars, 4_096);
+    }
+
+    #[test]
+    fn a_repo_override_wins_for_the_agent_port() {
+        let config = Config::from_toml_str(
+            r#"
+            [providers.luna]
+            kind = "openai"
+            model = "gpt-4o"
+
+            [repos."github.com/AI-Substrate/flowspace3"]
+            agent = "luna"
+            "#,
+        )
+        .unwrap();
+
+        let repo = Some("github.com/AI-Substrate/flowspace3");
+        assert_eq!(config.selected(Port::Agent, repo), "luna");
+        assert_eq!(config.selected(Port::Agent, None), DEFAULT_PROVIDER);
+    }
+
+    #[test]
+    fn an_unknown_agent_instance_is_rejected() {
+        let err = Config::from_toml_str("[agent]\nactive = \"missing\"\n").unwrap_err();
+        let message = err.to_string();
+        assert!(message.contains("agent.active"), "{message}");
+        assert!(message.contains("\"missing\""), "{message}");
+    }
+
+    #[test]
     fn an_unknown_instance_name_lists_the_configured_ones() {
         let err = Config::from_toml_str(
             r#"
@@ -1706,17 +1908,35 @@ mod tests {
         );
     }
 
+    /// Forward compatibility stops at the section boundary. A section an older
+    /// binary cannot know is inert and visible; keys inside a section it DOES
+    /// know remain strict, because silently ignoring `activ` would select the
+    /// wrong provider while looking configured.
     #[test]
-    fn unknown_keys_are_a_typo_not_a_feature() {
+    fn an_unknown_key_inside_a_known_section_is_still_refused_by_name() {
         let err = Config::from_toml_str(
             r#"
-            [daemon]
-            url = "http://x"
-            prot = 1
+            [embedder]
+            activ = "big"
             "#,
         )
         .unwrap_err();
+        let message = err.to_string();
         assert!(matches!(err, Error::InvalidConfig(_)), "got {err:?}");
+        assert!(message.contains("activ"), "{message}");
+    }
+
+    #[test]
+    fn an_unknown_top_level_file_section_is_inert_and_warned_about() {
+        let effective = resolved("[typo]\nthing = \"from-file\"\n", &[]).unwrap();
+
+        assert_eq!(effective.config, Config::default());
+        let warnings: Vec<Problem> = effective.warnings().collect();
+        assert_eq!(warnings.len(), 1, "{warnings:?}");
+        assert_eq!(warnings[0].key, "[typo]");
+        assert_eq!(warnings[0].origin, Origin::File);
+        assert!(warnings[0].message.contains("ignored"));
+        assert!(warnings[0].message.contains("none"));
     }
 
     #[test]
@@ -1927,7 +2147,7 @@ summary_min_lines = 0
     }
 
     #[test]
-    fn a_typo_in_an_override_is_refused_by_name() {
+    fn an_unknown_override_section_is_refused_by_variable_name() {
         let err = resolved("", &[("FS3_DATABSE__URL", "postgres://x/y")]).unwrap_err();
         let message = err.to_string();
         assert!(message.contains("FS3_DATABSE__URL"), "{message}");

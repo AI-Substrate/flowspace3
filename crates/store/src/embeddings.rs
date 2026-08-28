@@ -22,6 +22,30 @@ use crate::{PgPool, StoreError};
 /// The vector width `embeddings_1024` holds.
 pub const EMBEDDING_DIMENSIONS: usize = 1024;
 
+/// Make the HNSW scan keep going until the caller's `LIMIT` is filled.
+///
+/// pgvector's default is one pass: the index yields `hnsw.ef_search`
+/// candidates and stops, whatever the surrounding `WHERE` then does to them.
+/// That is the correct default for an unfiltered nearest-neighbour query and
+/// the wrong one for every query fs3 asks, because fs3 always filters — by
+/// repository, by path, by content kind — and a filter that is selective
+/// against the whole index silently eats the batch.
+///
+/// `strict_order` rather than `relaxed_order`: the surface promises the
+/// `limit` NEAREST elements, relaxed order does not promise that the batch it
+/// returns is the true top-k, and a wrong set sorted convincingly by the outer
+/// `ORDER BY` is worse than a slower right one. On the index this was measured
+/// against, strict order was also the faster of the two.
+///
+/// `SET LOCAL`, so it lives and dies with one transaction and cannot follow a
+/// pooled connection to its next borrower.
+///
+/// Safe on a pgvector too old to know the setting: `hnsw.iterative_scan` is a
+/// prefixed (custom) GUC, and Postgres accepts an assignment to an unclaimed
+/// prefix as a placeholder rather than erroring — an older extension simply
+/// ignores it instead of taking search down.
+const ITERATIVE_SCAN: &str = "SET LOCAL hnsw.iterative_scan = strict_order";
+
 /// Which text a vector was made from.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SourceKind {
@@ -372,6 +396,24 @@ pub struct SearchHit {
 /// built for `vector_cosine_ops`, and a query written with `<->` gets a
 /// sequential scan with no error to notice.
 ///
+/// # Why this runs in a transaction
+///
+/// Keeping the filters inside the CTE buys the index scan, and it costs
+/// something that has to be paid for explicitly: an HNSW scan yields at most
+/// `hnsw.ef_search` candidates, and every predicate above is applied to THAT
+/// handful rather than to the index. A selective anchor — one small repository
+/// inside an index holding several — can therefore delete every candidate and
+/// leave the CTE empty while thousands of matching vectors sit one hop
+/// further out. Nothing surfaces: no error, no warning, just an answer that is
+/// short or absent, and `--min-score` cannot be blamed because the floor never
+/// gets a row to reject. Measured on a four-repository index where the
+/// searched repository held 9.5% of the vectors, twelve ordinary questions
+/// asked for ten hits each and were answered with 19 of 120.
+///
+/// [`ITERATIVE_SCAN`] is the remedy pgvector 0.8 added for exactly this: keep
+/// pulling batches until the `LIMIT` is satisfied or the scan budget runs out.
+/// The same twelve questions then return 120 of 120.
+///
 /// # Errors
 /// [`StoreError::Dimensions`] when `query` is the wrong width;
 /// [`StoreError::Query`] on failure; [`StoreError::Corrupt`] when a row carries
@@ -388,6 +430,9 @@ pub async fn search_elements(
             actual: query.len(),
         });
     }
+
+    let mut tx = pool.begin().await?;
+    sqlx::query(ITERATIVE_SCAN).execute(&mut *tx).await?;
 
     // Every filter is bound unconditionally with a NULL-means-any guard, so
     // there is ONE statement text whatever the caller asked for. A query built
@@ -561,8 +606,13 @@ pub async fn search_elements(
             .map(|kinds| kinds.iter().map(|kind| kind.as_str()).collect::<Vec<_>>()),
     )
     .bind(filters.worktree.as_deref())
-    .fetch_all(pool)
+    .fetch_all(&mut *tx)
     .await?;
+
+    // Read-only, so the transaction has nothing to write; committing rather
+    // than dropping returns the connection to the pool cleanly and, being
+    // `SET LOCAL`, takes the scan setting with it.
+    tx.commit().await?;
 
     rows.iter()
         .map(|row| {
@@ -574,6 +624,72 @@ pub async fn search_elements(
             })
         })
         .collect()
+}
+
+/// Does `model_key` hold reachable content that `filters`' non-vector gates
+/// admit?
+///
+/// The question [`search_elements`] cannot answer for itself. A search that
+/// comes back empty has two very different causes — nothing eligible is
+/// indexed HERE, or something is and the ranking did not reach it — and the
+/// row shape looks identical for both, so the surface has to ask separately
+/// before it is entitled to say which one happened.
+///
+/// This is [`search_elements`] with the vector taken out: the same anchor, the
+/// same kind gate, the same source-space gate, and nothing else. That
+/// correspondence is the whole value. A coarser probe — "does this repository
+/// have any vectors at all" — answers `true` for a repository holding only
+/// content the caller's filters exclude, and the surface would then report a
+/// starved scan where the truth was an empty filter. A diagnostic that is
+/// confidently wrong is worse than the shrug it replaced.
+///
+/// Raw vectors and live paths only, which is what makes it cheap and is why
+/// the caller must not ask it about conversations: a turn reaches its
+/// repository through its conversation's anchor and has no `worktree_files`
+/// row at all.
+///
+/// # Errors
+/// [`StoreError::Query`] on failure.
+pub async fn anchor_has_vectors(
+    pool: &PgPool,
+    model_key: &str,
+    filters: &SearchFilters,
+) -> Result<bool, StoreError> {
+    let found: bool = sqlx::query_scalar(
+        "SELECT EXISTS (
+             SELECT 1
+               FROM embeddings_1024 e
+               JOIN elements el       ON el.raw_hash = e.source_hash
+               JOIN worktree_files f  ON f.blob_sha = el.blob_sha
+               JOIN worktrees w       ON w.id = f.worktree_id
+               JOIN repos r           ON r.id = w.repo_id
+              WHERE e.model_key = $1
+                AND e.source_kind = 'raw'
+                AND ($2::text IS NULL OR r.identity = $2)
+                AND ($3::text IS NULL OR f.path LIKE $3)
+                AND ($6::text IS NULL OR w.root_path = $6)
+                AND ($4::text[] IS NULL OR el.kind = ANY($4))
+                -- A smart-space search reads summary vectors, so eligibility
+                -- means the summary exists — not merely that the element does.
+                AND ($5::text IS NULL OR $5 <> 'smart'
+                     OR EXISTS (SELECT 1 FROM smart_content sc
+                                 WHERE sc.raw_hash = el.raw_hash)))",
+    )
+    .bind(model_key)
+    .bind(filters.repo.as_deref())
+    .bind(filters.path.as_deref())
+    .bind(
+        filters
+            .kinds
+            .as_ref()
+            .map(|kinds| kinds.iter().map(|kind| kind.as_str()).collect::<Vec<_>>()),
+    )
+    .bind(filters.source.map(SourceKind::as_str))
+    .bind(filters.worktree.as_deref())
+    .fetch_one(pool)
+    .await?;
+
+    Ok(found)
 }
 
 fn similar_from_row(row: &sqlx::postgres::PgRow) -> Result<SimilarElement, StoreError> {

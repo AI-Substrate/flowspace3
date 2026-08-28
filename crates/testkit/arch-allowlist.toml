@@ -133,8 +133,10 @@ external = [
 internal = ["fs3-core"]
 external = ["gix", "tempfile@dev", "thiserror"]
 
+# FreshDatabase is shared test/sandbox infrastructure. It reaches Postgres only
+# through fs3-store's typed control-plane API; sqlx remains inside fs3-store.
 [crates.fs3-testkit]
-internal = ["fs3-core"]
+internal = ["fs3-core", "fs3-store"]
 external = ["async-trait", "serde", "serde_json", "thiserror", "toml", "tokio@dev"]
 
 # The composition root, and the only crate allowed to see everything. Plan 003
@@ -163,6 +165,9 @@ external = [
   # a one-method async trait dyn-able; core already carries it for the ports.
   "async-trait",
   "axum",
+  # The daemon mints a fresh 256-bit bearer key at each boot. `getrandom`
+  # reaches the host RNG directly, with no seed state or general PRNG surface.
+  "getrandom",
   # The live file watcher (ruling 2026-08-26: the daemon is host-native BECAUSE
   # watching cannot cross a container boundary). It belongs here rather than in
   # a leaf crate because watching is wiring — the supervisor reads the

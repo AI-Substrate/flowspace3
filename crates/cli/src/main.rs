@@ -6,12 +6,14 @@
 //! later, and building it now would mean two output paths to keep honest
 //! instead of one.
 
+use std::fmt;
+use std::io::{self, Write as _};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use fs3_cli::{DaemonClient, daemon_url, doctor, settings, show, skill};
+use fs3_cli::{DaemonClient, doctor, settings, show, skill};
 use fs3_core::envelope::Envelope;
 
 #[derive(Parser)]
@@ -98,6 +100,21 @@ enum Command {
         /// Which vector space to search.
         #[arg(long, value_name = "SOURCE", value_parser = ["raw", "smart", "conversation", "all"])]
         source: Option<String>,
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
+    /// Ask an agentic question of the index.
+    Ask {
+        /// The question.
+        question: String,
+        /// Only this repository identity, or `all` for every indexed one.
+        ///
+        /// Without it a question asked inside a checkout is about THAT
+        /// repository, like `search`. `--repo all` is how a caller standing in
+        /// one repo asks a question whose answer lives in another.
+        #[arg(long, value_name = "IDENTITY")]
+        repo: Option<String>,
         /// Override the daemon URL from configuration.
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
@@ -192,7 +209,11 @@ enum Command {
     /// version, and no way for a CLI and a daemon of different vintages to
     /// meet. It serves HTTP on `daemon.url`, migrates the store at boot, and
     /// drains the job queue until stopped.
-    Daemon,
+    Daemon {
+        /// Use a unique migrated database, fake providers, and an ephemeral port.
+        #[arg(long)]
+        sandbox: bool,
+    },
     /// Orient an agent that has just installed fs3: print the bundled agents
     /// guide — setup from scratch through doctor, provider and config
     /// creation, daemon, add and search (PRD req-0055).
@@ -325,15 +346,18 @@ fn main() -> ExitCode {
     let outcome = boot().and_then(|command| {
         // `daemon` is the one verb that must NOT run inside a runtime this
         // function built: it builds its own, sized for a server rather than for
-        // one request, and it never returns. Routing it here rather than in
-        // `run` is what keeps that true.
-        if matches!(command, Command::Daemon) {
-            // The subscriber used to be built HERE, on stdout with a hardcoded
-            // filter. It moved into `fs3_daemon::boot`, which is the first
-            // place that has read the configuration — and the log file's path,
-            // its size caps and its filter are all configuration.
-            return fs3_daemon::run().map(|()| ExitCode::SUCCESS);
-        }
+        // one request. Routing it here keeps that invariant true.
+        let command = match command {
+            Command::Daemon { sandbox } => {
+                let outcome = if sandbox {
+                    fs3_daemon::run_sandbox()
+                } else {
+                    fs3_daemon::run()
+                };
+                return outcome.map(|()| ExitCode::SUCCESS);
+            }
+            command => command,
+        };
 
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
@@ -344,11 +368,15 @@ fn main() -> ExitCode {
 
     match outcome {
         Ok(code) => code,
+        Err(error) if is_broken_pipe(&error) => ExitCode::SUCCESS,
         Err(error) => {
             // `{error:#}` prints the whole anyhow context chain on one line,
             // so the doctor suggestion is never truncated away.
-            eprintln!("flowspace3: {error:#}");
-            ExitCode::from(EXIT_ERROR)
+            match write_stderr(format_args!("flowspace3: {error:#}\n")) {
+                Ok(()) => ExitCode::from(EXIT_ERROR),
+                Err(error) if error.kind() == io::ErrorKind::BrokenPipe => ExitCode::SUCCESS,
+                Err(_) => ExitCode::from(EXIT_ERROR),
+            }
         }
     }
 }
@@ -356,7 +384,11 @@ fn main() -> ExitCode {
 /// Parse the command line and load the secrets chain, single-threaded.
 fn boot() -> Result<Command> {
     let command = Cli::parse().command;
-    if let Ok(dir) = settings::config_dir() {
+    // Sandbox forces fake providers, so ambient provider secrets are neither
+    // needed nor allowed to make an isolated boot fail.
+    if !matches!(&command, Command::Daemon { sandbox: true })
+        && let Ok(dir) = settings::config_dir()
+    {
         // A broken secrets file is worth failing on; a missing one is normal.
         settings::load_secrets_from(&dir)?;
     }
@@ -368,23 +400,23 @@ async fn run(command: Command) -> Result<ExitCode> {
         Command::Ping { daemon_url: url } => ping(url).await,
         Command::Add { path, daemon_url } => {
             let client = client_for(daemon_url)?;
-            Ok(emit(&client.add(&display(&path)).await))
+            emit(&client.add(&display(&path)).await)
         }
         Command::Remove { path, daemon_url } => {
             let client = client_for(daemon_url)?;
-            Ok(emit(&client.remove(&display(&path)).await))
+            emit(&client.remove(&display(&path)).await)
         }
         Command::Gc { daemon_url } => {
             let client = client_for(daemon_url)?;
-            Ok(emit(&client.gc().await))
+            emit(&client.gc().await)
         }
         Command::Scan { path, daemon_url } => {
             let client = client_for(daemon_url)?;
-            Ok(emit(&client.scan(&display(&path)).await))
+            emit(&client.scan(&display(&path)).await)
         }
         Command::Status { daemon_url } => {
             let client = client_for(daemon_url)?;
-            Ok(emit(&client.status().await))
+            emit(&client.status().await)
         }
         Command::Search {
             query,
@@ -403,7 +435,18 @@ async fn run(command: Command) -> Result<ExitCode> {
             push(&mut params, "min_score", min_score.map(|v| v.to_string()));
             push(&mut params, "source", source);
             push(&mut params, "cwd", here());
-            Ok(emit(&client.search(&params).await))
+            emit(&client.search(&params).await)
+        }
+        Command::Ask {
+            question,
+            repo,
+            daemon_url,
+        } => {
+            let client = client_for(daemon_url)?;
+            let mut params = vec![("question".to_string(), question)];
+            push(&mut params, "repo", repo);
+            push(&mut params, "cwd", here());
+            emit(&client.ask(&params).await)
         }
         Command::Get {
             address,
@@ -422,7 +465,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             push(&mut params, "after", after.map(|v| v.to_string()));
             push(&mut params, "repo", repo);
             push(&mut params, "cwd", here());
-            Ok(emit(&client.get(&params).await))
+            emit(&client.get(&params).await)
         }
         Command::Tree {
             target,
@@ -438,7 +481,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             push(&mut params, "limit", limit.map(|v| v.to_string()));
             push(&mut params, "repo", repo);
             push(&mut params, "cwd", here());
-            Ok(emit(&client.tree(&params).await))
+            emit(&client.tree(&params).await)
         }
         Command::Conversation {
             command:
@@ -458,7 +501,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             // recent decision.
             let import =
                 fs3_cli::conversation::read(&file, guid, repo, worktree.or_else(here), title)?;
-            Ok(emit(&client.conversation_import(&import.body).await))
+            emit(&client.conversation_import(&import.body).await)
         }
         Command::Conversation {
             command:
@@ -472,18 +515,18 @@ async fn run(command: Command) -> Result<ExitCode> {
             let mut params = Vec::new();
             push(&mut params, "repo", repo);
             push(&mut params, "path", path);
-            Ok(emit(&client.conversation_list(&params).await))
+            emit(&client.conversation_list(&params).await)
         }
         Command::Conversation {
             command: ConversationCommand::Remove { guid, daemon_url },
         } => {
             let client = client_for(daemon_url)?;
-            Ok(emit(&client.conversation_remove(&guid).await))
+            emit(&client.conversation_remove(&guid).await)
         }
         Command::Doctor {
             config_dir: _,
             command: Some(DoctorCommand::InstallSkill),
-        } => Ok(emit(&skill::install()?)),
+        } => emit(&skill::install()?),
         Command::Doctor {
             config_dir,
             command: Some(DoctorCommand::Upgrade),
@@ -493,7 +536,7 @@ async fn run(command: Command) -> Result<ExitCode> {
                 None => settings::config_dir()?,
             };
             let effective = settings::load_effective_from(&dir)?;
-            Ok(emit(&fs3_cli::upgrade::upgrade(&effective.config).await))
+            emit(&fs3_cli::upgrade::upgrade(&effective.config).await)
         }
         Command::Doctor {
             config_dir,
@@ -504,12 +547,16 @@ async fn run(command: Command) -> Result<ExitCode> {
                 None => settings::config_dir()?,
             };
             let effective = settings::load_effective_from(&dir)?;
-            Ok(emit(&doctor::run(&effective.config).await))
+            // The whole `Effective`, not just its `config`: doctor reports how
+            // configuration was LOADED as well as what it says, and warnings
+            // about unknown sections are load provenance rather than runtime
+            // semantics.
+            emit(&doctor::run(&effective, &dir).await)
         }
-        Command::Docs { command } => Ok(match command {
+        Command::Docs { command } => match command {
             DocsCommand::List => emit(&fs3_cli::docs::list()),
             DocsCommand::Get { topic } => emit(&fs3_cli::docs::get(&topic)),
-        }),
+        },
         Command::AgentsStartHere => {
             let envelope = fs3_cli::docs::get("agents");
             let envelope = match envelope.data {
@@ -520,13 +567,13 @@ async fn run(command: Command) -> Result<ExitCode> {
                 ),
                 None => envelope,
             };
-            Ok(emit(&envelope))
+            emit(&envelope)
         }
         Command::Config {
             command: ConfigCommand::Show { config_dir },
         } => config_show(config_dir).map(|()| ExitCode::SUCCESS),
         // Routed before the runtime was built; see `main`.
-        Command::Daemon => unreachable!("the daemon verb is handled in main"),
+        Command::Daemon { .. } => unreachable!("the daemon verb is handled in main"),
     }
 }
 
@@ -543,23 +590,41 @@ async fn run(command: Command) -> Result<ExitCode> {
 /// conditions print BEFORE the failure, because a message like "a newer binary
 /// is waiting for a restart" is very often the explanation for the failure
 /// underneath it.
-fn emit<T: serde::Serialize>(envelope: &Envelope<T>) -> ExitCode {
+fn emit<T: serde::Serialize>(envelope: &Envelope<T>) -> Result<ExitCode> {
     match serde_json::to_string_pretty(envelope) {
-        Ok(json) => println!("{json}"),
-        Err(error) => eprintln!("flowspace3: cannot render the response: {error}"),
+        Ok(json) => write_stdout(format_args!("{json}\n"))?,
+        Err(error) => write_stderr(format_args!(
+            "flowspace3: cannot render the response: {error}\n"
+        ))?,
     }
 
     for message in &envelope.messages {
-        eprintln!("flowspace3: {}", message.render());
+        write_stderr(format_args!("flowspace3: {}\n", message.render()))?;
     }
 
-    match &envelope.error {
+    Ok(match &envelope.error {
         None => ExitCode::SUCCESS,
         Some(failure) => {
-            eprintln!("{}", failure.render());
+            write_stderr(format_args!("{}\n", failure.render()))?;
             ExitCode::from(EXIT_ERROR)
         }
-    }
+    })
+}
+
+fn write_stdout(arguments: fmt::Arguments<'_>) -> io::Result<()> {
+    io::stdout().lock().write_fmt(arguments)
+}
+
+fn write_stderr(arguments: fmt::Arguments<'_>) -> io::Result<()> {
+    io::stderr().lock().write_fmt(arguments)
+}
+
+fn is_broken_pipe(error: &anyhow::Error) -> bool {
+    error.chain().any(|cause| {
+        cause
+            .downcast_ref::<io::Error>()
+            .is_some_and(|error| error.kind() == io::ErrorKind::BrokenPipe)
+    })
 }
 
 fn push(params: &mut Vec<(String, String)>, name: &str, value: Option<String>) {
@@ -598,11 +663,12 @@ fn here() -> Option<String> {
 }
 
 fn client_for(override_url: Option<String>) -> Result<DaemonClient> {
+    let directory = settings::config_dir()?;
     let url = match override_url {
         Some(url) => url,
-        None => daemon_url()?,
+        None => settings::daemon_url_from(&directory)?,
     };
-    DaemonClient::new(url)
+    DaemonClient::new(url, &directory)
 }
 
 fn config_show(override_dir: Option<PathBuf>) -> Result<()> {
@@ -612,7 +678,7 @@ fn config_show(override_dir: Option<PathBuf>) -> Result<()> {
     };
     let effective = settings::load_effective_from(&dir)?;
 
-    print!(
+    write_stdout(format_args!(
         "{}",
         show::render(
             &effective,
@@ -620,7 +686,7 @@ fn config_show(override_dir: Option<PathBuf>) -> Result<()> {
             settings::config_path(&dir).exists(),
             settings::secrets_path(&dir).exists(),
         )
-    );
+    ))?;
     Ok(())
 }
 
@@ -636,12 +702,27 @@ async fn ping(override_url: Option<String>) -> Result<ExitCode> {
         );
     }
 
-    println!(
-        "healthy - fs3 daemon {} at {} (embedder: {}, summarizer: {})",
+    write_stdout(format_args!(
+        "healthy - fs3 daemon {} at {} (embedder: {}, summarizer: {})\n",
         health.version,
         client.base_url(),
         health.embedder,
         health.summarizer
-    );
+    ))?;
     Ok(ExitCode::SUCCESS)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Cli, Command};
+    use clap::Parser as _;
+
+    #[test]
+    fn daemon_sandbox_is_an_explicit_boolean_mode() {
+        let cli = Cli::try_parse_from(["flowspace3", "daemon", "--sandbox"]).unwrap();
+        assert!(matches!(cli.command, Command::Daemon { sandbox: true }));
+
+        let cli = Cli::try_parse_from(["flowspace3", "daemon"]).unwrap();
+        assert!(matches!(cli.command, Command::Daemon { sandbox: false }));
+    }
 }
