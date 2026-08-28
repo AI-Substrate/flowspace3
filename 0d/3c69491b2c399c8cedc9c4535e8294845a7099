@@ -1,0 +1,19 @@
+crates/store/src/ingest_cursors.rs
+  s_15d888f4b629c1::t_7d21515e02602e 45,50-68,71-72,74-76,123,129-150,158,175-176,178,180,188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0d3c69491b2c399c8cedc9c4535e8294845a7099",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
