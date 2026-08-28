@@ -1,8 +1,9 @@
 {
   "scenario": "tasks-claiming-criterion",
   "rows": [
-    {"id":"R1","axis":"contract","type":"field-equals","params":{"field":"ok","value":true},"on_unavailable":"fail"},
-    {"id":"R2","axis":"groundedness","type":"result-addresses-include-ground-truth","params":{},"on_unavailable":"fail"},
-    {"id":"R3","axis":"metadata","type":"result-any-field-equals","params":{"field":"ddoc.id","value":"tk-0005"},"on_unavailable":"fail"}
+    {"id":"T1","axis":"traversal-contract","type":"field-equals","params":{"field":"command","value":"refs"},"on_unavailable":"fail"},
+    {"id":"T2","axis":"traversal-groundedness","type":"result-addresses-equal-ground-truth","params":{"ordered":true},"on_unavailable":"fail"},
+    {"id":"T3","axis":"traversal-metadata","type":"results-all-field-equals","params":{"field":"rel","value":"satisfies"},"on_unavailable":"fail"},
+    {"id":"T4","axis":"traversal-metadata","type":"results-all-field-non-empty","params":{"field":"location"},"on_unavailable":"fail"}
   ]
 }

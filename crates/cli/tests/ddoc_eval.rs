@@ -16,7 +16,7 @@ fn three_named_ddoc_query_shapes_have_ground_truth() {
 
     let expected = [
         "which acceptance criteria are still open",
-        "which tasks claim acceptance criterion ac-0013 eval fixtures",
+        "which tasks claim acceptance criterion ac-0001 in plan 004-ship-it",
         "which acceptance criteria touch crates/core/src/address.rs",
     ];
     for (path, expected_query) in scenarios.iter().zip(expected) {
@@ -41,6 +41,24 @@ fn three_named_ddoc_query_shapes_have_ground_truth() {
                 .is_empty()
         );
     }
+
+    let second_path = scenarios[1].as_str().unwrap();
+    let second: Value = serde_json::from_slice(
+        &std::fs::read(root.join(second_path)).expect("second scenario exists"),
+    )
+    .expect("second scenario is JSON");
+    assert_eq!(second["lane"], "ddoc-traversal");
+    assert_eq!(second["request"]["command"], "refs");
+    assert_eq!(
+        second["request"]["target"],
+        second["ground_truth"]["traversal_target"]
+    );
+    assert!(
+        second["ground_truth"]["resolution"]
+            .as_str()
+            .unwrap()
+            .contains("edge evidence, not prose-similarity evidence")
+    );
 
     let third_path = scenarios[2].as_str().unwrap();
     let third: Value = serde_json::from_slice(

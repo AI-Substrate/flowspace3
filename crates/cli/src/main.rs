@@ -116,9 +116,9 @@ enum Command {
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
     },
-    /// List deterministic-document rows that reference one source file.
+    /// List deterministic-document rows that reference a source file or cite a dd address.
     Refs {
-        /// Repository-relative source path.
+        /// Repository-relative source path or fully qualified dd address.
         path: String,
         /// Only this repository identity, or `all`.
         #[arg(long, value_name = "IDENTITY")]

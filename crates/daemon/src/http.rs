@@ -54,7 +54,8 @@ impl Health {
 /// What `GET /refs` asks for.
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 pub struct RefsRequest {
-    /// Repository-relative source path whose incoming ddoc rows are wanted.
+    /// Repository-relative source path or fully qualified dd address whose
+    /// incoming ddoc rows are wanted.
     pub path: String,
     /// Restrict to one repository identity, or `all`.
     #[serde(default)]
@@ -72,8 +73,9 @@ pub struct RefsRequest {
 pub struct RefHit {
     /// The source row's positional dd address; paste directly into `ddocs get`.
     pub address: String,
-    /// The repository-relative file this row references.
-    pub path: String,
+    /// The repository-relative file this row references, for path lookups.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
     /// dd relation spelling, verbatim.
     pub rel: String,
     /// JSONPath at which the relation was declared.
@@ -84,14 +86,25 @@ impl From<fs3_store::DdocFileRef> for RefHit {
     fn from(row: fs3_store::DdocFileRef) -> Self {
         RefHit {
             address: row.address,
-            path: row.path,
+            path: Some(row.path),
             rel: row.rel,
             location: row.location,
         }
     }
 }
 
-/// Exact ddoc rows referencing one ordinary source path.
+impl From<fs3_store::DdocCitation> for RefHit {
+    fn from(row: fs3_store::DdocCitation) -> Self {
+        RefHit {
+            address: row.address,
+            path: None,
+            rel: row.rel,
+            location: row.location,
+        }
+    }
+}
+
+/// Exact ddoc rows referencing one source path or citing one dd address.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct RefsResult {
     pub results: Vec<RefHit>,
@@ -477,17 +490,41 @@ async fn refs(
         return failed(&state, COMMAND, failure).await;
     }
 
-    let path = request.path.trim();
-    if path.is_empty() {
+    let target = request.path.trim();
+    if target.is_empty() {
         return failed(
             &state,
             COMMAND,
             fs3_core::envelope::Failure::new(
                 &catalog::QUERY_INVALID,
-                "refs needs a repository-relative source path",
+                "refs needs a repository-relative source path or fully qualified dd address",
             ),
         )
         .await;
+    }
+    let is_address = target.contains('#');
+    if is_address {
+        let qualified = matches!(
+            fs3_core::DdocAddress::parse(target),
+            Ok(address) if !address.file.is_empty()
+        );
+        if !qualified {
+            let fix = "copy the fully qualified `<file>#<section>/<id>` address from a \
+                       `flowspace3 search` or `flowspace3 get` result";
+            return failed(
+                &state,
+                COMMAND,
+                fs3_core::envelope::Failure::new(
+                    &catalog::QUERY_INVALID,
+                    "a bare or malformed dd address cannot identify the document being cited",
+                )
+                .with_fix(fix),
+            )
+            .await
+            .0
+            .with_next_action(fix)
+            .into();
+        }
     }
     let limit = request.limit.unwrap_or(crate::search::MAX_LIMIT);
     if !(1..=crate::search::MAX_LIMIT).contains(&limit) {
@@ -507,21 +544,36 @@ async fn refs(
 
     let scope =
         crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
-    match fs3_store::rows_referencing(
-        &state.db,
-        scope.repo.as_deref(),
-        path,
-        crate::scan::PARSER_VERSION,
-        limit,
-    )
-    .await
-    {
-        Ok(rows) => {
-            let result = RefsResult {
-                results: rows.into_iter().map(RefHit::from).collect(),
-            };
+    let rows = if is_address {
+        fs3_store::rows_citing(
+            &state.db,
+            scope.repo.as_deref(),
+            target,
+            crate::scan::PARSER_VERSION,
+            limit,
+        )
+        .await
+        .map(|rows| rows.into_iter().map(RefHit::from).collect())
+    } else {
+        fs3_store::rows_referencing(
+            &state.db,
+            scope.repo.as_deref(),
+            target,
+            crate::scan::PARSER_VERSION,
+            limit,
+        )
+        .await
+        .map(|rows| rows.into_iter().map(RefHit::from).collect())
+    };
+    match rows {
+        Ok(results) => {
+            let result = RefsResult { results };
             let next = if result.results.is_empty() {
-                "no indexed ddoc rows reference that source path — this is a successful empty answer"
+                if is_address {
+                    "no indexed ddoc rows cite that address — this is a successful empty answer"
+                } else {
+                    "no indexed ddoc rows reference that source path — this is a successful empty answer"
+                }
             } else {
                 "paste any address above into `ddocs get` or `flowspace3 get` to read the source row"
             };
