@@ -475,10 +475,14 @@ async fn ddoc_degradation_notice(
 ) -> Option<&'static str> {
     let root = scope.worktree.as_deref()?;
     let worktree = fs3_store::find_worktree(&state.db, root).await.ok()??;
-    state.ddoc_tooling(worktree.id).await.is_absent().then_some(
-        "the `ddocs` binary is unavailable: rows are indexed and searchable, but link edges, \
+    state
+        .ddoc_snapshot(worktree.id)
+        .await?
+        .is_absent()
+        .then_some(
+            "the `ddocs` binary is unavailable: rows are indexed and searchable, but link edges, \
              gate-terminal membership and derived state are unavailable until `ddocs` is on PATH",
-    )
+        )
 }
 
 async fn refs(
