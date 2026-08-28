@@ -87,6 +87,14 @@
         {
           "id": "u7",
           "text": "YOU ARE THE ONLY WAVE-1 UNIT THAT NEEDS POSTGRES. It is already running for the fleet as container flowspace3-db on 5433 — never `docker compose up`. Your scratch database is named in your scope."
+        },
+        {
+          "id": "u8",
+          "text": "PM RULINGS ON THIS PACKET, 2026-08-28, binding and recorded here rather than left in a message. (a) DONE BAR: d1-d3 were reader bars copy-pasted from the reader packets into a unit that implements no ConversationSource; they are replaced above with ledger, cursor and normalizer bars. Instruction i6 (implement SourceFixture over a scratch copy) does not apply to this unit. (b) NO CursorStore TRAIT, deviating deliberately from the impl-guide's u2 interface column — `grep -rn \"^pub trait|^trait \" crates/store/src/` returns nothing, so the crate has no trait convention to join, and a trait whose only second implementation is its own test fake does not clear the workshop-001 rule-3 bar that the frozen contract's own rustdoc cites to justify ITSELF. Build free async fns over &PgPool and put the dedupe/rotation DECISION in a pure core function, so the interesting tests need neither Postgres nor a fake. Named trigger, so this is a deferral and not a refusal: if the u4 orchestrator needs a PG-free seam, the trait is added then, on u4's evidence. This column is not part of the phase-1 freeze. (c) THE LEDGER STORES (harness, session_id, ordinal) -> turn_no, not a bare ordinal set: turn_no is the navigation axis (req-0026) and the idempotency key of the append, so a rescan that RECOVERS a record's existing number beats one that renumbers it, at identical row count. (d) parent_ordinal IS DROPPED and that is confirmed, not an oversight — fs3_core::conversation::Turn is {turn_no, role, source, head_sha, at, body, items} and holds no parent field. Say so in a comment where you drop it. (e) THE PAYLOAD POLICY IS WRITTEN ONCE, PUBLIC, IN CORE. shape(), WRITE_FAMILY, is_write_family(), first_line() and floor_char_boundary() are all PRIVATE to crates/daemon/src/conversations.rs, so implementing the policy again here would create the second copy that risk r3 names. Write it once in core; put the daemon delegation in your snap-in recipe as a line for the PM to paste; do not edit the daemon yourself."
+        },
+        {
+          "id": "u9",
+          "text": "PRIME RULING 2026-08-28, granting the daemon half of u8(e) — the payload policy MOVES once into fs3-core as public functions and the daemon's shape() delegates to it. Three conditions, all binding on this unit's work: (1) THE MOVE IS BEHAVIOUR-PRESERVING and the EXISTING daemon intake tests prove it — they must stay green UNMODIFIED. If any of them needs an edit to pass, that is a behaviour change, not a move: STOP and tell the PM, who routes it to prime. (2) OUTPUT_HEAD_BYTES AND THE POLICY FUNCTIONS ARE SINGLE-SOURCED IN CORE; the daemon re-exports the constant if its public surface still needs it. No second definition of the constant anywhere. (3) THE COMPOSITION EDIT IS THE PM'S, NOT YOURS — you write the core policy and the snap-in recipe line; you never touch crates/daemon."
         }
       ]
     },
@@ -125,15 +133,15 @@
       "value": [
         {
           "id": "d1",
-          "text": "The unit implements the FROZEN ConversationSource contract as written — resolve() finds every file on EVERY call (sidecars appear mid-session), read_incremental() returns store-ordered COMPLETE records only, always a resumable cursor, and rescanned=true when the file rotated or truncated."
+          "text": "THE LEDGER DEDUPES A RESCAN TO ZERO. A rescanned=true batch carrying the WHOLE conversation, after a first ingest already stored it, results in ZERO new turns. This is the case the unit exists for: silence here is indistinguishable from a burst of new turns and duplicates an entire conversation. (Ruled 2026-08-28 replacing a reader done-bar the PM copy-pasted into this packet; u2 implements no ConversationSource, owns no store and has no fixtures.)"
         },
         {
           "id": "d2",
-          "text": "fs3_testkit::conversation_source_contract passes over your store's fixtures, through a SourceFixture implemented on a scratch copy. This is the mechanical definition of done for a reader — not review, not your own judgement."
+          "text": "THE CURSOR ROUND-TRIPS DURABLY for all three SourceCursor variants — ByteOffset, Seq and RowId — proven against the scratch database, not only in memory. A cursor that survives only inside one process makes the second ingest a full re-read."
         },
         {
           "id": "d3",
-          "text": "The committed expectations pass: fs3_testkit::Expectations::assert_ordinals_are_a_subsequence for your store's sessions (your emitted RawRecord::ordinal values must be an in-order, repeat-free subsequence of the ids the store holds) plus, where your store has an oracle, assert_oracle_prose_appears. READ crates/testkit/fixtures/conversations/<store>/expectations.json's grade_of_proof field before you trust or blame it."
+          "text": "THE NORMALIZER GOLDENS match the measured payload spec, with the truncation MUTATION-CHECKED: a golden that still passes when the 512-byte cut is removed is not a test. Includes an explicit multi-byte case proving the head lands on a CHARACTER boundary."
         },
         {
           "id": "d4",
@@ -141,11 +149,11 @@
         },
         {
           "id": "d5",
-          "text": "THE SNAP-IN RECIPE is shipped with the unit (tenet 4): the exact wiring I will paste at the composition root — construction call, the one `pub mod` line, config shape, any registration — as a section in your unit's docs/services page. You write the recipe; you never wire it in yourself."
+          "text": "THE SNAP-IN RECIPE is shipped with the unit (tenet 4): the exact wiring the PM will paste at the composition root — construction calls, the module lines, config shape — as a section in docs/services/convo-cursors.md. It also carries the line delegating the daemon's private shape() to the core payload policy, so the policy has ONE implementation rather than two. You write the recipe; you never wire it in yourself."
         },
         {
           "id": "d6",
-          "text": "Done report to me: what shipped, the evidence (test names, counts), every deviation from this packet and why, and anything the composer must know. Include your observed rustc/cargo versions (tenet 10)."
+          "text": "Done report to the PM: what shipped, the evidence (test names, counts), every deviation from this packet and why, and anything the composer must know. Include your observed rustc/cargo versions (tenet 10)."
         }
       ]
     },
