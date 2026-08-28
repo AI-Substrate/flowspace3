@@ -1,0 +1,18 @@
+docs/plans/008-ddocs-scan/assets/observations.md
+  h_9e71e8b09f7cf2 297-330,333
+docs/plans/008-ddocs-scan/review.dd.json
+  h_9e71e8b09f7cf2 1-134
+docs/plans/008-ddocs-scan/review.dd.md
+  h_9e71e8b09f7cf2 1-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cc6edced77d580963cca0a7dd5fd06209e299141",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
