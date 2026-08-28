@@ -383,15 +383,32 @@ fi
 # File 0 is the VERSION PROBE: an existing element diverges in place (same path,
 # same address, different content) — that is what P3 asks about. Files 1..K-1
 # are appended markers, which measure the cost of divergent content.
+# THE STIMULUS MUST BE RETRIEVABLE BY SOMETHING, or it cannot measure exclusion.
+#
+# It was a nonsense phrase — "pineapple lighthouse semaphore" — chosen because
+# it was distinctive TO A HUMAN: lexically unique, obviously the probe's. That
+# is the wrong kind of distinctive for a pure-vector index with no lexical
+# channel. Run eight proved it with the discriminating control: elements=8,
+# vectors=8, and still unranked. The same phrase sits in three indexed elements
+# on the live index and a search for it returns none of them.
+#
+# So the marker is now semantically COHERENT (an embedder can place it: a unit
+# conversion, named in the identifier, since doc comments are not indexed) and
+# semantically ISOLATED in this corpus (nothing here is about temperature, so
+# it competes with nothing). Both properties are required: coherent so it
+# embeds somewhere meaningful, isolated so it wins its own query.
+#
+# DISTINCTIVE-TO-A-HUMAN IS NOT DISTINCTIVE-TO-AN-EMBEDDER.
 VERSION_FILE=${EDIT_FILES[0]}
 {
   echo ""
-  echo "/// Worktree-diff probe marker. This doc comment exists ONLY in the probe"
-  echo "/// worktree $SLUG and never in the main checkout. It describes a"
-  echo "/// pineapple lighthouse semaphore that reconciles marmalade telemetry."
+  echo "/// Worktree-diff probe marker: exists ONLY in $SLUG, never in main."
+  echo "/// (Doc comments are not indexed — the identifier and body carry the"
+  echo "/// meaning, which is why the name spells the conversion out.)"
   echo "#[allow(dead_code)]"
-  echo "fn ${MARKER}_version_probe() -> &'static str {"
-  echo "    \"pineapple lighthouse semaphore\""
+  echo "fn ${MARKER}_celsius_to_fahrenheit(celsius_reading: f64) -> f64 {"
+  echo "    let fahrenheit = celsius_reading * 9.0 / 5.0 + 32.0;"
+  echo "    fahrenheit"
   echo "}"
 } >> "$WT/$VERSION_FILE"
 for (( i=1; i<K; i++ )); do
@@ -429,7 +446,8 @@ say "P3 — same query from main and from inside the worktree"
 # above a function does not: elements carry the item's own span, so a marker
 # hidden in a doc comment is unfindable for a reason that has nothing to do
 # with worktrees. The phrase below is inside the probe function's BODY.
-Q_MARKER="poctest version probe pineapple lighthouse semaphore function"
+# Describes the marker the way a caller would ask for it — meaning, not tokens.
+Q_MARKER="convert a celsius temperature reading into fahrenheit"
 Q_SHARED="cli client that talks to the fs3 daemon over http"
 IDENTITY=$(sql "select r.identity from repos r join worktrees w on w.repo_id = r.id where w.root_path = '$WT'")
 FILE_ADDRESS="el:$IDENTITY/$VERSION_FILE"
