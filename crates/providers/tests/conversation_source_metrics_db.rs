@@ -193,7 +193,7 @@ fn emitted_ordinals_are_a_subsequence_of_what_the_store_holds() {
     let expectations = Expectations::load(FixtureStore::MetricsDb);
     let fixture = Fixture::new("subsequence");
 
-    for session in [MAIN, SUBAGENT] {
+    for session in [MAIN, SUBAGENT, COPILOT] {
         let file = session_file(&fixture, session);
         let batch = fixture
             .source
@@ -375,8 +375,14 @@ fn the_copilot_dialect_is_read_from_the_stores_own_tool_column() {
     let fixture = Fixture::new("copilot");
     let records = read_all(&fixture, COPILOT);
 
-    // user.message ×1 + assistant.message ×3 + tool.execution_start ×1.
-    assert_eq!(records.len(), 5, "26 rows, five of which are conversation");
+    // user.message ×1 + assistant.message ×3. tool.execution_start is NOT a
+    // record: the assistant.message that requested the tool already carries it
+    // in `toolRequests`, so emitting one here reported ONE tool call as two
+    // turns — and made this reader disagree with claude, where a tool call is
+    // an item on the assistant turn. Corrected 2026-08-28 after cross-model
+    // review found the committed expectation (four) and this reader (five)
+    // contradicting each other with neither test covering the other's claim.
+    assert_eq!(records.len(), 4, "26 rows, four of which are conversation");
 
     let human = records
         .iter()
@@ -395,15 +401,24 @@ fn the_copilot_dialect_is_read_from_the_stores_own_tool_column() {
 }
 
 #[test]
-fn a_copilot_tool_call_and_its_result_land_on_one_turn() {
+fn a_copilot_tool_call_and_its_result_land_on_the_assistant_turn() {
     let fixture = Fixture::new("copilot-tools");
     let paired = read_all(&fixture, COPILOT)
         .into_iter()
         .find(|record| record.items.len() >= 2)
         .expect("the tool.execution_start / tool.execution_complete pair joins on toolCallId");
 
-    assert!(matches!(paired.items[0], TurnItem::ToolCall { .. }));
-    assert!(matches!(paired.items[1], TurnItem::ToolResult { .. }));
+    // Both land as ITEMS on the turn that requested the tool, never as a turn
+    // of their own — the same shape claude uses for `tool_use` / `tool_result`.
+    assert_eq!(paired.role, TurnRole::Agent);
+    assert!(matches!(
+        paired.items[paired.items.len() - 2],
+        TurnItem::ToolCall { .. }
+    ));
+    assert!(matches!(
+        paired.items[paired.items.len() - 1],
+        TurnItem::ToolResult { .. }
+    ));
 }
 
 #[test]
@@ -461,7 +476,7 @@ fn an_event_type_this_reader_has_never_heard_of_is_dropped_not_fatal() {
 
     assert_eq!(
         batch.records.len(),
-        5,
+        4,
         "the unknown rows are dropped and the surrounding records still parse"
     );
     // The cursor still advances PAST the dropped rows, or the reader stalls on

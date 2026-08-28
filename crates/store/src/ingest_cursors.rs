@@ -422,3 +422,64 @@ pub async fn sessions_for(
         })
         .collect()
 }
+
+/// Hold a conversation against concurrent polls, for the life of `held`.
+///
+/// The queue does NOT serialise ingest per conversation, which cross-model
+/// review established rather than assumed: `SERIAL_KINDS` means claimed one at
+/// a time, not RUN one at a time, so several ingest jobs can be in flight at
+/// once — and two live queue keys can address ONE conversation, because the seat
+/// route and the native route produce different keys for the same session.
+///
+/// That matters because [`ledger_view`] reads the conversation's own high-water
+/// mark: two polls that read it before either commits will number against the
+/// same value, and the second one's turns collide on `(conversation_id,
+/// turn_no)` and are dropped.
+///
+/// The lock is session-scoped and taken on a dedicated connection, so it is
+/// released here rather than at transaction end — the poll spans several
+/// transactions and a transaction-scoped lock would let the next one in
+/// halfway through.
+///
+/// # Errors
+/// [`StoreError::Query`] when the connection or either lock statement fails.
+/// The unlock runs on every path, including when `held` returned an error.
+pub async fn with_conversation_lock<T, F, Fut>(
+    pool: &PgPool,
+    conversation: &ConversationId,
+    held: F,
+) -> Result<T, StoreError>
+where
+    F: FnOnce() -> Fut,
+    Fut: std::future::Future<Output = T>,
+{
+    let key = advisory_key(conversation);
+    let mut connection = pool.acquire().await?;
+    sqlx::query("SELECT pg_advisory_lock($1)")
+        .bind(key)
+        .execute(&mut *connection)
+        .await?;
+
+    let outcome = held().await;
+
+    sqlx::query("SELECT pg_advisory_unlock($1)")
+        .bind(key)
+        .execute(&mut *connection)
+        .await?;
+    Ok(outcome)
+}
+
+/// A stable 64-bit key for `pg_advisory_lock`, derived from the conversation.
+///
+/// Computed here rather than with Postgres `hashtext`, so the key does not
+/// depend on a hash function the database is free to change between versions —
+/// a lock whose key moved under an upgrade would silently stop serialising.
+fn advisory_key(conversation: &ConversationId) -> i64 {
+    let digest = fs3_core::content_hash(conversation.as_str().as_bytes());
+    let hex: String = digest
+        .chars()
+        .filter(char::is_ascii_hexdigit)
+        .take(16)
+        .collect();
+    u64::from_str_radix(&hex, 16).map_or(0, |value| value as i64)
+}

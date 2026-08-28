@@ -85,6 +85,8 @@ pub struct SessionIngest {
     pub turns_new: usize,
     /// Records the ledger recognised and suppressed.
     pub deduped: usize,
+    /// Turns queued for enrichment from this file.
+    pub summarized: usize,
     /// Whether the reader restarted from the beginning.
     pub rescanned: bool,
 }
@@ -434,136 +436,170 @@ pub async fn ingest(state: &AppState, request: &IngestRequest) -> Result<IngestR
             .clone()
             .unwrap_or_else(|| conversation_guid(harness, &file.session_id));
 
-        let cursor = fs3_store::ingest_cursors::load_cursor(&state.db, harness, &file.session_id)
+        // SERIALISE PER CONVERSATION — for real this time. The queue does not
+        // do it: `SERIAL_KINDS` means claimed one at a time, not RUN one at a
+        // time, so `drain` can have several ingest jobs in flight up to
+        // `worker_concurrency`. And two live queue keys can address ONE
+        // conversation — first light had `ingest:pij/<seat>@<folder>` and
+        // `ingest:omp/<uuid>@<folder>` for the same session — so the dedupe key
+        // cannot serialise it either. Cross-model review found the claim in the
+        // docs and the absence in the code.
+        //
+        // A Postgres advisory lock keyed on the conversation is the smallest
+        // thing that actually serialises: turn numbers come from the
+        // conversation's own stored turns, so two polls reading one high-water
+        // mark before either commits is the loss path.
+        let outcome =
+            fs3_store::ingest_cursors::with_conversation_lock(&state.db, &guid, || async {
+                let cursor =
+                    fs3_store::ingest_cursors::load_cursor(&state.db, harness, &file.session_id)
+                        .await
+                        .map_err(fail)?;
+
+                // Blocking IO, so off the async thread — exactly as the local ONNX
+                // embedder is handled.
+                let batch = tokio::task::spawn_blocking({
+                    let source = source_for(harness, &folder, &home, remote.as_deref())?;
+                    let file = file.clone();
+                    move || source.read_incremental(&file, cursor.as_ref())
+                })
+                .await
+                .map_err(|error| join_failure(&error))?
+                .map_err(|error| reader_failure(&error.to_string()))?;
+
+                // A session that has produced nothing and has never been stored is not
+                // a conversation yet: creating an empty header and a cursor for it
+                // would leave a row nothing can ever fill in.
+                let known = existing.is_some();
+                if batch.records.is_empty() && !known {
+                    return Ok(None);
+                }
+
+                // The header must exist before the ledger is asked for the
+                // conversation's high-water mark, and before the poll is committed:
+                // `ingest_cursors.conversation_id` is a real foreign key, on purpose.
+                //
+                // `started_at` comes from the FIRST RECORD READ rather than the clock:
+                // a conversation began when its first turn did, and an ingest-time
+                // stamp would make the same conversation start at a different moment
+                // depending on when someone happened to run this.
+                //
+                // And when this poll read NOTHING there is deliberately no fallback
+                // stamp: an epoch default would be a date nobody chose, absorbed
+                // silently, which is the pattern u2 caught in claude's ordinal and u1a
+                // then found again in its own timestamps. A poll with no records has
+                // nothing to date the conversation by, and the header it would be
+                // dating already exists — so the upsert is SKIPPED rather than fed a
+                // number.
+                if let Some(first) = batch.records.first() {
+                    let header = Conversation {
+                        guid: guid.clone(),
+                        repo_identity: remote.clone(),
+                        worktree: Some(folder.to_string_lossy().to_string()),
+                        base_sha: None,
+                        title: Some(conversation_title(&file.session_id, file.kind)),
+                        started_at: first.at.clone(),
+                    };
+                    fs3_store::upsert_conversation(&state.db, &header)
+                        .await
+                        .map_err(fail)?;
+                }
+
+                let ordinals: Vec<&str> = batch
+                    .records
+                    .iter()
+                    .map(|record| record.ordinal.as_str())
+                    .collect();
+                let view = fs3_store::ingest_cursors::ledger_view(
+                    &state.db,
+                    harness,
+                    &file.session_id,
+                    &guid,
+                    &ordinals,
+                )
+                .await
+                .map_err(fail)?;
+
+                let prepared = prepare_batch(&batch.records, &view.seen, view.next_turn_no);
+                let appended = fs3_store::append_turns(&state.db, &guid, &prepared.turns, {
+                    move |element: &Element| earns_summary(&element.raw_text, floor)
+                })
+                .await
+                .map_err(fail)?;
+
+                // THE BACKSTOP, and it is not the one that was here before. The
+                // previous version compared `accepted + already_stored` against
+                // `prepared.turns.len()`, which cross-model review showed is an
+                // ARITHMETIC IDENTITY: `fs3_store::conversations` defines
+                // `already_stored` as `turns.len() - accepted.len()`, so that check
+                // could not fail for any input. It was a safety property in a comment
+                // and nothing in the code.
+                //
+                // The check that CAN fire is the one u2 actually described: turns the
+                // ledger said were new, which the turns table already had. That means
+                // the two disagree about what is stored — a concurrent poll numbering
+                // against the same high-water mark, or a ledger that lost rows a cursor
+                // advanced past.
+                if prepared.deduped == 0 && appended.already_stored > 0 {
+                    return Err(Failure::new(
+                    &catalog::QUERY_INVALID,
+                    format!(
+                        "ingest anomaly for {}/{}: the ledger said all {} turns were new, and the \
+                     store already had {} of them — the ordinal ledger and the turns table \
+                     disagree about what is in conversation {}. Another poll of this \
+                     conversation probably numbered against the same high-water mark.",
+                        harness,
+                        file.session_id,
+                        prepared.turns.len(),
+                        appended.already_stored,
+                        guid.as_str()
+                    ),
+                )
+                .retryable(false));
+                }
+
+                // Record the poll even when nothing was appended: the reader still
+                // moved over bytes, and a cursor that did not advance re-reads them.
+                fs3_store::ingest_cursors::commit_poll(
+                    &state.db,
+                    harness,
+                    &file.session_id,
+                    &guid,
+                    &batch.cursor,
+                    &prepared.ledger,
+                )
+                .await
+                .map_err(fail)?;
+
+                let identity = remote.clone().unwrap_or_else(|| UNANCHORED.to_string());
+                let summarized =
+                    enrich::enqueue_for_turns(state, &identity, &appended.accepted, floor).await?;
+                Ok(Some(SessionIngest {
+                    guid: guid.as_str().to_string(),
+                    session_id: file.session_id.clone(),
+                    kind: match file.kind {
+                        SessionKind::Main => "main".to_string(),
+                        SessionKind::Subagent => "subagent".to_string(),
+                    },
+                    parent_session_id: file.parent_session_id.clone(),
+                    records_read: batch.records.len(),
+                    turns_new: appended.accepted.len(),
+                    deduped: prepared.deduped,
+                    summarized,
+                    rescanned: batch.rescanned,
+                }))
+            })
             .await
             .map_err(fail)?;
 
-        // Blocking IO, so off the async thread — exactly as the local ONNX
-        // embedder is handled.
-        let batch = tokio::task::spawn_blocking({
-            let source = source_for(harness, &folder, &home, remote.as_deref())?;
-            let file = file.clone();
-            move || source.read_incremental(&file, cursor.as_ref())
-        })
-        .await
-        .map_err(|error| join_failure(&error))?
-        .map_err(|error| reader_failure(&error.to_string()))?;
-
-        // A session that has produced nothing and has never been stored is not
-        // a conversation yet: creating an empty header and a cursor for it
-        // would leave a row nothing can ever fill in.
-        let known = existing.is_some();
-        if batch.records.is_empty() && !known {
+        let Some(session) = outcome? else {
             continue;
-        }
-
-        // The header must exist before the ledger is asked for the
-        // conversation's high-water mark, and before the poll is committed:
-        // `ingest_cursors.conversation_id` is a real foreign key, on purpose.
-        //
-        // `started_at` comes from the FIRST RECORD READ rather than the clock:
-        // a conversation began when its first turn did, and an ingest-time
-        // stamp would make the same conversation start at a different moment
-        // depending on when someone happened to run this.
-        //
-        // And when this poll read NOTHING there is deliberately no fallback
-        // stamp: an epoch default would be a date nobody chose, absorbed
-        // silently, which is the pattern u2 caught in claude's ordinal and u1a
-        // then found again in its own timestamps. A poll with no records has
-        // nothing to date the conversation by, and the header it would be
-        // dating already exists — so the upsert is SKIPPED rather than fed a
-        // number.
-        if let Some(first) = batch.records.first() {
-            let header = Conversation {
-                guid: guid.clone(),
-                repo_identity: remote.clone(),
-                worktree: Some(folder.to_string_lossy().to_string()),
-                base_sha: None,
-                title: Some(conversation_title(&file.session_id, file.kind)),
-                started_at: first.at.clone(),
-            };
-            fs3_store::upsert_conversation(&state.db, &header)
-                .await
-                .map_err(fail)?;
-        }
-
-        let ordinals: Vec<&str> = batch
-            .records
-            .iter()
-            .map(|record| record.ordinal.as_str())
-            .collect();
-        let view = fs3_store::ingest_cursors::ledger_view(
-            &state.db,
-            harness,
-            &file.session_id,
-            &guid,
-            &ordinals,
-        )
-        .await
-        .map_err(fail)?;
-
-        let prepared = prepare_batch(&batch.records, &view.seen, view.next_turn_no);
-        let appended = fs3_store::append_turns(&state.db, &guid, &prepared.turns, {
-            move |element: &Element| earns_summary(&element.raw_text, floor)
-        })
-        .await
-        .map_err(fail)?;
-
-        // The backstop that does not depend on the numbering being right:
-        // every prepared turn is either accepted or already stored, and any
-        // other outcome means the ledger and the turns table disagree about
-        // what exists.
-        let accounted = appended.accepted.len() + appended.already_stored;
-        if accounted != prepared.turns.len() {
-            return Err(Failure::new(
-                &catalog::QUERY_INVALID,
-                format!(
-                    "ingest anomaly for {}/{}: prepared {} turns, the store accounted for {} \
-                     ({} accepted, {} already stored) — the ledger and the turns table disagree \
-                     about what is in this conversation",
-                    harness,
-                    file.session_id,
-                    prepared.turns.len(),
-                    accounted,
-                    appended.accepted.len(),
-                    appended.already_stored
-                ),
-            )
-            .retryable(false));
-        }
-
-        // Record the poll even when nothing was appended: the reader still
-        // moved over bytes, and a cursor that did not advance re-reads them.
-        fs3_store::ingest_cursors::commit_poll(
-            &state.db,
-            harness,
-            &file.session_id,
-            &guid,
-            &batch.cursor,
-            &prepared.ledger,
-        )
-        .await
-        .map_err(fail)?;
-
-        let identity = remote.clone().unwrap_or_else(|| UNANCHORED.to_string());
-        report.summarized +=
-            enrich::enqueue_for_turns(state, &identity, &appended.accepted, floor).await?;
-        report.records_read += batch.records.len();
-        report.turns_new += appended.accepted.len();
-        report.deduped += prepared.deduped;
-        report.sessions.push(SessionIngest {
-            guid: guid.as_str().to_string(),
-            session_id: file.session_id.clone(),
-            kind: match file.kind {
-                SessionKind::Main => "main".to_string(),
-                SessionKind::Subagent => "subagent".to_string(),
-            },
-            parent_session_id: file.parent_session_id.clone(),
-            records_read: batch.records.len(),
-            turns_new: appended.accepted.len(),
-            deduped: prepared.deduped,
-            rescanned: batch.rescanned,
-        });
+        };
+        report.records_read += session.records_read;
+        report.turns_new += session.turns_new;
+        report.deduped += session.deduped;
+        report.summarized += session.summarized;
+        report.sessions.push(session);
     }
 
     Ok(report)

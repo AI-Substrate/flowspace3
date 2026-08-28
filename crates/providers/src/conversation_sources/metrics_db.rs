@@ -813,29 +813,39 @@ fn copilot_row(row: &Row, records: &mut Vec<RawRecord>, open_calls: &mut BTreeMa
             ));
         }
         "tool.execution_start" => {
+            // NOT a turn of its own. The assistant.message that requested this
+            // tool already carries it in `toolRequests`, so emitting a record
+            // here reports ONE tool call as two turns — and it made this reader
+            // disagree with claude, where a tool call is an item on the
+            // assistant turn rather than a turn beside it. Found by cross-model
+            // review, 2026-08-28: the committed expectation says four records
+            // for this session and this path was making five.
+            //
+            // So the start event REGISTERS the open call against the record the
+            // assistant already opened, and contributes its arguments there.
+            let Some(index) = records.len().checked_sub(1) else {
+                // Nothing to attach to: the assistant record that requested it
+                // is older than the cursor. Dropping is right for the same
+                // reason a result whose call we never saw is dropped —
+                // attaching it to the wrong turn would be worse.
+                return;
+            };
             let tool = data
                 .and_then(|data| data.get("toolName"))
                 .and_then(Value::as_str)
                 .unwrap_or("unknown")
                 .to_owned();
-            let item = TurnItem::ToolCall {
-                tool: tool.clone(),
+            records[index].items.push(TurnItem::ToolCall {
+                tool,
                 input: ToolInput::Verbatim {
                     text: render(data.and_then(|data| data.get("arguments"))),
                 },
-            };
-            records.extend(copilot_record(
-                row,
-                TurnRole::Agent,
-                TurnSource::System,
-                String::new(),
-                vec![item],
-            ));
+            });
             if let Some(call) = data
                 .and_then(|data| data.get("toolCallId"))
                 .and_then(Value::as_str)
             {
-                open_calls.insert(call.to_owned(), records.len() - 1);
+                open_calls.insert(call.to_owned(), index);
             }
         }
         "tool.execution_complete" => {

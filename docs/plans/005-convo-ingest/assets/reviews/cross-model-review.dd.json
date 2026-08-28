@@ -1,0 +1,97 @@
+{
+  "dd": {
+    "schema": "builder/review"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Cross-model review — plan 005 convo ingest",
+        "reviewer": "pij-weary-orangutan",
+        "model": "github-copilot/gpt-5.6-sol",
+        "round": "1",
+        "date": "2026-08-28",
+        "plan": "../../plan.dd.json#meta",
+        "note": "VERDICT: REQUEST_CHANGES. AC judgment from fresh evidence: ac-0001 true (live seat-route re-poll job 3532 completed and the scratch conversation held 897 turns); ac-0002 true (native-route job 3683 completed into the same single conversation and the count remained 897); ac-0003 true for the exercised OMP session (804 to 897 turns, cursor offset 2684922 to 2902565); ac-0004 false as written (F-002); ac-0005 true in the reader suites; ac-0006(a) pipeline findability true — the stored turn was addressable at conv:bebaf916-be8e-8fa8-a3ee-5a826b0f1b3e#t160, the cursor advanced in the fresh re-poll, and the offline source-filter contract test `conversations_answer_only_when_asked_for` passed 1/1; ac-0006(b) semantic meaningfulness is accepted as prime-closed by the one explicitly authorised real-provider proof and was not re-run, exactly as the safety rule requires; ac-0007 core contract-suite claim is true, while its receipt overstates cardinality coverage (F-003); ac-0008 true (`harness checks` exited 0 across its nine-gate envelope at 718b83c). `harness plan validate --complete` did not reproduce the claimed clean plan gate: 0 errors, 6 warnings (F-004). Non-blocking fallback note requested by the PM: value-versus-hole is a valid operational distinction, not a correctness guarantee; Claude's 1970 timestamp sentinel stores successfully but can persist false turn time and permanently win `started_at` through LEAST. I could not establish whether a live turn-bearing Claude row can omit its timestamp, and no regression covers that fallback. Other named evidence gaps: Claude-native discovery/ingest was not exercised live; and `discover_folder` returns the first filesystem-order match if duplicate copies of one session id exist under multiple workspace slugs, but I found no evidence that this is reachable with divergent session content. Safety note: a pre-rule scratch-daemon run inherited ambient paid providers; it was stopped immediately when the rule arrived. Observation DL-018 remains in the shared buffer and was not cleared."
+      }
+    },
+    {
+      "name": "findings",
+      "value": [
+        {
+          "id": "f-001",
+          "kind": "defect",
+          "severity": "MAJOR",
+          "finding": "The documented per-conversation serialization does not exist, and the accounting backstop is an identity rather than a check. `runner::drain` may claim and spawn multiple `SERIAL_KINDS` jobs until `worker_concurrency` is full; the default is four. Different queue keys can address the same conversation (seat versus native route, or different folders). Both polls can read one ledger high-water mark before either commits. The claimed backstop cannot detect the resulting conflict because `append_turns` defines `already_stored` as `turns.len() - accepted.len()`, making `accepted + already_stored == prepared.turns.len()` true by construction. A concrete loss path is a partial and full concurrent poll of a group-derived Claude/metrics turn: the partial body wins a turn-number conflict, the full body is labelled already stored without content comparison, and its cursor/ledger can advance past the continuation. This breaks ac-0003 and the service page's explicit serial/accounting claims. Smallest safe fix: serialize from ledger snapshot through poll commit for one conversation (or globally for ingest as the conservative first cut), and classify a conflict as already stored only after verifying the existing turn has the same canonical content/blob hash; add a concurrent partial/full-poll regression through the composed path.",
+          "address": "/Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/daemon/src/runner.rs:179-227; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/daemon/src/convo_ingest.rs:490-543; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/store/src/conversations.rs:236-275",
+          "links": [
+            "../../plan.dd.json#acceptance_criteria/ac-0003"
+          ],
+          "receipt": "Fresh source trace: runner loop spawns every claimed serial-kind job while tasks.len() < workers; append_turns computes already_stored solely as input length minus returned inserts; the orchestrator sums those two complementary values. Existing cursor/store suites passed but contain no concurrent composed-pipeline case."
+        },
+        {
+          "id": "f-002",
+          "kind": "defect",
+          "severity": "MAJOR",
+          "finding": "ac-0004 promises child conversations linked to their parent, but the relationship stops at an in-memory `SessionFile` and an `IngestReport` that the asynchronous worker discards. `run` maps `ingest` to unit, the submit response exposes only address/dedupe/accepted, `Conversation` has no parent field, and the conversations schema stores no parent relation. After the job settles, neither list/get nor the database can navigate from a child conversation to its parent. The reader correctly discovers sidecars, but discovery is not the promised persisted link. Smallest fix requires an explicit contract decision: persist a parent conversation id (with migration/store/read-surface coverage) and expose it, or narrow ac-0004 to discovery-only. Under the binding composition rule this is a frozen-interface defect, not wiring that can be patched invisibly.",
+          "address": "/Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/core/src/conversation_source.rs:150-168; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/daemon/src/convo_ingest.rs:71-90,188-195,554-566; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/core/src/conversation.rs:368-388; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/store/migrations/0013_conversations.sql:44-57",
+          "links": [
+            "../../plan.dd.json#acceptance_criteria/ac-0004"
+          ],
+          "receipt": "Exact-symbol search found `parent_session_id` only in reader/session-file construction, the discarded ingest report, and fixture assertions; no store or query surface persists it."
+        },
+        {
+          "id": "f-003",
+          "kind": "defect",
+          "severity": "MAJOR",
+          "finding": "The independent cardinality artifact and the metrics reader disagree for the covered Copilot session, while the advertised cardinality test omits that session. The generator and committed expectation require four ordinals and state that `tool.execution_*` events become items rather than records. The reader deliberately emits `tool.execution_start` as a fifth RawRecord, and its dedicated test asserts five. The only `assert_emitted_ordinals_match` loop in the metrics suite covers MAIN and SUBAGENT Claude-mirror sessions, not COPILOT, so both contradictory tests pass. This makes the impl-guide's '4 for copilot' and ac-0007 receipt's 'each also passes the cardinality claim' untrue, and leaves exactly the shared-blind-spot the cardinality amendment was meant to remove. Reviewer ruling recommendation: the reader should move to four. Fixture row 936647 is an `assistant.message` whose `toolRequests` already carries the same `toolCallId` and call payload repeated by row 936648 `tool.execution_start`; emitting both makes one call both an item and a separate turn, unlike the normalized message-turn contract used by Claude and OMP. Register the assistant record as the open call, drop the mirrored start as a record, attach completion to that assistant record, and assert cardinality equality over every fixture session including COPILOT and the zero-turn sessions. Poll-straddled completion remains a separate contract edge: the current batch-local map already drops or splits it depending on where the boundary lands, so it should be ruled explicitly rather than used to preserve the full-batch duplication.",
+          "address": "/Users/jordanknight/substrate/flowspace/fs3-convo-ingest/docs/plans/005-convo-ingest/assets/inputs/tools/oracle_expectations.py:595-625; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/testkit/fixtures/conversations/metrics_db/expectations.json:78-89; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/providers/src/conversation_sources/metrics_db.rs:754-840; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/providers/tests/conversation_source_metrics_db.rs:191-213,373-407",
+          "links": [
+            "../../plan.dd.json#acceptance_criteria/ac-0007"
+          ],
+          "receipt": "Fresh `cargo test -p fs3-providers --test conversation_source_metrics_db` passed all 16 tests: the Copilot test accepted five records while the cardinality test passed because it iterates only MAIN and SUBAGENT. `oracle_expectations.py --check` also passed, confirming the contradictory four-record expectation is the committed generated artifact rather than drift. A read-only SQLite inspection then matched assistant row 936647's toolRequests.toolCallId to execution-start row 936648's toolCallId, proving the fifth record mirrors a call already represented on the assistant turn."
+        },
+        {
+          "id": "f-004",
+          "kind": "defect",
+          "severity": "MINOR",
+          "finding": "The claimed clean complete-plan gate is false. Fresh `harness plan validate plan.dd.json --complete` returned 0 errors and 6 warnings: phase 2 and phase 3 remain unchecked, as do phase-2 tasks tk-c201 through tk-c204. This blocks the dd-native review departure gate even though the code gate is green. Smallest fix: close those phase/task rows with their existing evidence via ddocs, then rerun complete validation to zero warnings; do not weaken or force the gate.",
+          "address": "/Users/jordanknight/substrate/flowspace/fs3-convo-ingest/docs/plans/005-convo-ingest/plan.dd.json#phases; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/docs/plans/005-convo-ingest/assets/tasks/phase-2/tasks.dd.json#tasks",
+          "links": [
+            "../../plan.dd.json#meta"
+          ],
+          "receipt": "Fresh gate output: error=0, warn=6, semantic open=6; warnings named ph-c2aa, ph-c3aa, tk-c201, tk-c202, tk-c203 and tk-c204."
+        }
+      ]
+    },
+    {
+      "name": "verdict",
+      "value": [
+        {
+          "id": "v-001",
+          "finding": "#findings/f-001",
+          "resolution": "confirmed",
+          "rationale": "REQUEST_CHANGES: concurrent ingest can silently advance past content, and the claimed detector cannot fire."
+        },
+        {
+          "id": "v-002",
+          "finding": "#findings/f-002",
+          "resolution": "confirmed",
+          "rationale": "REQUEST_CHANGES: the persisted product does not contain the accepted child-parent relationship."
+        },
+        {
+          "id": "v-003",
+          "finding": "#findings/f-003",
+          "resolution": "confirmed",
+          "rationale": "REQUEST_CHANGES: a committed independent expectation contradicts behavior and is not exercised."
+        },
+        {
+          "id": "v-004",
+          "finding": "#findings/f-004",
+          "resolution": "confirmed",
+          "rationale": "Plan-record fix required before the complete gate can pass."
+        }
+      ]
+    }
+  ]
+}
