@@ -182,6 +182,15 @@ pub async fn add_root(state: &AppState, root: &Path) -> Result<RootReport, RootE
     let known = known_blobs(&state.db, worktree_id).await?;
     let removed = fs3_store::sync_worktree_files(&state.db, worktree_id, &files).await?;
 
+    // One `ddocs` probe per corpus event, AFTER registration (so the snapshot
+    // is keyed by a real worktree_id) and BEFORE the scan batch is enqueued.
+    // Ordering is load-bearing: a batch that started before its snapshot
+    // existed would index the whole root with an absent snapshot and produce a
+    // corpus-wide silent degradation that looks exactly like success.
+    state
+        .set_ddoc_tooling(worktree_id, crate::ddoc::probe(&root).await)
+        .await;
+
     let mut enqueued = 0;
     let mut unchanged = 0;
     for (path, blob) in &files {

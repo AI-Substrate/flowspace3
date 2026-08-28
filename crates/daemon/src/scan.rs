@@ -146,14 +146,17 @@ pub async fn run(state: &AppState, value: serde_json::Value) -> Result<(), Failu
         return enrich::enqueue_for_tree(state, &job, &stored, &enrich_policy).await;
     }
 
-    // The unit branch uses the honest absent snapshot until the composition
-    // root injects its boot/refreshed snapshot per ddoc::probe's recipe. This
-    // closes the admission-before-dispatch window without probing per file.
-    let tooling = DdocTooling::absent();
-    let mut tree = scan_ddoc_bytes(Path::new(&job.path), &bytes, &tooling).map_err(fail)?;
+    // One snapshot per registered worktree, captured at the corpus event that
+    // enqueued this batch (`add_root`/`rescan_root`), never probed per file —
+    // `ddocs --json links` walks the whole corpus per call, so a per-file probe
+    // is quadratic. A missing entry is the honest absent snapshot: rows still
+    // index, and edges, gate membership and derived state are simply absent.
+    let tooling = state.ddoc_tooling(job.worktree_id).await;
+    let tooling = tooling.as_ref();
+    let mut tree = scan_ddoc_bytes(Path::new(&job.path), &bytes, tooling).map_err(fail)?;
     if fs3_parsers::is_ddoc_source(Path::new(&job.path)) {
         let findings = ddoc::validate(Path::new(&worktree.root_path), &absolute).await;
-        ddoc::enrich_tree(&mut tree, &tooling, &findings);
+        ddoc::enrich_tree(&mut tree, tooling, &findings);
     }
 
     fs3_store::upsert_element_tree(&state.db, &blob, PARSER_VERSION, &tree.root, &enrich_policy)
