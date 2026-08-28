@@ -1,0 +1,99 @@
+crates/cli/tests/goldens/PROVENANCE.md
+  s_b668fefb3076c7::t_0fe5f42a26c7f1 1-120
+crates/cli/tests/goldens/responses/add.json
+  s_a6b77772852964::t_aa6cdf1dad15e3 1
+crates/cli/tests/goldens/responses/conversation-list.json
+  s_af0fe1a82e54f0::t_7a6b21a4b0b4e8 1
+crates/cli/tests/goldens/responses/error-not-found.json
+  s_af0fe1a82e54f0::t_fb6a91b7c119b1 1
+crates/cli/tests/goldens/responses/gc.json
+  s_a6b77772852964::t_ea0b501cc6267b 1
+crates/cli/tests/goldens/responses/get.json
+  s_af0fe1a82e54f0::t_d4b8ce3bedb0d2 1
+crates/cli/tests/goldens/responses/messages.json
+  s_a6b77772852964::t_4700ac11880a8c 1
+crates/cli/tests/goldens/responses/remove.json
+  s_a6b77772852964::t_866021d67a2973 1
+crates/cli/tests/goldens/responses/scan.json
+  s_a6b77772852964::t_255da1cb4171bf 1
+crates/cli/tests/goldens/responses/search.json
+  s_af0fe1a82e54f0::t_4f6c00b7fdba3f 1
+crates/cli/tests/goldens/responses/status.json
+  s_af0fe1a82e54f0::t_712941c65343f5 1
+crates/cli/tests/goldens/responses/tree.json
+  s_af0fe1a82e54f0::t_3eea46e43ea582 1
+crates/cli/tests/envelope_goldens.rs
+  s_b668fefb3076c7::t_1ce1a3af39fac4 1-358
+crates/cli/tests/goldens/responses/error-query-empty.json
+  s_b668fefb3076c7::t_a3a0b68f37665f 1
+crates/cli/tests/goldens/stdout/add.stdout
+  s_b668fefb3076c7::t_968fa56ecb327d 1-33
+crates/cli/tests/goldens/stdout/agents-start-here.stdout
+  s_b668fefb3076c7::t_90f719c6c425d3 1-18
+crates/cli/tests/goldens/stdout/conversation-list.stdout
+  s_b668fefb3076c7::t_3ac1e8c8a4582d 1-9
+crates/cli/tests/goldens/stdout/docs-list.stdout
+  s_b668fefb3076c7::t_7c651dfd6d93e3 1-55
+crates/cli/tests/goldens/stdout/error-not-found.stdout
+  s_b668fefb3076c7::t_3813e0e1c4a304 1-21
+crates/cli/tests/goldens/stdout/error-query-empty.stdout
+  s_b668fefb3076c7::t_2db50a568f945a 1-17
+crates/cli/tests/goldens/stdout/gc.stdout
+  s_b668fefb3076c7::t_b2df922a1c88c1 1-13
+crates/cli/tests/goldens/stdout/get.stdout
+  s_b668fefb3076c7::t_481636b5887340 1-46
+crates/cli/tests/goldens/stdout/remove.stdout
+  s_b668fefb3076c7::t_86a695d4557dcd 1-21
+crates/cli/tests/goldens/stdout/scan.stdout
+  s_b668fefb3076c7::t_87edd138203130 1-18
+crates/cli/tests/goldens/stdout/search.stdout
+  s_b668fefb3076c7::t_e6d36d3a2a458a 1-73
+crates/cli/tests/goldens/stdout/status-with-messages.stdout
+  s_b668fefb3076c7::t_9ba30424e1fbe5 1-35
+crates/cli/tests/goldens/stdout/status.stdout
+  s_b668fefb3076c7::t_49319a5808d590 1-87
+crates/cli/tests/goldens/stdout/tree.stdout
+  s_b668fefb3076c7::t_de936252ba087c 1-39
+docs/plans/007-human-interface/assets/run/pm-ack.md
+  s_15d888f4b629c1::t_d4ed995d0814db 1-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "15f6982598c7fcc54a4a7ee26c3c7a7a228cf66c",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a6b77772852964": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "c800c9ff-86e7-4a5f-bdc3-f63517243af6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_af0fe1a82e54f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9726a7d5-28df-47fe-bb2a-d5ffcb472da2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_b668fefb3076c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0e0064-8d84-48e6-b499-eca0c65baafc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
