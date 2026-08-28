@@ -147,7 +147,7 @@ external = ["gix", "tempfile@dev", "thiserror"]
 # through fs3-store's typed control-plane API; sqlx remains inside fs3-store.
 [crates.fs3-testkit]
 internal = ["fs3-core", "fs3-store"]
-external = ["async-trait", "serde", "serde_json", "thiserror", "toml", "tokio@dev"]
+external = ["async-trait", "serde", "serde_json", "thiserror", "tokio", "toml"]
 
 # The composition root, and the only crate allowed to see everything. Plan 003
 # added `fs3-git` and `fs3-parsers`: the indexing pipeline is wired HERE, so the

@@ -161,6 +161,31 @@ pub async fn database_exists(admin: &PgPool, name: &str) -> Result<bool, StoreEr
     Ok(row.is_some())
 }
 
+/// Database names beginning with `prefix`, ordered for deterministic reports.
+///
+/// `admin` must be connected to the maintenance database. Prefix matching is
+/// literal rather than `LIKE`, so `_` in an fs3 namespace is not a wildcard.
+///
+/// # Errors
+/// [`StoreError::Query`] when the catalog read fails.
+pub async fn database_names_with_prefix(
+    admin: &PgPool,
+    prefix: &str,
+) -> Result<Vec<String>, StoreError> {
+    let rows = sqlx::query(
+        "SELECT datname FROM pg_database WHERE left(datname, length($1)) = $1 ORDER BY datname",
+    )
+    .bind(prefix)
+    .fetch_all(admin)
+    .await?;
+    rows.iter()
+        .map(|row| {
+            row.try_get::<String, _>("datname")
+                .map_err(StoreError::from)
+        })
+        .collect()
+}
+
 /// Create an empty database.
 ///
 /// `CREATE DATABASE` takes no bind parameters, so the name is interpolated —

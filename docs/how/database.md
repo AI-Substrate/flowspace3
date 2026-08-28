@@ -155,10 +155,17 @@ Both refuse by default; neither has a fallback.
    a production write. `crates/testkit/tests/spawn_isolation.rs` fails the build
    if a test constructs such a command by hand.
 
-Three things enforce this without being asked: the `testdb` and `prodguard`
-gates in `harness checks`, and the daemon's own refusal to boot when a test
-marker is present and no layer chose a database.
+Four things enforce this without being asked: the `testdb` and `prodguard`
+gates in `harness checks`, the daemon's own refusal to boot when a test marker
+is present and no layer chose a database, and `fs3-test-suite`. The runner uses
+the configured URL only to select a server, mints a migrated
+`fs3_test_<epoch>_<entropy>` database for that one run, injects it into every
+test binary, and drops it afterward. Concurrent worktrees therefore cannot
+share application data by accident. A killed runner leaves a timestamped,
+visible orphan; the next run drops `fs3_test_*` databases older than the named
+six-hour threshold and prints the policy plus every swept name.
 
-Use a scratch database nobody else shares. A second worktree's unmerged
-migration will otherwise put the shared one AHEAD of your tree, and `doctor`
-then reports schema skew that has nothing to do with your change.
+The Postgres cluster remains shared. A backend crash or cluster recovery can
+still kill connections across every isolated database. `harness checks`
+classifies connection-shaped output as infrastructure failure, never as a PASS
+and never as an ordinary assertion failure.
