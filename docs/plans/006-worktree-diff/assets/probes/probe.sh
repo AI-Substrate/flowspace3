@@ -265,6 +265,12 @@ teardown() {
 # 2026-08-28 — the cleanup then falls to a human).
 trap teardown EXIT INT TERM
 
+# A probe that dies silently is the same misleading-signal class this script
+# exists to refuse: two go-live attempts aborted mid-P3 with no line, no
+# command and no status in the transcript, which cost more diagnosis than the
+# bugs did. `set -e` is a good default and a terrible reporter, so make it one.
+trap 'rc=$?; printf "\n!!! ABORT at line %s (exit %s): %s\n" "$LINENO" "$rc" "$BASH_COMMAND" | tee -a "$OUT/abort.txt"' ERR
+
 # ---------------------------------------------------------------- preflight
 say "PREFLIGHT"
 fs3 ping > "$OUT/ping.json"
@@ -453,15 +459,29 @@ answer_identity() { jq -S '[.data.results[] | {address, path, name, kind, span, 
 P3_LEAK=$(jq -r --arg m "$MARKER" '[.data.results[]?|select(.name|startswith($m))]|length' "$OUT/p3-marker-from-main.json")
 P3_FOUND=$(jq -r --arg m "$MARKER" '[.data.results[]?|select(.name|startswith($m))]|length' "$OUT/p3-marker-from-worktree.json")
 
-# Refuse on "fake" AND on "unknown". Absence of proof is not proof of a real
-# embedder: if the boot line was not found — a daemon logging somewhere this
-# script did not look, which `--sandbox` does by putting its log beside its own
-# temp config — then the semantics of every vector in the corpus are unverified,
-# and the P3 verdicts would be computed on faith. The whole point of this gate
-# is that a number nobody can defend is worse than a refusal, and that applies
-# to the precondition just as much as to the result.
-if [[ "$EMBEDDER" == "fake" || "$EMBEDDER" == "unknown" || -z "$EMBEDDER" ]]; then
-  reason=$([[ "$EMBEDDER" == "fake" ]] && echo "fake-embedder" || echo "embedder-unproven")
+# ALLOW-LIST the embedders that PROVE semantics; refuse everything else.
+#
+# This was a deny-list ("fake" or "unknown") until the production daemon turned
+# out to report `embedder=offline` — a third value meaning exactly "no real
+# vectors", which sailed straight through a gate built to catch it. Deny-lists
+# fail open on the case nobody thought of, and the whole point of this gate is
+# that a number nobody can defend is worse than a refusal.
+#
+# So: name the providers whose vectors carry meaning. Anything else — a new
+# provider, a typo, an empty boot line, `offline`, `fake` — refuses, and the
+# refusal says which value it saw so the next person can add it deliberately
+# rather than discover it as a wrong answer.
+# The names are the kinds' own serde spellings in crates/core/src/config.rs:
+# `openai` (:666), `openai_compat` (:682), `azure_openai` (:707). `fake` (:664)
+# and `offline` (the fresh-machine default, :85-107) are the two that mean
+# "no real vectors" — and `offline` is the one that taught this gate the
+# difference between a deny-list and an allow-list.
+case "$EMBEDDER" in
+  azure_openai|openai|openai_compat) SEMANTIC_EMBEDDER=1 ;;
+  *) SEMANTIC_EMBEDDER=0 ;;
+esac
+if (( SEMANTIC_EMBEDDER == 0 )); then
+  reason="embedder-${EMBEDDER:-unknown}"
   note "ANSWER P3: NOT MEASURABLE — embedder=${EMBEDDER:-unknown}, so retrieval semantics are not established"
   note "           (p1/p2/p4 above are unaffected: they measure bookkeeping, not ranking)"
   echo "p3_search_context_sensitive=unmeasurable-$reason" >> "$OUT/receipt.env"
