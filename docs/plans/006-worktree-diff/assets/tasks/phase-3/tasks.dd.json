@@ -1,0 +1,33 @@
+{
+ "dd": {
+  "schema": "builder/plan"
+ },
+ "sections": [
+  {
+   "name": "meta",
+   "value": {
+    "title": "Phase 3: Composition + first light",
+    "slug": "phase-3",
+    "status": "draft",
+    "summary": "PM composes the ruled units; first light is the whole worktree loop live on our own repos."
+   }
+  },
+  {
+   "name": "summary",
+   "value": "Composition is wiring; assumptions asked before wiring per the pm packet."
+  },
+  {
+   "name": "tasks",
+   "value": [
+    { "id": "tk-e301", "title": "Compose the ruled phase-2 units at the composition root; harness checks green on the composed tree.", "state": "unchecked", "success": "Gate green; allowlist reconciled against impl-guide grants.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0006"] },
+    { "id": "tk-e302", "title": "First light, live transcript: create worktree of this repo -> edit file -> search finds worktree version from inside + main version from main -> remove worktree -> GC reclaim shown. One transcript, committed as exit evidence.", "state": "unchecked", "success": "Transcript committed; ac-0002/0003/0004 receipts cite it.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0002", "../../../plan.dd.json#acceptance_criteria/ac-0003", "../../../plan.dd.json#acceptance_criteria/ac-0004"] },
+    { "id": "tk-e303", "title": "Reviewer pass (settings default model) after composition; findings fixed or refuted with evidence; PR into main held unmerged for prime.", "state": "unchecked", "success": "Review record ddoc + verdict; PR open.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0006"] }
+   ]
+  },
+  {
+   "name": "done_when",
+   "value": {}
+  }
+ ],
+ "references": []
+}

@@ -1,0 +1,34 @@
+{
+ "dd": {
+  "schema": "builder/plan"
+ },
+ "sections": [
+  {
+   "name": "meta",
+   "value": {
+    "title": "Phase 2: Close the measured gaps (PROVISIONAL)",
+    "slug": "phase-2",
+    "status": "draft",
+    "summary": "Placeholder unit set — REPLACED by the phase-1 probe report's ruled units before any coder is spawned."
+   }
+  },
+  {
+   "name": "summary",
+   "value": "Do not dispatch from this file as-is: tk-e105 amends it from evidence, prime signs off, THEN fan-out."
+  },
+  {
+   "name": "tasks",
+   "value": [
+    { "id": "tk-e201", "title": "PROVISIONAL u-a worktree auto-discovery: new worktrees of registered repos register themselves (watcher/daemon), no manual add.", "state": "unchecked", "success": "Ruled in/out by probe P1.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0002"] },
+    { "id": "tk-e202", "title": "PROVISIONAL u-b diff-scoped scanning: worktree scan walks against the main tree's blob set, spending nothing on identical content.", "state": "unchecked", "success": "Ruled in/out by probe P2.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0002"] },
+    { "id": "tk-e203", "title": "PROVISIONAL u-c query-time version resolution + context labeling (+ --worktree/--branch scoping on the query surface).", "state": "unchecked", "success": "Ruled in/out by probe P3.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0003"] },
+    { "id": "tk-e204", "title": "PROVISIONAL u-d removal lifecycle: worktree remove -> dereference -> GC, no orphaned paid enrichment.", "state": "unchecked", "success": "Ruled in/out by probe P4.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0004"] }
+   ]
+  },
+  {
+   "name": "done_when",
+   "value": {}
+  }
+ ],
+ "references": []
+}
