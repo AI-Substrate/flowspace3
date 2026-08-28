@@ -355,11 +355,15 @@ async fn serve(configuration: Config, address: String, logging: Logging) -> Resu
     tracing::info!(
         cadence_seconds = RECONCILE_EVERY_SECONDS,
         debounce_seconds = state.config.indexing.debounce_seconds,
+        worktree_reconcile_ticks = state.config.indexing.worktree_reconcile_ticks,
         "starting the reconcile runner"
     );
     let mut reconcilers: Vec<Box<dyn crate::reconcile::Reconcile>> = vec![Box::new(
         crate::watch::WatcherSupervisor::new(state.clone()),
     )];
+    reconcilers.push(Box::new(crate::worktrees::WorktreeSupervisor::new(
+        state.clone(),
+    )));
 
     // The second implementor joins the roster as one more `Box`, exactly as
     // the doctrine predicted — no change to the runner and none to the trait.

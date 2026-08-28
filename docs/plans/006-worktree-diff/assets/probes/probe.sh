@@ -30,10 +30,14 @@ set -euo pipefail
 MAIN_ROOT=/Users/jordanknight/substrate/flowspace/flowspace3
 K=8
 GATE_P4=0
-DB_CONTAINER=flowspace3-db
-DB_USER=flowspace3
-DB_NAME=flowspace3
-SETTLE_DISCOVERY=30   # 6 watcher reconcile cadences (5s) — P1 patience
+DB_CONTAINER=${FS3_PROBE_DB_CONTAINER:-flowspace3-db}
+DB_USER=${FS3_PROBE_DB_USER:-flowspace3}
+DB_NAME=${FS3_PROBE_DB_NAME:-flowspace3}
+DAEMON_URL=${FS3_PROBE_DAEMON_URL:-}
+DAEMON_LOG_DIR=${FS3_DAEMON__LOG_DIR:-"$HOME/.local/state/flowspace3/logs"}
+DAEMON_LOG="$DAEMON_LOG_DIR/flowspace3.log"
+PROBE_CONDITION=${FS3_PROBE_CONDITION:-unspecified}
+SETTLE_DISCOVERY=70   # two 30s worktree cadences plus 10s scheduling slack
 SETTLE_DEBOUNCE=20    # indexing.debounce_seconds default is 10
 DRAIN_TIMEOUT=600     # seconds to wait for the PROBE's own scan jobs
 ENRICH_SETTLE=60      # seconds to let content-keyed enrichment follow a scan
@@ -65,14 +69,20 @@ note() { printf '    %s\n' "$*"; }
 # ---------------------------------------------------------------- primitives
 sql() { docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -At -c "$1"; }
 sqlt() { docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -c "$1"; }
+fs3() {
+  local command=$1
+  shift
+  if [[ -n "$DAEMON_URL" ]]; then
+    flowspace3 "$command" --daemon-url "$DAEMON_URL" "$@"
+  else
+    flowspace3 "$command" "$@"
+  fi
+}
 
-# The daemon runs in the foreground in a tmux pane; its log is that pane.
-DAEMON_PANE=$(tmux list-panes -a -F '#{pane_id} #{pane_current_command}' 2>/dev/null \
-  | awk '$2=="flowspace3"{print $1; exit}' || true)
 
 logsnap() { # logsnap <file>
-  if [[ -n "$DAEMON_PANE" ]]; then
-    tmux capture-pane -p -J -S -100000 -t "$DAEMON_PANE" > "$1" 2>/dev/null || : > "$1"
+  if [[ -f "$DAEMON_LOG" ]]; then
+    cp "$DAEMON_LOG" "$1"
   else
     : > "$1"
   fi
@@ -212,7 +222,12 @@ env_receipt() {
     echo "main_root=$MAIN_ROOT"
     echo "probe_worktree=$WT"
     echo "k_edited_files=$K"
-    echo "daemon_pane=${DAEMON_PANE:-none}"
+    echo "daemon_url=${DAEMON_URL:-default}"
+    echo "daemon_log=$DAEMON_LOG"
+    echo "database=$DB_NAME"
+    echo "probe_condition=$PROBE_CONDITION"
+    echo "discovery_wait_seconds=$SETTLE_DISCOVERY"
+    echo "discovery_wait_reason=two 30s worktree cadences plus 10s scheduling slack"
     echo "disk_avail=$(df -h "$MAIN_ROOT" | awk 'NR==2{print $4}')"
   } > "$OUT/receipt.env"
   cat "$OUT/receipt.env" | sed 's/^/      /'
@@ -224,9 +239,9 @@ teardown() {
   say "TEARDOWN (always runs)"
   # Safety: only ever touch a poctest- path.
   if [[ "$WT" == *"/poctest-"* ]]; then
-    if flowspace3 status 2>/dev/null | jq -e --arg p "$WT" '.data.roots[]?|select(.root_path==$p)' >/dev/null; then
+    if fs3 status 2>/dev/null | jq -e --arg p "$WT" '.data.roots[]?|select(.root_path==$p)' >/dev/null; then
       note "unregistering probe root from fs3"
-      flowspace3 remove "$WT" > "$OUT/teardown-remove.json" 2>&1 || true
+      fs3 remove "$WT" > "$OUT/teardown-remove.json" 2>&1 || true
     fi
     if [[ -d "$WT" ]]; then
       note "removing worktree $WT"
@@ -235,8 +250,7 @@ teardown() {
     git -C "$MAIN_ROOT" worktree prune >/dev/null 2>&1 || true
     git -C "$MAIN_ROOT" branch -D "$SLUG" >/dev/null 2>&1 || true
   fi
-  # The pane captures are scratch: each is the whole daemon scrollback, and the
-  # SLICE between two of them is what the evidence dir keeps (daemon-*.log).
+  # Full-file snapshots are scratch; the slice between them is retained.
   rm -f "$OUT"/.log-before-* "$OUT"/.log-after-*
   note "evidence: $OUT"
   note "disk avail: $(df -h "$MAIN_ROOT" | awk 'NR==2{print $4}')"
@@ -249,10 +263,10 @@ trap teardown EXIT INT TERM
 
 # ---------------------------------------------------------------- preflight
 say "PREFLIGHT"
-flowspace3 ping > "$OUT/ping.json"
+fs3 ping > "$OUT/ping.json"
 cat "$OUT/ping.json" | sed 's/^/      /'
 docker exec "$DB_CONTAINER" pg_isready -U "$DB_USER" -d "$DB_NAME" | sed 's/^/      /'
-flowspace3 status > "$OUT/status-before.json"
+fs3 status > "$OUT/status-before.json"
 jq -r '.data.roots[] | "      root \(.files)\t\(.root_path)"' "$OUT/status-before.json"
 if ! jq -e --arg p "$MAIN_ROOT" '.data.roots[]|select(.root_path==$p)' "$OUT/status-before.json" >/dev/null; then
   echo "FATAL: $MAIN_ROOT is not a registered root — nothing to diff a worktree against" >&2
@@ -267,9 +281,9 @@ say "P1 — create a worktree of a registered repo and touch NOTHING"
 logsnap "$OUT/.log-before-p1"
 git -C "$MAIN_ROOT" worktree add -b "$SLUG" "$WT" HEAD > "$OUT/p1-worktree-add.txt" 2>&1
 cat "$OUT/p1-worktree-add.txt" | sed 's/^/      /'
-note "waiting ${SETTLE_DISCOVERY}s (watcher cadence is 5s; this is 6 passes)"
+note "waiting ${SETTLE_DISCOVERY}s (two 30s worktree cadences plus scheduling slack)"
 sleep "$SETTLE_DISCOVERY"
-flowspace3 status > "$OUT/p1-status.json"
+fs3 status > "$OUT/p1-status.json"
 snap 01-after-worktree-create
 deltas 00-baseline 01-after-worktree-create "$OUT/p1-deltas.txt"
 jobs_since 00-baseline "$OUT/p1-jobs.txt"
@@ -278,26 +292,46 @@ P1_SEEN=$(jq -r --arg p "$WT" '[.data.roots[]|select(.root_path==$p)]|length' "$
 note "ANSWER P1: probe worktree present in registered roots = $P1_SEEN (1 = auto-discovered, 0 = not)"
 echo "p1_auto_discovered=$P1_SEEN" >> "$OUT/receipt.env"
 
-# Before it is registered: what does a search FROM INSIDE the new worktree do?
-# (bobolink's case, 2026-08-28 — a worktree's content invisible until the whole
-# tree is added as a duplicate root.)
-( cd "$WT" && flowspace3 search "cli client that talks to the fs3 daemon over http" --limit 3 ) \
-  > "$OUT/p1-search-from-unregistered.json" 2>&1
-note "scope the daemon resolved for an unregistered checkout: $(jq -c '.meta.scope // "none"' "$OUT/p1-search-from-unregistered.json")"
-note "steer: $(jq -r '.next_action // "none"' "$OUT/p1-search-from-unregistered.json")"
+# Prove the steady-state bound with a worktree-scoped job delta. The shared
+# queue may move while this sleeps; only jobs carrying this worktree id count.
+if (( P1_SEEN == 1 )); then
+  P1_WORKTREE_ID=$(sql "select id from worktrees where root_path = '$WT'")
+  P1_NOOP_BASE=$(sql "select coalesce(max(id),0) from jobs")
+  note "waiting ${SETTLE_DISCOVERY}s across unchanged reconcile passes"
+  sleep "$SETTLE_DISCOVERY"
+  sqlt "select id, kind, dedupe_key from jobs
+         where id > $P1_NOOP_BASE
+           and payload->>'worktree_id' = '$P1_WORKTREE_ID'
+         order by id" > "$OUT/p1-noop-jobs.txt"
+  P1_NOOP_JOBS=$(sql "select count(*) from jobs
+                       where id > $P1_NOOP_BASE
+                         and payload->>'worktree_id' = '$P1_WORKTREE_ID'")
+else
+  : > "$OUT/p1-noop-jobs.txt"
+  P1_NOOP_JOBS=-1
+fi
+note "ANSWER P1b: jobs enqueued for unchanged registered worktree = $P1_NOOP_JOBS"
+echo "p1_unchanged_reconcile_jobs=$P1_NOOP_JOBS" >> "$OUT/receipt.env"
+
+# Ask from inside the automatically registered worktree and retain the scope
+# envelope as evidence that P1 closed the earlier unregistered warning.
+( cd "$WT" && fs3 search "cli client that talks to the fs3 daemon over http" --limit 3 ) \
+  > "$OUT/p1-search-from-worktree.json" 2>&1
+note "scope the daemon resolved for the discovered checkout: $(jq -c '.meta.scope // "none"' "$OUT/p1-search-from-worktree.json")"
+note "steer: $(jq -r '.next_action // "none"' "$OUT/p1-search-from-worktree.json")"
 # What does an unlimited search return today? (Jordan 2026-08-28: search should
 # default to a five-or-ten item cap — recorded here as the before-state.)
-( cd "$MAIN_ROOT" && flowspace3 search "how does the daemon decide what to index" ) \
+( cd "$MAIN_ROOT" && fs3 search "how does the daemon decide what to index" ) \
   > "$OUT/p1-search-default-limit.json" 2>&1
 note "default (no --limit) result count = $(jq '.data.results | length' "$OUT/p1-search-default-limit.json")"
 echo "default_search_result_count=$(jq '.data.results | length' "$OUT/p1-search-default-limit.json")" >> "$OUT/receipt.env"
 
 # ---------------------------------------------------------------- P2
-say "P2a — register the untouched worktree: what does identical content cost?"
+say "P2a — explicitly re-add the auto-discovered tree: what does unchanged content cost?"
 logsnap "$OUT/.log-before-p2a"
 T_P2A=$(date -u +%FT%TZ)
 snap 02-before-add
-flowspace3 add "$WT" > "$OUT/p2a-add.json" 2>&1
+fs3 add "$WT" > "$OUT/p2a-add.json" 2>&1
 cat "$OUT/p2a-add.json" | sed 's/^/      /'
 wait_idle p2a
 snap 03-after-add
@@ -375,9 +409,9 @@ echo "version_file_address=$FILE_ADDRESS" >> "$OUT/receipt.env"
 
 for cwd in "$MAIN_ROOT" "$WT"; do
   tag=main; [[ "$cwd" == "$WT" ]] && tag=worktree
-  ( cd "$cwd" && flowspace3 search "$Q_MARKER" --limit 5 --source raw ) > "$OUT/p3-marker-from-$tag.json" 2>&1
-  ( cd "$cwd" && flowspace3 search "$Q_SHARED" --limit 5 ) > "$OUT/p3-shared-from-$tag.json" 2>&1
-  ( cd "$cwd" && flowspace3 get "$FILE_ADDRESS" ) > "$OUT/p3-get-from-$tag.json" 2>&1
+  ( cd "$cwd" && fs3 search "$Q_MARKER" --limit 5 --source raw ) > "$OUT/p3-marker-from-$tag.json" 2>&1
+  ( cd "$cwd" && fs3 search "$Q_SHARED" --limit 5 ) > "$OUT/p3-shared-from-$tag.json" 2>&1
+  ( cd "$cwd" && fs3 get "$FILE_ADDRESS" ) > "$OUT/p3-get-from-$tag.json" 2>&1
   note "from $tag — divergent-content query (the function exists ONLY in the worktree):"
   jq -r '.data.results[]? | "      \(.score|tostring[0:6])  \(.path)  \(.name)"' "$OUT/p3-marker-from-$tag.json" || true
   note "from $tag — meta.scope the daemon resolved: $(jq -c '.meta.scope // "none"' "$OUT/p3-marker-from-$tag.json")"
@@ -434,8 +468,8 @@ sqlt "select e.address, count(*) as element_rows, count(distinct e.blob_sha) as 
        group by 1 having count(distinct e.blob_sha) > 1 order by 1 limit 10" > "$OUT/p3-colliding-addresses.txt"
 cat "$OUT/p3-colliding-addresses.txt" | sed 's/^/      /'
 # Explicit scoping: what does the CLI offer today?
-( cd "$WT" && flowspace3 search "$Q_MARKER" --limit 5 --source raw --repo "$IDENTITY" ) > "$OUT/p3-search-repo-scoped.json" 2>&1 || true
-flowspace3 search --help > "$OUT/p3-search-flags.txt" 2>&1
+( cd "$WT" && fs3 search "$Q_MARKER" --limit 5 --source raw --repo "$IDENTITY" ) > "$OUT/p3-search-repo-scoped.json" 2>&1 || true
+fs3 search --help > "$OUT/p3-search-flags.txt" 2>&1
 
 # ---------------------------------------------------------------- P4 gate
 if (( GATE_P4 )); then
@@ -456,14 +490,14 @@ note "step 1: git worktree remove (fs3 is told NOTHING)"
 git -C "$MAIN_ROOT" worktree remove --force "$WT" > "$OUT/p4-git-remove.txt" 2>&1
 cat "$OUT/p4-git-remove.txt" | sed 's/^/      /'
 sleep "$SETTLE_DISCOVERY"
-flowspace3 status > "$OUT/p4-status-after-git-remove.json"
+fs3 status > "$OUT/p4-status-after-git-remove.json"
 snap 07-after-git-remove
 deltas 06-before-removal 07-after-git-remove "$OUT/p4-deltas-git-remove.txt"
 P4_STILL=$(jq -r --arg p "$WT" '[.data.roots[]|select(.root_path==$p)]|length' "$OUT/p4-status-after-git-remove.json")
 note "ANSWER P4a: root still registered after the directory vanished = $P4_STILL"
 # The content that just vanished from disk: is it still SERVED? Asked from the
 # main checkout, where this function has never existed.
-( cd "$MAIN_ROOT" && flowspace3 search "$Q_MARKER" --limit 3 --source raw ) > "$OUT/p4-search-after-git-remove.json" 2>&1
+( cd "$MAIN_ROOT" && fs3 search "$Q_MARKER" --limit 3 --source raw ) > "$OUT/p4-search-after-git-remove.json" 2>&1
 P4_SERVED=$(jq -r --arg m "$MARKER" '[.data.results[]?|select(.name|startswith($m))]|length' "$OUT/p4-search-after-git-remove.json")
 note "ANSWER P4b: deleted-worktree functions still returned by search = $P4_SERVED"
 echo "p4_root_still_registered=$P4_STILL" >> "$OUT/receipt.env"
@@ -471,7 +505,7 @@ echo "p4_deleted_content_still_served=$P4_SERVED" >> "$OUT/receipt.env"
 jq -r '.data.results[]? | "      \(.score|tostring[0:6])  \(.path)  \(.name)"' "$OUT/p4-search-after-git-remove.json" || true
 
 note "step 2: flowspace3 remove (the explicit unregister)"
-flowspace3 remove "$WT" > "$OUT/p4-fs3-remove.json" 2>&1 || true
+fs3 remove "$WT" > "$OUT/p4-fs3-remove.json" 2>&1 || true
 cat "$OUT/p4-fs3-remove.json" | sed 's/^/      /'
 snap 08-after-fs3-remove
 deltas 07-after-git-remove 08-after-fs3-remove "$OUT/p4-deltas-fs3-remove.txt"
@@ -493,7 +527,7 @@ sqlt "select count(*) as orphaned_embeddings
 cat "$OUT/p4-orphaned-before-gc.txt" | sed 's/^/      /'
 
 note "step 4: gc (database-wide, reap-only for unreferenced content)"
-flowspace3 gc > "$OUT/p4-gc.json" 2>&1 || true
+fs3 gc > "$OUT/p4-gc.json" 2>&1 || true
 cat "$OUT/p4-gc.json" | sed 's/^/      /'
 snap 09-after-gc
 deltas 08-after-fs3-remove 09-after-gc "$OUT/p4-deltas-gc.txt"
@@ -506,7 +540,7 @@ sqlt "select count(*) as orphaned_summaries_after_gc
                           join worktree_files wf on wf.blob_sha = e.blob_sha
                          where e.raw_hash = sc.raw_hash)" > "$OUT/p4-orphaned-after-gc.txt"
 cat "$OUT/p4-orphaned-after-gc.txt" | sed 's/^/      /'
-( cd "$MAIN_ROOT" && flowspace3 search "$Q_MARKER" --limit 3 --source raw ) > "$OUT/p4-search-after-gc.json" 2>&1
+( cd "$MAIN_ROOT" && fs3 search "$Q_MARKER" --limit 3 --source raw ) > "$OUT/p4-search-after-gc.json" 2>&1
 P4_AFTER=$(jq -r --arg m "$MARKER" '[.data.results[]?|select(.name|startswith($m))]|length' "$OUT/p4-search-after-gc.json")
 note "ANSWER P4c: probe functions still served AFTER gc = $P4_AFTER (0 = fully reclaimed)"
 echo "p4_served_after_gc=$P4_AFTER" >> "$OUT/receipt.env"
