@@ -20,7 +20,7 @@
 //! across forty checkouts and duplicating it here would make the content layer
 //! branch-shaped, which is the whole thing workshop 002 refuses.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use fs3_core::{BlobRef, Element, ElementKind, Span};
 use sqlx::Row;
@@ -99,6 +99,39 @@ pub async fn upsert_element_tree(
 
     tx.commit().await?;
     Ok(())
+}
+
+/// The requested blobs that have been parsed by `parser_version`.
+///
+/// `fs3_parsers::scan` always returns that root even for empty, binary, and
+/// unknown-language files, and [`upsert_element_tree`] writes the whole tree
+/// atomically. An absent row therefore means the parse did not complete and
+/// the caller should retry it.
+///
+/// # Errors
+/// [`StoreError::Query`] when the lookup fails.
+pub async fn blobs_with_parser_version(
+    pool: &PgPool,
+    parser_version: &str,
+    blobs: &[&str],
+) -> Result<HashSet<String>, StoreError> {
+    if blobs.is_empty() {
+        return Ok(HashSet::new());
+    }
+
+    let rows = sqlx::query(
+        "SELECT DISTINCT blob_sha
+           FROM elements
+          WHERE parser_version = $1 AND blob_sha = ANY($2)",
+    )
+    .bind(parser_version)
+    .bind(blobs)
+    .fetch_all(pool)
+    .await?;
+
+    rows.iter()
+        .map(|row| Ok(row.try_get("blob_sha")?))
+        .collect()
 }
 
 /// The file element for one blob, with its descendants nested, or `None` when

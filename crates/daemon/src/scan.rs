@@ -129,9 +129,10 @@ pub async fn run(state: &AppState, value: serde_json::Value) -> Result<(), Failu
 ///
 /// A literal rather than a crate version: what invalidates a parse is a change
 /// in the GRAMMARS or the extraction walk, not a patch release of the daemon.
-/// Bumping it re-mints every element row and costs nothing in the content layer
-/// — enrichment is keyed by `raw_hash`, so a re-parse that produces the same
-/// text pays for no LLM calls (workshop 002, decision D2).
+/// After a bump, the next root scan re-enqueues every blob without rows for
+/// this version and re-mints its element tree. That scan and parse work is not
+/// free. Enrichment remains keyed by `raw_hash`, so unchanged text pays for no
+/// new provider calls (workshop 002, decision D2).
 pub const PARSER_VERSION: &str = "fs3-parsers@1";
 
 #[cfg(test)]
