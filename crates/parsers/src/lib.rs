@@ -13,8 +13,12 @@
 //! `unknown`. A missing grammar is an observable outcome (PRD req 43), never an
 //! error and never a silent skip.
 
+/// Pure parsing and classification helpers for deterministic documents.
+pub mod ddoc;
 /// Which files fs3 scans at all — the ignore-aware walk (PRD reqs 41, 43).
 pub mod discovery;
+
+pub use ddoc::{is_ddoc_source, is_generated_sibling, scan as scan_ddoc};
 
 mod markdown;
 mod source;

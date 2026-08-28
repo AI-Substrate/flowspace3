@@ -1,0 +1,24 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-0001",
+          "title": "Parse rows",
+          "note": "First source position",
+          "state": "unchecked"
+        },
+        {
+          "id": "tk-0002",
+          "title": "Admit sources",
+          "note": "Second source position",
+          "state": "checked"
+        }
+      ]
+    }
+  ]
+}

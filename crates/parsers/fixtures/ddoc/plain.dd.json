@@ -1,0 +1,31 @@
+{
+  "dd": {
+    "schema": "builder/plan",
+    "sweep_exclude": true
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Parser contract"
+      }
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-0001",
+          "claim": "Rows are the searchable unit",
+          "note": "Keep the containing subject visible",
+          "state": "shipped"
+        },
+        {
+          "id": "zz-0002",
+          "claim": "Unknown minted prefixes remain valid",
+          "note": "The prefix is metadata",
+          "state": "unchecked"
+        }
+      ]
+    }
+  ]
+}
