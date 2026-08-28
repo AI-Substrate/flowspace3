@@ -44,25 +44,20 @@ use crate::enrich::{self, EMBED, SUMMARIZE};
 use crate::roots::SCAN_FILE;
 use crate::wiring::AppState;
 
-/// Every job kind the runner claims, in the order it prefers them.
+/// Every known job kind.
 ///
-/// Scans first: a scan produces enrichment work, so draining scans early keeps
-/// the LLM and embedding calls — the slow, parallel part — fed.
+/// Used where the whole queue is the subject, such as boot recovery. Runtime
+/// claiming is split across the general, ingest, and embed lanes below.
 pub const KINDS: &[&str] = &[SCAN_FILE, INGEST_SESSION, SUMMARIZE, EMBED];
 
-/// The kinds claimed ONE AT A TIME, because their work cannot merge.
+/// The general jobs claimed one at a time.
 ///
-/// `scan_file` reads one path; `summarize` is one call per element;
-/// `ingest_session` reads one session file and must not interleave with
-/// another poll of the same conversation. Only `embed` batches, and it is
-/// drained separately — claiming it here too would have the two paths racing
-/// for the same rows.
-///
-/// The two share this pool but NOT a width: `summarize` is provider-bound and
-/// takes its own lane below, while `scan_file` is local I/O and stays on
-/// `worker_concurrency`. Sharing one number meant a slow hosted model
-/// throttled local file reads for no reason.
-pub const SERIAL_KINDS: &[&str] = &[SCAN_FILE, INGEST_SESSION, SUMMARIZE];
+/// `scan_file` is local I/O and `summarize` is provider-bound. Conversation
+/// ingest deliberately does not share this capacity: a poll must be able to
+/// record new turns while enrichment from the previous poll is still queued.
+/// Only `embed` batches, and it is drained separately — claiming it here too
+/// would have the two paths racing for the same rows.
+pub const GENERAL_KINDS: &[&str] = &[SCAN_FILE, SUMMARIZE];
 
 /// How many embed jobs one batched claim takes.
 ///
@@ -168,16 +163,32 @@ impl Drained {
     }
 }
 
-/// Run jobs until the queue is empty, `workers` at a time.
+/// Run every ready lane until the queue is empty.
+///
+/// Ingest and general work are drained concurrently. Repeating the pair matters:
+/// an ingest can enqueue enrichment after the general pass has already found
+/// nothing, and one public drain still promises to consume all work that becomes
+/// ready during the pass.
+pub async fn drain(state: &AppState, workers: usize) -> Drained {
+    let mut total = Drained::default();
+
+    loop {
+        let (general, ingest) =
+            tokio::join!(drain_general(state, workers), drain_ingest(state, workers));
+        total.absorb(general);
+        total.absorb(ingest);
+        if general.total() == 0 && ingest.total() == 0 {
+            return total;
+        }
+    }
+}
+
+/// Run scan and enrichment jobs until their lanes are empty.
 ///
 /// "Empty" means nothing is *ready*: a job backing off is not ready, so a drain
-/// can finish while retries are still pending. That is deliberate — the
-/// alternative is a drain that blocks for the length of the longest backoff, and
-/// callers who want the retry can drain again.
-///
-/// Returns what it settled. Errors are per-job and never abort the pass: one
-/// unreadable file must not stop a repository from indexing.
-pub async fn drain(state: &AppState, workers: usize) -> Drained {
+/// can finish while retries are still pending. Errors are per-job and never
+/// abort the pass: one unreadable file must not stop a repository from indexing.
+async fn drain_general(state: &AppState, workers: usize) -> Drained {
     let mut total = Drained::default();
     let mut tasks = JoinSet::new();
     let workers = workers.max(1);
@@ -196,7 +207,7 @@ pub async fn drain(state: &AppState, workers: usize) -> Drained {
         total.absorb(embedded);
 
         while tasks.len() < workers {
-            match fs3_store::claim_job(&state.db, SERIAL_KINDS).await {
+            match fs3_store::claim_job(&state.db, GENERAL_KINDS).await {
                 Ok(Some(job)) => {
                     let state = state.clone();
                     // The SUMMARIZE lane. Held for the whole call so the count
@@ -265,19 +276,25 @@ pub async fn drain(state: &AppState, workers: usize) -> Drained {
     }
 }
 
-/// Run the loop forever, for the daemon's background worker.
+/// Run every lane forever for the daemon's background worker.
 ///
-/// Sleeps only when it finds nothing, so a busy queue is never delayed by a
-/// timer.
+/// The ingest loop is a separate future, not another kind in the general claim
+/// set. That distinction is the starvation guarantee: even while a provider call
+/// keeps the general drain inside `await`, ingest continues polling Postgres.
 pub async fn run_forever(state: AppState, workers: usize) {
-    // `drain` reports its own progress while it works. All this loop owns is
-    // the CLOSING summary, so a run ends with its own totals rather than
-    // trailing off mid-progress — and only when there was a run to close, so
-    // an idle daemon still prints nothing at all.
+    tokio::join!(
+        run_general_forever(state.clone(), workers),
+        run_ingest_forever(state, workers)
+    );
+}
+
+async fn run_general_forever(state: AppState, workers: usize) {
+    // `drain_general` reports its own progress while it works. This loop owns
+    // the closing summary, only after a run with real work.
     let mut worked = false;
 
     loop {
-        if drain(&state, workers).await.total() == 0 {
+        if drain_general(&state, workers).await.total() == 0 {
             if std::mem::take(&mut worked) {
                 report_progress(&state, "idle").await;
             }
@@ -285,6 +302,50 @@ pub async fn run_forever(state: AppState, workers: usize) {
             continue;
         }
         worked = true;
+    }
+}
+
+async fn run_ingest_forever(state: AppState, workers: usize) {
+    loop {
+        if drain_ingest(&state, workers).await.total() == 0 {
+            tokio::time::sleep(IDLE_POLL).await;
+        }
+    }
+}
+
+/// Drain conversation ingest independently of provider-bound work.
+///
+/// Different conversations may use the lane concurrently. Two addresses that
+/// resolve to one conversation are still serialized by `convo_ingest`'s
+/// Postgres advisory lock on the canonical conversation GUID; the queue key only
+/// collapses repeated submissions of the same address while one is live.
+async fn drain_ingest(state: &AppState, workers: usize) -> Drained {
+    let mut total = Drained::default();
+    let mut tasks = JoinSet::new();
+    let workers = workers.max(1);
+
+    loop {
+        while tasks.len() < workers {
+            match fs3_store::claim_job(&state.db, &[INGEST_SESSION]).await {
+                Ok(Some(job)) => {
+                    let state = state.clone();
+                    tasks.spawn(async move { settle(&state, job).await });
+                }
+                Ok(None) => break,
+                Err(error) => {
+                    tracing::error!(%error, "cannot claim ingest jobs");
+                    break;
+                }
+            }
+        }
+
+        let Some(result) = tasks.join_next().await else {
+            return total;
+        };
+        match result {
+            Ok(outcome) => total.absorb(outcome),
+            Err(error) => tracing::error!(%error, "an ingest handler panicked"),
+        }
     }
 }
 
