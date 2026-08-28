@@ -8,14 +8,16 @@ pub mod client;
 pub mod conversation;
 pub mod docs;
 pub mod doctor;
+pub mod render;
 pub mod settings;
 pub mod show;
 pub mod skill;
+pub mod tui;
 pub mod upgrade;
+pub mod watch;
 
 pub use client::{DaemonClient, HealthReport};
 pub use docs::{TopicList, TopicPage, TopicSummary};
-pub use doctor::{DoctorReport, Step};
 pub use settings::{config_dir, daemon_url, load_effective_from, load_secrets_from};
 pub use upgrade::{UpgradeReport, upgrade};
 

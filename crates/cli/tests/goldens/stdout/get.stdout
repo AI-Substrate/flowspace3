@@ -1,0 +1,46 @@
+{
+  "ok": true,
+  "command": "get",
+  "v": 1,
+  "data": {
+    "address": "el:git:github.com/AI-Substrate/flowspace3/crates/cli/src/main.rs::emit",
+    "children": [],
+    "kind": "function",
+    "name": "emit",
+    "parents": [
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/cli/src/main.rs",
+        "kind": "file",
+        "name": "main.rs",
+        "span": [
+          1,
+          647
+        ]
+      }
+    ],
+    "path": "crates/cli/src/main.rs",
+    "raw_text": "fn emit<T: serde::Serialize>(envelope: &Envelope<T>) -> ExitCode {\n    match serde_json::to_string_pretty(envelope) {\n        Ok(json) => println!(\"{json}\"),\n        Err(error) => eprintln!(\"flowspace3: cannot render the response: {error}\"),\n    }\n\n    for message in &envelope.messages {\n        eprintln!(\"flowspace3: {}\", message.render());\n    }\n\n    match &envelope.error {\n        None => ExitCode::SUCCESS,\n        Some(failure) => {\n            eprintln!(\"{}\", failure.render());\n            ExitCode::from(EXIT_ERROR)\n        }\n    }\n}",
+    "repo": "git:github.com/AI-Substrate/flowspace3",
+    "root_path": "/Users/jordanknight/substrate/flowspace/flowspace3",
+    "smart": "Serializes and pretty-prints an `Envelope` as JSON, reporting serialization failures to stderr. It renders all envelope messages, then prints any error and returns `EXIT_ERROR`; otherwise it returns success.",
+    "span": [
+      546,
+      563
+    ],
+    "subkind": "function_item",
+    "tags": [
+      "JSON serialization",
+      "diagnostic messages",
+      "exit codes"
+    ]
+  },
+  "meta": {
+    "parser_version": "fs3-parsers@1",
+    "parser_version_current": true,
+    "scope": {
+      "repo": null,
+      "source": "all"
+    }
+  },
+  "next_action": "that is the whole element — open it at crates/cli/src/main.rs:546, or browse its file with `flowspace3 tree el:git:github.com/AI-Substrate/flowspace3/crates/cli/src/main.rs`"
+}

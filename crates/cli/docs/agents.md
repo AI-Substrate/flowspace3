@@ -6,6 +6,14 @@ get back ranked code elements with addresses, paths and line spans.
 This page is bundled INSIDE the binary. `flowspace3 docs get agents` prints it
 offline, with no daemon and no network.
 
+## Choose the output shape explicitly in agent harnesses
+
+A TTY (terminal) receives human-readable output by default. A pipe, file, CI capture,
+or agent subprocess receives the JSON envelope with no flag. `--json` forces
+JSON anywhere. If an agent harness runs inside a PTY such as tmux, the terminal
+probe looks exactly like a person; export `FS3_OUTPUT=json` once to pin the
+machine shape.
+
 ## The loop
 
 ```bash

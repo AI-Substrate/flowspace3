@@ -48,7 +48,7 @@
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
           ],
-          "receipt": "Initial unit eeb5b0e; raw resolver de054e6; smart chooser c44b595; final main integration preserves breadth-before-legitimacy, truncation, weak+ask hints, and checkout-aware empty diagnostics. Store 19/19; first_light 14/14; conversation 7/7; ask 4/4; starvation 6/6; search unit 10/10; harness checks 9/9."
+          "receipt": "u-c integrated through main bf7fea4: provenance moved to shared core Hit, daemon policy/truncation preserved, TUI conditionally renders checkout ambiguity. Store 19/19; daemon 14/14; starvation 6/6; core view 1/1; TUI 12/12; full fs3-cli passed; final harness checks 9/9; production schema stable during passing gate."
         },
         {
           "id": "tk-e204",

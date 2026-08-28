@@ -83,3 +83,20 @@ Merged final `origin/main` at `c6ad8b4`, including scoped-search starvation (#44
 - New #44 `search_scope_starvation`: 6/6 passed.
 - Search unit policies: 10/10 passed.
 - Final integrated `harness checks`: 9/9 gates passed.
+
+## Shared-view integration — plan 007
+
+Merged `origin/main` at `bf7fea4`, which moved search payloads into `fs3_core::views::search` for CLI and TUI consumers.
+
+- Main retained `Hit.repo` and `Hit.path`; u-c relocated only additive `Hit.worktree` to the shared core view. Daemon `weak_match_score` and `SearchOutcome` remain daemon policy/internal metadata.
+- The TUI now consumes the shared `Hit` instead of a hand-mirrored subset. Provenance is computed once when a result set arrives, not on every draw tick: all-caller-checkout rows stay clean; mixed checkout sets and a lone foreign checkout render checkout labels. The list uses the checkout basename for space, while the selected-row detail shows the full root.
+- This is linear in at most the delivered result count and runs once per search response, so conditional display is not materially more expensive than always-on rendering.
+- Actual TUI smoke: connected to an isolated sandbox, rendered the dashboard, submitted a search, displayed the returned coded error without exiting, then quit cleanly with exit 0.
+- Plan 007/core proof: shared view round-trip 1/1; TUI unit tests 12/12; full `fs3-cli` package passed. U-c proof: store 19/19, daemon first-light 14/14 sequential, starvation 6/6.
+- Sandbox caveat sharpened: without an empty external config directory, sandbox printed fake readiness and then failed because an ambient per-repo selection named `azure-luna`. With empty config it booted, authenticated, and Ctrl-C dropped its unique database. Sandbox isolates providers only after ambient repo selections stop leaking into wiring; the pre-readiness failure cleaned its database correctly.
+
+### Shared-view final gate
+
+- Final `harness checks`: 9/9 gates passed.
+- Production schema stayed byte-for-byte at version 15 / installed-on `2026-08-28 06:17:16.574691+00` across the passing gate. The earlier 13→15 movement was the production daemon restart one second before migrations, not a test writer.
+- A global `FS3_DATABASE__URL` seal is incompatible with config-precedence tests because it intentionally overrides fixture files; the passing gate used the unique `FS3_TEST_DATABASE_URL`, empty config directory, green subprocess-sealing guard, and stable before/after production evidence.

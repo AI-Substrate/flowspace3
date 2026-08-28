@@ -11,7 +11,7 @@
 | --- | --- |
 | title | Team settings — default models per role |
 | updated | 2026-08-28 |
-| source | Jordan's ruling 2026-08-28: pms are omp github-copilot claude-opus-5 high; coders the same; reviewers gpt-5.6-sol |
+| source | Jordan's rulings 2026-08-28 (superseding same-day): pms omp claude-opus-5 MEDIUM; coders omp gpt-5.6-sol FAST high (exact spawn config per pij-continuing-ermine); reviewers gpt-5.6-sol high |
 
 <a id="model-defaults"></a>
 
@@ -19,6 +19,6 @@
 
 | role | harness | bin | model | effort | note |
 | --- | --- | --- | --- | --- | --- |
-| pm | pi | omp | github-copilot/claude-opus-5 | high | PMs orchestrate and compose; they only code solo when no fan-out is needed. Prime is product owner and has final say. |
-| coder | pi | omp | github-copilot/claude-opus-5 | high | Coders work one unit each in the pm's worktree/branch per the impl-guide. |
+| pm | pi | omp | github-copilot/claude-opus-5 | medium | PMs orchestrate and compose; they only code solo when no fan-out is needed. Prime is product owner and has final say. |
+| coder | pi | omp | github-copilot/gpt-5.6-sol-fast-1m | high | Coders work one unit each per the impl-guide; isolation shape (own worktree vs pm's branch) is set per-plan in the impl-guide. Sol FAST, 1.05M-context variant (Jordan confirmed 1M over the 400K -fast base). Do NOT append :high to the selector — effort rides --effort (pij maps to OMP --thinking high and adds --auto-approve). Until pij#306, pij may print a spurious 'unknown model' warning for this selector; spawn continues. Verification (ermine, live-corrected 2026-08-28): footer proves the MODEL SELECTOR only; spawn argv proves effort was REQUESTED (--thinking high); runtime effort is a DISCLOSED PROOF GAP — OMP renders no active-effort surface (pij#306 may close it). Config source: pij-continuing-ermine 2026-08-28. |
 | reviewer | pi | omp | github-copilot/gpt-5.6-sol | high | Cross-model review after composition (or after solo-pm coding). Verified against `pij models` 2026-08-28. |

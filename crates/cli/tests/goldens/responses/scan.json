@@ -1,0 +1,1 @@
+{"ok":true,"command":"scan","v":1,"data":{"identity":"git:github.com/AI-Substrate/flowspace3","identity_source":"remote","root_path":"/srv/api","worktree_id":7,"files":456,"skipped":[],"pruned":[],"enqueued":0,"unchanged":456,"removed":0},"next_action":"nothing changed — 456 files already indexed; `flowspace3 search \"<question>\"` answers from the existing index"}
