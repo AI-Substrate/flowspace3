@@ -1,0 +1,54 @@
+crates/core/src/agent.rs
+  s_b668fefb3076c7::t_8d6a78dfc69f5a 148,157-166
+  s_b668fefb3076c7::t_e8717f096598da 147,149-154,187-189,193-195,198-220,227,257-258,265,270,277,281-288,439-477,479-485,487-509,544-545,549,596,623,627-630,634-637
+crates/daemon/tests/ask.rs
+  s_b668fefb3076c7::t_6da6f38560ed8e 90-91,94-97
+  s_b668fefb3076c7::t_71be61ac40f0c6 170-172,193-196
+crates/cli/src/main.rs
+  s_b668fefb3076c7::t_dcbbd657109da3 550-553
+  s_b668fefb3076c7::t_11a05936e38864 111-117,442,447
+crates/cli/src/client.rs
+  s_a6b77772852964::t_ac97445f8c9273 17,26-89,117,148-151,169-171,274-275,278-280,297-303,308-314,317-322,385-503
+crates/cli/src/show.rs
+  s_a6b77772852964::t_9b14233cb7060d 55-63,180-198
+crates/cli/tests/doctor_daemon.rs
+  s_b668fefb3076c7::t_7e12f5063342e3 44-51,61
+crates/core/src/config.rs
+  s_b668fefb3076c7::t_e196a3d5357c87 1137-1142,1147-1148,1168-1195,1327,1338-1350,1386,1911-1914,1916,1919-1920,1924,1926-1939,2150
+crates/daemon/src/http.rs
+  s_b668fefb3076c7::t_e2bd7bd58eb9ae 100,105-107,109-113
+crates/daemon/tests/first_light.rs
+  s_b668fefb3076c7::t_811a41e0f49eae 38-43,52-56
+crates/daemon/src/ask.rs
+  s_b668fefb3076c7::t_51de857f0ff7d9 96-101,106-112,144-149,160-176,179-180,196,210,214-218,277,356
+crates/daemon/tests/config_loading.rs
+  s_b668fefb3076c7::t_1221897f17666f 13,79-99
+docs/reference/configuration.md
+  s_b668fefb3076c7::t_f4fc69cf01b315 18-29
+crates/cli/src/doctor.rs
+  s_b668fefb3076c7::t_dda3136480ecd1 36,59-63,254,256,258,260,286,301-343,814,1354-1405
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e1845aba0d582fed989a930a147ff39d2647dba9",
+  "prompts": {},
+  "sessions": {
+    "s_a6b77772852964": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "c800c9ff-86e7-4a5f-bdc3-f63517243af6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_b668fefb3076c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0e0064-8d84-48e6-b499-eca0c65baafc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
