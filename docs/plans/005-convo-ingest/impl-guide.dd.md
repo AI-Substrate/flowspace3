@@ -158,6 +158,102 @@ queries rather than the bare `rowid` keyword so the property is visible where it
 is relied on.
 
 
+PRIME RULING 2026-08-28 (composition — THE CARDINALITY CLAIM, a change to
+phase-1 FROZEN artifacts, ruled because the freeze is only real if exceptions
+are ruled rather than taken). `expectations.json` and
+`fs3_testkit::Expectations` were amended after fan-out. The evidence chain, and
+it took three seats:
+
+1. u1a mutation-checked its own suite rather than asserting: reverting its keyed
+   merge to an adjacent-run fold over full line order emits 20 assistant turns
+   where 13 are correct, and `assert_ordinals_are_a_subsequence` STILL PASSED.
+2. u1d found the same independently on its store: a no-merge mutation emits 22
+   records where 16 are correct, and BOTH the subsequence assertion AND
+   `assert_oracle_prose_appears` STILL PASSED.
+3. u2 explained the mechanism, then CORRECTED ITS OWN EXPLANATION on review. Its
+   first statement — that the assertions catch under-emission and are blind only
+   to over-emission — is WRONG, because a subset in order is as valid a
+   subsequence as a superset. The accurate statement: **a subsequence assertion
+   constrains ORDER, REPEAT-FREENESS and MEMBERSHIP in the store's id set, and
+   is blind to CARDINALITY IN BOTH DIRECTIONS.** The membership leg is its real
+   and only third property.
+
+Why this mattered enough to break a freeze: a broken grouping rule IS
+over-emission, and the ordinal is the ingest ledger's dedupe key, so a changed
+grouping rule makes every stored record look new and silently DOUBLES the
+conversation. The failure the grouping-rule freeze exists to prevent was the one
+failure no committed assertion could see.
+
+WHAT LANDED. `oracle_expectations.py` derives, per session, the exact ordinal
+SEQUENCE a correct reader must emit — from the store's own bytes, by a SECOND
+implementation of each ruled allowlist and grouping rule.
+`Expectations::assert_emitted_ordinals_match` (and its sidecar form) asserts it,
+naming over- versus under-emission and, on a positional mismatch, why a merged
+group's FIRST member is the required ordinal.
+
+INDEPENDENCE IS THE BINDING CONDITION. A count harvested from a reader's own
+output pins whatever the code did that day — a change-detector, not a
+correctness test — so it is refused wherever it lives. The derivation has never
+seen the Rust, and it agrees with all four readers: claude 39 and 9 plus a
+24-record sidecar; omp 117 of 193; pij 50 of 50; metrics-db 16 and 10 for the
+claude-mirror sessions and 4 for copilot. Every one of those was independently
+reported by its own seat, and the PM verified metrics-db's 16 and 10 with its
+own SQL before that seat wrote a line.
+
+Condition 2 of the ruling — set EQUALITY where the expected set is genuinely
+known, count-only where it is not — is satisfied EVERYWHERE: every store had a
+knowable expected sequence, so no store is held to a count alone.
+
+MUTATION-CHECKED, NOT ASSERTED (ruling condition 3). The new claim fails under
+both regression mutations: the claude adjacent-run fold in full line order emits
+46 where 39 are correct, and the metrics-db no-merge emits 22 where 16 are
+correct. A weaker claude mutation — folding adjacent runs within the ASSISTANT
+PROJECTION only — still passes, and that is correct rather than a gap: in this
+fixture the assistant-projected ids are contiguous, so that mutation is not a
+behaviour change on these bytes. It is recorded here so nobody later reads its
+passing as a hole.
+
+WHICH CORPUS THE CLAIM IS ABOUT: the omp and pij assertions read the COMMITTED
+bytes rather than a grown scratch fixture. The `SourceFixture` contract holds one
+line back for the torn-record case, so a grown copy is legitimately one record
+short of the store, and asserting a store-derived cardinality against it would
+have failed honestly for the wrong reason.
+
+PM RULING 2026-08-28 (composition — TWO DEFECTS FOUND BY CONSUMER REVIEW). u2,
+which owns the ledger that consumes ordinals, reviewed all four derivations
+having read none of the three readers before. Both findings are recorded because
+their SHAPE is the lesson:
+
+- **claude, an invariant held at a distance.** The ordinal was
+  `line.uuid.clone().unwrap_or_default()`, so a line with no uuid would derive
+  the EMPTY STRING; two such lines collide, the ledger stores the first and
+  treats every later one as seen forever, and real turns are dropped silently
+  and permanently. u1a then closed the reachability question its reviewers could
+  not: `parse_lines` already filtered `uuid.is_some()`, so no empty ordinal was
+  ever produced and no stored data was ever at risk. The defect was therefore
+  NOT an empty ordinal — it was an invariant held several functions from the
+  default that depended on it, with nothing connecting them, so a later edit
+  reordering that filter would have reintroduced durable silent turn loss with
+  no test failing. Fixed by moving the invariant into the TYPE: `Line::uuid` is
+  no longer an `Option`, so serde refuses such a line and it is dropped like any
+  other unreadable one. Verified by restoring the exact defaulting shape and
+  watching the new test produce `[ok-1, empty, empty, ok-2]`.
+- **metrics-db, the predicate is part of the grouping rule.** The grouping runs
+  over the rows the QUERY returned and the scope is applied PER ROW, so
+  `event_kind = 5` and the repo-scope expression decide which rows exist to be
+  grouped and therefore which row can OPEN a group. Changing either moves an
+  ordinal without touching the derivation. u1d then measured the invariant it
+  rests on — all six fixture sessions carry exactly one repo, 100 of 100 rows,
+  no nulls — and refused to downgrade the freeze on that basis, correctly: the
+  field is stamped PER EVENT by git-ai, so it is a property of a 100-row sample
+  and not of the schema, and the fixture cannot speak to the `event_kind` half
+  at all because the harvest selected on it.
+
+The pattern worth carrying: CROSS-UNIT REVIEW BY THE CONSUMER. A unit that
+reviews three units it has never read, from first principles about what its own
+code consumes, found what four gates and three green suites did not.
+
+
 <a id="fan-out"></a>
 
 ## Fan out
