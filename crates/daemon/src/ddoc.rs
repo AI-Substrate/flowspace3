@@ -213,13 +213,17 @@ pub fn enrich_tree(tree: &mut ElementTree, tooling: &DdocTooling, findings: &[St
             },
         );
 
-    let assertion_groups = collect_assertion_groups(&tree.root, &relations);
+    let assertion_groups = collect_assertion_groups(&tree.root, &relations, &tree.path);
+    let tree_path = tree.path.clone();
     visit_rows_mut(&mut tree.root, &mut |row| {
         let Some(meta) = row.ddoc.as_mut() else {
             return;
         };
-        meta.findings.extend(findings.iter().cloned());
+        meta.findings = findings.to_vec();
         meta.rels = relations.get(&row.address).cloned().unwrap_or_default();
+        meta.tooling_version = tooling.version.clone();
+        meta.gate_terminal = None;
+        meta.derived_state = None;
 
         let Some(facts) = tooling.facts_for(&meta.schema) else {
             return;
@@ -228,7 +232,10 @@ pub fn enrich_tree(tree: &mut ElementTree, tooling: &DdocTooling, findings: &[St
             .state
             .as_deref()
             .map(|state| facts.gate_terminal.contains(state));
-        if let Some(group) = meta.rels.iter().find_map(derived_group)
+        if let Some(group) = meta
+            .rels
+            .iter()
+            .find_map(|relation| derived_group(relation, &tree_path))
             && let Some(entries) = assertion_groups.get(&group)
         {
             meta.derived_state = Some(derive_state(
@@ -239,6 +246,30 @@ pub fn enrich_tree(tree: &mut ElementTree, tooling: &DdocTooling, findings: &[St
             ));
         }
     });
+}
+
+/// Whether a stored ddoc tree needs the current tooling snapshot applied.
+///
+/// Version strings are compared for equality only. They are opaque producer
+/// identities, not an ordered version vocabulary.
+#[must_use]
+pub fn needs_reenrichment(root: &Element, tooling: &DdocTooling) -> bool {
+    if tooling.is_absent() {
+        return false;
+    }
+    row_matches(root, &|meta| {
+        meta.tooling_version != tooling.version
+            || meta.derived_state.is_none()
+                && meta.rels.iter().any(|relation| relation.rel == "derives")
+    })
+}
+
+fn row_matches(element: &Element, predicate: &impl Fn(&fs3_core::DdocMeta) -> bool) -> bool {
+    element.ddoc.as_deref().is_some_and(predicate)
+        || element
+            .children
+            .iter()
+            .any(|child| row_matches(child, predicate))
 }
 
 /// Surface every unresolved source address as a finding on that row.
@@ -299,11 +330,12 @@ fn parse_row_location(location: &str) -> Option<(String, Vec<String>, usize)> {
 fn collect_assertion_groups(
     root: &Element,
     relations: &BTreeMap<String, Vec<DdocRel>>,
+    tree_path: &str,
 ) -> BTreeMap<Vec<String>, Vec<(String, Option<String>)>> {
     let targets = relations
         .values()
         .flatten()
-        .filter_map(derived_group)
+        .filter_map(|relation| derived_group(relation, tree_path))
         .collect::<BTreeSet<_>>();
     let mut groups = targets
         .iter()
@@ -327,14 +359,15 @@ fn collect_assertion_groups(
     groups
 }
 
-fn derived_group(relation: &DdocRel) -> Option<Vec<String>> {
-    (relation.rel == "derives")
-        .then(|| {
-            DdocAddress::parse(&relation.target)
-                .ok()
-                .map(|address| address.trail)
-        })
-        .flatten()
+fn derived_group(relation: &DdocRel, tree_path: &str) -> Option<Vec<String>> {
+    if relation.rel != "derives" {
+        return None;
+    }
+    let address = DdocAddress::parse(&relation.target).ok()?;
+    if !address.file.is_empty() && clean_relative(&address.file) != clean_relative(tree_path) {
+        return None;
+    }
+    Some(address.trail)
 }
 
 fn visit_rows(element: &Element, visitor: &mut impl FnMut(&Element)) {
@@ -529,6 +562,85 @@ mod tests {
             relations
                 .iter()
                 .any(|(_, relation)| relation.target == "not-applicable")
+        );
+    }
+    #[test]
+    fn cross_document_derives_target_leaves_state_derived_none() {
+        let bytes = br##"{"dd":{"schema":"review/cross"},"sections":[{"name":"tasks","value":[{"id":"tk-0001","state":"checked","result":"other.dd.json#gates/tk-0001"}]}]}"##;
+        let mut tree = fs3_parsers::scan_ddoc(Path::new("source.dd.json"), bytes, None).unwrap();
+        let graph = DdocGraph {
+            edges: vec![fs3_core::ddoc_envelope::DdocEdge {
+                from: "source.dd.json".to_owned(),
+                to: "other.dd.json".to_owned(),
+                address: "other.dd.json#gates/tk-0001".to_owned(),
+                rel: "derives".to_owned(),
+                kind: "document".to_owned(),
+                location: "$.sections[tasks].value[0].result".to_owned(),
+            }],
+        };
+        let facts = DdocSchemaFacts {
+            schema: "review/cross".to_owned(),
+            prose_fields: BTreeMap::new(),
+            string_fields: BTreeMap::new(),
+            gate_terminal: BTreeSet::from(["checked".to_owned()]),
+        };
+        enrich_tree(
+            &mut tree,
+            &DdocTooling {
+                version: Some("0.1.0".to_owned()),
+                facts: BTreeMap::from([("review/cross".to_owned(), facts)]),
+                graph: Some(graph),
+            },
+            &[],
+        );
+
+        assert!(
+            tree.root.children[0].children[0]
+                .ddoc
+                .as_ref()
+                .unwrap()
+                .derived_state
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn cross_document_derives_target_cannot_absorb_colliding_local_trail() {
+        let bytes = br##"{"dd":{"schema":"review/cross"},"sections":[{"name":"tasks","value":[{"id":"tk-0001","state":"checked","result":"other.dd.json#gates/tk-0001"}]},{"name":"gates","value":{"tk-0001":[{"id":"gt-0001","state":"unchecked"}]}}]}"##;
+        let mut tree = fs3_parsers::scan_ddoc(Path::new("source.dd.json"), bytes, None).unwrap();
+        let graph = DdocGraph {
+            edges: vec![fs3_core::ddoc_envelope::DdocEdge {
+                from: "source.dd.json".to_owned(),
+                to: "other.dd.json".to_owned(),
+                address: "other.dd.json#gates/tk-0001".to_owned(),
+                rel: "derives".to_owned(),
+                kind: "document".to_owned(),
+                location: "$.sections[tasks].value[0].result".to_owned(),
+            }],
+        };
+        let facts = DdocSchemaFacts {
+            schema: "review/cross".to_owned(),
+            prose_fields: BTreeMap::new(),
+            string_fields: BTreeMap::new(),
+            gate_terminal: BTreeSet::from(["checked".to_owned()]),
+        };
+        enrich_tree(
+            &mut tree,
+            &DdocTooling {
+                version: Some("0.1.0".to_owned()),
+                facts: BTreeMap::from([("review/cross".to_owned(), facts)]),
+                graph: Some(graph),
+            },
+            &[],
+        );
+
+        assert!(
+            tree.root.children[0].children[0]
+                .ddoc
+                .as_ref()
+                .unwrap()
+                .derived_state
+                .is_none()
         );
     }
 
