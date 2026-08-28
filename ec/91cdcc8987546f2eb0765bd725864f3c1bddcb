@@ -1,0 +1,140 @@
+.harness/extensions/team/extension.ts
+  h_9e71e8b09f7cf2 1,18-23,320-677,680,683,698-722
+.harness/extensions/team/instructions.md
+  h_9e71e8b09f7cf2 1,3,5-15,106,114-257
+AGENTS.md
+  h_9e71e8b09f7cf2 6-12
+Cargo.lock
+  h_9e71e8b09f7cf2 40-58,389-394,513-539,580,720-758,775-786,803-815,822,827-837,927,1191,1195-1196,1201-1202,1208,1239,1836,2644,2649-2657,2678-2690,2703-2711,2913-2918,2952-2960,3292-3297,3642-3662,3686,3886-3898,3908,4196-4216,4274-4279,4557-4578,4636-4646,4650-4660,4753,4758,5161-5171,5174,5176-5182,5294-5303
+Cargo.toml
+  h_9e71e8b09f7cf2 53-55
+crates/cli/Cargo.toml
+  h_9e71e8b09f7cf2 25-28,30-32
+crates/cli/docs/agents.md
+  h_9e71e8b09f7cf2 9-16
+crates/cli/docs/daemon.md
+  h_9e71e8b09f7cf2 17-22,24-25,61-65
+crates/cli/docs/doctor.md
+  h_9e71e8b09f7cf2 19
+crates/cli/docs/read.md
+  h_9e71e8b09f7cf2 7-13
+crates/cli/docs/search.md
+  h_9e71e8b09f7cf2 10-16
+crates/cli/skills/flowspace/SKILL.md
+  h_9e71e8b09f7cf2 13-19
+crates/cli/src/client.rs
+  h_9e71e8b09f7cf2 17,55,71-72,76,83,99-108,113-117,204-261,264,269-309
+crates/cli/src/doctor.rs
+  h_9e71e8b09f7cf2 68,71,116,142-145,523-526,530,533-534,543-548,550,564-568,589-701
+crates/cli/src/lib.rs
+  h_9e71e8b09f7cf2 15
+crates/cli/src/main.rs
+  h_9e71e8b09f7cf2 17,24,108-113,433-440,452-459,479-483,602,668-671,727,730,732
+crates/cli/src/render/mod.rs
+  h_9e71e8b09f7cf2 1,3-5,10-18,21-73
+crates/cli/src/render/progress.rs
+  h_9e71e8b09f7cf2 1-143
+crates/cli/src/render/surfaces/doctor.rs
+  h_9e71e8b09f7cf2 1-66
+crates/cli/src/render/surfaces/failure.rs
+  h_9e71e8b09f7cf2 1-72
+crates/cli/src/render/surfaces/lists.rs
+  h_9e71e8b09f7cf2 1-102
+crates/cli/src/render/surfaces/mod.rs
+  h_9e71e8b09f7cf2 1-8
+crates/cli/src/render/surfaces/read.rs
+  h_9e71e8b09f7cf2 1-124
+crates/cli/src/render/surfaces/remove.rs
+  h_9e71e8b09f7cf2 1-64
+crates/cli/src/render/surfaces/roots.rs
+  h_9e71e8b09f7cf2 1-58
+crates/cli/src/render/surfaces/search.rs
+  h_9e71e8b09f7cf2 1-94
+crates/cli/src/render/surfaces/status.rs
+  h_9e71e8b09f7cf2 1-121
+crates/cli/src/render/theme.rs
+  h_9e71e8b09f7cf2 1-209
+crates/cli/src/tui.rs
+  h_9e71e8b09f7cf2 1-1350
+crates/cli/tests/doctor_daemon.rs
+  h_9e71e8b09f7cf2 43-56,59,119-137,140,144,185-199,213,262,286,344
+crates/cli/tests/envelope_goldens.rs
+  h_9e71e8b09f7cf2 70-78,83-89,91-99,264-266,374-455
+crates/cli/tests/fixtures/scan-progress.ndjson
+  h_9e71e8b09f7cf2 1-3
+crates/cli/tests/fixtures/tui-events.ndjson
+  h_9e71e8b09f7cf2 1-6
+crates/cli/tests/goldens/PROVENANCE.md
+  h_9e71e8b09f7cf2 112-155
+crates/cli/tests/ping.rs
+  h_9e71e8b09f7cf2 13-14,23-30,127-151,197-202
+crates/cli/tests/render_output.rs
+  h_9e71e8b09f7cf2 1-348
+crates/cli/tests/render_progress.rs
+  h_9e71e8b09f7cf2 1-113
+crates/core/src/catalog.rs
+  h_9e71e8b09f7cf2 27,172-179,187-189,445-454,521,545,637
+crates/core/src/config.rs
+  h_9e71e8b09f7cf2 45-53
+crates/core/src/lib.rs
+  h_9e71e8b09f7cf2 38-42
+crates/core/src/views/doctor.rs
+  h_9e71e8b09f7cf2 33,41
+crates/core/src/views/mod.rs
+  h_9e71e8b09f7cf2 29-43,51-153
+crates/core/src/views/read.rs
+  h_9e71e8b09f7cf2 108,138,141,144,147,151,154,157,160
+crates/core/src/views/remove.rs
+  h_9e71e8b09f7cf2 15
+crates/daemon/Cargo.toml
+  h_9e71e8b09f7cf2 22
+crates/daemon/src/auth.rs
+  h_9e71e8b09f7cf2 1-228
+crates/daemon/src/boot.rs
+  h_9e71e8b09f7cf2 79-82,121,177-182,415
+crates/daemon/src/http.rs
+  h_9e71e8b09f7cf2 20,28,59-61,75,408,415
+crates/daemon/src/lib.rs
+  h_9e71e8b09f7cf2 7,33
+crates/daemon/tests/first_light.rs
+  h_9e71e8b09f7cf2 254-255,261-262,688-694,703-708,778-779
+crates/daemon/tests/health.rs
+  h_9e71e8b09f7cf2 28-29,31-34,68-69,71-74,155-156,158,166-168
+crates/daemon/tests/read_surface.rs
+  h_9e71e8b09f7cf2 153-154,160-161
+crates/daemon/tests/support/mod.rs
+  h_9e71e8b09f7cf2 44-69
+crates/testkit/arch-allowlist.toml
+  h_9e71e8b09f7cf2 166-168,225,227-230,237
+docs/plans/007-human-interface/assets/first-light-transcript.md
+  h_9e71e8b09f7cf2 1-101
+docs/plans/007-human-interface/assets/first-light.md
+  h_9e71e8b09f7cf2 1-47
+docs/plans/007-human-interface/assets/run/process-feedback.md
+  h_9e71e8b09f7cf2 1-76
+docs/plans/007-human-interface/impl-guide.dd.json
+  h_9e71e8b09f7cf2 49
+docs/plans/007-human-interface/impl-guide.dd.md
+  h_9e71e8b09f7cf2 43
+docs/plans/007-human-interface/packet-reviewer.dd.json
+  h_9e71e8b09f7cf2 9,11-13,18,23-46,52-63,69-72,78-93,99-123
+docs/plans/007-human-interface/packet-reviewer.dd.md
+  h_9e71e8b09f7cf2 2,12,14-16,22,30-35,43-45,53-56,64-67,75-79
+docs/reference/error-codes.md
+  h_9e71e8b09f7cf2 2,235-243
+docs/services/human-render.md
+  h_9e71e8b09f7cf2 1-65
+docs/services/tui.md
+  h_9e71e8b09f7cf2 1-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ec91cdcc8987546f2eb0765bd725864f3c1bddcb",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
