@@ -1,0 +1,21 @@
+docs/plans/006-worktree-diff/packet-pm.dd.json
+  s_15d888f4b629c1::t_a8383534525b01 9,11-13,18,23-32,38-41,47-50,56-60,66-67,69-72
+docs/plans/006-worktree-diff/packet-pm.dd.md
+  s_15d888f4b629c1::t_c09082201d286c 2,12,14-16,22,30-39,47-50,58-61,69-73,81-82,84,86-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "58b818f0e5c09592dba669d8b7af9077094cf83d",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
