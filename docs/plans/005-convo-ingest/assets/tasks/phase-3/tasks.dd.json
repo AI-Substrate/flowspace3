@@ -77,11 +77,12 @@
         {
           "id": "tk-c306",
           "title": "Gate + fences: harness checks green on the composed branch; arch-allowlist rows reconciled against the impl-guide grants; service pages written per unit.",
-          "state": "unchecked",
+          "state": "checked",
           "success": "harness checks green; allowlist diff matches grants exactly.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0008"
-          ]
+          ],
+          "receipt": "harness checks GREEN on the composed branch, nine gates including arch. Fences reconciled: the only new dependency edge is rusqlite (bundled), whose allow-list row was committed in phase 1 and whose workspace row carries its rationale; no unit took a second edge. arch drift test green, so no allow-list row is unused and none is missing."
         }
       ]
     },
