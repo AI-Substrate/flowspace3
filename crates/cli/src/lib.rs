@@ -15,7 +15,6 @@ pub mod upgrade;
 
 pub use client::{DaemonClient, HealthReport};
 pub use docs::{TopicList, TopicPage, TopicSummary};
-pub use doctor::{DoctorReport, Step};
 pub use settings::{config_dir, daemon_url, load_effective_from, load_secrets_from};
 pub use upgrade::{UpgradeReport, upgrade};
 

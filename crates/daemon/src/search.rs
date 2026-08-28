@@ -26,11 +26,12 @@ use fs3_core::ElementKind;
 use fs3_core::catalog;
 use fs3_core::envelope::Failure;
 use fs3_store::{SearchFilters, SearchHit, SourceKind};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use crate::runner::fail;
 use crate::scope::Scope;
 use crate::wiring::AppState;
+use fs3_core::views::search::{Hit, SearchResults};
 
 /// What a caller asks for.
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
@@ -78,42 +79,6 @@ const CODE_KINDS: [ElementKind; 4] = [
     ElementKind::Function,
     ElementKind::Section,
 ];
-
-/// One hit, in the workshop-003 row shape.
-#[derive(Clone, Debug, PartialEq, Serialize)]
-pub struct Hit {
-    /// `el:<repo>/<path>::<container>::<name>` — the universal currency (D7).
-    pub address: String,
-    /// 1.0 is identical; highest first.
-    pub score: f64,
-    /// Which vector space won this hit: `raw` or `smart`.
-    pub match_field: String,
-    /// The element's universal category.
-    pub kind: String,
-    /// The grammar's own kind.
-    pub subkind: String,
-    /// The declaration's own name.
-    pub name: String,
-    /// Inclusive 1-based `[start, end]`.
-    pub span: [u32; 2],
-    /// The first lines of the element's own text.
-    pub snippet: String,
-    /// The summary, when there is one.
-    pub smart: Option<String>,
-    /// Concept tags from the summary (PRD req 36).
-    pub tags: Vec<String>,
-    /// The repository a live path holding this content belongs to.
-    pub repo: Option<String>,
-    /// A live path holding it, relative to its worktree root.
-    pub path: Option<String>,
-}
-
-/// What `GET /search` answers with.
-#[derive(Clone, Debug, PartialEq, Serialize)]
-pub struct SearchResults {
-    /// Ranked hits, best first.
-    pub results: Vec<Hit>,
-}
 
 /// How many lines of an element's text a hit carries.
 const SNIPPET_LINES: usize = 5;

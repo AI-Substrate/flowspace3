@@ -25,11 +25,15 @@ use fs3_core::Port;
 
 use crate::answer::{Answer, IntoFailure, failed, ok};
 use crate::conversations::{IntakeReport, IntakeRequest};
-use crate::read::{GetPayload, GetRequest, TreeRequest, TreeResult};
-use crate::roots::{RootReport, RootRequest};
-use crate::search::{SearchRequest, SearchResults};
-use crate::status::StatusReport;
+use crate::read::{GetRequest, TreeRequest};
+use crate::roots::RootRequest;
+use crate::search::SearchRequest;
 use crate::wiring::AppState;
+use fs3_core::views::read::{GetPayload, TreeResult};
+use fs3_core::views::remove::{GcCounts, RemoveReport};
+use fs3_core::views::roots::RootReport;
+use fs3_core::views::search::SearchResults;
+use fs3_core::views::status::StatusReport;
 
 /// What `GET /health` answers with.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -70,7 +74,7 @@ pub fn router(state: AppState) -> Router {
 async fn remove(
     State(state): State<AppState>,
     Json(request): Json<RootRequest>,
-) -> Answer<crate::remove::RemoveReport> {
+) -> Answer<RemoveReport> {
     const COMMAND: &str = "remove";
     if let Err(failure) = crate::schema::guard(&state.db).await {
         return failed(&state, COMMAND, failure).await;
@@ -167,7 +171,7 @@ async fn conversations(
     }
 }
 
-async fn gc(State(state): State<AppState>) -> Answer<crate::remove::GcCounts> {
+async fn gc(State(state): State<AppState>) -> Answer<GcCounts> {
     const COMMAND: &str = "gc";
     if let Err(failure) = crate::schema::guard(&state.db).await {
         return failed(&state, COMMAND, failure).await;

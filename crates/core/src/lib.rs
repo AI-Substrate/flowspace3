@@ -24,6 +24,7 @@ pub mod ports;
 pub mod skew;
 pub mod tokens;
 pub mod update;
+pub mod views;
 
 pub use address::{
     Address, AddressError, ConversationAddress, ElementAddress, ElementParts, element_address,

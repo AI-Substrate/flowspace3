@@ -10,6 +10,7 @@
 //! command succeeded; it is the stack that is degraded, not the answer.
 
 use fs3_cli::doctor;
+use fs3_core::views::doctor::{DoctorReport, Step};
 
 /// Port 1 is privileged and never serves, so the probe is refused immediately
 /// rather than waiting out its timeout.
@@ -52,7 +53,7 @@ async fn doctor_reports_degraded_when_no_daemon_is_listening() {
 
     assert_eq!(
         data.verdict,
-        doctor::DoctorReport::DEGRADED,
+        DoctorReport::DEGRADED,
         "this is the bug: a plain ok with nothing serving was actively misleading"
     );
     assert!(
@@ -195,7 +196,7 @@ async fn doctor_warns_when_only_the_offline_fake_is_configured() {
     );
     assert_eq!(
         data.verdict,
-        doctor::DoctorReport::DEGRADED,
+        DoctorReport::DEGRADED,
         "a warn degrades the verdict — a plain ok here is the silence being fixed"
     );
 }
@@ -263,7 +264,7 @@ async fn doctor_warns_when_an_active_names_no_configured_instance() {
 #[test]
 fn an_informational_row_reports_without_degrading_the_verdict() {
     let started = std::time::Instant::now();
-    let note = doctor::Step::info("skills", "0 skills installed", "run `x`", started);
+    let note = Step::info("skills", "0 skills installed", "run `x`", started);
 
     assert_eq!(note.outcome, "info");
     assert!(
@@ -276,14 +277,14 @@ fn an_informational_row_reports_without_degrading_the_verdict() {
     );
 
     for degrading in [
-        doctor::Step::warn("x", "f", "a", started),
-        doctor::Step::down("x", "f", started),
+        Step::warn("x", "f", "a", started),
+        Step::down("x", "f", started),
     ] {
         assert!(degrading.degrades(), "{} must degrade", degrading.outcome);
     }
     for settled in [
-        doctor::Step::ok("x", "f", started),
-        doctor::Step::repaired("x", "f", "a", started),
+        Step::ok("x", "f", started),
+        Step::repaired("x", "f", "a", started),
     ] {
         assert!(!settled.degrades());
         assert!(

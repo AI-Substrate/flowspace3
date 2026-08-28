@@ -5,64 +5,24 @@
 
 use fs3_core::catalog;
 use fs3_core::envelope::Failure;
-use serde::{Deserialize, Serialize};
 
 use crate::answer::IntoFailure;
 use crate::wiring::AppState;
+use fs3_core::views::remove::{GcCounts, RemoveReport};
 
-/// What `POST /remove` answers with.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RemoveReport {
-    /// The absolute root path that was asked about.
-    pub root_path: String,
-    /// Whether anything was registered there. `false` is a successful answer,
-    /// not a failure: `remove` on an unknown path is a question with a true
-    /// answer.
-    pub was_registered: bool,
-    /// The repository identity it belonged to, when it was registered.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub identity: Option<String>,
-    /// Path→blob mappings that went with it.
-    pub files: i64,
-    /// Queued scans killed. Enrichment jobs are keyed by content rather than by
-    /// root and are deliberately NOT counted here, because they are not
-    /// touched.
-    pub jobs_killed: i64,
-    /// Whether the repo row went too, because no other checkout of it remained.
-    pub repo_removed: bool,
-    /// Rows GC could reclaim right now — a FLOOR, not a forecast, and not a
-    /// promise of when.
-    pub reclaimable: GcCounts,
-    /// The roots that ARE registered, when the caller's path was not one of
-    /// them. Empty otherwise.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub registered: Vec<String>,
-}
-
-/// What `POST /gc` answers with, and the shape [`RemoveReport`] borrows.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct GcCounts {
-    /// Enrichment queued for content nothing holds.
-    pub jobs: i64,
-    /// Parse trees for blobs no worktree maps.
-    pub elements: i64,
-    /// Summaries no remaining element carries.
-    pub summaries: i64,
-    /// Vectors whose source is gone.
-    pub embeddings: i64,
-    /// Every row above, for a one-line answer.
-    pub total: i64,
-}
-
-impl From<fs3_store::Reclaimed> for GcCounts {
-    fn from(reclaimed: fs3_store::Reclaimed) -> Self {
-        Self {
-            jobs: reclaimed.jobs,
-            elements: reclaimed.elements,
-            summaries: reclaimed.summaries,
-            embeddings: reclaimed.embeddings,
-            total: reclaimed.total(),
-        }
+/// The store's reclaim tally, as the wire reports it.
+///
+/// A free function rather than a `From` impl: `GcCounts` is the shared payload
+/// type in `fs3-core` and `Reclaimed` belongs to `fs3-store`, so neither is
+/// this crate's to give a trait impl to. The conversion is the daemon's own
+/// business — it is the only place both types meet.
+fn counts(reclaimed: fs3_store::Reclaimed) -> GcCounts {
+    GcCounts {
+        jobs: reclaimed.jobs,
+        elements: reclaimed.elements,
+        summaries: reclaimed.summaries,
+        embeddings: reclaimed.embeddings,
+        total: reclaimed.total(),
     }
 }
 
@@ -104,7 +64,7 @@ pub async fn remove(state: &AppState, path: &str) -> Result<RemoveReport, Failur
         files: removal.files,
         jobs_killed: removal.jobs_killed,
         repo_removed: removal.repo_removed,
-        reclaimable: reclaimable.into(),
+        reclaimable: counts(reclaimable),
         registered,
     })
 }
@@ -123,7 +83,7 @@ pub async fn remove(state: &AppState, path: &str) -> Result<RemoveReport, Failur
 pub async fn collect(state: &AppState) -> Result<GcCounts, Failure> {
     fs3_store::collect_garbage(&state.db)
         .await
-        .map(Into::into)
+        .map(counts)
         .map_err(IntoFailure::into_failure)
 }
 
