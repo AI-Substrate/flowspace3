@@ -177,12 +177,50 @@ are made before any removal.
 | `E_NOTHING_TO_TIDY` | no worktree, no registry entry and no `NNN-<slug>` branch — already tidy |
 | `E_WORKTREE_DIRTY` | uncommitted changes; the files are listed |
 | `E_UNPUSHED_COMMITS` | a clean tree whose commits exist nowhere else; the commit subjects are listed. Distinct from the above on purpose — a clean-but-unpushed tree is not "dirty", and a refusal that says it is sends you hunting for files that do not exist |
-| `E_BRANCH_NOT_MERGED` | the branch is not merged into `main` |
+| `E_BRANCH_NOT_MERGED` | the branch is not merged into `main` — **and squash merges count as merged**, see below |
 | `E_RESCUE_FAILED` | the observation buffer could not be copied out verifiably — **nothing is removed** |
 | `E_CORE_TOO_OLD` | the core has no write-side filesystem capability, so the buffer cannot be rescued |
 
 `--force` overrides the three at-risk refusals — and still lists what it is
 discarding first.
+
+### Merged-detection: squash merges are the NORMAL case here
+
+This repo **squash-merges every PR**. A squash rewrites history, so a correctly
+landed branch's tip is *never* an ancestor of `main` and `git branch --merged`
+never lists it. Merge detection therefore has **two legs**, and the second is
+not optional:
+
+1. **Ancestor** — `git branch --merged <base>`. Cheap, and correct for a real
+   merge commit or a fast-forward.
+2. **Patch-equivalence** — `git cherry <base> <branch>`. One line per commit on
+   the branch: `-` when an equivalent patch is already upstream, `+` when it is
+   not. **All `-` means merged**, which is exactly what a squash looks like from
+   the branch's side.
+
+```
+$ git cherry main w-team-tidy
+- a83cb335d0f76ad0b789e7e0f15032225cb51669     # squashed into main as bb10474
+```
+
+**The ancestor check ALONE was the original bug — do not "simplify" the second
+leg away.** (DL-049, found by tidying tidy's own worktree the day it merged.)
+With only leg 1, *every properly merged packet branch in this repo* hit
+`E_BRANCH_NOT_MERGED` and had to be removed with `--force` — which also silences
+the dirty-tree and unpushed-commit refusals. A safety rail that trains people to
+`--force` past **all** the checks is worse than the gap it was guarding.
+
+**It fails closed.** Anything unproven reports *not* merged:
+
+| situation | verdict |
+|---|---|
+| no commits ahead of base | merged |
+| every commit patch-equivalent upstream (`-`) | merged — the squash case |
+| any `+` line, even alongside `-` lines | **not merged** — a half-upstream branch still holds work that exists nowhere else |
+| `git cherry` fails, or no base resolves | **not merged** |
+
+The cost of guessing "merged" is deleting commits that exist nowhere else, so
+the uncertain answer is always the refusal.
 
 ### Docker volumes: namespaced, by name, never a prune
 
