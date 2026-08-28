@@ -34,12 +34,12 @@ fn ddoc_meta(path: &str, id: &str, schema: &str, gate_terminal: Option<bool>) ->
         .to_string(),
     );
     meta.gate_terminal = gate_terminal;
-    meta.derived_state = Some(DerivedState {
-        complete: gate_terminal.unwrap_or(false),
-        incomplete: if gate_terminal == Some(false) {
-            vec![format!("check-{id}")]
-        } else {
+    meta.derived_state = gate_terminal.map(|complete| DerivedState {
+        complete,
+        incomplete: if complete {
             Vec::new()
+        } else {
+            vec![format!("check-{id}")]
         },
     });
     meta.doc_title = Some("Ddoc store contract".to_string());
@@ -294,6 +294,41 @@ async fn search_filter_gate_open_selects_known_rows_and_excludes_unknown() {
             .chain(&closed)
             .any(|address| address.ends_with("zz-0003"))
     );
+    fixture.destroy().await;
+}
+
+#[tokio::test]
+async fn search_filter_gate_open_prefers_derived_state_over_stored_state() {
+    let fixture = SearchFixture::create().await;
+    sqlx::query(
+        "UPDATE elements
+            SET ddoc = jsonb_set(
+                    jsonb_set(ddoc, '{state}', '\"checked\"'::jsonb),
+                    '{derived_state}',
+                    '{\"complete\":false,\"incomplete\":[\"dw-0001\"]}'::jsonb)
+          WHERE address = 'docs/plan.dd.json#criteria/tk-0002'",
+    )
+    .execute(&fixture.pool)
+    .await
+    .expect("seed stored/derived disagreement");
+
+    let open = fixture
+        .search(SearchFilters {
+            id_kinds: Some(vec!["tk".to_string()]),
+            gate_open: Some(true),
+            ..SearchFilters::default()
+        })
+        .await;
+    let closed = fixture
+        .search(SearchFilters {
+            id_kinds: Some(vec!["tk".to_string()]),
+            gate_open: Some(false),
+            ..SearchFilters::default()
+        })
+        .await;
+
+    assert_eq!(open, vec!["docs/plan.dd.json#criteria/tk-0002"]);
+    assert!(closed.is_empty());
     fixture.destroy().await;
 }
 

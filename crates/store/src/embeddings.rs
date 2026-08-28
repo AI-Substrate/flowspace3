@@ -473,8 +473,16 @@ pub async fn search_elements(
                              AND ($9::text[] IS NULL
                                   OR el.ddoc->>'id_kind' = ANY($9))
                              AND ($10::boolean IS NULL
-                                  OR (el.ddoc->>'gate_terminal' IS NOT NULL
-                                      AND (el.ddoc->>'gate_terminal')::boolean = NOT $10))
+                                  OR (CASE
+                                        WHEN jsonb_typeof(el.ddoc->'derived_state') = 'object'
+                                        THEN (el.ddoc->'derived_state'->>'complete')::boolean
+                                        ELSE (el.ddoc->>'gate_terminal')::boolean
+                                      END IS NOT NULL
+                                      AND CASE
+                                        WHEN jsonb_typeof(el.ddoc->'derived_state') = 'object'
+                                        THEN (el.ddoc->'derived_state'->>'complete')::boolean
+                                        ELSE (el.ddoc->>'gate_terminal')::boolean
+                                      END = NOT $10))
                              AND ($11::text IS NULL
                                   OR el.ddoc->>'schema' = $11)))
                 -- The ANCHOR gate, conditional so that content which outlived
@@ -538,8 +546,16 @@ pub async fn search_elements(
                    AND ($8::text[] IS NULL OR el.kind = ANY($8))
                    AND ($9::text[] IS NULL OR el.ddoc->>'id_kind' = ANY($9))
                    AND ($10::boolean IS NULL
-                        OR (el.ddoc->>'gate_terminal' IS NOT NULL
-                            AND (el.ddoc->>'gate_terminal')::boolean = NOT $10))
+                        OR (CASE
+                              WHEN jsonb_typeof(el.ddoc->'derived_state') = 'object'
+                              THEN (el.ddoc->'derived_state'->>'complete')::boolean
+                              ELSE (el.ddoc->>'gate_terminal')::boolean
+                            END IS NOT NULL
+                            AND CASE
+                              WHEN jsonb_typeof(el.ddoc->'derived_state') = 'object'
+                              THEN (el.ddoc->'derived_state'->>'complete')::boolean
+                              ELSE (el.ddoc->>'gate_terminal')::boolean
+                            END = NOT $10))
                    AND ($11::text IS NULL OR el.ddoc->>'schema' = $11)
                  ORDER BY el.id
                  LIMIT 1
@@ -639,8 +655,16 @@ pub async fn anchor_has_vectors(
                                  WHERE sc.raw_hash = el.raw_hash))
                 AND ($6::text[] IS NULL OR el.ddoc->>'id_kind' = ANY($6))
                 AND ($7::boolean IS NULL
-                     OR (el.ddoc->>'gate_terminal' IS NOT NULL
-                         AND (el.ddoc->>'gate_terminal')::boolean = NOT $7))
+                     OR (CASE
+                           WHEN jsonb_typeof(el.ddoc->'derived_state') = 'object'
+                           THEN (el.ddoc->'derived_state'->>'complete')::boolean
+                           ELSE (el.ddoc->>'gate_terminal')::boolean
+                         END IS NOT NULL
+                         AND CASE
+                           WHEN jsonb_typeof(el.ddoc->'derived_state') = 'object'
+                           THEN (el.ddoc->'derived_state'->>'complete')::boolean
+                           ELSE (el.ddoc->>'gate_terminal')::boolean
+                         END = NOT $7))
                 AND ($8::text IS NULL OR el.ddoc->>'schema' = $8))",
     )
     .bind(model_key)
