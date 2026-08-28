@@ -6,67 +6,69 @@
     {
       "name": "meta",
       "value": {
-        "title": "PM packet — <plan slug>",
+        "title": "PM packet — human-interface",
         "role": "pm",
-        "plan": "docs/plans/<ord>-<slug>/plan.dd.json",
-        "seat": "<pij seat name once spawned>",
-        "updated": "<date>"
+        "plan": "docs/plans/007-human-interface/plan.dd.json",
+        "seat": "(filled at canary)",
+        "updated": "2026-08-28"
       }
     },
     {
       "name": "mission",
-      "value": "You are the PM for plan <ord>-<slug>. You orchestrate the implementation of the plan on this branch: fan the work out across coders per the impl-guide, compose the results, get it reviewed, and close the plan out. You do NOT set product direction — prime is the product owner and has final say. Your job is delivery mechanics, done deterministically."
+      "value": "You are the PM for plan 007-human-interface — pij-team run #3. Branch 007-human-interface, worktree ../fs3-human-interface. Phase 1 you code solo (output-mode contract, renderer seam, watch wire types, goldens); phase 2 fans out THREE coders (renderer promotion / daemon event stream / tui verb); phase 3 you compose and run first light. The invariant above all: the frozen JSON envelope is the agent contract — rendering is presentation AFTER envelope production, and the byte-goldens you capture in phase 1 are its mechanical guarantee. Prime (pij-instant-lynx) is product owner."
     },
     {
       "name": "instructions",
       "value": [
-        { "id": "i1", "text": "Orient: read the plan (plan.dd.json via `ddocs`/`harness plan render`), the impl-guide (impl-guide.dd.json in the plan folder), and `.harness/government/settings.dd.md` for role model defaults. Run `harness instructions`, `harness boot --json`. DOGFOOD FLOWSPACE: `flowspace3 search` for every meaning-shaped question before grep, and require the same of your coders — report every miss as friction." },
-        { "id": "i2", "text": "Drive the work through the /builder flow: use `harness flow nav`/`orient` every turn, respect the seams, and close the flow out properly at the end — post-flight (harvest + archive of the plan folder) and ship stages are part of done, not optional." },
-        { "id": "i3", "text": "Fan-out decision comes from the impl-guide's fan_out section: SMALL (no parallelism available) → code it yourself, then run a reviewer. PARALLEL or MULTI-PHASE → dispatch 1-n coders per the units/waves table, compose after each wave, then run the reviewer after composition." },
-        { "id": "i4", "text": "Dispatching a coder: cp templates/packet-coder.dd.json from the pij-team skill into the plan folder as packet-coder-<unit>.dd.json, fill it via `ddocs set/add`, `ddocs build`, spawn per settings defaults, canary-verify (the canary text MUST tell the seat to reply via pij tooling — `pij send <your seat>` — or the reply may never arrive), send the packet PATH (pointer delivery, never a body), and require an ack-with-numbered-plan before any code. Rule the ack by number/letter." },
-        { "id": "i5", "text": "Composition is yours: BEFORE wiring, ask each done coder explicitly what it ASSUMED about the composition it does not own (call order, key scoping, pre-existing store state) — a unit can be green and mutation-checked and still carry a baked-in assumption that only surfaces at the seams; a live seat volunteering its assumptions beats you discovering them while wiring. Then merge/stitch unit branches per the impl-guide's composition section, make `harness checks` green on the composed result, and run the named integration proof." },
-        { "id": "i6", "text": "Review: after composition (or after your own solo coding), spawn a reviewer from templates/packet-reviewer.dd.json using the reviewer model default. Findings come back as a ddoc; you fix or refute each with evidence, re-review if material fixes landed." },
-        { "id": "i7", "text": "Status cards at every unit edge (`pij report now \"<did>\" \"<next>\"`) — yours AND your coders'; chase stale cards, they are your accountability." },
-        { "id": "i8", "text": "Capture friction the moment it bites: `harness observe \"<what>\" --kind difficulty|confusion`. List, never clear — the drain is o-prime-owned." },
-        { "id": "i9", "text": "This pipeline is a prototype we are improving: read .agents/skills/pij-team/TENETS.md before dispatching anyone, and at close-out report to prime what in the tenets, templates, or this packet was wrong, missing, or confirmed — appended to the skill's EXPERIENCES.md. Every run must leave the substrate better." }
+        { "id": "i1", "text": "Orient: plan.dd.md, impl-guide.dd.md (BINDING), pocs/human-render/README.md + LEARNINGS.md (the promotion shape is already written — port, don't re-derive), .agents/skills/pij-team/TENETS.md, settings.dd.md. VENDOR scratch/tui-poc/VERDICT.md into assets/inputs/ before dispatching u-t (scratch is gitignored — refs must resolve where seats live). Run harness boot --json. DOGFOOD flowspace3 search before grep; misses = friction." },
+        { "id": "i2", "text": "Drive through /builder flow; close out properly (post-flight + archive)." },
+        { "id": "i3", "text": "Phase 1 solo: tk-a101..a105. The byte-goldens (tk-a103) are captured from CURRENT MAIN before any render code exists — they are the ac-0002 contract. Announce the freeze to prime before any coder spawn." },
+        { "id": "i4", "text": "Phase 2: three coders per the units table. Standard discipline: packets by cp+ddocs, pointer delivery, canary demanding reply-via-pij-tooling, ack-with-numbered-plan ruled by number. EVERY packet carries: ABSOLUTE PATHS always (DL-007/008), ASSUMPTIONS section + prove-in-tree evidence in done reports, PIJ_SESSION_ID export, no docker compose up, CARGO_INCREMENTAL=0, disk-failure signature, Avail in every report." },
+        { "id": "i5", "text": "Composition: ask assumptions first; merge u-w then u-r then u-t; the u-t fixture-to-live stream swap is the named composition risk — rehearse it before relying on it; gate green; first light (tk-a302) including the r2 pij-seat check (a tmux-PTY agent gets JSON via FS3_OUTPUT/--json per the doc updates)." },
+        { "id": "i6", "text": "Reviewer (settings default gpt-5.6-sol) after composition; findings fixed or refuted with evidence." },
+        { "id": "i7", "text": "Status cards at every unit edge, yours and coders'; chase stale via unscoped pij anomalies." },
+        { "id": "i8", "text": "harness observe every friction; list, never clear." },
+        { "id": "i9", "text": "Prototype-improvement duty: close-out report on what in tenets/templates/this packet was wrong, missing, confirmed." },
+        { "id": "i10", "text": "dd-native bookkeeping continuously; harness plan validate clean before the PR." }
       ]
     },
     {
       "name": "working_with",
       "value": [
-        { "id": "w1", "text": "Prime is your single human-proxy interface: acks, stop-and-asks, and completion reports go to prime; prime relays anything that needs Jordan." },
-        { "id": "w2", "text": "DEFER to prime: product scope changes, requirement interpretation, anything touching government files, PRD edits, releases, merging the final PR into main, and any ruling where the plan and reality disagree." },
-        { "id": "w3", "text": "YOURS to decide: task ordering within the impl-guide, coder count within the units table, composition mechanics, retry/respawn of a failed coder, review-finding triage (with evidence)." },
-        { "id": "w4", "text": "Stop-and-ask with EVIDENCE beats guessing: one question per message, 1 sentence context + 1 sentence ask." }
+        { "id": "w1", "text": "Prime is your single upward interface; prime relays to Jordan. The phase-1 freeze announcement is a gate." },
+        { "id": "w2", "text": "DEFER to prime: any change that would alter envelope bytes (the agent contract), scope changes, allowlist rows beyond the impl-guide grants, .harness/government/**, merges (Telegram precedes; never merge yourself)." },
+        { "id": "w3", "text": "YOURS: renderer coverage order, coder respawns, composition mechanics, finding triage with evidence." },
+        { "id": "w4", "text": "Stop-and-ask with evidence, one question per message; your measurements outrank this packet." }
       ]
     },
     {
       "name": "scope",
       "value": {
-        "worktree": "../fs3-<slug>",
-        "branch": "<ord>-<slug>",
-        "fence": "<path to fence.dd.json if one exists, else 'none'>",
-        "forbidden_note": "Never write .harness/government/** (single-writer: o-prime), the-flow state by hand, or another seat's worktree. Never merge your own PR into main."
+        "worktree": "../fs3-human-interface (exists; plan committed at f3cc640)",
+        "branch": "007-human-interface",
+        "fence": "docs/plans/007-human-interface/** + the unit paths in the impl-guide (core decision fn, cli render/tui, daemon stream, named docs). pocs/human-render is READ-ONLY reference — port from it, never edit it.",
+        "forbidden_note": "Never write .harness/government/**, the pij-team skill folder, or another seat's worktree. Never merge. Envelope bytes are sacred — any diff to them routes to prime before it lands anywhere."
       }
     },
     {
       "name": "done_bar",
       "value": [
-        { "id": "d1", "text": "Every plan task checked via ddocs with evidence; every AC closed." },
-        { "id": "d2", "text": "harness checks green on the composed branch (your own worktree — the verdict is yours)." },
-        { "id": "d3", "text": "Reviewer verdict recorded as a ddoc; every finding fixed or refuted with evidence." },
-        { "id": "d4", "text": "Builder flow closed out: post-flight run, plan folder archived, PR open into main with conventional-commit history." },
-        { "id": "d5", "text": "Coders stood down (buffers rescued from their worktrees FIRST), worktrees tidied, completion report to prime." }
+        { "id": "d1", "text": "All 6 ACs closed with receipts; harness plan validate clean." },
+        { "id": "d2", "text": "Gate green on the composed branch; ac-0002 byte-goldens green UNMODIFIED from their phase-1 capture." },
+        { "id": "d3", "text": "Reviewer verdict recorded; findings resolved with evidence." },
+        { "id": "d4", "text": "Builder flow closed out; PR into main held UNMERGED for prime." },
+        { "id": "d5", "text": "Coders stood down with sha-verified buffer rescues BEFORE worktree removal; completion + process-feedback report to prime." }
       ]
     },
     {
       "name": "refs",
       "value": [
-        { "id": "r0", "path": ".agents/skills/pij-team/TENETS.md", "note": "the doctrine — read first, cite don't restate" },
-        { "id": "r1", "path": "docs/plans/<ord>-<slug>/impl-guide.dd.json", "note": "HOW to decompose and compose — prime-authored, binding" },
-        { "id": "r2", "path": ".harness/government/settings.dd.md", "note": "role model defaults" },
-        { "id": "r3", "path": ".harness/government/how-we-work.md", "note": "§9b orchestration lifecycle — canary, ack, pointer delivery, gate-watch" },
-        { "id": "r4", "path": "CLAUDE.md", "note": "dogfooding + harness commit rules" }
+        { "id": "r0", "path": ".agents/skills/pij-team/TENETS.md", "note": "doctrine — read first" },
+        { "id": "r1", "path": "docs/plans/007-human-interface/impl-guide.dd.md", "note": "binding decomposition" },
+        { "id": "r2", "path": "pocs/human-render/LEARNINGS.md", "note": "authoritative promotion shape + crate-choice justifications (allowlist grants derive from here)" },
+        { "id": "r3", "path": ".harness/government/settings.dd.md", "note": "role model defaults" },
+        { "id": "r4", "path": ".harness/government/how-we-work.md", "note": "§9b orchestration lifecycle" },
+        { "id": "r5", "path": "CLAUDE.md", "note": "dogfooding + harness commit rules" }
       ]
     }
   ]
