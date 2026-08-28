@@ -1,0 +1,14 @@
+crates/providers/src/conversation_sources/metrics_db.rs
+  h_9e71e8b09f7cf2 284-303,602-609,620,771,807,827,880-881,888,894,979-1026
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e956abf17e830a55e5b1738422739480a318fc1c",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
