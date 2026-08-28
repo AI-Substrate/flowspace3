@@ -1,0 +1,16 @@
+crates/daemon/src/http.rs
+  h_9e71e8b09f7cf2 403,405-408,452-470
+crates/daemon/tests/read_surface.rs
+  h_9e71e8b09f7cf2 108-114,155,158,162-164,186-216,338,354-357,359,361,373-421,456,469,473,485
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "83cc5cac08f3d59774cfb6d4ca94234b7a9097af",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
