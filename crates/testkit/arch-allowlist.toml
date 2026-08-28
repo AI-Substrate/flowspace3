@@ -202,6 +202,12 @@ external = [
   "tempfile",
   "thiserror",
   "tokio",
+  # Already transitive via sqlx (Cargo.lock:4528), so this direct dependency
+  # fetches no new code. ReceiverStream is Tokio's own mpsc-to-Stream adapter
+  # for axum's Body::from_stream; a hand-rolled stream is more failure surface,
+  # especially when a subscriber lags.
+  "tokio-stream",
+
   "toml",
   "tracing",
   "tracing-subscriber",
@@ -233,13 +239,19 @@ external = [
 internal = ["fs3-core", "fs3-daemon", "fs3-store", "fs3-testkit@dev"]
 external = [
   "anyhow",
+  "anstream",
   "clap",
+  "comfy-table",
+  "crossterm",
+  "owo-colors",
+  "ratatui",
   "reqwest",
   # PRD req-0053: sha256 of the bundled skill's content — pure computation, no IO.
   "sha2",
   "serde",
   "serde_json",
   "tokio",
+  "textwrap",
   "toml",
   # DEV only: doctor's daemon row is probed against a stub /health server — a
   # fake, not a mock (workshop 001 rule 5).

@@ -26,13 +26,16 @@ pub mod conversation_source;
 pub mod element;
 pub mod envelope;
 pub mod error;
+pub mod events;
 pub mod git;
 pub mod logging;
 pub mod messages;
+pub mod output;
 pub mod ports;
 pub mod skew;
 pub mod tokens;
 pub mod update;
+pub mod views;
 
 pub use address::{
     Address, AddressError, ConversationAddress, ElementAddress, ElementParts, element_address,
@@ -69,11 +72,13 @@ pub use element::{
 };
 pub use envelope::{ENVELOPE_VERSION, Envelope, Failure};
 pub use error::{Error, Result};
+pub use events::{Event, EventKind, HEARTBEAT_MS, Hello, STREAM_VERSION};
 pub use git::{BlobChange, ChangedSet, FileBlob, IdentitySource, RepoIdentity, TreeSnapshot, diff};
 pub use logging::{
     LOG_FILE_NAME, LOGGING_SOURCE, resolve_log_dir, rolled_name, unwritable_message,
 };
 pub use messages::{Severity, UserMessage};
+pub use output::{OUTPUT_AUTO, OUTPUT_ENV, OutputMode};
 pub use ports::{
     ChatMessage, ChatProvider, ChatTurn, Embedder, Summarizer, Summary, ToolCall, ToolSchema,
 };
