@@ -19,6 +19,7 @@
 //! seam on the read boundary rather than safely inside one side of it.
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use fs3_core::{
     ConversationSource, Harness, IngestInput, RawRecord, SessionFile, SourceCursor, TurnItem,
@@ -131,14 +132,30 @@ fn write_lines(path: &Path, lines: &[String]) {
     std::fs::write(path, text).expect("the scratch file must be writable");
 }
 
-/// A unique scratch root. Follows testkit's own precedent rather than adding a
-/// `tempfile` dependency for four call sites.
+/// A scratch root no other test can be handed.
+///
+/// Follows testkit's own precedent (`fake_source.rs`) rather than adding a
+/// `tempfile` dependency — but ALL of it, which is the part that bit us.
+///
+/// `SystemTime::now()` alone is NOT unique. Cargo runs these tests on parallel
+/// threads, and two that start together can read the same nanosecond, so two
+/// fixtures sharing a label got the SAME directory — and whichever `Scratch`
+/// dropped first ran `remove_dir_all` on the other's live file. That failed
+/// about one run in three, on a DIFFERENT test each time, always as
+/// `cannot open: No such file or directory` mid-test. A single green run
+/// cannot detect it, which is how it reached the composed tree.
+///
+/// The process-static counter makes a collision structurally impossible within
+/// a process; the pid makes it impossible between concurrent test binaries too.
 fn scratch_root(label: &str) -> PathBuf {
+    static NEXT: AtomicUsize = AtomicUsize::new(0);
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .expect("the clock must be after the epoch")
         .as_nanos();
-    let root = std::env::temp_dir().join(format!("fs3-{label}-{nanos}"));
+    let unique = NEXT.fetch_add(1, Ordering::Relaxed);
+    let pid = std::process::id();
+    let root = std::env::temp_dir().join(format!("fs3-{label}-{pid}-{nanos}-{unique}"));
     std::fs::create_dir_all(&root).expect("a scratch root must be creatable");
     root
 }
