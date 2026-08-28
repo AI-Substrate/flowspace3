@@ -650,6 +650,10 @@ async fn run(command: Command) -> Result<ExitCode> {
 /// A renderer that declines, or bytes that will not round-trip, fall through to
 /// the JSON — the reader sees the answer either way.
 fn emit<T: serde::Serialize>(envelope: &Envelope<T>) -> ExitCode {
+    // Whether a human screen was drawn, which decides what stderr still owes
+    // the reader below.
+    let mut rendered = false;
+
     match serde_json::to_string_pretty(envelope) {
         Ok(json) => {
             let screen = match output_mode() {
@@ -661,6 +665,7 @@ fn emit<T: serde::Serialize>(envelope: &Envelope<T>) -> ExitCode {
             };
             match screen {
                 Some(text) => {
+                    rendered = true;
                     let mut stdout = anstream::stdout();
                     let _ = write!(stdout, "{text}");
                 }
@@ -670,14 +675,24 @@ fn emit<T: serde::Serialize>(envelope: &Envelope<T>) -> ExitCode {
         Err(error) => eprintln!("flowspace3: cannot render the response: {error}"),
     }
 
-    for message in &envelope.messages {
-        eprintln!("flowspace3: {}", message.render());
+    // The stderr copies exist for the JSON path: an agent gets the news in the
+    // envelope, and a PERSON reading a terminal gets it without piping
+    // anything. When a screen was drawn those two readers are the same reader,
+    // and the screen already carries the message and the fix — so repeating
+    // them below prints the diagnosis twice in the same terminal, which is how
+    // a careful error surface becomes noise (found by u-r, 2026-08-28).
+    if !rendered {
+        for message in &envelope.messages {
+            eprintln!("flowspace3: {}", message.render());
+        }
     }
 
     match &envelope.error {
         None => ExitCode::SUCCESS,
         Some(failure) => {
-            eprintln!("{}", failure.render());
+            if !rendered {
+                eprintln!("{}", failure.render());
+            }
             ExitCode::from(EXIT_ERROR)
         }
     }
