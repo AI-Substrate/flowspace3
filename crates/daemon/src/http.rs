@@ -97,16 +97,20 @@ async fn ask(
 
     match crate::ask::ask(&state, &request, scope.clone()).await {
         Ok(report) => {
-            let next = match (&report.answer, report.citations.is_empty()) {
+            let next = match (&report.answer, report.grounded) {
                 (None, _) => {
                     "the loop hit a bound before answering — raise [agent] max_iterations or \
                      token_budget, or ask a narrower question"
                 }
-                (Some(_), true) => {
-                    "answered without reading any address — treat that answer with suspicion and \
-                     check `flowspace3 status`, because a grounded answer cites what it read"
-                }
+                // `grounded: false` survived a pushback, so the model answered
+                // from memory on purpose. Say so first and plainly: this is the
+                // one outcome a reader must not mistake for an ordinary answer.
                 (Some(_), false) => {
+                    "UNGROUNDED — the model answered without reading anything from the index, so \
+                     treat this as a guess rather than an answer; check `flowspace3 status` in \
+                     case nothing is indexed, or ask a narrower question"
+                }
+                (Some(_), true) => {
                     "verify any claim with `flowspace3 get <address>` on the citations, or ask a \
                      follow-up question"
                 }

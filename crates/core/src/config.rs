@@ -1134,11 +1134,18 @@ pub struct Sources<'a> {
 }
 
 /// A merged configuration plus the story of where each section came from.
+///
+/// [`layers`](Self::layers) also retains unrecognised top-level sections. They
+/// are inert — [`config`](Self::config) contains only this binary's known
+/// shape — but retaining their origin lets [`warnings`](Self::warnings) make a
+/// newer config file visible to an older binary instead of making it a
+/// flag-day.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Effective {
     /// The configuration to run with.
     pub config: Config,
-    /// Highest layer that touched each top-level section.
+    /// Highest layer that touched each top-level section, including unknown
+    /// sections which were ignored.
     pub layers: BTreeMap<String, Layer>,
     /// Whether there was a config FILE at all.
     ///
@@ -1157,6 +1164,34 @@ impl Effective {
     #[must_use]
     pub fn layer(&self, section: &str) -> Layer {
         self.layers.get(section).copied().unwrap_or(Layer::Defaults)
+    }
+
+    /// Non-fatal findings produced while resolving the configuration file.
+    ///
+    /// Unknown TOP-LEVEL file sections are tolerated for forward
+    /// compatibility: an older installed binary must not stop working because
+    /// a newer checkout added a section to the machine-wide file. A mistyped
+    /// section stays loud because none of it takes effect and doctor reports
+    /// this warning. Known sections remain `deny_unknown_fields`, so the
+    /// likelier and more dangerous typo — `[embedder] activ = "big"` — still
+    /// fails hard instead of silently selecting the wrong provider.
+    ///
+    /// Environment overrides are intentionally stricter: an unknown
+    /// `FS3_SECTION__KEY` cannot be forward-compatible file content written by
+    /// another binary, so it is a current human typo and fails during resolve.
+    pub fn warnings(&self) -> impl Iterator<Item = Problem> + '_ {
+        self.layers
+            .keys()
+            .filter(|section| !SECTIONS.contains(&section.as_str()))
+            .map(|section| {
+                Problem::file(
+                    format!("[{section}]"),
+                    "unknown top-level section was ignored by this binary; none of its settings take effect",
+                    format!(
+                        "remove [{section}] if it is a typo, or upgrade flowspace3 if a newer binary supports it"
+                    ),
+                )
+            })
     }
 }
 
@@ -1289,7 +1324,7 @@ where
 /// a key that does not exist, a value of the wrong type, or a parsed value that
 /// cannot work.
 pub fn resolve(sources: Sources<'_>) -> Result<Effective> {
-    let file_table = match sources.file_text {
+    let mut file_table = match sources.file_text {
         None => Table::new(),
         Some(text) => text.parse::<Table>().map_err(|error| {
             Error::InvalidConfig(render(&[Problem::file(
@@ -1299,6 +1334,19 @@ pub fn resolve(sources: Sources<'_>) -> Result<Effective> {
             )]))
         })?,
     };
+
+    // Unknown TOP-LEVEL sections belong to a possibly newer config schema.
+    // Keep their provenance for doctor, but remove them before serde sees the
+    // table. Nested structs retain `deny_unknown_fields`: this narrowly removes
+    // the cross-version flag-day without making misspelled real keys inert.
+    let mut unknown_layers: BTreeMap<String, Layer> = BTreeMap::new();
+    file_table.retain(|section, _| {
+        let known = SECTIONS.contains(&section);
+        if !known {
+            unknown_layers.insert(section.to_owned(), Layer::File);
+        }
+        known
+    });
 
     let mut merged = default_table();
     merge_tables(&mut merged, file_table.clone());
@@ -1335,6 +1383,7 @@ pub fn resolve(sources: Sources<'_>) -> Result<Effective> {
         };
         layers.insert((*section).to_string(), layer);
     }
+    layers.extend(unknown_layers);
 
     Ok(Effective {
         config,
@@ -1859,17 +1908,35 @@ mod tests {
         );
     }
 
+    /// Forward compatibility stops at the section boundary. A section an older
+    /// binary cannot know is inert and visible; keys inside a section it DOES
+    /// know remain strict, because silently ignoring `activ` would select the
+    /// wrong provider while looking configured.
     #[test]
-    fn unknown_keys_are_a_typo_not_a_feature() {
+    fn an_unknown_key_inside_a_known_section_is_still_refused_by_name() {
         let err = Config::from_toml_str(
             r#"
-            [daemon]
-            url = "http://x"
-            prot = 1
+            [embedder]
+            activ = "big"
             "#,
         )
         .unwrap_err();
+        let message = err.to_string();
         assert!(matches!(err, Error::InvalidConfig(_)), "got {err:?}");
+        assert!(message.contains("activ"), "{message}");
+    }
+
+    #[test]
+    fn an_unknown_top_level_file_section_is_inert_and_warned_about() {
+        let effective = resolved("[typo]\nthing = \"from-file\"\n", &[]).unwrap();
+
+        assert_eq!(effective.config, Config::default());
+        let warnings: Vec<Problem> = effective.warnings().collect();
+        assert_eq!(warnings.len(), 1, "{warnings:?}");
+        assert_eq!(warnings[0].key, "[typo]");
+        assert_eq!(warnings[0].origin, Origin::File);
+        assert!(warnings[0].message.contains("ignored"));
+        assert!(warnings[0].message.contains("none"));
     }
 
     #[test]
@@ -2080,7 +2147,7 @@ summary_min_lines = 0
     }
 
     #[test]
-    fn a_typo_in_an_override_is_refused_by_name() {
+    fn an_unknown_override_section_is_refused_by_variable_name() {
         let err = resolved("", &[("FS3_DATABSE__URL", "postgres://x/y")]).unwrap_err();
         let message = err.to_string();
         assert!(message.contains("FS3_DATABSE__URL"), "{message}");

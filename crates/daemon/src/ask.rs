@@ -93,12 +93,23 @@ pub struct AskReport {
     pub trace: Vec<AskTraceEntry>,
     /// Turns taken.
     pub iterations: u32,
-    /// Tokens spent, as far as the provider reported them.
-    pub tokens_used: u64,
+    /// Tokens spent, or `null` when the provider reported nothing.
+    ///
+    /// Null is not zero. A provider that reports no usage has said it does not
+    /// know; publishing `0` would be a number nobody measured, and a budget
+    /// assertion against it would pass while measuring nothing.
+    pub tokens_used: Option<u64>,
     /// Why the run ended: `answered`, `max_iterations` or `token_budget`.
     pub stopped: String,
     /// Which chat model answered.
     pub model: String,
+    /// Whether the answer rests on evidence the loop actually read.
+    ///
+    /// `false` means the model answered without successfully reading anything.
+    /// The loop pushes back once before permitting that, so a `false` here is a
+    /// model that insisted. Carried as a FIELD rather than as prose in
+    /// `next_action` because an evaluator cannot assert on a warning.
+    pub grounded: bool,
 }
 
 /// The tools the loop may call, bound to one request's scope.
@@ -130,9 +141,12 @@ impl<'a> IndexTools<'a> {
         seen
     }
 
-    /// How this run's scope should be described to the model, every time.
-    fn scope_line(&self) -> String {
-        match &self.scope.repo {
+    /// How a scope should be described to the model, every time.
+    ///
+    /// Takes the scope that was actually APPLIED rather than reading the
+    /// request's, so a widened call reports the width it really had.
+    fn scope_line(scope: &Scope) -> String {
+        match &scope.repo {
             Some(repo) => format!("scope: repository `{repo}` only"),
             None => "scope: every indexed repository".to_string(),
         }
@@ -143,14 +157,27 @@ impl<'a> IndexTools<'a> {
             .get("query")
             .and_then(Value::as_str)
             .ok_or_else(|| provider_error("search needs a string `query`"))?;
+
+        // The model's `repo` argument has to RE-RESOLVE the scope, not just
+        // ride along on the request. `search` filters and picks its model key
+        // from the Scope alone, so passing `repo` through `SearchRequest` and
+        // reusing the request's original scope would leave `repo="all"` a
+        // silent no-op — the tool would promise widening in its description,
+        // report a scope it had not applied, and the model would conclude the
+        // subject does not exist anywhere. Offering a widening that does not
+        // widen is worse than offering none: it manufactures false confidence.
+        let asked = arguments.get("repo").and_then(Value::as_str);
+        let scope = match asked {
+            Some(repo) => {
+                crate::scope::resolve(self.state, Some(repo), self.scope.cwd.as_deref()).await
+            }
+            None => self.scope.clone(),
+        };
+
         let request = SearchRequest {
             q: query.to_string(),
-            repo: arguments
-                .get("repo")
-                .and_then(Value::as_str)
-                .map(str::to_string)
-                .or_else(|| self.scope.repo.clone()),
-            cwd: self.scope.cwd.clone(),
+            repo: asked.map(str::to_string).or_else(|| scope.repo.clone()),
+            cwd: scope.cwd.clone(),
             path: arguments
                 .get("path")
                 .and_then(Value::as_str)
@@ -166,7 +193,7 @@ impl<'a> IndexTools<'a> {
             ),
         };
 
-        let results = crate::search::search(self.state, &request, &self.scope)
+        let results = crate::search::search(self.state, &request, &scope)
             .await
             .map_err(|failure| {
                 provider_error(&format!("[{}] {}", failure.code, failure.message))
@@ -180,11 +207,15 @@ impl<'a> IndexTools<'a> {
                 "NO HITS ({}).\nThis does NOT mean the subject does not exist — only that nothing \
                  matched IN THIS SCOPE. If the answer might live in another repository, call \
                  search again with repo=\"all\". Otherwise try a shorter, differently worded query.",
-                self.scope_line()
+                Self::scope_line(&scope)
             ));
         }
 
-        let mut rendered = format!("{} — {} hits\n", self.scope_line(), results.results.len());
+        let mut rendered = format!(
+            "{} — {} hits\n",
+            Self::scope_line(&scope),
+            results.results.len()
+        );
         for hit in &results.results {
             let gist = hit
                 .smart
@@ -243,7 +274,7 @@ impl ToolBox for IndexTools<'_> {
                      to `get`. Ask meaning-shaped questions, not identifiers. Current {}. Pass \
                      repo=\"all\" to search every indexed repository when the answer may live \
                      outside the current one.",
-                    self.scope_line()
+                    Self::scope_line(&self.scope)
                 ),
                 parameters: json!({
                     "type": "object",
@@ -322,6 +353,7 @@ pub async fn ask(state: &AppState, request: &AskRequest, scope: Scope) -> CoreRe
             .collect(),
         iterations: answer.iterations,
         tokens_used: answer.tokens_used,
+        grounded: answer.grounded,
         stopped: match answer.stopped {
             StopReason::Answered => "answered",
             StopReason::MaxIterations => "max_iterations",

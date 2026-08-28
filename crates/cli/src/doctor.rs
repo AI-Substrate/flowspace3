@@ -33,7 +33,7 @@ use std::process::Stdio;
 use std::time::{Duration, Instant};
 
 use fs3_core::envelope::{Envelope, Failure};
-use fs3_core::{Config, Port, ProviderInstance, catalog};
+use fs3_core::{Config, Effective, Port, ProviderInstance, catalog};
 use serde::{Deserialize, Serialize};
 
 /// Environment variable naming the container engine.
@@ -55,6 +55,11 @@ const STACK_POLL: Duration = Duration::from_millis(500);
 /// up answers immediately, and one that is not should not cost a diagnostic
 /// command three seconds of silence.
 const DAEMON_PROBE_TIMEOUT: Duration = Duration::from_secs(2);
+
+/// The actionable next step when the store is ready but the daemon is down.
+/// Shared with the combined-state ordering test so the asserted line is the
+/// exact line an operator or agent receives.
+const DAEMON_DOWN_STEER: &str = "the store is ready but the daemon is not running — start it with `flowspace3 daemon &`, then `flowspace3 add <path>`";
 
 /// One step of the walk.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -246,11 +251,13 @@ impl DoctorReport {
 /// # Errors
 /// The failure of the step that could not be repaired, with its own catalog
 /// code and fix.
-pub async fn run(config: &Config, config_dir: &std::path::Path) -> Envelope<DoctorReport> {
+pub async fn run(effective: &Effective, config_dir: &std::path::Path) -> Envelope<DoctorReport> {
     let mut steps = Vec::new();
+    let config_warning = check_config(effective);
 
-    match walk(config, config_dir, &mut steps).await {
+    match walk(&effective.config, config_dir, &mut steps).await {
         Ok(messages) => {
+            insert_config_warning(&mut steps, config_warning);
             // `warn` counts as degraded: a stack running entirely on the
             // offline fake is working, and is almost never what the operator
             // believes they configured. Reporting a plain "ok" there is the
@@ -276,6 +283,7 @@ pub async fn run(config: &Config, config_dir: &std::path::Path) -> Envelope<Doct
             .with_messages(messages)
         }
         Err(failure) => {
+            insert_config_warning(&mut steps, config_warning);
             let mut envelope = Envelope::failed("doctor", failure);
             // The steps that DID pass are the useful half of a failed run, so
             // they ride along in meta rather than being discarded.
@@ -288,6 +296,49 @@ pub async fn run(config: &Config, config_dir: &std::path::Path) -> Envelope<Doct
             envelope
         }
     }
+}
+
+/// Report top-level sections this binary did not understand and therefore
+/// ignored. This is a warning rather than an error: refusing the whole file
+/// would make every additive config section a flag-day across installed
+/// versions, while silence would let a misspelled section survive indefinitely.
+fn check_config(effective: &Effective) -> Option<Step> {
+    let started = Instant::now();
+    let warnings: Vec<_> = effective.warnings().collect();
+    if warnings.is_empty() {
+        return None;
+    }
+
+    let found = warnings
+        .iter()
+        .map(|warning| format!("{}: {}", warning.key, warning.message))
+        .collect::<Vec<_>>()
+        .join("; ");
+    let action = warnings
+        .iter()
+        .map(|warning| warning.example.as_str())
+        .collect::<Vec<_>>()
+        .join("; ");
+    Some(
+        Step::warn("config", found, action, started).with_steer(
+            "unknown config sections were ignored — remove typos or upgrade flowspace3 for newer sections",
+        ),
+    )
+}
+
+/// Place config warnings after runtime checks but before the deliberately-last
+/// skills row. The warning stays actionable, while dependency blockers keep
+/// their priority in [`next_action`]. On an early failed walk there is no
+/// skills row, so appending still preserves the rows already reached.
+fn insert_config_warning(steps: &mut Vec<Step>, warning: Option<Step>) {
+    let Some(warning) = warning else {
+        return;
+    };
+    let before_skills = steps
+        .iter()
+        .position(|step| step.check == "skills")
+        .unwrap_or(steps.len());
+    steps.insert(before_skills, warning);
 }
 
 /// Returns the live user messages the walk observed, so doctor's own envelope
@@ -760,10 +811,7 @@ async fn check_daemon(daemon_url: &str, config_dir: &std::path::Path) -> Step {
             format!("nothing is listening on {daemon_url}"),
             started,
         )
-        .with_steer(
-            "the store is ready but the daemon is not running — start it with `flowspace3 \
-             daemon &`, then `flowspace3 add <path>`",
-        ),
+        .with_steer(DAEMON_DOWN_STEER),
     }
 }
 
@@ -1301,6 +1349,58 @@ mod tests {
 
         assert_eq!(row.outcome, "warn", "{row:?}");
         assert!(row.found.contains("not a directory"), "{row:?}");
+    }
+
+    /// The warning must reach the same doctor row channel as every other
+    /// actionable finding; retaining it only in `Effective` would still leave
+    /// a mistyped section invisible to the operator.
+    #[test]
+    fn an_ignored_config_section_reaches_a_warning_row() {
+        let effective = fs3_core::resolve(fs3_core::Sources {
+            file_label: "/tmp/fs3/config.toml",
+            file_text: Some("[typo]\nactive = \"big\"\n"),
+            env: &[],
+        })
+        .unwrap();
+
+        let row = check_config(&effective).expect("the unknown section must produce a row");
+        assert_eq!(row.check, "config");
+        assert_eq!(row.outcome, "warn");
+        assert!(row.found.contains("[typo]"), "{row:?}");
+        assert!(row.found.contains("ignored"), "{row:?}");
+        assert!(row.degrades(), "an ignored section must be loud");
+        assert!(
+            row.steer.is_some(),
+            "the warning must tell the user what next"
+        );
+    }
+
+    /// A config warning is actionable, but it must not outrank the runtime
+    /// dependency that makes the product unusable. This combined state is the
+    /// regression: testing either row alone cannot prove priority.
+    #[test]
+    fn a_down_daemon_steers_before_an_ignored_config_section() {
+        let effective = fs3_core::resolve(fs3_core::Sources {
+            file_label: "/tmp/fs3/config.toml",
+            file_text: Some("[typo]\nactive = \"big\"\n"),
+            env: &[],
+        })
+        .unwrap();
+        let daemon = Step::down(
+            "daemon",
+            "nothing is listening on http://127.0.0.1:7373",
+            Instant::now(),
+        )
+        .with_steer(DAEMON_DOWN_STEER);
+        let skills = Step::info("skills", "current", "nothing to do", Instant::now());
+        let mut steps = vec![daemon, skills];
+        insert_config_warning(&mut steps, check_config(&effective));
+
+        assert_eq!(steps[1].check, "config", "{steps:?}");
+        assert_eq!(steps[2].check, "skills", "skills must remain last");
+        let observed = next_action(&steps);
+        assert_eq!(observed, DAEMON_DOWN_STEER);
+        assert!(!observed.contains("unknown config"), "{observed}");
     }
 
     /// req-0053: the skills row's asks are spec-verbatim; mixed states take the

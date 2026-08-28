@@ -87,9 +87,14 @@ fn tool_call(name: &str, arguments: &str) -> ChatTurn {
 
 #[tokio::test]
 async fn a_question_comes_back_as_an_ask_envelope_naming_its_scope() {
+    // Twice: an answer with no tool calls is ungrounded, so the loop pushes
+    // back once and demands evidence before it will publish anything.
     let (base, key, database, pool) = daemon_answering_with(
         "ask-answer",
-        vec![prose("the watcher debounces per directory")],
+        vec![
+            prose("the watcher debounces per directory"),
+            prose("the watcher debounces per directory"),
+        ],
     )
     .await;
 
@@ -162,6 +167,9 @@ async fn an_unknown_tool_is_reported_to_the_model_rather_than_failing_the_reques
         "ask-badtool",
         vec![
             tool_call("summon_oracle", "{}"),
+            // The first answer follows a FAILED call, so it is ungrounded and
+            // earns the pushback; the second is what gets published.
+            prose("recovered without it"),
             prose("recovered without it"),
         ],
     )
@@ -181,6 +189,10 @@ async fn an_unknown_tool_is_reported_to_the_model_rather_than_failing_the_reques
     assert_eq!(
         data["trace"][0]["failed"], true,
         "the bad call is recorded as failed so the trace stays honest"
+    );
+    assert_eq!(
+        data["grounded"], false,
+        "the only tool call failed, so the answer rests on nothing"
     );
 
     database.destroy(pool).await;

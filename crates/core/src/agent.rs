@@ -144,10 +144,26 @@ pub struct AgentAnswer {
     pub trace: Vec<TraceEntry>,
     /// Turns taken.
     pub iterations: u32,
-    /// Tokens spent, as far as the provider reported them.
-    pub tokens_used: u64,
+    /// Tokens spent, or `None` when the provider reported nothing.
+    ///
+    /// `None` is not zero. A provider that declines to report usage has told us
+    /// it does not know, and flattening that to `0` would publish a number
+    /// nobody measured — the run would read as free. Unknown stays unknown all
+    /// the way to the caller, so a budget assertion can say "not measured"
+    /// instead of silently passing.
+    pub tokens_used: Option<u64>,
     /// Why it ended.
     pub stopped: StopReason,
+    /// Whether the answer rests on evidence the loop actually read.
+    ///
+    /// False means the model answered without ever successfully reading
+    /// anything — from its own memory, in other words. The loop pushes back
+    /// once before allowing that (see [`ask`]), so a false here is a model that
+    /// insisted. It is a FIELD rather than a warning in prose because an
+    /// ungrounded answer that reads like a grounded one is the failure this
+    /// verb exists to prevent, and a caller — or an evaluator — must be able to
+    /// tell them apart without parsing English.
+    pub grounded: bool,
 }
 
 /// Run one question to an answer.
@@ -168,19 +184,47 @@ pub async fn ask(
         ChatMessage::User(question.to_string()),
     ];
     let mut trace = Vec::new();
-    let mut tokens_used = 0u64;
+    // `None` until a provider reports usage: see `AgentAnswer::tokens_used`.
+    let mut tokens_used: Option<u64> = None;
+    let mut nudged = false;
 
     for iteration in 1..=bounds.max_iterations {
         let turn: ChatTurn = chat.turn(&messages, &schemas).await?;
-        tokens_used += turn.tokens_used.unwrap_or(0);
+        if let Some(spent) = turn.tokens_used {
+            tokens_used = Some(tokens_used.unwrap_or(0) + spent);
+        }
 
         if turn.tool_calls.is_empty() {
+            let grounded = read_something(&trace);
+
+            // A model that answers having read NOTHING is answering from
+            // memory, which is precisely what this verb must not do. Asking is
+            // cheap and it usually works, so push back once rather than
+            // publishing the answer or throwing it away.
+            if !grounded && !nudged {
+                nudged = true;
+                messages.push(ChatMessage::Assistant {
+                    content: turn.content.clone(),
+                    tool_calls: vec![],
+                });
+                messages.push(ChatMessage::User(
+                    "You answered without reading anything from the index, so that answer is \
+                     not grounded in this codebase. Use the search and get tools to find real \
+                     evidence, then answer citing the addresses you read. If you search and \
+                     genuinely find nothing, say so plainly — an honest 'not found' is a \
+                     correct answer, but a remembered one is not."
+                        .to_string(),
+                ));
+                continue;
+            }
+
             return Ok(AgentAnswer {
                 answer: turn.content,
                 trace,
                 iterations: iteration,
                 tokens_used,
                 stopped: StopReason::Answered,
+                grounded,
             });
         }
 
@@ -210,24 +254,36 @@ pub async fn ask(
             });
         }
 
-        if tokens_used >= bounds.token_budget {
+        if tokens_used.is_some_and(|spent| spent >= bounds.token_budget) {
+            let grounded = read_something(&trace);
             return Ok(AgentAnswer {
                 answer: None,
                 trace,
                 iterations: iteration,
                 tokens_used,
                 stopped: StopReason::TokenBudget,
+                grounded,
             });
         }
     }
 
+    let grounded = read_something(&trace);
     Ok(AgentAnswer {
         answer: None,
         trace,
         iterations: bounds.max_iterations,
         tokens_used,
         stopped: StopReason::MaxIterations,
+        grounded,
     })
+}
+
+/// Whether any tool call actually returned evidence.
+///
+/// A run where every call failed has nothing in it, however fluent the reply —
+/// so this, and not the presence of an answer, is what "grounded" means.
+fn read_something(trace: &[TraceEntry]) -> bool {
+    trace.iter().any(|entry| !entry.failed)
 }
 
 /// Cut `text` to `max` characters, saying so where it was cut.
@@ -380,19 +436,77 @@ mod tests {
     }
 
     #[test]
-    fn a_question_answered_without_tools_ends_in_one_turn() {
-        let chat = ScriptedChat::new(vec![prose("the answer", 10)]);
-        let outcome = run(ask(
-            &chat,
-            &tools_ok("unused"),
-            AgentBounds::default(),
-            "a question",
-        ));
+    fn a_model_that_answers_without_reading_anything_is_pushed_back_once() {
+        // This test previously asserted the OPPOSITE — that first-turn prose
+        // with no tool calls was simply the answer. That enshrined the exact
+        // failure the verb exists to prevent: a fluent reply drawn from the
+        // model's memory, indistinguishable from one drawn from the codebase.
+        // The loop now refuses it once and demands evidence.
+        let chat = ScriptedChat::new(vec![
+            prose("I remember this codebase debounces per directory", 10),
+            calls(vec![call("c1", "search", "{}")], 10),
+            prose("grounded answer", 10),
+        ]);
 
-        assert_eq!(outcome.answer.as_deref(), Some("the answer"));
-        assert_eq!(outcome.iterations, 1);
+        let outcome = run(ask(&chat, &tools_ok("HIT"), AgentBounds::default(), "q"));
+
+        assert_eq!(outcome.answer.as_deref(), Some("grounded answer"));
+        assert!(outcome.grounded, "it read something before answering");
+        assert_eq!(outcome.iterations, 3, "the pushback cost a turn");
+
+        // The pushback must be visible to the model as a user turn, or it is
+        // not a mechanism — it is a hope.
+        let conversation = chat.last_conversation();
+        assert!(
+            conversation.iter().any(|message| matches!(
+                message,
+                ChatMessage::User(text) if text.contains("not grounded")
+            )),
+            "the model must be TOLD why its answer was refused: {conversation:?}"
+        );
+    }
+
+    #[test]
+    fn a_model_that_insists_on_answering_ungrounded_is_reported_as_ungrounded() {
+        // Pushback is one nudge, not a fight. A model that answers from memory
+        // twice gets published — but flagged, so a caller or an evaluator can
+        // tell a remembered answer from a read one without parsing prose.
+        let chat = ScriptedChat::new(vec![
+            prose("from memory", 10),
+            prose("still from memory", 10),
+        ]);
+
+        let outcome = run(ask(&chat, &tools_ok("unused"), AgentBounds::default(), "q"));
+
+        assert_eq!(outcome.answer.as_deref(), Some("still from memory"));
+        assert!(
+            !outcome.grounded,
+            "nothing was read, so nothing is grounded"
+        );
         assert_eq!(outcome.stopped, StopReason::Answered);
-        assert!(outcome.trace.is_empty());
+    }
+
+    #[test]
+    fn an_answer_after_every_tool_call_failed_is_not_grounded() {
+        // Tool errors are data, so the run completes — but a run where nothing
+        // succeeded has no evidence in it, and saying otherwise would let a
+        // broken index masquerade as a working one.
+        let chat = ScriptedChat::new(vec![
+            calls(vec![call("c1", "search", "{}")], 10),
+            prose("answered anyway", 10),
+            prose("answered anyway", 10),
+        ]);
+        let tools = StubTools {
+            answer: Err(crate::Error::Provider("the index is empty".into())),
+        };
+
+        let outcome = run(ask(&chat, &tools, AgentBounds::default(), "q"));
+
+        assert_eq!(outcome.answer.as_deref(), Some("answered anyway"));
+        assert!(
+            !outcome.grounded,
+            "every tool call failed, so the answer rests on nothing"
+        );
     }
 
     #[test]
@@ -427,8 +541,11 @@ mod tests {
 
     #[test]
     fn a_failing_tool_is_reported_to_the_model_rather_than_ending_the_run() {
+        // Two prose turns: the first answer follows a FAILED call, so it is
+        // ungrounded and earns the pushback; the second is what gets published.
         let chat = ScriptedChat::new(vec![
             calls(vec![call("c1", "search", "not json")], 10),
+            prose("recovered", 10),
             prose("recovered", 10),
         ]);
         let tools = StubTools {
@@ -476,7 +593,7 @@ mod tests {
         let outcome = run(ask(&chat, &tools_ok("hit"), bounds, "q"));
 
         assert_eq!(outcome.stopped, StopReason::TokenBudget);
-        assert_eq!(outcome.tokens_used, 500);
+        assert_eq!(outcome.tokens_used, Some(500));
         assert!(outcome.answer.is_none());
     }
 
@@ -503,17 +620,21 @@ mod tests {
 
     #[test]
     fn a_provider_that_reports_no_usage_is_not_treated_as_free() {
-        let chat = ScriptedChat::new(vec![ChatTurn {
+        let unreported = || ChatTurn {
             content: Some("answer".into()),
             tool_calls: vec![],
             tokens_used: None,
-        }]);
+        };
+        // Twice: answering with no tool calls earns one pushback before the
+        // loop publishes it.
+        let chat = ScriptedChat::new(vec![unreported(), unreported()]);
 
         let outcome = run(ask(&chat, &tools_ok("x"), AgentBounds::default(), "q"));
 
-        // Unknown usage reads as zero SPENT, but the run still ends by answering
-        // rather than by silently looping forever on a budget that never moves.
-        assert_eq!(outcome.tokens_used, 0);
+        // Unknown must stay unknown: reporting 0 would publish a number nobody
+        // measured, and a budget assertion against it would pass having
+        // measured nothing.
+        assert_eq!(outcome.tokens_used, None);
         assert_eq!(outcome.stopped, StopReason::Answered);
     }
 

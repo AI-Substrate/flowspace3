@@ -35,8 +35,12 @@ use sqlx::Row;
 const NO_DAEMON: &str = "http://127.0.0.1:1";
 
 /// A doctor config pointing at `database_url`, with no daemon listening.
-fn doctor_config(database_url: &str) -> Config {
-    Config {
+///
+/// Returns the whole `Effective` because doctor reports how configuration was
+/// LOADED as well as what it says. These tests exercise the store and daemon
+/// rows, so the load provenance is empty.
+fn doctor_config(database_url: &str) -> fs3_core::Effective {
+    let config = Config {
         database: DatabaseConfig {
             url: database_url.to_string(),
         },
@@ -45,6 +49,11 @@ fn doctor_config(database_url: &str) -> Config {
             ..fs3_core::DaemonConfig::default()
         },
         ..Config::default()
+    };
+    fs3_core::Effective {
+        config,
+        layers: Default::default(),
+        has_file: false,
     }
 }
 

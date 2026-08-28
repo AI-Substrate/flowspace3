@@ -108,6 +108,13 @@ enum Command {
     Ask {
         /// The question.
         question: String,
+        /// Only this repository identity, or `all` for every indexed one.
+        ///
+        /// Without it a question asked inside a checkout is about THAT
+        /// repository, like `search`. `--repo all` is how a caller standing in
+        /// one repo asks a question whose answer lives in another.
+        #[arg(long, value_name = "IDENTITY")]
+        repo: Option<String>,
         /// Override the daemon URL from configuration.
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
@@ -432,10 +439,12 @@ async fn run(command: Command) -> Result<ExitCode> {
         }
         Command::Ask {
             question,
+            repo,
             daemon_url,
         } => {
             let client = client_for(daemon_url)?;
             let mut params = vec![("question".to_string(), question)];
+            push(&mut params, "repo", repo);
             push(&mut params, "cwd", here());
             Ok(emit(&client.ask(&params).await))
         }
@@ -538,7 +547,11 @@ async fn run(command: Command) -> Result<ExitCode> {
                 None => settings::config_dir()?,
             };
             let effective = settings::load_effective_from(&dir)?;
-            emit(&doctor::run(&effective.config, &dir).await)
+            // The whole `Effective`, not just its `config`: doctor reports how
+            // configuration was LOADED as well as what it says, and warnings
+            // about unknown sections are load provenance rather than runtime
+            // semantics.
+            emit(&doctor::run(&effective, &dir).await)
         }
         Command::Docs { command } => match command {
             DocsCommand::List => emit(&fs3_cli::docs::list()),
