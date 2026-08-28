@@ -1,0 +1,19 @@
+.harness/records/retro/2026-08-28/001-fleet-observation-snapshot.md
+  s_af0fe1a82e54f0::t_2b1c60da19851e 1-1294
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3bbdf4ef5cb60b117f63f59e897bc6fd018e4845",
+  "prompts": {},
+  "sessions": {
+    "s_af0fe1a82e54f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9726a7d5-28df-47fe-bb2a-d5ffcb472da2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
