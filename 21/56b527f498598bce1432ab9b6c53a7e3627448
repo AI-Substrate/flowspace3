@@ -1,0 +1,16 @@
+docs/plans/006-worktree-diff/packet-reviewer.dd.json
+  h_9e71e8b09f7cf2 9,11-13,18,23-66,72-79,85-88,94-105,111-145
+docs/plans/006-worktree-diff/packet-reviewer.dd.md
+  h_9e71e8b09f7cf2 2,12,14-16,22,35-40,57-60,81-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2156b527f498598bce1432ab9b6c53a7e3627448",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
