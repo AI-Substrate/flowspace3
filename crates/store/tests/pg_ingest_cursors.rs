@@ -17,8 +17,9 @@ mod support;
 use std::collections::BTreeSet;
 
 use fs3_core::{Conversation, ConversationId, Harness, SourceCursor, prepare_batch};
-use fs3_store::ingest_cursors::{commit_poll, forget_session, ledger_view, load_cursor,
-    sessions_for};
+use fs3_store::ingest_cursors::{
+    commit_poll, forget_session, ledger_view, load_cursor, sessions_for,
+};
 use fs3_store::{PgPool, delete_conversation, upsert_conversation};
 use support::FreshDatabase;
 
@@ -140,7 +141,9 @@ async fn an_unread_session_has_no_cursor() {
     let pool = seeded(&database, &guid).await;
 
     assert_eq!(
-        load_cursor(&pool, Harness::Claude, "never-read").await.unwrap(),
+        load_cursor(&pool, Harness::Claude, "never-read")
+            .await
+            .unwrap(),
         None
     );
 
@@ -355,7 +358,10 @@ async fn forgetting_a_session_takes_its_ledger() {
     assert!(forgotten.existed);
     assert_eq!(forgotten.ledger_rows, 3);
 
-    assert_eq!(load_cursor(&pool, Harness::Omp, SESSION).await.unwrap(), None);
+    assert_eq!(
+        load_cursor(&pool, Harness::Omp, SESSION).await.unwrap(),
+        None
+    );
     let view = ledger_view(&pool, Harness::Omp, SESSION, &["r1"])
         .await
         .unwrap();
@@ -375,7 +381,7 @@ async fn forgetting_an_untailed_session_reports_nothing_reclaimed() {
     let forgotten = forget_session(&pool, Harness::Claude, "never-tailed")
         .await
         .unwrap();
-    assert_eq!(forgotten.existed, false);
+    assert!(!forgotten.existed, "there was nothing to forget");
     assert_eq!(forgotten.ledger_rows, 0);
 
     database.destroy(pool).await;
@@ -507,7 +513,10 @@ async fn the_ledger_answers_only_about_the_ordinals_it_was_asked_about() {
         BTreeSet::from(["r2".to_string()]),
         "only the asked-about ordinals come back"
     );
-    assert_eq!(view.next_turn_no, 4, "but the high-water mark is the whole session");
+    assert_eq!(
+        view.next_turn_no, 4,
+        "but the high-water mark is the whole session"
+    );
 
     database.destroy(pool).await;
 }
