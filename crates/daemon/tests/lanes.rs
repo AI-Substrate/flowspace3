@@ -24,6 +24,7 @@ use fs3_core::{Config, DatabaseConfig, Element, ElementKind, Result, Span, Summa
 use fs3_daemon::conversations::{ListRequest, list};
 use fs3_daemon::convo_ingest::{IngestRequest, ingest, submit};
 use fs3_daemon::enrich::{SUMMARIZE, SummarizeJob};
+use fs3_daemon::roots::{self, ScanFileJob};
 use fs3_daemon::runner;
 use fs3_daemon::wiring::AppState;
 use serde_json::json;
@@ -281,11 +282,115 @@ fn a_lane_of_zero_is_a_config_error() {
     assert!(format!("{problems}").contains("summarize_lane"));
 }
 
+/// General workers claim scan and summarize work concurrently. The scan is
+/// held behind a database lock after claim; the provider call must still start,
+/// proving the second worker was not merely configured but used.
+#[tokio::test]
+async fn general_workers_let_scans_and_summaries_progress_together() {
+    let database = support::FreshDatabase::create("general-mixed-progress").await;
+    let mut config = Config {
+        database: DatabaseConfig {
+            url: database.url(),
+        },
+        ..Config::default()
+    };
+    config.indexing.worker_concurrency = 2;
+    let mut state = AppState::from_config(config).expect("wires");
+    fs3_store::migrate(&state.db).await.expect("migrates");
+    let blocker = Arc::new(BlockingSummarizer::default());
+    state.summarizer = blocker.clone();
+
+    let (raw_hash, text) = support::items(20_000..20_001).remove(0);
+    support::hold(
+        &state,
+        "mixed-progress",
+        &[(raw_hash.clone(), text.clone())],
+    )
+    .await;
+    let summary = SummarizeJob {
+        identity: "git:mixed-progress".to_string(),
+        raw_hash,
+        element: Element::new(
+            ElementKind::Function,
+            "function_item",
+            "summarize_me",
+            "src/summary.rs::summarize_me",
+            Span::new(1, 12),
+            text,
+        ),
+    };
+    fs3_store::enqueue_job(
+        &state.db,
+        SUMMARIZE,
+        &summary.dedupe_key(),
+        &serde_json::to_value(&summary).expect("summary payload"),
+        Duration::ZERO,
+    )
+    .await
+    .expect("queues summary");
+
+    let root = support::temp_dir("general-mixed-scan");
+    roots::add_root(&state, &root)
+        .await
+        .expect("registers empty root");
+    let file = root.join("fresh.rs");
+    std::fs::write(&file, "pub fn freshly_scanned() {}\n").expect("writes scan fixture");
+    let worktree = fs3_store::find_worktree(
+        &state.db,
+        &root.canonicalize().unwrap().display().to_string(),
+    )
+    .await
+    .unwrap()
+    .expect("registered worktree");
+    let scan = ScanFileJob {
+        worktree_id: worktree.id,
+        identity: worktree.identity,
+        path: "fresh.rs".to_string(),
+        blob: fs3_git::blob_id(&file).unwrap().as_str().to_string(),
+    };
+    let scan_key = scan.dedupe_key();
+    fs3_store::enqueue_job_with_priority(
+        &state.db,
+        roots::SCAN_FILE,
+        &scan_key,
+        &serde_json::to_value(&scan).expect("scan payload"),
+        Duration::ZERO,
+        fs3_store::JOB_PRIORITY_NEW_WORKTREE_SCAN,
+    )
+    .await
+    .expect("queues promoted scan");
+
+    let mut lock = state.db.begin().await.expect("starts blocker transaction");
+    sqlx::query("LOCK TABLE worktrees IN ACCESS EXCLUSIVE MODE")
+        .execute(&mut *lock)
+        .await
+        .expect("locks scan lookup");
+
+    let workers = state.config.indexing.worker_concurrency;
+    let drain_state = state.clone();
+    let draining = tokio::spawn(async move { runner::drain(&drain_state, workers).await });
+    blocker.wait_for_calls(1).await;
+    let scan_state: String = sqlx::query_scalar("SELECT state FROM jobs WHERE dedupe_key = $1")
+        .bind(&scan_key)
+        .fetch_one(&state.db)
+        .await
+        .expect("reads claimed scan");
+    assert_eq!(scan_state, "running", "scan and summary both made progress");
+
+    lock.commit().await.expect("releases scan lookup");
+    blocker.release(1);
+    tokio::time::timeout(Duration::from_secs(10), draining)
+        .await
+        .expect("mixed drain finishes")
+        .expect("drain task does not panic");
+    database.destroy(state.db.clone()).await;
+}
+
 /// A re-poll has its own claimant even while the general lane is blocked in a
 /// provider call. The same proof also holds the ordering boundaries:
 /// conversation turns keep source order under the canonical-GUID advisory lock,
-/// while the serial enrichment lane resumes its oldest-first claim order after
-/// the provider is released.
+/// while the serial enrichment lane resumes newest-first claim order after the
+/// provider is released.
 #[tokio::test]
 async fn a_repoll_lands_before_an_enrichment_backlog_is_released() {
     const BACKLOG: usize = 32;
@@ -326,7 +431,7 @@ async fn a_repoll_lands_before_an_enrichment_backlog_is_released() {
     state.summarizer = blocker.clone();
     let items = support::items(10_000..10_000 + BACKLOG as u32);
     support::hold(&state, "ingest-starvation", &items).await;
-    let mut expected_order = Vec::with_capacity(BACKLOG);
+    let mut expected_lifo = Vec::with_capacity(BACKLOG);
     for (index, (raw_hash, text)) in items.iter().enumerate() {
         let address = format!("src/backlog.rs::f{index}");
         let element = Element::new(
@@ -351,11 +456,9 @@ async fn a_repoll_lands_before_an_enrichment_backlog_is_released() {
         )
         .await
         .expect("queues backlog");
-        expected_order.push(address);
-        // `claim_job` orders equal-priority work by not_before. Keep that
-        // ordering observable rather than relying on timestamp ties.
-        tokio::time::sleep(Duration::from_millis(1)).await;
+        expected_lifo.push(address);
     }
+    expected_lifo.reverse();
 
     let runner = tokio::spawn(runner::run_forever(state.clone(), 1));
     blocker.wait_for_calls(1).await;
@@ -407,8 +510,8 @@ async fn a_repoll_lands_before_an_enrichment_backlog_is_released() {
     .expect("all enrichment settles after release");
     assert_eq!(
         blocker.calls(),
-        expected_order,
-        "the one-wide enrichment lane keeps oldest-first claim order"
+        expected_lifo,
+        "the one-wide enrichment lane claims newest equal-priority work first"
     );
 
     runner.abort();

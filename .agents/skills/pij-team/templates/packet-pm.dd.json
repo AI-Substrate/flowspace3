@@ -20,24 +20,71 @@
     {
       "name": "instructions",
       "value": [
-        { "id": "i1", "text": "Orient: read the plan (plan.dd.json via `ddocs`/`harness plan render`), the impl-guide (impl-guide.dd.json in the plan folder), and `.harness/government/settings.dd.md` for role model defaults. Run `harness instructions`, `harness boot --json`. DOGFOOD FLOWSPACE: `flowspace3 search` for every meaning-shaped question before grep, and require the same of your coders — report every miss as friction." },
-        { "id": "i2", "text": "Drive the work through the /builder flow: use `harness flow nav`/`orient` every turn, respect the seams, and close the flow out properly at the end — post-flight (harvest + archive of the plan folder) and ship stages are part of done, not optional." },
-        { "id": "i3", "text": "Fan-out decision comes from the impl-guide's fan_out section: SMALL (no parallelism available) → code it yourself, then run a reviewer. PARALLEL or MULTI-PHASE → dispatch 1-n coders per the units/waves table, compose after each wave, then run the reviewer after composition." },
-        { "id": "i4", "text": "Dispatching a coder: cp templates/packet-coder.dd.json from the pij-team skill into the plan folder as packet-coder-<unit>.dd.json, fill it via `ddocs set/add`, `ddocs build`, spawn per settings defaults, canary-verify (the canary text MUST tell the seat to reply via pij tooling — `pij send <your seat>` — or the reply may never arrive; and MUST tell it to run `pij whoami` and quote the output as its identity — seats cannot see the registry-minted id any other way and self-reported ids are wrong more often than not; for omp seats also demand the FOOTER model line, since the spawn argv proves only what was requested), send the packet PATH (pointer delivery, never a body), and require an ack-with-numbered-plan before any code. Rule the ack by number/letter." },
-        { "id": "i5", "text": "Composition is yours: BEFORE wiring, ask each done coder explicitly what it ASSUMED about the composition it does not own (call order, key scoping, pre-existing store state) — a unit can be green and mutation-checked and still carry a baked-in assumption that only surfaces at the seams; a live seat volunteering its assumptions beats you discovering them while wiring. Then merge/stitch unit branches per the impl-guide's composition section, make `harness checks` green on the composed result, and run the named integration proof." },
-        { "id": "i6", "text": "Review: after composition (or after your own solo coding), spawn a reviewer from templates/packet-reviewer.dd.json using the reviewer model default. Findings come back as a ddoc; you fix or refute each with evidence, re-review if material fixes landed." },
-        { "id": "i7", "text": "Status cards at every unit edge (`pij report now \"<did>\" \"<next>\"`) — yours AND your coders'; chase stale cards, they are your accountability." },
-        { "id": "i8", "text": "Capture friction the moment it bites: `harness observe \"<what>\" --kind difficulty|confusion`. List, never clear — the drain is o-prime-owned." },
-        { "id": "i9", "text": "This pipeline is a prototype we are improving: read .agents/skills/pij-team/TENETS.md before dispatching anyone, and at close-out report to prime what in the tenets, templates, or this packet was wrong, missing, or confirmed — appended to the skill's EXPERIENCES.md. Every run must leave the substrate better." }
+        {
+          "id": "i1",
+          "text": "Orient: read the plan (plan.dd.json via `ddocs`/`harness plan render`), the impl-guide (impl-guide.dd.json in the plan folder), and `.harness/government/settings.dd.md` for role model defaults. Run `harness instructions`, `harness boot --json`. DOGFOOD FLOWSPACE: `flowspace3 search` for every meaning-shaped question before grep, and require the same of your coders — report every miss as friction."
+        },
+        {
+          "id": "i2",
+          "text": "Drive the work through the /builder flow: use `harness flow nav`/`orient` every turn, respect the seams, and close the flow out properly at the end — post-flight (harvest + archive of the plan folder) and ship stages are part of done, not optional."
+        },
+        {
+          "id": "i3",
+          "text": "Fan-out decision comes from the impl-guide's fan_out section: SMALL (no parallelism available) → code it yourself, then run a reviewer. PARALLEL or MULTI-PHASE → dispatch 1-n coders per the units/waves table, compose after each wave, then run the reviewer after composition."
+        },
+        {
+          "id": "i4",
+          "text": "Dispatching a coder: cp templates/packet-coder.dd.json from the pij-team skill into the plan folder as packet-coder-<unit>.dd.json, fill it via `ddocs set/add`, `ddocs build`, spawn per settings defaults, canary-verify (the canary text MUST tell the seat to reply via pij tooling — `pij send <your seat>` — or the reply may never arrive; and MUST tell it to run `pij whoami` and quote the output as its identity — seats cannot see the registry-minted id any other way and self-reported ids are wrong more often than not; for omp seats also demand the FOOTER model line, since the spawn argv proves only what was requested), send the packet PATH (pointer delivery, never a body), and require an ack-with-numbered-plan before any code. Rule the ack by number/letter. SPAWN FROM WITHIN THE CODER'S WORKTREE (cd there first): OMP tool session roots are fixed at spawn and relative edit paths resolve against them — spawning from your own tree gives every coder YOUR tree as its edit root and its edits land in your checkout silently (DL-044, hit twice 2026-08-28). Spawning in-tree makes isolation correct by construction."
+        },
+        {
+          "id": "i5",
+          "text": "Composition is yours: BEFORE wiring, ask each done coder explicitly what it ASSUMED about the composition it does not own (call order, key scoping, pre-existing store state) — a unit can be green and mutation-checked and still carry a baked-in assumption that only surfaces at the seams; a live seat volunteering its assumptions beats you discovering them while wiring. Then merge/stitch unit branches per the impl-guide's composition section, make `harness checks` green on the composed result, and run the named integration proof."
+        },
+        {
+          "id": "i6",
+          "text": "Review: after composition (or after your own solo coding), spawn a reviewer from templates/packet-reviewer.dd.json using the reviewer model default. Findings come back as a ddoc; you fix or refute each with evidence, re-review if material fixes landed."
+        },
+        {
+          "id": "i7",
+          "text": "Status cards at every unit edge (`pij report now \"<did>\" \"<next>\"`) — yours AND your coders'; chase stale cards, they are your accountability."
+        },
+        {
+          "id": "i8",
+          "text": "Capture friction the moment it bites: `harness observe \"<what>\" --kind difficulty|confusion`. List, never clear — the drain is o-prime-owned."
+        },
+        {
+          "id": "i9",
+          "text": "This pipeline is a prototype we are improving: read .agents/skills/pij-team/TENETS.md before dispatching anyone, and at close-out report to prime what in the tenets, templates, or this packet was wrong, missing, or confirmed — appended to the skill's EXPERIENCES.md. Every run must leave the substrate better."
+        },
+        {
+          "id": "i12",
+          "text": "STANDING EDGE RITUAL: `git status --short` on YOUR OWN worktree at every unit edge (dispatch, done-report, composition). A cross-tree write is observable ONLY from your side — the coder's edit reports success and its tests can pass on a mixed tree. An unexplained modification in your tree while coders run is a breach, not noise: stop, attribute, patch across, revert."
+        },
+        {
+          "id": "i14",
+          "text": "SHARED-TREE FAN-OUT (when coders share one worktree with you as sole committer): give each seat its OWN CARGO_TARGET_DIR (or the stack's equivalent build cache) — a shared target dir serialises every seat's build behind its siblings' via cargo's package/artifact locks (measured: 145s queueing for a 0.01s test). CONDITION: every per-seat target dir is deleted at that seat's stand-down — duplicated build dirs were a named contributor to a disk-full incident (DL-043). Gate ONCE, centrally, at integration; sibling seats do not run the tree-wide preflight. SAME LESSON, OTHER HALF: every seat (shared-tree or not) gates against its OWN test database (FS3_TEST_DATABASE_URL=…/flowspace3_test_<seat>), dropped at stand-down — concurrent gates sharing one test DB on one Postgres go red on a different innocent test per run (proven by A/B 2026-08-28), and a gate that reds for unrelated reasons teaches the fleet that red means nothing. Red-then-rerun-until-green is forbidden: one re-run against the private DB, then the change is guilty until proven otherwise."
+        }
       ]
     },
     {
       "name": "working_with",
       "value": [
-        { "id": "w1", "text": "Prime is your single human-proxy interface: acks, stop-and-asks, and completion reports go to prime; prime relays anything that needs Jordan." },
-        { "id": "w2", "text": "DEFER to prime: product scope changes, requirement interpretation, anything touching government files, PRD edits, releases, merging the final PR into main, and any ruling where the plan and reality disagree." },
-        { "id": "w3", "text": "YOURS to decide: task ordering within the impl-guide, coder count within the units table, composition mechanics, retry/respawn of a failed coder, review-finding triage (with evidence)." },
-        { "id": "w4", "text": "Stop-and-ask with EVIDENCE beats guessing: one question per message, 1 sentence context + 1 sentence ask." }
+        {
+          "id": "w1",
+          "text": "Prime is your single human-proxy interface: acks, stop-and-asks, and completion reports go to prime; prime relays anything that needs Jordan."
+        },
+        {
+          "id": "w2",
+          "text": "DEFER to prime: product scope changes, requirement interpretation, anything touching government files, PRD edits, releases, merging the final PR into main, and any ruling where the plan and reality disagree."
+        },
+        {
+          "id": "w3",
+          "text": "YOURS to decide: task ordering within the impl-guide, coder count within the units table, composition mechanics, retry/respawn of a failed coder, review-finding triage (with evidence)."
+        },
+        {
+          "id": "w4",
+          "text": "Stop-and-ask with EVIDENCE beats guessing: one question per message, 1 sentence context + 1 sentence ask."
+        }
       ]
     },
     {
@@ -52,21 +99,60 @@
     {
       "name": "done_bar",
       "value": [
-        { "id": "d1", "text": "Every plan task checked via ddocs with evidence; every AC closed." },
-        { "id": "d2", "text": "harness checks green on the composed branch (your own worktree — the verdict is yours)." },
-        { "id": "d3", "text": "Reviewer verdict recorded as a ddoc; every finding fixed or refuted with evidence." },
-        { "id": "d4", "text": "Builder flow closed out: post-flight run, plan folder archived, PR open into main with conventional-commit history." },
-        { "id": "d5", "text": "Coders stood down (buffers rescued from their worktrees FIRST), worktrees tidied, completion report to prime." }
+        {
+          "id": "d1",
+          "text": "Every plan task checked via ddocs with evidence; every AC closed."
+        },
+        {
+          "id": "d2",
+          "text": "harness checks green on the composed branch (your own worktree — the verdict is yours)."
+        },
+        {
+          "id": "d3",
+          "text": "Reviewer verdict recorded as a ddoc; every finding fixed or refuted with evidence."
+        },
+        {
+          "id": "d4",
+          "text": "Builder flow closed out: post-flight run, plan folder archived, PR open into main with conventional-commit history."
+        },
+        {
+          "id": "d5",
+          "text": "Coders stood down (buffers rescued from their worktrees FIRST), worktrees tidied, completion report to prime."
+        },
+        {
+          "id": "d6",
+          "text": "Per-seat resources torn down with the seats: every minted test database and per-seat target dir DROPPED at stand-down (a stood-down seat never looks back at a database it minted hours earlier — this checklist line exists because memory will not)."
+        }
       ]
     },
     {
       "name": "refs",
       "value": [
-        { "id": "r0", "path": ".agents/skills/pij-team/TENETS.md", "note": "the doctrine — read first, cite don't restate" },
-        { "id": "r1", "path": "docs/plans/<ord>-<slug>/impl-guide.dd.json", "note": "HOW to decompose and compose — prime-authored, binding" },
-        { "id": "r2", "path": ".harness/government/settings.dd.md", "note": "role model defaults" },
-        { "id": "r3", "path": ".harness/government/how-we-work.md", "note": "§9b orchestration lifecycle — canary, ack, pointer delivery, gate-watch" },
-        { "id": "r4", "path": "CLAUDE.md", "note": "dogfooding + harness commit rules" }
+        {
+          "id": "r0",
+          "path": ".agents/skills/pij-team/TENETS.md",
+          "note": "the doctrine — read first, cite don't restate"
+        },
+        {
+          "id": "r1",
+          "path": "docs/plans/<ord>-<slug>/impl-guide.dd.json",
+          "note": "HOW to decompose and compose — prime-authored, binding"
+        },
+        {
+          "id": "r2",
+          "path": ".harness/government/settings.dd.md",
+          "note": "role model defaults"
+        },
+        {
+          "id": "r3",
+          "path": ".harness/government/how-we-work.md",
+          "note": "§9b orchestration lifecycle — canary, ack, pointer delivery, gate-watch"
+        },
+        {
+          "id": "r4",
+          "path": "CLAUDE.md",
+          "note": "dogfooding + harness commit rules"
+        }
       ]
     }
   ]

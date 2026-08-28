@@ -57,13 +57,18 @@ flowspace3 search "<question>"
   blob IS the hash of the bytes. This is what makes a re-scan of an unchanged
   tree cost zero, and it is asserted as an acceptance criterion.
 
-- **The queue is the semaphore.** `claim_job`'s `FOR UPDATE SKIP LOCKED` hands
-  N workers N different jobs, so `indexing.worker_concurrency` is the only
-  concurrency number the DAEMON needs — nothing beside the queue has to agree
-  with it.
+- **The queue is the general-worker semaphore.** `claim_job`'s `FOR UPDATE
+  SKIP LOCKED` hands `indexing.worker_concurrency` tasks distinct scan/summary
+  jobs. Priority wins first, then immutable enqueue id descending: fresh work
+  is LIFO within its level while `not_before` remains a retry/debounce gate.
 
-  It is not, however, a number about provider parallelism, and that distinction
-  is measured rather than assumed. Against Azure, in-flight requests are the
+  Summarize calls have a second, narrower safety bound: a per-provider-instance
+  semaphore clamps this worker width to
+  `min(indexing.summarize_lane, summarizer.concurrency_ceiling())`. Parallel
+  claims therefore cannot exceed the provider's declared request ceiling.
+
+  Worker concurrency is not, however, a number about embedder parallelism, and
+  that distinction is measured rather than assumed. Against Azure, in-flight requests are the
   lever: the live run did 110 embedding calls at this width, 16 texts per call,
   and both knobs bought real time because every call is a round trip. Against
   the LOCAL embedder neither does — 32 concurrent tasks against one session ran
