@@ -25,6 +25,15 @@ NUL-delimited porcelain handles spaces without parsing display quoting. One
 anchor is selected per identity, so a repository with several registered roots
 still starts one subprocess per scheduled pass.
 
+Git porcelain does not expose checkout creation time. Appeared roots therefore
+sort newest-first by the `.git` marker's filesystem birth time. Where birth
+time is unavailable, a linked worktree uses that marker file's mtime; it is
+created with the checkout and normally stays untouched by source edits. The
+main checkout's mutable `.git` directory is treated as oldest on that fallback.
+This is the closest portable signal, not an exact Git ledger: `git worktree
+repair` may rewrite a linked marker. Equal timestamps break by canonical path
+ascending, so coarse timestamp filesystems remain deterministic.
+
 The supervisor runs immediately at boot, then every
 `indexing.worktree_reconcile_ticks` shared runner ticks. The default is six:
 30 seconds at the runner's five-second cadence. Worktree creation is rare, so a
@@ -40,12 +49,12 @@ registration may remain O(files); later unchanged passes are O(repositories +
 worktrees).
 
 On the first pass after enabling this service, every previously unregistered
-linked checkout is an addition. Registration is intentionally sequential
-through the existing verb, so bootstrap latency is O(total files across those
-checkouts). On this machine, adding 17 linked checkouts beside the registered
-main root advanced the job-id sequence by 14,783; the newly created 18th path
-was reached 89 seconds after creation. Once bootstrap completes, a new
-worktree is the only addition and later passes retain the zero-enqueue bound.
+linked checkout is an addition. Registration remains sequential through the
+existing verb, but the appeared set is newest-first so the checkout a user just
+created becomes searchable before older stragglers. Before this ordering, a
+measured bootstrap added 17 linked checkouts beside the registered main root,
+advanced the job-id sequence by 14,783, and reached the newly created 18th path
+after 89 seconds. Later unchanged passes retain the zero-enqueue bound.
 
 An I/O or permission error while checking a registered path fails the pass and
 is retried. `Ok(false)` must occur on two consecutive scheduled passes before
