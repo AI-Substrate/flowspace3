@@ -1,0 +1,18 @@
+                 path                 | versions 
+--------------------------------------+----------
+ crates/cli/src/client.rs             |        2
+ crates/cli/src/conversation.rs       |        2
+ crates/cli/src/docs.rs               |        2
+ crates/cli/src/doctor.rs             |        2
+ crates/cli/src/lib.rs                |        2
+ crates/cli/src/main.rs               |        2
+ crates/cli/src/render/mod.rs         |        2
+ crates/cli/src/render/progress.rs    |        2
+ crates/daemon/src/runner.rs          |        2
+ crates/daemon/tests/lanes.rs         |        2
+ crates/store/src/jobs.rs             |        2
+ crates/store/tests/pg_first_light.rs |        2
+ docs/services/first-light.md         |        2
+ docs/services/store-schema.md        |        2
+(14 rows)
+

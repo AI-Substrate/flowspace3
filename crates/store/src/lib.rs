@@ -47,7 +47,7 @@ pub use conversations::{
 pub use ddoc::{
     DdocCitation, DdocFileRef, FileRefOutcome, replace_file_refs, rows_citing, rows_referencing,
 };
-pub use elements::{get_elements, upsert_element_tree};
+pub use elements::{blobs_with_parser_version, get_elements, upsert_element_tree};
 pub use embeddings::{
     AnchorScope, EMBEDDING_DIMENSIONS, NewEmbedding, SearchFilters, SearchHit, SimilarElement,
     SourceKind, anchor_has_vectors, embedding_models, existing_embedding_hashes, put_embeddings,

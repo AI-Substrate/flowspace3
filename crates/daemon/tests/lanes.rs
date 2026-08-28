@@ -28,7 +28,7 @@ use fs3_daemon::roots::{self, ScanFileJob};
 use fs3_daemon::runner;
 use fs3_daemon::wiring::AppState;
 use serde_json::json;
-use tokio::sync::{Notify, Semaphore};
+use tokio::sync::{Notify, Semaphore, watch};
 
 /// An embedder that records the HIGH-WATER MARK of concurrent calls.
 ///
@@ -516,6 +516,125 @@ async fn a_repoll_lands_before_an_enrichment_backlog_is_released() {
 
     runner.abort();
     let _ = runner.await;
+    database.destroy(state.db.clone()).await;
+}
+
+async fn blocked_runner(
+    label: &str,
+    backlog: usize,
+) -> (support::FreshDatabase, AppState, Arc<BlockingSummarizer>) {
+    let database = support::FreshDatabase::create(label).await;
+    let config = Config {
+        database: DatabaseConfig {
+            url: database.url(),
+        },
+        ..Config::default()
+    };
+    let mut state = AppState::from_config(config).expect("wires");
+    fs3_store::migrate(&state.db).await.expect("migrates");
+    let blocker = Arc::new(BlockingSummarizer::default());
+    state.summarizer = blocker.clone();
+
+    let items = support::items(20_000..20_000 + backlog as u32);
+    support::hold(&state, label, &items).await;
+    for (index, (raw_hash, text)) in items.iter().enumerate() {
+        let element = Element::new(
+            ElementKind::Function,
+            "function_item",
+            format!("f{index}"),
+            format!("src/shutdown.rs::f{index}"),
+            Span::new(index as u32 + 1, index as u32 + 1),
+            text,
+        );
+        let job = SummarizeJob {
+            identity: format!("git:{label}"),
+            raw_hash: raw_hash.clone(),
+            element,
+        };
+        fs3_store::enqueue_job(
+            &state.db,
+            SUMMARIZE,
+            &job.dedupe_key(),
+            &serde_json::to_value(&job).expect("summarize payload"),
+            Duration::ZERO,
+        )
+        .await
+        .expect("queues shutdown backlog");
+    }
+
+    (database, state, blocker)
+}
+
+#[tokio::test]
+async fn first_shutdown_signal_finishes_in_flight_without_dequeueing_more() {
+    const BACKLOG: usize = 4;
+    let (database, state, blocker) = blocked_runner("shutdown-drain", BACKLOG).await;
+    let (shutdown_tx, shutdown) = watch::channel(runner::Shutdown::Running);
+    let handle = tokio::spawn(runner::run_until_shutdown(state.clone(), 1, shutdown));
+
+    blocker.wait_for_calls(1).await;
+    shutdown_tx
+        .send(runner::Shutdown::Draining)
+        .expect("runner observes shutdown");
+    blocker.release(1);
+    tokio::time::timeout(Duration::from_secs(10), handle)
+        .await
+        .expect("bounded drain finishes")
+        .expect("runner task succeeds");
+
+    assert_eq!(
+        blocker.calls().len(),
+        1,
+        "queued work must remain untouched after the signal"
+    );
+    let rows = fs3_store::queue_depth(&state.db)
+        .await
+        .expect("queue depth");
+    let pending: i64 = rows
+        .iter()
+        .filter(|row| row.kind == SUMMARIZE && row.state == "pending")
+        .map(|row| row.depth)
+        .sum();
+    assert_eq!(pending, (BACKLOG - 1) as i64);
+    database.destroy(state.db.clone()).await;
+}
+
+#[tokio::test]
+async fn second_shutdown_signal_cancels_in_flight_without_claiming_more() {
+    const BACKLOG: usize = 4;
+    let (database, state, blocker) = blocked_runner("shutdown-force", BACKLOG).await;
+    let (shutdown_tx, shutdown) = watch::channel(runner::Shutdown::Running);
+    let handle = tokio::spawn(runner::run_until_shutdown(state.clone(), 1, shutdown));
+
+    blocker.wait_for_calls(1).await;
+    shutdown_tx
+        .send(runner::Shutdown::Draining)
+        .expect("runner observes first signal");
+    shutdown_tx
+        .send(runner::Shutdown::Forced)
+        .expect("runner observes escalation");
+    tokio::time::timeout(Duration::from_secs(10), handle)
+        .await
+        .expect("forced shutdown finishes promptly")
+        .expect("runner task succeeds");
+
+    assert_eq!(
+        blocker.calls().len(),
+        1,
+        "no queued job may start after TERM"
+    );
+    let rows = fs3_store::queue_depth(&state.db)
+        .await
+        .expect("queue depth");
+    let running: i64 = rows
+        .iter()
+        .filter(|row| row.kind == SUMMARIZE && row.state == "running")
+        .map(|row| row.depth)
+        .sum();
+    assert_eq!(
+        running, 1,
+        "cancelled work remains recoverable at next boot"
+    );
     database.destroy(state.db.clone()).await;
 }
 

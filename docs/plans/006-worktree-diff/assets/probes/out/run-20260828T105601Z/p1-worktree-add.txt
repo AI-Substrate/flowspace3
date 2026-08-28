@@ -1,0 +1,2 @@
+Preparing worktree (new branch 'poctest-wtdiff-20260828T105601Z')
+HEAD is now at bdb2dbb fix: prevent queue starvation with lifo claims (#61)

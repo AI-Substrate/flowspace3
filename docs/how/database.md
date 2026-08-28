@@ -115,11 +115,13 @@ supported recipe owns every spend-bearing and stateful seam:
 flowspace3 daemon --sandbox
 ```
 
-The command creates a unique migrated child database, forces fake embedding
-and summarization even when the ambient config selects paid providers, reserves
-a free loopback port, and prints the database name and port before serving. It
-drops the child database after Ctrl-C; if the process is killed, the printed
-name identifies the harmless leftover.
+The command creates a unique migrated child database, loads only its own minted
+configuration, forces fake embedding, summarization, and agent providers,
+reserves a free loopback port, and prints its ready line only after wiring,
+bind, and key publication succeed. SIGINT and SIGTERM stop new dequeueing and
+drop the child database; a second signal cancels remaining in-flight work but
+still runs cleanup. If cleanup fails, the exit names the database and prints a
+host-tool-independent fallback using `docker exec flowspace3-db psql ...`.
 
 The former manual four-seam recipe—empty config directory, disposable database,
 unique daemon port, and fake provider selections—is retained only as the

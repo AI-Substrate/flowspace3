@@ -1,0 +1,25 @@
+{
+  "ok": false,
+  "command": "get",
+  "v": 1,
+  "meta": {
+    "scope": {
+      "cwd": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T075726Z",
+      "repo": "git:github.com/AI-Substrate/flowspace3",
+      "source": "cwd",
+      "worktree": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T075726Z"
+    }
+  },
+  "error": {
+    "code": "FS3-E-QUERY-NOT-FOUND",
+    "message": "crates/cli/src/client.rs is registered but has not been parsed yet, so it has no elements to read",
+    "fix": "wait for the queue to drain — `flowspace3 status` reports what is left — then ask again",
+    "details": {
+      "path": "crates/cli/src/client.rs",
+      "repo": "git:github.com/AI-Substrate/flowspace3"
+    },
+    "retryable": false
+  }
+}
+FS3-E-QUERY-NOT-FOUND: crates/cli/src/client.rs is registered but has not been parsed yet, so it has no elements to read
+fix: wait for the queue to drain — `flowspace3 status` reports what is left — then ask again

@@ -1,0 +1,78 @@
+{
+  "ok": true,
+  "command": "search",
+  "v": 1,
+  "data": {
+    "results": [
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/parsers/fixtures/sample.rs::main_entry::half",
+        "kind": "function",
+        "match_field": "raw",
+        "name": "half",
+        "path": "crates/parsers/fixtures/sample.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.347744703167975,
+        "smart": null,
+        "snippet": "fn half(value: f64) -> f64 {\n        value / 2.0\n    }",
+        "span": [
+          37,
+          39
+        ],
+        "subkind": "function_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/cli/src/conversation.rs::civil_from_days",
+        "kind": "function",
+        "match_field": "raw",
+        "name": "civil_from_days",
+        "path": "crates/cli/src/conversation.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.307092662427497,
+        "smart": null,
+        "snippet": "fn civil_from_days(days: i64) -> (i64, u32, u32) {\n    let z = days + 719_468;\n    let era = z.div_euclid(146_097);\n    let doe = z.rem_euclid(146_097);\n    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;",
+        "span": [
+          315,
+          326
+        ],
+        "subkind": "function_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/providers/src/conversation_sources/metrics_db.rs::rfc3339_from_unix_seconds",
+        "kind": "function",
+        "match_field": "raw",
+        "name": "rfc3339_from_unix_seconds",
+        "path": "crates/providers/src/conversation_sources/metrics_db.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.3065868567806659,
+        "smart": null,
+        "snippet": "fn rfc3339_from_unix_seconds(seconds: i64) -> String {\n    let days = seconds.div_euclid(86_400);\n    let time_of_day = seconds.rem_euclid(86_400);\n\n    let z = days + 719_468;",
+        "span": [
+          317,
+          343
+        ],
+        "subkind": "function_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      }
+    ]
+  },
+  "meta": {
+    "empty_because": null,
+    "hint": "Weak match: describe the component in its own vocabulary rather than asking a question.",
+    "scope": {
+      "cwd": "/Users/jordanknight/substrate/flowspace/flowspace3",
+      "repo": "git:github.com/AI-Substrate/flowspace3",
+      "source": "cwd",
+      "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+    },
+    "truncation": {
+      "limit": 3,
+      "truncated": true
+    }
+  },
+  "next_action": "Weak match: describe the component in its own vocabulary rather than asking a question. — then: read a hit in full with `flowspace3 get <address>`, browse its file with `flowspace3 tree <address>`, or narrow with --path/--repo"
+}

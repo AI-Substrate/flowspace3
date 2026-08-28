@@ -1,0 +1,6 @@
+2026-08-28T08:12:24.107846Z  INFO fs3_daemon::boot: fs3 daemon starting config=/var/folders/mv/9mcvlzg504b158ctlswmgwph0000gn/T/fs3-discovered-config-20813-0 log=/Users/jordanknight/.local/state/flowspace3/logs/flowspace3.log daemon=config.toml database=FS3_* environment embedder=fake summarizer=fake repos=0
+2026-08-28T08:12:24.195791Z  INFO fs3_daemon::boot: store schema is current database=postgres://flowspace3:<redacted>@127.0.0.1:5433/fs3_ddocs_scan_test
+2026-08-28T08:12:24.205555Z  INFO fs3_daemon::boot: starting the job runner workers=4
+2026-08-28T08:12:24.205682Z  INFO fs3_daemon::boot: starting the reconcile runner cadence_seconds=5 debounce_seconds=10
+2026-08-28T08:12:24.206047Z  INFO fs3_daemon::boot: starting the update supervisor auto=true every_hours=24
+2026-08-28T08:12:24.206169Z  INFO fs3_daemon::http: fs3 daemon listening bound=127.0.0.1:63704

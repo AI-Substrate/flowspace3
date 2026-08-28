@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "command": "gc",
+  "v": 1,
+  "data": {
+    "elements": 0,
+    "embeddings": 0,
+    "jobs": 0,
+    "summaries": 0,
+    "total": 0
+  },
+  "next_action": "nothing to reclaim — every stored row is still referenced by a registered root"
+}

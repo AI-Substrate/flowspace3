@@ -628,6 +628,108 @@ async fn a_rescan_of_an_unchanged_tree_enqueues_no_work_at_all() {
     stack.destroy().await;
 }
 
+/// A parser generation change invalidates unchanged blobs exactly once.
+///
+/// Relabelling every element row for the fixture blobs models a corpus written
+/// by parser A while this binary runs parser B. The supported `/scan` path must
+/// present those files again, persist B rows, then settle back to zero work.
+#[tokio::test]
+async fn a_parser_version_change_reindexes_unchanged_blobs_then_settles() {
+    let fixture = Fixture::create("parser-version");
+    let stack = Stack::create("parser-version").await;
+    let path = fixture.path().to_string_lossy().to_string();
+
+    call(
+        &stack.state,
+        "POST",
+        "/roots",
+        Some(serde_json::json!({ "path": path })),
+    )
+    .await;
+    stack.drain().await;
+
+    let relabelled = sqlx::query(
+        "UPDATE elements
+            SET parser_version = $1
+          WHERE blob_sha IN (SELECT DISTINCT blob_sha FROM worktree_files)",
+    )
+    .bind("fs3-parsers@test-previous")
+    .execute(&stack.state.db)
+    .await
+    .expect("relabel every element row for the fixture blobs")
+    .rows_affected();
+    assert!(relabelled > 0, "the fixture had parsed rows to relabel");
+
+    let current_before: i64 = sqlx::query_scalar(
+        "SELECT count(DISTINCT blob_sha)
+           FROM elements
+          WHERE parser_version = $1",
+    )
+    .bind(fs3_daemon::scan::PARSER_VERSION)
+    .fetch_one(&stack.state.db)
+    .await
+    .expect("count current parser rows before rescan");
+    assert_eq!(current_before, 0, "the relabel removed every current row");
+
+    let upgraded = call(
+        &stack.state,
+        "POST",
+        "/scan",
+        Some(serde_json::json!({ "path": path })),
+    )
+    .await;
+    assert!(
+        upgraded.ok,
+        "version-changing rescan failed: {:?}",
+        upgraded.error
+    );
+    let upgraded = upgraded.data.expect("a successful scan carries data");
+    assert_eq!(
+        upgraded["enqueued"], 3,
+        "every stale-version blob is presented"
+    );
+    assert_eq!(upgraded["unchanged"], 0);
+
+    stack.drain().await;
+
+    let current_after: i64 = sqlx::query_scalar(
+        "SELECT count(DISTINCT e.blob_sha)
+           FROM elements e
+           JOIN worktree_files f ON f.blob_sha = e.blob_sha
+          WHERE e.parser_version = $1",
+    )
+    .bind(fs3_daemon::scan::PARSER_VERSION)
+    .fetch_one(&stack.state.db)
+    .await
+    .expect("count current parser rows after rescan");
+    assert_eq!(
+        current_after, 3,
+        "the stored rows were re-parsed by parser B"
+    );
+
+    let settled = call(
+        &stack.state,
+        "POST",
+        "/scan",
+        Some(serde_json::json!({ "path": path })),
+    )
+    .await;
+    assert!(settled.ok, "settled rescan failed: {:?}", settled.error);
+    let settled = settled.data.expect("a successful scan carries data");
+    assert_eq!(
+        settled["enqueued"], 0,
+        "B-to-B must not become a full rescan"
+    );
+    assert_eq!(settled["unchanged"], 3);
+    assert_eq!(
+        stack.drain().await.total(),
+        0,
+        "settled scan queued no work"
+    );
+
+    stack.destroy().await;
+}
+
 /// The other half of idempotence: a real edit MUST cost something, and only for
 /// what changed. A test that only proves "nothing re-runs" would pass on a
 /// pipeline that had stopped working entirely.

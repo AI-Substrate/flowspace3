@@ -76,10 +76,10 @@ pub fn run() -> Result<()> {
     let logging = logging::init(&configuration.config.daemon);
 
     let address = bind_address(&configuration.config.daemon.url)?;
-    // Publish this boot's credential before anything can bind the listener.
-    // A client can therefore never reach a daemon whose accepted key is not
-    // already the bytes visible at daemon.key.
-    let auth = crate::auth::generate(&directory)?;
+    // Stage without publishing. `serve` binds first and atomically publishes
+    // before the accept loop starts, so a port-race loser cannot rotate the
+    // winner's credential and no request sees an unpublished key.
+    let auth = crate::auth::stage(&directory)?;
     tracing::info!(
         config = %directory.display(),
         // Named once, at startup, so "where are the logs" is answerable from
@@ -137,18 +137,25 @@ pub fn run() -> Result<()> {
         .enable_all()
         .build()
         .context("starting the Tokio runtime")?
-        .block_on(serve(configuration.config, address, logging, auth, None))
+        .block_on(serve(
+            configuration.config,
+            address,
+            logging,
+            auth,
+            None,
+            None,
+            None,
+        ))
 }
 
 /// Run an isolated daemon until it is asked to stop.
 ///
-/// Ambient configuration chooses only the Postgres server and ordinary tuning
-/// knobs. Process-owned values replace every stateful or spend-bearing seam.
+/// Only the ambient database location is reused, narrowly, to choose the
+/// Postgres server and credentials. The configuration wired into the daemon is
+/// loaded from the process-owned sandbox directory with ambient overrides
+/// disabled, then every stateful or spend-bearing seam is forced locally.
 pub fn run_sandbox() -> Result<()> {
     let ambient_directory = config::config_dir().context("locating the fs3 config directory")?;
-    let mut configuration = config::load_effective_from(&ambient_directory)
-        .with_context(|| format!("loading configuration from {}", ambient_directory.display()))?;
-    let base_database_url = configuration.config.database.url.clone();
 
     let listener =
         std::net::TcpListener::bind("127.0.0.1:0").context("reserving a sandbox daemon port")?;
@@ -164,34 +171,36 @@ pub fn run_sandbox() -> Result<()> {
         .prefix("flowspace3-sandbox-")
         .tempdir()
         .context("creating the sandbox runtime directory")?;
-    force_sandbox_config(&mut configuration.config, port, sandbox_directory.path());
+    let (mut configuration, base_database_url) =
+        sandbox_configuration(&ambient_directory, sandbox_directory.path(), port)?;
 
-    let logging = logging::init(&configuration.config.daemon);
-    let auth = crate::auth::generate(sandbox_directory.path())?;
+    let logging = logging::init(&configuration.daemon);
+    let auth = crate::auth::stage(sandbox_directory.path())?;
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .context("starting the Tokio runtime")?;
 
     let (database, outcome) = runtime.block_on(async move {
+        let shutdown = shutdown_context()?;
         let listener = tokio::net::TcpListener::from_std(listener)
             .context("adopting the reserved sandbox daemon port")?;
         let database = fs3_testkit::FreshDatabase::create_from(&base_database_url, "sandbox")
             .await
             .context("creating the sandbox database")?;
-        configuration.config.database.url = database.url();
-
-        tracing::info!(
-            "sandbox=true db={} port={port} config={}",
-            database.name(),
-            sandbox_directory.path().display()
-        );
+        configuration.database.url = database.url();
+        let ready = SandboxReady {
+            database: database.name().to_string(),
+            config: sandbox_directory.path().to_path_buf(),
+        };
         let outcome = serve(
-            configuration.config,
+            configuration,
             format!("127.0.0.1:{port}"),
             logging,
             auth,
             Some(listener),
+            Some(ready),
+            Some(shutdown),
         )
         .await;
         Ok::<_, anyhow::Error>((database, outcome))
@@ -200,13 +209,43 @@ pub fn run_sandbox() -> Result<()> {
     // Stop every worker before dropping its database. Otherwise a worker may
     // wake between DROP DATABASE and runtime teardown and emit a false failure.
     runtime.shutdown_timeout(Duration::from_secs(1));
-    tokio::runtime::Builder::new_current_thread()
+    let database_name = database.name().to_string();
+    let cleanup = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .context("starting the sandbox cleanup runtime")?
-        .block_on(database.cleanup())
-        .context("dropping the sandbox database after clean shutdown")?;
+        .block_on(database.cleanup());
+    match cleanup {
+        Ok(()) => tracing::info!(database = %database_name, "sandbox database dropped"),
+        Err(error) => {
+            tracing::error!(
+                database = %database_name,
+                %error,
+                "sandbox database left behind; remove it with: docker exec flowspace3-db \
+                 psql -U flowspace3 -d postgres -c 'DROP DATABASE IF EXISTS {database_name} WITH (FORCE)'"
+            );
+            return Err(error).with_context(|| {
+                format!("sandbox database {database_name} was left behind after shutdown")
+            });
+        }
+    }
     outcome
+}
+
+struct SandboxReady {
+    database: String,
+    config: std::path::PathBuf,
+}
+
+struct ShutdownContext {
+    receiver: tokio::sync::watch::Receiver<crate::runner::Shutdown>,
+    task: tokio::task::JoinHandle<()>,
+}
+
+fn shutdown_context() -> Result<ShutdownContext> {
+    let (sender, receiver) = tokio::sync::watch::channel(crate::runner::Shutdown::Running);
+    let task = install_shutdown_handler(sender)?;
+    Ok(ShutdownContext { receiver, task })
 }
 
 fn force_sandbox_config(config: &mut Config, port: u16, directory: &std::path::Path) {
@@ -219,6 +258,34 @@ fn force_sandbox_config(config: &mut Config, port: u16, directory: &std::path::P
     config.agent = defaults.agent;
     config.repos.clear();
     config.update.auto = false;
+}
+
+fn sandbox_configuration(
+    ambient_directory: &std::path::Path,
+    sandbox_directory: &std::path::Path,
+    port: u16,
+) -> Result<(Config, String)> {
+    // The database URL is the sole ambient value retained: it selects the
+    // server and credentials used to create a disposable child. The resulting
+    // `Config` is not derived from this object.
+    let base_database_url = config::load_effective_from(ambient_directory)
+        .with_context(|| {
+            format!(
+                "loading database location from {}",
+                ambient_directory.display()
+            )
+        })?
+        .config
+        .database
+        .url;
+    let mut configuration = config::load_isolated_from(sandbox_directory).with_context(|| {
+        format!(
+            "loading isolated configuration from {}",
+            sandbox_directory.display()
+        )
+    })?;
+    force_sandbox_config(&mut configuration, port, sandbox_directory);
+    Ok((configuration, base_database_url))
 }
 
 /// Refuse to boot when a TEST spawned us and nobody said which store to use.
@@ -278,9 +345,19 @@ async fn serve(
     configuration: Config,
     address: String,
     logging: Logging,
-    auth: crate::auth::Auth,
+    auth: crate::auth::StagedAuth,
     listener: Option<tokio::net::TcpListener>,
+    sandbox: Option<SandboxReady>,
+    shutdown: Option<ShutdownContext>,
 ) -> Result<()> {
+    let ShutdownContext {
+        receiver: shutdown,
+        task: signal_task,
+    } = match shutdown {
+        Some(shutdown) => shutdown,
+        None => shutdown_context()?,
+    };
+
     let state = AppState::from_config(configuration).context("wiring the composition root")?;
     tracing::info!(
         embedder = %state.config.selected(Port::Embedder, None),
@@ -474,6 +551,30 @@ async fn serve(
         tracing::warn!(%error, "cannot record the state of logging in the messages queue");
     }
 
+    // Binding precedes credential publication. Merely binding a listener does
+    // not serve requests; publishing immediately afterwards and before
+    // `axum::serve` starts preserves the no-unpublished-key window.
+    let listener = match listener {
+        Some(listener) => listener,
+        None => tokio::net::TcpListener::bind(&address)
+            .await
+            .with_context(|| format!("cannot bind {address}"))?,
+    };
+    let bound = listener.local_addr().context("cannot read bound address")?;
+    let auth = auth.publish()?;
+
+    if *shutdown.borrow() == crate::runner::Shutdown::Running
+        && let Some(ready) = sandbox
+    {
+        tracing::info!(
+            "sandbox=true embedder={} summarizer={} db={} port={} config={}",
+            state.active_kind(Port::Embedder),
+            state.active_kind(Port::Summarizer),
+            ready.database,
+            bound.port(),
+            ready.config.display()
+        );
+    }
     // The worker loop is a background task rather than a second process: it
     // shares the composition root's provider Arcs (and therefore their HTTP
     // clients and Entra token cache), and the queue's own SKIP LOCKED claim is
@@ -484,7 +585,11 @@ async fn serve(
     // written.
     let workers = state.config.indexing.worker_concurrency;
     tracing::info!(workers, "starting the job runner");
-    tokio::spawn(crate::runner::run_forever(state.clone(), workers));
+    let runner = tokio::spawn(crate::runner::run_until_shutdown(
+        state.clone(),
+        workers,
+        shutdown.clone(),
+    ));
 
     // Roots become live watchers here, and by reconciling rather than by
     // reacting: one pass compares the `worktrees` table against the watchers
@@ -550,12 +655,62 @@ async fn serve(
     // the trait a per-loop cadence — the same shape the update supervisor's
     // clock takes, for the same reason (req-0057).
     reconcilers.push(Box::new(crate::gc::GcSupervisor::new(state.db.clone())));
-    tokio::spawn(crate::reconcile::run_forever(reconcilers, cadence));
+    let reconcile = tokio::spawn(crate::reconcile::run_forever(reconcilers, cadence));
 
-    match listener {
-        Some(listener) => http::serve_listener(state, listener, auth).await,
-        None => http::serve(state, &address, auth).await,
-    }
+    let server = http::serve_listener(state, listener, auth, shutdown).await;
+    runner.await.context("joining the job runner")?;
+    reconcile.abort();
+    signal_task.abort();
+    server
+}
+
+#[cfg(unix)]
+fn install_shutdown_handler(
+    shutdown: tokio::sync::watch::Sender<crate::runner::Shutdown>,
+) -> Result<tokio::task::JoinHandle<()>> {
+    use tokio::signal::unix::{SignalKind, signal};
+
+    let mut interrupt = signal(SignalKind::interrupt()).context("listening for SIGINT")?;
+    let mut terminate = signal(SignalKind::terminate()).context("listening for SIGTERM")?;
+    Ok(tokio::spawn(async move {
+        let first = tokio::select! {
+            _ = interrupt.recv() => "SIGINT",
+            _ = terminate.recv() => "SIGTERM",
+        };
+        tracing::info!(signal = first, "shutdown requested");
+        let _ = shutdown.send(crate::runner::Shutdown::Draining);
+
+        let second = tokio::select! {
+            _ = interrupt.recv() => "SIGINT",
+            _ = terminate.recv() => "SIGTERM",
+        };
+        tracing::warn!(
+            signal = second,
+            "second shutdown signal; cancelling in-flight work"
+        );
+        let _ = shutdown.send(crate::runner::Shutdown::Forced);
+    }))
+}
+
+#[cfg(not(unix))]
+fn install_shutdown_handler(
+    shutdown: tokio::sync::watch::Sender<crate::runner::Shutdown>,
+) -> Result<tokio::task::JoinHandle<()>> {
+    Ok(tokio::spawn(async move {
+        if let Err(error) = tokio::signal::ctrl_c().await {
+            tracing::error!(%error, "cannot listen for shutdown signal");
+            return;
+        }
+        tracing::info!(signal = "Ctrl-C", "shutdown requested");
+        let _ = shutdown.send(crate::runner::Shutdown::Draining);
+        if tokio::signal::ctrl_c().await.is_ok() {
+            tracing::warn!(
+                signal = "Ctrl-C",
+                "second shutdown signal; cancelling in-flight work"
+            );
+            let _ = shutdown.send(crate::runner::Shutdown::Forced);
+        }
+    }))
 }
 
 /// Turn the configured daemon URL into a bind address, refusing any host that
@@ -619,7 +774,7 @@ fn is_loopback(host: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{bind_address, force_sandbox_config};
+    use super::{bind_address, sandbox_configuration};
 
     #[test]
     fn bind_address_strips_scheme_and_path() {
@@ -669,20 +824,24 @@ mod tests {
         );
     }
 
-    #[test]
-    fn sandbox_forces_fake_providers_and_process_owned_endpoints() {
-        let mut config = fs3_core::Config::from_toml_str(
+    #[tokio::test]
+    async fn sandbox_ignores_ambient_provider_and_repo_selections() {
+        let ambient = tempfile::tempdir().expect("an ambient config directory");
+        std::fs::write(
+            ambient.path().join(fs3_core::CONFIG_FILE_NAME),
             r#"
+            [database]
+            url = "postgres://sandbox:sandbox@127.0.0.1:5433/source"
+
             [providers.paid]
             kind = "openai"
             model = "text-embedding-3-small"
+            api_key_env = "FS3_KEY_THAT_IS_NOT_SET"
 
             [embedder]
             active = "paid"
-
             [summarizer]
             active = "paid"
-
             [agent]
             active = "paid"
 
@@ -691,13 +850,22 @@ mod tests {
             summarizer = "paid"
             "#,
         )
-        .unwrap();
-        let directory = std::path::Path::new("/tmp/fs3-sandbox-unit");
+        .expect("writing ambient configuration");
+        let sandbox = tempfile::tempdir().expect("a sandbox config directory");
 
-        force_sandbox_config(&mut config, 41234, directory);
+        let (config, base_database_url) =
+            sandbox_configuration(ambient.path(), sandbox.path(), 41234)
+                .expect("ambient providers never reach sandbox wiring");
 
+        assert_eq!(
+            base_database_url,
+            "postgres://sandbox:sandbox@127.0.0.1:5433/source"
+        );
         assert_eq!(config.daemon.url, "http://127.0.0.1:41234");
-        assert_eq!(config.daemon.log_dir, "/tmp/fs3-sandbox-unit/logs");
+        assert_eq!(
+            config.daemon.log_dir,
+            sandbox.path().join("logs").to_string_lossy()
+        );
         assert_eq!(
             config.selected(fs3_core::Port::Embedder, None),
             fs3_core::DEFAULT_PROVIDER
@@ -713,5 +881,7 @@ mod tests {
         assert_eq!(config.providers.len(), 1);
         assert!(config.repos.is_empty());
         assert!(!config.update.auto);
+        crate::wiring::AppState::from_config(config)
+            .expect("sandbox wiring uses only offline fake providers");
     }
 }

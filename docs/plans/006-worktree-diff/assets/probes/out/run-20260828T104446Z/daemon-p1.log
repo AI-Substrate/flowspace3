@@ -1,0 +1,1212 @@
+2026-08-28T10:44:47.536472Z  INFO fs3_daemon::runner: done kind="embed" id=656093 left=34043
+2026-08-28T10:44:47.623507Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/007-harness-container-commands.md::Workshop: Executing CG Commands Inside the Harness Container::Workspace Registration Prerequisite ms=17 left=34043
+2026-08-28T10:44:47.625766Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:47.645069Z  INFO fs3_daemon::runner: done kind="embed" id=656094 left=34042
+2026-08-28T10:44:47.731697Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:47.733913Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/007-harness-container-commands.md::Workshop: Executing CG Commands Inside the Harness Container::Implementation Scope::Option B: Justfile + Harness CLI Helper (Recommended) ms=22 left=34042
+2026-08-28T10:44:47.751032Z  INFO fs3_daemon::runner: done kind="embed" id=656095 left=34041
+2026-08-28T10:44:47.840997Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/007-harness-container-commands.md::Workshop: Executing CG Commands Inside the Harness Container::Implementation Scope::Option A: Justfile Only (Minimal) ms=16 left=34041
+2026-08-28T10:44:47.841518Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:47.858773Z  INFO fs3_daemon::runner: done kind="embed" id=656096 left=34040
+2026-08-28T10:44:47.947583Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:47.949189Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/007-harness-container-commands.md::Workshop: Executing CG Commands Inside the Harness Container::Implementation Scope ms=22 left=34040
+2026-08-28T10:44:47.965240Z  INFO fs3_daemon::runner: done kind="embed" id=656097 left=34039
+2026-08-28T10:44:48.072689Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T10:44:48.078232Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/007-harness-container-commands.md::Workshop: Executing CG Commands Inside the Harness Container::End-to-End Agent Flow ms=36 left=34039
+2026-08-28T10:44:48.105630Z  INFO fs3_daemon::runner: done kind="embed" id=656098 left=34038
+2026-08-28T10:44:48.214914Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:48.222665Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/007-harness-container-commands.md::Workshop: Executing CG Commands Inside the Harness Container::How `--server` Works Inside the Container::Discovery Inside Container ms=44 left=34038
+2026-08-28T10:44:48.265347Z  INFO fs3_daemon::runner: done kind="embed" id=656099 left=34037
+2026-08-28T10:44:48.406346Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/007-harness-container-commands.md::Workshop: Executing CG Commands Inside the Harness Container::How `--server` Works Inside the Container::Server.json Location ms=61 left=34037
+2026-08-28T10:44:48.417896Z  INFO fs3_daemon::runner: progress phase="working" scanned=60991 scan_left=33 summarized=124066 summarize_left=34003 embedded=201821 embed_left=1 failed=0
+2026-08-28T10:44:48.453949Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x smart jobs=2 ms=0
+2026-08-28T10:44:48.486446Z  INFO fs3_daemon::runner: done kind="embed" id=656101 left=34036
+2026-08-28T10:44:48.583892Z  INFO fs3_daemon::runner: done kind="embed" id=656100 left=34035
+2026-08-28T10:44:48.722874Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/007-harness-container-commands.md::Workshop: Executing CG Commands Inside the Harness Container::How `--server` Works Inside the Container ms=59 left=34035
+2026-08-28T10:44:48.732723Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T10:44:48.759477Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/007-harness-container-commands.md::Workshop: Executing CG Commands Inside the Harness Container::Design: `just harness cg` Command::Harness CLI Command ms=62 left=34035
+2026-08-28T10:44:48.778248Z  INFO fs3_daemon::runner: done kind="embed" id=656102 left=34034
+2026-08-28T10:44:48.893286Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:48.897188Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/007-harness-container-commands.md::Workshop: Executing CG Commands Inside the Harness Container::Design: `just harness cg` Command::Justfile Recipe ms=37 left=34034
+2026-08-28T10:44:48.927599Z  INFO fs3_daemon::runner: done kind="embed" id=656103 left=34033
+2026-08-28T10:44:49.043847Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:49.048833Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/007-harness-container-commands.md::Workshop: Executing CG Commands Inside the Harness Container::Design: `just harness cg` Command::The Command ms=42 left=34033
+2026-08-28T10:44:49.073802Z  INFO fs3_daemon::runner: done kind="embed" id=656104 left=34032
+2026-08-28T10:44:49.202512Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=5
+2026-08-28T10:44:49.205598Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/007-harness-container-commands.md::Workshop: Executing CG Commands Inside the Harness Container::Design: `just harness cg` Command ms=44 left=34032
+2026-08-28T10:44:49.228943Z  INFO fs3_daemon::runner: done kind="embed" id=656105 left=34031
+2026-08-28T10:44:49.330276Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:49.331649Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/007-harness-container-commands.md::Workshop: Executing CG Commands Inside the Harness Container::Current State::What's Missing ms=34 left=34031
+2026-08-28T10:44:49.359164Z  INFO fs3_daemon::runner: done kind="embed" id=656106 left=34030
+2026-08-28T10:44:49.472991Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/007-harness-container-commands.md::Workshop: Executing CG Commands Inside the Harness Container::Current State::What Already Works ms=38 left=34030
+2026-08-28T10:44:49.477473Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=3
+2026-08-28T10:44:49.505807Z  INFO fs3_daemon::runner: done kind="embed" id=656107 left=34029
+2026-08-28T10:44:49.594820Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/007-harness-container-commands.md::Workshop: Executing CG Commands Inside the Harness Container::Current State ms=22 left=34029
+2026-08-28T10:44:49.594869Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T10:44:49.616668Z  INFO fs3_daemon::runner: done kind="embed" id=656108 left=34028
+2026-08-28T10:44:49.701344Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/007-harness-container-commands.md::Workshop: Executing CG Commands Inside the Harness Container::Key Questions Addressed ms=17 left=34028
+2026-08-28T10:44:49.703980Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:49.723725Z  INFO fs3_daemon::runner: done kind="embed" id=656109 left=34027
+2026-08-28T10:44:49.809978Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/007-harness-container-commands.md::Workshop: Executing CG Commands Inside the Harness Container ms=16 left=34027
+2026-08-28T10:44:49.812413Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:49.841467Z  INFO fs3_daemon::runner: done kind="embed" id=656110 left=34026
+2026-08-28T10:44:49.924774Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:49.925339Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Open Questions ms=18 left=34026
+2026-08-28T10:44:49.944944Z  INFO fs3_daemon::runner: done kind="embed" id=656111 left=34025
+2026-08-28T10:44:50.039168Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Quick Reference ms=20 left=34025
+2026-08-28T10:44:50.043675Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T10:44:50.076133Z  INFO fs3_daemon::runner: done kind="embed" id=656112 left=34024
+2026-08-28T10:44:50.166206Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Implementation Shape::Estimated Scope ms=22 left=34024
+2026-08-28T10:44:50.167067Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:50.185337Z  INFO fs3_daemon::runner: done kind="embed" id=656113 left=34023
+2026-08-28T10:44:50.272152Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Implementation Shape::Where the Code Goes ms=19 left=34023
+2026-08-28T10:44:50.278160Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=3
+2026-08-28T10:44:50.305789Z  INFO fs3_daemon::runner: done kind="embed" id=656114 left=34022
+2026-08-28T10:44:50.380377Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T10:44:50.382212Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Implementation Shape ms=20 left=34022
+2026-08-28T10:44:50.400489Z  INFO fs3_daemon::runner: done kind="embed" id=656115 left=34021
+2026-08-28T10:44:50.493889Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T10:44:50.494415Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::SDK Placement::Recommendation: **Option B** ms=24 left=34021
+2026-08-28T10:44:50.518977Z  INFO fs3_daemon::runner: done kind="embed" id=656116 left=34020
+2026-08-28T10:44:50.607878Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:50.611355Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::SDK Placement::Option B: Move to `packages/shared` (Recommended) ms=24 left=34020
+2026-08-28T10:44:50.628209Z  INFO fs3_daemon::runner: done kind="embed" id=656117 left=34019
+2026-08-28T10:44:50.714438Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::SDK Placement::Option A: Keep in Harness (Status Quo) ms=19 left=34019
+2026-08-28T10:44:50.715311Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:50.731643Z  INFO fs3_daemon::runner: done kind="embed" id=656118 left=34018
+2026-08-28T10:44:50.817755Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::SDK Placement ms=20 left=34018
+2026-08-28T10:44:50.823281Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:50.842769Z  INFO fs3_daemon::runner: done kind="embed" id=656119 left=34017
+2026-08-28T10:44:50.927818Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Proposed Design::Command Implementations::`cg wf restart <slug> --server` (NEW) ms=18 left=34017
+2026-08-28T10:44:50.933499Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T10:44:50.959011Z  INFO fs3_daemon::runner: done kind="embed" id=656120 left=34016
+2026-08-28T10:44:51.042086Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Proposed Design::Command Implementations::`cg wf stop <slug> --server` (NEW) ms=22 left=34016
+2026-08-28T10:44:51.046457Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=3
+2026-08-28T10:44:51.066331Z  INFO fs3_daemon::runner: done kind="embed" id=656121 left=34015
+2026-08-28T10:44:51.153213Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Proposed Design::Command Implementations::`cg wf show <slug> --detailed --server` ms=18 left=34015
+2026-08-28T10:44:51.156574Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:51.180022Z  INFO fs3_daemon::runner: done kind="embed" id=656122 left=34014
+2026-08-28T10:44:51.261969Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Proposed Design::Command Implementations::`cg wf run <slug> --server` ms=17 left=34014
+2026-08-28T10:44:51.264582Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:51.286779Z  INFO fs3_daemon::runner: done kind="embed" id=656123 left=34013
+2026-08-28T10:44:51.375323Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Proposed Design::Command Implementations ms=22 left=34013
+2026-08-28T10:44:51.379105Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:51.394490Z  INFO fs3_daemon::runner: done kind="embed" id=656124 left=34012
+2026-08-28T10:44:51.478147Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Proposed Design::Server URL Resolution — Existing `server.json` Discovery ms=17 left=34012
+2026-08-28T10:44:51.487563Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T10:44:51.507641Z  INFO fs3_daemon::runner: done kind="embed" id=656125 left=34011
+2026-08-28T10:44:51.590018Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Proposed Design::Workspace Context Resolution ms=18 left=34011
+2026-08-28T10:44:51.592203Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:51.608645Z  INFO fs3_daemon::runner: done kind="embed" id=656126 left=34010
+2026-08-28T10:44:51.688922Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Proposed Design::Flag: `--server` on `cg wf` ms=16 left=34010
+2026-08-28T10:44:51.693400Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T10:44:51.711081Z  INFO fs3_daemon::runner: done kind="embed" id=656127 left=34009
+2026-08-28T10:44:51.797473Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:51.798955Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Proposed Design ms=23 left=34009
+2026-08-28T10:44:51.817172Z  INFO fs3_daemon::runner: done kind="embed" id=656128 left=34008
+2026-08-28T10:44:51.903665Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Command Triage — What Moves, What Stays::🔶 Harness-Only (Don't Move) ms=20 left=34008
+2026-08-28T10:44:51.907594Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T10:44:51.931573Z  INFO fs3_daemon::runner: done kind="embed" id=656129 left=34007
+2026-08-28T10:44:52.018536Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Command Triage — What Moves, What Stays::❌ Commands That Don't Benefit ms=21 left=34007
+2026-08-28T10:44:52.021711Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:52.040395Z  INFO fs3_daemon::runner: done kind="embed" id=656130 left=34006
+2026-08-28T10:44:52.132866Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:52.138322Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Command Triage — What Moves, What Stays::✅ Commands That Benefit From `--server` ms=30 left=34006
+2026-08-28T10:44:52.149931Z  INFO fs3_daemon::runner: done kind="embed" id=656131 left=34005
+2026-08-28T10:44:52.240391Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T10:44:52.248639Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Command Triage — What Moves, What Stays ms=31 left=34005
+2026-08-28T10:44:52.257745Z  INFO fs3_daemon::runner: done kind="embed" id=656132 left=34004
+2026-08-28T10:44:52.358524Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T10:44:52.362874Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Current State::What Harness Has That CG Doesn't ms=28 left=34004
+2026-08-28T10:44:52.390108Z  INFO fs3_daemon::runner: done kind="embed" id=656133 left=34003
+2026-08-28T10:44:52.482630Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T10:44:52.496422Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Current State::CG CLI Command Surface (30+ commands) ms=35 left=34003
+2026-08-28T10:44:52.497748Z  INFO fs3_daemon::runner: done kind="embed" id=656134 left=34002
+2026-08-28T10:44:52.612313Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T10:44:52.612695Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Current State::Two CLIs, Two Paths ms=30 left=34002
+2026-08-28T10:44:52.648485Z  INFO fs3_daemon::runner: done kind="embed" id=656135 left=34001
+2026-08-28T10:44:52.747922Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:52.754870Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Current State ms=33 left=34001
+2026-08-28T10:44:52.775048Z  INFO fs3_daemon::runner: done kind="embed" id=656136 left=34000
+2026-08-28T10:44:52.886078Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration::Key Questions Addressed ms=46 left=34000
+2026-08-28T10:44:52.886345Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:52.913760Z  INFO fs3_daemon::runner: done kind="embed" id=656137 left=33999
+2026-08-28T10:44:53.021163Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:53.026626Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/006-cg-cli-server-mode.md::Workshop: CG CLI Server Mode — SDK Integration ms=36 left=33999
+2026-08-28T10:44:53.049481Z  INFO fs3_daemon::runner: done kind="embed" id=656138 left=33998
+2026-08-28T10:44:53.159288Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T10:44:53.162105Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Quick Reference ms=37 left=33998
+2026-08-28T10:44:53.189190Z  INFO fs3_daemon::runner: done kind="embed" id=656139 left=33997
+2026-08-28T10:44:53.303994Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:53.306265Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Open Questions ms=42 left=33997
+2026-08-28T10:44:53.335194Z  INFO fs3_daemon::runner: done kind="embed" id=656140 left=33996
+2026-08-28T10:44:53.447707Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:53.452068Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 9: PACT + OpenAPI — Complementary ms=41 left=33996
+2026-08-28T10:44:53.474838Z  INFO fs3_daemon::runner: done kind="embed" id=656141 left=33995
+2026-08-28T10:44:53.591278Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 8: Anti-Patterns to Avoid::❌ Pact as Integration Test ms=47 left=33995
+2026-08-28T10:44:53.606242Z  INFO fs3_daemon::runner: progress phase="working" scanned=60991 scan_left=33 summarized=124108 summarize_left=33961 embedded=201863 embed_left=1 failed=0
+2026-08-28T10:44:53.648335Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x smart jobs=2 ms=0
+2026-08-28T10:44:53.675681Z  INFO fs3_daemon::runner: done kind="embed" id=656142 left=33994
+2026-08-28T10:44:53.761739Z  INFO fs3_daemon::runner: done kind="embed" id=656143 left=33993
+2026-08-28T10:44:53.876379Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 8: Anti-Patterns to Avoid::❌ Over-Specifying Responses ms=41 left=33993
+2026-08-28T10:44:53.909531Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:53.920075Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 8: Anti-Patterns to Avoid::❌ Testing Business Logic in Pacts ms=47 left=33993
+2026-08-28T10:44:53.952757Z  INFO fs3_daemon::runner: done kind="embed" id=656144 left=33992
+2026-08-28T10:44:54.070793Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:54.074848Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 8: Anti-Patterns to Avoid ms=44 left=33992
+2026-08-28T10:44:54.113543Z  INFO fs3_daemon::runner: done kind="embed" id=656145 left=33991
+2026-08-28T10:44:54.212642Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=4
+2026-08-28T10:44:54.221348Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 7: PACT + Vitest Setup::Justfile Recipes ms=34 left=33991
+2026-08-28T10:44:54.255923Z  INFO fs3_daemon::runner: done kind="embed" id=656146 left=33990
+2026-08-28T10:44:54.342280Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 7: PACT + Vitest Setup::Running Pact Tests ms=21 left=33990
+2026-08-28T10:44:54.346459Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T10:44:54.362616Z  INFO fs3_daemon::runner: done kind="embed" id=656147 left=33989
+2026-08-28T10:44:54.445794Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 7: PACT + Vitest Setup::Vitest Config for Pact ms=17 left=33989
+2026-08-28T10:44:54.449567Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:54.468640Z  INFO fs3_daemon::runner: done kind="embed" id=656148 left=33988
+2026-08-28T10:44:54.551580Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 7: PACT + Vitest Setup ms=17 left=33988
+2026-08-28T10:44:54.560305Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:54.580100Z  INFO fs3_daemon::runner: done kind="embed" id=656149 left=33987
+2026-08-28T10:44:54.673466Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:54.676258Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 6: PACT vs Our Existing Contract Tests::The Three-Layer Testing Stack ms=26 left=33987
+2026-08-28T10:44:54.688982Z  INFO fs3_daemon::runner: done kind="embed" id=656150 left=33986
+2026-08-28T10:44:54.780723Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:54.786381Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 6: PACT vs Our Existing Contract Tests ms=29 left=33986
+2026-08-28T10:44:54.803357Z  INFO fs3_daemon::runner: done kind="embed" id=656151 left=33985
+2026-08-28T10:44:54.892288Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:54.894790Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 5: Monorepo Structure::File-Based Pacts (Our Approach) ms=25 left=33985
+2026-08-28T10:44:54.906871Z  INFO fs3_daemon::runner: done kind="embed" id=656152 left=33984
+2026-08-28T10:44:54.994248Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 5: Monorepo Structure ms=21 left=33984
+2026-08-28T10:44:54.994832Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:55.013523Z  INFO fs3_daemon::runner: done kind="embed" id=656153 left=33983
+2026-08-28T10:44:55.102780Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 4: Our Pact Tests — 5 Tier 1 Endpoints::Provider: WorkflowAPI ms=19 left=33983
+2026-08-28T10:44:55.103400Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:55.121659Z  INFO fs3_daemon::runner: done kind="embed" id=656154 left=33982
+2026-08-28T10:44:55.204616Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 4: Our Pact Tests — 5 Tier 1 Endpoints::Consumer: HarnessSDK ms=18 left=33982
+2026-08-28T10:44:55.205953Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:55.222527Z  INFO fs3_daemon::runner: done kind="embed" id=656155 left=33981
+2026-08-28T10:44:55.302614Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 4: Our Pact Tests — 5 Tier 1 Endpoints ms=16 left=33981
+2026-08-28T10:44:55.304715Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:55.322565Z  INFO fs3_daemon::runner: done kind="embed" id=656156 left=33980
+2026-08-28T10:44:55.406402Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 3: Provider States::How Provider States Work in Our Setup ms=18 left=33980
+2026-08-28T10:44:55.406592Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:55.423515Z  INFO fs3_daemon::runner: done kind="embed" id=656157 left=33979
+2026-08-28T10:44:55.507317Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 3: Provider States ms=19 left=33979
+2026-08-28T10:44:55.508404Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:55.523699Z  INFO fs3_daemon::runner: done kind="embed" id=656158 left=33978
+2026-08-28T10:44:55.608636Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:55.610660Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 2: First Principles — What Makes a Good Pact Test::Matchers: Loose Over Tight ms=22 left=33978
+2026-08-28T10:44:55.627830Z  INFO fs3_daemon::runner: done kind="embed" id=656159 left=33977
+2026-08-28T10:44:55.711698Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 2: First Principles — What Makes a Good Pact Test ms=17 left=33977
+2026-08-28T10:44:55.715191Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T10:44:55.739207Z  INFO fs3_daemon::runner: done kind="embed" id=656160 left=33976
+2026-08-28T10:44:55.834439Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:55.835323Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 1: What is PACT?::The PACT Lifecycle ms=25 left=33976
+2026-08-28T10:44:55.852719Z  INFO fs3_daemon::runner: done kind="embed" id=656161 left=33975
+2026-08-28T10:44:55.937282Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 1: What is PACT?::PACT vs Other Testing Approaches ms=18 left=33975
+2026-08-28T10:44:55.944221Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=4
+2026-08-28T10:44:55.963888Z  INFO fs3_daemon::runner: done kind="embed" id=656162 left=33974
+2026-08-28T10:44:56.056951Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 1: What is PACT?::The Core Mental Model ms=25 left=33974
+2026-08-28T10:44:56.059628Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T10:44:56.079323Z  INFO fs3_daemon::runner: done kind="embed" id=656163 left=33973
+2026-08-28T10:44:56.182186Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:56.183545Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 1: What is PACT?::The Problem It Solves ms=25 left=33973
+2026-08-28T10:44:56.203900Z  INFO fs3_daemon::runner: done kind="embed" id=656164 left=33972
+2026-08-28T10:44:56.289088Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Part 1: What is PACT? ms=17 left=33972
+2026-08-28T10:44:56.290591Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:56.308193Z  INFO fs3_daemon::runner: done kind="embed" id=656165 left=33971
+2026-08-28T10:44:56.393624Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API::Key Questions Addressed ms=19 left=33971
+2026-08-28T10:44:56.396902Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T10:44:56.420041Z  INFO fs3_daemon::runner: done kind="embed" id=656166 left=33970
+2026-08-28T10:44:56.509871Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/005-pact-contract-testing.md::Workshop: PACT Contract Testing for Workflow REST API ms=23 left=33970
+2026-08-28T10:44:56.511190Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:56.531027Z  INFO fs3_daemon::runner: done kind="embed" id=656167 left=33969
+2026-08-28T10:44:56.632824Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::Quick Reference ms=24 left=33969
+2026-08-28T10:44:56.633555Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:56.651475Z  INFO fs3_daemon::runner: done kind="embed" id=656168 left=33968
+2026-08-28T10:44:56.744858Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::Open Questions ms=21 left=33968
+2026-08-28T10:44:56.746243Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T10:44:56.767475Z  INFO fs3_daemon::runner: done kind="embed" id=656169 left=33967
+2026-08-28T10:44:56.902797Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:56.914378Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::File Structure ms=48 left=33967
+2026-08-28T10:44:56.929832Z  INFO fs3_daemon::runner: done kind="embed" id=656170 left=33966
+2026-08-28T10:44:57.039414Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:57.112010Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::Implementation Scope & Phasing::For Future Plan (077 or similar — full API surface) ms=104 left=33966
+2026-08-28T10:44:57.144814Z  INFO fs3_daemon::runner: done kind="embed" id=656171 left=33965
+2026-08-28T10:44:57.238227Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T10:44:57.255516Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T104446Z/p1-worktree-add.txt ms=40 left=33966
+2026-08-28T10:44:57.260281Z  INFO fs3_daemon::runner: done kind="embed" id=656172 left=33965
+2026-08-28T10:44:57.331767Z  INFO fs3_daemon::watch: re-listed a changed directory directory=/Users/jordanknight/substrate/flowspace/fs3-worktree-diff/docs/plans/006-worktree-diff/assets/probes/out events=2 enqueued=1 settled=Quiet
+2026-08-28T10:44:57.444812Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::Implementation Scope & Phasing::For Plan 076 Phase 4 (minimal — unblocks validation) ms=94 left=33965
+2026-08-28T10:44:57.588426Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=197
+2026-08-28T10:44:57.661350Z  INFO fs3_daemon::runner: done kind="embed" id=656174 left=33964
+2026-08-28T10:44:57.783589Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:57.830346Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::Implementation Scope & Phasing ms=89 left=33964
+2026-08-28T10:44:57.835466Z  INFO fs3_daemon::runner: done kind="embed" id=656175 left=33963
+2026-08-28T10:44:57.952577Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:57.999648Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::Q&A: Auto-Completion via REST ms=80 left=33963
+2026-08-28T10:44:58.032101Z  INFO fs3_daemon::runner: done kind="embed" id=656176 left=33962
+2026-08-28T10:44:58.146547Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:58.180824Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::Filesystem Lock Unification ms=75 left=33962
+2026-08-28T10:44:58.204356Z  INFO fs3_daemon::runner: done kind="embed" id=656177 left=33961
+2026-08-28T10:44:58.344288Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T10:44:58.374027Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::CLI `--server` Variant ms=80 left=33961
+2026-08-28T10:44:58.398025Z  INFO fs3_daemon::runner: done kind="embed" id=656178 left=33960
+2026-08-28T10:44:58.533409Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:58.567382Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::Harness Integration Pattern ms=76 left=33960
+2026-08-28T10:44:58.580631Z  INFO fs3_daemon::runner: done kind="embed" id=656179 left=33959
+2026-08-28T10:44:58.746614Z  INFO fs3_daemon::runner: progress phase="working" scanned=60992 scan_left=33 summarized=124144 summarize_left=33925 embedded=201900 embed_left=1 failed=0
+2026-08-28T10:44:58.750752Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::Endpoint Specifications (Tier 1)::GET `/api/workspaces/{slug}/workflows/{graphSlug}/detailed` ms=66 left=33959
+2026-08-28T10:44:58.779107Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x smart jobs=2 ms=2
+2026-08-28T10:44:58.806529Z  INFO fs3_daemon::runner: done kind="embed" id=656181 left=33958
+2026-08-28T10:44:58.901980Z  INFO fs3_daemon::runner: done kind="embed" id=656180 left=33957
+2026-08-28T10:44:59.008812Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::Endpoint Specifications (Tier 1)::DELETE `/api/workspaces/{slug}/workflows/{graphSlug}/execution` ms=33 left=33957
+2026-08-28T10:44:59.041097Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T10:44:59.043244Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::Endpoint Specifications (Tier 1)::GET `/api/workspaces/{slug}/workflows/{graphSlug}/execution` ms=32 left=33957
+2026-08-28T10:44:59.069655Z  INFO fs3_daemon::runner: done kind="embed" id=656182 left=33956
+2026-08-28T10:44:59.171190Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::Endpoint Specifications (Tier 1)::POST `/api/workspaces/{slug}/workflows/{graphSlug}/execution` ms=21 left=33956
+2026-08-28T10:44:59.175859Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:59.195915Z  INFO fs3_daemon::runner: done kind="embed" id=656183 left=33955
+2026-08-28T10:44:59.300205Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T10:44:59.309503Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::Endpoint Specifications (Tier 1) ms=39 left=33955
+2026-08-28T10:44:59.319552Z  INFO fs3_daemon::runner: done kind="embed" id=656184 left=33954
+2026-08-28T10:44:59.467463Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:59.467708Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::Priority Tiers::Tier 2: Graph + Node CRUD (unblocks harness test data via web) ms=50 left=33954
+2026-08-28T10:44:59.488063Z  INFO fs3_daemon::runner: done kind="embed" id=656185 left=33953
+2026-08-28T10:44:59.606357Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T10:44:59.607088Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::Priority Tiers::Tier 1: Execution Control (unblocks Phase 4 validation) ms=38 left=33953
+2026-08-28T10:44:59.638706Z  INFO fs3_daemon::runner: done kind="embed" id=656186 left=33952
+2026-08-28T10:44:59.740145Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::Priority Tiers ms=28 left=33952
+2026-08-28T10:44:59.748557Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:44:59.782387Z  INFO fs3_daemon::runner: done kind="embed" id=656187 left=33951
+2026-08-28T10:44:59.911637Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T10:44:59.940507Z  INFO fs3_daemon::runner: done kind="embed" id=656188 left=33950
+2026-08-28T10:44:59.940584Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::URL Structure::Resource Hierarchy ms=87 left=33951
+2026-08-28T10:45:00.068431Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:45:00.096568Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::URL Structure ms=54 left=33950
+2026-08-28T10:45:00.096643Z  INFO fs3_daemon::runner: done kind="embed" id=656189 left=33949
+2026-08-28T10:45:00.182049Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::API Design Principles ms=22 left=33949
+2026-08-28T10:45:00.186294Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:45:00.207511Z  INFO fs3_daemon::runner: done kind="embed" id=656190 left=33948
+2026-08-28T10:45:00.300449Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:45:00.302237Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::The Problem ms=25 left=33948
+2026-08-28T10:45:00.325929Z  INFO fs3_daemon::runner: done kind="embed" id=656191 left=33947
+2026-08-28T10:45:00.410039Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T10:45:00.410147Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API::Key Questions Addressed ms=20 left=33947
+2026-08-28T10:45:00.427139Z  INFO fs3_daemon::runner: done kind="embed" id=656192 left=33946
+2026-08-28T10:45:00.517137Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/004-workflow-rest-api.md::Workshop: Workflow REST API ms=20 left=33946
+2026-08-28T10:45:00.517412Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:45:00.538486Z  INFO fs3_daemon::runner: done kind="embed" id=656193 left=33945
+2026-08-28T10:45:00.618677Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:45:00.623196Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/003-cg-cli-status-enhancement.md::Workshop: CG CLI Status Enhancement::Open Questions ms=26 left=33945
+2026-08-28T10:45:00.635522Z  INFO fs3_daemon::runner: done kind="embed" id=656194 left=33944
+2026-08-28T10:45:00.724389Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:45:00.725058Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/003-cg-cli-status-enhancement.md::Workshop: CG CLI Status Enhancement::Error Scenarios::Node blocked by upstream ms=20 left=33944
+2026-08-28T10:45:00.743644Z  INFO fs3_daemon::runner: done kind="embed" id=656195 left=33943
+2026-08-28T10:45:00.828735Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/003-cg-cli-status-enhancement.md::Workshop: CG CLI Status Enhancement::Error Scenarios::Node waiting for Q&A ms=22 left=33943
+2026-08-28T10:45:00.833405Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:45:00.860940Z  INFO fs3_daemon::runner: done kind="embed" id=656196 left=33942
+2026-08-28T10:45:00.971500Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:45:00.987666Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/003-cg-cli-status-enhancement.md::Workshop: CG CLI Status Enhancement::Error Scenarios::Node with error ms=55 left=33942
+2026-08-28T10:45:01.001553Z  INFO fs3_daemon::runner: done kind="embed" id=656197 left=33941
+2026-08-28T10:45:01.087341Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/003-cg-cli-status-enhancement.md::Workshop: CG CLI Status Enhancement::Error Scenarios::Node stuck at "starting" (the bug we're fixing) ms=19 left=33941
+2026-08-28T10:45:01.092308Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:45:01.112066Z  INFO fs3_daemon::runner: done kind="embed" id=656198 left=33940
+2026-08-28T10:45:01.209301Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/003-cg-cli-status-enhancement.md::Workshop: CG CLI Status Enhancement::Error Scenarios ms=32 left=33940
+2026-08-28T10:45:01.210690Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:45:01.230123Z  INFO fs3_daemon::runner: done kind="embed" id=656199 left=33939
+2026-08-28T10:45:01.315455Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:45:01.326738Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/003-cg-cli-status-enhancement.md::Workshop: CG CLI Status Enhancement::How the Harness Uses This::Progressive Disclosure Integration ms=35 left=33939
+2026-08-28T10:45:01.339623Z  INFO fs3_daemon::runner: done kind="embed" id=656200 left=33938
+2026-08-28T10:45:01.431753Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:45:01.436706Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/003-cg-cli-status-enhancement.md::Workshop: CG CLI Status Enhancement::How the Harness Uses This::`harness workflow status` ms=25 left=33938
+2026-08-28T10:45:01.447414Z  INFO fs3_daemon::runner: done kind="embed" id=656201 left=33937
+2026-08-28T10:45:01.533378Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/003-cg-cli-status-enhancement.md::Workshop: CG CLI Status Enhancement::How the Harness Uses This ms=19 left=33937
+2026-08-28T10:45:01.541110Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T10:45:01.564739Z  INFO fs3_daemon::runner: done kind="embed" id=656202 left=33936
+2026-08-28T10:45:01.652256Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/003-cg-cli-status-enhancement.md::Workshop: CG CLI Status Enhancement::Comparison: Without vs With `--detailed` ms=19 left=33936
+2026-08-28T10:45:01.654335Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=1
+2026-08-28T10:45:01.686259Z  INFO fs3_daemon::runner: done kind="embed" id=656203 left=33935
+2026-08-28T10:45:01.782531Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:45:01.783720Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/003-cg-cli-status-enhancement.md::Workshop: CG CLI Status Enhancement::Data Sources::Implementation Sketch ms=28 left=33935
+2026-08-28T10:45:01.809029Z  INFO fs3_daemon::runner: done kind="embed" id=656204 left=33934
+2026-08-28T10:45:01.931533Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/003-cg-cli-status-enhancement.md::Workshop: CG CLI Status Enhancement::Data Sources ms=26 left=33934
+2026-08-28T10:45:01.935931Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=2
+2026-08-28T10:45:01.964477Z  INFO fs3_daemon::runner: done kind="embed" id=656205 left=33933
+2026-08-28T10:45:02.086594Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:45:02.100613Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/003-cg-cli-status-enhancement.md::Workshop: CG CLI Status Enhancement::Proposed: `cg wf show --detailed`::TypeScript Types ms=59 left=33933
+2026-08-28T10:45:02.112006Z  INFO fs3_daemon::runner: done kind="embed" id=656206 left=33932
+2026-08-28T10:45:03.961734Z  INFO fs3_daemon::runner: progress phase="working" scanned=60992 scan_left=33 summarized=124171 summarize_left=33898 embedded=201927 embed_left=1 failed=0
+2026-08-28T10:45:04.027088Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/003-cg-cli-status-enhancement.md::Workshop: CG CLI Status Enhancement::Proposed: `cg wf show --detailed`::JSON Schema ms=207 left=33932
+2026-08-28T10:45:04.032615Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x smart jobs=2 ms=4
+2026-08-28T10:45:04.096828Z  INFO fs3_daemon::runner: done kind="embed" id=656208 left=33931
+2026-08-28T10:45:04.212004Z  INFO fs3_daemon::runner: done kind="embed" id=656207 left=33930
+2026-08-28T10:45:04.346777Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/003-cg-cli-status-enhancement.md::Workshop: CG CLI Status Enhancement::Proposed: `cg wf show --detailed` ms=55 left=33930
+2026-08-28T10:45:04.347655Z  INFO fs3_daemon::runner: done kind=summarize subject=docs/plans/076-harness-workflow-runner/workshops/003-cg-cli-status-enhancement.md::Workshop: CG CLI Status Enhancement::Current State: `cg wf show` ms=24 left=33930
+2026-08-28T10:45:04.359329Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:45:04.408183Z  INFO fs3_daemon::runner: done kind="embed" id=656209 left=33932
+2026-08-28T10:45:04.524020Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x smart jobs=1 ms=0
+2026-08-28T10:45:04.529687Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/cli/src/lib.rs ms=51 left=33952
+2026-08-28T10:45:04.543700Z  INFO fs3_daemon::runner: done kind="embed" id=656210 left=33956
+2026-08-28T10:45:04.729423Z  INFO fs3_daemon::runner: batch kind="embed" subject=11 x raw jobs=1 ms=4
+2026-08-28T10:45:04.770325Z  INFO fs3_daemon::runner: done kind="embed" id=656233 left=33983
+2026-08-28T10:45:04.770440Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/cli/tests/envelope_goldens.rs ms=137 left=33983
+2026-08-28T10:45:04.898977Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=1
+2026-08-28T10:45:04.924402Z  INFO fs3_daemon::runner: done kind="embed" id=656270 left=33996
+2026-08-28T10:45:04.924776Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/core/src/error.rs ms=68 left=33996
+2026-08-28T10:45:05.029923Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x raw jobs=1 ms=1
+2026-08-28T10:45:05.063650Z  INFO fs3_daemon::runner: done kind="embed" id=656287 left=34015
+2026-08-28T10:45:05.105257Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/daemon/src/ask.rs ms=106 left=34024
+2026-08-28T10:45:05.165867Z  INFO fs3_daemon::runner: batch kind="embed" subject=15 x raw jobs=1 ms=1
+2026-08-28T10:45:05.199847Z  INFO fs3_daemon::runner: done kind="embed" id=656328 left=34036
+2026-08-28T10:45:05.215197Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/daemon/src/scope.rs ms=76 left=34040
+2026-08-28T10:45:05.308494Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=0
+2026-08-28T10:45:05.338727Z  INFO fs3_daemon::runner: done kind="embed" id=656349 left=34067
+2026-08-28T10:45:05.364851Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/daemon/tests/remove_root.rs ms=90 left=34071
+2026-08-28T10:45:05.445744Z  INFO fs3_daemon::runner: batch kind="embed" subject=10 x raw jobs=1 ms=0
+2026-08-28T10:45:05.470350Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/providers/examples/embed_file.rs ms=58 left=34101
+2026-08-28T10:45:05.470426Z  INFO fs3_daemon::runner: done kind="embed" id=656392 left=34100
+2026-08-28T10:45:05.577083Z  INFO fs3_daemon::runner: batch kind="embed" subject=3 x raw jobs=1 ms=0
+2026-08-28T10:45:05.602950Z  INFO fs3_daemon::runner: done kind="embed" id=656426 left=34146
+2026-08-28T10:45:05.626383Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/store/src/conversations.rs ms=77 left=34155
+2026-08-28T10:45:05.697685Z  INFO fs3_daemon::runner: batch kind="embed" subject=15 x raw jobs=1 ms=2
+2026-08-28T10:45:05.717956Z  INFO fs3_daemon::runner: done kind="embed" id=656494 left=34180
+2026-08-28T10:45:05.744429Z  INFO fs3_daemon::runner: done kind=scan_file subject=crates/testkit/src/spawn.rs ms=72 left=34186
+2026-08-28T10:45:05.822468Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=1
+2026-08-28T10:45:05.849136Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/001-fs3-foundations/validations/plan-validation.md ms=64 left=34223
+2026-08-28T10:45:05.849324Z  INFO fs3_daemon::runner: done kind="embed" id=656536 left=34223
+2026-08-28T10:45:06.004807Z  INFO fs3_daemon::runner: batch kind="embed" subject=4 x raw jobs=1 ms=0
+2026-08-28T10:45:06.011776Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/completion-report.md ms=73 left=34256
+2026-08-28T10:45:06.034449Z  INFO fs3_daemon::runner: done kind="embed" id=656577 left=34263
+2026-08-28T10:45:06.142540Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=0
+2026-08-28T10:45:06.164240Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/buffers/u-a-session-buffer.md ms=59 left=34287
+2026-08-28T10:45:06.167881Z  INFO fs3_daemon::runner: done kind="embed" id=656617 left=34291
+2026-08-28T10:45:06.376720Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:06.406993Z  INFO fs3_daemon::runner: done kind="embed" id=656650 left=34305
+2026-08-28T10:45:06.407063Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-version-file-blobs.txt ms=144 left=34305
+2026-08-28T10:45:06.603758Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:06.625816Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2a-jobs.txt ms=106 left=34319
+2026-08-28T10:45:06.625909Z  INFO fs3_daemon::runner: done kind="embed" id=656671 left=34319
+2026-08-28T10:45:06.755969Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:06.784716Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p1-noop-jobs.txt ms=72 left=34341
+2026-08-28T10:45:06.787615Z  INFO fs3_daemon::runner: done kind="embed" id=656686 left=34340
+2026-08-28T10:45:06.972580Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p1-jobs.txt ms=49 left=34367
+2026-08-28T10:45:06.978631Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=2
+2026-08-28T10:45:07.020502Z  INFO fs3_daemon::runner: done kind="embed" id=656710 left=34373
+2026-08-28T10:45:07.115333Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:07.133896Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/p2b-edited-files.txt ms=50 left=34395
+2026-08-28T10:45:07.134476Z  INFO fs3_daemon::runner: done kind="embed" id=656738 left=34398
+2026-08-28T10:45:07.250934Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:07.280966Z  INFO fs3_daemon::runner: done kind="embed" id=656768 left=34421
+2026-08-28T10:45:07.327627Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/assets/run/process-feedback.md ms=105 left=34430
+2026-08-28T10:45:07.413635Z  INFO fs3_daemon::runner: batch kind="embed" subject=11 x raw jobs=1 ms=1
+2026-08-28T10:45:07.480022Z  INFO fs3_daemon::runner: done kind="embed" id=656817 left=34443
+2026-08-28T10:45:07.548030Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/prd/workshops/002-pg-schema.md ms=196 left=34445
+2026-08-28T10:45:07.674292Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=0
+2026-08-28T10:45:07.724724Z  INFO fs3_daemon::runner: done kind="embed" id=656837 left=34449
+2026-08-28T10:45:07.822707Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/azure-openai.md ms=249 left=34451
+2026-08-28T10:45:07.854870Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=0
+2026-08-28T10:45:07.891601Z  INFO fs3_daemon::runner: done kind="embed" id=656848 left=34453
+2026-08-28T10:45:08.150577Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/git-blob.md ms=69 left=34470
+2026-08-28T10:45:08.150687Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/convo-source-claude.md ms=340 left=34469
+2026-08-28T10:45:08.153693Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/discovery.md ms=157 left=34468
+2026-08-28T10:45:08.160543Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/openai-compat.md ms=54 left=34470
+2026-08-28T10:45:08.170632Z  INFO fs3_daemon::runner: batch kind="embed" subject=40 x raw jobs=4 ms=6
+2026-08-28T10:45:08.209784Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/enrichment.md ms=153 left=34475
+2026-08-28T10:45:08.228059Z  INFO fs3_daemon::runner: done kind="embed" id=656918 left=34475
+2026-08-28T10:45:08.263052Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/schema-skew.md ms=126 left=34481
+2026-08-28T10:45:08.334271Z  INFO fs3_daemon::worktrees: registered a newly discovered git worktree root=/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T104446Z files=592 enqueued=592
+2026-08-28T10:45:08.357896Z  INFO fs3_daemon::watch: watching root=/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T104446Z worktree_id=75
+2026-08-28T10:45:08.469349Z  INFO fs3_daemon::runner: done kind="embed" id=656910 left=34498
+2026-08-28T10:45:08.560653Z  INFO fs3_daemon::runner: done kind="embed" id=656902 left=34497
+2026-08-28T10:45:08.655867Z  INFO fs3_daemon::runner: done kind="embed" id=656904 left=34496
+2026-08-28T10:45:08.784363Z  INFO fs3_daemon::runner: batch kind="embed" subject=25 x raw jobs=2 ms=1
+2026-08-28T10:45:08.821005Z  INFO fs3_daemon::runner: done kind=scan_file subject=tests/daemon-restart.sh ms=76 left=34496
+2026-08-28T10:45:08.831906Z  INFO fs3_daemon::runner: done kind="embed" id=656926 left=34495
+2026-08-28T10:45:08.957108Z  INFO fs3_daemon::runner: done kind="embed" id=656943 left=34494
+2026-08-28T10:45:09.208942Z  INFO fs3_daemon::runner: progress phase="working" scanned=61019 scan_left=598 summarized=124174 summarize_left=33895 embedded=201957 embed_left=1 failed=0
+2026-08-28T10:45:09.247338Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:09.297500Z  INFO fs3_daemon::runner: done kind="embed" id=656963 left=34493
+2026-08-28T10:45:09.419782Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/tests/surfaces.rs ms=274 left=34493
+2026-08-28T10:45:09.426840Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=1
+2026-08-28T10:45:09.452111Z  INFO fs3_daemon::runner: done kind="embed" id=656971 left=34492
+2026-08-28T10:45:09.481117Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/views.rs ms=81 left=34492
+2026-08-28T10:45:09.550949Z  INFO fs3_daemon::runner: batch kind="embed" subject=10 x raw jobs=1 ms=0
+2026-08-28T10:45:09.575096Z  INFO fs3_daemon::runner: done kind="embed" id=656978 left=34492
+2026-08-28T10:45:09.583381Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/theme.rs ms=58 left=34492
+2026-08-28T10:45:09.679875Z  INFO fs3_daemon::runner: batch kind="embed" subject=25 x raw jobs=2 ms=0
+2026-08-28T10:45:09.704109Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/surfaces/status.rs ms=55 left=34491
+2026-08-28T10:45:09.704191Z  INFO fs3_daemon::runner: done kind="embed" id=656988 left=34491
+2026-08-28T10:45:09.805000Z  INFO fs3_daemon::runner: done kind="embed" id=656985 left=34490
+2026-08-28T10:45:09.898644Z  INFO fs3_daemon::runner: batch kind="embed" subject=13 x raw jobs=1 ms=0
+2026-08-28T10:45:09.924709Z  INFO fs3_daemon::runner: done kind="embed" id=656996 left=34489
+2026-08-28T10:45:09.959279Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/surfaces/search.rs ms=86 left=34490
+2026-08-28T10:45:10.032507Z  INFO fs3_daemon::runner: batch kind="embed" subject=18 x raw jobs=2 ms=2
+2026-08-28T10:45:10.048307Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/surfaces/generic.rs ms=50 left=34490
+2026-08-28T10:45:10.057659Z  INFO fs3_daemon::runner: done kind="embed" id=657011 left=34489
+2026-08-28T10:45:10.146112Z  INFO fs3_daemon::runner: done kind="embed" id=657008 left=34488
+2026-08-28T10:45:10.248969Z  INFO fs3_daemon::runner: batch kind="embed" subject=6 x raw jobs=1 ms=0
+2026-08-28T10:45:10.283279Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/surfaces/failure.rs ms=68 left=34487
+2026-08-28T10:45:10.284044Z  INFO fs3_daemon::runner: done kind="embed" id=657016 left=34487
+2026-08-28T10:45:10.383504Z  INFO fs3_daemon::runner: batch kind="embed" subject=11 x raw jobs=1 ms=0
+2026-08-28T10:45:10.414558Z  INFO fs3_daemon::runner: done kind="embed" id=657023 left=34486
+2026-08-28T10:45:10.429475Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/surfaces/doctor.rs ms=69 left=34486
+2026-08-28T10:45:10.558916Z  INFO fs3_daemon::runner: batch kind="embed" subject=14 x raw jobs=1 ms=1
+2026-08-28T10:45:10.584899Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/surfaces.rs ms=88 left=34485
+2026-08-28T10:45:10.585011Z  INFO fs3_daemon::runner: done kind="embed" id=657031 left=34485
+2026-08-28T10:45:10.686391Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=1
+2026-08-28T10:45:10.718269Z  INFO fs3_daemon::runner: done kind="embed" id=657032 left=34485
+2026-08-28T10:45:10.718440Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/render.rs ms=54 left=34484
+2026-08-28T10:45:10.891666Z  INFO fs3_daemon::runner: batch kind="embed" subject=14 x raw jobs=1 ms=1
+2026-08-28T10:45:10.915246Z  INFO fs3_daemon::runner: done kind="embed" id=657037 left=34483
+2026-08-28T10:45:10.922146Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/mode.rs ms=61 left=34483
+2026-08-28T10:45:11.011920Z  INFO fs3_daemon::runner: batch kind="embed" subject=14 x raw jobs=1 ms=1
+2026-08-28T10:45:11.024885Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/lib.rs ms=35 left=34483
+2026-08-28T10:45:11.028856Z  INFO fs3_daemon::runner: done kind="embed" id=657044 left=34482
+2026-08-28T10:45:11.179495Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=0
+2026-08-28T10:45:11.206441Z  INFO fs3_daemon::runner: done kind="embed" id=657045 left=34481
+2026-08-28T10:45:11.206507Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/src/bin/demo.rs ms=76 left=34482
+2026-08-28T10:45:11.318044Z  INFO fs3_daemon::runner: batch kind="embed" subject=10 x raw jobs=1 ms=2
+2026-08-28T10:45:11.341444Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/README.md ms=61 left=34481
+2026-08-28T10:45:11.341951Z  INFO fs3_daemon::runner: done kind="embed" id=657050 left=34480
+2026-08-28T10:45:11.435489Z  INFO fs3_daemon::runner: batch kind="embed" subject=6 x raw jobs=1 ms=0
+2026-08-28T10:45:11.459570Z  INFO fs3_daemon::runner: done kind="embed" id=657056 left=34479
+2026-08-28T10:45:11.516271Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/human-render/LEARNINGS.md ms=110 left=34479
+2026-08-28T10:45:11.654043Z  INFO fs3_daemon::runner: batch kind="embed" subject=13 x raw jobs=1 ms=0
+2026-08-28T10:45:11.682382Z  INFO fs3_daemon::runner: done kind="embed" id=657067 left=34478
+2026-08-28T10:45:11.685414Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/daemon-shell/tests/end_to_end.rs ms=54 left=34478
+2026-08-28T10:45:11.783802Z  INFO fs3_daemon::runner: batch kind="embed" subject=15 x raw jobs=1 ms=0
+2026-08-28T10:45:11.819284Z  INFO fs3_daemon::runner: done kind="embed" id=657081 left=34477
+2026-08-28T10:45:11.830481Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/daemon-shell/src/watcher.rs ms=68 left=34478
+2026-08-28T10:45:12.020081Z  INFO fs3_daemon::runner: batch kind="embed" subject=21 x raw jobs=2 ms=5
+2026-08-28T10:45:12.060031Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/daemon-shell/src/main.rs ms=163 left=34478
+2026-08-28T10:45:12.087851Z  INFO fs3_daemon::runner: done kind="embed" id=657092 left=34477
+2026-08-28T10:45:12.189582Z  INFO fs3_daemon::runner: done kind="embed" id=657089 left=34476
+2026-08-28T10:45:12.298082Z  INFO fs3_daemon::runner: batch kind="embed" subject=3 x raw jobs=1 ms=0
+2026-08-28T10:45:12.326189Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/daemon-shell/src/lib.rs ms=66 left=34476
+2026-08-28T10:45:12.336202Z  INFO fs3_daemon::runner: done kind="embed" id=657095 left=34475
+2026-08-28T10:45:12.624983Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=2
+2026-08-28T10:45:12.731273Z  INFO fs3_daemon::runner: done kind="embed" id=657097 left=34474
+2026-08-28T10:45:13.222944Z  INFO fs3_daemon::runner: batch kind="embed" subject=18 x raw jobs=2 ms=1
+2026-08-28T10:45:13.234853Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/daemon-shell/src/http.rs ms=751 left=34475
+2026-08-28T10:45:13.347204Z  INFO fs3_daemon::runner: done kind="embed" id=657104 left=34475
+2026-08-28T10:45:13.486488Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/daemon-shell/README.md ms=474 left=34474
+2026-08-28T10:45:13.489977Z  INFO fs3_daemon::runner: done kind="embed" id=657109 left=34475
+2026-08-28T10:45:13.692791Z  INFO fs3_daemon::runner: batch kind="embed" subject=21 x raw jobs=2 ms=1
+2026-08-28T10:45:13.761262Z  INFO fs3_daemon::runner: done kind="embed" id=657121 left=34473
+2026-08-28T10:45:13.846958Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/daemon-shell/LEARNINGS.md ms=230 left=34475
+2026-08-28T10:45:13.847039Z  INFO fs3_daemon::runner: done kind=scan_file subject=pocs/daemon-shell/src/core.rs ms=976 left=34474
+2026-08-28T10:45:13.852564Z  INFO fs3_daemon::runner: done kind="embed" id=657114 left=34473
+2026-08-28T10:45:13.991252Z  INFO fs3_daemon::runner: batch kind="embed" subject=36 x raw jobs=3 ms=1
+2026-08-28T10:45:13.992725Z  INFO fs3_daemon::runner: done kind=scan_file subject=install.sh ms=45 left=34473
+2026-08-28T10:45:14.027053Z  INFO fs3_daemon::runner: done kind="embed" id=657149 left=34472
+2026-08-28T10:45:14.140962Z  INFO fs3_daemon::runner: done kind="embed" id=657133 left=34471
+2026-08-28T10:45:14.225997Z  INFO fs3_daemon::runner: done kind="embed" id=657148 left=34470
+2026-08-28T10:45:14.343190Z  INFO fs3_daemon::runner: done kind=scan_file subject=install.ps1 ms=49 left=34470
+2026-08-28T10:45:14.368219Z  INFO fs3_daemon::runner: progress phase="working" scanned=61043 scan_left=574 summarized=124174 summarize_left=33895 embedded=201987 embed_left=1 failed=0
+2026-08-28T10:45:14.443664Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x raw jobs=2 ms=0
+2026-08-28T10:45:14.492710Z  INFO fs3_daemon::runner: done kind="embed" id=657150 left=34469
+2026-08-28T10:45:14.583554Z  INFO fs3_daemon::runner: done kind="embed" id=657151 left=34468
+2026-08-28T10:45:14.832346Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:14.838247Z  INFO fs3_daemon::runner: done kind=scan_file subject=eval/ask/prompts/subject.md ms=175 left=34468
+2026-08-28T10:45:14.873759Z  INFO fs3_daemon::runner: done kind="embed" id=657153 left=34467
+2026-08-28T10:45:14.909079Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/worktree-lifecycle.md ms=197 left=34467
+2026-08-28T10:45:14.930534Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/watcher.md ms=161 left=34467
+2026-08-28T10:45:14.983720Z  INFO fs3_daemon::runner: batch kind="embed" subject=14 x raw jobs=2 ms=0
+2026-08-28T10:45:15.007056Z  INFO fs3_daemon::runner: done kind="embed" id=657169 left=34467
+2026-08-28T10:45:15.035809Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/tui.md ms=90 left=34466
+2026-08-28T10:45:15.116793Z  INFO fs3_daemon::runner: done kind="embed" id=657164 left=34465
+2026-08-28T10:45:15.326313Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=2
+2026-08-28T10:45:15.377437Z  INFO fs3_daemon::runner: done kind="embed" id=657177 left=34465
+2026-08-28T10:45:15.446581Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/store-schema.md ms=169 left=34466
+2026-08-28T10:45:15.744536Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=2
+2026-08-28T10:45:15.838057Z  INFO fs3_daemon::runner: done kind="embed" id=657184 left=34465
+2026-08-28T10:45:16.165896Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/self-teaching-cli.md ms=626 left=34465
+2026-08-28T10:45:16.221386Z  INFO fs3_daemon::runner: batch kind="embed" subject=10 x raw jobs=1 ms=2
+2026-08-28T10:45:16.264504Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/scanner.md ms=204 left=34465
+2026-08-28T10:45:16.293104Z  INFO fs3_daemon::runner: done kind="embed" id=657194 left=34464
+2026-08-28T10:45:16.443894Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/remove-and-gc.md ms=276 left=34464
+2026-08-28T10:45:16.667476Z  INFO fs3_daemon::runner: batch kind="embed" subject=18 x raw jobs=2 ms=1
+2026-08-28T10:45:16.750153Z  INFO fs3_daemon::runner: done kind="embed" id=657211 left=34463
+2026-08-28T10:45:16.844847Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/read-surface.md ms=258 left=34463
+2026-08-28T10:45:16.884819Z  INFO fs3_daemon::runner: done kind="embed" id=657201 left=34462
+2026-08-28T10:45:17.032394Z  INFO fs3_daemon::runner: batch kind="embed" subject=12 x raw jobs=1 ms=1
+2026-08-28T10:45:17.096871Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/provider-throughput.md ms=110 left=34461
+2026-08-28T10:45:17.097347Z  INFO fs3_daemon::runner: done kind="embed" id=657222 left=34462
+2026-08-28T10:45:17.234996Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=0
+2026-08-28T10:45:17.265078Z  INFO fs3_daemon::runner: done kind="embed" id=657226 left=34460
+2026-08-28T10:45:17.320145Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/local-embeddings.md ms=132 left=34460
+2026-08-28T10:45:17.389208Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=1
+2026-08-28T10:45:17.422863Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/human-render.md ms=78 left=34459
+2026-08-28T10:45:17.423934Z  INFO fs3_daemon::runner: done kind="embed" id=657236 left=34459
+2026-08-28T10:45:17.548267Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=1
+2026-08-28T10:45:17.587910Z  INFO fs3_daemon::runner: done kind="embed" id=657241 left=34460
+2026-08-28T10:45:17.619796Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/first-light.md ms=110 left=34460
+2026-08-28T10:45:17.711007Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=0
+2026-08-28T10:45:17.735864Z  INFO fs3_daemon::runner: done kind="embed" id=657248 left=34459
+2026-08-28T10:45:17.753578Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/event-stream.md ms=77 left=34459
+2026-08-28T10:45:17.860883Z  INFO fs3_daemon::runner: batch kind="embed" subject=13 x raw jobs=1 ms=1
+2026-08-28T10:45:17.873926Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/docker.md ms=48 left=34459
+2026-08-28T10:45:17.888845Z  INFO fs3_daemon::runner: done kind="embed" id=657258 left=34458
+2026-08-28T10:45:18.001491Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=0
+2026-08-28T10:45:18.035604Z  INFO fs3_daemon::runner: done kind="embed" id=657261 left=34457
+2026-08-28T10:45:18.041432Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/database-migrations.md ms=71 left=34457
+2026-08-28T10:45:18.147183Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=2
+2026-08-28T10:45:18.183222Z  INFO fs3_daemon::runner: done kind="embed" id=657266 left=34456
+2026-08-28T10:45:18.185792Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/daemon-logs.md ms=78 left=34456
+2026-08-28T10:45:18.295149Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=1
+2026-08-28T10:45:18.324809Z  INFO fs3_daemon::runner: done kind="embed" id=657272 left=34455
+2026-08-28T10:45:18.428035Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=1
+2026-08-28T10:45:18.455463Z  INFO fs3_daemon::runner: done kind="embed" id=657286 left=34455
+2026-08-28T10:45:18.548741Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/convo-source-omp.md ms=279 left=34455
+2026-08-28T10:45:18.569909Z  INFO fs3_daemon::runner: batch kind="embed" subject=28 x raw jobs=2 ms=2
+2026-08-28T10:45:18.613799Z  INFO fs3_daemon::runner: done kind="embed" id=657309 left=34455
+2026-08-28T10:45:18.613880Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/convo-source-metricsdb.md ms=217 left=34455
+2026-08-28T10:45:18.628456Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/convo-ingest.md ms=93 left=34455
+2026-08-28T10:45:18.720453Z  INFO fs3_daemon::runner: done kind="embed" id=657312 left=34454
+2026-08-28T10:45:18.832475Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=2 ms=1
+2026-08-28T10:45:18.865305Z  INFO fs3_daemon::runner: done kind="embed" id=657325 left=34453
+2026-08-28T10:45:18.915608Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/convo-cursors.md ms=127 left=34453
+2026-08-28T10:45:18.986387Z  INFO fs3_daemon::runner: done kind="embed" id=657329 left=34452
+2026-08-28T10:45:19.141807Z  INFO fs3_daemon::runner: batch kind="embed" subject=12 x raw jobs=1 ms=0
+2026-08-28T10:45:19.190523Z  INFO fs3_daemon::runner: done kind="embed" id=657341 left=34451
+2026-08-28T10:45:19.335867Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/conversations.md ms=243 left=34451
+2026-08-28T10:45:19.371904Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=1
+2026-08-28T10:45:19.400609Z  INFO fs3_daemon::runner: done kind="embed" id=657348 left=34450
+2026-08-28T10:45:19.419635Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/config.md ms=138 left=34450
+2026-08-28T10:45:19.437234Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/ci-release.md ms=100 left=34450
+2026-08-28T10:45:19.556958Z  INFO fs3_daemon::runner: progress phase="working" scanned=61068 scan_left=549 summarized=124174 summarize_left=33899 embedded=202013 embed_left=2 failed=0
+2026-08-28T10:45:19.583105Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=2 ms=1
+2026-08-28T10:45:19.597576Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/auto-update.md ms=116 left=34451
+2026-08-28T10:45:19.603316Z  INFO fs3_daemon::runner: done kind="embed" id=657361 left=34450
+2026-08-28T10:45:19.727650Z  INFO fs3_daemon::runner: done kind="embed" id=657364 left=34449
+2026-08-28T10:45:19.833461Z  INFO fs3_daemon::runner: batch kind="embed" subject=19 x raw jobs=2 ms=0
+2026-08-28T10:45:19.878538Z  INFO fs3_daemon::runner: done kind="embed" id=657378 left=34448
+2026-08-28T10:45:19.991379Z  INFO fs3_daemon::runner: done kind="embed" id=657383 left=34447
+2026-08-28T10:45:20.192419Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=4
+2026-08-28T10:45:20.232533Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/ask.md ms=433 left=34447
+2026-08-28T10:45:20.241306Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/services/README.md ms=137 left=34448
+2026-08-28T10:45:20.263124Z  INFO fs3_daemon::runner: done kind="embed" id=657393 left=34446
+2026-08-28T10:45:20.383248Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/rules-idioms-architecture/fs3-architecture.md ms=232 left=34446
+2026-08-28T10:45:20.388224Z  INFO fs3_daemon::runner: batch kind="embed" subject=22 x raw jobs=2 ms=0
+2026-08-28T10:45:20.422057Z  INFO fs3_daemon::runner: done kind="embed" id=657399 left=34445
+2026-08-28T10:45:20.509571Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/reference/error-codes.md ms=148 left=34447
+2026-08-28T10:45:20.519461Z  INFO fs3_daemon::runner: done kind="embed" id=657394 left=34446
+2026-08-28T10:45:20.614101Z  INFO fs3_daemon::boot: fs3 daemon starting config=/var/folders/mv/9mcvlzg504b158ctlswmgwph0000gn/T/fs3-discovered-config-10500-0 log=/Users/jordanknight/.local/state/flowspace3/logs/flowspace3.log daemon=config.toml database=FS3_* environment embedder=fake summarizer=fake repos=0
+2026-08-28T10:45:20.624292Z  INFO fs3_daemon::runner: batch kind="embed" subject=39 x raw jobs=3 ms=0
+2026-08-28T10:45:20.658025Z  INFO fs3_daemon::runner: done kind="embed" id=657408 left=34445
+2026-08-28T10:45:20.693980Z  INFO fs3_daemon::boot: store schema is current database=postgres://flowspace3:<redacted>@127.0.0.1:5433/fs3_ddocs_u2_test
+2026-08-28T10:45:20.704786Z  INFO fs3_daemon::boot: starting the job runner workers=4
+2026-08-28T10:45:20.707887Z  INFO fs3_daemon::boot: starting the reconcile runner cadence_seconds=5 debounce_seconds=10
+2026-08-28T10:45:20.708265Z  INFO fs3_daemon::boot: starting the update supervisor auto=true every_hours=24
+2026-08-28T10:45:20.708634Z  INFO fs3_daemon::http: fs3 daemon listening bound=127.0.0.1:54875
+2026-08-28T10:45:20.726677Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/reference/configuration.md ms=130 left=34445
+2026-08-28T10:45:20.761380Z  INFO fs3_daemon::runner: done kind="embed" id=657422 left=34444
+2026-08-28T10:45:20.864370Z  INFO fs3_daemon::runner: done kind="embed" id=657417 left=34443
+2026-08-28T10:45:21.025573Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=1
+2026-08-28T10:45:21.100352Z  INFO fs3_daemon::runner: done kind="embed" id=657434 left=34442
+2026-08-28T10:45:21.197628Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/prd/workshops/005-conversations.md ms=222 left=34442
+2026-08-28T10:45:21.256214Z  INFO fs3_daemon::runner: batch kind="embed" subject=10 x raw jobs=1 ms=0
+2026-08-28T10:45:21.272386Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/prd/workshops/004-envelopes-and-errors.md ms=74 left=34442
+2026-08-28T10:45:21.289960Z  INFO fs3_daemon::runner: done kind="embed" id=657445 left=34441
+2026-08-28T10:45:21.397502Z  INFO fs3_daemon::runner: batch kind="embed" subject=6 x raw jobs=1 ms=0
+2026-08-28T10:45:21.421722Z  INFO fs3_daemon::runner: done kind="embed" id=657449 left=34440
+2026-08-28T10:45:21.444089Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/prd/workshops/003-query-surface.md ms=77 left=34440
+2026-08-28T10:45:21.528602Z  INFO fs3_daemon::runner: batch kind="embed" subject=10 x raw jobs=1 ms=1
+2026-08-28T10:45:21.543805Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/prd/providers-roster.md ms=43 left=34440
+2026-08-28T10:45:21.550381Z  INFO fs3_daemon::runner: done kind="embed" id=657456 left=34439
+2026-08-28T10:45:21.653786Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x raw jobs=1 ms=0
+2026-08-28T10:45:21.672976Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/prd/doctor-design.md ms=45 left=34439
+2026-08-28T10:45:21.673498Z  INFO fs3_daemon::runner: done kind="embed" id=657458 left=34438
+2026-08-28T10:45:21.819975Z  INFO fs3_daemon::runner: batch kind="embed" subject=6 x raw jobs=1 ms=0
+2026-08-28T10:45:21.827781Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/prd/daemon-worker-architecture.md ms=49 left=34438
+2026-08-28T10:45:21.855880Z  INFO fs3_daemon::runner: done kind="embed" id=657461 left=34437
+2026-08-28T10:45:21.959438Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=0
+2026-08-28T10:45:21.972544Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/prd/base-prd.md ms=43 left=34437
+2026-08-28T10:45:21.979349Z  INFO fs3_daemon::runner: done kind="embed" id=657463 left=34436
+2026-08-28T10:45:22.080160Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:22.111212Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/prd/base-prd.dd.md ms=58 left=34435
+2026-08-28T10:45:22.111261Z  INFO fs3_daemon::runner: done kind="embed" id=657464 left=34436
+2026-08-28T10:45:22.204743Z  INFO fs3_daemon::runner: batch kind="embed" subject=3 x raw jobs=1 ms=0
+2026-08-28T10:45:22.234043Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/conversations/plan.dd.md ms=49 left=34434
+2026-08-28T10:45:22.234099Z  INFO fs3_daemon::runner: done kind="embed" id=657468 left=34434
+2026-08-28T10:45:22.347808Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=0
+2026-08-28T10:45:22.371637Z  INFO fs3_daemon::runner: done kind="embed" id=657472 left=34433
+2026-08-28T10:45:22.371747Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/conversations/assets/tasks/phase-3/tasks.dd.md ms=57 left=34434
+2026-08-28T10:45:22.480217Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=0
+2026-08-28T10:45:22.490652Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/conversations/assets/tasks/phase-2/tasks.dd.md ms=42 left=34433
+2026-08-28T10:45:22.502594Z  INFO fs3_daemon::runner: done kind="embed" id=657476 left=34432
+2026-08-28T10:45:22.601669Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=0
+2026-08-28T10:45:22.620689Z  INFO fs3_daemon::runner: done kind="embed" id=657480 left=34431
+2026-08-28T10:45:22.621009Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/conversations/assets/tasks/phase-1/tasks.dd.md ms=45 left=34432
+2026-08-28T10:45:22.723836Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=0
+2026-08-28T10:45:22.750111Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/conversations/assets/evidence/dogfood-exit-proof.md ms=54 left=34430
+2026-08-28T10:45:22.750679Z  INFO fs3_daemon::runner: done kind="embed" id=657484 left=34431
+2026-08-28T10:45:22.885701Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=0
+2026-08-28T10:45:22.935214Z  INFO fs3_daemon::runner: done kind="embed" id=657493 left=34429
+2026-08-28T10:45:22.935384Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/plan.dd.md ms=103 left=34430
+2026-08-28T10:45:23.046255Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=0
+2026-08-28T10:45:23.083746Z  INFO fs3_daemon::runner: done kind="embed" id=657497 left=34428
+2026-08-28T10:45:23.093264Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/packet-reviewer.dd.md ms=73 left=34428
+2026-08-28T10:45:23.224141Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=0
+2026-08-28T10:45:23.260184Z  INFO fs3_daemon::runner: done kind="embed" id=657504 left=34428
+2026-08-28T10:45:23.260460Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/packet-pm.dd.md ms=78 left=34427
+2026-08-28T10:45:23.426136Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=0
+2026-08-28T10:45:23.464104Z  INFO fs3_daemon::runner: done kind="embed" id=657512 left=34426
+2026-08-28T10:45:23.500694Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/packet-coder.dd.md ms=128 left=34426
+2026-08-28T10:45:23.608498Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=2
+2026-08-28T10:45:23.635819Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/packet-coder-u-w.dd.md ms=69 left=34425
+2026-08-28T10:45:23.635880Z  INFO fs3_daemon::runner: done kind="embed" id=657519 left=34426
+2026-08-28T10:45:23.763915Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=1
+2026-08-28T10:45:23.786229Z  INFO fs3_daemon::runner: done kind="embed" id=657527 left=34424
+2026-08-28T10:45:23.834309Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/packet-coder-u-t.dd.md ms=101 left=34424
+2026-08-28T10:45:23.891857Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=1
+2026-08-28T10:45:23.924660Z  INFO fs3_daemon::runner: done kind="embed" id=657535 left=34423
+2026-08-28T10:45:23.925632Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/packet-coder-u-r.dd.md ms=67 left=34423
+2026-08-28T10:45:24.034906Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=0
+2026-08-28T10:45:24.061531Z  INFO fs3_daemon::runner: done kind="embed" id=657543 left=34422
+2026-08-28T10:45:24.074073Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/impl-guide.dd.md ms=61 left=34422
+2026-08-28T10:45:24.191235Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=1
+2026-08-28T10:45:24.214116Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/assets/tasks/phase-3/tasks.dd.md ms=65 left=34422
+2026-08-28T10:45:24.214167Z  INFO fs3_daemon::runner: done kind="embed" id=657551 left=34421
+2026-08-28T10:45:24.317797Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=0
+2026-08-28T10:45:24.350850Z  INFO fs3_daemon::runner: done kind="embed" id=657555 left=34420
+2026-08-28T10:45:24.350972Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/assets/tasks/phase-2/tasks.dd.md ms=55 left=34420
+2026-08-28T10:45:24.459224Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=1
+2026-08-28T10:45:24.479325Z  INFO fs3_daemon::runner: done kind="embed" id=657559 left=34419
+2026-08-28T10:45:24.479498Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/assets/tasks/phase-1/tasks.dd.md ms=50 left=34420
+2026-08-28T10:45:24.649120Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=0
+2026-08-28T10:45:24.697534Z  INFO fs3_daemon::runner: done kind="embed" id=657563 left=34418
+2026-08-28T10:45:24.764153Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/assets/run/pm-ack.md ms=207 left=34418
+2026-08-28T10:45:24.852092Z  INFO fs3_daemon::runner: progress phase="working" scanned=61099 scan_left=518 summarized=124174 summarize_left=33899 embedded=202048 embed_left=1 failed=0
+2026-08-28T10:45:24.867720Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/assets/run/buffers/u-w-session-buffer.md ms=80 left=34418
+2026-08-28T10:45:24.910911Z  INFO fs3_daemon::runner: batch kind="embed" subject=6 x raw jobs=2 ms=1
+2026-08-28T10:45:24.959317Z  INFO fs3_daemon::runner: done kind="embed" id=657568 left=34417
+2026-08-28T10:45:25.079351Z  INFO fs3_daemon::runner: done kind="embed" id=657569 left=34416
+2026-08-28T10:45:25.246681Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/assets/run/buffers/u-t-session-buffer.md ms=92 left=34416
+2026-08-28T10:45:25.266942Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:25.297844Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/assets/run/buffers/u-r-session-buffer.md ms=84 left=34416
+2026-08-28T10:45:25.306184Z  INFO fs3_daemon::runner: done kind="embed" id=657570 left=34415
+2026-08-28T10:45:25.488928Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:25.545697Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/assets/run/buffers/pm-session-buffer.md ms=117 left=34414
+2026-08-28T10:45:25.550857Z  INFO fs3_daemon::runner: done kind="embed" id=657571 left=34414
+2026-08-28T10:45:26.451474Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:26.469311Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/assets/reviews/review-007.dd.md ms=150 left=34414
+2026-08-28T10:45:26.569677Z  INFO fs3_daemon::runner: done kind="embed" id=657572 left=34413
+2026-08-28T10:45:26.712422Z  INFO fs3_daemon::runner: batch kind="embed" subject=4 x raw jobs=1 ms=1
+2026-08-28T10:45:26.760952Z  INFO fs3_daemon::runner: done kind="embed" id=657577 left=34412
+2026-08-28T10:45:26.762643Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/assets/inputs/tui-poc-VERDICT.md ms=110 left=34412
+2026-08-28T10:45:26.901358Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=1
+2026-08-28T10:45:26.932760Z  INFO fs3_daemon::runner: done kind="embed" id=657585 left=34411
+2026-08-28T10:45:26.932812Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/assets/inputs/README.md ms=90 left=34412
+2026-08-28T10:45:27.074021Z  INFO fs3_daemon::runner: batch kind="embed" subject=4 x raw jobs=1 ms=0
+2026-08-28T10:45:27.121627Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/assets/first-light.md ms=103 left=34410
+2026-08-28T10:45:27.121766Z  INFO fs3_daemon::runner: done kind="embed" id=657590 left=34410
+2026-08-28T10:45:27.278067Z  INFO fs3_daemon::runner: batch kind="embed" subject=4 x raw jobs=1 ms=2
+2026-08-28T10:45:27.310965Z  INFO fs3_daemon::runner: done kind="embed" id=657595 left=34409
+2026-08-28T10:45:27.336985Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/007-human-interface/assets/first-light-transcript.md ms=95 left=34409
+2026-08-28T10:45:27.438931Z  INFO fs3_daemon::runner: batch kind="embed" subject=15 x raw jobs=1 ms=0
+2026-08-28T10:45:27.468699Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/plan.dd.md ms=65 left=34409
+2026-08-28T10:45:27.468865Z  INFO fs3_daemon::runner: done kind="embed" id=657609 left=34408
+2026-08-28T10:45:27.584405Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=1
+2026-08-28T10:45:27.623048Z  INFO fs3_daemon::runner: done kind="embed" id=657613 left=34407
+2026-08-28T10:45:27.623823Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/packet-reviewer.dd.md ms=74 left=34407
+2026-08-28T10:45:27.780458Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=2
+2026-08-28T10:45:27.825901Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/packet-pm.dd.md ms=117 left=34406
+2026-08-28T10:45:27.826015Z  INFO fs3_daemon::runner: done kind="embed" id=657620 left=34406
+2026-08-28T10:45:27.972929Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=1
+2026-08-28T10:45:28.026568Z  INFO fs3_daemon::runner: done kind="embed" id=657628 left=34405
+2026-08-28T10:45:28.027099Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/packet-coder.dd.md ms=106 left=34405
+2026-08-28T10:45:28.149780Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=2
+2026-08-28T10:45:28.190484Z  INFO fs3_daemon::runner: done kind="embed" id=657635 left=34404
+2026-08-28T10:45:28.262651Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/packet-coder-uc.dd.md ms=147 left=34404
+2026-08-28T10:45:28.337433Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=3
+2026-08-28T10:45:28.384304Z  INFO fs3_daemon::runner: done kind="embed" id=657643 left=34403
+2026-08-28T10:45:28.428730Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/packet-coder-ua.dd.md ms=150 left=34403
+2026-08-28T10:45:28.526343Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=1
+2026-08-28T10:45:28.576052Z  INFO fs3_daemon::runner: done kind="embed" id=657651 left=34402
+2026-08-28T10:45:28.585806Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/impl-guide.dd.md ms=105 left=34402
+2026-08-28T10:45:28.717836Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=1
+2026-08-28T10:45:28.751966Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/tasks/phase-3/tasks.dd.md ms=73 left=34401
+2026-08-28T10:45:28.752066Z  INFO fs3_daemon::runner: done kind="embed" id=657657 left=34402
+2026-08-28T10:45:28.873696Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=0
+2026-08-28T10:45:28.898926Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/tasks/phase-2/tasks.dd.md ms=60 left=34401
+2026-08-28T10:45:28.898988Z  INFO fs3_daemon::runner: done kind="embed" id=657661 left=34400
+2026-08-28T10:45:29.022329Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=0
+2026-08-28T10:45:29.063003Z  INFO fs3_daemon::runner: done kind="embed" id=657665 left=34399
+2026-08-28T10:45:29.084549Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/tasks/phase-2/execution.log.md ms=90 left=34399
+2026-08-28T10:45:29.206862Z  INFO fs3_daemon::runner: batch kind="embed" subject=14 x raw jobs=1 ms=0
+2026-08-28T10:45:29.233076Z  INFO fs3_daemon::runner: done kind="embed" id=657673 left=34398
+2026-08-28T10:45:29.236572Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/tasks/phase-1/tasks.dd.md ms=75 left=34399
+2026-08-28T10:45:29.362370Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=0
+2026-08-28T10:45:29.397886Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/reviews/cross-model-review.dd.md ms=68 left=34398
+2026-08-28T10:45:29.398068Z  INFO fs3_daemon::runner: done kind="embed" id=657677 left=34397
+2026-08-28T10:45:29.552436Z  INFO fs3_daemon::runner: batch kind="embed" subject=4 x raw jobs=1 ms=2
+2026-08-28T10:45:29.590821Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/process-feedback.md ms=92 left=34396
+2026-08-28T10:45:29.590926Z  INFO fs3_daemon::runner: done kind="embed" id=657681 left=34397
+2026-08-28T10:45:29.726746Z  INFO fs3_daemon::runner: batch kind="embed" subject=14 x raw jobs=1 ms=0
+2026-08-28T10:45:29.739785Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/probe.sh ms=51 left=34396
+2026-08-28T10:45:29.751619Z  INFO fs3_daemon::runner: done kind="embed" id=657690 left=34395
+2026-08-28T10:45:29.888549Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=2
+2026-08-28T10:45:29.891511Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/p3-version-file.txt ms=43 left=34395
+2026-08-28T10:45:29.927965Z  INFO fs3_daemon::runner: done kind="embed" id=657691 left=34394
+2026-08-28T10:45:30.059226Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/p2a-paid.txt ms=50 left=34394
+2026-08-28T10:45:30.078261Z  INFO fs3_daemon::runner: progress phase="working" scanned=61123 scan_left=494 summarized=124174 summarize_left=33899 embedded=202072 embed_left=1 failed=0
+2026-08-28T10:45:30.126511Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x raw jobs=2 ms=3
+2026-08-28T10:45:30.157068Z  INFO fs3_daemon::runner: done kind="embed" id=657693 left=34393
+2026-08-28T10:45:30.252137Z  INFO fs3_daemon::runner: done kind="embed" id=657692 left=34392
+2026-08-28T10:45:30.376260Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/p2a-jobs.txt ms=53 left=34392
+2026-08-28T10:45:30.389641Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:30.403686Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/p2a-deltas.txt ms=48 left=34392
+2026-08-28T10:45:30.429547Z  INFO fs3_daemon::runner: done kind="embed" id=657694 left=34391
+2026-08-28T10:45:30.554429Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:30.561177Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/p1-worktree-add.txt ms=43 left=34391
+2026-08-28T10:45:30.603663Z  INFO fs3_daemon::runner: done kind="embed" id=657695 left=34390
+2026-08-28T10:45:30.731118Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:30.737024Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/p1-jobs.txt ms=57 left=34390
+2026-08-28T10:45:30.771711Z  INFO fs3_daemon::runner: done kind="embed" id=657696 left=34389
+2026-08-28T10:45:30.917245Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:30.918564Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T064745Z/p1-deltas.txt ms=63 left=34389
+2026-08-28T10:45:30.956734Z  INFO fs3_daemon::runner: done kind="embed" id=657697 left=34388
+2026-08-28T10:45:31.071065Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:31.086798Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p4-orphaned-before-gc.txt ms=56 left=34388
+2026-08-28T10:45:31.097647Z  INFO fs3_daemon::runner: done kind="embed" id=657698 left=34387
+2026-08-28T10:45:31.214235Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:31.238859Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p4-orphaned-after-gc.txt ms=57 left=34387
+2026-08-28T10:45:31.245736Z  INFO fs3_daemon::runner: done kind="embed" id=657699 left=34386
+2026-08-28T10:45:31.388788Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p4-jobs.txt ms=43 left=34386
+2026-08-28T10:45:31.404488Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:31.432712Z  INFO fs3_daemon::runner: done kind="embed" id=657700 left=34385
+2026-08-28T10:45:31.544329Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:31.560998Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p4-deltas-whole-run.txt ms=46 left=34385
+2026-08-28T10:45:31.570222Z  INFO fs3_daemon::runner: done kind="embed" id=657701 left=34384
+2026-08-28T10:45:31.685407Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:31.699261Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p4-deltas-git-remove.txt ms=46 left=34384
+2026-08-28T10:45:31.713102Z  INFO fs3_daemon::runner: done kind="embed" id=657702 left=34383
+2026-08-28T10:45:31.838692Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:31.870138Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p4-deltas-gc.txt ms=61 left=34382
+2026-08-28T10:45:31.870382Z  INFO fs3_daemon::runner: done kind="embed" id=657703 left=34383
+2026-08-28T10:45:32.012440Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:32.023381Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p4-deltas-fs3-remove.txt ms=63 left=34382
+2026-08-28T10:45:32.067842Z  INFO fs3_daemon::runner: done kind="embed" id=657704 left=34381
+2026-08-28T10:45:32.260550Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:32.317754Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p3-version-file.txt ms=150 left=34381
+2026-08-28T10:45:32.324061Z  INFO fs3_daemon::runner: done kind="embed" id=657705 left=34380
+2026-08-28T10:45:32.573223Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:32.620398Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p3-version-file-blobs.txt ms=187 left=34380
+2026-08-28T10:45:32.663989Z  INFO fs3_daemon::runner: done kind="embed" id=657706 left=34379
+2026-08-28T10:45:32.915560Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:32.962552Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p3-search-flags.txt ms=175 left=34379
+2026-08-28T10:45:32.997847Z  INFO fs3_daemon::runner: done kind="embed" id=657707 left=34378
+2026-08-28T10:45:33.202775Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=4
+2026-08-28T10:45:33.272663Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p3-result-fields.txt ms=164 left=34378
+2026-08-28T10:45:33.292923Z  INFO fs3_daemon::runner: done kind="embed" id=657708 left=34377
+2026-08-28T10:45:33.580110Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=2
+2026-08-28T10:45:33.675901Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p3-elements-by-blob.txt ms=166 left=34377
+2026-08-28T10:45:33.676213Z  INFO fs3_daemon::runner: done kind="embed" id=657709 left=34376
+2026-08-28T10:45:33.796572Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:33.806574Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p3-colliding-addresses.txt ms=47 left=34376
+2026-08-28T10:45:33.834485Z  INFO fs3_daemon::runner: done kind="embed" id=657710 left=34375
+2026-08-28T10:45:33.954432Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:33.967514Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p2b-reference-map.txt ms=48 left=34375
+2026-08-28T10:45:33.990882Z  INFO fs3_daemon::runner: done kind="embed" id=657711 left=34374
+2026-08-28T10:45:34.105793Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:34.114794Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p2b-paid.txt ms=41 left=34374
+2026-08-28T10:45:34.136282Z  INFO fs3_daemon::runner: done kind="embed" id=657712 left=34373
+2026-08-28T10:45:34.234846Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:34.243851Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p2b-jobs.txt ms=38 left=34373
+2026-08-28T10:45:34.257022Z  INFO fs3_daemon::runner: done kind="embed" id=657713 left=34372
+2026-08-28T10:45:34.360361Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:34.375616Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p2b-edited-files.txt ms=46 left=34372
+2026-08-28T10:45:34.390115Z  INFO fs3_daemon::runner: done kind="embed" id=657714 left=34371
+2026-08-28T10:45:34.543411Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:34.544342Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p2b-divergent-paths.txt ms=70 left=34371
+2026-08-28T10:45:34.583638Z  INFO fs3_daemon::runner: done kind="embed" id=657715 left=34370
+2026-08-28T10:45:34.708313Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=2
+2026-08-28T10:45:34.710683Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p2b-deltas.txt ms=47 left=34370
+2026-08-28T10:45:34.747876Z  INFO fs3_daemon::runner: done kind="embed" id=657716 left=34369
+2026-08-28T10:45:34.854154Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:34.879505Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p2a-paid.txt ms=59 left=34369
+2026-08-28T10:45:34.886750Z  INFO fs3_daemon::runner: done kind="embed" id=657717 left=34368
+2026-08-28T10:45:35.028788Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:35.040567Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p2a-jobs.txt ms=47 left=34368
+2026-08-28T10:45:35.062672Z  INFO fs3_daemon::runner: done kind="embed" id=657718 left=34367
+2026-08-28T10:45:35.215226Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p2a-deltas.txt ms=60 left=34367
+2026-08-28T10:45:35.235727Z  INFO fs3_daemon::runner: progress phase="working" scanned=61150 scan_left=467 summarized=124174 summarize_left=33899 embedded=202099 embed_left=1 failed=0
+2026-08-28T10:45:35.268215Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x raw jobs=2 ms=2
+2026-08-28T10:45:35.303528Z  INFO fs3_daemon::runner: done kind="embed" id=657720 left=34366
+2026-08-28T10:45:35.398307Z  INFO fs3_daemon::runner: done kind="embed" id=657719 left=34365
+2026-08-28T10:45:35.528086Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p1-worktree-add.txt ms=55 left=34365
+2026-08-28T10:45:35.548837Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:35.567017Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p1-noop-jobs.txt ms=61 left=34365
+2026-08-28T10:45:35.580556Z  INFO fs3_daemon::runner: done kind="embed" id=657721 left=34364
+2026-08-28T10:45:35.703575Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:35.715813Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z/p1-deltas.txt ms=46 left=34364
+2026-08-28T10:45:35.736457Z  INFO fs3_daemon::runner: done kind="embed" id=657722 left=34363
+2026-08-28T10:45:35.859376Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=5
+2026-08-28T10:45:35.873154Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p4-orphaned-before-gc.txt ms=57 left=34363
+2026-08-28T10:45:35.926687Z  INFO fs3_daemon::runner: done kind="embed" id=657723 left=34362
+2026-08-28T10:45:36.087345Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:36.104147Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p4-orphaned-after-gc.txt ms=71 left=34362
+2026-08-28T10:45:36.138782Z  INFO fs3_daemon::runner: done kind="embed" id=657724 left=34361
+2026-08-28T10:45:36.260395Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:36.288393Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p4-jobs.txt ms=69 left=34361
+2026-08-28T10:45:36.288600Z  INFO fs3_daemon::runner: done kind="embed" id=657725 left=34360
+2026-08-28T10:45:36.411975Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:36.425750Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p4-deltas-whole-run.txt ms=54 left=34360
+2026-08-28T10:45:36.444822Z  INFO fs3_daemon::runner: done kind="embed" id=657726 left=34359
+2026-08-28T10:45:36.571723Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:36.573560Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p4-deltas-git-remove.txt ms=43 left=34359
+2026-08-28T10:45:36.615245Z  INFO fs3_daemon::runner: done kind="embed" id=657727 left=34358
+2026-08-28T10:45:36.737254Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:36.747543Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p4-deltas-gc.txt ms=47 left=34358
+2026-08-28T10:45:36.770361Z  INFO fs3_daemon::runner: done kind="embed" id=657728 left=34357
+2026-08-28T10:45:36.889881Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=2
+2026-08-28T10:45:36.900141Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p4-deltas-fs3-remove.txt ms=44 left=34357
+2026-08-28T10:45:36.911628Z  INFO fs3_daemon::runner: done kind="embed" id=657729 left=34356
+2026-08-28T10:45:37.031442Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:37.058498Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-version-file.txt ms=59 left=34356
+2026-08-28T10:45:37.058703Z  INFO fs3_daemon::runner: done kind="embed" id=657730 left=34355
+2026-08-28T10:45:37.177546Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:37.191021Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-version-file-blobs.txt ms=45 left=34355
+2026-08-28T10:45:37.204286Z  INFO fs3_daemon::runner: done kind="embed" id=657731 left=34354
+2026-08-28T10:45:37.319256Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=2
+2026-08-28T10:45:37.335464Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-search-flags.txt ms=50 left=34354
+2026-08-28T10:45:37.339924Z  INFO fs3_daemon::runner: done kind="embed" id=657732 left=34353
+2026-08-28T10:45:37.449835Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:37.458154Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-result-fields.txt ms=42 left=34353
+2026-08-28T10:45:37.476079Z  INFO fs3_daemon::runner: done kind="embed" id=657733 left=34352
+2026-08-28T10:45:37.593509Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:37.608821Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-elements-by-blob.txt ms=44 left=34352
+2026-08-28T10:45:37.617911Z  INFO fs3_daemon::runner: done kind="embed" id=657734 left=34351
+2026-08-28T10:45:37.729749Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:37.741746Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-colliding-addresses.txt ms=47 left=34351
+2026-08-28T10:45:37.759509Z  INFO fs3_daemon::runner: done kind="embed" id=657735 left=34350
+2026-08-28T10:45:37.863211Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:37.883776Z  INFO fs3_daemon::runner: done kind="embed" id=657736 left=34349
+2026-08-28T10:45:37.883848Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2b-reference-map.txt ms=47 left=34350
+2026-08-28T10:45:37.996814Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:38.007103Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2b-paid.txt ms=44 left=34349
+2026-08-28T10:45:38.020357Z  INFO fs3_daemon::runner: done kind="embed" id=657737 left=34348
+2026-08-28T10:45:38.133128Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:38.135010Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2b-jobs.txt ms=38 left=34348
+2026-08-28T10:45:38.175393Z  INFO fs3_daemon::runner: done kind="embed" id=657738 left=34347
+2026-08-28T10:45:38.276389Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:38.288880Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2b-edited-files.txt ms=44 left=34347
+2026-08-28T10:45:38.302075Z  INFO fs3_daemon::runner: done kind="embed" id=657739 left=34346
+2026-08-28T10:45:38.457001Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:38.463095Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2b-divergent-paths.txt ms=83 left=34346
+2026-08-28T10:45:38.514537Z  INFO fs3_daemon::runner: done kind="embed" id=657740 left=34345
+2026-08-28T10:45:38.637113Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=4
+2026-08-28T10:45:38.716773Z  INFO fs3_daemon::runner: done kind="embed" id=657741 left=34344
+2026-08-28T10:45:38.722495Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2b-deltas.txt ms=127 left=34345
+2026-08-28T10:45:38.879306Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:38.887611Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2a-paid.txt ms=65 left=34344
+2026-08-28T10:45:38.919521Z  INFO fs3_daemon::runner: done kind="embed" id=657742 left=34343
+2026-08-28T10:45:39.035453Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:39.073763Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2a-jobs.txt ms=76 left=34343
+2026-08-28T10:45:39.090656Z  INFO fs3_daemon::runner: done kind="embed" id=657743 left=34342
+2026-08-28T10:45:39.231724Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:39.262950Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2a-deltas.txt ms=88 left=34342
+2026-08-28T10:45:39.289745Z  INFO fs3_daemon::runner: done kind="embed" id=657744 left=34341
+2026-08-28T10:45:39.472879Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:39.515413Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p1-worktree-add.txt ms=116 left=34341
+2026-08-28T10:45:39.541263Z  INFO fs3_daemon::runner: done kind="embed" id=657745 left=34340
+2026-08-28T10:45:39.729233Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:39.749313Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p1-jobs.txt ms=121 left=34340
+2026-08-28T10:45:39.806907Z  INFO fs3_daemon::runner: done kind="embed" id=657746 left=34339
+2026-08-28T10:45:39.935359Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=2
+2026-08-28T10:45:39.957816Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p1-deltas.txt ms=64 left=34339
+2026-08-28T10:45:39.958066Z  INFO fs3_daemon::runner: done kind="embed" id=657747 left=34338
+2026-08-28T10:45:40.061477Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:40.073788Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p4-orphaned-before-gc.txt ms=39 left=34338
+2026-08-28T10:45:40.086379Z  INFO fs3_daemon::runner: done kind="embed" id=657748 left=34337
+2026-08-28T10:45:40.217616Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:40.229908Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p4-orphaned-after-gc.txt ms=51 left=34337
+2026-08-28T10:45:40.241123Z  INFO fs3_daemon::runner: done kind="embed" id=657749 left=34336
+2026-08-28T10:45:40.372455Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p4-jobs.txt ms=46 left=34336
+2026-08-28T10:45:40.396704Z  INFO fs3_daemon::runner: progress phase="working" scanned=61181 scan_left=436 summarized=124174 summarize_left=33899 embedded=202130 embed_left=1 failed=0
+2026-08-28T10:45:40.437540Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x raw jobs=2 ms=0
+2026-08-28T10:45:40.468696Z  INFO fs3_daemon::runner: done kind="embed" id=657751 left=34335
+2026-08-28T10:45:40.567303Z  INFO fs3_daemon::runner: done kind="embed" id=657750 left=34334
+2026-08-28T10:45:40.676826Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p4-deltas-whole-run.txt ms=45 left=34334
+2026-08-28T10:45:40.704329Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=2
+2026-08-28T10:45:40.729601Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p4-deltas-git-remove.txt ms=62 left=34334
+2026-08-28T10:45:40.730089Z  INFO fs3_daemon::runner: done kind="embed" id=657752 left=34333
+2026-08-28T10:45:40.847605Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:40.856838Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p4-deltas-gc.txt ms=46 left=34333
+2026-08-28T10:45:40.871656Z  INFO fs3_daemon::runner: done kind="embed" id=657753 left=34332
+2026-08-28T10:45:41.027212Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p4-deltas-fs3-remove.txt ms=68 left=34332
+2026-08-28T10:45:41.027944Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:41.075130Z  INFO fs3_daemon::runner: done kind="embed" id=657754 left=34331
+2026-08-28T10:45:41.186586Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:41.208442Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-version-file.txt ms=59 left=34331
+2026-08-28T10:45:41.212971Z  INFO fs3_daemon::runner: done kind="embed" id=657755 left=34330
+2026-08-28T10:45:41.341548Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:41.362597Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-version-file-blobs.txt ms=60 left=34330
+2026-08-28T10:45:41.387108Z  INFO fs3_daemon::runner: done kind="embed" id=657756 left=34329
+2026-08-28T10:45:41.501178Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:41.513284Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-search-flags.txt ms=50 left=34329
+2026-08-28T10:45:41.546383Z  INFO fs3_daemon::runner: done kind="embed" id=657757 left=34328
+2026-08-28T10:45:41.666459Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-result-fields.txt ms=41 left=34328
+2026-08-28T10:45:41.667016Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:41.700703Z  INFO fs3_daemon::runner: done kind="embed" id=657758 left=34327
+2026-08-28T10:45:41.811584Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:41.816164Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-elements-by-blob.txt ms=42 left=34327
+2026-08-28T10:45:41.850187Z  INFO fs3_daemon::runner: done kind="embed" id=657759 left=34326
+2026-08-28T10:45:41.954413Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:41.965983Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p3-colliding-addresses.txt ms=42 left=34326
+2026-08-28T10:45:41.981955Z  INFO fs3_daemon::runner: done kind="embed" id=657760 left=34325
+2026-08-28T10:45:42.091163Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:42.106869Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2b-reference-map.txt ms=50 left=34325
+2026-08-28T10:45:42.112242Z  INFO fs3_daemon::runner: done kind="embed" id=657761 left=34324
+2026-08-28T10:45:42.271296Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:42.301968Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2b-paid.txt ms=73 left=34324
+2026-08-28T10:45:42.303904Z  INFO fs3_daemon::runner: done kind="embed" id=657762 left=34323
+2026-08-28T10:45:42.450996Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:42.462157Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2b-jobs.txt ms=58 left=34323
+2026-08-28T10:45:42.487226Z  INFO fs3_daemon::runner: done kind="embed" id=657763 left=34322
+2026-08-28T10:45:42.635375Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2b-edited-files.txt ms=46 left=34322
+2026-08-28T10:45:42.637471Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=2
+2026-08-28T10:45:42.687865Z  INFO fs3_daemon::runner: done kind="embed" id=657764 left=34321
+2026-08-28T10:45:42.839627Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:42.845480Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2b-divergent-paths.txt ms=65 left=34321
+2026-08-28T10:45:42.886311Z  INFO fs3_daemon::runner: done kind="embed" id=657765 left=34320
+2026-08-28T10:45:43.033887Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:43.044422Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2b-deltas.txt ms=56 left=34320
+2026-08-28T10:45:43.092666Z  INFO fs3_daemon::runner: done kind="embed" id=657766 left=34319
+2026-08-28T10:45:43.254374Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2a-paid.txt ms=48 left=34319
+2026-08-28T10:45:43.254892Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:43.311389Z  INFO fs3_daemon::runner: done kind="embed" id=657767 left=34318
+2026-08-28T10:45:43.474490Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:43.485339Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p2a-deltas.txt ms=69 left=34318
+2026-08-28T10:45:43.529432Z  INFO fs3_daemon::runner: done kind="embed" id=657768 left=34317
+2026-08-28T10:45:43.679570Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:43.689807Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p1-worktree-add.txt ms=60 left=34317
+2026-08-28T10:45:43.729663Z  INFO fs3_daemon::runner: done kind="embed" id=657769 left=34316
+2026-08-28T10:45:43.873888Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:43.883988Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p1-noop-jobs.txt ms=64 left=34316
+2026-08-28T10:45:43.937479Z  INFO fs3_daemon::runner: done kind="embed" id=657770 left=34315
+2026-08-28T10:45:44.092850Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:44.111136Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p1-jobs.txt ms=79 left=34315
+2026-08-28T10:45:44.127252Z  INFO fs3_daemon::runner: done kind="embed" id=657771 left=34314
+2026-08-28T10:45:44.274200Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:44.314624Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T035625Z/p1-deltas.txt ms=84 left=34314
+2026-08-28T10:45:44.340065Z  INFO fs3_daemon::runner: done kind="embed" id=657772 left=34313
+2026-08-28T10:45:44.482232Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:44.505698Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-orphaned-before-gc.txt ms=73 left=34313
+2026-08-28T10:45:44.549810Z  INFO fs3_daemon::runner: done kind="embed" id=657773 left=34312
+2026-08-28T10:45:44.756164Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:44.769128Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-orphaned-after-gc.txt ms=111 left=34312
+2026-08-28T10:45:44.830956Z  INFO fs3_daemon::runner: done kind="embed" id=657774 left=34311
+2026-08-28T10:45:45.022174Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=4
+2026-08-28T10:45:45.059491Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-jobs.txt ms=122 left=34311
+2026-08-28T10:45:45.074917Z  INFO fs3_daemon::runner: done kind="embed" id=657775 left=34310
+2026-08-28T10:45:45.290024Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:45.310629Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-deltas-whole-run.txt ms=122 left=34310
+2026-08-28T10:45:45.386916Z  INFO fs3_daemon::runner: done kind="embed" id=657776 left=34309
+2026-08-28T10:45:45.578356Z  INFO fs3_daemon::runner: progress phase="working" scanned=61208 scan_left=409 summarized=124174 summarize_left=33899 embedded=202157 embed_left=1 failed=0
+2026-08-28T10:45:45.590653Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-deltas-git-remove.txt ms=98 left=34309
+2026-08-28T10:45:45.707085Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x raw jobs=2 ms=0
+2026-08-28T10:45:45.770974Z  INFO fs3_daemon::runner: done kind="embed" id=657777 left=34308
+2026-08-28T10:45:45.916237Z  INFO fs3_daemon::runner: done kind="embed" id=657778 left=34307
+2026-08-28T10:45:46.146120Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-deltas-gc.txt ms=134 left=34307
+2026-08-28T10:45:46.198737Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:46.246601Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-deltas-fs3-remove.txt ms=135 left=34307
+2026-08-28T10:45:46.246703Z  INFO fs3_daemon::runner: done kind="embed" id=657779 left=34306
+2026-08-28T10:45:46.415770Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=2
+2026-08-28T10:45:46.435182Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-version-file.txt ms=81 left=34306
+2026-08-28T10:45:46.483315Z  INFO fs3_daemon::runner: done kind="embed" id=657780 left=34305
+2026-08-28T10:45:46.630947Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=2
+2026-08-28T10:45:46.655786Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-search-flags.txt ms=84 left=34305
+2026-08-28T10:45:46.700387Z  INFO fs3_daemon::runner: done kind="embed" id=657781 left=34304
+2026-08-28T10:45:46.849203Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:46.870465Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-result-fields.txt ms=89 left=34304
+2026-08-28T10:45:46.959376Z  INFO fs3_daemon::runner: done kind="embed" id=657782 left=34303
+2026-08-28T10:45:47.101041Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:47.124627Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-elements-by-blob.txt ms=81 left=34303
+2026-08-28T10:45:47.171219Z  INFO fs3_daemon::runner: done kind="embed" id=657783 left=34302
+2026-08-28T10:45:47.356097Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:47.376317Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-colliding-addresses.txt ms=78 left=34302
+2026-08-28T10:45:47.430034Z  INFO fs3_daemon::runner: done kind="embed" id=657784 left=34301
+2026-08-28T10:45:47.634423Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:47.640203Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2b-reference-map.txt ms=112 left=34301
+2026-08-28T10:45:47.714970Z  INFO fs3_daemon::runner: done kind="embed" id=657785 left=34300
+2026-08-28T10:45:47.892266Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:47.923150Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2b-paid.txt ms=110 left=34300
+2026-08-28T10:45:47.983296Z  INFO fs3_daemon::runner: done kind="embed" id=657786 left=34299
+2026-08-28T10:45:48.143794Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:48.149381Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2b-jobs.txt ms=62 left=34299
+2026-08-28T10:45:48.187623Z  INFO fs3_daemon::runner: done kind="embed" id=657787 left=34298
+2026-08-28T10:45:48.333108Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:48.343531Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2b-edited-files.txt ms=49 left=34298
+2026-08-28T10:45:48.376839Z  INFO fs3_daemon::runner: done kind="embed" id=657788 left=34297
+2026-08-28T10:45:48.503811Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T10:45:48.513019Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2b-divergent-paths.txt ms=56 left=34297
+2026-08-28T10:45:48.558843Z  INFO fs3_daemon::runner: done kind="embed" id=657789 left=34296
+2026-08-28T10:45:48.674017Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:48.680238Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2b-deltas.txt ms=38 left=34296
+2026-08-28T10:45:48.703497Z  INFO fs3_daemon::runner: done kind="embed" id=657790 left=34295
+2026-08-28T10:45:48.816241Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:48.829698Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2a-paid.txt ms=47 left=34295
+2026-08-28T10:45:48.859414Z  INFO fs3_daemon::runner: done kind="embed" id=657791 left=34294
+2026-08-28T10:45:48.965833Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:48.981645Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2a-jobs.txt ms=47 left=34294
+2026-08-28T10:45:48.995748Z  INFO fs3_daemon::runner: done kind="embed" id=657792 left=34293
+2026-08-28T10:45:49.101890Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:49.107205Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2a-deltas.txt ms=38 left=34293
+2026-08-28T10:45:49.131975Z  INFO fs3_daemon::runner: done kind="embed" id=657793 left=34292
+2026-08-28T10:45:49.226263Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:49.235620Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p1-worktree-add.txt ms=37 left=34292
+2026-08-28T10:45:49.263386Z  INFO fs3_daemon::runner: done kind="embed" id=657794 left=34291
+2026-08-28T10:45:49.368225Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:49.372378Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p1-jobs.txt ms=37 left=34291
+2026-08-28T10:45:49.395095Z  INFO fs3_daemon::runner: done kind="embed" id=657795 left=34290
+2026-08-28T10:45:49.496437Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:49.506160Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p1-deltas.txt ms=41 left=34290
+2026-08-28T10:45:49.546731Z  INFO fs3_daemon::runner: done kind="embed" id=657796 left=34289
+2026-08-28T10:45:49.693702Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:49.723148Z  INFO fs3_daemon::runner: done kind="embed" id=657797 left=34288
+2026-08-28T10:45:49.841085Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=1
+2026-08-28T10:45:50.065691Z  INFO fs3_daemon::runner: done kind="embed" id=657812 left=34288
+2026-08-28T10:45:50.110798Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probe-report.md ms=473 left=34289
+2026-08-28T10:45:50.377942Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=1
+2026-08-28T10:45:50.476470Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/pr-body.md ms=679 left=34288
+2026-08-28T10:45:50.487944Z  INFO fs3_daemon::runner: done kind="embed" id=657818 left=34287
+2026-08-28T10:45:50.659522Z  INFO fs3_daemon::runner: progress phase="working" scanned=61230 scan_left=387 summarized=124174 summarize_left=33899 embedded=202180 embed_left=1 failed=0
+2026-08-28T10:45:50.740670Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/go-live-runbook.md ms=511 left=34288
+2026-08-28T10:45:50.773897Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=3 ms=3
+2026-08-28T10:45:50.783073Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/buffers/u-c-session-buffer.md ms=185 left=34287
+2026-08-28T10:45:50.847955Z  INFO fs3_daemon::runner: done kind="embed" id=657828 left=34286
+2026-08-28T10:45:50.983054Z  INFO fs3_daemon::runner: done kind="embed" id=657833 left=34285
+2026-08-28T10:45:51.322552Z  INFO fs3_daemon::runner: done kind="embed" id=657834 left=34284
+2026-08-28T10:45:52.240165Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/buffers/pm-session-buffer.md ms=297 left=34284
+2026-08-28T10:45:52.274351Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=3
+2026-08-28T10:45:52.350362Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/plan.dd.md ms=240 left=34283
+2026-08-28T10:45:52.351319Z  INFO fs3_daemon::runner: done kind="embed" id=657835 left=34284
+2026-08-28T10:45:52.518395Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=1
+2026-08-28T10:45:52.560136Z  INFO fs3_daemon::runner: done kind="embed" id=657839 left=34282
+2026-08-28T10:45:52.610878Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/packet-reviewer.dd.md ms=156 left=34282
+2026-08-28T10:45:52.703935Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=2
+2026-08-28T10:45:52.757101Z  INFO fs3_daemon::runner: done kind="embed" id=657845 left=34281
+2026-08-28T10:45:52.833636Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/packet-pm.dd.md ms=185 left=34281
+2026-08-28T10:45:52.895739Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=0
+2026-08-28T10:45:52.934323Z  INFO fs3_daemon::runner: done kind="embed" id=657853 left=34280
+2026-08-28T10:45:52.978503Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/packet-coder.dd.md ms=136 left=34280
+2026-08-28T10:45:53.071481Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=1
+2026-08-28T10:45:53.119013Z  INFO fs3_daemon::runner: done kind="embed" id=657860 left=34279
+2026-08-28T10:45:53.171786Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/packet-coder-u2.dd.md ms=158 left=34279
+2026-08-28T10:45:53.252886Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=1
+2026-08-28T10:45:53.309973Z  INFO fs3_daemon::runner: done kind="embed" id=657868 left=34278
+2026-08-28T10:45:53.319289Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/packet-coder-u1d.dd.md ms=121 left=34278
+2026-08-28T10:45:53.470605Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=1
+2026-08-28T10:45:53.511434Z  INFO fs3_daemon::runner: done kind="embed" id=657876 left=34277
+2026-08-28T10:45:53.537346Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/packet-coder-u1b.dd.md ms=120 left=34277
+2026-08-28T10:45:53.632715Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=0
+2026-08-28T10:45:53.668342Z  INFO fs3_daemon::runner: done kind="embed" id=657884 left=34276
+2026-08-28T10:45:53.685873Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/packet-coder-u1a.dd.md ms=92 left=34276
+2026-08-28T10:45:53.793528Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=0
+2026-08-28T10:45:53.825130Z  INFO fs3_daemon::runner: done kind="embed" id=657892 left=34275
+2026-08-28T10:45:53.836163Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/impl-guide.dd.md ms=76 left=34275
+2026-08-28T10:45:53.934894Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=0
+2026-08-28T10:45:53.961777Z  INFO fs3_daemon::runner: done kind="embed" id=657899 left=34274
+2026-08-28T10:45:53.961841Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/wave-1-roster.md ms=58 left=34274
+2026-08-28T10:45:54.078113Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=0
+2026-08-28T10:45:54.110892Z  INFO fs3_daemon::runner: done kind="embed" id=657906 left=34273
+2026-08-28T10:45:54.117078Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/wave-1-restart-note.md ms=71 left=34273
+2026-08-28T10:45:54.226725Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=6
+2026-08-28T10:45:54.247752Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/tasks/phase-3/tasks.dd.md ms=58 left=34273
+2026-08-28T10:45:54.247821Z  INFO fs3_daemon::runner: done kind="embed" id=657916 left=34272
+2026-08-28T10:45:54.368692Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=2
+2026-08-28T10:45:54.396226Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/tasks/phase-2/tasks.dd.md ms=63 left=34272
+2026-08-28T10:45:54.396838Z  INFO fs3_daemon::runner: done kind="embed" id=657920 left=34271
+2026-08-28T10:45:54.658604Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=0
+2026-08-28T10:45:54.660917Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/tasks/phase-1/tasks.dd.md ms=114 left=34271
+2026-08-28T10:45:54.708517Z  INFO fs3_daemon::runner: done kind="embed" id=657924 left=34270
+2026-08-28T10:45:54.828100Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=0
+2026-08-28T10:45:54.902135Z  INFO fs3_daemon::runner: done kind="embed" id=657928 left=34269
+2026-08-28T10:45:54.903223Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/successor-context-pm3.md ms=123 left=34269
+2026-08-28T10:45:55.040813Z  INFO fs3_daemon::runner: batch kind="embed" subject=4 x raw jobs=1 ms=1
+2026-08-28T10:45:55.086522Z  INFO fs3_daemon::runner: done kind="embed" id=657932 left=34268
+2026-08-28T10:45:55.151126Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/successor-context-pm2.md ms=161 left=34268
+2026-08-28T10:45:55.248088Z  INFO fs3_daemon::runner: batch kind="embed" subject=4 x raw jobs=1 ms=0
+2026-08-28T10:45:55.284540Z  INFO fs3_daemon::runner: done kind="embed" id=657937 left=34267
+2026-08-28T10:45:55.388387Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/rulings-u1d.md ms=225 left=34267
+2026-08-28T10:45:55.430956Z  INFO fs3_daemon::runner: batch kind="embed" subject=10 x raw jobs=1 ms=1
+2026-08-28T10:45:55.558259Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/rulings-u1b.md ms=180 left=34266
+2026-08-28T10:45:55.558372Z  INFO fs3_daemon::runner: done kind="embed" id=657948 left=34267
+2026-08-28T10:45:55.682628Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=4
+2026-08-28T10:45:55.715008Z  INFO fs3_daemon::runner: done kind="embed" id=657957 left=34265
+2026-08-28T10:45:55.737127Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/reviews/cross-model-review.dd.md ms=97 left=34265
+2026-08-28T10:45:55.917159Z  INFO fs3_daemon::runner: progress phase="working" scanned=61252 scan_left=365 summarized=124174 summarize_left=33899 embedded=202202 embed_left=1 failed=0
+2026-08-28T10:45:55.946530Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/reviewer-brief.md ms=113 left=34265
+2026-08-28T10:45:55.980368Z  INFO fs3_daemon::runner: batch kind="embed" subject=11 x raw jobs=2 ms=10
+2026-08-28T10:45:56.025856Z  INFO fs3_daemon::runner: done kind="embed" id=657970 left=34264
+2026-08-28T10:45:56.122523Z  INFO fs3_daemon::runner: done kind="embed" id=657962 left=34263
+2026-08-28T10:45:56.237121Z  INFO fs3_daemon::boot: fs3 daemon starting config=/var/folders/mv/9mcvlzg504b158ctlswmgwph0000gn/T/fs3-discovered-config-22587-0 log=/Users/jordanknight/.local/state/flowspace3/logs/flowspace3.log daemon=config.toml database=FS3_* environment repos=0
+2026-08-28T10:45:56.237183Z  WARN fs3_daemon::boot: the agent port is the offline fake: `flowspace3 ask` will REFUSE every question with FS3-E-PROVIDER-CANNOT-ANSWER. Every other verb is unaffected. Point `[agent] active` at a real chat deployment to enable it agent=fake
+2026-08-28T10:45:56.271612Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/rescue/buffers/u2-session-buffer.md ms=68 left=34263
+2026-08-28T10:45:56.275868Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=2
+2026-08-28T10:45:56.278300Z  INFO fs3_daemon::boot: providers wired embedder=fake embedder_kind=fake summarizer=fake summarizer_kind=fake agent=fake agent_kind=fake
+2026-08-28T10:45:56.300457Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/rescue/buffers/u1d-session-buffer.md ms=62 left=34263
+2026-08-28T10:45:56.331353Z  INFO fs3_daemon::runner: done kind="embed" id=657971 left=34262
+2026-08-28T10:45:56.400079Z  INFO fs3_daemon::boot: store schema is current database=postgres://flowspace3:<redacted>@127.0.0.1:5433/fs3_ddocs_u3_merge_test
+2026-08-28T10:45:56.413302Z  INFO fs3_daemon::boot: starting the job runner workers=4
+2026-08-28T10:45:56.413418Z  INFO fs3_daemon::boot: starting the reconcile runner cadence_seconds=5 debounce_seconds=10 worktree_reconcile_ticks=6
+2026-08-28T10:45:56.413771Z  INFO fs3_daemon::boot: starting the update supervisor auto=true every_hours=24
+2026-08-28T10:45:56.413872Z  INFO fs3_daemon::http: fs3 daemon listening bound=127.0.0.1:55573
+2026-08-28T10:45:56.453651Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=3
+2026-08-28T10:45:56.460935Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/rescue/buffers/u1b-session-buffer.md ms=48 left=34262
+2026-08-28T10:45:56.529212Z  INFO fs3_daemon::runner: done kind="embed" id=657972 left=34261
+2026-08-28T10:45:56.646242Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T10:45:56.663472Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/rescue/buffers/u1a-session-buffer.md ms=58 left=34261
+2026-08-28T10:45:56.675172Z  INFO fs3_daemon::runner: done kind="embed" id=657973 left=34260
+2026-08-28T10:45:56.861383Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=2
+2026-08-28T10:45:56.923229Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/rescue/buffers/README.md ms=124 left=34260
+2026-08-28T10:45:56.926079Z  INFO fs3_daemon::runner: done kind="embed" id=657974 left=34259
+2026-08-28T10:45:57.145437Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=6
+2026-08-28T10:45:57.222189Z  INFO fs3_daemon::runner: done kind="embed" id=657976 left=34258
+2026-08-28T10:45:57.568071Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=0
+2026-08-28T10:45:57.572467Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/reports/u2-ordinal-review.md ms=530 left=34258
+2026-08-28T10:45:57.644596Z  INFO fs3_daemon::runner: done kind="embed" id=657987 left=34257
+2026-08-28T10:45:58.667510Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/reports/u2-ordinal-review-rubric.md ms=1356 left=34257
+2026-08-28T10:45:58.714473Z  INFO fs3_daemon::runner: batch kind="embed" subject=15 x raw jobs=1 ms=1
+2026-08-28T10:45:58.741569Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/reports/u2-done-report.md ms=1330 left=34257
+2026-08-28T10:45:58.742642Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/reports/u2-assumptions.md ms=532 left=34257
+2026-08-28T10:45:58.812903Z  INFO fs3_daemon::runner: done kind="embed" id=658026 left=34256
+2026-08-28T10:45:58.813634Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/pm3-inventory-and-plan.md ms=448 left=34257
+2026-08-28T10:45:58.920642Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/inputs/reconvo.py ms=304 left=34256
+2026-08-28T10:45:58.920702Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/process-report.md ms=658 left=34257
+2026-08-28T10:45:59.018726Z  INFO fs3_daemon::runner: batch kind="embed" subject=58 x raw jobs=6 ms=1
+2026-08-28T10:45:59.040900Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/inputs/tools/oracle_expectations.py ms=569 left=34257
+2026-08-28T10:45:59.042458Z  INFO fs3_daemon::runner: done kind="embed" id=658034 left=34256
+2026-08-28T10:45:59.067952Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/inputs/fixture-sanitizer-spec.md ms=119 left=34256
+2026-08-28T10:45:59.154549Z  INFO fs3_daemon::runner: done kind="embed" id=658052 left=34255
+2026-08-28T10:45:59.241929Z  INFO fs3_daemon::runner: done kind="embed" id=658046 left=34254
+2026-08-28T10:45:59.332605Z  INFO fs3_daemon::runner: done kind="embed" id=658045 left=34253
+2026-08-28T10:45:59.427968Z  INFO fs3_daemon::runner: done kind="embed" id=658032 left=34252
+2026-08-28T10:45:59.519821Z  INFO fs3_daemon::runner: done kind="embed" id=658033 left=34251
+2026-08-28T10:45:59.627588Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=2 ms=1
+2026-08-28T10:45:59.658917Z  INFO fs3_daemon::runner: done kind="embed" id=658064 left=34250
+2026-08-28T10:45:59.673972Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/inputs/conversations-telemetry-sample.md ms=82 left=34250
+2026-08-28T10:45:59.766098Z  INFO fs3_daemon::runner: done kind="embed" id=658060 left=34249
+2026-08-28T10:45:59.881491Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=0
+2026-08-28T10:45:59.918780Z  INFO fs3_daemon::runner: done kind="embed" id=658070 left=34248
+2026-08-28T10:45:59.921127Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/inputs/09-ingestion-recipe.md ms=80 left=34248
+2026-08-28T10:46:00.029285Z  INFO fs3_daemon::runner: batch kind="embed" subject=11 x raw jobs=1 ms=0
+2026-08-28T10:46:00.055692Z  INFO fs3_daemon::runner: done kind="embed" id=658080 left=34247
+2026-08-28T10:46:00.087228Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/done-u1d.md ms=89 left=34247
+2026-08-28T10:46:00.165348Z  INFO fs3_daemon::runner: batch kind="embed" subject=12 x raw jobs=1 ms=1
+2026-08-28T10:46:00.197611Z  INFO fs3_daemon::runner: done kind="embed" id=658092 left=34246
+2026-08-28T10:46:00.217380Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/done-u1b.md ms=82 left=34247
+2026-08-28T10:46:00.323794Z  INFO fs3_daemon::runner: batch kind="embed" subject=17 x raw jobs=2 ms=1
+2026-08-28T10:46:00.354344Z  INFO fs3_daemon::runner: done kind="embed" id=658102 left=34246
+2026-08-28T10:46:00.371259Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/done-report-u1a.md ms=91 left=34246
+2026-08-28T10:46:00.479417Z  INFO fs3_daemon::runner: done kind="embed" id=658105 left=34245
+2026-08-28T10:46:00.586554Z  INFO fs3_daemon::runner: batch kind="embed" subject=15 x raw jobs=1 ms=0
+2026-08-28T10:46:00.616972Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/composition-notes.md ms=64 left=34244
+2026-08-28T10:46:00.618321Z  INFO fs3_daemon::runner: done kind="embed" id=658118 left=34244
+2026-08-28T10:46:00.718705Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=1
+2026-08-28T10:46:00.748069Z  INFO fs3_daemon::runner: done kind="embed" id=658126 left=34243
+2026-08-28T10:46:00.766057Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/005-convo-ingest/assets/ack-u1d.md ms=79 left=34243
+2026-08-28T10:46:00.860636Z  INFO fs3_daemon::runner: batch kind="embed" subject=12 x raw jobs=1 ms=0

@@ -1,0 +1,1082 @@
+2026-08-28T08:35:49.937867Z  INFO fs3_daemon::runner: done kind="embed" id=502030 left=47301
+2026-08-28T08:35:50.046177Z  INFO fs3_daemon::runner: batch kind="embed" subject=62 x raw jobs=4 ms=1
+2026-08-28T08:35:50.065668Z  INFO fs3_daemon::runner: done kind="embed" id=502054 left=47302
+2026-08-28T08:35:50.107860Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/pos-agentic-cli-spec.md ms=79 left=47318
+2026-08-28T08:35:50.157182Z  INFO fs3_daemon::runner: done kind="embed" id=502077 left=47317
+2026-08-28T08:35:50.229621Z  INFO fs3_daemon::runner: done kind="embed" id=502042 left=47316
+2026-08-28T08:35:50.301935Z  INFO fs3_daemon::runner: done kind="embed" id=502065 left=47315
+2026-08-28T08:35:50.416897Z  INFO fs3_daemon::runner: batch kind="embed" subject=31 x raw jobs=2 ms=1
+2026-08-28T08:35:50.438434Z  INFO fs3_daemon::runner: done kind="embed" id=502084 left=47315
+2026-08-28T08:35:50.515668Z  INFO fs3_daemon::runner: done kind="embed" id=502096 left=47345
+2026-08-28T08:35:50.533692Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/research-dossier.md ms=143 left=47352
+2026-08-28T08:35:50.908849Z  INFO fs3_daemon::runner: batch kind="embed" subject=52 x raw jobs=4 ms=2
+2026-08-28T08:35:50.933659Z  INFO fs3_daemon::runner: done kind="embed" id=502136 left=47351
+2026-08-28T08:35:50.967564Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/reviews/fix-tasks.phase-2-output-storage.md ms=359 left=47361
+2026-08-28T08:35:51.007578Z  INFO fs3_daemon::runner: done kind="embed" id=502120 left=47360
+2026-08-28T08:35:51.081891Z  INFO fs3_daemon::runner: done kind="embed" id=502131 left=47359
+2026-08-28T08:35:51.166371Z  INFO fs3_daemon::runner: done kind="embed" id=502109 left=47358
+2026-08-28T08:35:51.290616Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/reviews/fix-tasks.phase-6-e2e-test-and-documentation.md ms=41 left=47361
+2026-08-28T08:35:51.303409Z  INFO fs3_daemon::runner: progress phase="working" scanned=47215 scan_left=9596 summarized=101495 summarize_left=37761 embedded=159380 embed_left=1 failed=0
+2026-08-28T08:35:51.326102Z  INFO fs3_daemon::runner: batch kind="embed" subject=18 x raw jobs=2 ms=0
+2026-08-28T08:35:51.346865Z  INFO fs3_daemon::runner: done kind="embed" id=502147 left=47360
+2026-08-28T08:35:51.420194Z  INFO fs3_daemon::runner: done kind="embed" id=502151 left=47359
+2026-08-28T08:35:51.601083Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/reviews/review.phase-1.md ms=97 left=47372
+2026-08-28T08:35:51.619744Z  INFO fs3_daemon::runner: batch kind="embed" subject=22 x raw jobs=2 ms=0
+2026-08-28T08:35:51.664836Z  INFO fs3_daemon::runner: done kind="embed" id=502159 left=47373
+2026-08-28T08:35:51.767204Z  INFO fs3_daemon::runner: done kind="embed" id=502165 left=47379
+2026-08-28T08:35:51.911819Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=0
+2026-08-28T08:35:51.965009Z  INFO fs3_daemon::runner: done kind="embed" id=502179 left=47391
+2026-08-28T08:35:52.087292Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/reviews/review.phase-2-output-storage.md ms=528 left=47397
+2026-08-28T08:35:52.120619Z  INFO fs3_daemon::runner: batch kind="embed" subject=10 x raw jobs=1 ms=0
+2026-08-28T08:35:52.162233Z  INFO fs3_daemon::runner: done kind="embed" id=502193 left=47400
+2026-08-28T08:35:52.298439Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=1
+2026-08-28T08:35:52.333136Z  INFO fs3_daemon::runner: done kind="embed" id=502204 left=47417
+2026-08-28T08:35:52.412065Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/reviews/review.phase-3-node-lifecycle.md ms=541 left=47432
+2026-08-28T08:35:52.444689Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/reviews/review.phase-4-question-answer-protocol.md ms=367 left=47437
+2026-08-28T08:35:52.459373Z  INFO fs3_daemon::runner: batch kind="embed" subject=32 x raw jobs=3 ms=1
+2026-08-28T08:35:52.468345Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/reviews/review.phase-5-input-retrieval.md ms=207 left=47438
+2026-08-28T08:35:52.480802Z  INFO fs3_daemon::runner: done kind="embed" id=502237 left=47439
+2026-08-28T08:35:52.525147Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/reviews/review.phase-6-e2e-test-and-documentation.md ms=107 left=47450
+2026-08-28T08:35:52.566543Z  INFO fs3_daemon::runner: done kind="embed" id=502223 left=47449
+2026-08-28T08:35:52.634464Z  INFO fs3_daemon::runner: done kind="embed" id=502227 left=47448
+2026-08-28T08:35:52.739984Z  INFO fs3_daemon::runner: batch kind="embed" subject=38 x raw jobs=3 ms=1
+2026-08-28T08:35:52.777315Z  INFO fs3_daemon::runner: done kind="embed" id=502254 left=47448
+2026-08-28T08:35:52.858402Z  INFO fs3_daemon::runner: done kind="embed" id=502239 left=47452
+2026-08-28T08:35:52.947724Z  INFO fs3_daemon::runner: done kind="embed" id=502249 left=47457
+2026-08-28T08:35:53.070816Z  INFO fs3_daemon::runner: batch kind="embed" subject=32 x raw jobs=2 ms=1
+2026-08-28T08:35:53.093899Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/tasks/phase-1-foundation-error-codes-and-schemas/execution.log.md ms=377 left=47466
+2026-08-28T08:35:53.111286Z  INFO fs3_daemon::runner: done kind="embed" id=502271 left=47465
+2026-08-28T08:35:53.210525Z  INFO fs3_daemon::runner: done kind="embed" id=502264 left=47469
+2026-08-28T08:35:53.247207Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/tasks/phase-1-foundation-error-codes-and-schemas/tasks.fltplan.md ms=200 left=47470
+2026-08-28T08:35:53.332424Z  INFO fs3_daemon::runner: batch kind="embed" subject=15 x raw jobs=2 ms=1
+2026-08-28T08:35:53.370561Z  INFO fs3_daemon::runner: done kind="embed" id=502275 left=47470
+2026-08-28T08:35:53.492287Z  INFO fs3_daemon::runner: done kind="embed" id=502283 left=47471
+2026-08-28T08:35:53.614990Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=0
+2026-08-28T08:35:53.640717Z  INFO fs3_daemon::runner: done kind="embed" id=502291 left=47481
+2026-08-28T08:35:53.689742Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/tasks/phase-2-output-storage/execution.log.md ms=99 left=47504
+2026-08-28T08:35:53.696276Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/tasks/phase-1-foundation-error-codes-and-schemas/tasks.md ms=386 left=47506
+2026-08-28T08:35:53.755736Z  INFO fs3_daemon::runner: batch kind="embed" subject=48 x raw jobs=4 ms=1
+2026-08-28T08:35:53.776100Z  INFO fs3_daemon::runner: done kind="embed" id=502305 left=47506
+2026-08-28T08:35:53.793025Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/tasks/phase-2-output-storage/tasks.fltplan.md ms=61 left=47512
+2026-08-28T08:35:53.845592Z  INFO fs3_daemon::runner: done kind="embed" id=502320 left=47511
+2026-08-28T08:35:53.916189Z  INFO fs3_daemon::runner: done kind="embed" id=502314 left=47510
+2026-08-28T08:35:53.984963Z  INFO fs3_daemon::runner: done kind="embed" id=502325 left=47509
+2026-08-28T08:35:54.094130Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=0
+2026-08-28T08:35:54.119725Z  INFO fs3_daemon::runner: done kind="embed" id=502333 left=47510
+2026-08-28T08:35:54.200239Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/tasks/phase-2-output-storage/tasks.md ms=133 left=47541
+2026-08-28T08:35:54.232576Z  INFO fs3_daemon::runner: batch kind="embed" subject=53 x raw jobs=4 ms=1
+2026-08-28T08:35:54.251627Z  INFO fs3_daemon::runner: done kind="embed" id=502342 left=47542
+2026-08-28T08:35:54.279653Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/tasks/phase-3-node-lifecycle/execution.log.md ms=74 left=47551
+2026-08-28T08:35:54.332818Z  INFO fs3_daemon::runner: done kind="embed" id=502351 left=47550
+2026-08-28T08:35:54.406770Z  INFO fs3_daemon::runner: done kind="embed" id=502368 left=47549
+2026-08-28T08:35:54.475062Z  INFO fs3_daemon::runner: done kind="embed" id=502362 left=47548
+2026-08-28T08:35:54.580786Z  INFO fs3_daemon::runner: batch kind="embed" subject=25 x raw jobs=2 ms=1
+2026-08-28T08:35:54.601868Z  INFO fs3_daemon::runner: done kind="embed" id=502376 left=47549
+2026-08-28T08:35:54.619218Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/tasks/phase-3-node-lifecycle/tasks.fltplan.md ms=59 left=47554
+2026-08-28T08:35:54.674408Z  INFO fs3_daemon::runner: done kind="embed" id=502380 left=47553
+2026-08-28T08:35:54.768606Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=1
+2026-08-28T08:35:54.789569Z  INFO fs3_daemon::runner: done kind="embed" id=502388 left=47553
+2026-08-28T08:35:54.862988Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/tasks/phase-3-node-lifecycle/tasks.md ms=113 left=47584
+2026-08-28T08:35:54.900572Z  INFO fs3_daemon::runner: batch kind="embed" subject=44 x raw jobs=3 ms=0
+2026-08-28T08:35:54.919843Z  INFO fs3_daemon::runner: done kind="embed" id=502411 left=47586
+2026-08-28T08:35:54.943968Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/tasks/phase-4-question-answer-protocol/execution.log.md ms=70 left=47594
+2026-08-28T08:35:54.997700Z  INFO fs3_daemon::runner: done kind="embed" id=502397 left=47593
+2026-08-28T08:35:55.066784Z  INFO fs3_daemon::runner: done kind="embed" id=502422 left=47592
+2026-08-28T08:35:55.170505Z  INFO fs3_daemon::runner: batch kind="embed" subject=18 x raw jobs=2 ms=0
+2026-08-28T08:35:55.190120Z  INFO fs3_daemon::runner: done kind="embed" id=502432 left=47592
+2026-08-28T08:35:55.213957Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/tasks/phase-4-question-answer-protocol/tasks.fltplan.md ms=65 left=47597
+2026-08-28T08:35:55.263805Z  INFO fs3_daemon::runner: done kind="embed" id=502434 left=47596
+2026-08-28T08:35:55.361576Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=0
+2026-08-28T08:35:55.381492Z  INFO fs3_daemon::runner: done kind="embed" id=502441 left=47597
+2026-08-28T08:35:55.444972Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/tasks/phase-4-question-answer-protocol/tasks.md ms=102 left=47622
+2026-08-28T08:35:55.494068Z  INFO fs3_daemon::runner: batch kind="embed" subject=43 x raw jobs=3 ms=1
+2026-08-28T08:35:55.510655Z  INFO fs3_daemon::runner: done kind="embed" id=502470 left=47622
+2026-08-28T08:35:55.544499Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/tasks/phase-5-input-retrieval/execution.log.md ms=75 left=47633
+2026-08-28T08:35:55.583345Z  INFO fs3_daemon::runner: done kind="embed" id=502459 left=47632
+2026-08-28T08:35:55.652226Z  INFO fs3_daemon::runner: done kind="embed" id=502448 left=47631
+2026-08-28T08:35:55.748500Z  INFO fs3_daemon::runner: batch kind="embed" subject=18 x raw jobs=2 ms=0
+2026-08-28T08:35:55.768382Z  INFO fs3_daemon::runner: done kind="embed" id=502481 left=47631
+2026-08-28T08:35:55.803718Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/tasks/phase-5-input-retrieval/tasks.fltplan.md ms=71 left=47636
+2026-08-28T08:35:55.849267Z  INFO fs3_daemon::runner: done kind="embed" id=502483 left=47635
+2026-08-28T08:35:55.942217Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=0
+2026-08-28T08:35:55.961389Z  INFO fs3_daemon::runner: done kind="embed" id=502490 left=47635
+2026-08-28T08:35:56.025711Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/tasks/phase-5-input-retrieval/tasks.md ms=99 left=47663
+2026-08-28T08:35:56.070429Z  INFO fs3_daemon::runner: batch kind="embed" subject=42 x raw jobs=3 ms=0
+2026-08-28T08:35:56.089334Z  INFO fs3_daemon::runner: done kind="embed" id=502498 left=47664
+2026-08-28T08:35:56.140844Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/tasks/phase-6-e2e-test-and-documentation/execution.log.md ms=92 left=47684
+2026-08-28T08:35:56.164573Z  INFO fs3_daemon::runner: done kind="embed" id=502510 left=47683
+2026-08-28T08:35:56.239472Z  INFO fs3_daemon::runner: done kind="embed" id=502521 left=47682
+2026-08-28T08:35:56.369352Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/tasks/phase-6-e2e-test-and-documentation/tasks.fltplan.md ms=50 left=47688
+2026-08-28T08:35:56.370714Z  INFO fs3_daemon::runner: progress phase="working" scanned=47238 scan_left=9573 summarized=101495 summarize_left=38106 embedded=159425 embed_left=3 failed=0
+2026-08-28T08:35:56.389944Z  INFO fs3_daemon::runner: batch kind="embed" subject=47 x raw jobs=4 ms=1
+2026-08-28T08:35:56.413877Z  INFO fs3_daemon::runner: done kind="embed" id=502544 left=47687
+2026-08-28T08:35:56.493065Z  INFO fs3_daemon::runner: done kind="embed" id=502551 left=47686
+2026-08-28T08:35:56.571767Z  INFO fs3_daemon::runner: done kind="embed" id=502539 left=47685
+2026-08-28T08:35:56.646291Z  INFO fs3_daemon::runner: done kind="embed" id=502530 left=47684
+2026-08-28T08:35:57.013319Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=1
+2026-08-28T08:35:57.045102Z  INFO fs3_daemon::runner: done kind="embed" id=502571 left=47719
+2026-08-28T08:35:57.174983Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=0
+2026-08-28T08:35:57.209228Z  INFO fs3_daemon::runner: done kind="embed" id=502606 left=47760
+2026-08-28T08:35:57.339819Z  INFO fs3_daemon::runner: batch kind="embed" subject=64 x raw jobs=4 ms=1
+2026-08-28T08:35:57.375421Z  INFO fs3_daemon::runner: done kind="embed" id=502650 left=47807
+2026-08-28T08:35:57.393349Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/tasks/phase-6-e2e-test-and-documentation/tasks.md ms=661 left=47812
+2026-08-28T08:35:57.454979Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/workshops/e2e-workunits.md ms=534 left=47828
+2026-08-28T08:35:57.464920Z  INFO fs3_daemon::runner: done kind="embed" id=502646 left=47828
+2026-08-28T08:35:57.559869Z  INFO fs3_daemon::runner: done kind="embed" id=502630 left=47851
+2026-08-28T08:35:57.652916Z  INFO fs3_daemon::runner: done kind="embed" id=502633 left=47871
+2026-08-28T08:35:57.712752Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/agentic-work-units-spec.md ms=569 left=47883
+2026-08-28T08:35:57.792377Z  INFO fs3_daemon::runner: batch kind="embed" subject=133 x raw jobs=10 ms=1
+2026-08-28T08:35:57.826722Z  INFO fs3_daemon::runner: done kind="embed" id=502725 left=47904
+2026-08-28T08:35:57.829892Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/workshops/cli-and-e2e-flow.md ms=1042 left=47904
+2026-08-28T08:35:57.910319Z  INFO fs3_daemon::runner: done kind="embed" id=502754 left=47918
+2026-08-28T08:35:57.978691Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/doco/qnaloop.md ms=673 left=47934
+2026-08-28T08:35:57.978791Z  INFO fs3_daemon::runner: done kind="embed" id=502694 left=47936
+2026-08-28T08:35:57.991150Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/028-pos-agentic-cli/workshops/e2e-test-comprehensive.md ms=1137 left=47944
+2026-08-28T08:35:58.017590Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/agentic-work-units-plan.md ms=1033 left=47950
+2026-08-28T08:35:58.043769Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/research-dossier.md ms=291 left=47965
+2026-08-28T08:35:58.069450Z  INFO fs3_daemon::runner: done kind="embed" id=502704 left=47964
+2026-08-28T08:35:58.135626Z  INFO fs3_daemon::runner: done kind="embed" id=502731 left=47963
+2026-08-28T08:35:58.206698Z  INFO fs3_daemon::runner: done kind="embed" id=502750 left=47962
+2026-08-28T08:35:58.277177Z  INFO fs3_daemon::runner: done kind="embed" id=502730 left=47961
+2026-08-28T08:35:58.348896Z  INFO fs3_daemon::runner: done kind="embed" id=502665 left=47960
+2026-08-28T08:35:58.415781Z  INFO fs3_daemon::runner: done kind="embed" id=502768 left=47959
+2026-08-28T08:35:58.488852Z  INFO fs3_daemon::runner: done kind="embed" id=502675 left=47958
+2026-08-28T08:35:58.596153Z  INFO fs3_daemon::runner: batch kind="embed" subject=135 x raw jobs=12 ms=1
+2026-08-28T08:35:58.620509Z  INFO fs3_daemon::runner: done kind="embed" id=502847 left=47958
+2026-08-28T08:35:58.625195Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/reviews/fix-tasks.phase-1-types-and-schemas.md ms=56 left=47959
+2026-08-28T08:35:58.699135Z  INFO fs3_daemon::runner: done kind="embed" id=502804 left=47958
+2026-08-28T08:35:58.770445Z  INFO fs3_daemon::runner: done kind="embed" id=502832 left=47957
+2026-08-28T08:35:58.842208Z  INFO fs3_daemon::runner: done kind="embed" id=502849 left=47956
+2026-08-28T08:35:58.921358Z  INFO fs3_daemon::runner: done kind="embed" id=502805 left=47955
+2026-08-28T08:35:58.987648Z  INFO fs3_daemon::runner: done kind="embed" id=502835 left=47954
+2026-08-28T08:35:59.058656Z  INFO fs3_daemon::runner: done kind="embed" id=502820 left=47953
+2026-08-28T08:35:59.132017Z  INFO fs3_daemon::runner: done kind="embed" id=502811 left=47952
+2026-08-28T08:35:59.202507Z  INFO fs3_daemon::runner: done kind="embed" id=502823 left=47951
+2026-08-28T08:35:59.274092Z  INFO fs3_daemon::runner: done kind="embed" id=502839 left=47950
+2026-08-28T08:35:59.345327Z  INFO fs3_daemon::runner: done kind="embed" id=502794 left=47949
+2026-08-28T08:35:59.421813Z  INFO fs3_daemon::runner: done kind="embed" id=502778 left=47948
+2026-08-28T08:35:59.525788Z  INFO fs3_daemon::runner: batch kind="embed" subject=6 x raw jobs=1 ms=0
+2026-08-28T08:35:59.546938Z  INFO fs3_daemon::runner: done kind="embed" id=502852 left=47950
+2026-08-28T08:35:59.553843Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/reviews/review.phase-1-types-and-schemas.md ms=52 left=47953
+2026-08-28T08:35:59.648221Z  INFO fs3_daemon::runner: batch kind="embed" subject=15 x raw jobs=1 ms=0
+2026-08-28T08:35:59.668137Z  INFO fs3_daemon::runner: done kind="embed" id=502859 left=47954
+2026-08-28T08:35:59.705981Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/reviews/review.phase-4-test-enrichment.md ms=74 left=47968
+2026-08-28T08:35:59.781924Z  INFO fs3_daemon::runner: batch kind="embed" subject=21 x raw jobs=2 ms=0
+2026-08-28T08:35:59.801306Z  INFO fs3_daemon::runner: done kind="embed" id=502876 left=47969
+2026-08-28T08:35:59.853487Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/tasks/phase-1-types-and-schemas/execution.log.md ms=90 left=47990
+2026-08-28T08:35:59.881772Z  INFO fs3_daemon::runner: done kind="embed" id=502870 left=47989
+2026-08-28T08:35:59.993684Z  INFO fs3_daemon::runner: batch kind="embed" subject=56 x raw jobs=4 ms=1
+2026-08-28T08:36:00.017158Z  INFO fs3_daemon::runner: done kind="embed" id=502896 left=47990
+2026-08-28T08:36:00.025957Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/tasks/phase-1-types-and-schemas/tasks.fltplan.md ms=59 left=47994
+2026-08-28T08:36:00.091917Z  INFO fs3_daemon::runner: done kind="embed" id=502889 left=47993
+2026-08-28T08:36:00.158581Z  INFO fs3_daemon::runner: done kind="embed" id=502884 left=47992
+2026-08-28T08:36:00.225744Z  INFO fs3_daemon::runner: done kind="embed" id=502900 left=47991
+2026-08-28T08:36:00.328343Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=1
+2026-08-28T08:36:00.349879Z  INFO fs3_daemon::runner: done kind="embed" id=502907 left=47990
+2026-08-28T08:36:00.433511Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/tasks/phase-1-types-and-schemas/tasks.md ms=129 left=48021
+2026-08-28T08:36:00.469565Z  INFO fs3_daemon::runner: batch kind="embed" subject=43 x raw jobs=3 ms=1
+2026-08-28T08:36:00.494525Z  INFO fs3_daemon::runner: done kind="embed" id=502928 left=48022
+2026-08-28T08:36:00.551133Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/tasks/phase-2-service-and-adapter/execution.log.md ms=108 left=48046
+2026-08-28T08:36:00.572147Z  INFO fs3_daemon::runner: done kind="embed" id=502940 left=48045
+2026-08-28T08:36:00.642963Z  INFO fs3_daemon::runner: done kind="embed" id=502918 left=48044
+2026-08-28T08:36:00.742636Z  INFO fs3_daemon::runner: batch kind="embed" subject=43 x raw jobs=3 ms=0
+2026-08-28T08:36:00.766115Z  INFO fs3_daemon::runner: done kind="embed" id=502947 left=48044
+2026-08-28T08:36:00.793115Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/tasks/phase-2-service-and-adapter/tasks.fltplan.md ms=67 left=48049
+2026-08-28T08:36:00.843520Z  INFO fs3_daemon::runner: done kind="embed" id=502967 left=48048
+2026-08-28T08:36:00.923674Z  INFO fs3_daemon::runner: done kind="embed" id=502959 left=48047
+2026-08-28T08:36:01.036306Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=0
+2026-08-28T08:36:01.073861Z  INFO fs3_daemon::runner: done kind="embed" id=502974 left=48047
+2026-08-28T08:36:01.205682Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=0
+2026-08-28T08:36:01.239044Z  INFO fs3_daemon::runner: done kind="embed" id=502983 left=48060
+2026-08-28T08:36:01.438496Z  INFO fs3_daemon::runner: progress phase="working" scanned=47255 scan_left=9556 summarized=101495 summarize_left=38520 embedded=159474 embed_left=1 failed=0
+2026-08-28T08:36:01.470013Z  INFO fs3_daemon::runner: batch kind="embed" subject=32 x raw jobs=2 ms=2
+2026-08-28T08:36:01.521378Z  INFO fs3_daemon::runner: done kind="embed" id=503002 left=48097
+2026-08-28T08:36:01.558430Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/tasks/phase-3-cli-integration/tasks.fltplan.md ms=227 left=48099
+2026-08-28T08:36:01.614189Z  INFO fs3_daemon::runner: done kind="embed" id=503014 left=48105
+2026-08-28T08:36:01.694239Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/tasks/phase-2-service-and-adapter/tasks.md ms=684 left=48114
+2026-08-28T08:36:01.752390Z  INFO fs3_daemon::runner: batch kind="embed" subject=66 x raw jobs=5 ms=2
+2026-08-28T08:36:01.754353Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/tasks/phase-3-cli-integration/execution.log.md ms=578 left=48117
+2026-08-28T08:36:01.804433Z  INFO fs3_daemon::runner: done kind="embed" id=503045 left=48120
+2026-08-28T08:36:01.895757Z  INFO fs3_daemon::runner: done kind="embed" id=503050 left=48126
+2026-08-28T08:36:01.979703Z  INFO fs3_daemon::runner: done kind="embed" id=503047 left=48132
+2026-08-28T08:36:02.073052Z  INFO fs3_daemon::runner: done kind="embed" id=503028 left=48139
+2026-08-28T08:36:02.159249Z  INFO fs3_daemon::runner: done kind="embed" id=503025 left=48143
+2026-08-28T08:36:02.166227Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/tasks/phase-4-test-enrichment/execution.log.md ms=450 left=48143
+2026-08-28T08:36:02.214321Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/tasks/phase-3-cli-integration/tasks.md ms=827 left=48145
+2026-08-28T08:36:02.298263Z  INFO fs3_daemon::runner: batch kind="embed" subject=56 x raw jobs=4 ms=0
+2026-08-28T08:36:02.336325Z  INFO fs3_daemon::runner: done kind="embed" id=503087 left=48146
+2026-08-28T08:36:02.420464Z  INFO fs3_daemon::runner: done kind="embed" id=503067 left=48150
+2026-08-28T08:36:02.439186Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/tasks/phase-4-test-enrichment/tasks.fltplan.md ms=179 left=48149
+2026-08-28T08:36:02.498502Z  INFO fs3_daemon::runner: done kind="embed" id=503070 left=48148
+2026-08-28T08:36:02.569879Z  INFO fs3_daemon::runner: done kind="embed" id=503083 left=48147
+2026-08-28T08:36:02.672553Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=0
+2026-08-28T08:36:02.693102Z  INFO fs3_daemon::runner: done kind="embed" id=503094 left=48148
+2026-08-28T08:36:02.770020Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/tasks/phase-4-test-enrichment/tasks.md ms=120 left=48178
+2026-08-28T08:36:02.813896Z  INFO fs3_daemon::runner: batch kind="embed" subject=41 x raw jobs=3 ms=1
+2026-08-28T08:36:02.833868Z  INFO fs3_daemon::runner: done kind="embed" id=503103 left=48181
+2026-08-28T08:36:02.880784Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/tasks/phase-5-cleanup-and-documentation/execution.log.md ms=93 left=48194
+2026-08-28T08:36:02.909192Z  INFO fs3_daemon::runner: done kind="embed" id=503117 left=48193
+2026-08-28T08:36:02.980732Z  INFO fs3_daemon::runner: done kind="embed" id=503127 left=48192
+2026-08-28T08:36:03.076313Z  INFO fs3_daemon::runner: batch kind="embed" subject=29 x raw jobs=2 ms=0
+2026-08-28T08:36:03.096219Z  INFO fs3_daemon::runner: done kind="embed" id=503145 left=48192
+2026-08-28T08:36:03.120019Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/tasks/phase-5-cleanup-and-documentation/tasks.fltplan.md ms=60 left=48198
+2026-08-28T08:36:03.177110Z  INFO fs3_daemon::runner: done kind="embed" id=503135 left=48197
+2026-08-28T08:36:03.276431Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=1
+2026-08-28T08:36:03.296414Z  INFO fs3_daemon::runner: done kind="embed" id=503153 left=48197
+2026-08-28T08:36:03.363939Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/tasks/phase-5-cleanup-and-documentation/tasks.md ms=107 left=48223
+2026-08-28T08:36:03.417732Z  INFO fs3_daemon::runner: batch kind="embed" subject=40 x raw jobs=3 ms=1
+2026-08-28T08:36:03.437009Z  INFO fs3_daemon::runner: done kind="embed" id=503161 left=48226
+2026-08-28T08:36:03.465482Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/tasks/plan.fltplan.md ms=73 left=48236
+2026-08-28T08:36:03.517994Z  INFO fs3_daemon::watch: re-listed a changed directory directory=/Users/jordanknight/substrate/flowspace/fs3-worktree-diff/docs/plans/006-worktree-diff/assets/probes/out/run-20260828T083322Z events=32 enqueued=1 settled=Quiet
+2026-08-28T08:36:03.520397Z  INFO fs3_daemon::runner: done kind="embed" id=503182 left=48235
+2026-08-28T08:36:03.589483Z  INFO fs3_daemon::runner: done kind="embed" id=503173 left=48234
+2026-08-28T08:36:03.703341Z  INFO fs3_daemon::runner: batch kind="embed" subject=14 x raw jobs=1 ms=1
+2026-08-28T08:36:03.722875Z  INFO fs3_daemon::runner: done kind="embed" id=503197 left=48234
+2026-08-28T08:36:03.786276Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/workshops/e2e-test-enrichment.md ms=101 left=48276
+2026-08-28T08:36:03.837073Z  INFO fs3_daemon::runner: batch kind="embed" subject=49 x raw jobs=4 ms=0
+2026-08-28T08:36:03.858907Z  INFO fs3_daemon::runner: done kind="embed" id=503228 left=48277
+2026-08-28T08:36:03.923459Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/029-agentic-work-units/workshops/workunit-loading.md ms=110 left=48313
+2026-08-28T08:36:03.927244Z  INFO fs3_daemon::runner: done kind="embed" id=503240 left=48312
+2026-08-28T08:36:03.995450Z  INFO fs3_daemon::runner: done kind="embed" id=503241 left=48311
+2026-08-28T08:36:04.059423Z  INFO fs3_daemon::runner: done kind="embed" id=503211 left=48310
+2026-08-28T08:36:04.161016Z  INFO fs3_daemon::runner: batch kind="embed" subject=43 x raw jobs=3 ms=0
+2026-08-28T08:36:04.182596Z  INFO fs3_daemon::runner: done kind="embed" id=503271 left=48309
+2026-08-28T08:36:04.257473Z  INFO fs3_daemon::runner: done kind="embed" id=503256 left=48343
+2026-08-28T08:36:04.262144Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/concept-drift-audit-030-vs-032.md ms=118 left=48344
+2026-08-28T08:36:04.330473Z  INFO fs3_daemon::runner: done kind="embed" id=503280 left=48343
+2026-08-28T08:36:04.442189Z  INFO fs3_daemon::runner: batch kind="embed" subject=44 x raw jobs=3 ms=1
+2026-08-28T08:36:04.464477Z  INFO fs3_daemon::runner: done kind="embed" id=503307 left=48343
+2026-08-28T08:36:04.541835Z  INFO fs3_daemon::runner: done kind="embed" id=503317 left=48367
+2026-08-28T08:36:04.587385Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/positional-orchestrator-plan.md ms=170 left=48385
+2026-08-28T08:36:04.622232Z  INFO fs3_daemon::runner: done kind="embed" id=503295 left=48384
+2026-08-28T08:36:04.719384Z  INFO fs3_daemon::runner: batch kind="embed" subject=69 x raw jobs=5 ms=1
+2026-08-28T08:36:04.740646Z  INFO fs3_daemon::runner: done kind="embed" id=503362 left=48384
+2026-08-28T08:36:04.813069Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/positional-orchestrator-spec.md ms=113 left=48413
+2026-08-28T08:36:04.813126Z  INFO fs3_daemon::runner: done kind="embed" id=503325 left=48414
+2026-08-28T08:36:04.886413Z  INFO fs3_daemon::runner: done kind="embed" id=503343 left=48412
+2026-08-28T08:36:04.957121Z  INFO fs3_daemon::runner: done kind="embed" id=503331 left=48411
+2026-08-28T08:36:05.025857Z  INFO fs3_daemon::runner: done kind="embed" id=503357 left=48410
+2026-08-28T08:36:05.124745Z  INFO fs3_daemon::runner: batch kind="embed" subject=32 x raw jobs=2 ms=1
+2026-08-28T08:36:05.148389Z  INFO fs3_daemon::runner: done kind="embed" id=503376 left=48410
+2026-08-28T08:36:05.220923Z  INFO fs3_daemon::runner: done kind="embed" id=503393 left=48444
+2026-08-28T08:36:05.348038Z  INFO fs3_daemon::runner: batch kind="embed" subject=64 x raw jobs=4 ms=1
+2026-08-28T08:36:05.389940Z  INFO fs3_daemon::runner: done kind="embed" id=503434 left=48470
+2026-08-28T08:36:05.400077Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/research-dossier.md ms=294 left=48470
+2026-08-28T08:36:05.470321Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/reviews/fix-tasks.phase-7-orchestration-entry-point.md ms=152 left=48474
+2026-08-28T08:36:05.483546Z  INFO fs3_daemon::runner: done kind="embed" id=503418 left=48473
+2026-08-28T08:36:05.561227Z  INFO fs3_daemon::runner: done kind="embed" id=503405 left=48472
+2026-08-28T08:36:05.634592Z  INFO fs3_daemon::runner: done kind="embed" id=503449 left=48471
+2026-08-28T08:36:05.751494Z  INFO fs3_daemon::runner: batch kind="embed" subject=21 x raw jobs=2 ms=1
+2026-08-28T08:36:05.788416Z  INFO fs3_daemon::runner: done kind="embed" id=503463 left=48471
+2026-08-28T08:36:05.876307Z  INFO fs3_daemon::runner: done kind="embed" id=503456 left=48476
+2026-08-28T08:36:05.927234Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/reviews/fix-tasks.phase-8-e2e-and-integration-testing.md ms=203 left=48478
+2026-08-28T08:36:05.995724Z  INFO fs3_daemon::runner: batch kind="embed" subject=11 x raw jobs=1 ms=0
+2026-08-28T08:36:06.032983Z  INFO fs3_daemon::runner: done kind="embed" id=503473 left=48478
+2026-08-28T08:36:06.207523Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=0
+2026-08-28T08:36:06.238264Z  INFO fs3_daemon::runner: done kind="embed" id=503485 left=48496
+2026-08-28T08:36:06.310060Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/reviews/review.001-subtask-concept-drift-remediation.md ms=336 left=48503
+2026-08-28T08:36:06.367402Z  INFO fs3_daemon::runner: batch kind="embed" subject=3 x raw jobs=1 ms=0
+2026-08-28T08:36:06.406326Z  INFO fs3_daemon::runner: done kind="embed" id=503498 left=48512
+2026-08-28T08:36:06.522241Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/reviews/review.phase-1-positionalgraphreality-snapshot.md ms=395 left=48526
+2026-08-28T08:36:06.571594Z  INFO fs3_daemon::runner: progress phase="working" scanned=47276 scan_left=9536 summarized=101495 summarize_left=38989 embedded=159522 embed_left=3 failed=0
+2026-08-28T08:36:06.579581Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/reviews/review.phase-2-orchestrationrequest-discriminated-union.md ms=396 left=48531
+2026-08-28T08:36:06.607723Z  INFO fs3_daemon::runner: batch kind="embed" subject=59 x raw jobs=5 ms=1
+2026-08-28T08:36:06.645858Z  INFO fs3_daemon::runner: done kind="embed" id=503530 left=48537
+2026-08-28T08:36:06.709268Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/reviews/review.phase-3-agentcontextservice.md ms=380 left=48540
+2026-08-28T08:36:06.745670Z  INFO fs3_daemon::runner: done kind="embed" id=503509 left=48541
+2026-08-28T08:36:06.839423Z  INFO fs3_daemon::runner: done kind="embed" id=503513 left=48543
+2026-08-28T08:36:06.923713Z  INFO fs3_daemon::runner: done kind="embed" id=503531 left=48548
+2026-08-28T08:36:06.923771Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/reviews/review.phase-4-workunitpods-and-podmanager.md ms=409 left=48547
+2026-08-28T08:36:07.000930Z  INFO fs3_daemon::runner: done kind="embed" id=503524 left=48546
+2026-08-28T08:36:07.105016Z  INFO fs3_daemon::runner: batch kind="embed" subject=34 x raw jobs=3 ms=0
+2026-08-28T08:36:07.123646Z  INFO fs3_daemon::runner: done kind="embed" id=503546 left=48546
+2026-08-28T08:36:07.171735Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/reviews/review.phase-5-onbas-walk-algorithm.md ms=82 left=48557
+2026-08-28T08:36:07.199315Z  INFO fs3_daemon::runner: done kind="embed" id=503554 left=48556
+2026-08-28T08:36:07.270338Z  INFO fs3_daemon::runner: done kind="embed" id=503543 left=48555
+2026-08-28T08:36:07.384401Z  INFO fs3_daemon::runner: batch kind="embed" subject=15 x raw jobs=1 ms=1
+2026-08-28T08:36:07.407347Z  INFO fs3_daemon::runner: done kind="embed" id=503567 left=48555
+2026-08-28T08:36:07.449835Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/reviews/review.phase-6-ods-action-handlers.md ms=98 left=48572
+2026-08-28T08:36:07.525206Z  INFO fs3_daemon::runner: batch kind="embed" subject=23 x raw jobs=2 ms=1
+2026-08-28T08:36:07.547019Z  INFO fs3_daemon::runner: done kind="embed" id=503586 left=48572
+2026-08-28T08:36:07.595856Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/reviews/review.phase-7-orchestration-entry-point.md ms=92 left=48590
+2026-08-28T08:36:07.628321Z  INFO fs3_daemon::runner: done kind="embed" id=503579 left=48589
+2026-08-28T08:36:07.729341Z  INFO fs3_daemon::runner: batch kind="embed" subject=32 x raw jobs=2 ms=0
+2026-08-28T08:36:07.750763Z  INFO fs3_daemon::runner: done kind="embed" id=503605 left=48589
+2026-08-28T08:36:07.789900Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/reviews/review.phase-8-e2e-and-integration-testing.md ms=80 left=48604
+2026-08-28T08:36:07.819955Z  INFO fs3_daemon::runner: done kind="embed" id=503598 left=48603
+2026-08-28T08:36:07.934113Z  INFO fs3_daemon::runner: batch kind="embed" subject=23 x raw jobs=2 ms=0
+2026-08-28T08:36:07.954363Z  INFO fs3_daemon::runner: done kind="embed" id=503623 left=48604
+2026-08-28T08:36:07.986523Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-1-positionalgraphreality-snapshot/execution.log.md ms=78 left=48619
+2026-08-28T08:36:08.028303Z  INFO fs3_daemon::runner: done kind="embed" id=503617 left=48618
+2026-08-28T08:36:08.123479Z  INFO fs3_daemon::runner: batch kind="embed" subject=55 x raw jobs=4 ms=0
+2026-08-28T08:36:08.143163Z  INFO fs3_daemon::runner: done kind="embed" id=503639 left=48618
+2026-08-28T08:36:08.174300Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-1-positionalgraphreality-snapshot/tasks.fltplan.md ms=67 left=48624
+2026-08-28T08:36:08.220837Z  INFO fs3_daemon::runner: done kind="embed" id=503641 left=48623
+2026-08-28T08:36:08.297944Z  INFO fs3_daemon::runner: done kind="embed" id=503634 left=48622
+2026-08-28T08:36:08.368262Z  INFO fs3_daemon::runner: done kind="embed" id=503629 left=48621
+2026-08-28T08:36:08.470619Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=1
+2026-08-28T08:36:08.493845Z  INFO fs3_daemon::runner: done kind="embed" id=503649 left=48623
+2026-08-28T08:36:08.576842Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-1-positionalgraphreality-snapshot/tasks.md ms=126 left=48651
+2026-08-28T08:36:08.617640Z  INFO fs3_daemon::runner: batch kind="embed" subject=41 x raw jobs=3 ms=3
+2026-08-28T08:36:08.654164Z  INFO fs3_daemon::runner: done kind="embed" id=503663 left=48656
+2026-08-28T08:36:08.666481Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-2-orchestrationrequest-discriminated-union/execution.log.md ms=75 left=48661
+2026-08-28T08:36:08.736840Z  INFO fs3_daemon::runner: done kind="embed" id=503673 left=48660
+2026-08-28T08:36:08.812262Z  INFO fs3_daemon::runner: done kind="embed" id=503682 left=48659
+2026-08-28T08:36:08.921268Z  INFO fs3_daemon::runner: batch kind="embed" subject=36 x raw jobs=3 ms=0
+2026-08-28T08:36:08.943420Z  INFO fs3_daemon::runner: done kind="embed" id=503688 left=48660
+2026-08-28T08:36:08.965194Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-2-orchestrationrequest-discriminated-union/tasks.fltplan.md ms=67 left=48665
+2026-08-28T08:36:09.017992Z  INFO fs3_daemon::runner: done kind="embed" id=503692 left=48664
+2026-08-28T08:36:09.088003Z  INFO fs3_daemon::runner: done kind="embed" id=503694 left=48663
+2026-08-28T08:36:09.214506Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=1
+2026-08-28T08:36:09.237778Z  INFO fs3_daemon::runner: done kind="embed" id=503702 left=48662
+2026-08-28T08:36:09.341613Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-2-orchestrationrequest-discriminated-union/tasks.md ms=161 left=48695
+2026-08-28T08:36:09.350269Z  INFO fs3_daemon::runner: batch kind="embed" subject=53 x raw jobs=4 ms=0
+2026-08-28T08:36:09.376596Z  INFO fs3_daemon::runner: done kind="embed" id=503718 left=48697
+2026-08-28T08:36:09.412560Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-3-agentcontextservice/execution.log.md ms=88 left=48707
+2026-08-28T08:36:09.457815Z  INFO fs3_daemon::runner: done kind="embed" id=503710 left=48706
+2026-08-28T08:36:09.527675Z  INFO fs3_daemon::runner: done kind="embed" id=503737 left=48705
+2026-08-28T08:36:09.600978Z  INFO fs3_daemon::runner: done kind="embed" id=503732 left=48704
+2026-08-28T08:36:09.705340Z  INFO fs3_daemon::runner: batch kind="embed" subject=31 x raw jobs=2 ms=0
+2026-08-28T08:36:09.724252Z  INFO fs3_daemon::runner: done kind="embed" id=503751 left=48706
+2026-08-28T08:36:09.732465Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-3-agentcontextservice/tasks.fltplan.md ms=50 left=48710
+2026-08-28T08:36:09.797414Z  INFO fs3_daemon::runner: done kind="embed" id=503744 left=48709
+2026-08-28T08:36:09.924805Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=1
+2026-08-28T08:36:09.964189Z  INFO fs3_daemon::runner: done kind="embed" id=503759 left=48710
+2026-08-28T08:36:10.101480Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=0
+2026-08-28T08:36:10.143263Z  INFO fs3_daemon::runner: done kind="embed" id=503768 left=48722
+2026-08-28T08:36:10.277242Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=0
+2026-08-28T08:36:10.315106Z  INFO fs3_daemon::runner: done kind="embed" id=503783 left=48739
+2026-08-28T08:36:10.425904Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-4-workunitpods-and-podmanager/execution.log.md ms=362 left=48751
+2026-08-28T08:36:10.448812Z  INFO fs3_daemon::runner: batch kind="embed" subject=42 x raw jobs=4 ms=4
+2026-08-28T08:36:10.456575Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-4-workunitpods-and-podmanager/tasks.fltplan.md ms=202 left=48751
+2026-08-28T08:36:10.488505Z  INFO fs3_daemon::runner: done kind="embed" id=503805 left=48754
+2026-08-28T08:36:10.575314Z  INFO fs3_daemon::runner: done kind="embed" id=503799 left=48762
+2026-08-28T08:36:10.664819Z  INFO fs3_daemon::runner: done kind="embed" id=503786 left=48769
+2026-08-28T08:36:10.676209Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-3-agentcontextservice/tasks.md ms=791 left=48768
+2026-08-28T08:36:10.753335Z  INFO fs3_daemon::runner: done kind="embed" id=503803 left=48772
+2026-08-28T08:36:10.858647Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-4-workunitpods-and-podmanager/tasks.md ms=449 left=48796
+2026-08-28T08:36:10.861646Z  INFO fs3_daemon::runner: batch kind="embed" subject=71 x raw jobs=6 ms=2
+2026-08-28T08:36:10.889482Z  INFO fs3_daemon::runner: done kind="embed" id=503827 left=48797
+2026-08-28T08:36:10.907840Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-5-onbas-walk-algorithm/execution.log.md ms=66 left=48802
+2026-08-28T08:36:10.967150Z  INFO fs3_daemon::runner: done kind="embed" id=503820 left=48801
+2026-08-28T08:36:11.051489Z  INFO fs3_daemon::runner: done kind="embed" id=503858 left=48800
+2026-08-28T08:36:11.124610Z  INFO fs3_daemon::runner: done kind="embed" id=503851 left=48799
+2026-08-28T08:36:11.199912Z  INFO fs3_daemon::runner: done kind="embed" id=503837 left=48798
+2026-08-28T08:36:11.276509Z  INFO fs3_daemon::runner: done kind="embed" id=503826 left=48797
+2026-08-28T08:36:11.389256Z  INFO fs3_daemon::runner: batch kind="embed" subject=17 x raw jobs=2 ms=0
+2026-08-28T08:36:11.424282Z  INFO fs3_daemon::runner: done kind="embed" id=503865 left=48797
+2026-08-28T08:36:11.521645Z  INFO fs3_daemon::runner: done kind="embed" id=503866 left=48803
+2026-08-28T08:36:11.534612Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-5-onbas-walk-algorithm/tasks.fltplan.md ms=168 left=48802
+2026-08-28T08:36:11.664293Z  INFO fs3_daemon::runner: progress phase="working" scanned=47297 scan_left=9515 summarized=101495 summarize_left=39286 embedded=159570 embed_left=1 failed=0
+2026-08-28T08:36:11.688736Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=0
+2026-08-28T08:36:11.712912Z  INFO fs3_daemon::runner: done kind="embed" id=503874 left=48807
+2026-08-28T08:36:11.779739Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-5-onbas-walk-algorithm/tasks.md ms=165 left=48829
+2026-08-28T08:36:11.829142Z  INFO fs3_daemon::runner: batch kind="embed" subject=43 x raw jobs=3 ms=1
+2026-08-28T08:36:11.850009Z  INFO fs3_daemon::runner: done kind="embed" id=503885 left=48831
+2026-08-28T08:36:11.899645Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-6-ods-action-handlers/001-subtask-concept-drift-remediation.execution.log.md ms=96 left=48844
+2026-08-28T08:36:11.930426Z  INFO fs3_daemon::runner: done kind="embed" id=503894 left=48843
+2026-08-28T08:36:12.004399Z  INFO fs3_daemon::runner: done kind="embed" id=503904 left=48842
+2026-08-28T08:36:12.102141Z  INFO fs3_daemon::runner: batch kind="embed" subject=39 x raw jobs=3 ms=0
+2026-08-28T08:36:12.123692Z  INFO fs3_daemon::runner: done kind="embed" id=503911 left=48842
+2026-08-28T08:36:12.144850Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-6-ods-action-handlers/001-subtask-concept-drift-remediation.fltplan.md ms=60 left=48849
+2026-08-28T08:36:12.203353Z  INFO fs3_daemon::runner: done kind="embed" id=503918 left=48848
+2026-08-28T08:36:12.269597Z  INFO fs3_daemon::runner: done kind="embed" id=503921 left=48847
+2026-08-28T08:36:12.367940Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=1
+2026-08-28T08:36:12.391094Z  INFO fs3_daemon::runner: done kind="embed" id=503930 left=48847
+2026-08-28T08:36:12.475257Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-6-ods-action-handlers/001-subtask-concept-drift-remediation.md ms=130 left=48876
+2026-08-28T08:36:12.518134Z  INFO fs3_daemon::runner: batch kind="embed" subject=39 x raw jobs=3 ms=0
+2026-08-28T08:36:12.529007Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-6-ods-action-handlers/examples/README.md ms=45 left=48877
+2026-08-28T08:36:12.534497Z  INFO fs3_daemon::runner: done kind="embed" id=503954 left=48876
+2026-08-28T08:36:12.603088Z  INFO fs3_daemon::runner: done kind="embed" id=503942 left=48875
+2026-08-28T08:36:12.671838Z  INFO fs3_daemon::runner: done kind="embed" id=503961 left=48874
+2026-08-28T08:36:12.767514Z  INFO fs3_daemon::runner: batch kind="embed" subject=3 x raw jobs=1 ms=0
+2026-08-28T08:36:12.788569Z  INFO fs3_daemon::runner: done kind="embed" id=503963 left=48873
+2026-08-28T08:36:12.804064Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-6-ods-action-handlers/examples/worked-example-ods-dispatch.ts ms=54 left=48873
+2026-08-28T08:36:12.896660Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T08:36:12.918745Z  INFO fs3_daemon::runner: done kind="embed" id=503964 left=48873
+2026-08-28T08:36:12.942628Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-6-ods-action-handlers/examples/worked-example-ods-dispatch.walkthrough.md ms=66 left=48881
+2026-08-28T08:36:13.030789Z  INFO fs3_daemon::runner: batch kind="embed" subject=12 x raw jobs=1 ms=0
+2026-08-28T08:36:13.054762Z  INFO fs3_daemon::runner: done kind="embed" id=503974 left=48881
+2026-08-28T08:36:13.058493Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-6-ods-action-handlers/examples/worked-example-two-domain-boundary.ts ms=46 left=48880
+2026-08-28T08:36:13.181706Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=1
+2026-08-28T08:36:13.203833Z  INFO fs3_daemon::runner: done kind="embed" id=503975 left=48880
+2026-08-28T08:36:13.234967Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-6-ods-action-handlers/examples/worked-example-two-domain-boundary.walkthrough.md ms=90 left=48886
+2026-08-28T08:36:13.308643Z  INFO fs3_daemon::runner: batch kind="embed" subject=12 x raw jobs=1 ms=0
+2026-08-28T08:36:13.326159Z  INFO fs3_daemon::runner: done kind="embed" id=503983 left=48886
+2026-08-28T08:36:13.357256Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-6-ods-action-handlers/execution.log.md ms=63 left=48895
+2026-08-28T08:36:13.436887Z  INFO fs3_daemon::runner: batch kind="embed" subject=11 x raw jobs=1 ms=0
+2026-08-28T08:36:13.449109Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-6-ods-action-handlers/subtask-two-phase-handshake/execution.log.md ms=30 left=48895
+2026-08-28T08:36:13.450725Z  INFO fs3_daemon::runner: done kind="embed" id=503994 left=48894
+2026-08-28T08:36:13.547115Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T08:36:13.564106Z  INFO fs3_daemon::runner: done kind="embed" id=503995 left=48895
+2026-08-28T08:36:13.618809Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-6-ods-action-handlers/subtask-two-phase-handshake/tasks.fltplan.md ms=88 left=48911
+2026-08-28T08:36:13.676916Z  INFO fs3_daemon::runner: batch kind="embed" subject=19 x raw jobs=2 ms=0
+2026-08-28T08:36:13.696953Z  INFO fs3_daemon::runner: done kind="embed" id=504014 left=48911
+2026-08-28T08:36:13.763482Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-6-ods-action-handlers/subtask-two-phase-handshake/tasks.md ms=108 left=48942
+2026-08-28T08:36:13.764861Z  INFO fs3_daemon::runner: done kind="embed" id=504010 left=48941
+2026-08-28T08:36:13.863726Z  INFO fs3_daemon::runner: batch kind="embed" subject=35 x raw jobs=3 ms=0
+2026-08-28T08:36:13.883198Z  INFO fs3_daemon::runner: done kind="embed" id=504043 left=48942
+2026-08-28T08:36:13.910810Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-6-ods-action-handlers/tasks.fltplan.md ms=66 left=48946
+2026-08-28T08:36:13.961173Z  INFO fs3_daemon::runner: done kind="embed" id=504027 left=48945
+2026-08-28T08:36:14.033916Z  INFO fs3_daemon::runner: done kind="embed" id=504047 left=48944
+2026-08-28T08:36:14.134265Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=1
+2026-08-28T08:36:14.154466Z  INFO fs3_daemon::runner: done kind="embed" id=504054 left=48945
+2026-08-28T08:36:14.220522Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-6-ods-action-handlers/tasks.md ms=107 left=48972
+2026-08-28T08:36:14.269952Z  INFO fs3_daemon::runner: batch kind="embed" subject=43 x raw jobs=3 ms=1
+2026-08-28T08:36:14.290909Z  INFO fs3_daemon::runner: done kind="embed" id=504074 left=48971
+2026-08-28T08:36:14.293947Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-7-orchestration-entry-point/examples/worked-example.ts ms=55 left=48971
+2026-08-28T08:36:14.366824Z  INFO fs3_daemon::runner: done kind="embed" id=504065 left=48970
+2026-08-28T08:36:14.438985Z  INFO fs3_daemon::runner: done kind="embed" id=504084 left=48969
+2026-08-28T08:36:14.543883Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T08:36:14.567297Z  INFO fs3_daemon::runner: done kind="embed" id=504085 left=48969
+2026-08-28T08:36:14.593146Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-7-orchestration-entry-point/examples/worked-example.walkthrough.md ms=71 left=48979
+2026-08-28T08:36:14.699541Z  INFO fs3_daemon::runner: batch kind="embed" subject=12 x raw jobs=1 ms=0
+2026-08-28T08:36:14.743001Z  INFO fs3_daemon::runner: done kind="embed" id=504097 left=48979
+2026-08-28T08:36:15.011029Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=1
+2026-08-28T08:36:15.027003Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-7-orchestration-entry-point/execution.log.md ms=352 left=49005
+2026-08-28T08:36:15.070237Z  INFO fs3_daemon::runner: done kind="embed" id=504119 left=49007
+2026-08-28T08:36:15.071873Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-7-orchestration-entry-point/tasks.fltplan.md ms=229 left=49006
+2026-08-28T08:36:15.215445Z  INFO fs3_daemon::runner: batch kind="embed" subject=25 x raw jobs=2 ms=3
+2026-08-28T08:36:15.241794Z  INFO fs3_daemon::runner: done kind="embed" id=504126 left=49024
+2026-08-28T08:36:15.276783Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-8-e2e-and-integration-testing/001-subtask-upgrade-worked-example.execution.log.md ms=303 left=49026
+2026-08-28T08:36:15.341371Z  INFO fs3_daemon::runner: done kind="embed" id=504137 left=49031
+2026-08-28T08:36:15.479448Z  INFO fs3_daemon::runner: batch kind="embed" subject=53 x raw jobs=4 ms=4
+2026-08-28T08:36:15.515185Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-8-e2e-and-integration-testing/examples/worked-example-full.ts ms=75 left=49045
+2026-08-28T08:36:15.516653Z  INFO fs3_daemon::runner: done kind="embed" id=504159 left=49045
+2026-08-28T08:36:15.598135Z  INFO fs3_daemon::runner: done kind="embed" id=504160 left=49050
+2026-08-28T08:36:15.672858Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-7-orchestration-entry-point/tasks.md ms=763 left=49054
+2026-08-28T08:36:15.684804Z  INFO fs3_daemon::runner: done kind="embed" id=504148 left=49054
+2026-08-28T08:36:15.768269Z  INFO fs3_daemon::runner: done kind="embed" id=504145 left=49058
+2026-08-28T08:36:15.843621Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-8-e2e-and-integration-testing/001-subtask-upgrade-worked-example.md ms=667 left=49061
+2026-08-28T08:36:15.904709Z  INFO fs3_daemon::runner: batch kind="embed" subject=36 x raw jobs=4 ms=1
+2026-08-28T08:36:15.943061Z  INFO fs3_daemon::runner: done kind="embed" id=504170 left=49061
+2026-08-28T08:36:16.032655Z  INFO fs3_daemon::runner: done kind="embed" id=504183 left=49066
+2026-08-28T08:36:16.084935Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-8-e2e-and-integration-testing/examples/worked-example-full.walkthrough.md ms=210 left=49067
+2026-08-28T08:36:16.115671Z  INFO fs3_daemon::runner: done kind="embed" id=504187 left=49066
+2026-08-28T08:36:16.196275Z  INFO fs3_daemon::runner: done kind="embed" id=504195 left=49065
+2026-08-28T08:36:16.311452Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=0
+2026-08-28T08:36:16.341673Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-8-e2e-and-integration-testing/examples/worked-example.ts ms=61 left=49064
+2026-08-28T08:36:16.342055Z  INFO fs3_daemon::runner: done kind="embed" id=504204 left=49065
+2026-08-28T08:36:16.456294Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T08:36:16.475542Z  INFO fs3_daemon::runner: done kind="embed" id=504205 left=49064
+2026-08-28T08:36:16.518636Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-8-e2e-and-integration-testing/examples/worked-example.walkthrough.md ms=78 left=49078
+2026-08-28T08:36:16.604640Z  INFO fs3_daemon::runner: batch kind="embed" subject=19 x raw jobs=2 ms=0
+2026-08-28T08:36:16.628835Z  INFO fs3_daemon::runner: done kind="embed" id=504221 left=49078
+2026-08-28T08:36:16.663271Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-8-e2e-and-integration-testing/execution.log.md ms=82 left=49089
+2026-08-28T08:36:16.714886Z  INFO fs3_daemon::runner: done kind="embed" id=504218 left=49088
+2026-08-28T08:36:16.864254Z  INFO fs3_daemon::runner: progress phase="working" scanned=47324 scan_left=9488 summarized=101495 summarize_left=39598 embedded=159614 embed_left=2 failed=0
+2026-08-28T08:36:16.874600Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-8-e2e-and-integration-testing/tasks.fltplan.md ms=61 left=49095
+2026-08-28T08:36:16.884980Z  INFO fs3_daemon::runner: batch kind="embed" subject=28 x raw jobs=3 ms=0
+2026-08-28T08:36:16.909505Z  INFO fs3_daemon::runner: done kind="embed" id=504242 left=49094
+2026-08-28T08:36:16.985782Z  INFO fs3_daemon::runner: done kind="embed" id=504231 left=49093
+2026-08-28T08:36:17.061462Z  INFO fs3_daemon::runner: done kind="embed" id=504234 left=49092
+2026-08-28T08:36:17.261112Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/workshops.md ms=65 left=49117
+2026-08-28T08:36:17.271004Z  INFO fs3_daemon::runner: batch kind="embed" subject=45 x raw jobs=3 ms=1
+2026-08-28T08:36:17.291232Z  INFO fs3_daemon::runner: done kind="embed" id=504254 left=49130
+2026-08-28T08:36:17.306973Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/tasks/phase-8-e2e-and-integration-testing/tasks.md ms=160 left=49135
+2026-08-28T08:36:17.358566Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/workshops/01-positional-graph-reality.md ms=107 left=49165
+2026-08-28T08:36:17.368946Z  INFO fs3_daemon::runner: done kind="embed" id=504273 left=49164
+2026-08-28T08:36:17.444489Z  INFO fs3_daemon::runner: done kind="embed" id=504267 left=49163
+2026-08-28T08:36:17.548772Z  INFO fs3_daemon::runner: batch kind="embed" subject=50 x raw jobs=4 ms=1
+2026-08-28T08:36:17.568728Z  INFO fs3_daemon::runner: done kind="embed" id=504321 left=49162
+2026-08-28T08:36:17.665078Z  INFO fs3_daemon::runner: done kind="embed" id=504314 left=49183
+2026-08-28T08:36:17.705016Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/workshops/02-orchestration-request.md ms=175 left=49196
+2026-08-28T08:36:17.751434Z  INFO fs3_daemon::runner: done kind="embed" id=504299 left=49195
+2026-08-28T08:36:17.823128Z  INFO fs3_daemon::runner: done kind="embed" id=504290 left=49194
+2026-08-28T08:36:17.929014Z  INFO fs3_daemon::runner: batch kind="embed" subject=41 x raw jobs=3 ms=1
+2026-08-28T08:36:17.946856Z  INFO fs3_daemon::runner: done kind="embed" id=504333 left=49194
+2026-08-28T08:36:18.024486Z  INFO fs3_daemon::runner: done kind="embed" id=504346 left=49224
+2026-08-28T08:36:18.049443Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/workshops/03-agent-context-service.md ms=146 left=49234
+2026-08-28T08:36:18.102636Z  INFO fs3_daemon::runner: done kind="embed" id=504357 left=49233
+2026-08-28T08:36:18.208746Z  INFO fs3_daemon::runner: batch kind="embed" subject=49 x raw jobs=4 ms=2
+2026-08-28T08:36:18.238080Z  INFO fs3_daemon::runner: done kind="embed" id=504397 left=49233
+2026-08-28T08:36:18.311226Z  INFO fs3_daemon::runner: done kind="embed" id=504368 left=49263
+2026-08-28T08:36:18.356888Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/workshops/04-work-unit-pods.md ms=175 left=49282
+2026-08-28T08:36:18.394978Z  INFO fs3_daemon::runner: done kind="embed" id=504400 left=49281
+2026-08-28T08:36:18.462685Z  INFO fs3_daemon::runner: done kind="embed" id=504382 left=49280
+2026-08-28T08:36:18.572787Z  INFO fs3_daemon::runner: batch kind="embed" subject=52 x raw jobs=4 ms=2
+2026-08-28T08:36:18.597564Z  INFO fs3_daemon::runner: done kind="embed" id=504429 left=49280
+2026-08-28T08:36:18.672544Z  INFO fs3_daemon::runner: done kind="embed" id=504446 left=49319
+2026-08-28T08:36:18.687422Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/workshops/05-onbas.md ms=144 left=49325
+2026-08-28T08:36:18.744162Z  INFO fs3_daemon::runner: done kind="embed" id=504413 left=49324
+2026-08-28T08:36:18.813775Z  INFO fs3_daemon::runner: done kind="embed" id=504452 left=49323
+2026-08-28T08:36:18.912716Z  INFO fs3_daemon::runner: batch kind="embed" subject=59 x raw jobs=4 ms=1
+2026-08-28T08:36:18.931845Z  INFO fs3_daemon::runner: done kind="embed" id=504462 left=49325
+2026-08-28T08:36:19.010061Z  INFO fs3_daemon::runner: done kind="embed" id=504474 left=49365
+2026-08-28T08:36:19.053026Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/workshops/06-e2e-integration-testing.md ms=161 left=49377
+2026-08-28T08:36:19.102484Z  INFO fs3_daemon::runner: done kind="embed" id=504500 left=49376
+2026-08-28T08:36:19.186802Z  INFO fs3_daemon::runner: done kind="embed" id=504489 left=49375
+2026-08-28T08:36:19.299796Z  INFO fs3_daemon::runner: batch kind="embed" subject=59 x raw jobs=4 ms=1
+2026-08-28T08:36:19.333638Z  INFO fs3_daemon::runner: done kind="embed" id=504515 left=49375
+2026-08-28T08:36:19.418064Z  INFO fs3_daemon::runner: done kind="embed" id=504547 left=49380
+2026-08-28T08:36:19.500573Z  INFO fs3_daemon::runner: done kind="embed" id=504531 left=49385
+2026-08-28T08:36:19.580629Z  INFO fs3_daemon::runner: done kind="embed" id=504557 left=49390
+2026-08-28T08:36:19.694061Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/workshops/07-orchestration-entry-point.md ms=421 left=49398
+2026-08-28T08:36:19.723924Z  INFO fs3_daemon::runner: batch kind="embed" subject=36 x raw jobs=3 ms=3
+2026-08-28T08:36:19.762235Z  INFO fs3_daemon::runner: done kind="embed" id=504585 left=49398
+2026-08-28T08:36:19.850243Z  INFO fs3_daemon::runner: done kind="embed" id=504570 left=49403
+2026-08-28T08:36:19.932756Z  INFO fs3_daemon::runner: done kind="embed" id=504582 left=49409
+2026-08-28T08:36:20.061837Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=0
+2026-08-28T08:36:20.098669Z  INFO fs3_daemon::runner: done kind="embed" id=504600 left=49420
+2026-08-28T08:36:20.237964Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=1
+2026-08-28T08:36:20.276669Z  INFO fs3_daemon::runner: done kind="embed" id=504617 left=49436
+2026-08-28T08:36:20.407896Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=0
+2026-08-28T08:36:20.445723Z  INFO fs3_daemon::runner: done kind="embed" id=504631 left=49457
+2026-08-28T08:36:20.564101Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/workshops/08-ods-orchestrator-agent-handover.md ms=879 left=49474
+2026-08-28T08:36:20.573414Z  INFO fs3_daemon::runner: batch kind="embed" subject=38 x raw jobs=3 ms=1
+2026-08-28T08:36:20.621723Z  INFO fs3_daemon::runner: done kind="embed" id=504647 left=49480
+2026-08-28T08:36:20.693093Z  INFO fs3_daemon::runner: done kind="embed" id=504664 left=49518
+2026-08-28T08:36:20.701471Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/workshops/09-concept-drift-remediation.md ms=669 left=49523
+2026-08-28T08:36:20.750409Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/workshops/10-node-restart-event.md ms=543 left=49551
+2026-08-28T08:36:20.766513Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/workshops/11-phase-6-alignment.md ms=397 left=49565
+2026-08-28T08:36:20.768308Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/workshops/12-ods-design.md ms=228 left=49564
+2026-08-28T08:36:20.780858Z  INFO fs3_daemon::runner: done kind="embed" id=504667 left=49564
+2026-08-28T08:36:20.904746Z  INFO fs3_daemon::runner: batch kind="embed" subject=147 x raw jobs=11 ms=3
+2026-08-28T08:36:20.925755Z  INFO fs3_daemon::runner: done kind="embed" id=504699 left=49564
+2026-08-28T08:36:20.999462Z  INFO fs3_daemon::runner: done kind="embed" id=504762 left=49586
+2026-08-28T08:36:21.075414Z  INFO fs3_daemon::runner: done kind="embed" id=504759 left=49612
+2026-08-28T08:36:21.092907Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/workshops/13-phase-8-e2e-design.md ms=221 left=49617
+2026-08-28T08:36:21.157112Z  INFO fs3_daemon::runner: done kind="embed" id=504718 left=49616
+2026-08-28T08:36:21.225796Z  INFO fs3_daemon::runner: done kind="embed" id=504765 left=49615
+2026-08-28T08:36:21.296881Z  INFO fs3_daemon::runner: done kind="embed" id=504753 left=49614
+2026-08-28T08:36:21.366450Z  INFO fs3_daemon::runner: done kind="embed" id=504722 left=49613
+2026-08-28T08:36:21.434761Z  INFO fs3_daemon::runner: done kind="embed" id=504695 left=49612
+2026-08-28T08:36:21.501210Z  INFO fs3_daemon::runner: done kind="embed" id=504747 left=49611
+2026-08-28T08:36:21.568927Z  INFO fs3_daemon::runner: done kind="embed" id=504727 left=49610
+2026-08-28T08:36:21.638608Z  INFO fs3_daemon::runner: done kind="embed" id=504717 left=49609
+2026-08-28T08:36:21.739551Z  INFO fs3_daemon::runner: batch kind="embed" subject=65 x raw jobs=5 ms=2
+2026-08-28T08:36:21.761094Z  INFO fs3_daemon::runner: done kind="embed" id=504778 left=49609
+2026-08-28T08:36:21.836135Z  INFO fs3_daemon::runner: done kind="embed" id=504793 left=49637
+2026-08-28T08:36:21.860438Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/030-positional-orchestrator/workshops/14-worked-example-upgrade.md ms=143 left=49645
+2026-08-28T08:36:21.913270Z  INFO fs3_daemon::runner: done kind="embed" id=504822 left=49644
+2026-08-28T08:36:21.987619Z  INFO fs3_daemon::runner: done kind="embed" id=504810 left=49643
+2026-08-28T08:36:22.056098Z  INFO fs3_daemon::runner: done kind="embed" id=504820 left=49642
+2026-08-28T08:36:22.196906Z  INFO fs3_daemon::runner: progress phase="working" scanned=47341 scan_left=9471 summarized=101495 summarize_left=40168 embedded=159668 embed_left=3 failed=0
+2026-08-28T08:36:22.204052Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/e2e-event-system-sample-flow.ts ms=59 left=49642
+2026-08-28T08:36:22.223057Z  INFO fs3_daemon::runner: batch kind="embed" subject=47 x raw jobs=4 ms=1
+2026-08-28T08:36:22.243087Z  INFO fs3_daemon::runner: done kind="embed" id=504862 left=49641
+2026-08-28T08:36:22.310941Z  INFO fs3_daemon::runner: done kind="embed" id=504836 left=49640
+2026-08-28T08:36:22.375950Z  INFO fs3_daemon::runner: done kind="embed" id=504861 left=49639
+2026-08-28T08:36:22.444177Z  INFO fs3_daemon::runner: done kind="embed" id=504851 left=49638
+2026-08-28T08:36:22.652180Z  INFO fs3_daemon::runner: batch kind="embed" subject=32 x raw jobs=2 ms=1
+2026-08-28T08:36:22.683688Z  INFO fs3_daemon::runner: done kind="embed" id=504877 left=49688
+2026-08-28T08:36:22.708590Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/research-dossier.md ms=79 left=49721
+2026-08-28T08:36:22.729596Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/node-event-system-spec.md ms=155 left=49724
+2026-08-28T08:36:22.746393Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/node-event-system-plan.md ms=222 left=49733
+2026-08-28T08:36:22.762995Z  INFO fs3_daemon::runner: done kind="embed" id=504898 left=49732
+2026-08-28T08:36:22.886337Z  INFO fs3_daemon::runner: batch kind="embed" subject=87 x raw jobs=7 ms=1
+2026-08-28T08:36:22.905585Z  INFO fs3_daemon::runner: done kind="embed" id=504962 left=49732
+2026-08-28T08:36:22.940534Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/reviews/fix-tasks.phase-1-event-types-schemas-and-registry.md ms=77 left=49738
+2026-08-28T08:36:22.982654Z  INFO fs3_daemon::runner: done kind="embed" id=504942 left=49737
+2026-08-28T08:36:23.052845Z  INFO fs3_daemon::runner: done kind="embed" id=504946 left=49736
+2026-08-28T08:36:23.122889Z  INFO fs3_daemon::runner: done kind="embed" id=504950 left=49735
+2026-08-28T08:36:23.194923Z  INFO fs3_daemon::runner: done kind="embed" id=504951 left=49734
+2026-08-28T08:36:23.269141Z  INFO fs3_daemon::runner: done kind="embed" id=504934 left=49733
+2026-08-28T08:36:23.334476Z  INFO fs3_daemon::runner: done kind="embed" id=504909 left=49732
+2026-08-28T08:36:23.524443Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=1
+2026-08-28T08:36:23.569895Z  INFO fs3_daemon::runner: done kind="embed" id=504970 left=49732
+2026-08-28T08:36:23.704891Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=0
+2026-08-28T08:36:23.744002Z  INFO fs3_daemon::runner: done kind="embed" id=504980 left=49743
+2026-08-28T08:36:23.859021Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/reviews/review.phase-1-event-types-schemas-and-registry.md ms=357 left=49752
+2026-08-28T08:36:23.872842Z  INFO fs3_daemon::runner: batch kind="embed" subject=5 x raw jobs=1 ms=0
+2026-08-28T08:36:23.927928Z  INFO fs3_daemon::runner: done kind="embed" id=504992 left=49755
+2026-08-28T08:36:24.066187Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=1
+2026-08-28T08:36:24.108117Z  INFO fs3_daemon::runner: done kind="embed" id=505003 left=49773
+2026-08-28T08:36:24.111323Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/reviews/review.phase-2-state-schema-extension-and-two-phase-handshake.md ms=431 left=49772
+2026-08-28T08:36:24.249390Z  INFO fs3_daemon::runner: batch kind="embed" subject=19 x raw jobs=2 ms=1
+2026-08-28T08:36:24.278354Z  INFO fs3_daemon::runner: done kind="embed" id=505014 left=49790
+2026-08-28T08:36:24.291651Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/reviews/review.phase-3-raiseevent-core-write-path.md ms=453 left=49795
+2026-08-28T08:36:24.319123Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/reviews/review.phase-4-event-handlers-and-state-transitions.md ms=287 left=49802
+2026-08-28T08:36:24.340630Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/reviews/review.phase-5-service-method-wrappers.md ms=121 left=49805
+2026-08-28T08:36:24.366326Z  INFO fs3_daemon::runner: done kind="embed" id=505020 left=49804
+2026-08-28T08:36:24.480628Z  INFO fs3_daemon::runner: batch kind="embed" subject=52 x raw jobs=4 ms=2
+2026-08-28T08:36:24.519029Z  INFO fs3_daemon::runner: done kind="embed" id=505032 left=49804
+2026-08-28T08:36:24.606243Z  INFO fs3_daemon::runner: done kind="embed" id=505048 left=49810
+2026-08-28T08:36:24.680133Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/reviews/review.phase-5-subtask-001-drop-backward-compat.md ms=220 left=49814
+2026-08-28T08:36:24.697704Z  INFO fs3_daemon::runner: done kind="embed" id=505053 left=49813
+2026-08-28T08:36:24.781864Z  INFO fs3_daemon::runner: done kind="embed" id=505039 left=49812
+2026-08-28T08:36:24.889358Z  INFO fs3_daemon::runner: batch kind="embed" subject=15 x raw jobs=1 ms=1
+2026-08-28T08:36:24.927957Z  INFO fs3_daemon::runner: done kind="embed" id=505066 left=49812
+2026-08-28T08:36:25.095795Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/reviews/review.phase-6-cli-commands.md ms=228 left=49824
+2026-08-28T08:36:25.107586Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=1
+2026-08-28T08:36:25.153876Z  INFO fs3_daemon::runner: done kind="embed" id=505077 left=49826
+2026-08-28T08:36:25.364141Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=1
+2026-08-28T08:36:25.402863Z  INFO fs3_daemon::runner: done kind="embed" id=505096 left=49853
+2026-08-28T08:36:25.460026Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/reviews/review.phase-7-onbas-adaptation-and-backward-compat-projections.md ms=442 left=49863
+2026-08-28T08:36:25.463557Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-1-event-types-schemas-and-registry/tasks.fltplan.md ms=137 left=49869
+2026-08-28T08:36:25.475872Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/reviews/review.phase-8-e2e-validation-script.md ms=395 left=49874
+2026-08-28T08:36:25.491398Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-1-event-types-schemas-and-registry/execution.log.md ms=230 left=49877
+2026-08-28T08:36:25.527899Z  INFO fs3_daemon::runner: batch kind="embed" subject=106 x raw jobs=8 ms=2
+2026-08-28T08:36:25.547951Z  INFO fs3_daemon::runner: done kind="embed" id=505134 left=49877
+2026-08-28T08:36:25.614749Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-1-event-types-schemas-and-registry/tasks.md ms=113 left=49905
+2026-08-28T08:36:25.614809Z  INFO fs3_daemon::runner: done kind="embed" id=505127 left=49904
+2026-08-28T08:36:25.685431Z  INFO fs3_daemon::runner: done kind="embed" id=505117 left=49903
+2026-08-28T08:36:25.754623Z  INFO fs3_daemon::runner: done kind="embed" id=505136 left=49902
+2026-08-28T08:36:25.823056Z  INFO fs3_daemon::runner: done kind="embed" id=505139 left=49901
+2026-08-28T08:36:25.889061Z  INFO fs3_daemon::runner: done kind="embed" id=505126 left=49900
+2026-08-28T08:36:25.955693Z  INFO fs3_daemon::runner: done kind="embed" id=505113 left=49899
+2026-08-28T08:36:26.022721Z  INFO fs3_daemon::runner: done kind="embed" id=505114 left=49898
+2026-08-28T08:36:26.125281Z  INFO fs3_daemon::runner: batch kind="embed" subject=43 x raw jobs=3 ms=1
+2026-08-28T08:36:26.147832Z  INFO fs3_daemon::runner: done kind="embed" id=505169 left=49898
+2026-08-28T08:36:26.192799Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-2-state-schema-extension-and-two-phase-handshake/execution.log.md ms=86 left=49915
+2026-08-28T08:36:26.224462Z  INFO fs3_daemon::runner: done kind="embed" id=505150 left=49914
+2026-08-28T08:36:26.309231Z  INFO fs3_daemon::runner: done kind="embed" id=505158 left=49913
+2026-08-28T08:36:26.416633Z  INFO fs3_daemon::runner: batch kind="embed" subject=41 x raw jobs=3 ms=1
+2026-08-28T08:36:26.439331Z  INFO fs3_daemon::runner: done kind="embed" id=505183 left=49913
+2026-08-28T08:36:26.459948Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-2-state-schema-extension-and-two-phase-handshake/tasks.fltplan.md ms=65 left=49918
+2026-08-28T08:36:26.517770Z  INFO fs3_daemon::runner: done kind="embed" id=505188 left=49917
+2026-08-28T08:36:26.585200Z  INFO fs3_daemon::runner: done kind="embed" id=505176 left=49916
+2026-08-28T08:36:26.689395Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=0
+2026-08-28T08:36:26.711549Z  INFO fs3_daemon::runner: done kind="embed" id=505195 left=49918
+2026-08-28T08:36:26.757184Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-2-state-schema-extension-and-two-phase-handshake/tasks.md ms=87 left=49938
+2026-08-28T08:36:26.827503Z  INFO fs3_daemon::runner: batch kind="embed" subject=31 x raw jobs=2 ms=0
+2026-08-28T08:36:26.849679Z  INFO fs3_daemon::runner: done kind="embed" id=505208 left=49940
+2026-08-28T08:36:26.879463Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-3-raiseevent-core-write-path/execution.log.md ms=77 left=49945
+2026-08-28T08:36:26.927698Z  INFO fs3_daemon::runner: done kind="embed" id=505219 left=49944
+2026-08-28T08:36:27.030525Z  INFO fs3_daemon::runner: batch kind="embed" subject=19 x raw jobs=2 ms=0
+2026-08-28T08:36:27.050803Z  INFO fs3_daemon::runner: done kind="embed" id=505227 left=49944
+2026-08-28T08:36:27.077853Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-3-raiseevent-core-write-path/tasks.fltplan.md ms=64 left=49949
+2026-08-28T08:36:27.126267Z  INFO fs3_daemon::runner: done kind="embed" id=505228 left=49948
+2026-08-28T08:36:27.254675Z  INFO fs3_daemon::runner: progress phase="working" scanned=47363 scan_left=9449 summarized=101495 summarize_left=40498 embedded=159713 embed_left=1 failed=0
+2026-08-28T08:36:27.273811Z  INFO fs3_daemon::runner: batch kind="embed" subject=25 x raw jobs=2 ms=0
+2026-08-28T08:36:27.295153Z  INFO fs3_daemon::runner: done kind="embed" id=505243 left=49968
+2026-08-28T08:36:27.332733Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-3-raiseevent-core-write-path/tasks.md ms=129 left=49975
+2026-08-28T08:36:27.389030Z  INFO fs3_daemon::runner: done kind="embed" id=505235 left=49974
+2026-08-28T08:36:27.499396Z  INFO fs3_daemon::runner: batch kind="embed" subject=25 x raw jobs=2 ms=1
+2026-08-28T08:36:27.523766Z  INFO fs3_daemon::runner: done kind="embed" id=505264 left=49975
+2026-08-28T08:36:27.537871Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-4-event-handlers-and-state-transitions/execution.log.md ms=60 left=49980
+2026-08-28T08:36:27.599279Z  INFO fs3_daemon::runner: done kind="embed" id=505256 left=49979
+2026-08-28T08:36:27.700156Z  INFO fs3_daemon::runner: batch kind="embed" subject=14 x raw jobs=1 ms=0
+2026-08-28T08:36:27.723479Z  INFO fs3_daemon::runner: done kind="embed" id=505272 left=49981
+2026-08-28T08:36:27.731708Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-4-event-handlers-and-state-transitions/tasks.fltplan.md ms=49 left=49984
+2026-08-28T08:36:27.831378Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=1
+2026-08-28T08:36:27.853753Z  INFO fs3_daemon::runner: done kind="embed" id=505279 left=49983
+2026-08-28T08:36:27.918027Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-4-event-handlers-and-state-transitions/tasks.md ms=107 left=50012
+2026-08-28T08:36:27.962881Z  INFO fs3_daemon::runner: batch kind="embed" subject=41 x raw jobs=3 ms=2
+2026-08-28T08:36:27.981377Z  INFO fs3_daemon::runner: done kind="embed" id=505310 left=50014
+2026-08-28T08:36:28.009347Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-5-service-method-wrappers/001-subtask-drop-backward-compat.execution.log.md ms=70 left=50023
+2026-08-28T08:36:28.055724Z  INFO fs3_daemon::runner: done kind="embed" id=505302 left=50022
+2026-08-28T08:36:28.125974Z  INFO fs3_daemon::runner: done kind="embed" id=505288 left=50021
+2026-08-28T08:36:28.248346Z  INFO fs3_daemon::runner: batch kind="embed" subject=22 x raw jobs=2 ms=1
+2026-08-28T08:36:28.289287Z  INFO fs3_daemon::runner: done kind="embed" id=505323 left=50021
+2026-08-28T08:36:28.375898Z  INFO fs3_daemon::runner: done kind="embed" id=505317 left=50026
+2026-08-28T08:36:28.384689Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-5-service-method-wrappers/001-subtask-drop-backward-compat.fltplan.md ms=166 left=50025
+2026-08-28T08:36:28.489391Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=1
+2026-08-28T08:36:28.525853Z  INFO fs3_daemon::runner: done kind="embed" id=505330 left=50025
+2026-08-28T08:36:28.739969Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=1
+2026-08-28T08:36:28.779618Z  INFO fs3_daemon::runner: done kind="embed" id=505341 left=50045
+2026-08-28T08:36:28.859134Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-5-service-method-wrappers/execution.log.md ms=229 left=50056
+2026-08-28T08:36:28.911527Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-5-service-method-wrappers/tasks.fltplan.md ms=209 left=50059
+2026-08-28T08:36:28.922805Z  INFO fs3_daemon::runner: batch kind="embed" subject=46 x raw jobs=4 ms=6
+2026-08-28T08:36:28.968175Z  INFO fs3_daemon::runner: done kind="embed" id=505365 left=50064
+2026-08-28T08:36:28.974904Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-5-service-method-wrappers/001-subtask-drop-backward-compat.md ms=508 left=50063
+2026-08-28T08:36:29.059840Z  INFO fs3_daemon::runner: done kind="embed" id=505367 left=50067
+2026-08-28T08:36:29.148080Z  INFO fs3_daemon::runner: done kind="embed" id=505362 left=50072
+2026-08-28T08:36:29.246651Z  INFO fs3_daemon::runner: done kind="embed" id=505356 left=50077
+2026-08-28T08:36:29.383472Z  INFO fs3_daemon::runner: batch kind="embed" subject=35 x raw jobs=3 ms=1
+2026-08-28T08:36:29.411787Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-5-service-method-wrappers/tasks.md ms=532 left=50088
+2026-08-28T08:36:29.426896Z  INFO fs3_daemon::runner: done kind="embed" id=505373 left=50087
+2026-08-28T08:36:29.442378Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-6-cli-commands/examples/worked-example-cli.sh ms=92 left=50086
+2026-08-28T08:36:29.514592Z  INFO fs3_daemon::runner: done kind="embed" id=505382 left=50085
+2026-08-28T08:36:29.589833Z  INFO fs3_daemon::runner: done kind="embed" id=505393 left=50084
+2026-08-28T08:36:29.701366Z  INFO fs3_daemon::runner: batch kind="embed" subject=11 x raw jobs=2 ms=1
+2026-08-28T08:36:29.744569Z  INFO fs3_daemon::runner: done kind="embed" id=505402 left=50084
+2026-08-28T08:36:29.804766Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-6-cli-commands/examples/worked-example-cli.walkthrough.md ms=128 left=50092
+2026-08-28T08:36:29.821045Z  INFO fs3_daemon::runner: done kind="embed" id=505403 left=50091
+2026-08-28T08:36:29.922386Z  INFO fs3_daemon::runner: batch kind="embed" subject=14 x raw jobs=1 ms=1
+2026-08-28T08:36:29.944330Z  INFO fs3_daemon::runner: done kind="embed" id=505413 left=50091
+2026-08-28T08:36:29.944392Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-6-cli-commands/examples/worked-example.ts ms=44 left=50090
+2026-08-28T08:36:30.049489Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T08:36:30.071703Z  INFO fs3_daemon::runner: done kind="embed" id=505414 left=50090
+2026-08-28T08:36:30.087149Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-6-cli-commands/execution.log.md ms=54 left=50097
+2026-08-28T08:36:30.187300Z  INFO fs3_daemon::runner: batch kind="embed" subject=26 x raw jobs=2 ms=0
+2026-08-28T08:36:30.209295Z  INFO fs3_daemon::runner: done kind="embed" id=505420 left=50099
+2026-08-28T08:36:30.211065Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-6-cli-commands/tasks.fltplan.md ms=49 left=50102
+2026-08-28T08:36:30.280385Z  INFO fs3_daemon::runner: done kind="embed" id=505423 left=50101
+2026-08-28T08:36:30.383339Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=1
+2026-08-28T08:36:30.407803Z  INFO fs3_daemon::runner: done kind="embed" id=505430 left=50101
+2026-08-28T08:36:30.482590Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-6-cli-commands/tasks.md ms=118 left=50130
+2026-08-28T08:36:30.522608Z  INFO fs3_daemon::runner: batch kind="embed" subject=47 x raw jobs=3 ms=1
+2026-08-28T08:36:30.540727Z  INFO fs3_daemon::runner: done kind="embed" id=505441 left=50130
+2026-08-28T08:36:30.546475Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-7-onbas-adaptation-and-backward-compat-projections/examples/worked-example.ts ms=45 left=50129
+2026-08-28T08:36:30.614024Z  INFO fs3_daemon::runner: done kind="embed" id=505450 left=50128
+2026-08-28T08:36:30.691381Z  INFO fs3_daemon::runner: done kind="embed" id=505462 left=50127
+2026-08-28T08:36:30.790184Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T08:36:30.810553Z  INFO fs3_daemon::runner: done kind="embed" id=505463 left=50129
+2026-08-28T08:36:30.831925Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-7-onbas-adaptation-and-backward-compat-projections/examples/worked-example.walkthrough.md ms=60 left=50135
+2026-08-28T08:36:30.919474Z  INFO fs3_daemon::runner: batch kind="embed" subject=12 x raw jobs=1 ms=0
+2026-08-28T08:36:30.938764Z  INFO fs3_daemon::runner: done kind="embed" id=505473 left=50138
+2026-08-28T08:36:30.961530Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-7-onbas-adaptation-and-backward-compat-projections/execution.log.md ms=61 left=50146
+2026-08-28T08:36:31.052989Z  INFO fs3_daemon::runner: batch kind="embed" subject=41 x raw jobs=3 ms=1
+2026-08-28T08:36:31.073343Z  INFO fs3_daemon::runner: done kind="embed" id=505486 left=50146
+2026-08-28T08:36:31.092692Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-7-onbas-adaptation-and-backward-compat-projections/tasks.fltplan.md ms=60 left=50151
+2026-08-28T08:36:31.147233Z  INFO fs3_daemon::runner: done kind="embed" id=505482 left=50150
+2026-08-28T08:36:31.220208Z  INFO fs3_daemon::runner: done kind="embed" id=505478 left=50149
+2026-08-28T08:36:31.320060Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=0
+2026-08-28T08:36:31.341432Z  INFO fs3_daemon::runner: done kind="embed" id=505493 left=50150
+2026-08-28T08:36:31.395550Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-7-onbas-adaptation-and-backward-compat-projections/tasks.md ms=93 left=50169
+2026-08-28T08:36:31.459646Z  INFO fs3_daemon::runner: batch kind="embed" subject=29 x raw jobs=2 ms=0
+2026-08-28T08:36:31.478719Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-8-e2e-validation-script/examples/worked-example.ts ms=41 left=50169
+2026-08-28T08:36:31.484372Z  INFO fs3_daemon::runner: done kind="embed" id=505503 left=50168
+2026-08-28T08:36:31.552902Z  INFO fs3_daemon::runner: done kind="embed" id=505515 left=50167
+2026-08-28T08:36:31.651586Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T08:36:31.675301Z  INFO fs3_daemon::runner: done kind="embed" id=505516 left=50167
+2026-08-28T08:36:31.718552Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-8-e2e-validation-script/examples/worked-example.walkthrough.md ms=85 left=50173
+2026-08-28T08:36:31.783850Z  INFO fs3_daemon::runner: batch kind="embed" subject=12 x raw jobs=1 ms=1
+2026-08-28T08:36:31.804971Z  INFO fs3_daemon::runner: done kind="embed" id=505524 left=50172
+2026-08-28T08:36:31.830836Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-8-e2e-validation-script/execution.log.md ms=65 left=50179
+2026-08-28T08:36:31.910894Z  INFO fs3_daemon::runner: batch kind="embed" subject=22 x raw jobs=2 ms=0
+2026-08-28T08:36:31.933858Z  INFO fs3_daemon::runner: done kind="embed" id=505532 left=50179
+2026-08-28T08:36:31.972042Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-8-e2e-validation-script/tasks.fltplan.md ms=79 left=50185
+2026-08-28T08:36:32.018239Z  INFO fs3_daemon::runner: done kind="embed" id=505530 left=50184
+2026-08-28T08:36:32.114991Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=0
+2026-08-28T08:36:32.137366Z  INFO fs3_daemon::runner: done kind="embed" id=505540 left=50183
+2026-08-28T08:36:32.208833Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/tasks/phase-8-e2e-validation-script/tasks.md ms=111 left=50216
+2026-08-28T08:36:32.255985Z  INFO fs3_daemon::runner: batch kind="embed" subject=47 x raw jobs=3 ms=1
+2026-08-28T08:36:32.276167Z  INFO fs3_daemon::runner: done kind="embed" id=505561 left=50221
+2026-08-28T08:36:32.352882Z  INFO fs3_daemon::runner: done kind="embed" id=505574 left=50255
+2026-08-28T08:36:32.381136Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/workshops/01-node-event-system.md ms=153 left=50267
+2026-08-28T08:36:32.427132Z  INFO fs3_daemon::runner: done kind="embed" id=505551 left=50266
+2026-08-28T08:36:32.564654Z  INFO fs3_daemon::runner: progress phase="working" scanned=47390 scan_left=9422 summarized=101495 summarize_left=40840 embedded=159759 embed_left=4 failed=0
+2026-08-28T08:36:32.601736Z  INFO fs3_daemon::runner: batch kind="embed" subject=55 x raw jobs=4 ms=1
+2026-08-28T08:36:32.634834Z  INFO fs3_daemon::runner: done kind="embed" id=505622 left=50273
+2026-08-28T08:36:32.733050Z  INFO fs3_daemon::runner: done kind="embed" id=505628 left=50278
+2026-08-28T08:36:32.825966Z  INFO fs3_daemon::runner: done kind="embed" id=505589 left=50283
+2026-08-28T08:36:32.910018Z  INFO fs3_daemon::runner: done kind="embed" id=505605 left=50288
+2026-08-28T08:36:33.052459Z  INFO fs3_daemon::runner: batch kind="embed" subject=32 x raw jobs=2 ms=1
+2026-08-28T08:36:33.092044Z  INFO fs3_daemon::runner: done kind="embed" id=505643 left=50301
+2026-08-28T08:36:33.183613Z  INFO fs3_daemon::runner: done kind="embed" id=505660 left=50307
+2026-08-28T08:36:33.212992Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/workshops/02-event-schema-and-storage.md ms=699 left=50307
+2026-08-28T08:36:33.325587Z  INFO fs3_daemon::runner: batch kind="embed" subject=29 x raw jobs=2 ms=1
+2026-08-28T08:36:33.366242Z  INFO fs3_daemon::runner: done kind="embed" id=505675 left=50319
+2026-08-28T08:36:33.456720Z  INFO fs3_daemon::runner: done kind="embed" id=505683 left=50325
+2026-08-28T08:36:33.487158Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/workshops/03-question-id-migration.md ms=473 left=50325
+2026-08-28T08:36:33.596116Z  INFO fs3_daemon::runner: batch kind="embed" subject=26 x raw jobs=2 ms=0
+2026-08-28T08:36:33.640691Z  INFO fs3_daemon::runner: done kind="embed" id=505696 left=50334
+2026-08-28T08:36:33.650386Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/workshops/04-do-we-need-backward-compat.md ms=362 left=50334
+2026-08-28T08:36:33.735555Z  INFO fs3_daemon::runner: done kind="embed" id=505702 left=50340
+2026-08-28T08:36:33.860495Z  INFO fs3_daemon::runner: batch kind="embed" subject=21 x raw jobs=2 ms=0
+2026-08-28T08:36:33.896738Z  INFO fs3_daemon::runner: done kind="embed" id=505706 left=50350
+2026-08-28T08:36:33.966458Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/workshops/05-event-raise-not-handle.md ms=401 left=50356
+2026-08-28T08:36:33.984802Z  INFO fs3_daemon::runner: done kind="embed" id=505720 left=50356
+2026-08-28T08:36:34.109905Z  INFO fs3_daemon::runner: batch kind="embed" subject=31 x raw jobs=2 ms=1
+2026-08-28T08:36:34.152429Z  INFO fs3_daemon::runner: done kind="embed" id=505741 left=50366
+2026-08-28T08:36:34.248576Z  INFO fs3_daemon::runner: done kind="embed" id=505732 left=50375
+2026-08-28T08:36:34.315905Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/workshops/06-inline-handlers-and-subscriber-stamps.md ms=486 left=50430
+2026-08-28T08:36:34.335546Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/workshops/07-event-system-cli-commands.md ms=251 left=50443
+2026-08-28T08:36:34.366129Z  INFO fs3_daemon::runner: batch kind="embed" subject=112 x raw jobs=8 ms=2
+2026-08-28T08:36:34.391980Z  INFO fs3_daemon::runner: done kind="embed" id=505810 left=50442
+2026-08-28T08:36:34.470474Z  INFO fs3_daemon::runner: done kind="embed" id=505789 left=50468
+2026-08-28T08:36:34.490042Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/workshops/08-concept-drift-and-remediation.md ms=154 left=50473
+2026-08-28T08:36:34.548476Z  INFO fs3_daemon::runner: done kind="embed" id=505823 left=50472
+2026-08-28T08:36:34.624182Z  INFO fs3_daemon::runner: done kind="embed" id=505790 left=50471
+2026-08-28T08:36:34.691609Z  INFO fs3_daemon::runner: done kind="embed" id=505825 left=50470
+2026-08-28T08:36:34.759764Z  INFO fs3_daemon::runner: done kind="embed" id=505817 left=50469
+2026-08-28T08:36:34.829696Z  INFO fs3_daemon::runner: done kind="embed" id=505762 left=50468
+2026-08-28T08:36:34.897007Z  INFO fs3_daemon::runner: done kind="embed" id=505759 left=50467
+2026-08-28T08:36:35.012302Z  INFO fs3_daemon::runner: batch kind="embed" subject=43 x raw jobs=3 ms=2
+2026-08-28T08:36:35.033202Z  INFO fs3_daemon::runner: done kind="embed" id=505850 left=50469
+2026-08-28T08:36:35.099470Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/workshops/09-first-class-node-event-service.md ms=121 left=50501
+2026-08-28T08:36:35.106708Z  INFO fs3_daemon::runner: done kind="embed" id=505858 left=50500
+2026-08-28T08:36:35.177232Z  INFO fs3_daemon::runner: done kind="embed" id=505839 left=50499
+2026-08-28T08:36:35.290489Z  INFO fs3_daemon::runner: batch kind="embed" subject=41 x raw jobs=3 ms=1
+2026-08-28T08:36:35.312035Z  INFO fs3_daemon::runner: done kind="embed" id=505894 left=50498
+2026-08-28T08:36:35.386192Z  INFO fs3_daemon::runner: done kind="embed" id=505886 left=50532
+2026-08-28T08:36:35.430618Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/workshops/10-event-processing-in-the-orchestration-loop.md ms=174 left=50546
+2026-08-28T08:36:35.462457Z  INFO fs3_daemon::runner: done kind="embed" id=505870 left=50545
+2026-08-28T08:36:35.575808Z  INFO fs3_daemon::runner: batch kind="embed" subject=57 x raw jobs=4 ms=1
+2026-08-28T08:36:35.606296Z  INFO fs3_daemon::runner: done kind="embed" id=505941 left=50545
+2026-08-28T08:36:35.670809Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/workshops/11-ieventhandlerservice-and-onbas-question-ownership.md ms=123 left=50574
+2026-08-28T08:36:35.679153Z  INFO fs3_daemon::runner: done kind="embed" id=505926 left=50573
+2026-08-28T08:36:35.751169Z  INFO fs3_daemon::runner: done kind="embed" id=505944 left=50572
+2026-08-28T08:36:35.818478Z  INFO fs3_daemon::runner: done kind="embed" id=505910 left=50571
+2026-08-28T08:36:35.918673Z  INFO fs3_daemon::runner: batch kind="embed" subject=34 x raw jobs=3 ms=1
+2026-08-28T08:36:35.939092Z  INFO fs3_daemon::runner: done kind="embed" id=505959 left=50571
+2026-08-28T08:36:36.019673Z  INFO fs3_daemon::runner: done kind="embed" id=505975 left=50600
+2026-08-28T08:36:36.025450Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/workshops/12-testable-event-handler-service-design.md ms=128 left=50603
+2026-08-28T08:36:36.101083Z  INFO fs3_daemon::runner: done kind="embed" id=505972 left=50602
+2026-08-28T08:36:36.210599Z  INFO fs3_daemon::runner: batch kind="embed" subject=34 x raw jobs=3 ms=1
+2026-08-28T08:36:36.232631Z  INFO fs3_daemon::runner: done kind="embed" id=505989 left=50601
+2026-08-28T08:36:36.308526Z  INFO fs3_daemon::runner: done kind="embed" id=506010 left=50628
+2026-08-28T08:36:36.349492Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/032-node-event-system/workshops/13-e2e-validation-script-design.md ms=166 left=50643
+2026-08-28T08:36:36.384223Z  INFO fs3_daemon::runner: done kind="embed" id=506006 left=50642
+2026-08-28T08:36:36.490041Z  INFO fs3_daemon::runner: batch kind="embed" subject=52 x raw jobs=4 ms=1
+2026-08-28T08:36:36.510668Z  INFO fs3_daemon::runner: done kind="embed" id=506049 left=50645
+2026-08-28T08:36:36.545303Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/033-real-agent-pods/real-agent-pods-spec.md ms=74 left=50658
+2026-08-28T08:36:36.600885Z  INFO fs3_daemon::runner: done kind="embed" id=506025 left=50657
+2026-08-28T08:36:36.669685Z  INFO fs3_daemon::runner: done kind="embed" id=506041 left=50656
+2026-08-28T08:36:36.770072Z  INFO fs3_daemon::runner: done kind="embed" id=506054 left=50655
+2026-08-28T08:36:36.871452Z  INFO fs3_daemon::runner: batch kind="embed" subject=30 x raw jobs=2 ms=0
+2026-08-28T08:36:36.897788Z  INFO fs3_daemon::runner: done kind="embed" id=506067 left=50656
+2026-08-28T08:36:36.990508Z  INFO fs3_daemon::runner: done kind="embed" id=506072 left=50676
+2026-08-28T08:36:37.127761Z  INFO fs3_daemon::runner: batch kind="embed" subject=64 x raw jobs=4 ms=5
+2026-08-28T08:36:37.160946Z  INFO fs3_daemon::runner: done kind="embed" id=506101 left=50687
+2026-08-28T08:36:37.209099Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/033-real-agent-pods/research-dossier.md ms=357 left=50688
+2026-08-28T08:36:37.251501Z  INFO fs3_daemon::runner: done kind="embed" id=506093 left=50690
+2026-08-28T08:36:37.308402Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/033-real-agent-pods/spec-a-orchestration-wiring.md ms=210 left=50693
+2026-08-28T08:36:37.343415Z  INFO fs3_daemon::runner: done kind="embed" id=506082 left=50692
+2026-08-28T08:36:37.428891Z  INFO fs3_daemon::runner: done kind="embed" id=506091 left=50691
+2026-08-28T08:36:37.571690Z  INFO fs3_daemon::runner: batch kind="embed" subject=23 x raw jobs=3 ms=0
+2026-08-28T08:36:37.606371Z  INFO fs3_daemon::runner: done kind="embed" id=506108 left=50692
+2026-08-28T08:36:37.698854Z  INFO fs3_daemon::runner: done kind="embed" id=506113 left=50698
+2026-08-28T08:36:37.732215Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/033-real-agent-pods/spec-b-prompts-and-cli-driver.md ms=202 left=50698
+2026-08-28T08:36:37.795869Z  INFO fs3_daemon::runner: done kind="embed" id=506116 left=50697
+2026-08-28T08:36:37.948872Z  INFO fs3_daemon::runner: progress phase="working" scanned=47406 scan_left=9406 summarized=101495 summarize_left=41289 embedded=159810 embed_left=2 failed=0
+2026-08-28T08:36:37.988989Z  INFO fs3_daemon::runner: batch kind="embed" subject=19 x raw jobs=2 ms=0
+2026-08-28T08:36:38.028543Z  INFO fs3_daemon::runner: done kind="embed" id=506125 left=50702
+2026-08-28T08:36:38.118250Z  INFO fs3_daemon::runner: done kind="embed" id=506126 left=50706
+2026-08-28T08:36:38.135870Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/033-real-agent-pods/spec-c-real-agent-e2e-tests.md ms=242 left=50705
+2026-08-28T08:36:38.252192Z  INFO fs3_daemon::runner: batch kind="embed" subject=17 x raw jobs=2 ms=0
+2026-08-28T08:36:38.291386Z  INFO fs3_daemon::runner: done kind="embed" id=506136 left=50706
+2026-08-28T08:36:38.374594Z  INFO fs3_daemon::runner: done kind="embed" id=506137 left=50710
+2026-08-28T08:36:38.523200Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=1
+2026-08-28T08:36:38.566788Z  INFO fs3_daemon::runner: done kind="embed" id=506148 left=50722
+2026-08-28T08:36:38.615361Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/033-real-agent-pods/workshops/01-agent-service-for-pods.md ms=401 left=50744
+2026-08-28T08:36:38.689905Z  INFO fs3_daemon::runner: batch kind="embed" subject=69 x raw jobs=5 ms=2
+2026-08-28T08:36:38.716364Z  INFO fs3_daemon::runner: done kind="embed" id=506179 left=50778
+2026-08-28T08:36:38.728868Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/033-real-agent-pods/workshops/02-unified-agent-design.md ms=244 left=50785
+2026-08-28T08:36:38.793204Z  INFO fs3_daemon::runner: done kind="embed" id=506173 left=50809
+2026-08-28T08:36:38.867737Z  INFO fs3_daemon::runner: done kind="embed" id=506172 left=50837
+2026-08-28T08:36:38.916171Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/033-real-agent-pods/workshops/03-cli-first-real-agents.md ms=249 left=50855
+2026-08-28T08:36:38.959467Z  INFO fs3_daemon::runner: done kind="embed" id=506209 left=50854
+2026-08-28T08:36:39.036115Z  INFO fs3_daemon::runner: done kind="embed" id=506194 left=50853
+2026-08-28T08:36:39.141295Z  INFO fs3_daemon::runner: batch kind="embed" subject=97 x raw jobs=7 ms=2
+2026-08-28T08:36:39.162666Z  INFO fs3_daemon::runner: done kind="embed" id=506278 left=50853
+2026-08-28T08:36:39.238157Z  INFO fs3_daemon::runner: done kind="embed" id=506233 left=50875
+2026-08-28T08:36:39.290925Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/033-real-agent-pods/workshops/04-node-starter-and-resume-prompts.md ms=175 left=50884
+2026-08-28T08:36:39.332879Z  INFO fs3_daemon::runner: done kind="embed" id=506261 left=50883
+2026-08-28T08:36:39.408384Z  INFO fs3_daemon::runner: done kind="embed" id=506222 left=50882
+2026-08-28T08:36:39.481131Z  INFO fs3_daemon::runner: done kind="embed" id=506294 left=50881
+2026-08-28T08:36:39.552864Z  INFO fs3_daemon::runner: done kind="embed" id=506248 left=50880
+2026-08-28T08:36:39.624166Z  INFO fs3_daemon::runner: done kind="embed" id=506296 left=50879
+2026-08-28T08:36:39.729753Z  INFO fs3_daemon::runner: batch kind="embed" subject=40 x raw jobs=3 ms=1
+2026-08-28T08:36:39.756428Z  INFO fs3_daemon::runner: done kind="embed" id=506324 left=50879
+2026-08-28T08:36:39.813424Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/033-real-agent-pods/workshops/05-podmanager-execution-tracking.md ms=105 left=50901
+2026-08-28T08:36:39.833392Z  INFO fs3_daemon::runner: done kind="embed" id=506330 left=50900
+2026-08-28T08:36:39.902828Z  INFO fs3_daemon::runner: done kind="embed" id=506307 left=50899
+2026-08-28T08:36:40.008017Z  INFO fs3_daemon::runner: batch kind="embed" subject=23 x raw jobs=2 ms=0
+2026-08-28T08:36:40.030190Z  INFO fs3_daemon::runner: done kind="embed" id=506354 left=50900
+2026-08-28T08:36:40.069941Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/033-real-agent-pods/workshops/06-plan-030-e2e-upgrade-strategy.md ms=85 left=50916
+2026-08-28T08:36:40.111869Z  INFO fs3_daemon::runner: done kind="embed" id=506345 left=50915
+2026-08-28T08:36:40.217384Z  INFO fs3_daemon::runner: batch kind="embed" subject=23 x raw jobs=2 ms=0
+2026-08-28T08:36:40.239775Z  INFO fs3_daemon::runner: done kind="embed" id=506373 left=50915
+2026-08-28T08:36:40.286693Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/033-real-agent-pods/workshops/07-spec-c-concept-drift-remediation.md ms=88 left=50931
+2026-08-28T08:36:40.318888Z  INFO fs3_daemon::runner: done kind="embed" id=506366 left=50930
+2026-08-28T08:36:40.420694Z  INFO fs3_daemon::runner: batch kind="embed" subject=24 x raw jobs=2 ms=1
+2026-08-28T08:36:40.442930Z  INFO fs3_daemon::runner: done kind="embed" id=506384 left=50930
+2026-08-28T08:36:40.516670Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/033-real-agent-pods/workshops/08-spec-c-implementation-wiring.md ms=114 left=50960
+2026-08-28T08:36:40.516731Z  INFO fs3_daemon::runner: done kind="embed" id=506391 left=50959
+2026-08-28T08:36:40.643861Z  INFO fs3_daemon::runner: batch kind="embed" subject=34 x raw jobs=3 ms=2
+2026-08-28T08:36:40.667554Z  INFO fs3_daemon::runner: done kind="embed" id=506423 left=50959
+2026-08-28T08:36:40.744409Z  INFO fs3_daemon::runner: done kind="embed" id=506406 left=50987
+2026-08-28T08:36:40.781805Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/agentic-cli-plan.md ms=172 left=50994
+2026-08-28T08:36:40.821877Z  INFO fs3_daemon::runner: done kind="embed" id=506420 left=50993
+2026-08-28T08:36:40.923874Z  INFO fs3_daemon::runner: batch kind="embed" subject=60 x raw jobs=4 ms=1
+2026-08-28T08:36:40.945404Z  INFO fs3_daemon::runner: done kind="embed" id=506431 left=50993
+2026-08-28T08:36:40.990496Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/agentic-cli-spec.md ms=85 left=51008
+2026-08-28T08:36:41.022421Z  INFO fs3_daemon::runner: done kind="embed" id=506439 left=51007
+2026-08-28T08:36:41.090274Z  INFO fs3_daemon::runner: done kind="embed" id=506453 left=51006
+2026-08-28T08:36:41.157702Z  INFO fs3_daemon::runner: done kind="embed" id=506461 left=51005
+2026-08-28T08:36:41.270061Z  INFO fs3_daemon::runner: batch kind="embed" subject=26 x raw jobs=2 ms=0
+2026-08-28T08:36:41.290949Z  INFO fs3_daemon::runner: done kind="embed" id=506471 left=51006
+2026-08-28T08:36:41.309458Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/reviews/fix-tasks.phase-3-cli-command-update-with-tdd.md ms=70 left=51012
+2026-08-28T08:36:41.371450Z  INFO fs3_daemon::runner: done kind="embed" id=506478 left=51011
+2026-08-28T08:36:41.476002Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=0
+2026-08-28T08:36:41.511378Z  INFO fs3_daemon::runner: done kind="embed" id=506487 left=51011
+2026-08-28T08:36:41.689588Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/reviews/fix-tasks.phase-5-export-wiring-and-documentation.md ms=238 left=51021
+2026-08-28T08:36:41.701434Z  INFO fs3_daemon::runner: batch kind="embed" subject=10 x raw jobs=1 ms=0
+2026-08-28T08:36:41.746547Z  INFO fs3_daemon::runner: done kind="embed" id=506498 left=51025
+2026-08-28T08:36:41.954688Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=0
+2026-08-28T08:36:41.993400Z  INFO fs3_daemon::runner: done kind="embed" id=506517 left=51051
+2026-08-28T08:36:42.012939Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/reviews/review.phase-1-types-interfaces-and-planpak-setup.md ms=405 left=51053
+2026-08-28T08:36:42.140552Z  INFO fs3_daemon::runner: batch kind="embed" subject=34 x raw jobs=3 ms=2
+2026-08-28T08:36:42.155242Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/reviews/review.phase-2-core-implementation-with-tdd.md ms=486 left=51069
+2026-08-28T08:36:42.189374Z  INFO fs3_daemon::runner: done kind="embed" id=506528 left=51071
+2026-08-28T08:36:42.261724Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/reviews/review.phase-3-cli-command-update-with-tdd.md ms=405 left=51081
+2026-08-28T08:36:42.263936Z  INFO fs3_daemon::runner: done kind="embed" id=506531 left=51082
+2026-08-28T08:36:42.284974Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/reviews/review.phase-4-real-agent-integration-tests.md ms=367 left=51089
+2026-08-28T08:36:42.293949Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/reviews/review.phase-5-export-wiring-and-documentation.md ms=195 left=51092
+2026-08-28T08:36:42.345885Z  INFO fs3_daemon::runner: done kind="embed" id=506544 left=51091
+2026-08-28T08:36:42.445434Z  INFO fs3_daemon::runner: batch kind="embed" subject=64 x raw jobs=6 ms=1
+2026-08-28T08:36:42.465400Z  INFO fs3_daemon::runner: done kind="embed" id=506579 left=51091
+2026-08-28T08:36:42.548600Z  INFO fs3_daemon::runner: done kind="embed" id=506575 left=51096
+2026-08-28T08:36:42.601680Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/tasks/phase-1-types-interfaces-and-planpak-setup/execution.log.md ms=178 left=51097
+2026-08-28T08:36:42.641845Z  INFO fs3_daemon::runner: done kind="embed" id=506552 left=51096
+2026-08-28T08:36:42.722202Z  INFO fs3_daemon::runner: done kind="embed" id=506548 left=51095
+2026-08-28T08:36:42.801219Z  INFO fs3_daemon::runner: done kind="embed" id=506563 left=51094
+2026-08-28T08:36:42.876277Z  INFO fs3_daemon::runner: done kind="embed" id=506574 left=51093
+2026-08-28T08:36:43.016049Z  INFO fs3_daemon::runner: progress phase="working" scanned=47425 scan_left=9387 summarized=101495 summarize_left=41704 embedded=159857 embed_left=2 failed=0
+2026-08-28T08:36:43.049421Z  INFO fs3_daemon::runner: batch kind="embed" subject=23 x raw jobs=2 ms=1
+2026-08-28T08:36:43.109055Z  INFO fs3_daemon::runner: done kind="embed" id=506588 left=51097
+2026-08-28T08:36:43.145925Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/tasks/phase-1-types-interfaces-and-planpak-setup/tasks.fltplan.md ms=180 left=51097
+2026-08-28T08:36:43.191242Z  INFO fs3_daemon::runner: done kind="embed" id=506585 left=51096
+2026-08-28T08:36:43.317180Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=0
+2026-08-28T08:36:43.371811Z  INFO fs3_daemon::runner: done kind="embed" id=506594 left=51097
+2026-08-28T08:36:43.486162Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=1
+2026-08-28T08:36:43.509317Z  INFO fs3_daemon::runner: done kind="embed" id=506604 left=51116
+2026-08-28T08:36:43.541785Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/tasks/phase-1-types-interfaces-and-planpak-setup/tasks.md ms=261 left=51132
+2026-08-28T08:36:43.573801Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/tasks/phase-2-core-implementation-with-tdd/execution.log.md ms=107 left=51142
+2026-08-28T08:36:43.638346Z  INFO fs3_daemon::runner: batch kind="embed" subject=85 x raw jobs=6 ms=1
+2026-08-28T08:36:43.664328Z  INFO fs3_daemon::runner: done kind="embed" id=506641 left=51144
+2026-08-28T08:36:43.678651Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/tasks/phase-2-core-implementation-with-tdd/tasks.fltplan.md ms=66 left=51148
+2026-08-28T08:36:43.742903Z  INFO fs3_daemon::runner: done kind="embed" id=506626 left=51147
+2026-08-28T08:36:43.812612Z  INFO fs3_daemon::runner: done kind="embed" id=506615 left=51146
+2026-08-28T08:36:43.884899Z  INFO fs3_daemon::runner: done kind="embed" id=506636 left=51145
+2026-08-28T08:36:43.960596Z  INFO fs3_daemon::runner: done kind="embed" id=506645 left=51144
+2026-08-28T08:36:44.031012Z  INFO fs3_daemon::runner: done kind="embed" id=506633 left=51143
+2026-08-28T08:36:44.139766Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=2
+2026-08-28T08:36:44.164445Z  INFO fs3_daemon::runner: done kind="embed" id=506653 left=51143
+2026-08-28T08:36:44.271292Z  INFO fs3_daemon::runner: batch kind="embed" subject=32 x raw jobs=2 ms=0
+2026-08-28T08:36:44.296307Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/tasks/phase-3-cli-command-update-with-tdd/execution.log.md ms=42 left=51179
+2026-08-28T08:36:44.296778Z  INFO fs3_daemon::runner: done kind="embed" id=506664 left=51178
+2026-08-28T08:36:44.301370Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/tasks/phase-2-core-implementation-with-tdd/tasks.md ms=191 left=51178
+2026-08-28T08:36:44.375694Z  INFO fs3_daemon::runner: done kind="embed" id=506676 left=51177
+2026-08-28T08:36:44.483591Z  INFO fs3_daemon::runner: batch kind="embed" subject=31 x raw jobs=3 ms=1
+2026-08-28T08:36:44.510066Z  INFO fs3_daemon::runner: done kind="embed" id=506693 left=51178
+2026-08-28T08:36:44.525077Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/tasks/phase-3-cli-command-update-with-tdd/tasks.fltplan.md ms=59 left=51181
+2026-08-28T08:36:44.586502Z  INFO fs3_daemon::runner: done kind="embed" id=506689 left=51180
+2026-08-28T08:36:44.655602Z  INFO fs3_daemon::runner: done kind="embed" id=506694 left=51179
+2026-08-28T08:36:44.760783Z  INFO fs3_daemon::runner: batch kind="embed" subject=7 x raw jobs=1 ms=1
+2026-08-28T08:36:44.778644Z  INFO fs3_daemon::runner: done kind="embed" id=506700 left=51180
+2026-08-28T08:36:44.845224Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/tasks/phase-3-cli-command-update-with-tdd/tasks.md ms=103 left=51208
+2026-08-28T08:36:44.910084Z  INFO fs3_daemon::runner: batch kind="embed" subject=41 x raw jobs=3 ms=1
+2026-08-28T08:36:44.931687Z  INFO fs3_daemon::runner: done kind="embed" id=506711 left=51209
+2026-08-28T08:36:44.958353Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/tasks/phase-4-real-agent-integration-tests/execution.log.md ms=87 left=51219
+2026-08-28T08:36:45.006896Z  INFO fs3_daemon::runner: done kind="embed" id=506732 left=51218
+2026-08-28T08:36:45.078384Z  INFO fs3_daemon::runner: done kind="embed" id=506722 left=51217
+2026-08-28T08:36:45.175646Z  INFO fs3_daemon::runner: batch kind="embed" subject=30 x raw jobs=2 ms=1
+2026-08-28T08:36:45.195199Z  INFO fs3_daemon::runner: done kind="embed" id=506745 left=51218
+2026-08-28T08:36:45.213507Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/tasks/phase-4-real-agent-integration-tests/tasks.fltplan.md ms=56 left=51223
+2026-08-28T08:36:45.267627Z  INFO fs3_daemon::runner: done kind="embed" id=506740 left=51222
+2026-08-28T08:36:45.369213Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=1
+2026-08-28T08:36:45.391213Z  INFO fs3_daemon::runner: done kind="embed" id=506753 left=51222
+2026-08-28T08:36:45.468818Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/tasks/phase-4-real-agent-integration-tests/tasks.md ms=118 left=51251
+2026-08-28T08:36:45.504640Z  INFO fs3_daemon::runner: batch kind="embed" subject=46 x raw jobs=3 ms=1
+2026-08-28T08:36:45.523632Z  INFO fs3_daemon::runner: done kind="embed" id=506773 left=51251
+2026-08-28T08:36:45.567229Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/tasks/phase-5-export-wiring-and-documentation/execution.log.md ms=86 left=51261
+2026-08-28T08:36:45.608621Z  INFO fs3_daemon::runner: done kind="embed" id=506760 left=51260
+2026-08-28T08:36:45.674809Z  INFO fs3_daemon::runner: done kind="embed" id=506784 left=51259
+2026-08-28T08:36:45.776819Z  INFO fs3_daemon::runner: batch kind="embed" subject=26 x raw jobs=2 ms=0
+2026-08-28T08:36:45.798763Z  INFO fs3_daemon::runner: done kind="embed" id=506796 left=51260
+2026-08-28T08:36:45.808618Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/tasks/phase-5-export-wiring-and-documentation/tasks.md ms=50 left=51263
+2026-08-28T08:36:45.869737Z  INFO fs3_daemon::runner: done kind="embed" id=506790 left=51262
+2026-08-28T08:36:45.987153Z  INFO fs3_daemon::runner: batch kind="embed" subject=15 x raw jobs=1 ms=1
+2026-08-28T08:36:46.006455Z  INFO fs3_daemon::runner: done kind="embed" id=506802 left=51261
+2026-08-28T08:36:46.118620Z  INFO fs3_daemon::runner: batch kind="embed" subject=48 x raw jobs=3 ms=1
+2026-08-28T08:36:46.140229Z  INFO fs3_daemon::runner: done kind="embed" id=506816 left=51322
+2026-08-28T08:36:46.158180Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/034-agentic-cli/workshops/01-cli-agent-run-and-e2e-testing.md ms=198 left=51325
+2026-08-28T08:36:46.200584Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/035-agent-orchestration-wiring/agent-orchestration-wiring-plan.md ms=102 left=51346
+2026-08-28T08:36:46.212455Z  INFO fs3_daemon::runner: done kind="embed" id=506833 left=51345
+2026-08-28T08:36:46.278265Z  INFO fs3_daemon::runner: done kind="embed" id=506848 left=51344
+2026-08-28T08:36:46.426962Z  INFO fs3_daemon::runner: batch kind="embed" subject=61 x raw jobs=4 ms=1
+2026-08-28T08:36:46.471757Z  INFO fs3_daemon::runner: done kind="embed" id=506890 left=51345
+2026-08-28T08:36:46.558640Z  INFO fs3_daemon::runner: done kind="embed" id=506870 left=51349
+2026-08-28T08:36:46.641895Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/035-agent-orchestration-wiring/reviews/fix-tasks.phase-4-real-agent-wiring-integration-tests.md ms=263 left=51352
+2026-08-28T08:36:46.651704Z  INFO fs3_daemon::runner: done kind="embed" id=506867 left=51351
+2026-08-28T08:36:46.753815Z  INFO fs3_daemon::runner: done kind="embed" id=506878 left=51350
+2026-08-28T08:36:46.875515Z  INFO fs3_daemon::runner: batch kind="embed" subject=11 x raw jobs=1 ms=0
+2026-08-28T08:36:46.907701Z  INFO fs3_daemon::runner: done kind="embed" id=506901 left=51351
+2026-08-28T08:36:47.131295Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=1
+2026-08-28T08:36:47.176099Z  INFO fs3_daemon::runner: done kind="embed" id=506912 left=51370
+2026-08-28T08:36:47.219526Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/035-agent-orchestration-wiring/reviews/review.phase-1-types-interfaces-and-schema-changes.md ms=377 left=51372
+2026-08-28T08:36:47.311451Z  INFO fs3_daemon::runner: batch kind="embed" subject=3 x raw jobs=1 ms=1
+2026-08-28T08:36:47.361235Z  INFO fs3_daemon::runner: done kind="embed" id=506924 left=51383
+2026-08-28T08:36:47.523408Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/035-agent-orchestration-wiring/reviews/review.phase-2-ods-and-agentpod-rewiring-with-tdd.md ms=510 left=51399
+2026-08-28T08:36:47.527954Z  INFO fs3_daemon::runner: batch kind="embed" subject=32 x raw jobs=2 ms=1
+2026-08-28T08:36:47.559581Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/035-agent-orchestration-wiring/reviews/review.phase-3-di-container-and-existing-test-updates.md ms=477 left=51400
+2026-08-28T08:36:47.574125Z  INFO fs3_daemon::runner: done kind="embed" id=506936 left=51401
+2026-08-28T08:36:47.678759Z  INFO fs3_daemon::runner: done kind="embed" id=506935 left=51407
+2026-08-28T08:36:47.728015Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/035-agent-orchestration-wiring/reviews/review.phase-4-real-agent-wiring-integration-tests.md ms=447 left=51408
+2026-08-28T08:36:47.775097Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/035-agent-orchestration-wiring/tasks/phase-1-types-interfaces-and-schema-changes/execution.log.md ms=306 left=51410
+2026-08-28T08:36:47.827101Z  INFO fs3_daemon::runner: batch kind="embed" subject=51 x raw jobs=5 ms=1
+2026-08-28T08:36:47.869708Z  INFO fs3_daemon::runner: done kind="embed" id=506971 left=51411
+2026-08-28T08:36:47.950940Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/035-agent-orchestration-wiring/tasks/phase-1-types-interfaces-and-schema-changes/tasks.fltplan.md ms=167 left=51414
+2026-08-28T08:36:47.960635Z  INFO fs3_daemon::runner: done kind="embed" id=506955 left=51413
+2026-08-28T08:36:48.049200Z  INFO fs3_daemon::runner: done kind="embed" id=506953 left=51412
+2026-08-28T08:36:48.122392Z  INFO fs3_daemon::runner: done kind="embed" id=506967 left=51411
+2026-08-28T08:36:48.189181Z  INFO fs3_daemon::runner: done kind="embed" id=506966 left=51410
+2026-08-28T08:36:48.320893Z  INFO fs3_daemon::runner: progress phase="working" scanned=47447 scan_left=9365 summarized=101495 summarize_left=42044 embedded=159903 embed_left=1 failed=0
+2026-08-28T08:36:48.339489Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=0
+2026-08-28T08:36:48.357459Z  INFO fs3_daemon::runner: done kind="embed" id=506977 left=51424
+2026-08-28T08:36:48.372419Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/035-agent-orchestration-wiring/tasks/phase-1-types-interfaces-and-schema-changes/tasks.md ms=103 left=51431
+2026-08-28T08:36:48.464912Z  INFO fs3_daemon::runner: batch kind="embed" subject=33 x raw jobs=3 ms=1
+2026-08-28T08:36:48.485523Z  INFO fs3_daemon::runner: done kind="embed" id=506986 left=51431
+2026-08-28T08:36:48.525079Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/035-agent-orchestration-wiring/tasks/phase-2-ods-and-agentpod-rewiring-with-tdd/execution.log.md ms=78 left=51442
+2026-08-28T08:36:48.575953Z  INFO fs3_daemon::runner: done kind="embed" id=507000 left=51441
+2026-08-28T08:36:48.646053Z  INFO fs3_daemon::runner: done kind="embed" id=506997 left=51440
+2026-08-28T08:36:48.750279Z  INFO fs3_daemon::runner: batch kind="embed" subject=20 x raw jobs=2 ms=1
+2026-08-28T08:36:48.773704Z  INFO fs3_daemon::runner: done kind="embed" id=507013 left=51440
+2026-08-28T08:36:48.788012Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/035-agent-orchestration-wiring/tasks/phase-2-ods-and-agentpod-rewiring-with-tdd/tasks.fltplan.md ms=60 left=51442
+2026-08-28T08:36:48.854477Z  INFO fs3_daemon::runner: done kind="embed" id=507009 left=51441
+2026-08-28T08:36:48.958939Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=0
+2026-08-28T08:36:48.983146Z  INFO fs3_daemon::runner: done kind="embed" id=507017 left=51441
+2026-08-28T08:36:49.044042Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/035-agent-orchestration-wiring/tasks/phase-2-ods-and-agentpod-rewiring-with-tdd/tasks.md ms=105 left=51466
+2026-08-28T08:36:49.090134Z  INFO fs3_daemon::runner: batch kind="embed" subject=38 x raw jobs=3 ms=0
+2026-08-28T08:36:49.114039Z  INFO fs3_daemon::runner: done kind="embed" id=507038 left=51466
+2026-08-28T08:36:49.114112Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/035-agent-orchestration-wiring/tasks/phase-3-di-container-and-existing-test-updates/execution.log.md ms=48 left=51469
+2026-08-28T08:36:49.187060Z  INFO fs3_daemon::runner: done kind="embed" id=507044 left=51468
+2026-08-28T08:36:49.262192Z  INFO fs3_daemon::runner: done kind="embed" id=507026 left=51467
+2026-08-28T08:36:49.366596Z  INFO fs3_daemon::runner: batch kind="embed" subject=13 x raw jobs=1 ms=0
+2026-08-28T08:36:49.392202Z  INFO fs3_daemon::runner: done kind="embed" id=507049 left=51468
+2026-08-28T08:36:49.399480Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/035-agent-orchestration-wiring/tasks/phase-3-di-container-and-existing-test-updates/tasks.fltplan.md ms=56 left=51470
+2026-08-28T08:36:49.499059Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=0
+2026-08-28T08:36:49.521935Z  INFO fs3_daemon::runner: done kind="embed" id=507054 left=51471
+2026-08-28T08:36:49.571278Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/035-agent-orchestration-wiring/tasks/phase-3-di-container-and-existing-test-updates/tasks.md ms=90 left=51488
+2026-08-28T08:36:49.638529Z  INFO fs3_daemon::runner: batch kind="embed" subject=32 x raw jobs=2 ms=0
+2026-08-28T08:36:49.657210Z  INFO fs3_daemon::runner: done kind="embed" id=507074 left=51488
+2026-08-28T08:36:49.704540Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/035-agent-orchestration-wiring/tasks/phase-4-real-agent-wiring-integration-tests/execution.log.md ms=88 left=51499
+2026-08-28T08:36:49.733911Z  INFO fs3_daemon::runner: done kind="embed" id=507062 left=51498
+2026-08-28T08:36:49.839168Z  INFO fs3_daemon::runner: batch kind="embed" subject=13 x raw jobs=1 ms=0
+2026-08-28T08:36:49.862373Z  INFO fs3_daemon::runner: done kind="embed" id=507088 left=51498
+2026-08-28T08:36:49.878695Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/035-agent-orchestration-wiring/tasks/phase-4-real-agent-wiring-integration-tests/tasks.fltplan.md ms=56 left=51501
+2026-08-28T08:36:49.970087Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=0
+2026-08-28T08:36:49.990995Z  INFO fs3_daemon::runner: done kind="embed" id=507093 left=51501
+2026-08-28T08:36:50.045559Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/035-agent-orchestration-wiring/tasks/phase-4-real-agent-wiring-integration-tests/tasks.md ms=96 left=51520
+2026-08-28T08:36:50.118853Z  INFO fs3_daemon::runner: batch kind="embed" subject=32 x raw jobs=2 ms=2
+2026-08-28T08:36:50.141521Z  INFO fs3_daemon::runner: done kind="embed" id=507114 left=51520
+2026-08-28T08:36:50.220224Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/035-agent-orchestration-wiring/workshops/01-e2e-wiring-with-real-agents.md ms=130 left=51545
+2026-08-28T08:36:50.220286Z  INFO fs3_daemon::runner: done kind="embed" id=507102 left=51546
+2026-08-28T08:36:50.329718Z  INFO fs3_daemon::runner: batch kind="embed" subject=30 x raw jobs=2 ms=1
+2026-08-28T08:36:50.352934Z  INFO fs3_daemon::runner: done kind="embed" id=507143 left=51545
+2026-08-28T08:36:50.405431Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/035-agent-orchestration-wiring/workshops/02-multi-turn-session-durability-test.md ms=99 left=51567
+2026-08-28T08:36:50.443513Z  INFO fs3_daemon::runner: done kind="embed" id=507130 left=51566
+2026-08-28T08:36:50.545510Z  INFO fs3_daemon::runner: batch kind="embed" subject=24 x raw jobs=2 ms=1
+2026-08-28T08:36:50.564764Z  INFO fs3_daemon::runner: done kind="embed" id=507167 left=51565
+2026-08-28T08:36:50.638106Z  INFO fs3_daemon::runner: done kind="embed" id=507157 left=51595
+2026-08-28T08:36:50.638163Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/036-cli-orchestration-driver/cli-orchestration-driver-plan.md ms=111 left=51596
+2026-08-28T08:36:50.745315Z  INFO fs3_daemon::runner: batch kind="embed" subject=50 x raw jobs=4 ms=1
+2026-08-28T08:36:50.763837Z  INFO fs3_daemon::runner: done kind="embed" id=507200 left=51597
+2026-08-28T08:36:50.770837Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/036-cli-orchestration-driver/reviews/fix-tasks.phase-1-types-interfaces-and-planpak-setup.md ms=48 left=51598
+2026-08-28T08:36:50.837736Z  INFO fs3_daemon::runner: done kind="embed" id=507173 left=51597
+2026-08-28T08:36:50.922406Z  INFO fs3_daemon::runner: done kind="embed" id=507185 left=51596
+2026-08-28T08:36:51.005840Z  INFO fs3_daemon::runner: done kind="embed" id=507197 left=51595
+2026-08-28T08:36:51.133061Z  INFO fs3_daemon::runner: batch kind="embed" subject=8 x raw jobs=1 ms=1
+2026-08-28T08:36:51.170773Z  INFO fs3_daemon::runner: done kind="embed" id=507205 left=51596
+2026-08-28T08:36:51.350780Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/036-cli-orchestration-driver/reviews/fix-tasks.phase-5-cli-command-and-integration-tests.md ms=255 left=51606
+2026-08-28T08:36:51.367660Z  INFO fs3_daemon::runner: batch kind="embed" subject=11 x raw jobs=1 ms=0
+2026-08-28T08:36:51.408016Z  INFO fs3_daemon::runner: done kind="embed" id=507217 left=51610
+2026-08-28T08:36:51.553981Z  INFO fs3_daemon::runner: batch kind="embed" subject=16 x raw jobs=1 ms=0
+2026-08-28T08:36:51.613670Z  INFO fs3_daemon::runner: done kind="embed" id=507229 left=51623
+2026-08-28T08:36:51.623635Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/036-cli-orchestration-driver/reviews/review.phase-1-types-interfaces-and-planpak-setup.md ms=360 left=51631
+2026-08-28T08:36:51.647427Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/036-cli-orchestration-driver/reviews/review.phase-2-prompt-templates-and-agentpod-selection.md ms=318 left=51643
+2026-08-28T08:36:51.682182Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/036-cli-orchestration-driver/reviews/review.phase-3-graph-status-view.md ms=172 left=51646
+2026-08-28T08:36:51.738272Z  INFO fs3_daemon::runner: batch kind="embed" subject=46 x raw jobs=5 ms=0
+2026-08-28T08:36:51.762699Z  INFO fs3_daemon::runner: done kind="embed" id=507248 left=51648
+2026-08-28T08:36:51.806405Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/036-cli-orchestration-driver/reviews/review.phase-5-cli-command-and-integration-tests.md ms=91 left=51661
+2026-08-28T08:36:51.846156Z  INFO fs3_daemon::runner: done kind="embed" id=507263 left=51660
+2026-08-28T08:36:51.933419Z  INFO fs3_daemon::runner: done kind="embed" id=507259 left=51659
+2026-08-28T08:36:52.022886Z  INFO fs3_daemon::runner: done kind="embed" id=507244 left=51658
+2026-08-28T08:36:52.103935Z  INFO fs3_daemon::runner: done kind="embed" id=507258 left=51657
+2026-08-28T08:36:52.263765Z  INFO fs3_daemon::runner: batch kind="embed" subject=26 x raw jobs=2 ms=0
+2026-08-28T08:36:52.308518Z  INFO fs3_daemon::runner: done kind="embed" id=507273 left=51657
+2026-08-28T08:36:52.397091Z  INFO fs3_daemon::runner: done kind="embed" id=507280 left=51664
+2026-08-28T08:36:52.420595Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/036-cli-orchestration-driver/tasks/phase-1-types-interfaces-and-planpak-setup/execution.log.md ms=182 left=51664
+2026-08-28T08:36:52.526686Z  INFO fs3_daemon::runner: batch kind="embed" subject=32 x raw jobs=2 ms=0
+2026-08-28T08:36:52.564939Z  INFO fs3_daemon::runner: done kind="embed" id=507290 left=51665
+2026-08-28T08:36:52.665873Z  INFO fs3_daemon::runner: done kind="embed" id=507286 left=51670
+2026-08-28T08:36:52.676577Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/036-cli-orchestration-driver/tasks/phase-1-types-interfaces-and-planpak-setup/tasks.fltplan.md ms=179 left=51669
+2026-08-28T08:36:52.781511Z  INFO fs3_daemon::runner: batch kind="embed" subject=9 x raw jobs=1 ms=0
+2026-08-28T08:36:52.804839Z  INFO fs3_daemon::runner: done kind="embed" id=507298 left=51670
+2026-08-28T08:36:52.875220Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/036-cli-orchestration-driver/tasks/phase-1-types-interfaces-and-planpak-setup/tasks.md ms=115 left=51697
+2026-08-28T08:36:52.927418Z  INFO fs3_daemon::runner: batch kind="embed" subject=44 x raw jobs=3 ms=0
+2026-08-28T08:36:52.952181Z  INFO fs3_daemon::runner: done kind="embed" id=507328 left=51697

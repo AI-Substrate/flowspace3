@@ -1,0 +1,11 @@
+   kind    |  state  | count 
+-----------+---------+-------
+ embed     | done    |   480
+ embed     | pending |     5
+ embed     | running |     1
+ scan_file | done    |   419
+ scan_file | pending |   177
+ summarize | done    |     1
+ summarize | pending |     9
+(7 rows)
+

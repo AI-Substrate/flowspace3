@@ -1,0 +1,38 @@
+2a3,13
+>     "address": "el:git:github.com/AI-Substrate/flowspace3/crates/cli/src/client.rs::poctest_20260828T105601Z_celsius_to_fahrenheit",
+>     "kind": "function",
+>     "name": "poctest_20260828T105601Z_celsius_to_fahrenheit",
+>     "path": "crates/cli/src/client.rs",
+>     "snippet": "fn poctest_20260828T105601Z_celsius_to_fahrenheit(celsius_reading: f64) -> f64 {\n    let fahrenheit = celsius_reading * 9.0 / 5.0 + 32.0;\n    fahrenheit\n}",
+>     "span": [
+>       573,
+>       576
+>     ]
+>   },
+>   {
+14c25
+<     "address": "el:git:github.com/AI-Substrate/flowspace3/crates/cli/src/conversation.rs::civil_from_days",
+---
+>     "address": "el:git:github.com/AI-Substrate/flowspace3/crates/daemon/src/wiring.rs::civil_from_days",
+17c28
+<     "path": "crates/cli/src/conversation.rs",
+---
+>     "path": "crates/daemon/src/wiring.rs",
+20,21c31,32
+<       315,
+<       326
+---
+>       550,
+>       561
+44,54d54
+<     ]
+<   },
+<   {
+<     "address": "el:git:github.com/AI-Substrate/flowspace3/pocs/human-render/src/theme.rs::score_meter",
+<     "kind": "function",
+<     "name": "score_meter",
+<     "path": "pocs/human-render/src/theme.rs",
+<     "snippet": "pub fn score_meter(score: f64, cells: usize) -> String {\n    let clamped = score.clamp(0.0, 1.0);\n    #[expect(\n        clippy::cast_possible_truncation,\n        clippy::cast_sign_loss,",
+<     "span": [
+<       133,
+<       151
