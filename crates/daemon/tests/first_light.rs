@@ -448,8 +448,10 @@ async fn add_scan_enrich_and_search_answer_end_to_end() {
         "spans are 1-based and real"
     );
     assert!(
-        best["score"].as_f64().unwrap() > 0.0,
-        "score is 1 - distance, so a real hit is positive"
+        best["address"]
+            .as_str()
+            .is_some_and(|address| address.contains("/src/auth.rs")),
+        "the top-ranked hit identity must belong to the expected file"
     );
     assert!(
         matches!(best["match_field"].as_str(), Some("raw") | Some("smart")),

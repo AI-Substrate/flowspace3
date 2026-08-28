@@ -48,7 +48,7 @@
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
           ],
-          "receipt": "Initial unit eeb5b0e plus scoped representative correction: mutation test failed without the anchor and passed with it; store pg_first_light 18/18, daemon first_light 14/14, conversation_query 7/7; final isolated harness checks 9/9. PM owns composed p3_unresolved_rows probe."
+          "receipt": "Initial unit eeb5b0e; raw representative correction de054e6; smart chooser review fix mutation-checked RED/GREEN. Store pg_first_light 19/19, daemon first_light 14/14 sequential, conversation_query 7/7, final isolated harness checks 9/9. PM owns composed P3 invariants."
         },
         {
           "id": "tk-e204",

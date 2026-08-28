@@ -400,58 +400,42 @@ pub async fn search_elements(
               WHERE model_key = $2
                 AND ($4::text IS NULL OR source_kind = $4)
                 AND ($5::float8 IS NULL OR (vector <=> $1) <= $5)
-                -- The CONTENT-TYPE gate, and it is unconditional: a caller that
-                -- names kinds must not be answered with another kind, whether
-                -- or not it also named a repository.
-                AND ($8::text[] IS NULL
-                     OR EXISTS (
-                          SELECT 1
-                            FROM elements el
-                           WHERE el.raw_hash = COALESCE(
-                                   (SELECT sc.raw_hash FROM smart_content sc
-                                     WHERE e.source_kind = 'smart'
-                                       AND sc.text_hash = e.source_hash
-                                     LIMIT 1),
-                                   e.source_hash)
-                             AND el.kind = ANY($8)))
-                -- The ANCHOR gate, conditional so that content which outlived
-                -- its checkout is still findable when nobody asked to narrow
-                -- (decision D7). Two legs, because content reaches a repository
-                -- two ways: code through the live path holding its blob, and a
-                -- turn through the conversation ANCHORED to that repository.
-                -- The caller worktree belongs here, before LIMIT: filtering a
-                -- ranked page afterwards both under-fills it and can leak a
-                -- foreign version when the caller's version lies beyond the cap.
-                -- Without the second leg `--repo` would answer every
-                -- conversation query with nothing, silently, while workshop 005
-                -- promises the anchor filters compose.
-                AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
-                     OR EXISTS (
-                          SELECT 1
-                            FROM elements el
-                           WHERE el.raw_hash = COALESCE(
-                                   (SELECT sc.raw_hash FROM smart_content sc
-                                     WHERE e.source_kind = 'smart'
-                                       AND sc.text_hash = e.source_hash
-                                     LIMIT 1),
-                                   e.source_hash)
-                             AND (EXISTS (
-                                    SELECT 1
-                                      FROM worktree_files f
-                                      JOIN worktrees w ON w.id = f.worktree_id
-                                      JOIN repos r     ON r.id = w.repo_id
-                                     WHERE f.blob_sha = el.blob_sha
-                                       AND ($6::text IS NULL OR r.identity = $6)
-                                       AND ($7::text IS NULL OR f.path LIKE $7)
-                                       AND ($9::text IS NULL OR w.root_path = $9))
-                                  OR EXISTS (
-                                    SELECT 1
-                                      FROM turns t
-                                      JOIN conversations c ON c.guid = t.conversation_id
-                                     WHERE t.blob_sha = el.blob_sha
-                                       AND ($6::text IS NULL OR c.repo_identity = $6)
-                                       AND ($7::text IS NULL OR c.worktree LIKE $7)
-                                       AND ($9::text IS NULL OR c.worktree = $9)))))
+                -- Admission asks whether ANY eligible element carries the
+                -- vector source; it does not choose a smart raw_hash. Choosing
+                -- here with LIMIT 1 used to let an unordered foreign mapping
+                -- erase a valid caller-held smart hit before ranking.
+                AND EXISTS (
+                     SELECT 1
+                       FROM elements admitted
+                      WHERE (
+                            (e.source_kind = 'raw' AND admitted.raw_hash = e.source_hash)
+                            OR (e.source_kind = 'smart' AND EXISTS (
+                                 SELECT 1
+                                   FROM smart_content candidate
+                                  WHERE candidate.text_hash = e.source_hash
+                                    AND candidate.raw_hash = admitted.raw_hash)))
+                        AND ($8::text[] IS NULL OR admitted.kind = ANY($8))
+                        -- The caller worktree belongs here, before LIMIT:
+                        -- filtering a ranked page afterwards both under-fills
+                        -- it and can leak a foreign version beyond the cap.
+                        AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
+                             OR EXISTS (
+                                  SELECT 1
+                                    FROM worktree_files f
+                                    JOIN worktrees w ON w.id = f.worktree_id
+                                    JOIN repos r     ON r.id = w.repo_id
+                                   WHERE f.blob_sha = admitted.blob_sha
+                                     AND ($6::text IS NULL OR r.identity = $6)
+                                     AND ($7::text IS NULL OR f.path LIKE $7)
+                                     AND ($9::text IS NULL OR w.root_path = $9))
+                             OR EXISTS (
+                                  SELECT 1
+                                    FROM turns t
+                                    JOIN conversations c ON c.guid = t.conversation_id
+                                   WHERE t.blob_sha = admitted.blob_sha
+                                     AND ($6::text IS NULL OR c.repo_identity = $6)
+                                     AND ($7::text IS NULL OR c.worktree LIKE $7)
+                                     AND ($9::text IS NULL OR c.worktree = $9))))
               ORDER BY vector <=> $1
               LIMIT $3
          )
@@ -467,7 +451,34 @@ pub async fn search_elements(
                 SELECT sc.raw_hash, sc.text, sc.tags, sc.extras
                   FROM smart_content sc
                  WHERE n.source_kind = 'smart' AND sc.text_hash = n.source_hash
-                 ORDER BY sc.created_at, sc.model_key
+                   -- A shared summary text_hash can describe different raw
+                   -- bodies. This is the chooser, so it repeats every caller
+                   -- filter and orders all ties; otherwise a foreign oldest
+                   -- mapping silently removes a valid caller smart hit.
+                   AND EXISTS (
+                        SELECT 1
+                          FROM elements choice
+                         WHERE choice.raw_hash = sc.raw_hash
+                           AND ($8::text[] IS NULL OR choice.kind = ANY($8))
+                           AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
+                                OR EXISTS (
+                                     SELECT 1
+                                       FROM worktree_files f
+                                       JOIN worktrees w ON w.id = f.worktree_id
+                                       JOIN repos r     ON r.id = w.repo_id
+                                      WHERE f.blob_sha = choice.blob_sha
+                                        AND ($6::text IS NULL OR r.identity = $6)
+                                        AND ($7::text IS NULL OR f.path LIKE $7)
+                                        AND ($9::text IS NULL OR w.root_path = $9))
+                                OR EXISTS (
+                                     SELECT 1
+                                       FROM turns t
+                                       JOIN conversations c ON c.guid = t.conversation_id
+                                      WHERE t.blob_sha = choice.blob_sha
+                                        AND ($6::text IS NULL OR c.repo_identity = $6)
+                                        AND ($7::text IS NULL OR c.worktree LIKE $7)
+                                        AND ($9::text IS NULL OR c.worktree = $9))))
+                 ORDER BY sc.created_at, sc.model_key, sc.raw_hash
                  LIMIT 1
            ) s ON TRUE
            JOIN LATERAL (
