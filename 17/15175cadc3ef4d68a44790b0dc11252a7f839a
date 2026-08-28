@@ -1,0 +1,33 @@
+crates/core/src/events.rs
+  s_b668fefb3076c7::t_8f674409f099a4 1-326
+crates/core/src/lib.rs
+  s_b668fefb3076c7::t_af814732693d76 20,53
+docs/plans/007-human-interface/assets/inputs/README.md
+  s_e01c1fbbdc8227::t_32cc07396b5c38 1-57
+docs/plans/007-human-interface/assets/inputs/tui-poc-VERDICT.md
+  s_e01c1fbbdc8227::t_696622e62de50b 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1715175cadc3ef4d68a44790b0dc11252a7f839a",
+  "prompts": {},
+  "sessions": {
+    "s_b668fefb3076c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0e0064-8d84-48e6-b499-eca0c65baafc",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_e01c1fbbdc8227": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a805d3359ad3c2f5a",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
