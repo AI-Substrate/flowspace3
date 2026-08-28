@@ -1,0 +1,23 @@
+crates/daemon/src/runner.rs
+  s_15d888f4b629c1::t_13d6075822184d 41,50,54-58,64,650
+crates/cli/src/client.rs
+  s_15d888f4b629c1::t_6557a86576cb51 162-167
+crates/cli/src/main.rs
+  s_15d888f4b629c1::t_0019484c337d0d 248-272,488-509
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1ab6281e7d2ca0967a95de61604eb04447e2d68a",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
