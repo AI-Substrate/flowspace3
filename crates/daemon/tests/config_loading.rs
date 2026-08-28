@@ -10,7 +10,7 @@
 use std::path::Path;
 use std::sync::{LazyLock, Mutex, MutexGuard};
 
-use fs3_core::{CONFIG_DIR_ENV, Layer, Port};
+use fs3_core::{CONFIG_DIR_ENV, Config, Layer, Port};
 use fs3_daemon::config;
 
 mod support;
@@ -72,6 +72,27 @@ fn a_typo_in_an_override_stops_the_daemon_rather_than_being_ignored() {
 
     let message = error.to_string();
     assert!(message.contains("FS3_DATABSE__URL"), "{message}");
+
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn an_unknown_file_section_warns_and_is_inert_instead_of_stopping_the_daemon() {
+    let _guard = env_lock();
+    let dir = support::temp_dir("file-future-section");
+    write(&dir, "config.toml", "[future]\nactive = \"nonsense\"\n");
+
+    let effective = config::load_effective_from(&dir).expect("a newer file section is tolerated");
+
+    assert_eq!(effective.config, Config::default());
+    let warnings: Vec<_> = effective.warnings().collect();
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    assert_eq!(warnings[0].key, "[future]");
+    assert!(
+        warnings[0]
+            .message
+            .contains("none of its settings take effect")
+    );
 
     std::fs::remove_dir_all(&dir).ok();
 }

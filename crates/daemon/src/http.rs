@@ -64,11 +64,74 @@ pub fn router(state: AppState, auth: Auth) -> Router {
         .route("/gc", post(gc))
         .route("/conversations", post(conversations).get(conversation_list))
         .route("/conversations/remove", post(conversation_remove))
+        .route("/ask", post(ask))
         .route("/search", get(search))
         .route("/get", get(get_address))
         .route("/tree", get(tree))
         .with_state(state)
         .layer(middleware::from_fn_with_state(auth, crate::auth::require))
+}
+
+/// `POST /ask` — answer a question by running a bounded, grounded tool loop.
+///
+/// Synchronous today: one request runs the whole loop and returns when it is
+/// done, which can be tens of seconds. The async-job posture with a streamed
+/// progress feed is the named follow-up, deferred until the event wire lands —
+/// the tool-call trace in the report is what that feed will carry.
+async fn ask(
+    State(state): State<AppState>,
+    Json(request): Json<crate::ask::AskRequest>,
+) -> Answer<crate::ask::AskReport> {
+    const COMMAND: &str = "ask";
+    if let Err(failure) = crate::schema::guard(&state.db).await {
+        return failed(&state, COMMAND, failure).await;
+    }
+
+    // Scope rides in `meta` exactly as it does for search, and for a sharper
+    // reason: an answer drawn from one repository when the caller expected all
+    // of them is indistinguishable from a wrong answer unless the scope is on
+    // the envelope.
+    let scope =
+        crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
+    let meta = serde_json::json!({ "scope": scope });
+
+    match crate::ask::ask(&state, &request, scope.clone()).await {
+        Ok(report) => {
+            let next = match (
+                &report.answer,
+                report.grounded && !report.citations.is_empty(),
+            ) {
+                (None, _) => {
+                    "the loop hit a bound before answering — raise [agent] max_iterations or \
+                     token_budget, or ask a narrower question"
+                }
+                // `grounded: false` survived a pushback, so the model answered
+                // from memory on purpose. Say so first and plainly: this is the
+                // one outcome a reader must not mistake for an ordinary answer.
+                // No citations means no address to check, so pointing at `get`
+                // would send the reader after something that does not exist.
+                (Some(_), false) => {
+                    "TREAT WITH SUSPICION — this answer cites no address that was read in full, \
+                     so there is nothing to verify it against; re-ask more narrowly, or check \
+                     `flowspace3 status` in case the index is empty"
+                }
+                (Some(_), true) => {
+                    "verify any claim with `flowspace3 get <address>` on the citations, or ask a \
+                     follow-up question"
+                }
+            };
+            ok(&state, COMMAND, report)
+                .await
+                .0
+                .with_meta(meta)
+                .with_next_action(crate::scope::steer(&scope, next))
+                .into()
+        }
+        Err(error) => {
+            let failure = crate::answer::IntoFailure::into_failure(error);
+            failed(&state, COMMAND, failure).await
+        }
+    }
 }
 
 async fn remove(
@@ -310,11 +373,17 @@ async fn search(
             let results = SearchResults {
                 results: outcome.results,
             };
+            let next = crate::scope::steer(&scope, next);
+            let next = if crate::ask_hint::looks_like_question(&request.q) {
+                format!("{next} — {}", crate::ask_hint::HINT)
+            } else {
+                next
+            };
             ok(&state, COMMAND, results)
                 .await
                 .0
                 .with_meta(meta)
-                .with_next_action(crate::scope::steer(&scope, next))
+                .with_next_action(next)
                 .into()
         }
         Err(failure) => failed::<SearchResults>(&state, COMMAND, failure)
