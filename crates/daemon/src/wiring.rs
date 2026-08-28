@@ -218,12 +218,23 @@ impl AppState {
     /// this worktree yet, or the binary was unavailable when one did. Rows
     /// still index; edges, gate membership and derived state are absent.
     pub async fn ddoc_tooling(&self, worktree_id: i64) -> Arc<crate::ddoc::DdocTooling> {
-        self.ddocs
-            .read()
+        self.ddoc_snapshot(worktree_id)
             .await
-            .get(&worktree_id)
-            .cloned()
             .unwrap_or_else(|| Arc::new(crate::ddoc::DdocTooling::absent()))
+    }
+
+    /// The snapshot for a worktree, or `None` when it has never been PROBED.
+    ///
+    /// The distinction matters to exactly one caller and not at all to the
+    /// others. For indexing, unprobed and absent are the same thing: neither
+    /// can supply edges, so [`AppState::ddoc_tooling`] flattens them. For a
+    /// DIAGNOSTIC they are opposite claims — "nobody has looked" is not
+    /// evidence that the binary is missing, and a daemon restarted against an
+    /// indexed corpus starts with every entry unprobed. Anything that reports
+    /// tooling absence to a user must use THIS method and stay silent on
+    /// `None`.
+    pub async fn ddoc_snapshot(&self, worktree_id: i64) -> Option<Arc<crate::ddoc::DdocTooling>> {
+        self.ddocs.read().await.get(&worktree_id).cloned()
     }
 
     /// Replace one worktree's snapshot after a corpus event.

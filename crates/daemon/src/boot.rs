@@ -313,6 +313,32 @@ async fn serve(
         Err(error) => tracing::error!(%error, "cannot requeue jobs left running"),
     }
 
+    // Probe every registered worktree's ddocs tooling BEFORE serving, because
+    // the snapshot map starts empty and is otherwise only filled by add_root
+    // or rescan_root. Without this, a daemon restarted against an already
+    // indexed corpus reports "the ddocs binary is unavailable" on every search
+    // until someone happens to run a scan — a false explanation, and exactly
+    // the confident-wrong-answer this feature exists to remove.
+    //
+    // Best-effort: a worktree that cannot be probed is left unprobed rather
+    // than recorded as absent, so a missing entry never becomes a claim about
+    // the binary. Failure here must not stop the daemon serving.
+    match fs3_store::list_worktrees(&state.db).await {
+        Ok(worktrees) => {
+            for worktree in &worktrees {
+                let tooling = crate::ddoc::probe(std::path::Path::new(&worktree.root_path)).await;
+                state.set_ddoc_tooling(worktree.id, tooling).await;
+            }
+            tracing::info!(
+                roots = worktrees.len(),
+                "probed ddocs tooling for registered roots"
+            );
+        }
+        Err(error) => {
+            tracing::warn!(%error, "cannot list worktrees to probe ddocs tooling; searches will not claim binary absence for unprobed roots");
+        }
+    }
+
     // Give work that ran out of attempts one more life, also BEFORE the runner
     // starts. Enrichment failures have no other way back: `summarize` and
     // `embed` jobs are minted by a scan, and a scan of an unchanged tree
