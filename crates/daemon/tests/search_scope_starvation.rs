@@ -535,7 +535,6 @@ async fn an_unmatched_path_filter_names_the_layout_on_the_wire() {
 
     database.destroy(state.db).await;
 }
-
 /// A repository with nothing indexed in it must be told so, as an ERROR.
 ///
 /// This is the cause nobody guesses: the index is full, the model is right, and
@@ -579,11 +578,9 @@ async fn a_repository_with_no_index_is_named_rather_than_answered_with_silence()
 async fn the_envelope_carries_the_explanation_for_an_empty_answer() {
     let (database, state, identity) = crowded("search-starvation-envelope").await;
 
-    let auth = support::auth("search-starvation-envelope");
-    let base = support::spawn(fs3_daemon::http::router(state.clone(), auth.auth)).await;
+    let base = support::spawn(fs3_daemon::http::router(state.clone())).await;
     let envelope: serde_json::Value = reqwest::Client::new()
         .get(format!("{base}/search"))
-        .bearer_auth(&auth.key)
         .query(&[
             ("q", QUESTION),
             ("repo", identity.as_str()),
