@@ -1,0 +1,33 @@
+docs/plans/008-ddocs-scan/packet-coder-u1.dd.json
+  s_15d888f4b629c1::t_f8eb464b3ec250 1-177
+docs/plans/008-ddocs-scan/packet-coder-u1.dd.md
+  s_15d888f4b629c1::t_a544afc7141895 1-97
+docs/plans/008-ddocs-scan/packet-coder-u2.dd.json
+  s_15d888f4b629c1::t_ebfd140e2918c5 1-177
+docs/plans/008-ddocs-scan/packet-coder-u2.dd.md
+  s_15d888f4b629c1::t_cf234beb8cd82f 1-97
+docs/plans/008-ddocs-scan/packet-coder-u3.dd.json
+  s_15d888f4b629c1::t_c3bd01a887b1f7 9,11,13,18,23-74,80-91,97-100,106-133,139-173
+docs/plans/008-ddocs-scan/packet-coder-u3.dd.md
+  s_15d888f4b629c1::t_db73230411e4c7 2,4,12,14,16,22-28,43-48,66-69,79-83,92-97
+docs/plans/008-ddocs-scan/packet-coder-u4.dd.json
+  s_15d888f4b629c1::t_99c63cc716f7ed 1-182
+docs/plans/008-ddocs-scan/packet-coder-u4.dd.md
+  s_15d888f4b629c1::t_63f3c0e56d61f4 1-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cf21950da661790aed1734a10061256a120a540a",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
