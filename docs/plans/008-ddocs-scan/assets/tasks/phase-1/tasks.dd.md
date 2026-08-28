@@ -74,7 +74,7 @@ Task ledger for plan 008-ddocs-scan. Task state is DERIVED from these assertions
 
 | id | assertion | state | pressure | receipt |
 | --- | --- | --- | --- | --- |
-| dw-000f | Exactly ONE forward migration (0014_ddoc_layer.sql); no other unit wrote SQL | [x] checked | not-applicable | crates/store/migrations/0014_ddoc_layer.sql is the only migration added by this plan. u3 commit c3dca20. |
+| dw-000f | Exactly ONE forward migration (0017_ddoc_layer.sql); no other unit wrote SQL | [x] checked | not-applicable | crates/store/migrations/0017_ddoc_layer.sql is the only migration added by this plan. u3 commit c3dca20. |
 | dw-0010 | The elements unique key (blob_sha, parser_version, address, span_start) is UNCHANGED | [x] checked | not-applicable | The unique key (blob_sha, parser_version, address, span_start) is untouched in the migration diff. |
 | dw-0011 | The widened kind CHECK retains every previously valid kind including 'turn', and adds only 'row' | [x] checked | not-applicable | Widened CHECK retains file/container/function/section/turn and adds row. MUTATION 11 (omit row) and MUTATION 12 (CHECK TRUE) both red. |
 | dw-0012 | A code element still round-trips with ddoc as SQL NULL, mutation-checked by materialising {} instead | [x] checked | not-applicable | code_element_round_trip_keeps_ddoc_null. MUTATION 2: coalescing None to {} JSONB turned it red. |

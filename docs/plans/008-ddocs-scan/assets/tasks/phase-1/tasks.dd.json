@@ -177,10 +177,10 @@
         "tk-0003": [
           {
             "id": "dw-000f",
-            "assertion": "Exactly ONE forward migration (0014_ddoc_layer.sql); no other unit wrote SQL",
+            "assertion": "Exactly ONE forward migration (0017_ddoc_layer.sql); no other unit wrote SQL",
             "state": "checked",
             "pressure": "not-applicable",
-            "receipt": "crates/store/migrations/0014_ddoc_layer.sql is the only migration added by this plan. u3 commit c3dca20."
+            "receipt": "crates/store/migrations/0017_ddoc_layer.sql is the only migration added by this plan. u3 commit c3dca20."
           },
           {
             "id": "dw-0010",
