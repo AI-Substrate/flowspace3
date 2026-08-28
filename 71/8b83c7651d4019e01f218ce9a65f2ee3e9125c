@@ -1,0 +1,19 @@
+docs/plans/005-convo-ingest/assets/process-report.md
+  s_e01c1fbbdc8227::t_f05c459b4cdc6f 1-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "718b83c7651d4019e01f218ce9a65f2ee3e9125c",
+  "prompts": {},
+  "sessions": {
+    "s_e01c1fbbdc8227": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a805d3359ad3c2f5a",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
