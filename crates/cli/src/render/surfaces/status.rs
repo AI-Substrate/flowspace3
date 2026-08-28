@@ -8,10 +8,10 @@ use fs3_core::{
 use owo_colors::OwoColorize;
 use serde_json::Value;
 
-use crate::render::{WIDTH, theme};
+use crate::render::theme;
 
 #[must_use]
-pub fn render(envelope: &Envelope<Value>) -> Option<String> {
+pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
     let report: StatusReport = serde_json::from_value(envelope.data.clone()?).ok()?;
     let files: i64 = report.roots.iter().map(|root| root.files).sum();
     let queued: i64 = report
@@ -43,7 +43,7 @@ pub fn render(envelope: &Envelope<Value>) -> Option<String> {
             "no roots registered — `flowspace3 add <path>` to index one".bright_black()
         ));
     } else {
-        let mut roots = theme::table(WIDTH);
+        let mut roots = theme::table(width);
         roots.set_header([
             theme::header("repo"),
             theme::header("root"),
@@ -67,7 +67,7 @@ pub fn render(envelope: &Envelope<Value>) -> Option<String> {
                 .or_default()
                 .insert(&row.state, row);
         }
-        let mut queue = theme::table(WIDTH);
+        let mut queue = theme::table(width);
         queue.set_header([
             theme::header("job"),
             theme::header("progress"),
@@ -114,7 +114,7 @@ pub fn render(envelope: &Envelope<Value>) -> Option<String> {
     }
     if let Some(next) = &envelope.next_action {
         out.push('\n');
-        out.push_str(&theme::next_action(next, usize::from(WIDTH)));
+        out.push_str(&theme::next_action(next, usize::from(width)));
         out.push('\n');
     }
     Some(out)

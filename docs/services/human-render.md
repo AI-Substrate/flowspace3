@@ -21,6 +21,12 @@ Output selection is centralized in `fs3_core::output::resolve`:
 Covered commands are search, status, doctor, add, scan, get, tree, remove, gc,
 conversation list, docs list, agents-start-here, plus every failed envelope.
 
+The public renderer resolves presentation width without widening its envelope
+seam: a TTY uses `textwrap::termwidth()`, while a non-terminal falls back to
+100 columns for deterministic captures. Width is clamped to 40–160 columns;
+below 40 bordered tables collapse, and beyond 160 extra eye travel adds no
+useful scanability. Internal surfaces receive the resolved width explicitly.
+
 ## Snap-in recipe
 
 1. Keep `pub mod render;` in `crates/cli/src/lib.rs`.
@@ -30,8 +36,8 @@ conversation list, docs list, agents-start-here, plus every failed envelope.
    `anstream::stdout()`. On `None`, print the serialized JSON unchanged.
 3. In only the `Add` and `Scan` match arms, when output mode is human, wrap the
    existing POST future with
-   `render::progress::while_pending(client.base_url(), future)`. JSON mode calls
-   the existing client method directly.
+   `render::progress::while_pending(&client, &canonical_path, future)`. JSON
+   mode calls the existing client method directly.
 4. Keep the four `fs3-cli` dependency edges and matching
    `crates/testkit/arch-allowlist.toml` rows:
    `anstream`, `comfy-table`, `owo-colors`, `textwrap`.
@@ -44,7 +50,8 @@ output-mode decision.
 The live stream is `GET /events` on the same base URL as the POST. Its first
 line is `fs3_core::events::Hello`; later NDJSON lines are
 `fs3_core::events::Event`. Only `EventKind::ScanProgress { root, root_path,
-files_seen, enqueued, current }` is drawn.
+files_seen, enqueued, current }` whose `root_path` exactly matches the
+canonical path sent in the POST is drawn.
 
 The subscription and POST are polled concurrently. Stream connection failure,
 404, malformed data, or slow acceptance is silent and never retried. The stream

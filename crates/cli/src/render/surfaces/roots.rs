@@ -3,10 +3,10 @@ use fs3_core::{envelope::Envelope, views::roots::RootReport};
 use owo_colors::OwoColorize;
 use serde_json::Value;
 
-use crate::render::{WIDTH, theme};
+use crate::render::theme;
 
 #[must_use]
-pub fn render(envelope: &Envelope<Value>) -> Option<String> {
+pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
     let report: RootReport = serde_json::from_value(envelope.data.clone()?).ok()?;
     let mut out = theme::title(
         &envelope.command,
@@ -16,7 +16,7 @@ pub fn render(envelope: &Envelope<Value>) -> Option<String> {
         ),
     );
     out.push_str("\n\n");
-    let mut facts = theme::plain_table(WIDTH);
+    let mut facts = theme::plain_table(width);
     facts.add_row([
         Cell::new("repository"),
         Cell::new(format!("{}", report.identity.bright_white())),
@@ -31,7 +31,7 @@ pub fn render(envelope: &Envelope<Value>) -> Option<String> {
             theme::GUTTER,
             "skipped".bright_black()
         ));
-        let mut skipped = theme::plain_table(WIDTH);
+        let mut skipped = theme::plain_table(width);
         for row in report.skipped {
             skipped.add_row([Cell::new(row.reason), theme::right(row.count)]);
         }
@@ -43,7 +43,7 @@ pub fn render(envelope: &Envelope<Value>) -> Option<String> {
             theme::GUTTER,
             "directories not walked".bright_black()
         ));
-        let mut pruned = theme::plain_table(WIDTH);
+        let mut pruned = theme::plain_table(width);
         for row in report.pruned {
             pruned.add_row([Cell::new(row.path), Cell::new(row.fix)]);
         }
@@ -51,7 +51,7 @@ pub fn render(envelope: &Envelope<Value>) -> Option<String> {
     }
     if let Some(next) = &envelope.next_action {
         out.push('\n');
-        out.push_str(&theme::next_action(next, usize::from(WIDTH)));
+        out.push_str(&theme::next_action(next, usize::from(width)));
         out.push('\n');
     }
     Some(out)

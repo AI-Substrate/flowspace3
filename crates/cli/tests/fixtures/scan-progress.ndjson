@@ -1,3 +1,4 @@
 {"stream":"fs3.events","v":1,"daemon":"0.4.0","heartbeat_ms":15000}
 {"v":1,"at":"2026-08-28T03:11:04.219Z","kind":"scan_progress","root":"git:github.com/AI-Substrate/flowspace3","root_path":"/srv/api","files_seen":1200,"enqueued":900,"current":"crates/cli/src/main.rs"}
+{"v":1,"at":"2026-08-28T03:11:04.500Z","kind":"scan_progress","root":"git:github.com/example/other","root_path":"/srv/other","files_seen":9999,"enqueued":9999,"current":"unrelated.rs"}
 {"v":1,"at":"2026-08-28T03:11:05.001Z","kind":"scan_progress","root":"git:github.com/AI-Substrate/flowspace3","root_path":"/srv/api","files_seen":1240,"enqueued":930}

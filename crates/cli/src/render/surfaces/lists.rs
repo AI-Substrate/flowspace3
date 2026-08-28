@@ -3,23 +3,23 @@ use fs3_core::envelope::Envelope;
 use owo_colors::OwoColorize;
 use serde_json::Value;
 
-use crate::render::{WIDTH, theme};
+use crate::render::theme;
 
 #[must_use]
-pub fn render(envelope: &Envelope<Value>) -> Option<String> {
+pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
     match envelope.command.as_str() {
-        "docs" => docs(envelope),
-        "agents-start-here" => agents(envelope),
-        "conversation list" => conversations(envelope),
+        "docs" => docs(envelope, width),
+        "agents-start-here" => agents(envelope, width),
+        "conversation list" => conversations(envelope, width),
         _ => None,
     }
 }
 
-fn docs(envelope: &Envelope<Value>) -> Option<String> {
+fn docs(envelope: &Envelope<Value>, width: u16) -> Option<String> {
     let topics = envelope.data.as_ref()?.get("topics")?.as_array()?;
     let mut out = theme::title("docs list", &format!("{} topics", topics.len()));
     out.push_str("\n\n");
-    let mut table = theme::table(WIDTH);
+    let mut table = theme::table(width);
     table.set_header([
         theme::header("topic"),
         theme::header("description"),
@@ -33,11 +33,11 @@ fn docs(envelope: &Envelope<Value>) -> Option<String> {
         ]);
     }
     out.push_str(&theme::block(&table));
-    append_next(&mut out, envelope);
+    append_next(&mut out, envelope, width);
     Some(out)
 }
 
-fn agents(envelope: &Envelope<Value>) -> Option<String> {
+fn agents(envelope: &Envelope<Value>, width: u16) -> Option<String> {
     let page = envelope.data.as_ref()?;
     let text = page.get("text")?.as_str()?;
     let title = page
@@ -50,11 +50,11 @@ fn agents(envelope: &Envelope<Value>) -> Option<String> {
     if !out.ends_with('\n') {
         out.push('\n');
     }
-    append_next(&mut out, envelope);
+    append_next(&mut out, envelope, width);
     Some(out)
 }
 
-fn conversations(envelope: &Envelope<Value>) -> Option<String> {
+fn conversations(envelope: &Envelope<Value>, width: u16) -> Option<String> {
     let rows = envelope.data.as_ref()?.get("conversations")?.as_array()?;
     let mut out = theme::title(
         "conversation list",
@@ -68,7 +68,7 @@ fn conversations(envelope: &Envelope<Value>) -> Option<String> {
             "no indexed conversations".bright_black()
         ));
     } else {
-        let mut table = theme::table(WIDTH);
+        let mut table = theme::table(width);
         table.set_header([
             theme::header("title"),
             theme::header("address"),
@@ -89,14 +89,14 @@ fn conversations(envelope: &Envelope<Value>) -> Option<String> {
         }
         out.push_str(&theme::block(&table));
     }
-    append_next(&mut out, envelope);
+    append_next(&mut out, envelope, width);
     Some(out)
 }
 
-fn append_next(out: &mut String, envelope: &Envelope<Value>) {
+fn append_next(out: &mut String, envelope: &Envelope<Value>, width: u16) {
     if let Some(next) = &envelope.next_action {
         out.push('\n');
-        out.push_str(&theme::next_action(next, usize::from(WIDTH)));
+        out.push_str(&theme::next_action(next, usize::from(width)));
         out.push('\n');
     }
 }

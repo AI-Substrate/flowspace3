@@ -40,7 +40,7 @@ fn serve() -> (String, std::thread::JoinHandle<()>) {
                             let _ = stream.write_all(head);
                             let _ = stream.write_all(&events);
                             let _ = stream.flush();
-                            std::thread::sleep(Duration::from_secs(2));
+                            std::thread::sleep(Duration::from_secs(5));
                         });
                     } else {
                         post_seen = true;
@@ -86,7 +86,7 @@ fn add_progress_is_stderr_only_and_is_erased_without_waiting_for_the_stream() {
         config.path(),
         fs3_testkit::TestDatabase::Unreachable,
     )
-    .args(["add", ".", "--human", "--daemon-url", &url])
+    .args(["add", "/srv/api", "--human", "--daemon-url", &url])
     .output()
     .unwrap();
     let elapsed = started.elapsed();
@@ -103,11 +103,15 @@ fn add_progress_is_stderr_only_and_is_erased_without_waiting_for_the_stream() {
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("1200 files · 900 queued"), "{stderr:?}");
     assert!(
+        !stderr.contains("9999 files") && !stderr.contains("unrelated.rs"),
+        "another root leaked into the meter: {stderr:?}"
+    );
+    assert!(
         stderr.ends_with("\r\u{1b}[2K"),
         "meter was not erased: {stderr:?}"
     );
     assert!(
-        elapsed < Duration::from_secs(1),
-        "POST waited for the 2s event stream: {elapsed:?}"
+        elapsed < Duration::from_secs(4),
+        "POST waited for the 5s event stream: {elapsed:?}"
     );
 }
