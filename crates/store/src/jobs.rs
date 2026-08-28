@@ -143,6 +143,10 @@ pub async fn enqueue_job_with_priority(
 /// `FOR UPDATE SKIP LOCKED` is the point of this query (decision D4): a row
 /// another worker is mid-claim on is stepped over rather than waited on, so N
 /// workers polling together get N different jobs and none of them block.
+/// Within a priority, `id DESC` is LIFO by immutable enqueue order. `not_before`
+/// remains only an eligibility gate: using it as the tie-break would make an
+/// old parked or retrying job look new when its backoff elapsed.
+///
 ///
 /// `None` means "nothing ready", not "nothing left" — a job whose `not_before`
 /// is still in the future is invisible here, which is how the debounce works.
@@ -157,7 +161,7 @@ pub async fn claim_job(pool: &PgPool, kinds: &[&str]) -> Result<Option<Job>, Sto
                  WHERE state = 'pending'
                    AND not_before <= now()
                    AND kind = ANY($1)
-                 ORDER BY priority DESC, not_before
+                 ORDER BY priority DESC, id DESC
                  FOR UPDATE SKIP LOCKED
                  LIMIT 1
           )
@@ -193,7 +197,7 @@ pub async fn claim_job(pool: &PgPool, kinds: &[&str]) -> Result<Option<Job>, Sto
 /// set here would hand back a pile that cannot be batched and make the caller
 /// re-sort it.
 ///
-/// Ordering matches [`claim_job`] exactly — `priority DESC, not_before` — so
+/// Ordering matches [`claim_job`] exactly — `priority DESC, id DESC` — so
 /// mixing batched and single claimants on one queue cannot starve either.
 /// `FOR UPDATE SKIP LOCKED` over the whole `LIMIT` means two workers claiming
 /// concurrently take disjoint sets rather than blocking on each other.
@@ -216,7 +220,7 @@ pub async fn claim_jobs(pool: &PgPool, kind: &str, limit: i64) -> Result<Vec<Job
                  WHERE state = 'pending'
                    AND not_before <= now()
                    AND kind = $1
-                 ORDER BY priority DESC, not_before
+                 ORDER BY priority DESC, id DESC
                  FOR UPDATE SKIP LOCKED
                  LIMIT $2
           )

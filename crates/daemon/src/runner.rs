@@ -50,7 +50,7 @@ use crate::wiring::AppState;
 /// claiming is split across the general, ingest, and embed lanes below.
 pub const KINDS: &[&str] = &[SCAN_FILE, INGEST_SESSION, SUMMARIZE, EMBED];
 
-/// The general jobs claimed one at a time.
+/// The general jobs claimed individually across the general worker pool.
 ///
 /// `scan_file` is local I/O and `summarize` is provider-bound. Conversation
 /// ingest deliberately does not share this capacity: a poll must be able to
