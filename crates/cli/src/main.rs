@@ -1,20 +1,30 @@
 //! `flowspace3` — the fs3 command-line client (PRD req 28).
 //!
-//! Every verb prints one workshop-004 envelope to stdout and exits by its
-//! shape: 0 for `ok`, 1 for an error, 2 for a usage problem. JSON only in v1
-//! (workshop 003 D5) — a human-readable layer renders from the same envelope
-//! later, and building it now would mean two output paths to keep honest
-//! instead of one.
+//! Every verb produces one workshop-004 envelope and exits by its shape: 0 for
+//! `ok`, 1 for an error, 2 for a usage problem. What stdout RECEIVES depends on
+//! who is reading it: a terminal gets the human rendering, and a pipe, a file,
+//! a CI log or an agent gets the frozen JSON envelope, byte for byte as before
+//! (`fs3_core::output`, Jordan's ruling 2026-08-28). `--json` forces JSON
+//! anywhere, `--human` forces the renderer anywhere, and `FS3_OUTPUT` settles
+//! it for a harness whose terminal probe would lie — an agent inside a tmux
+//! PTY looks exactly like a person.
+//!
+//! There is still one output path: the envelope is serialised first, in both
+//! modes, and the human screen is rendered FROM those bytes
+//! (`fs3_cli::render`). The two views cannot disagree, because one is made out
+//! of the other.
 
 use std::fmt;
-use std::io::{self, Write as _};
+use std::io::{self, IsTerminal, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
+use std::sync::OnceLock;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use fs3_cli::{DaemonClient, doctor, settings, show, skill};
+use fs3_cli::{DaemonClient, doctor, render, settings, show, skill, watch};
 use fs3_core::envelope::Envelope;
+use fs3_core::output::{OUTPUT_ENV, OutputMode};
 
 #[derive(Parser)]
 #[command(
@@ -26,6 +36,15 @@ use fs3_core::envelope::Envelope;
 struct Cli {
     #[command(subcommand)]
     command: Command,
+    /// Print the JSON envelope, even at a terminal.
+    ///
+    /// Global so it can be written where a person naturally writes it — after
+    /// the verb, next to the thing they are looking at.
+    #[arg(long, global = true, conflicts_with = "human")]
+    json: bool,
+    /// Print the human rendering, even into a pipe.
+    #[arg(long, global = true)]
+    human: bool,
 }
 
 #[derive(Subcommand)]
@@ -77,6 +96,18 @@ enum Command {
     },
     /// Report registered roots and what is left in the queue.
     Status {
+        /// Keep reading the daemon's live NDJSON event stream.
+        #[arg(long)]
+        watch: bool,
+        /// Override the stream heartbeat cadence.
+        #[arg(long, value_name = "MILLISECONDS", requires = "watch")]
+        heartbeat_ms: Option<u64>,
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
+    /// Open the live terminal dashboard.
+    Tui {
         /// Override the daemon URL from configuration.
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
@@ -126,21 +157,6 @@ enum Command {
         /// Maximum rows to return.
         #[arg(long, value_name = "N")]
         limit: Option<i64>,
-        /// Override the daemon URL from configuration.
-        #[arg(long, value_name = "URL")]
-        daemon_url: Option<String>,
-    },
-    /// Ask an agentic question of the index.
-    Ask {
-        /// The question.
-        question: String,
-        /// Only this repository identity, or `all` for every indexed one.
-        ///
-        /// Without it a question asked inside a checkout is about THAT
-        /// repository, like `search`. `--repo all` is how a caller standing in
-        /// one repo asks a question whose answer lives in another.
-        #[arg(long, value_name = "IDENTITY")]
-        repo: Option<String>,
         /// Override the daemon URL from configuration.
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
@@ -229,6 +245,21 @@ enum Command {
         #[command(subcommand)]
         command: Option<DoctorCommand>,
     },
+    /// Ask an agentic question of the index.
+    Ask {
+        /// The question.
+        question: String,
+        /// Only this repository identity, or `all` for every indexed one.
+        ///
+        /// Without it a question asked inside a checkout is about THAT
+        /// repository, like `search`. `--repo all` is how a caller standing in
+        /// one repo asks a question whose answer lives in another.
+        #[arg(long, value_name = "IDENTITY")]
+        repo: Option<String>,
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
     /// Run the fs3 daemon in the foreground.
     ///
     /// The daemon lives in THIS binary (PRD req 51): one file to install, one
@@ -288,6 +319,31 @@ enum ConversationCommand {
         /// A title, when the transcript does not carry one.
         #[arg(long, value_name = "TEXT")]
         title: Option<String>,
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
+    /// Pull a conversation out of a native agent session store, incrementally.
+    ///
+    /// Unlike `import`, which is handed a transcript, this READS the store the
+    /// harness already wrote — Claude Code and omp session jsonl, the pij seat
+    /// ledger, or git-ai's metrics database — and remembers where it stopped,
+    /// so running it again costs only the turns that are new.
+    Ingest {
+        /// The pij seat that had the conversation. Resolved through the
+        /// `pij sessions` join to a harness and a native session id.
+        #[arg(long, value_name = "SEAT", conflicts_with_all = ["session", "harness"])]
+        pij: Option<String>,
+        /// The harness's own session id, when you already know it.
+        #[arg(long, value_name = "ID", requires = "harness")]
+        session: Option<String>,
+        /// Which store to read: claude, omp, pij or metrics-db.
+        #[arg(long, value_name = "HARNESS", requires = "session")]
+        harness: Option<String>,
+        /// The workspace the conversation happened in. Defaults to where you
+        /// are standing, or to the git directory pij recorded for the seat.
+        #[arg(long, value_name = "PATH")]
+        folder: Option<String>,
         /// Override the daemon URL from configuration.
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
@@ -372,9 +428,15 @@ fn main() -> ExitCode {
     let outcome = boot().and_then(|command| {
         // `daemon` is the one verb that must NOT run inside a runtime this
         // function built: it builds its own, sized for a server rather than for
-        // one request. Routing it here keeps that invariant true.
+        // one request, and it never returns. Routing it here rather than in
+        // `run` is what keeps that true.
         let command = match command {
             Command::Daemon { sandbox } => {
+                // The subscriber used to be built HERE, on stdout with a
+                // hardcoded filter. It moved into `fs3_daemon::boot`, which is
+                // the first place that has read the configuration — and the log
+                // file's path, its size caps and its filter are all
+                // configuration.
                 let outcome = if sandbox {
                     fs3_daemon::run_sandbox()
                 } else {
@@ -394,6 +456,9 @@ fn main() -> ExitCode {
 
     match outcome {
         Ok(code) => code,
+        // The reader hung up. `flowspace3 search … | head` ends this way every
+        // time, and it is a normal end to a command rather than a failure of
+        // it: exit 0, say nothing (main, 086f812).
         Err(error) if is_broken_pipe(&error) => ExitCode::SUCCESS,
         Err(error) => {
             // `{error:#}` prints the whole anyhow context chain on one line,
@@ -407,18 +472,48 @@ fn main() -> ExitCode {
     }
 }
 
-/// Parse the command line and load the secrets chain, single-threaded.
+/// How this process prints, decided once at startup.
+///
+/// A process-wide cell rather than a parameter threaded through twenty-five
+/// `emit` call sites: "who is reading stdout" is a property of the PROCESS,
+/// settled before the first byte and never changing mid-run. Threading it
+/// would also mean every future verb author has to remember to pass it, which
+/// is the kind of thing nobody remembers on the twenty-sixth arm.
+///
+/// Unset reads as [`OutputMode::Json`] — the safe direction, and the shape any
+/// caller that bypassed `boot` (the daemon verb) would want anyway.
+static OUTPUT: OnceLock<OutputMode> = OnceLock::new();
+
+/// What stdout should receive, as `boot` resolved it.
+fn output_mode() -> OutputMode {
+    OUTPUT.get().copied().unwrap_or(OutputMode::Json)
+}
+
+/// Parse the command line, settle the output mode, and load the secrets chain,
+/// single-threaded.
 fn boot() -> Result<Command> {
-    let command = Cli::parse().command;
+    let cli = Cli::parse();
+
+    // The terminal probe lives here and nowhere else: `fs3_core::output` is
+    // pure and takes the answer as an argument, so the rule can be tested
+    // exhaustively without a tty.
+    let mode = fs3_core::output::resolve(
+        std::io::stdout().is_terminal(),
+        cli.json,
+        cli.human,
+        std::env::var(OUTPUT_ENV).ok().as_deref(),
+    );
+    let _ = OUTPUT.set(mode);
+
     // Sandbox forces fake providers, so ambient provider secrets are neither
     // needed nor allowed to make an isolated boot fail.
-    if !matches!(&command, Command::Daemon { sandbox: true })
+    if !matches!(&cli.command, Command::Daemon { sandbox: true })
         && let Ok(dir) = settings::config_dir()
     {
         // A broken secrets file is worth failing on; a missing one is normal.
         settings::load_secrets_from(&dir)?;
     }
-    Ok(command)
+    Ok(cli.command)
 }
 
 async fn run(command: Command) -> Result<ExitCode> {
@@ -426,7 +521,14 @@ async fn run(command: Command) -> Result<ExitCode> {
         Command::Ping { daemon_url: url } => ping(url).await,
         Command::Add { path, daemon_url } => {
             let client = client_for(daemon_url)?;
-            emit(&client.add(&display(&path)).await)
+            let path = display(&path);
+            let envelope = match output_mode() {
+                OutputMode::Human => {
+                    render::progress::while_pending(&client, &path, client.add(&path)).await
+                }
+                OutputMode::Json => client.add(&path).await,
+            };
+            emit(&envelope)
         }
         Command::Remove { path, daemon_url } => {
             let client = client_for(daemon_url)?;
@@ -438,11 +540,32 @@ async fn run(command: Command) -> Result<ExitCode> {
         }
         Command::Scan { path, daemon_url } => {
             let client = client_for(daemon_url)?;
-            emit(&client.scan(&display(&path)).await)
+            let path = display(&path);
+            let envelope = match output_mode() {
+                OutputMode::Human => {
+                    render::progress::while_pending(&client, &path, client.scan(&path)).await
+                }
+                OutputMode::Json => client.scan(&path).await,
+            };
+            emit(&envelope)
         }
-        Command::Status { daemon_url } => {
+        Command::Status {
+            watch: watching,
+            heartbeat_ms,
+            daemon_url,
+        } => {
             let client = client_for(daemon_url)?;
-            emit(&client.status().await)
+            if watching {
+                watch::run(&client, heartbeat_ms, output_mode() == OutputMode::Human).await?;
+                Ok(ExitCode::SUCCESS)
+            } else {
+                emit(&client.status().await)
+            }
+        }
+        Command::Tui { daemon_url } => {
+            let client = client_for(daemon_url)?;
+            fs3_cli::tui::run(client).await?;
+            Ok(ExitCode::SUCCESS)
         }
         Command::Search {
             query,
@@ -549,6 +672,28 @@ async fn run(command: Command) -> Result<ExitCode> {
         }
         Command::Conversation {
             command:
+                ConversationCommand::Ingest {
+                    pij,
+                    session,
+                    harness,
+                    folder,
+                    daemon_url,
+                },
+        } => {
+            let client = client_for(daemon_url)?;
+            // The folder defaults to where the caller is standing, which is
+            // almost always the workspace the conversation was about; the seat
+            // route falls back again to what pij recorded.
+            let body = serde_json::json!({
+                "pij_id": pij,
+                "session_id": session,
+                "harness": harness,
+                "folder": folder.or_else(here),
+            });
+            emit(&client.conversation_ingest(&body).await)
+        }
+        Command::Conversation {
+            command:
                 ConversationCommand::List {
                     repo,
                     path,
@@ -591,10 +736,6 @@ async fn run(command: Command) -> Result<ExitCode> {
                 None => settings::config_dir()?,
             };
             let effective = settings::load_effective_from(&dir)?;
-            // The whole `Effective`, not just its `config`: doctor reports how
-            // configuration was LOADED as well as what it says, and warnings
-            // about unknown sections are load provenance rather than runtime
-            // semantics.
             emit(&doctor::run(&effective, &dir).await)
         }
         Command::Docs { command } => match command {
@@ -634,14 +775,65 @@ async fn run(command: Command) -> Result<ExitCode> {
 /// conditions print BEFORE the failure, because a message like "a newer binary
 /// is waiting for a restart" is very often the explanation for the failure
 /// underneath it.
+///
+/// # The seam
+///
+/// The envelope is serialised FIRST, the same way, in both modes — and the
+/// human screen is rendered from those exact bytes, never from the typed value
+/// beside them. Two consequences, both deliberate:
+///
+/// * the JSON path is a byte-for-byte passthrough of what it always printed
+///   (`crates/cli/tests/envelope_goldens.rs` asserts it against goldens
+///   captured before this layer existed), and
+/// * the human view cannot drift ahead of the machine view, because it is made
+///   out of it. A fact a person needs that the envelope does not carry is a gap
+///   in the contract, not something to fetch on the side.
+///
+/// A renderer that declines, or bytes that will not round-trip, fall through to
+/// the JSON — the reader sees the answer either way.
 fn emit<T: serde::Serialize>(envelope: &Envelope<T>) -> Result<ExitCode> {
+    // Whether a human screen was drawn, which decides what stderr still owes
+    // the reader below.
+    let mut rendered = false;
+
     match serde_json::to_string_pretty(envelope) {
-        Ok(json) => write_stdout(format_args!("{json}\n"))?,
+        Ok(json) => {
+            let screen = match output_mode() {
+                OutputMode::Json => None,
+                OutputMode::Human => serde_json::from_str::<Envelope<serde_json::Value>>(&json)
+                    .ok()
+                    .as_ref()
+                    .and_then(render::render),
+            };
+            match screen {
+                Some(text) => {
+                    rendered = true;
+                    // Through anstream, which owns the colour decision and
+                    // strips at write time — and fallibly, because the reader
+                    // may have walked away mid-screen exactly as they may
+                    // mid-JSON.
+                    write!(anstream::stdout().lock(), "{text}")?;
+                }
+                None => write_stdout(format_args!("{json}\n"))?,
+            }
+        }
         Err(error) => write_stderr(format_args!(
             "flowspace3: cannot render the response: {error}\n"
         ))?,
     }
 
+    // The stderr copies exist for the JSON path: an agent gets the news in the
+    // envelope, and a PERSON reading a terminal gets it without piping
+    // anything. When a screen was drawn those two readers are the same reader,
+    // and the screen already carries the message and the fix — so repeating
+    // them below prints the diagnosis twice in the same terminal, which is how
+    // a careful error surface becomes noise (found by u-r, 2026-08-28).
+    // Standing conditions (PRD req 59) are NOT part of this command's answer,
+    // and no human surface draws them — so they go to stderr in BOTH modes,
+    // exactly once. An earlier version of this fix suppressed them alongside
+    // the duplicated failure render and silently swallowed every one of them in
+    // human mode (found in review, 2026-08-28): a message like "a newer binary
+    // is waiting for a restart" is precisely the thing a person must not miss.
     for message in &envelope.messages {
         write_stderr(format_args!("flowspace3: {}\n", message.render()))?;
     }
@@ -649,20 +841,35 @@ fn emit<T: serde::Serialize>(envelope: &Envelope<T>) -> Result<ExitCode> {
     Ok(match &envelope.error {
         None => ExitCode::SUCCESS,
         Some(failure) => {
-            write_stderr(format_args!("{}\n", failure.render()))?;
+            if !rendered {
+                write_stderr(format_args!("{}\n", failure.render()))?;
+            }
             ExitCode::from(EXIT_ERROR)
         }
     })
 }
 
+/// Write to stdout, and let a closed pipe be an error rather than a panic.
+///
+/// `println!` panics when the reader has gone away, which turns
+/// `flowspace3 search … | head` — an ordinary thing a person does — into a
+/// crash with a Rust backtrace. Main's commit 086f812 replaced every macro on
+/// this path for that reason; this plan's human layer goes through the same
+/// door, and `crates/cli/tests/epipe.rs` holds both of us to it.
 fn write_stdout(arguments: fmt::Arguments<'_>) -> io::Result<()> {
     io::stdout().lock().write_fmt(arguments)
 }
 
+/// Write to stderr, fallibly, for the same reason as [`write_stdout`].
 fn write_stderr(arguments: fmt::Arguments<'_>) -> io::Result<()> {
     io::stderr().lock().write_fmt(arguments)
 }
 
+/// Whether this failure is really "the reader hung up".
+///
+/// Anywhere in the chain: the error may arrive wrapped in context by the time
+/// it reaches `main`, and a pipe that closed is a normal end to a command
+/// rather than a failure of it.
 fn is_broken_pipe(error: &anyhow::Error) -> bool {
     error.chain().any(|cause| {
         cause
@@ -741,7 +948,7 @@ fn config_show(override_dir: Option<PathBuf>) -> Result<()> {
     };
     let effective = settings::load_effective_from(&dir)?;
 
-    write_stdout(format_args!(
+    print!(
         "{}",
         show::render(
             &effective,
@@ -749,7 +956,7 @@ fn config_show(override_dir: Option<PathBuf>) -> Result<()> {
             settings::config_path(&dir).exists(),
             settings::secrets_path(&dir).exists(),
         )
-    ))?;
+    );
     Ok(())
 }
 
@@ -765,13 +972,13 @@ async fn ping(override_url: Option<String>) -> Result<ExitCode> {
         );
     }
 
-    write_stdout(format_args!(
-        "healthy - fs3 daemon {} at {} (embedder: {}, summarizer: {})\n",
+    println!(
+        "healthy - fs3 daemon {} at {} (embedder: {}, summarizer: {})",
         health.version,
         client.base_url(),
         health.embedder,
         health.summarizer
-    ))?;
+    );
     Ok(ExitCode::SUCCESS)
 }
 

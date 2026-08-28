@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "command": "remove",
+  "v": 1,
+  "data": {
+    "files": 456,
+    "identity": "git:github.com/AI-Substrate/flowspace3",
+    "jobs_killed": 12,
+    "reclaimable": {
+      "elements": 3821,
+      "embeddings": 3720,
+      "jobs": 12,
+      "summaries": 3720,
+      "total": 11273
+    },
+    "repo_removed": true,
+    "root_path": "/srv/api",
+    "was_registered": true
+  },
+  "next_action": "/srv/api is no longer indexed — `flowspace3 gc` reclaims the 11273 row(s) it left behind"
+}

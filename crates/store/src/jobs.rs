@@ -17,6 +17,25 @@ use sqlx::Row;
 
 use crate::{PgPool, StoreError};
 
+/// A closed queue-priority value. Construction stays in this module so a new
+/// lane must extend the named shared scale instead of passing an arbitrary
+/// integer that silently changes every claimant's ordering.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct JobPriority(i32);
+
+/// Ordinary background work: explicit add/rescan, watcher scans, and
+/// enrichment all use priority 0.
+pub const JOB_PRIORITY_DEFAULT: JobPriority = JobPriority(0);
+
+/// First scans for a newly discovered checkout use priority 1.
+///
+/// This is the complete shared scale today: 0 belongs to ordinary producers;
+/// 1 belongs only to the worktree lifecycle detector so code a user just
+/// checked out jumps an existing backlog. There are no intermediate or higher
+/// lanes. A future producer must add and justify another named constant here,
+/// because priority is a contract across every worker sharing this queue.
+pub const JOB_PRIORITY_NEW_WORKTREE_SCAN: JobPriority = JobPriority(1);
+
 /// A claimed job, handed to a worker.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Job {
@@ -82,18 +101,38 @@ pub async fn enqueue_job(
     payload: &serde_json::Value,
     delay: Duration,
 ) -> Result<(), StoreError> {
+    enqueue_job_with_priority(pool, kind, dedupe_key, payload, delay, JOB_PRIORITY_DEFAULT).await
+}
+
+/// Put work on the queue at one of the declared shared priorities.
+///
+/// A duplicate live row keeps the higher priority: an ordinary re-fire must
+/// never demote work the lifecycle detector already promoted.
+///
+/// # Errors
+/// [`StoreError::Query`] when the statement fails.
+pub async fn enqueue_job_with_priority(
+    pool: &PgPool,
+    kind: &str,
+    dedupe_key: &str,
+    payload: &serde_json::Value,
+    delay: Duration,
+    priority: JobPriority,
+) -> Result<(), StoreError> {
     sqlx::query(
-        "INSERT INTO jobs (kind, dedupe_key, payload, not_before)
-         VALUES ($1, $2, $3, now() + make_interval(secs => $4))
+        "INSERT INTO jobs (kind, dedupe_key, payload, not_before, priority)
+         VALUES ($1, $2, $3, now() + make_interval(secs => $4), $5)
          ON CONFLICT (dedupe_key) WHERE state IN ('pending', 'running') DO UPDATE SET
            payload    = EXCLUDED.payload,
            not_before = GREATEST(jobs.not_before, EXCLUDED.not_before),
+           priority   = GREATEST(jobs.priority, EXCLUDED.priority),
            updated_at = now()",
     )
     .bind(kind)
     .bind(dedupe_key)
     .bind(payload)
     .bind(delay.as_secs_f64())
+    .bind(priority.0)
     .execute(pool)
     .await?;
     Ok(())
@@ -104,6 +143,10 @@ pub async fn enqueue_job(
 /// `FOR UPDATE SKIP LOCKED` is the point of this query (decision D4): a row
 /// another worker is mid-claim on is stepped over rather than waited on, so N
 /// workers polling together get N different jobs and none of them block.
+/// Within a priority, `id DESC` is LIFO by immutable enqueue order. `not_before`
+/// remains only an eligibility gate: using it as the tie-break would make an
+/// old parked or retrying job look new when its backoff elapsed.
+///
 ///
 /// `None` means "nothing ready", not "nothing left" — a job whose `not_before`
 /// is still in the future is invisible here, which is how the debounce works.
@@ -118,7 +161,7 @@ pub async fn claim_job(pool: &PgPool, kinds: &[&str]) -> Result<Option<Job>, Sto
                  WHERE state = 'pending'
                    AND not_before <= now()
                    AND kind = ANY($1)
-                 ORDER BY priority DESC, not_before
+                 ORDER BY priority DESC, id DESC
                  FOR UPDATE SKIP LOCKED
                  LIMIT 1
           )
@@ -154,7 +197,7 @@ pub async fn claim_job(pool: &PgPool, kinds: &[&str]) -> Result<Option<Job>, Sto
 /// set here would hand back a pile that cannot be batched and make the caller
 /// re-sort it.
 ///
-/// Ordering matches [`claim_job`] exactly — `priority DESC, not_before` — so
+/// Ordering matches [`claim_job`] exactly — `priority DESC, id DESC` — so
 /// mixing batched and single claimants on one queue cannot starve either.
 /// `FOR UPDATE SKIP LOCKED` over the whole `LIMIT` means two workers claiming
 /// concurrently take disjoint sets rather than blocking on each other.
@@ -177,7 +220,7 @@ pub async fn claim_jobs(pool: &PgPool, kind: &str, limit: i64) -> Result<Vec<Job
                  WHERE state = 'pending'
                    AND not_before <= now()
                    AND kind = $1
-                 ORDER BY priority DESC, not_before
+                 ORDER BY priority DESC, id DESC
                  FOR UPDATE SKIP LOCKED
                  LIMIT $2
           )

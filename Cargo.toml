@@ -68,6 +68,22 @@ notify = "8"
 # `default-features = false` keeps the diesel/postgres/serde halves out.
 pgvector = { version = "0.4", default-features = false, features = ["sqlx"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+# Reading git-ai's machine-wide metrics store (plan 005, u1d): that database is
+# sqlite written by ANOTHER tool, so the reader is a query rather than a file
+# format fs3 would otherwise hand-roll. `bundled` compiles the amalgamation in
+# rather than linking the host's libsqlite3: we do not control which sqlite
+# wrote the file, so controlling which one parses it is the only determinism
+# available — and a host-linked build that works on a dev Mac and fails in CI
+# is a defect found at the worst possible time.
+#
+# THE VERSION IS NOT FREE. `libsqlite3-sys` declares `links = "sqlite3"`, and
+# cargo permits exactly one package with a given `links` value in the graph.
+# `sqlx-sqlite` already puts `libsqlite3-sys 0.30.1` there, so `rusqlite` must
+# be the release that shares it — 0.32 — or the resolver walks `sqlx` backwards
+# looking for an escape and fails on a missing `tls-rustls-ring` feature, which
+# reads as an unrelated TLS problem. If you bump `sqlx` and this row starts
+# failing, these two are the pair to move together.
+rusqlite = { version = "0.32", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # The one hash in fs3: element `raw_hash` (the dirtiness key) and the content
@@ -88,6 +104,7 @@ sqlx = { version = "0.8", default-features = false, features = [
 tempfile = "3"
 thiserror = "2"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal"] }
+tokio-stream = "0.1"
 toml = "0.9"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

@@ -713,10 +713,10 @@ async fn seed_code_row(pool: &PgPool) {
 async fn migration_applies_over_existing_code_elements_and_accepts_row() {
     let database = FreshDatabase::create().await;
     let pool = database.pool().await;
-    apply_migrations(&pool, 1, 13).await;
+    apply_migrations(&pool, 1, 16).await;
     seed_code_row(&pool).await;
 
-    apply_migrations(&pool, 14, 14).await;
+    apply_migrations(&pool, 17, 17).await;
 
     let preserved: bool =
         sqlx::query_scalar("SELECT ddoc IS NULL FROM elements WHERE address = 'src/lib.rs::old'")

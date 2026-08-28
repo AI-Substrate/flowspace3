@@ -1,0 +1,71 @@
+{
+  "ok": true,
+  "command": "get",
+  "v": 1,
+  "data": {
+    "address": "el:git:github.com/AI-Substrate/flowspace3/crates/cli/src/client.rs",
+    "children": [
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/cli/src/client.rs::HealthReport",
+        "kind": "container",
+        "name": "HealthReport",
+        "span": [
+          28,
+          40
+        ]
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/cli/src/client.rs::HealthReport",
+        "kind": "container",
+        "name": "HealthReport",
+        "span": [
+          42,
+          47
+        ]
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/cli/src/client.rs::DaemonClient",
+        "kind": "container",
+        "name": "DaemonClient",
+        "span": [
+          51,
+          54
+        ]
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/cli/src/client.rs::DaemonClient",
+        "kind": "container",
+        "name": "DaemonClient",
+        "span": [
+          56,
+          262
+        ]
+      }
+    ],
+    "kind": "file",
+    "name": "client.rs",
+    "parents": [],
+    "path": "crates/cli/src/client.rs",
+    "raw_text": "//! The HTTP client. One method per daemon verb, all of them envelope-shaped.\n//!\n//! The CLI never interprets a payload: it asks, and it prints what came back.\n//! That is what makes `flowspace3` a thin client in the sense PRD req 33 means\n//! — a newer daemon returning a richer `data` needs no CLI change, because the\n//! CLI's job ends at the envelope.\n//!\n//! # Unreachable is a verb-shaped answer, not an exception\n//!\n//! A daemon that does not answer is turned into an ERROR ENVELOPE here, with\n//! `FS3-E-DAEMON-UNAVAILABLE` and the doctor pointer. The alternative — a raw\n//! transport error — would be the one failure in fs3 that does not carry a\n//! code, which is exactly the hole workshop 004's registry exists to close. A\n//! script parsing `flowspace3` output should never need a second shape for\n//! \"the daemon is down\".\n\nuse std::time::Duration;\n\nuse anyhow::{Context, Result};\nuse fs3_core::catalog;\nuse fs3_core::envelope::{Envelope, Failure};\nuse serde::{Deserialize, Serialize};\nuse serde_json::Value;\n\n/// The daemon's health response. Extra fields are tolerated so a newer daemon\n/// does not break an older CLI.\n#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]\npub struct HealthReport {\n    /// `\"ok\"` when the daemon is serving.\n    pub status: String,\n    /// The daemon's version.\n    #[serde(default)]\n    pub version: String,\n    /// Which embedder arm the daemon wired.\n    #[serde(default)]\n    pub embedder: String,\n    /// Which summarizer arm the daemon wired.\n    #[serde(default)]\n    pub summarizer: String,\n}\n\nimpl HealthReport {\n    /// Whether the daemon reported itself healthy.\n    pub fn is_healthy(&self) -> bool {\n        self.status == \"ok\"\n    }\n}\n\n/// A client bound to one daemon URL.\n#[derive(Debug, Clone)]\npub struct DaemonClient {\n    http: reqwest::Client,\n    base_url: String,\n}\n\nimpl DaemonClient {\n    /// How long to wait before declaring the daemon unreachable. Short: the CLI\n    /// fails fast and points at doctor rather than hanging (PRD req 37).\n    pub const TIMEOUT: Duration = Duration::from_secs(3);\n\n    /// How long a SCAN may take before the CLI gives up.\n    ///\n    /// Longer than [`Self::TIMEOUT`] because `add` walks and hashes a whole\n    /// repository before it answers, and three seconds is a normal walk rather\n    /// than a hung daemon. The queue drains asynchronously, so this covers the\n    /// walk only.\n    pub const SCAN_TIMEOUT: Duration = Duration::from_secs(300);\n\n    /// Build a client for `base_url`.\n    ///\n    /// # Errors\n    /// When the HTTP client cannot be constructed.\n    pub fn new(base_url: impl Into<String>) -> Result<Self> {\n        Ok(Self {\n            http: reqwest::Client::builder()\n                .timeout(Self::SCAN_TIMEOUT)\n                .build()\n                .context(\"building the HTTP client\")?,\n            base_url: base_url.into().trim_end_matches('/').to_string(),\n        })\n    }\n\n    /// The URL this client talks to.\n    pub fn base_url(&self) -> &str {\n        &self.base_url\n    }\n\n    /// Ask the daemon how it is.\n    ///\n    /// # Errors\n    /// An unreachable daemon fails fast, and the message names\n    /// [`crate::DOCTOR_HINT`] — the CLI never starts infrastructure itself.\n    pub async fn health(&self) -> Result<HealthReport> {\n        let url = format!(\"{}/health\", self.base_url);\n        let response = self\n            .http\n            .get(&url)\n            .timeout(Self::TIMEOUT)\n            .send()\n            .await\n            .map_err(|error| {\n                anyhow::anyhow!(\n                    \"fs3 daemon is not reachable at {}: {error}\\n{}\",\n                    self.base_url,\n                    crate::DOCTOR_HINT\n                )\n            })?;\n\n        let status = response.status();\n        if !status.is_success() {\n            let body = response.text().await.unwrap_or_default();\n            return Err(anyhow::anyhow!(\n                \"fs3 daemon at {} answered {status}: {}\\n{}\",\n                self.base_url,\n                body.trim(),\n                crate::DOCTOR_HINT\n            ));\n        }\n\n        response\n            .json::<HealthReport>()\n            .await\n            .with_context(|| format!(\"{url} did not return a health report\"))\n    }\n\n    /// Register a root.\n    pub async fn add(&self, path: &str) -> Envelope {\n        self.post(\"add\", \"/roots\", &serde_json::json!({ \"path\": path }))\n            .await\n    }\n\n    /// Re-scan a registered root.\n    pub async fn scan(&self, path: &str) -> Envelope {\n        self.post(\"scan\", \"/scan\", &serde_json::json!({ \"path\": path }))\n            .await\n    }\n\n    /// Unregister a root and kill its queued scans (PRD req 57).\n    pub async fn remove(&self, path: &str) -> Envelope {\n        self.post(\"remove\", \"/remove\", &serde_json::json!({ \"path\": path }))\n            .await\n    }\n\n    /// Reclaim rows nothing references, now.\n    ///\n    /// The same engine the daemon runs on its own cadence — this is the\n    /// force-it-now entry point, like `doctor upgrade` beside auto-update.\n    pub async fn gc(&self) -> Envelope {\n        self.post(\"gc\", \"/gc\", &serde_json::json!({})).await\n    }\n\n    /// Store a conversation header and a batch of turns.\n    ///\n    /// Append-friendly: the daemon is idempotent on `(conversation_id,\n    /// turn_no)`, so posting a batch that overlaps what is already stored is\n    /// safe and free rather than a duplicate.\n    pub async fn conversation_import(&self, body: &Value) -> Envelope {\n        self.post(\"conversation import\", \"/conversations\", body)\n            .await\n    }\n\n    /// List indexed conversations.\n    pub async fn conversation_list(&self, query: &[(String, String)]) -> Envelope {\n        self.get_json(\"conversation list\", \"/conversations\", query)\n            .await\n    }\n\n    /// Forget one conversation and its turns.\n    pub async fn conversation_remove(&self, guid: &str) -> Envelope {\n        self.post(\n            \"conversation remove\",\n            \"/conversations/remove\",\n            &serde_json::json!({ \"guid\": guid }),\n        )\n        .await\n    }\n\n    /// Read roots and queue depth.\n    pub async fn status(&self) -> Envelope {\n        self.get_json(\"status\", \"/status\", &[]).await\n    }\n\n    /// Ask a question.\n    pub async fn search(&self, query: &[(String, String)]) -> Envelope {\n        self.get_json(\"search\", \"/search\", query).await\n    }\n\n    /// Read one address in full.\n    pub async fn get(&self, query: &[(String, String)]) -> Envelope {\n        self.get_json(\"get\", \"/get\", query).await\n    }\n\n    /// Browse indexed structure.\n    pub async fn tree(&self, query: &[(String, String)]) -> Envelope {\n        self.get_json(\"tree\", \"/tree\", query).await\n    }\n\n    async fn get_json(&self, command: &str, path: &str, query: &[(String, String)]) -> Envelope {\n        let url = format!(\"{}{path}\", self.base_url);\n        let response = self.http.get(&url).query(query).send().await;\n        self.envelope(command, response).await\n    }\n\n    async fn post(&self, command: &str, path: &str, body: &Value) -> Envelope {\n        let url = format!(\"{}{path}\", self.base_url);\n        let response = self.http.post(&url).json(body).send().await;\n        self.envelope(command, response).await\n    }\n\n    /// Turn a transport outcome into an envelope, whatever happened.\n    ///\n    /// Three cases collapse into one shape here: the daemon answered an\n    /// envelope (return it, error or not); the daemon answered something else\n    /// (a proxy, a wrong port, a panic page); or it did not answer at all. Only\n    /// the first is the daemon's own words — the other two are turned into\n    /// codes rather than passed through as prose, because a caller that has to\n    /// tell \"no route to host\" from `{\"ok\":false}` by parsing is a caller that\n    /// will get it wrong.\n    async fn envelope(\n        &self,\n        command: &str,\n        response: reqwest::Result<reqwest::Response>,\n    ) -> Envelope {\n        let response = match response {\n            Ok(response) => response,\n            Err(error) => {\n                return Envelope::failed(\n                    command,\n                    Failure::new(\n                        &catalog::DAEMON_UNAVAILABLE,\n                        format!(\"cannot reach the fs3 daemon at {}: {error}\", self.base_url),\n                    )\n                    .with_detail(\"daemon_url\", self.base_url.clone()),\n                );\n            }\n        };\n\n        let status = response.status();\n        let body = response.text().await.unwrap_or_default();\n\n        match serde_json::from_str::<Envelope>(&body) {\n            Ok(envelope) => envelope,\n            Err(_) => Envelope::failed(\n                command,\n                Failure::new(\n                    &catalog::DAEMON_UNAVAILABLE,\n                    format!(\n                        \"the daemon at {} answered {status} with something that is not an fs3 \\\n                         envelope\",\n                        self.base_url\n                    ),\n                )\n                .with_fix(\n                    \"check that daemon.url points at fs3 and not another service on that port \\\n                     (`flowspace3 config show`), then `flowspace3 doctor`\",\n                )\n                .with_detail(\"status\", status.as_u16())\n                .with_detail(\"body\", body.chars().take(200).collect::<String>()),\n            ),\n        }\n    }\n}\n",
+    "repo": "git:github.com/AI-Substrate/flowspace3",
+    "root_path": "/Users/jordanknight/substrate/flowspace/flowspace3",
+    "smart": null,
+    "span": [
+      1,
+      262
+    ],
+    "subkind": "rust",
+    "tags": []
+  },
+  "meta": {
+    "parser_version": "fs3-parsers@1",
+    "parser_version_current": true,
+    "scope": {
+      "cwd": "/Users/jordanknight/substrate/flowspace/flowspace3",
+      "repo": "git:github.com/AI-Substrate/flowspace3",
+      "source": "cwd",
+      "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+    }
+  },
+  "next_action": "4 declarations are outlined above — `flowspace3 get <address>` reads any of them in full"
+}

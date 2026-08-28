@@ -339,6 +339,26 @@ pub const PROVIDER_FAILED: Code = Code::new(
     true,
 );
 
+/// The agent port is wired to a provider that cannot answer anything.
+///
+/// Distinct from [`PROVIDER_FAILED`] because nothing FAILED: the stack is
+/// healthy and the port is unusable, which is a configuration answer rather
+/// than a runtime one. It exists because `kind = "fake"` is a legal keyless
+/// production value — for the embedder and summarizer that is genuinely
+/// useful, since a fake embedder emits real vectors and search works offline.
+/// A fake CHAT model has no honest output, so the verb must refuse rather
+/// than publish a placeholder on an `ok: true` envelope where a machine
+/// consumer would bank it as a finding.
+pub const PROVIDER_CANNOT_ANSWER: Code = Code::new(
+    "FS3-E-PROVIDER-CANNOT-ANSWER",
+    Area::Provider,
+    "The agent port is configured with a provider that cannot answer questions.",
+    "point `[agent] active` at a real chat deployment (`flowspace3 config show` names the \
+     current one, `flowspace3 docs get providers` sets one up). The offline `fake` runs the \
+     rest of the stack without keys, but it cannot answer a question.",
+    false,
+);
+
 /// A provider returned vectors of a width the store cannot hold.
 pub const PROVIDER_DIMENSIONS: Code = Code::new(
     "FS3-E-PROVIDER-DIMENSIONS",
@@ -507,6 +527,7 @@ pub const ALL: &[Code] = &[
     SCAN_ROOT_NOT_REGISTERED,
     SCAN_DISCOVERY_FAILED,
     SCAN_UNPARSEABLE,
+    PROVIDER_CANNOT_ANSWER,
     PROVIDER_FAILED,
     PROVIDER_RATE_LIMITED,
     PROVIDER_DIMENSIONS,

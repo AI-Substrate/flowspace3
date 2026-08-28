@@ -93,6 +93,8 @@ pub struct ConversationSummary {
     pub started_at: String,
     /// How many turns are stored.
     pub turns: i64,
+    /// The conversation this is a child of, for a claude subagent sidecar.
+    pub parent: Option<ConversationId>,
 }
 
 /// Which conversations to list.
@@ -148,14 +150,19 @@ pub async fn upsert_conversation(
 ) -> Result<(), StoreError> {
     sqlx::query(
         "INSERT INTO conversations
-           (guid, repo_identity, worktree, base_sha, title, started_at)
-         VALUES ($1::uuid, $2, $3, $4, $5, $6::timestamptz)
+           (guid, repo_identity, worktree, base_sha, title, started_at,
+            parent_conversation_id)
+         VALUES ($1::uuid, $2, $3, $4, $5, $6::timestamptz, $7::uuid)
          ON CONFLICT (guid) DO UPDATE SET
            repo_identity = COALESCE(EXCLUDED.repo_identity, conversations.repo_identity),
            worktree      = COALESCE(EXCLUDED.worktree,      conversations.worktree),
            base_sha      = COALESCE(EXCLUDED.base_sha,      conversations.base_sha),
            title         = COALESCE(EXCLUDED.title,         conversations.title),
-           started_at    = LEAST(EXCLUDED.started_at, conversations.started_at)",
+           started_at    = LEAST(EXCLUDED.started_at, conversations.started_at),
+           -- COALESCE and not EXCLUDED: a later poll that does not know the
+           -- parent must not erase one an earlier poll established.
+           parent_conversation_id = COALESCE(
+               EXCLUDED.parent_conversation_id, conversations.parent_conversation_id)",
     )
     .bind(conversation.guid.as_str())
     .bind(conversation.repo_identity.as_deref())
@@ -163,6 +170,7 @@ pub async fn upsert_conversation(
     .bind(conversation.base_sha.as_deref())
     .bind(conversation.title.as_deref())
     .bind(&conversation.started_at)
+    .bind(conversation.parent.as_ref().map(ConversationId::as_str))
     .execute(pool)
     .await?;
 
@@ -438,6 +446,7 @@ pub async fn list_conversations(
 ) -> Result<Vec<ConversationSummary>, StoreError> {
     let rows = sqlx::query(&format!(
         "SELECT c.guid::text AS guid, c.repo_identity, c.worktree, c.base_sha, c.title,
+                c.parent_conversation_id::text AS parent,
                 to_char(c.started_at AT TIME ZONE 'UTC', {AS_TEXT}) AS started_at,
                 (SELECT count(*) FROM turns t WHERE t.conversation_id = c.guid) AS turns
            FROM conversations c
@@ -462,6 +471,11 @@ pub async fn list_conversations(
                 title: row.try_get("title")?,
                 started_at: row.try_get("started_at")?,
                 turns: row.try_get("turns")?,
+                parent: row
+                    .try_get::<Option<String>, _>("parent")?
+                    .map(ConversationId::new)
+                    .transpose()
+                    .map_err(corrupt)?,
             })
         })
         .collect()

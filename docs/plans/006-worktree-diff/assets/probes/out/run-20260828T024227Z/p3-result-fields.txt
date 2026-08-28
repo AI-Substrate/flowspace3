@@ -1,0 +1,1 @@
+address, kind, match_field, name, path, repo, score, smart, snippet, span, subkind, tags

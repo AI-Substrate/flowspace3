@@ -1,0 +1,113 @@
+{
+  "ok": true,
+  "command": "search",
+  "v": 1,
+  "data": {
+    "results": [
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/docs/plans/006-worktree-diff/assets/probes/out/run-20260828T032255Z/p1-worktree-add.txt",
+        "kind": "file",
+        "match_field": "raw",
+        "name": "p1-worktree-add.txt",
+        "path": "docs/plans/006-worktree-diff/assets/probes/out/run-20260828T032255Z/p1-worktree-add.txt",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.08908708076631056,
+        "smart": null,
+        "snippet": "Preparing worktree (new branch 'poctest-wtdiff-20260828T032255Z')\nHEAD is now at 17d7708 feat: authenticate daemon HTTP requests (#43)",
+        "span": [
+          1,
+          2
+        ],
+        "subkind": "unknown",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/fs3-006-ua"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/core/src/classify.rs::tests::specifier_is_a_declaration_only_for_containers",
+        "kind": "function",
+        "match_field": "raw",
+        "name": "specifier_is_a_declaration_only_for_containers",
+        "path": "crates/core/src/classify.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.08908708076631056,
+        "smart": null,
+        "snippet": "fn specifier_is_a_declaration_only_for_containers() {\n        assert!(is_declaration_shaped(\n            \"struct_specifier\",\n            ElementKind::Container\n        ));",
+        "span": [
+          233,
+          242
+        ],
+        "subkind": "function_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/providers/src/conversation_sources/pij_ledger.rs::PijLedgerSource::from_home",
+        "kind": "function",
+        "match_field": "raw",
+        "name": "from_home",
+        "path": "crates/providers/src/conversation_sources/pij_ledger.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.08908708076631056,
+        "smart": null,
+        "snippet": "pub fn from_home(home: impl AsRef<Path>) -> Self {\n        Self {\n            root: home.as_ref().join(\".pij\"),\n        }\n    }",
+        "span": [
+          84,
+          88
+        ],
+        "subkind": "function_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/fs3-convo-ingest"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/cli/src/client.rs::HealthReport",
+        "kind": "container",
+        "match_field": "raw",
+        "name": "HealthReport",
+        "path": "crates/cli/src/client.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.08908708076631056,
+        "smart": null,
+        "snippet": "impl HealthReport {\n    /// Whether the daemon reported itself healthy.\n    pub fn is_healthy(&self) -> bool {\n        self.status == \"ok\"\n    }",
+        "span": [
+          107,
+          112
+        ],
+        "subkind": "impl_item",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/fs3-006-uc"
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/docs/plans/006-worktree-diff/assets/probes/out/run-20260828T031658Z/p1-worktree-add.txt",
+        "kind": "file",
+        "match_field": "raw",
+        "name": "p1-worktree-add.txt",
+        "path": "docs/plans/006-worktree-diff/assets/probes/out/run-20260828T031658Z/p1-worktree-add.txt",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.08908708076631056,
+        "smart": null,
+        "snippet": "Preparing worktree (new branch 'poctest-wtdiff-20260828T031658Z')\nHEAD is now at 17d7708 feat: authenticate daemon HTTP requests (#43)",
+        "span": [
+          1,
+          2
+        ],
+        "subkind": "unknown",
+        "tags": [],
+        "worktree": "/Users/jordanknight/substrate/flowspace/fs3-006-ua"
+      }
+    ]
+  },
+  "meta": {
+    "empty_because": null,
+    "hint": "Weak match: describe the component in its own vocabulary rather than asking a question.",
+    "scope": {
+      "cwd": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T054918Z",
+      "repo": "git:github.com/AI-Substrate/flowspace3",
+      "source": "flag"
+    },
+    "truncation": {
+      "limit": 5,
+      "truncated": true
+    }
+  },
+  "next_action": "Weak match: describe the component in its own vocabulary rather than asking a question. — then: read a hit in full with `flowspace3 get <address>`, browse its file with `flowspace3 tree <address>`, or narrow with --path/--repo"
+}

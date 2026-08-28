@@ -29,16 +29,25 @@
 //! conversion is `1 - distance` and it happens exactly here, at the boundary,
 //! so `--min-score 0.7` is a number a human can reason about rather than a
 //! ceiling they have to invert in their head.
+//!
+//! # Snap-in recipe
+//!
+//! No new configuration, constructor, or route registration is required.
+//! The existing HTTP handler resolves `Scope` once, passes it unchanged to
+//! [`search`], and attaches the returned limit/weak-match facts to envelope
+//! metadata. The store call must receive both `scope.repo` and
+//! `scope.worktree`; dropping the latter restores cross-checkout leakage.
 
 use fs3_core::catalog;
 use fs3_core::envelope::Failure;
-use fs3_core::{DdocMeta, DdocRel, DerivedState, ElementKind};
+use fs3_core::{DdocMeta, ElementKind};
 use fs3_store::{SearchFilters, SearchHit, SourceKind};
 use serde::{Deserialize, Serialize};
 
 use crate::runner::fail;
 use crate::scope::Scope;
 use crate::wiring::AppState;
+use fs3_core::views::search::{DdocHit, Hit};
 
 /// What a caller asks for.
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
@@ -85,6 +94,28 @@ pub struct SearchRequest {
 /// than a slow query.
 pub const MAX_LIMIT: i64 = 100;
 
+/// A best hit below this score is weak enough to warrant an advisory hint.
+///
+/// This is not a probability. Absolute similarity depends on both corpus and
+/// embedder. The value was calibrated on 2026-08-28 against the live
+/// flowspace3 index using Azure `text-embedding-3-small-no-rate` at 1024
+/// dimensions. The snapshot separated known-relevant from known-noise queries:
+///
+/// | expected | query | best score |
+/// |---|---|---:|
+/// | relevant | claim queued job once deduplicate key | 0.6985 |
+/// | relevant | remove root dereference worktree files | 0.6456 |
+/// | relevant | resolve caller cwd registered worktree scope | 0.6146 |
+/// | relevant | known relevant, mediocre matches | 0.5509–0.5554 |
+/// | noise | known irrelevant matches | 0.4431–0.4644 |
+/// | noise | quantum chromodynamics gluon confinement | 0.3118 |
+///
+/// The durable part is the labelled-query procedure, not these samples: the
+/// index grows, and changing either corpus or embedder invalidates the floor.
+/// False warnings teach callers to ignore the hint, so new relevant evidence
+/// below the current band moves this floor down, never up by taste.
+pub const WEAK_MATCH_SCORE_FLOOR: f64 = 0.50;
+
 /// The element kinds that answer a CODE search.
 ///
 /// Named exhaustively rather than as "everything except a turn", so that adding
@@ -98,88 +129,9 @@ const CODE_KINDS: [ElementKind; 5] = [
     ElementKind::Row,
 ];
 
-/// One hit, in the workshop-003 row shape.
-#[derive(Clone, Debug, PartialEq, Serialize)]
-pub struct Hit {
-    /// `el:<repo>/<path>::<container>::<name>` — the universal currency (D7).
-    pub address: String,
-    /// 1.0 is identical; highest first.
-    pub score: f64,
-    /// Which vector space won this hit: `raw` or `smart`.
-    pub match_field: String,
-    /// The element's universal category.
-    pub kind: String,
-    /// The grammar's own kind.
-    pub subkind: String,
-    /// The declaration's own name.
-    pub name: String,
-    /// Inclusive 1-based `[start, end]`.
-    pub span: [u32; 2],
-    /// The first lines of the element's own text.
-    pub snippet: String,
-    /// The summary, when there is one.
-    pub smart: Option<String>,
-    /// Concept tags from the summary (PRD req 36).
-    pub tags: Vec<String>,
-    /// The repository a live path holding this content belongs to.
-    pub repo: Option<String>,
-    /// A live path holding it, relative to its worktree root.
-    pub path: Option<String>,
-    /// Deterministic-document metadata. Absent, including the key, on code hits.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub ddoc: Option<DdocHit>,
+fn weak_match_score(best: Option<f64>) -> bool {
+    best.is_some_and(|score| score < WEAK_MATCH_SCORE_FLOOR)
 }
-
-/// One ddoc row's meaning and both of its independent state claims.
-#[derive(Clone, Debug, PartialEq, Serialize)]
-pub struct DdocHit {
-    /// dd's path-qualified positional address; paste directly into `ddocs get`.
-    pub address: String,
-    pub schema: String,
-    pub section: String,
-    pub id: String,
-    pub id_kind: Option<String>,
-    pub trail: Vec<String>,
-    pub doc_title: Option<String>,
-    /// How the parser chose embedded text: schema-declared fields or fallback.
-    pub embed_basis: fs3_core::EmbedBasis,
-    /// The source document's stored state. It is not authoritative.
-    pub state_stored: Option<String>,
-    /// State derived from assertions. Believe this claim when present.
-    pub state_derived: Option<DerivedState>,
-    /// Whether the stored state belongs to the schema's terminal set.
-    pub gate_terminal: Option<bool>,
-    pub rels: Vec<DdocRel>,
-    pub findings: Vec<String>,
-}
-
-impl From<&DdocMeta> for DdocHit {
-    fn from(meta: &DdocMeta) -> Self {
-        DdocHit {
-            address: meta.address.clone(),
-            schema: meta.schema.clone(),
-            section: meta.section.clone(),
-            id: meta.id.clone(),
-            id_kind: meta.id_kind.clone(),
-            trail: meta.trail.clone(),
-            doc_title: meta.doc_title.clone(),
-            embed_basis: meta.embed_basis,
-            state_stored: meta.state.clone(),
-            state_derived: meta.derived_state.clone(),
-            gate_terminal: meta.gate_terminal,
-            rels: meta.rels.clone(),
-            findings: meta.findings.clone(),
-        }
-    }
-}
-
-/// What `GET /search` answers with.
-#[derive(Clone, Debug, PartialEq, Serialize)]
-pub struct SearchResults {
-    /// Ranked hits, best first.
-    pub results: Vec<Hit>,
-}
-
 /// Why an empty answer was empty, when "nothing matched" would be a guess.
 ///
 /// Rides in `meta`, never in `data`: it is commentary about the answer rather
@@ -200,6 +152,10 @@ pub struct EmptyBecause {
 /// Carries the hits rather than [`SearchResults`] so that the wire type stays
 /// a pure payload: the emptiness commentary belongs in `meta`, and a struct
 /// that owned both would invite it into `data`.
+///
+/// [`Hit`] and [`SearchResults`] themselves live in `fs3_core::views::search`
+/// since tk-a106 — a consumer must be able to read a payload without depending
+/// on this crate — so this file uses them rather than defining them.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SearchOutcome {
     /// The ranked hits, best first.
@@ -208,8 +164,19 @@ pub struct SearchOutcome {
     /// cause. `None` alongside an empty list means the index really was asked
     /// and really had nothing nearer to offer.
     pub empty_because: Option<EmptyBecause>,
+    /// The caller-visible result cap.
+    pub limit: i64,
+    /// Whether at least one additional legitimate result existed beyond the cap.
+    pub truncated: bool,
 }
 
+impl SearchOutcome {
+    /// Whether the best available result falls below the calibrated floor.
+    #[must_use]
+    pub fn is_weak_match(&self) -> bool {
+        weak_match_score(self.results.first().map(|hit| hit.score))
+    }
+}
 /// How many lines of an element's text a hit carries.
 const SNIPPET_LINES: usize = 5;
 
@@ -310,24 +277,49 @@ pub async fn search(
 
     let mut filters = SearchFilters {
         repo: scope.repo.clone(),
+        worktree: scope.worktree.clone(),
         path: request.path.as_deref().map(glob_to_like),
         source,
         kinds,
         max_distance,
-        limit,
+        limit: limit + 1,
         ..SearchFilters::default()
     };
 
     apply_ddoc_filters(&mut filters, request);
 
-    let hits = fs3_store::search_elements(&state.db, &model_key, &vector, &filters)
+    let mut hits = fs3_store::search_elements(&state.db, &model_key, &vector, &filters)
         .await
         .map_err(fail)?;
 
+    // The store scopes both candidate eligibility and representative
+    // resolution. If a future query shape defeats that invariant, never emit a
+    // repo-less address for a scoped search: drop it loudly so the missing
+    // provenance is diagnosable rather than becoming another checkout leak.
+    // This legitimacy guard runs after #44 widens retrieval, but before every
+    // early return: breadth first, legitimacy second.
+    let scoped = scope.repo.is_some() || scope.worktree.is_some() || request.path.is_some();
+    hits.retain(|hit| {
+        let resolved = hit.identity.is_some() || hit.root_path.is_some() || hit.path.is_some();
+        if scoped && !resolved {
+            tracing::warn!(
+                raw_hash = %hit.similar.element.raw_hash(),
+                repo = ?scope.repo,
+                path = ?request.path,
+                worktree = ?scope.worktree,
+                "scoped search representative resolved without live provenance; dropping hit"
+            );
+        }
+        !scoped || resolved
+    });
+
+    let truncated = hits.len() > limit as usize;
     if !hits.is_empty() {
         return Ok(SearchOutcome {
-            results: hits.iter().map(render).collect(),
+            results: hits.iter().take(limit as usize).map(render).collect(),
             empty_because: None,
+            limit,
+            truncated,
         });
     }
 
@@ -344,6 +336,8 @@ pub async fn search(
     Ok(SearchOutcome {
         results: Vec::new(),
         empty_because: empty_because(&filters, code),
+        limit,
+        truncated: false,
     })
 }
 
@@ -388,10 +382,19 @@ fn empty_because(filters: &SearchFilters, code: bool) -> Option<EmptyBecause> {
         return None;
     }
 
-    let anchor = match (filters.repo.as_deref(), filters.path.as_deref()) {
-        (None, None) => return None,
-        (Some(repo), _) => repo.to_string(),
-        (None, Some(path)) => format!("paths matching {path}"),
+    let anchor = match (
+        filters.worktree.as_deref(),
+        filters.repo.as_deref(),
+        filters.path.as_deref(),
+    ) {
+        (Some(worktree), Some(repo), Some(path)) => {
+            format!("checkout {worktree} of {repo} under paths matching {path}")
+        }
+        (Some(worktree), Some(repo), None) => format!("checkout {worktree} of {repo}"),
+        (Some(worktree), None, _) => format!("checkout {worktree}"),
+        (None, Some(repo), _) => repo.to_string(),
+        (None, None, Some(path)) => format!("paths matching {path}"),
+        (None, None, None) => return None,
     };
 
     Some(EmptyBecause {
@@ -471,10 +474,10 @@ async fn nothing_to_search(
 /// `flowspace3 add .` and an afternoon of rephrasing the query.
 ///
 /// Only asked for a CODE search with an anchor actually applied. With no
-/// repository and no path filter the previous check already established the
-/// index exists, and a second query would be work spent confirming it; for a
-/// conversation search the probe is simply the wrong question, because a turn
-/// reaches its repository through its conversation's anchor and has no
+/// repository, worktree, or path filter the previous check already established
+/// the index exists, and a second query would be work spent confirming it; for
+/// a conversation search the probe is simply the wrong question, because a
+/// turn reaches its repository through its conversation's anchor and has no
 /// `worktree_files` row to be found by.
 async fn anchor_not_indexed(
     state: &AppState,
@@ -483,8 +486,9 @@ async fn anchor_not_indexed(
     code: bool,
 ) -> Option<Failure> {
     let repo = filters.repo.as_deref();
+    let worktree = filters.worktree.as_deref();
     let path = filters.path.as_deref();
-    if !code || (repo.is_none() && path.is_none()) {
+    if !code || (repo.is_none() && worktree.is_none() && path.is_none()) {
         return None;
     }
 
@@ -497,10 +501,15 @@ async fn anchor_not_indexed(
         return None;
     }
 
-    let anchor = match (repo, path) {
-        (Some(repo), Some(_)) => format!("{repo} under the requested --path"),
-        (Some(repo), None) => repo.to_string(),
-        (None, _) => "the requested --path".to_string(),
+    let anchor = match (worktree, repo, path) {
+        (Some(worktree), Some(repo), Some(_)) => {
+            format!("checkout {worktree} of {repo} under the requested --path")
+        }
+        (Some(worktree), Some(repo), None) => format!("checkout {worktree} of {repo}"),
+        (Some(worktree), None, _) => format!("checkout {worktree}"),
+        (None, Some(repo), Some(_)) => format!("{repo} under the requested --path"),
+        (None, Some(repo), None) => repo.to_string(),
+        (None, None, _) => "the requested --path".to_string(),
     };
     Some(
         Failure::new(
@@ -515,7 +524,7 @@ async fn anchor_not_indexed(
         .with_detail("anchor", anchor)
         .with_fix(
             "index it with `flowspace3 add <path>` and wait for `flowspace3 status` to drain, \
-             or drop --repo/--path to search everything the index holds",
+             or use `--repo all` to search everything the index holds",
         ),
     )
 }
@@ -542,7 +551,27 @@ fn render(hit: &SearchHit) -> Hit {
             .unwrap_or_default(),
         repo: hit.identity.clone(),
         path: hit.path.clone(),
-        ddoc: element.ddoc.as_deref().map(DdocHit::from),
+        worktree: hit.root_path.clone(),
+        ddoc: element.ddoc.as_deref().map(ddoc_hit),
+    }
+}
+
+/// Map stored ddoc metadata into the consumer-owned search view.
+fn ddoc_hit(meta: &DdocMeta) -> DdocHit {
+    DdocHit {
+        address: meta.address.clone(),
+        schema: meta.schema.clone(),
+        section: meta.section.clone(),
+        id: meta.id.clone(),
+        id_kind: meta.id_kind.clone(),
+        trail: meta.trail.clone(),
+        doc_title: meta.doc_title.clone(),
+        embed_basis: meta.embed_basis,
+        state_stored: meta.state.clone(),
+        state_derived: meta.derived_state.clone(),
+        gate_terminal: meta.gate_terminal,
+        rels: meta.rels.clone(),
+        findings: meta.findings.clone(),
     }
 }
 
@@ -626,6 +655,7 @@ fn glob_to_like(glob: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use fs3_core::DerivedState;
 
     #[test]
     fn a_glob_becomes_a_like_pattern_with_its_metacharacters_escaped() {
@@ -673,6 +703,7 @@ mod tests {
                 distance: 0.25,
             },
             identity: Some("git:host/org/repo".to_string()),
+            root_path: Some("/checkout".to_string()),
             path: Some("docs/plan.dd.json".to_string()),
         }
     }
@@ -797,6 +828,16 @@ mod tests {
         assert_eq!(filters.gate_open, Some(true));
     }
 
+    #[test]
+    fn weak_match_is_advisory_only_below_the_calibrated_floor() {
+        assert!(weak_match_score(Some(WEAK_MATCH_SCORE_FLOOR - 0.01)));
+        assert!(!weak_match_score(Some(WEAK_MATCH_SCORE_FLOOR)));
+        assert!(!weak_match_score(Some(WEAK_MATCH_SCORE_FLOOR + 0.01)));
+        assert!(
+            !weak_match_score(None),
+            "zero results use their existing steer"
+        );
+    }
     /// The decision table for [`EmptyBecause`], which is the whole of the
     /// envelope-honesty promise: every claim it makes has to be one the code
     /// path has already proven, and every case it cannot speak to has to stay

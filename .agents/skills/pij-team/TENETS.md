@@ -105,3 +105,50 @@ and the retro record (132 drained observations).
     and drained into structure — a template edit, a rule, a check — the same
     day, so dispatch N+1 inherits everything run N learned. This is why the
     pipeline is templated: templates are the improvable substrate.
+14. **A measurement has preconditions, and a predicate must REFUSE when they
+    fail.** A misleading zero is worse than a refusal: a leak probe that
+    reads 0 under fake embeddings is measuring garbage ranking against
+    garbage, and a must-be-0 gate over a population that can never be
+    nonzero passes forever. Probes check their own preconditions (the right
+    provider, a population that can exercise the claim, a control that
+    proves the instrument works) and emit `unmeasurable-<reason>` instead of
+    a number. Same law as three-valued eval rows: missing instrumentation
+    never masquerades as a result. (Added 2026-08-28, leopon/006.)
+15. **Composition is where EMERGENT defects appear — run the composed
+    artifact.** Units can each be correct against their own assumptions and
+    the pair still wrong: one unit's success can create the very population
+    that exposes a sibling's gap (auto-registration made many-checkouts
+    normal; many-checkouts broke scoped resolution). Neither unit's tests
+    can see it, so composition includes an adversarial RUN on a realistic
+    corpus — three defects in one day were caught only by running the
+    composed artifact, all three invisible to passing tests.
+    (Added 2026-08-28, leopon/006 + DL-004 + flea/008.)
+16. **A defect class is not closed when the instance is fixed — it is closed
+    when someone has walked the rule to the next surface and found nothing.**
+    The same law found three times, each one surface further out, always by
+    looking at what a CALLER received rather than what a step returned:
+    (1) CHOOSING — a scope filter over content-addressed storage applies at
+    every step that chooses a row, not only where one is admitted;
+    (2) THE NEXT CHOOSER — the identical rule one step downstream, with a
+    different symptom (silent false negative, not a null leak);
+    (3) RENDERING — scope must be VISIBLE at every surface that renders a
+    chosen row, not merely enforced where it was chosen (identical rows
+    from two checkouts in a human interface is the same leak in a nicer
+    font). Corollary for rulings with escape hatches: cost objections are
+    a trade, taste objections are an escalation — and neither may
+    masquerade as the other, or the ruling decays into a silent default.
+    (Added 2026-08-28, leopon/006, three instances f-001/f-005/TUI.)
+17. **A capability without a proven trigger is unshipped — audit the
+    WIRING, not just the mechanism.** Four defects in one day shared one
+    shape: the mechanism existed, worked, and passed review, while nothing
+    invoked it — the bundled skill that did not teach the verb it fronted;
+    repo=all documented in the tool description and dropped before the
+    filter; the grounded flag meaning "the call ran" while the evidence
+    distinction sat unread one layer down; the gate contending on a shared
+    database while FreshDatabase shipped for exactly this in the same
+    week. Tests check that the mechanism works, not that anything reaches
+    it. The audit question to ask at every ship: for each capability, WHAT
+    INVOKES IT, and what proves that connection? Same law turned inward:
+    a verdict that keeps none of its evidence is a mechanism without a
+    wired trigger one level up — retention before classification.
+    (Added 2026-08-28, flea/ask-arc — four sightings, one shape.)

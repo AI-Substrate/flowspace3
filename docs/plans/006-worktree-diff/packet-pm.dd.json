@@ -1,0 +1,76 @@
+{
+  "dd": {
+    "schema": "pij-team/packet"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "PM packet — worktree-diff",
+        "role": "pm",
+        "plan": "docs/plans/006-worktree-diff/plan.dd.json",
+        "seat": "(filled at canary)",
+        "updated": "2026-08-28"
+      }
+    },
+    {
+      "name": "mission",
+      "value": "You are the PM for plan 006-worktree-diff — pij-team validation run #2, and the first INVESTIGATE-THEN-BUILD plan. Branch 006-worktree-diff, worktree ../fs3-worktree-diff. Phase 1 you run solo: four scripted probes measuring how worktree indexing/search behaves TODAY; its probe report rules the phase-2 unit set and PRIME SIGNS THAT RULING OFF before any coder is spawned. Phases 2-3 then run the standard build pipeline. Prime (pij-instant-lynx) is product owner; process quality is a first-class deliverable."
+    },
+    {
+      "name": "instructions",
+      "value": [
+        { "id": "i1", "text": "Orient: plan.dd.md, impl-guide.dd.md (BINDING — note meta.mode: investigate-then-build and what it reinterprets), .agents/skills/pij-team/TENETS.md, .harness/government/settings.dd.md. Run `harness boot --json`. DOGFOOD FLOWSPACE: `flowspace3 search` before grep, misses reported as friction." },
+        { "id": "i2", "text": "Drive through the /builder flow (`harness flow nav`/`orient`), close out properly at the end (post-flight + archive)." },
+        { "id": "i3", "text": "Phase 1 solo per the impl-guide: build the probe harness (tk-e101), run P1-P4 (tk-e102..e104), write assets/probe-report.md (tk-e105) — every claim carries a transcript; provider-call counts measured never inferred; probe worktrees use poctest- slugs and ALWAYS tear down. Deliver the report + your ruled phase-2 unit set to prime and STOP until sign-off." },
+        { "id": "i4", "text": "After sign-off: amend phase-2 tasks via ddocs to the ruled units, then fan out per the standard discipline — packets by cp+ddocs, pointer delivery, canary demanding reply-via-pij-tooling, ack-with-numbered-plan ruled by number. Every coder packet carries: ABSOLUTE PATHS for every file read/edit (DL-007/008 — seat file tools can resolve relatives against spawn cwd; state the worktree root at ack), PIJ_SESSION_ID export for pij sends from worktrees, no `docker compose up` (shared db on :5433), CARGO_INCREMENTAL=0, rustc-LLVM IO failure = disk not code, free-space Avail figure in every report." },
+        { "id": "i5", "text": "Composition is yours: BEFORE wiring, ask each done coder what it ASSUMED about the composition it does not own. Merge in dependency order, gate green on the composed tree, run the first-light loop transcript (tk-e302). Unit-internal rework at compose time = contract defect: stop, record, get it ruled." },
+        { "id": "i6", "text": "Reviewer (settings default gpt-5.6-sol) after composition; findings fixed or refuted with evidence; re-review on material fixes." },
+        { "id": "i7", "text": "Status cards at every unit edge, yours and coders'; `pij anomalies` unscoped for stale chasing." },
+        { "id": "i8", "text": "`harness observe` every friction; list, never clear." },
+        { "id": "i9", "text": "Prototype-improvement duty: at close-out report what in the tenets/templates/this packet was wrong, missing, or confirmed — it lands in the skill's EXPERIENCES.md." },
+        { "id": "i10", "text": "dd-native bookkeeping continuously: ddocs task/AC checks with receipts at each edge; `harness plan validate` clean before the PR." }
+      ]
+    },
+    {
+      "name": "working_with",
+      "value": [
+        { "id": "w1", "text": "Prime is your single upward interface; prime relays to Jordan. The phase-1 sign-off gate is HARD: no coder exists until prime approves the probe report's unit ruling." },
+        { "id": "w2", "text": "DEFER to prime: scope changes, the phase-2 unit ruling, anything touching .harness/government/**, reference-machinery design choices that would add a second mechanism beside roots.rs idioms, merges (Jordan gets a Telegram ping first — never merge yourself)." },
+        { "id": "w3", "text": "YOURS: probe design details, coder count within the ruled units (fold units cheaper than their dispatch), composition mechanics, finding triage with evidence." },
+        { "id": "w4", "text": "Stop-and-ask with evidence, one question per message; your measurements outrank this packet." }
+      ]
+    },
+    {
+      "name": "scope",
+      "value": {
+        "worktree": "../fs3-worktree-diff (exists; plan committed at f7e866a)",
+        "branch": "006-worktree-diff",
+        "fence": "docs/plans/006-worktree-diff/** for phase 1 (probes live in assets/probes/); code paths per the RULED unit set for phases 2-3. Probe worktrees: poctest- slugs only, always removed.",
+        "forbidden_note": "Never write .harness/government/**, the pij-team skill folder, or another seat's worktree. Never merge. READ-ONLY on the database during probes — measure through logs, CLI envelopes, and SELECTs; never mutate store state by hand. Disk: another fleet (plan 005) is mid-wave — watch Avail, escalate below 15G."
+      }
+    },
+    {
+      "name": "done_bar",
+      "value": [
+        { "id": "d1", "text": "Probe report delivered with all four answers transcript-backed; prime sign-off recorded before any fan-out." },
+        { "id": "d2", "text": "Every task/AC checked via ddocs with receipts; harness plan validate clean." },
+        { "id": "d3", "text": "Gate green on the composed branch; reviewer verdict recorded, findings resolved with evidence." },
+        { "id": "d4", "text": "Builder flow closed out; PR into main held UNMERGED for prime." },
+        { "id": "d5", "text": "Coders stood down with buffers sha-verified-rescued BEFORE worktree removal; completion + process-feedback report to prime." }
+      ]
+    },
+    {
+      "name": "refs",
+      "value": [
+        { "id": "r0", "path": ".agents/skills/pij-team/TENETS.md", "note": "doctrine — read first, cite don't restate" },
+        { "id": "r1", "path": "docs/plans/006-worktree-diff/impl-guide.dd.md", "note": "binding; investigate-mode semantics in meta.mode" },
+        { "id": "r2", "path": ".harness/government/settings.dd.md", "note": "role model defaults" },
+        { "id": "r3", "path": ".harness/government/how-we-work.md", "note": "§9b orchestration lifecycle" },
+        { "id": "r4", "path": "CLAUDE.md", "note": "dogfooding + harness commit rules" },
+        { "id": "r5", "path": "docs/services/watcher.md", "note": "post-#38 watcher behaviour — the substrate your probes measure" },
+        { "id": "r6", "path": "docs/services/remove-and-gc.md", "note": "the three-level collector + reference machinery your P4 measures" }
+      ]
+    }
+  ]
+}
