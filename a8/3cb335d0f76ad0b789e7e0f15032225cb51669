@@ -1,0 +1,21 @@
+.harness/extensions/team/extension.ts
+  s_af0fe1a82e54f0::t_1ec1c612975840 1,18-23,320-649,652,655,670-694
+.harness/extensions/team/instructions.md
+  s_af0fe1a82e54f0::t_70ac295b8cfa35 1,3,5-15,106,114-219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a83cb335d0f76ad0b789e7e0f15032225cb51669",
+  "prompts": {},
+  "sessions": {
+    "s_af0fe1a82e54f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9726a7d5-28df-47fe-bb2a-d5ffcb472da2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
