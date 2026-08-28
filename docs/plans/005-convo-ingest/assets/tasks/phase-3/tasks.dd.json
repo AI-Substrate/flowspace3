@@ -32,43 +32,47 @@
         {
           "id": "tk-c302",
           "title": "Ingest orchestrator wired at the composition root: input -> resolve -> route to reader -> pump read_incremental through cursor-state -> normalize -> append via the existing idempotent conversations import (conversation_id, turn_no); child conversations linked to parents.",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Integration test: fixture-backed end-to-end ingest, re-run appends only the delta, children linked.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001",
             "../../../plan.dd.json#acceptance_criteria/ac-0002",
             "../../../plan.dd.json#acceptance_criteria/ac-0003",
             "../../../plan.dd.json#acceptance_criteria/ac-0004"
-          ]
+          ],
+          "receipt": "crates/daemon/src/convo_ingest.rs @ 6a2c518, reshaped to submit-and-return at 1ab6281. Pipeline: lookup conversation, load cursor, read blocking off the async thread, upsert header, ledger_view over exactly the ordinals read, prepare_batch, append_turns, commit_poll in one transaction. Resolution is a LOOKUP not a mint: the conversation id is derived deterministically from sha256 over (harness, session_id) as a v8 uuid, so both addressing routes land the same conversation and a forgotten cursor makes a re-ingest a re-read rather than a second copy. started_at comes from the first record read, never the clock, and a poll with no records skips the header upsert rather than dating a conversation with an epoch default. Carries the accounting backstop u2 asked for: accepted + already_stored must equal prepared.turns.len() or the ingest fails as an anomaly. Child conversations are linked via SessionFile.parent_session_id and reported per session in the envelope. 5 unit tests over the pure parts; the pipeline itself is proven by tk-c305 first light against a live session."
         },
         {
           "id": "tk-c303",
           "title": "CLI surface: flowspace3 conversations ingest (--pij <id> | --session <uuid> --harness <h>) [--folder <path>] with the standard JSON envelope (counts: turns_new, turns_total, conversations, next_action).",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Envelope documented and asserted in CLI tests; both input routes exercised.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001",
             "../../../plan.dd.json#acceptance_criteria/ac-0002"
-          ]
+          ],
+          "receipt": "crates/cli/src/main.rs + client.rs + crates/daemon/src/http.rs @ 1ab6281. flowspace3 conversation ingest (--pij SEAT | --session ID --harness H) [--folder PATH], clap enforcing that --session requires --harness and conflicts with --pij. REQUIREMENT CHANGE mid-task (Jordan, relayed by prime): ingestion is fired from harness hooks which run often, so the verb must be a near-instant SUBMIT rather than a read. It parsed inline before; it now enqueues. The route validates the address shape synchronously — a hook never reads a job that failed later — and upserts ONE job whose dedupe key is the address plus folder, so a burst of firings collapses to one pending job on the existing partial-index upsert the watcher debounce already uses. INGEST_SESSION joins SERIAL_KINDS, which structurally enforces the per-conversation serialisation u2 A1 required. Envelope carries deduped as ruled. MEASURED at first light: 10-40ms per submit over five no-new-data calls; five rapid submits produced one pending row. The pij sessions join, measured at 0.5-0.9s, is now on the worker side of that boundary."
         },
         {
           "id": "tk-c304",
           "title": "Thin harness extension (.harness/extensions/convo/): `harness convo ingest` forwarding to the flowspace3 CLI with the same args; instructions.md states it is plumbing pending harness-native absorption.",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Extension loads in harness doctor; forwards and surfaces the envelope verbatim.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001"
-          ]
+          ],
+          "receipt": ".harness/extensions/convo/{extension.ts,instructions.md} @ 0d14cc4. Two subs, ingest and list, each a VERBATIM passthrough to flowspace3 conversation ..., in the docker extension house style: the CLI is the single implementation, the verb is the discoverable surface. Arguments are forwarded rather than restated, deliberately — restating them would mint a second place where --session needs --harness, and two declarations of one rule is one declaration that goes stale. Verified loaded via harness doctor --json: convo loaded, subverbs ingest and list, and its own E_ARGS refusal exercised. The instructions page carries what flags cannot say: that ingest SUBMITS rather than reads, that repeat firings collapse while a job is pending, that a firing with nothing new is a cheap no-op, and that deduped is the number distinguishing a handled rotation from an idle poll."
         },
         {
           "id": "tk-c305",
           "title": "First light: ingest a REAL live session by pij id (o-prime's own), let enrichment drain, search it via --source conversation, then re-poll after new turns and capture the append-only delta transcript as exit evidence.",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Transcript committed as the plan's exit evidence; search returns the ingested turn.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003",
             "../../../plan.dd.json#acceptance_criteria/ac-0006"
-          ]
+          ],
+          "receipt": "docs/services/convo-ingest.md @ 3b2a544 — the measured transcript, not a summary. Ingested THIS PM seat own live omp session by pij id against scratch db fs3_convo_ingest. 739 turns landed with started_at 2026-08-28T01:21:15Z matching the session own first record; conv:bebaf916...#t150 readable with real body text; SEARCHABLE BY MEANING — a query about the ordinal/dedupe/grouping ruling returned conv:bebaf916...#t160 at 0.61, a turn from the very session being ingested. ac-0003: re-poll appended ONLY the delta, 739 to 752 turns, file holding 755 eligible by then. ac-0002: the native route --session/--harness landed in the SAME conversation, still one conversation at 757 turns. Submit 10-40ms; five rapid submits collapsed to one job. TWO FINDINGS NO FIXTURE COULD PRODUCE, both recorded in the page and as friction: the --folder default is wrong for a worktree-resident seat because pij records gitCommonDir (the main clone) while omp slugs by the actual cwd; and ingest STARVES behind enrichment, so the index lags a conversation by the backlog its own previous ingest created."
         },
         {
           "id": "tk-c306",
