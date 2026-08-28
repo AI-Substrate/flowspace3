@@ -86,6 +86,12 @@ get folded into this folder by ITS owner (flowspace3 o-prime) with attribution.
 Usage: `cp` the template into the plan folder, edit via `ddocs set/add`
 (never hand-edit the rendered `.dd.md`), `ddocs build`, deliver the path.
 
+**Refs must resolve where the seat lives**: every path a packet references must
+exist in the WORKTREE that seat will occupy — a gitignored or main-clone-only
+path (scratch/, .harness/temp/) resolves for nobody you dispatch. Vendor such
+inputs into the plan's `assets/inputs/` (sha-pinned, sanitized) before
+dispatch. (Narwhal's find, first PM run 2026-08-28.)
+
 ## Extension (spec — not yet built)
 
 `harness team new <slug>`, a repo harness extension:

@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "command": "remove",
+  "v": 1,
+  "data": {
+    "files": 305,
+    "identity": "git:github.com/AI-Substrate/flowspace3",
+    "jobs_killed": 0,
+    "reclaimable": {
+      "elements": 149,
+      "embeddings": 0,
+      "jobs": 0,
+      "summaries": 0,
+      "total": 149
+    },
+    "repo_removed": false,
+    "root_path": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T024227Z",
+    "was_registered": true
+  },
+  "next_action": "removed — 149 row(s) are now reclaimable; garbage collection runs on its own schedule, or `flowspace3 gc` does it now"
+}

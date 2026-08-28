@@ -175,6 +175,22 @@ mod tests {
     }
 
     #[test]
+    fn the_front_door_introduces_every_query_verb() {
+        // `ask` merged with this skill not mentioning it, so agents kept
+        // reaching for `search` on question-shaped work — while the search
+        // envelope's own hint pointed them at a verb the front door never
+        // introduced. A verb the skill does not teach may as well not exist to
+        // the agents this file is written for, so the set is asserted rather
+        // than left to whoever remembers.
+        for verb in ["flowspace3 search", "flowspace3 get", "flowspace3 ask"] {
+            assert!(SKILL.contains(verb), "the skill must introduce `{verb}`");
+        }
+        // Scope discipline is the half that keeps `ask` affordable on a
+        // many-repo index: widening is a deliberate act, not a default.
+        assert!(SKILL.contains("--repo all"));
+    }
+
+    #[test]
     fn sync_root_lifecycle() {
         let root = temp_root("lifecycle");
         let hash = sha256_hex(SKILL.as_bytes());

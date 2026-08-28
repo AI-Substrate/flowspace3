@@ -23,11 +23,14 @@ envelope.data:
 - trace          entry[]       every tool call, in order;
                                entry = { iteration u32, tool string,
                                arguments string, failed bool, evidence bool,
-                               result_chars usize }
+                               search_hits string[], result_chars usize }
                                `failed:true/evidence:false` = call broke;
                                `failed:false/evidence:false` = call worked but
                                the index returned no material;
                                `failed:false/evidence:true` = real index material
+                               `search_hits` = addresses whose summaries this
+                               search surfaced to the model
+
 - iterations     u32
 - tokens_used    u64|null      NULL = evidence unavailable: the COST row is
                                UNKNOWN and excluded from denominators. It is
@@ -75,3 +78,47 @@ another repo is a legitimate scope-trap negative-control variant: it must test
 that the loop WIDENS rather than concluding absence. Because an ungrounded
 answer receives one in-conversation refusal, that path may consume one extra
 iteration; fixtures assert an iteration ceiling, never an exact count.
+
+## Search-surfaced provenance (added 2026-08-28)
+
+Each trace entry now carries `search_hits: string[]`. For a successful search,
+it contains the returned addresses whose summary rows survived tool-result
+truncation and were therefore visible to the model, in rank order. It is empty
+for failed calls, no-hit searches, and non-search tools. The search limit caps
+the list at 15 entries per call, so provenance stays proportional to the
+bounded tool result.
+
+`search_hits` and top-level `citations` are deliberately different grades of
+evidence. A search hit was OFFERED as a one-line summary; a citation was READ in
+full through `get`. An evaluator can now detect an answer that relies only on a
+summary, and can measure whether the model ignored a highly-ranked offered hit
+that would have answered the question. Neither signal is inferred from model
+prose.
+
+## Refusal when the port cannot answer (added 2026-08-28)
+
+`ask` can now fail before any model call. When the agent port is wired to a
+provider that cannot answer — the offline `fake` with no script, which is a
+legal keyless production value — the envelope is:
+
+    ok: false, error.code = FS3-E-PROVIDER-CANNOT-ANSWER, data absent
+
+This closes a reported defect rather than adding a feature. That configuration
+previously returned `ok: true` with `answer` set to the fake's placeholder
+prose and `citations: []`. A machine consumer branching on `ok` — which this
+contract and the bundled skill both instruct — banked a non-answer as a
+finding. `grounded: false` and a suspicious `next_action` were both present
+and both insufficient: neither is where a machine looks. **The verdict rides
+the envelope, not the prose.**
+
+For fixtures:
+
+- No scenario may assert `ok: true` against a daemon whose agent port is the
+  fake — that assertion would encode the defect.
+- A run that returns this code is an ENVIRONMENT fault, not a subject fault:
+  the daemon under test is misconfigured, and the correct disposition is
+  UNKNOWN (excluded from every denominator), never a subject failure.
+- The distinction is worth a probe of its own. A suite that never sees this
+  code cannot tell "the subject answered well" from "the subject was never
+  asked", and the eval should be able to prove it was actually talking to a
+  real model.

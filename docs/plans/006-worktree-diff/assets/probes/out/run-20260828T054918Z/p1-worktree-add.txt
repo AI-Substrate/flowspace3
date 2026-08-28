@@ -1,0 +1,2 @@
+Preparing worktree (new branch 'poctest-wtdiff-20260828T054918Z')
+HEAD is now at 4321765 docs(government): land the 2026-08-28 governance batch — settings model rulings, 15 briefs + 41-row backlog, tenets 14-15, ~25 EXPERIENCES entries, template amendments (LSP, pinned-sha, canary-whoami, collision-map) (#53)

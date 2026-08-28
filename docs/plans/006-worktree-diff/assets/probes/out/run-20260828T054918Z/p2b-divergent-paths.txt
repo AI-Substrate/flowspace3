@@ -1,0 +1,29 @@
+                   path                    | versions 
+-------------------------------------------+----------
+ AGENTS.md                                 |        2
+ crates/cli/docs/agents.md                 |        2
+ crates/cli/docs/read.md                   |        2
+ crates/cli/docs/search.md                 |        2
+ crates/cli/skills/flowspace/SKILL.md      |        2
+ crates/cli/src/client.rs                  |        2
+ crates/cli/src/conversation.rs            |        2
+ crates/cli/src/docs.rs                    |        2
+ crates/cli/src/doctor.rs                  |        2
+ crates/cli/src/lib.rs                     |        2
+ crates/cli/src/main.rs                    |        2
+ crates/cli/src/settings.rs                |        2
+ crates/cli/src/show.rs                    |        2
+ crates/cli/tests/doctor_daemon.rs         |        2
+ crates/core/src/lib.rs                    |        2
+ crates/daemon/src/http.rs                 |        2
+ crates/daemon/src/read.rs                 |        2
+ crates/daemon/src/remove.rs               |        2
+ crates/daemon/src/roots.rs                |        2
+ crates/daemon/src/runner.rs               |        2
+ crates/daemon/src/search.rs               |        2
+ crates/daemon/src/status.rs               |        2
+ crates/daemon/src/wiring.rs               |        2
+ crates/daemon/tests/conversation_query.rs |        2
+ crates/daemon/tests/watcher.rs            |        2
+(25 rows)
+

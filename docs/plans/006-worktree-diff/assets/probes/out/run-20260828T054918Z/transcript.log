@@ -1,0 +1,576 @@
+
+=== 2026-08-28T05:49:18Z — PREFLIGHT
+      healthy - fs3 daemon 0.4.0 at http://127.0.0.1:55994 (embedder: fake, summarizer: fake)
+      /var/run/postgresql:5432 - accepting connections
+      root 322	/Users/jordanknight/substrate/flowspace/flowspace3
+      root 377	/Users/jordanknight/substrate/flowspace/fs3-006-ua
+      root 360	/Users/jordanknight/substrate/flowspace/fs3-006-uc
+      root 398	/Users/jordanknight/substrate/flowspace/fs3-convo-ingest
+      root 330	/Users/jordanknight/substrate/flowspace/fs3-ddocs-scan
+      root 305	/Users/jordanknight/substrate/flowspace/fs3-hi-goldenbase
+      root 356	/Users/jordanknight/substrate/flowspace/fs3-hi-u-r
+      root 356	/Users/jordanknight/substrate/flowspace/fs3-hi-u-t
+      root 356	/Users/jordanknight/substrate/flowspace/fs3-hi-u-w
+      root 373	/Users/jordanknight/substrate/flowspace/fs3-human-interface
+      root 307	/Users/jordanknight/substrate/flowspace/fs3-search-degenerate
+      root 422	/Users/jordanknight/substrate/flowspace/fs3-worktree-diff
+      run_id=20260828T054918Z
+      date_utc=2026-08-28T05:49:18Z
+      host=JordansacStudio.localdomain
+      flowspace3=flowspace3 0.4.0 [/Users/jordanknight/substrate/flowspace/fs3-worktree-diff/target/debug/flowspace3]
+      git=git version 2.51.0
+      docker=Docker version 29.4.0, build 9d7ad9f
+      cargo=cargo 1.95.0 (f2d3ce0bd 2026-03-21) (Homebrew)
+      main_root=/Users/jordanknight/substrate/flowspace/flowspace3
+      probe_worktree=/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T054918Z
+      k_edited_files=8
+      daemon_url=http://127.0.0.1:55994
+      daemon_log=/var/folders/mv/9mcvlzg504b158ctlswmgwph0000gn/T/flowspace3-sandbox-RQ76go/logs/flowspace3.log
+      database=fs3_sandbox_000000000000c5e818cfe19ed2dc6dc0
+      probe_condition=post-integration-composed-via-sandbox
+      discovery_wait_seconds=70
+      discovery_wait_reason=two 30s worktree cadences plus 10s scheduling slack
+      disk_avail=198Gi
+    snapshot 00-baseline -> snap-00-baseline.env
+      at=2026-08-28T05:49:18Z
+      jobs_max_id=42690
+      worktrees=12
+      worktree_files=4262
+      elements=9198
+      smart_content=3600
+      embeddings=9373
+      repos=1
+      probe_worktree_rows=0
+      probe_worktree_files=0
+
+=== 2026-08-28T05:49:19Z — P1 — create a worktree of a registered repo and touch NOTHING
+      Preparing worktree (new branch 'poctest-wtdiff-20260828T054918Z')
+      HEAD is now at 4321765 docs(government): land the 2026-08-28 governance batch — settings model rulings, 15 briefs + 41-row backlog, tenets 14-15, ~25 EXPERIENCES entries, template amendments (LSP, pinned-sha, canary-whoami, collision-map) (#53)
+    waiting 70s (two 30s worktree cadences plus scheduling slack)
+    snapshot 01-after-worktree-create -> snap-01-after-worktree-create.env
+      at=2026-08-28T05:50:30Z
+      jobs_max_id=47972
+      worktrees=13
+      worktree_files=4585
+      elements=9248
+      smart_content=3602
+      embeddings=9378
+      repos=1
+      probe_worktree_rows=1
+      probe_worktree_files=322
+      counter                   00-baseline 01-after-worktree-create        delta
+      jobs_max_id                     42690        47972         5282
+      worktrees                          12           13            1
+      worktree_files                   4262         4585          323
+      elements                         9198         9248           50
+      smart_content                    3600         3602            2
+      embeddings                       9373         9378            5
+      repos                               1            1            0
+      probe_worktree_rows                 0            1            1
+      probe_worktree_files                0          322          322
+         kind    | state | count 
+      -----------+-------+-------
+       embed     | done  |  2687
+       scan_file | done  |   325
+       summarize | done  |  2257
+      (3 rows)
+      
+    daemon log slice: 7802 lines -> daemon-p1.log
+    ANSWER P1: probe worktree present in registered roots = 1 (1 = auto-discovered, 0 = not)
+    waiting 70s across unchanged reconcile passes
+    ANSWER P1b: jobs enqueued for unchanged registered worktree = 0
+    scope the daemon resolved for the discovered checkout: {"cwd":"/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T054918Z","repo":"git:github.com/AI-Substrate/flowspace3","source":"cwd","worktree":"/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T054918Z"}
+    steer: Weak match: describe the component in its own vocabulary rather than asking a question. — then: read a hit in full with `flowspace3 get <address>`, browse its file with `flowspace3 tree <address>`, or narrow with --path/--repo
+    default (no --limit) result count = 10
+
+=== 2026-08-28T05:51:42Z — P2a — explicitly re-add the auto-discovered tree: what does unchanged content cost?
+    snapshot 02-before-add -> snap-02-before-add.env
+      at=2026-08-28T05:51:42Z
+      jobs_max_id=50495
+      worktrees=14
+      worktree_files=4913
+      elements=9268
+      smart_content=3602
+      embeddings=9382
+      repos=1
+      probe_worktree_rows=1
+      probe_worktree_files=322
+      {
+        "ok": true,
+        "command": "add",
+        "v": 1,
+        "data": {
+          "enqueued": 0,
+          "files": 322,
+          "identity": "git:github.com/AI-Substrate/flowspace3",
+          "identity_source": "remote",
+          "pruned": [
+            {
+              "fix": "index it anyway with `[scan] standard_ignores = false`",
+              "path": "crates/parsers/fixtures/discovery-bare/__pycache__",
+              "reason": "standard-ignore"
+            },
+            {
+              "fix": "index it anyway with `[scan] standard_ignores = false`",
+              "path": "crates/parsers/fixtures/discovery-bare/build",
+              "reason": "standard-ignore"
+            },
+            {
+              "fix": "index it anyway with `[scan] standard_ignores = false`",
+              "path": "crates/parsers/fixtures/discovery-bare/dist",
+              "reason": "standard-ignore"
+            },
+            {
+              "fix": "index it anyway with `[scan] standard_ignores = false`",
+              "path": "crates/parsers/fixtures/discovery-bare/node_modules",
+              "reason": "standard-ignore"
+            },
+            {
+              "fix": "index it anyway with `[scan] standard_ignores = false`",
+              "path": "crates/parsers/fixtures/discovery-bare/vendor",
+              "reason": "standard-ignore"
+            },
+            {
+              "fix": "index it anyway with `[scan] standard_ignores = false`",
+              "path": "crates/parsers/fixtures/discovery-bare/venv",
+              "reason": "standard-ignore"
+            }
+          ],
+          "removed": 0,
+          "root_path": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T054918Z",
+          "skipped": [
+            {
+              "count": 1,
+              "reason": "binary"
+            },
+            {
+              "count": 76,
+              "reason": "config-format"
+            },
+            {
+              "count": 1,
+              "reason": "too-small"
+            },
+            {
+              "count": 6,
+              "reason": "unsupported-extension"
+            }
+          ],
+          "unchanged": 322,
+          "worktree_id": 13
+        },
+        "next_action": "nothing changed — 322 files already indexed; `flowspace3 search \"<question>\"` answers from the existing index"
+      }
+    probe scans drained after 0s (p2a); daemon-wide queue at 1621 (other seats)
+    settling 60s for enrichment of the probe's own content
+    snapshot 03-after-add -> snap-03-after-add.env
+      at=2026-08-28T05:52:44Z
+      jobs_max_id=53178
+      worktrees=14
+      worktree_files=4965
+      elements=9268
+      smart_content=3602
+      embeddings=9382
+      repos=1
+      probe_worktree_rows=1
+      probe_worktree_files=322
+      counter                  02-before-add 03-after-add        delta
+      jobs_max_id                     50495        53178         2683
+      worktrees                          14           14            0
+      worktree_files                   4913         4965           52
+      elements                         9268         9268            0
+      smart_content                    3602         3602            0
+      embeddings                       9382         9382            0
+      repos                               1            1            0
+      probe_worktree_rows                 1            1            0
+      probe_worktree_files              322          322            0
+         kind    |  state  | count 
+      -----------+---------+-------
+       embed     | done    |  2057
+       embed     | pending |     1
+       scan_file | pending |    76
+       summarize | done    |   472
+       summarize | pending |    76
+      (5 rows)
+      
+      -- summaries stored since 2026-08-28T05:51:42Z (global: includes other seats' work)
+       summaries_global 
+      ------------------
+                      0
+      (1 row)
+      
+      -- embeddings stored since 2026-08-28T05:51:42Z (global)
+       source_kind | count 
+      -------------+-------
+      (0 rows)
+      
+      -- summaries attributable to the probe worktree, and divergent-only
+       summaries_probe | summaries_divergent_only 
+      -----------------+--------------------------
+                     0 |                        0
+      (1 row)
+      
+      -- raw embeddings attributable to the probe worktree, and divergent-only
+       embeddings_probe | embeddings_divergent_only 
+      ------------------+---------------------------
+                      0 |                         0
+      (1 row)
+      
+      -- provider CALL lines in the daemon log window are counted separately (daemon-*.log)
+    daemon log slice: 6132 lines -> daemon-p2a.log
+
+=== 2026-08-28T05:52:45Z — P2b — edit K=8 files, all uncommitted, and measure again
+    snapshot 04-before-edits -> snap-04-before-edits.env
+      at=2026-08-28T05:52:45Z
+      jobs_max_id=53180
+      worktrees=14
+      worktree_files=4965
+      elements=9268
+      smart_content=3602
+      embeddings=9382
+      repos=1
+      probe_worktree_rows=1
+      probe_worktree_files=322
+      edited: crates/cli/src/client.rs
+      edited: crates/cli/src/conversation.rs
+      edited: crates/cli/src/docs.rs
+      edited: crates/cli/src/doctor.rs
+      edited: crates/cli/src/lib.rs
+      edited: crates/cli/src/main.rs
+      edited: crates/cli/src/settings.rs
+      edited: crates/cli/src/show.rs
+    waiting 20s for the watcher debounce window
+    probe scans left: 8 (daemon-wide 580) — 0s, p2b
+    probe scans left: 8 (daemon-wide 411) — 5s, p2b
+    probe scans left: 8 (daemon-wide 333) — 10s, p2b
+    probe scans left: 8 (daemon-wide 334) — 15s, p2b
+    probe scans left: 8 (daemon-wide 249) — 20s, p2b
+    probe scans left: 1 (daemon-wide 242) — 25s, p2b
+    probe scans drained after 30s (p2b); daemon-wide queue at 523 (other seats)
+    settling 60s for enrichment of the probe's own content
+    snapshot 05-after-edits -> snap-05-after-edits.env
+      at=2026-08-28T05:54:38Z
+      jobs_max_id=56027
+      worktrees=12
+      worktree_files=4090
+      elements=9814
+      smart_content=3615
+      embeddings=9427
+      repos=1
+      probe_worktree_rows=1
+      probe_worktree_files=322
+      counter                  04-before-edits 05-after-edits        delta
+      jobs_max_id                     53180        56027         2847
+      worktrees                          14           12           -2
+      worktree_files                   4965         4090         -875
+      elements                         9268         9814          546
+      smart_content                    3602         3615           13
+      embeddings                       9382         9427           45
+      repos                               1            1            0
+      probe_worktree_rows                 1            1            0
+      probe_worktree_files              322          322            0
+         kind    | state | count 
+      -----------+-------+-------
+       embed     | done  |  1500
+       scan_file | done  |    89
+       summarize | done  |  1202
+      (3 rows)
+      
+      -- summaries stored since 2026-08-28T05:52:45Z (global: includes other seats' work)
+       summaries_global 
+      ------------------
+                     13
+      (1 row)
+      
+      -- embeddings stored since 2026-08-28T05:52:45Z (global)
+       source_kind | count 
+      -------------+-------
+       raw         |    32
+       smart       |    13
+      (2 rows)
+      
+      -- summaries attributable to the probe worktree, and divergent-only
+       summaries_probe | summaries_divergent_only 
+      -----------------+--------------------------
+                     0 |                        0
+      (1 row)
+      
+      -- raw embeddings attributable to the probe worktree, and divergent-only
+       embeddings_probe | embeddings_divergent_only 
+      ------------------+---------------------------
+                      8 |                         8
+      (1 row)
+      
+      -- provider CALL lines in the daemon log window are counted separately (daemon-*.log)
+    daemon log slice: 4372 lines -> daemon-p2b.log
+                                      root_path                                | files | blobs 
+      -------------------------------------------------------------------------+-------+-------
+       /Users/jordanknight/substrate/flowspace/flowspace3                      |   373 |   372
+       /Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T054918Z |   322 |   321
+      (2 rows)
+      
+                         path                    | versions 
+      -------------------------------------------+----------
+       AGENTS.md                                 |        2
+       crates/cli/docs/agents.md                 |        2
+       crates/cli/docs/read.md                   |        2
+       crates/cli/docs/search.md                 |        2
+       crates/cli/skills/flowspace/SKILL.md      |        2
+       crates/cli/src/client.rs                  |        2
+       crates/cli/src/conversation.rs            |        2
+       crates/cli/src/docs.rs                    |        2
+       crates/cli/src/doctor.rs                  |        2
+       crates/cli/src/lib.rs                     |        2
+       crates/cli/src/main.rs                    |        2
+       crates/cli/src/settings.rs                |        2
+       crates/cli/src/show.rs                    |        2
+       crates/cli/tests/doctor_daemon.rs         |        2
+       crates/core/src/lib.rs                    |        2
+       crates/daemon/src/http.rs                 |        2
+       crates/daemon/src/read.rs                 |        2
+       crates/daemon/src/remove.rs               |        2
+       crates/daemon/src/roots.rs                |        2
+       crates/daemon/src/runner.rs               |        2
+       crates/daemon/src/search.rs               |        2
+       crates/daemon/src/status.rs               |        2
+       crates/daemon/src/wiring.rs               |        2
+       crates/daemon/tests/conversation_query.rs |        2
+       crates/daemon/tests/watcher.rs            |        2
+      (25 rows)
+      
+
+=== 2026-08-28T05:54:40Z — P3 — same query from main and from inside the worktree
+    from main — divergent-content query (the function exists ONLY in the worktree):
+      0.0890  crates/core/src/classify.rs  specifier_is_a_declaration_only_for_containers
+      0.0890  crates/cli/src/client.rs  HealthReport
+      0.0890  crates/providers/src/retry.rs  Error
+      0.0890  crates/core/src/conversation.rs  String
+      0.0890  crates/core/src/element.rs  String
+    from main — meta.scope the daemon resolved: {"cwd":"/Users/jordanknight/substrate/flowspace/flowspace3","repo":"git:github.com/AI-Substrate/flowspace3","source":"cwd","worktree":"/Users/jordanknight/substrate/flowspace/flowspace3"}
+    from main — get crates/cli/src/client.rs resolved to span [1,561]
+    from worktree — divergent-content query (the function exists ONLY in the worktree):
+      0.0890  crates/core/src/classify.rs  specifier_is_a_declaration_only_for_containers
+      0.0890  crates/cli/src/client.rs  HealthReport
+      0.0890  crates/providers/src/retry.rs  Error
+      0.0890  crates/core/src/conversation.rs  String
+      0.0890  crates/core/src/element.rs  String
+    from worktree — meta.scope the daemon resolved: {"cwd":"/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T054918Z","repo":"git:github.com/AI-Substrate/flowspace3","source":"cwd","worktree":"/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T054918Z"}
+    from worktree — get crates/cli/src/client.rs resolved to span [1,511]
+    ANSWER P3: NOT MEASURABLE — embedder=fake, so retrieval semantics are not established
+               (p1/p2/p4 above are unaffected: they measure bookkeeping, not ranking)
+    ANSWER P3b: get returns a DIFFERENT version per checkout — context-aware today
+    result envelope fields: address, kind, match_field, name, path, repo, score, smart, snippet, span, subkind, tags, worktree
+    ANSWER P3c: hits returned without a resolved path/checkout = 0 (MUST be 0)
+    P3d exposure: searchable raw_hashes whose representative sits in a blob the caller does NOT hold = 155
+      (expected NON-ZERO on a multi-checkout database — it is the population p3_unresolved_rows=0 was proven against)
+         blob   |                              address                              |                      raw_head                      
+      ----------+-------------------------------------------------------------------+----------------------------------------------------
+       84bade90 | crates/cli/src/client.rs::poctest_20260828T054918Z_version_probe  | fn poctest_20260828T054918Z_version_probe() -> &'s
+       113e806f | crates/cli/src/conversation.rs::poctest_20260828T054918Z_marker_1 | fn poctest_20260828T054918Z_marker_1() -> u32 { 1 
+       cac12283 | crates/cli/src/docs.rs::poctest_20260828T054918Z_marker_2         | fn poctest_20260828T054918Z_marker_2() -> u32 { 2 
+       13d46961 | crates/cli/src/doctor.rs::poctest_20260828T054918Z_marker_3       | fn poctest_20260828T054918Z_marker_3() -> u32 { 3 
+       c3686e80 | crates/cli/src/lib.rs::poctest_20260828T054918Z_marker_4          | fn poctest_20260828T054918Z_marker_4() -> u32 { 4 
+       c176937e | crates/cli/src/main.rs::poctest_20260828T054918Z_marker_5         | fn poctest_20260828T054918Z_marker_5() -> u32 { 5 
+       62a05336 | crates/cli/src/settings.rs::poctest_20260828T054918Z_marker_6     | fn poctest_20260828T054918Z_marker_6() -> u32 { 6 
+       ac9345f9 | crates/cli/src/show.rs::poctest_20260828T054918Z_marker_7         | fn poctest_20260828T054918Z_marker_7() -> u32 { 7 
+      (8 rows)
+      
+                                      root_path                                |           path           |   blob   
+      -------------------------------------------------------------------------+--------------------------+----------
+       /Users/jordanknight/substrate/flowspace/flowspace3                      | crates/cli/src/client.rs | 037f21b3
+       /Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T054918Z | crates/cli/src/client.rs | 84bade90
+      (2 rows)
+      
+                                     address                               | element_rows | versions 
+      ---------------------------------------------------------------------+--------------+----------
+       crates/cli/src/client.rs                                            |            8 |        8
+       crates/cli/src/client.rs::authenticated                             |            5 |        5
+       crates/cli/src/client.rs::authenticated::Client                     |           10 |        5
+       crates/cli/src/client.rs::authenticated::Client::credential_failure |            5 |        5
+       crates/cli/src/client.rs::authenticated::Client::new                |            5 |        5
+       crates/cli/src/client.rs::authenticated::Client::request            |            5 |        5
+       crates/cli/src/client.rs::DaemonClient                              |           16 |        8
+       crates/cli/src/client.rs::DaemonClient::add                         |            8 |        8
+       crates/cli/src/client.rs::DaemonClient::ask                         |            5 |        5
+       crates/cli/src/client.rs::DaemonClient::authorize                   |            2 |        2
+      (10 rows)
+      
+
+=== 2026-08-28T05:54:41Z — P4 — remove the worktree; measure dereference and GC
+    snapshot 06-before-removal -> snap-06-before-removal.env
+      at=2026-08-28T05:54:41Z
+      jobs_max_id=56027
+      worktrees=12
+      worktree_files=4090
+      elements=9814
+      smart_content=3615
+      embeddings=9427
+      repos=1
+      probe_worktree_rows=1
+      probe_worktree_files=322
+    step 1: git worktree remove (fs3 is told NOTHING)
+    snapshot 07-after-git-remove -> snap-07-after-git-remove.env
+      at=2026-08-28T05:55:52Z
+      jobs_max_id=56091
+      worktrees=9
+      worktree_files=3336
+      elements=9847
+      smart_content=3617
+      embeddings=9439
+      repos=1
+      probe_worktree_rows=0
+      probe_worktree_files=0
+      counter                  06-before-removal 07-after-git-remove        delta
+      jobs_max_id                     56027        56091           64
+      worktrees                          12            9           -3
+      worktree_files                   4090         3336         -754
+      elements                         9814         9847           33
+      smart_content                    3615         3617            2
+      embeddings                       9427         9439           12
+      repos                               1            1            0
+      probe_worktree_rows                 1            0           -1
+      probe_worktree_files              322            0         -322
+    ANSWER P4a: root still registered after the directory vanished = 0
+    ANSWER P4b: deleted-worktree functions still returned by search = 0
+      0.0890  crates/cli/src/client.rs  HealthReport
+      0.0890  crates/core/src/classify.rs  specifier_is_a_declaration_only_for_containers
+      0.0890  crates/providers/src/retry.rs  Error
+    step 2: flowspace3 remove (the explicit unregister)
+      {
+        "ok": true,
+        "command": "remove",
+        "v": 1,
+        "data": {
+          "files": 0,
+          "jobs_killed": 0,
+          "reclaimable": {
+            "elements": 1020,
+            "embeddings": 0,
+            "jobs": 0,
+            "summaries": 0,
+            "total": 1020
+          },
+          "registered": [
+            "/Users/jordanknight/substrate/flowspace/flowspace3",
+            "/Users/jordanknight/substrate/flowspace/fs3-006-ua",
+            "/Users/jordanknight/substrate/flowspace/fs3-006-uc",
+            "/Users/jordanknight/substrate/flowspace/fs3-convo-ingest",
+            "/Users/jordanknight/substrate/flowspace/fs3-ddocs-scan",
+            "/Users/jordanknight/substrate/flowspace/fs3-human-interface",
+            "/Users/jordanknight/substrate/flowspace/fs3-search-degenerate",
+            "/Users/jordanknight/substrate/flowspace/fs3-w-ask-fake",
+            "/Users/jordanknight/substrate/flowspace/fs3-worktree-diff"
+          ],
+          "repo_removed": false,
+          "root_path": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T054918Z",
+          "was_registered": false
+        },
+        "next_action": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T054918Z is not registered. These are: /Users/jordanknight/substrate/flowspace/flowspace3, /Users/jordanknight/substrate/flowspace/fs3-006-ua, /Users/jordanknight/substrate/flowspace/fs3-006-uc, /Users/jordanknight/substrate/flowspace/fs3-convo-ingest, /Users/jordanknight/substrate/flowspace/fs3-ddocs-scan, /Users/jordanknight/substrate/flowspace/fs3-human-interface, /Users/jordanknight/substrate/flowspace/fs3-search-degenerate, /Users/jordanknight/substrate/flowspace/fs3-w-ask-fake, /Users/jordanknight/substrate/flowspace/fs3-worktree-diff — paths are stored as the daemon resolved them, so copy one exactly"
+      }
+    snapshot 08-after-fs3-remove -> snap-08-after-fs3-remove.env
+      at=2026-08-28T05:55:54Z
+      jobs_max_id=56091
+      worktrees=9
+      worktree_files=3336
+      elements=9847
+      smart_content=3617
+      embeddings=9439
+      repos=1
+      probe_worktree_rows=0
+      probe_worktree_files=0
+      counter                  07-after-git-remove 08-after-fs3-remove        delta
+      jobs_max_id                     56091        56091            0
+      worktrees                           9            9            0
+      worktree_files                   3336         3336            0
+      elements                         9847         9847            0
+      smart_content                    3617         3617            0
+      embeddings                       9439         9439            0
+      repos                               1            1            0
+      probe_worktree_rows                 0            0            0
+      probe_worktree_files                0            0            0
+    step 3: orphaned-paid audit BEFORE gc — enrichment nothing references
+       orphaned_summaries 
+      --------------------
+                        0
+      (1 row)
+      
+       orphaned_embeddings 
+      ---------------------
+                        11
+      (1 row)
+      
+    step 4: gc (database-wide, reap-only for unreferenced content)
+      {
+        "ok": true,
+        "command": "gc",
+        "v": 1,
+        "data": {
+          "elements": 922,
+          "embeddings": 135,
+          "jobs": 0,
+          "summaries": 70,
+          "total": 1127
+        },
+        "next_action": "reclaimed 1127 row(s): 0 queued job(s), 922 element(s), 70 summary/summaries, 135 vector(s)"
+      }
+    snapshot 09-after-gc -> snap-09-after-gc.env
+      at=2026-08-28T05:55:55Z
+      jobs_max_id=56091
+      worktrees=9
+      worktree_files=3336
+      elements=8827
+      smart_content=3547
+      embeddings=9304
+      repos=1
+      probe_worktree_rows=0
+      probe_worktree_files=0
+      counter                  08-after-fs3-remove  09-after-gc        delta
+      jobs_max_id                     56091        56091            0
+      worktrees                           9            9            0
+      worktree_files                   3336         3336            0
+      elements                         9847         8827        -1020
+      smart_content                    3617         3547          -70
+      embeddings                       9439         9304         -135
+      repos                               1            1            0
+      probe_worktree_rows                 0            0            0
+      probe_worktree_files                0            0            0
+      counter                   00-baseline  09-after-gc        delta
+      jobs_max_id                     42690        56091        13401
+      worktrees                          12            9           -3
+      worktree_files                   4262         3336         -926
+      elements                         9198         8827         -371
+      smart_content                    3600         3547          -53
+      embeddings                       9373         9304          -69
+      repos                               1            1            0
+      probe_worktree_rows                 0            0            0
+      probe_worktree_files                0            0            0
+         kind    | state | count 
+      -----------+-------+-------
+       embed     | done  |    32
+       scan_file | done  |    12
+       summarize | done  |    20
+      (3 rows)
+      
+       orphaned_summaries_after_gc 
+      -----------------------------
+                                 0
+      (1 row)
+      
+    ANSWER P4c: probe functions still served AFTER gc = 0 (0 = fully reclaimed)
+       orphaned_summaries_after_gc 
+      -----------------------------
+                                 0
+      (1 row)
+      
+       marker_elements_left 
+      ----------------------
+                          0
+      (1 row)
+      
+    daemon log slice: 86 lines -> daemon-p4.log
+
+=== 2026-08-28T05:55:56Z — DONE — evidence in /Users/jordanknight/substrate/flowspace/fs3-worktree-diff/docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z
+
+=== 2026-08-28T05:55:56Z — TEARDOWN (always runs)
+    evidence: /Users/jordanknight/substrate/flowspace/fs3-worktree-diff/docs/plans/006-worktree-diff/assets/probes/out/run-20260828T054918Z
+    disk avail: 226Gi

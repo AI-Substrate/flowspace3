@@ -6,11 +6,13 @@
 //! **zero doubles**.
 //!
 //! Workshop 001 rule 3 — a trait earns its existence only when a second real
-//! implementation exists or is firmly planned. fs3 has exactly three ports:
-//! [`Embedder`], [`Summarizer`] and [`ChatProvider`]. A fourth is
-//! stop-and-ask. (The third was asked for and granted, 2026-08-28: the agentic
-//! `ask` verb needs a CHAT model, which is a different model from the one that
-//! summarises in bulk, and a port is the only way to say so.)
+//! implementation exists or is firmly planned. fs3 has FOUR ports:
+//! [`Embedder`], [`Summarizer`], [`ChatProvider`] and [`ConversationSource`].
+//! The last two were asked for and granted on the same day, 2026-08-28, by two
+//! plans that did not know about each other: `ask` needs a CHAT model, which is
+//! a different model from the one that summarises in bulk, and plan 005's
+//! readers ship four real implementations of a session store on day one. A
+//! FIFTH is stop-and-ask.
 
 pub mod address;
 pub mod agent;
@@ -18,18 +20,24 @@ pub mod catalog;
 pub mod classify;
 pub mod config;
 pub mod conversation;
+pub mod conversation_join;
+pub mod conversation_normalize;
+pub mod conversation_source;
 pub mod ddoc;
 pub mod ddoc_envelope;
 pub mod element;
 pub mod envelope;
 pub mod error;
+pub mod events;
 pub mod git;
 pub mod logging;
 pub mod messages;
+pub mod output;
 pub mod ports;
 pub mod skew;
 pub mod tokens;
 pub mod update;
+pub mod views;
 
 pub use address::{
     Address, AddressError, ConversationAddress, ElementAddress, ElementParts, element_address,
@@ -50,6 +58,16 @@ pub use config::{
 pub use conversation::{
     Conversation, ConversationId, ToolInput, Turn, TurnItem, TurnRole, TurnSource, earns_summary,
 };
+pub use conversation_join::{
+    SeatBinding, SessionRow, parse_rows, resolve_seat, store_for, uuid_version,
+};
+pub use conversation_normalize::{
+    OUTPUT_HEAD_BYTES, PreparedBatch, normalize_record, prepare_batch, shape_turn,
+};
+pub use conversation_source::{
+    ConversationSource, Harness, IngestInput, RawRecord, ReadBatch, SessionFile, SessionKind,
+    SourceCursor,
+};
 pub use ddoc::{
     DDOC_ADDRESS_SEPARATOR, DDOC_GENERATED_BANNER, DDOC_GENERATED_SUFFIX, DDOC_SOURCE_SUFFIX,
     DdocAddress, DdocAddressError, DdocMeta, DdocRel, DdocSchemaFacts, DerivedState, EmbedBasis,
@@ -61,11 +79,13 @@ pub use element::{
 };
 pub use envelope::{ENVELOPE_VERSION, Envelope, Failure};
 pub use error::{Error, Result};
+pub use events::{Event, EventKind, HEARTBEAT_MS, Hello, STREAM_VERSION};
 pub use git::{BlobChange, ChangedSet, FileBlob, IdentitySource, RepoIdentity, TreeSnapshot, diff};
 pub use logging::{
     LOG_FILE_NAME, LOGGING_SOURCE, resolve_log_dir, rolled_name, unwritable_message,
 };
 pub use messages::{Severity, UserMessage};
+pub use output::{OUTPUT_AUTO, OUTPUT_ENV, OutputMode};
 pub use ports::{
     ChatMessage, ChatProvider, ChatTurn, Embedder, Summarizer, Summary, ToolCall, ToolSchema,
 };

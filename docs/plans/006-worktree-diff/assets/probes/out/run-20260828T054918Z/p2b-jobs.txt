@@ -1,0 +1,7 @@
+   kind    | state | count 
+-----------+-------+-------
+ embed     | done  |  1500
+ scan_file | done  |    89
+ summarize | done  |  1202
+(3 rows)
+

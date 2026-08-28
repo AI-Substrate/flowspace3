@@ -91,11 +91,30 @@ pub fn run() -> Result<()> {
             .map_or_else(|| "stdout only".to_string(), |path| path.display().to_string()),
         daemon = %configuration.layer("daemon"),
         database = %configuration.layer("database"),
-        embedder = %configuration.config.selected(Port::Embedder, None),
-        summarizer = %configuration.config.selected(Port::Summarizer, None),
         repos = configuration.config.repos.len(),
         "fs3 daemon starting"
     );
+
+    // Prevention, beside the detection in the ask handler. A daemon can boot
+    // healthy with an agent port that cannot answer a single question, and
+    // nothing about its startup said so — which is how a production daemon
+    // served placeholder answers without anyone noticing. Refusing to boot
+    // would be wrong: search, get, tree and the whole indexing pipeline work
+    // perfectly without a chat model, and the sandbox posture runs fakes on
+    // purpose. So it is loud rather than fatal, and it names the fix.
+    if matches!(
+        configuration
+            .config
+            .provider(configuration.config.selected(Port::Agent, None)),
+        Ok(fs3_core::ProviderInstance::Fake)
+    ) {
+        tracing::warn!(
+            agent = %configuration.config.selected(Port::Agent, None),
+            "the agent port is the offline fake: `flowspace3 ask` will REFUSE every question \
+             with FS3-E-PROVIDER-CANNOT-ANSWER. Every other verb is unaffected. Point \
+             `[agent] active` at a real chat deployment to enable it"
+        );
+    }
 
     if let Some(problem) = &logging.problem {
         tracing::warn!(
@@ -163,7 +182,7 @@ pub fn run_sandbox() -> Result<()> {
         configuration.config.database.url = database.url();
 
         tracing::info!(
-            "sandbox=true embedder=fake summarizer=fake db={} port={port} config={}",
+            "sandbox=true db={} port={port} config={}",
             database.name(),
             sandbox_directory.path().display()
         );
@@ -197,6 +216,7 @@ fn force_sandbox_config(config: &mut Config, port: u16, directory: &std::path::P
     config.providers = defaults.providers;
     config.embedder = defaults.embedder;
     config.summarizer = defaults.summarizer;
+    config.agent = defaults.agent;
     config.repos.clear();
     config.update.auto = false;
 }
@@ -262,6 +282,15 @@ async fn serve(
     listener: Option<tokio::net::TcpListener>,
 ) -> Result<()> {
     let state = AppState::from_config(configuration).context("wiring the composition root")?;
+    tracing::info!(
+        embedder = %state.config.selected(Port::Embedder, None),
+        embedder_kind = %state.active_kind(Port::Embedder),
+        summarizer = %state.config.selected(Port::Summarizer, None),
+        summarizer_kind = %state.active_kind(Port::Summarizer),
+        agent = %state.config.selected(Port::Agent, None),
+        agent_kind = %state.active_kind(Port::Agent),
+        "providers wired"
+    );
     let database = redact_url_password(&state.config.database.url);
 
     // BEFORE migrating, ask which direction the disagreement runs. Behind is
@@ -471,11 +500,15 @@ async fn serve(
     tracing::info!(
         cadence_seconds = RECONCILE_EVERY_SECONDS,
         debounce_seconds = state.config.indexing.debounce_seconds,
+        worktree_reconcile_ticks = state.config.indexing.worktree_reconcile_ticks,
         "starting the reconcile runner"
     );
     let mut reconcilers: Vec<Box<dyn crate::reconcile::Reconcile>> = vec![Box::new(
         crate::watch::WatcherSupervisor::new(state.clone()),
     )];
+    reconcilers.push(Box::new(crate::worktrees::WorktreeSupervisor::new(
+        state.clone(),
+    )));
 
     // The second implementor joins the roster as one more `Box`, exactly as
     // the doctrine predicted — no change to the runner and none to the trait.
@@ -650,6 +683,9 @@ mod tests {
             [summarizer]
             active = "paid"
 
+            [agent]
+            active = "paid"
+
             [repos."github.com/acme/repo"]
             embedder = "paid"
             summarizer = "paid"
@@ -668,6 +704,10 @@ mod tests {
         );
         assert_eq!(
             config.selected(fs3_core::Port::Summarizer, None),
+            fs3_core::DEFAULT_PROVIDER
+        );
+        assert_eq!(
+            config.selected(fs3_core::Port::Agent, None),
             fs3_core::DEFAULT_PROVIDER
         );
         assert_eq!(config.providers.len(), 1);

@@ -1,0 +1,15 @@
+Ask a question of the index
+
+Usage: flowspace3 search [OPTIONS] <QUERY>
+
+Arguments:
+  <QUERY>  The question
+
+Options:
+      --repo <IDENTITY>    Only this repository identity
+      --path <GLOB>        Only paths matching this glob
+      --limit <N>          How many hits
+      --min-score <SCORE>  Similarity floor, 0.0-1.0
+      --source <SOURCE>    Which vector space to search [possible values: raw, smart, conversation, all]
+      --daemon-url <URL>   Override the daemon URL from configuration
+  -h, --help               Print help

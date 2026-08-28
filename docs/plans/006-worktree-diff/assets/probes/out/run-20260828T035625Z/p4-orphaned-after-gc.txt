@@ -1,0 +1,10 @@
+ orphaned_summaries_after_gc 
+-----------------------------
+                           0
+(1 row)
+
+ marker_elements_left 
+----------------------
+                    0
+(1 row)
+

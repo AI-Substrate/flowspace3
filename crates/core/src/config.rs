@@ -109,6 +109,7 @@ pub const REDACTED: &str = "<redacted>";
 /// [indexing]
 /// summary_min_lines = 10
 /// debounce_seconds = 10
+/// worktree_reconcile_ticks = 6
 ///
 /// [scan]
 /// max_file_bytes = 2000000
@@ -674,6 +675,29 @@ pub enum ProviderInstance {
         #[serde(default = "ProviderInstance::default_api_key_env")]
         api_key_env: String,
     },
+    /// One OpenAI-shaped endpoint, including gateways such as OpenRouter.
+    ///
+    /// One registry entry names one model. Two surfaces using different models
+    /// therefore use two entries, even when both read the same key variable.
+    #[serde(rename = "openai_compat")]
+    OpenAiCompat {
+        /// API root including its version prefix, e.g.
+        /// `https://openrouter.ai/api/v1`.
+        base_url: String,
+        /// Model id sent in every request and used in the provider key.
+        model: String,
+        /// Optional environment variable holding the bearer key. The value
+        /// comes from the process environment or `secrets.env`, never this
+        /// config. OpenRouter requires it; local endpoints may not.
+        #[serde(default)]
+        api_key_env: Option<String>,
+        /// Requested and verified embedding width. Ignored by chat surfaces.
+        #[serde(default)]
+        dimensions: Option<usize>,
+        /// Maximum generated tokens for summaries and agent turns.
+        #[serde(default)]
+        max_tokens: Option<usize>,
+    },
     /// One Azure OpenAI DEPLOYMENT.
     ///
     /// One instance per port, not per resource: Azure names the model by a
@@ -714,6 +738,7 @@ impl ProviderInstance {
         match self {
             ProviderInstance::Fake => None,
             ProviderInstance::OpenAi { api_key_env, .. } => Some(api_key_env),
+            ProviderInstance::OpenAiCompat { api_key_env, .. } => api_key_env.as_deref(),
             // `None` here means Entra rather than "needs no credential", which
             // is why the absence is reported honestly instead of as `Fake`'s
             // keyless case: a printer says "Entra", not "no key needed".
@@ -727,12 +752,24 @@ impl ProviderInstance {
         match self {
             ProviderInstance::Fake => "fake",
             ProviderInstance::OpenAi { .. } => "openai",
+            ProviderInstance::OpenAiCompat { .. } => "openai_compat",
             ProviderInstance::AzureOpenAi { .. } => "azure_openai",
         }
     }
 
     fn default_api_key_env() -> String {
         Self::DEFAULT_API_KEY_ENV.to_string()
+    }
+
+    /// The configured model (or Azure deployment) operators expect to answer.
+    #[must_use]
+    pub fn model(&self) -> Option<&str> {
+        match self {
+            ProviderInstance::Fake => None,
+            ProviderInstance::OpenAi { model, .. }
+            | ProviderInstance::OpenAiCompat { model, .. } => Some(model),
+            ProviderInstance::AzureOpenAi { deployment, .. } => Some(deployment),
+        }
     }
 
     /// Problems with this instance's own shape, named by registry key so the
@@ -756,6 +793,52 @@ impl ProviderInstance {
                         "must name the environment variable holding the key (never the key \
                          itself)",
                         format!("api_key_env = \"{}\"", Self::DEFAULT_API_KEY_ENV),
+                    ));
+                }
+            }
+            ProviderInstance::OpenAiCompat {
+                base_url,
+                model,
+                api_key_env,
+                dimensions,
+                max_tokens,
+            } => {
+                if base_url.trim().is_empty() {
+                    problems.push(Problem::file(
+                        format!("providers.{name}.base_url"),
+                        "must name the OpenAI-compatible API root",
+                        "base_url = \"https://openrouter.ai/api/v1\"",
+                    ));
+                }
+                if model.trim().is_empty() {
+                    problems.push(Problem::file(
+                        format!("providers.{name}.model"),
+                        "must name the model sent to the endpoint",
+                        "model = \"z-ai/glm-5.3-flash\"",
+                    ));
+                }
+                if api_key_env
+                    .as_deref()
+                    .is_some_and(|value| value.trim().is_empty())
+                {
+                    problems.push(Problem::file(
+                        format!("providers.{name}.api_key_env"),
+                        "when present, must name the environment variable holding the key (never the key itself)",
+                        "api_key_env = \"OPENROUTER_API_KEY\"",
+                    ));
+                }
+                if dimensions == &Some(0) {
+                    problems.push(Problem::file(
+                        format!("providers.{name}.dimensions"),
+                        "must be greater than zero",
+                        "dimensions = 1024",
+                    ));
+                }
+                if max_tokens == &Some(0) {
+                    problems.push(Problem::file(
+                        format!("providers.{name}.max_tokens"),
+                        "must be greater than zero",
+                        "max_tokens = 4000",
                     ));
                 }
             }
@@ -836,6 +919,7 @@ fn unknown_instance(
 /// [indexing]
 /// summary_min_lines = 10
 /// debounce_seconds = 10
+/// worktree_reconcile_ticks = 6
 /// turn_summary_min_bytes = 256
 /// worker_concurrency = 4
 /// summarize_lane = 32
@@ -863,6 +947,14 @@ pub struct IndexingConfig {
     pub turn_summary_min_bytes: usize,
     /// How long a dirty file must settle before processing (PRD req 29).
     pub debounce_seconds: u64,
+    /// How many shared five-second reconcile ticks pass between git worktree scans.
+    ///
+    /// Zero disables automatic worktree discovery. Six is a 30-second cadence:
+    /// worktree creation is rare, so spawning one git process per registered
+    /// repository every five seconds would buy little latency at permanent cost.
+    /// Thirty seconds also matches the product's probe window while remaining
+    /// shorter than the normal create-then-query workflow.
+    pub worktree_reconcile_ticks: u32,
     /// How many jobs the runner claims at once.
     ///
     /// This is the QUEUE's concurrency: `claim_job`'s `SKIP LOCKED` hands N
@@ -969,6 +1061,7 @@ impl Default for IndexingConfig {
             turn_summary_min_bytes: 256,
             summary_min_lines: 10,
             debounce_seconds: 10,
+            worktree_reconcile_ticks: 6,
             worker_concurrency: 4,
             summarize_lane: 32,
             embed_lane: 10,
@@ -1667,6 +1760,7 @@ mod tests {
         assert_eq!(config.daemon.url, DaemonConfig::DEFAULT_URL);
         // PRD req 29: debounce defaults to 10 seconds.
         assert_eq!(config.indexing.debounce_seconds, 10);
+        assert_eq!(config.indexing.worktree_reconcile_ticks, 6);
         assert_eq!(config.scan, ScanConfig::default());
     }
 
@@ -1699,6 +1793,51 @@ mod tests {
         // The offline fake is always in the registry, so `fake` never has to be
         // declared to be selectable.
         assert_eq!(config.provider("fake").unwrap(), &ProviderInstance::Fake);
+    }
+
+    #[test]
+    fn openai_compat_entries_keep_model_width_and_shared_key_identity() {
+        let config = Config::from_toml_str(
+            r#"
+            [providers.openrouter-chat]
+            kind = "openai_compat"
+            base_url = "https://openrouter.ai/api/v1"
+            model = "z-ai/glm-5.3-flash"
+            api_key_env = "OPENROUTER_API_KEY"
+
+            [providers.openrouter-embed]
+            kind = "openai_compat"
+            base_url = "https://openrouter.ai/api/v1"
+            model = "openai/text-embedding-3-small"
+            api_key_env = "OPENROUTER_API_KEY"
+            dimensions = 1024
+            "#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            config.provider("openrouter-chat").unwrap().model(),
+            Some("z-ai/glm-5.3-flash")
+        );
+        assert_eq!(
+            config.provider("openrouter-embed").unwrap().model(),
+            Some("openai/text-embedding-3-small")
+        );
+        assert_eq!(
+            config.provider("openrouter-chat").unwrap().api_key_env(),
+            Some("OPENROUTER_API_KEY")
+        );
+        assert_eq!(
+            config.provider("openrouter-embed").unwrap().api_key_env(),
+            Some("OPENROUTER_API_KEY")
+        );
+        assert!(matches!(
+            config.provider("openrouter-embed").unwrap(),
+            ProviderInstance::OpenAiCompat {
+                dimensions: Some(1024),
+                ..
+            }
+        ));
     }
 
     #[test]

@@ -1,0 +1,2 @@
+Preparing worktree (new branch 'poctest-wtdiff-20260828T024227Z')
+HEAD is now at ed188d4 fix(team): tidy must treat squash-merged branches as merged (#41)

@@ -11,6 +11,7 @@ pub mod batch;
 pub mod boot;
 pub mod config;
 pub mod conversations;
+pub mod convo_ingest;
 pub mod ddoc;
 pub mod debounce;
 pub mod enrich;
@@ -31,6 +32,7 @@ pub mod status;
 pub mod update;
 pub mod watch;
 pub mod wiring;
+pub mod worktrees;
 
 pub use answer::{Answer, IntoFailure};
 pub use auth::Auth;

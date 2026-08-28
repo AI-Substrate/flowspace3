@@ -1,4 +1,4 @@
--- Migration 0014 — deterministic-document rows and their inverse file index.
+-- Migration 0017 — deterministic-document rows and their inverse file index.
 --
 -- Ddoc rows remain ordinary elements. Their typed metadata is additive JSONB;
 -- code and conversation elements keep NULL and pay no document-shaped columns.

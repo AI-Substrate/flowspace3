@@ -1,0 +1,52 @@
+{
+  "ok": true,
+  "command": "status",
+  "v": 1,
+  "data": {
+    "last_error": null,
+    "queue": [
+      {
+        "count": 54779,
+        "kind": "embed",
+        "state": "done",
+        "with_error": 0
+      },
+      {
+        "count": 6902,
+        "kind": "scan_file",
+        "state": "done",
+        "with_error": 0
+      },
+      {
+        "count": 46959,
+        "kind": "summarize",
+        "state": "done",
+        "with_error": 0
+      }
+    ],
+    "roots": [
+      {
+        "files": 456,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "files": 1772,
+        "identity": "git:github.com/AI-Substrate/harness-engineering",
+        "root_path": "/Users/jordanknight/substrate/harness-engineering"
+      },
+      {
+        "files": 1356,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij"
+      },
+      {
+        "files": 1286,
+        "identity": "git:github.com/mcaps-microsoft/flowspace",
+        "root_path": "/Users/jordanknight/github/flowspace_2"
+      }
+    ],
+    "schema_ahead": []
+  },
+  "next_action": "the queue is empty — `flowspace3 search \"<question>\"` will answer from the index"
+}
