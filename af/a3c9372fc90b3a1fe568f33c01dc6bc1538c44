@@ -1,0 +1,50 @@
+crates/daemon/fixtures/ddocs/derived-nonstandard/schema.json
+  h_9e71e8b09f7cf2 1-42
+crates/daemon/fixtures/ddocs/derived-nonstandard/source.dd.json
+  h_9e71e8b09f7cf2 1-33
+crates/daemon/src/boot.rs
+  h_9e71e8b09f7cf2 345-370
+crates/daemon/src/ddoc.rs
+  h_9e71e8b09f7cf2 34,45-47,216-217,222,224-226,235-239,306-321,326-332,338-346,543-621,646,656-694
+crates/daemon/src/enrich.rs
+  h_9e71e8b09f7cf2 142-144,146-150,152-153,919-942
+crates/daemon/src/http.rs
+  h_9e71e8b09f7cf2 617-622,624
+crates/daemon/src/scan.rs
+  h_9e71e8b09f7cf2 79-121,167-171,192-201,210-211,216,249,257-290
+crates/daemon/src/search.rs
+  h_9e71e8b09f7cf2 354-363,388-395,508-513
+crates/daemon/src/wiring.rs
+  h_9e71e8b09f7cf2 261,266-279
+crates/daemon/tests/ddoc_rescan.rs
+  h_9e71e8b09f7cf2 1-298
+crates/daemon/tests/read_surface.rs
+  h_9e71e8b09f7cf2 434,450-500,531-602
+crates/store/src/embeddings.rs
+  h_9e71e8b09f7cf2 364-378,706,708-711,713-715,722,724,737-738,741-743
+crates/store/src/lib.rs
+  h_9e71e8b09f7cf2 52-53
+crates/store/tests/pg_ddoc.rs
+  h_9e71e8b09f7cf2 12-15,352-383
+docs/plans/008-ddocs-scan/assets/observations.md
+  h_9e71e8b09f7cf2 297-330,333
+docs/plans/008-ddocs-scan/plan.dd.json
+  h_9e71e8b09f7cf2 108-109,202
+docs/plans/008-ddocs-scan/plan.dd.md
+  h_9e71e8b09f7cf2 89,157-160
+docs/plans/008-ddocs-scan/review.dd.json
+  h_9e71e8b09f7cf2 1-134
+docs/plans/008-ddocs-scan/review.dd.md
+  h_9e71e8b09f7cf2 1-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "afa3c9372fc90b3a1fe568f33c01dc6bc1538c44",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
