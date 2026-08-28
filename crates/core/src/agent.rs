@@ -229,12 +229,25 @@ pub async fn ask(
     let mut trace = Vec::new();
     // `None` until a provider reports usage: see `AgentAnswer::tokens_used`.
     let mut tokens_used: Option<u64> = None;
+    // False the moment any turn declines to report usage: see the accounting
+    // below.
+    let mut usage_known = true;
     let mut nudged = false;
 
     for iteration in 1..=bounds.max_iterations {
         let turn: ChatTurn = chat.turn(&messages, &schemas).await?;
-        if let Some(spent) = turn.tokens_used {
-            tokens_used = Some(tokens_used.unwrap_or(0) + spent);
+        // Unknown TAINTS the total. A run where four turns reported usage and
+        // one did not has no known total — publishing the partial sum would
+        // present a floor as if it were the figure, and a budget assertion
+        // against it would compare against a number that is quietly too small.
+        // One unmeasured turn makes the aggregate unmeasured.
+        match (usage_known, turn.tokens_used) {
+            (true, Some(spent)) => tokens_used = Some(tokens_used.unwrap_or(0) + spent),
+            (_, None) => {
+                usage_known = false;
+                tokens_used = None;
+            }
+            (false, Some(_)) => {}
         }
 
         // Accounting happens above; the budget is checked HERE, before any

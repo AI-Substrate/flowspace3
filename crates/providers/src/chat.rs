@@ -40,6 +40,19 @@ impl AzureOpenAiChatClient {
     }
 }
 
+/// How long one model turn may take before the loop gives up on it.
+///
+/// The agent loop's caps are ITERATIONS and TOKENS, and neither bounds
+/// WALL-CLOCK: an endpoint that accepts a connection and then never answers
+/// leaves the turn's future pending forever, so the loop never reaches its
+/// next iteration and never re-checks a bound. The caps quietly stop applying
+/// at the exact moment something goes wrong.
+///
+/// Generous on purpose — a long tool-using turn against a busy deployment is
+/// normal, and a timeout that fires on healthy traffic is worse than none
+/// because it turns a slow answer into a failed one.
+pub const CHAT_TURN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(180);
+
 /// How much room one turn's reply gets.
 ///
 /// A turn in an agent loop is a short reply or a tool call, not an essay, and
@@ -72,13 +85,28 @@ impl fs3_core::ChatProvider for AzureOpenAiChatClient {
             })
             .collect();
 
-        let response = self
-            .complete(&ChatCompletionRequest::new(
+        // The deadline is here rather than in the loop because only the
+        // adapter knows it is doing IO — core performs none and has no clock.
+        let response = tokio::time::timeout(
+            CHAT_TURN_TIMEOUT,
+            self.complete(&ChatCompletionRequest::new(
                 wire,
                 offered,
                 CHAT_MAX_COMPLETION_TOKENS,
+            )),
+        )
+        .await
+        .map_err(|_| {
+            // Named distinctly: a timeout is not a refusal, a rate limit or a
+            // bad request, and a reader chasing "no answer in 180s" must not be
+            // sent looking for a credential problem.
+            fs3_core::Error::Provider(format!(
+                "Azure OpenAI chat: no response within {}s — the deployment accepted the request \
+                 and did not answer. Check the deployment's health and quota; the agent loop's \
+                 iteration and token caps cannot bound a turn that never returns.",
+                CHAT_TURN_TIMEOUT.as_secs()
             ))
-            .await?;
+        })??;
 
         // An empty `choices` is a well-formed response that answers nothing.
         // Reporting it as a provider failure is honest; inventing an empty turn
