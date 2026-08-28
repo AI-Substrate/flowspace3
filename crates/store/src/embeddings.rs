@@ -301,6 +301,8 @@ pub async fn query_embeddings(
 pub struct SearchFilters {
     /// Only content held by a live path in this repository identity.
     pub repo: Option<String>,
+    /// Only content held by this registered worktree root.
+    pub worktree: Option<String>,
     /// Only content held by a live path matching this SQL `LIKE` pattern.
     pub path: Option<String>,
     /// Which element kinds may answer — the CONTENT-TYPE axis.
@@ -330,6 +332,7 @@ impl Default for SearchFilters {
     fn default() -> Self {
         SearchFilters {
             repo: None,
+            worktree: None,
             path: None,
             source: None,
             max_distance: None,
@@ -350,6 +353,8 @@ pub struct SearchHit {
     /// that outlived the checkout it came from, which decision D7 keeps on
     /// purpose. The hit is still real; only its address is stale.
     pub identity: Option<String>,
+    /// The registered worktree root that supplied this hit.
+    pub root_path: Option<String>,
     /// A live path holding the blob, relative to its worktree root.
     pub path: Option<String>,
 }
@@ -414,10 +419,13 @@ pub async fn search_elements(
                 -- (decision D7). Two legs, because content reaches a repository
                 -- two ways: code through the live path holding its blob, and a
                 -- turn through the conversation ANCHORED to that repository.
+                -- The caller worktree belongs here, before LIMIT: filtering a
+                -- ranked page afterwards both under-fills it and can leak a
+                -- foreign version when the caller's version lies beyond the cap.
                 -- Without the second leg `--repo` would answer every
                 -- conversation query with nothing, silently, while workshop 005
                 -- promises the anchor filters compose.
-                AND ($6::text IS NULL AND $7::text IS NULL
+                AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
                      OR EXISTS (
                           SELECT 1
                             FROM elements el
@@ -434,14 +442,16 @@ pub async fn search_elements(
                                       JOIN repos r     ON r.id = w.repo_id
                                      WHERE f.blob_sha = el.blob_sha
                                        AND ($6::text IS NULL OR r.identity = $6)
-                                       AND ($7::text IS NULL OR f.path LIKE $7))
+                                       AND ($7::text IS NULL OR f.path LIKE $7)
+                                       AND ($9::text IS NULL OR w.root_path = $9))
                                   OR EXISTS (
                                     SELECT 1
                                       FROM turns t
                                       JOIN conversations c ON c.guid = t.conversation_id
                                      WHERE t.blob_sha = el.blob_sha
                                        AND ($6::text IS NULL OR c.repo_identity = $6)
-                                       AND ($7::text IS NULL OR c.worktree LIKE $7)))))
+                                       AND ($7::text IS NULL OR c.worktree LIKE $7)
+                                       AND ($9::text IS NULL OR c.worktree = $9)))))
               ORDER BY vector <=> $1
               LIMIT $3
          )
@@ -449,7 +459,9 @@ pub async fn search_elements(
                 s.text, s.tags, s.extras,
                 e.blob_sha, e.parser_version, e.kind, e.subkind, e.name,
                 e.address, e.span_start, e.span_end, e.sibling_order, e.raw_text,
-                live.identity, live.path
+                COALESCE(live.identity, anchored.identity) AS identity,
+                COALESCE(live.root_path, anchored.root_path) AS root_path,
+                live.path
            FROM nearest n
            LEFT JOIN LATERAL (
                 SELECT sc.raw_hash, sc.text, sc.tags, sc.extras
@@ -475,16 +487,28 @@ pub async fn search_elements(
                  LIMIT 1
            ) e ON TRUE
            LEFT JOIN LATERAL (
-                SELECT r.identity, f.path
+                SELECT r.identity, w.root_path, f.path
                   FROM worktree_files f
                   JOIN worktrees w ON w.id = f.worktree_id
                   JOIN repos r     ON r.id = w.repo_id
                  WHERE f.blob_sha = e.blob_sha
                    AND ($6::text IS NULL OR r.identity = $6)
                    AND ($7::text IS NULL OR f.path LIKE $7)
-                 ORDER BY r.identity, f.path
+                   AND ($9::text IS NULL OR w.root_path = $9)
+                 ORDER BY r.identity, w.root_path, f.path
                  LIMIT 1
            ) live ON TRUE
+           LEFT JOIN LATERAL (
+                SELECT c.repo_identity AS identity, c.worktree AS root_path
+                  FROM turns t
+                  JOIN conversations c ON c.guid = t.conversation_id
+                 WHERE t.blob_sha = e.blob_sha
+                   AND ($6::text IS NULL OR c.repo_identity = $6)
+                   AND ($7::text IS NULL OR c.worktree LIKE $7)
+                   AND ($9::text IS NULL OR c.worktree = $9)
+                 ORDER BY c.repo_identity, c.worktree
+                 LIMIT 1
+           ) anchored ON TRUE
           ORDER BY n.distance",
     )
     .bind(Vector::from(query.to_vec()))
@@ -500,6 +524,7 @@ pub async fn search_elements(
             .as_ref()
             .map(|kinds| kinds.iter().map(|kind| kind.as_str()).collect::<Vec<_>>()),
     )
+    .bind(filters.worktree.as_deref())
     .fetch_all(pool)
     .await?;
 
@@ -508,6 +533,7 @@ pub async fn search_elements(
             Ok(SearchHit {
                 similar: similar_from_row(row)?,
                 identity: row.try_get("identity")?,
+                root_path: row.try_get("root_path")?,
                 path: row.try_get("path")?,
             })
         })

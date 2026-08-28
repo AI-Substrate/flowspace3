@@ -410,6 +410,12 @@ async fn add_scan_enrich_and_search_answer_end_to_end() {
     )
     .await;
     assert!(found.ok, "search failed: {:?}", found.error);
+    let found_meta = found.meta.as_ref().expect("search carries metadata");
+    assert_eq!(found_meta["truncation"]["limit"], 5);
+    assert_eq!(
+        found_meta["truncation"]["truncated"], true,
+        "limit+1 proves rather than guesses that more results existed"
+    );
     let results = found.data.expect("search carries data")["results"]
         .as_array()
         .expect("results is a list")
@@ -421,6 +427,14 @@ async fn add_scan_enrich_and_search_answer_end_to_end() {
         best["path"], "src/auth.rs",
         "a session question must reach the session file, and the hit must resolve through the \
          ref layer to a live path"
+    );
+    assert_eq!(
+        best["worktree"],
+        std::fs::canonicalize(fixture.path())
+            .expect("fixture path canonicalizes")
+            .to_string_lossy()
+            .as_ref(),
+        "every hit names the checkout whose path supplied it"
     );
     assert!(
         results.iter().any(|hit| hit["address"]
@@ -462,6 +476,68 @@ async fn add_scan_enrich_and_search_answer_end_to_end() {
         geometry_results[0]["path"], "src/geometry.rs",
         "a geometry question must reach the geometry file — an index that answers every \
          question with the same file is not an index, got {geometry_results:?}"
+    );
+
+    let weak = call(
+        &stack.state,
+        "GET",
+        "/search?q=quantum%20chromodynamics%20gluon%20confinement&limit=3",
+        None,
+    )
+    .await;
+    assert!(
+        !weak.data.as_ref().expect("weak search carries data")["results"]
+            .as_array()
+            .expect("results is a list")
+            .is_empty(),
+        "the advisory describes returned results; it never filters them"
+    );
+    let weak_meta = weak.meta.as_ref().expect("weak search carries metadata");
+    assert_eq!(
+        weak_meta["hint"],
+        "Weak match: describe the component in its own vocabulary rather than asking a question."
+    );
+    assert!(
+        weak.next_action
+            .as_deref()
+            .expect("search carries a steer")
+            .contains("Weak match:"),
+        "a consumer that ignores meta still receives the advisory"
+    );
+
+    let empty = call(
+        &stack.state,
+        "GET",
+        "/search?q=quantum%20chromodynamics%20gluon%20confinement&min_score=1",
+        None,
+    )
+    .await;
+    assert!(
+        empty.data.as_ref().expect("empty search carries data")["results"]
+            .as_array()
+            .expect("results is a list")
+            .is_empty()
+    );
+    assert!(
+        empty
+            .meta
+            .as_ref()
+            .expect("empty search carries metadata")
+            .get("hint")
+            .is_none(),
+        "zero results keep their existing steer and never receive a weak-match hint"
+    );
+    assert_eq!(
+        empty.meta.as_ref().expect("empty search carries metadata")["truncation"]["truncated"],
+        false
+    );
+    assert!(
+        empty
+            .next_action
+            .as_deref()
+            .expect("empty search carries a steer")
+            .starts_with("nothing matched"),
+        "the pre-existing zero-result steer is unchanged"
     );
 
     stack.destroy().await;

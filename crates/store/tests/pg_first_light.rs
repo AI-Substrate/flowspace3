@@ -605,6 +605,134 @@ async fn a_repo_filter_excludes_the_other_repository_from_the_ranking() {
     database.destroy(pool).await;
 }
 
+/// One repository may have several live checkouts with different bytes at the
+/// same path. The caller's root must constrain candidates before ranking: a
+/// post-LIMIT filter can both under-fill the page and leak a foreign version.
+#[tokio::test]
+async fn a_worktree_filter_excludes_versions_the_caller_cannot_open() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let identity =
+        RepoIdentity::from_remote_parts(Some("github.com"), "AI-Substrate/flowspace3").unwrap();
+    let main_root = "/srv/fs3";
+    let feature_root = "/srv/fs3-feature";
+    let main = register_worktree(&pool, &identity, main_root, Some("main"))
+        .await
+        .unwrap();
+    let feature = register_worktree(&pool, &identity, feature_root, Some("feature"))
+        .await
+        .unwrap();
+
+    let main_version = index_file(
+        &pool,
+        main,
+        "src/version.rs",
+        &["fn checkout_version() { println!(\"main stable\") }"],
+    )
+    .await;
+    let feature_version = index_file(
+        &pool,
+        feature,
+        "src/version.rs",
+        &["fn checkout_version() { println!(\"feature experimental marker\") }"],
+    )
+    .await;
+    let feature_only = index_file(
+        &pool,
+        feature,
+        "src/feature_only.rs",
+        &["fn feature_only_marker() { println!(\"feature experimental marker\") }"],
+    )
+    .await;
+    let shared = index_file(
+        &pool,
+        main,
+        "src/shared.rs",
+        &["fn shared_between_checkouts() {}"],
+    )
+    .await;
+
+    sync_worktree_files(
+        &pool,
+        main,
+        &[
+            ("src/version.rs".to_string(), main_version),
+            ("src/shared.rs".to_string(), shared.clone()),
+        ],
+    )
+    .await
+    .unwrap();
+    sync_worktree_files(
+        &pool,
+        feature,
+        &[
+            ("src/version.rs".to_string(), feature_version),
+            ("src/feature_only.rs".to_string(), feature_only),
+            ("src/shared.rs".to_string(), shared),
+        ],
+    )
+    .await
+    .unwrap();
+
+    let query = vector_for("feature experimental marker").await;
+    let unscoped = search_elements(&pool, EMBEDDER, &query, &SearchFilters::default())
+        .await
+        .unwrap();
+    assert!(
+        unscoped
+            .iter()
+            .any(|hit| hit.root_path.as_deref() == Some(feature_root)),
+        "without a caller root, feature content remains searchable"
+    );
+
+    let from_main = search_elements(
+        &pool,
+        EMBEDDER,
+        &query,
+        &SearchFilters {
+            repo: Some(identity.key().to_string()),
+            worktree: Some(main_root.to_string()),
+            ..SearchFilters::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert!(
+        !from_main.is_empty(),
+        "the caller's own version still ranks"
+    );
+    assert!(
+        from_main
+            .iter()
+            .all(|hit| hit.root_path.as_deref() == Some(main_root)),
+        "every result names and belongs to the caller checkout"
+    );
+    assert!(
+        from_main
+            .iter()
+            .all(|hit| hit.path.as_deref() != Some("src/feature_only.rs")),
+        "a path absent from the caller checkout is excluded"
+    );
+    let version = from_main
+        .iter()
+        .find(|hit| hit.path.as_deref() == Some("src/version.rs"))
+        .expect("the caller's version of the divergent path remains");
+    assert!(
+        version.similar.element.raw_text.contains("main stable"),
+        "the same path resolves to the caller's bytes"
+    );
+    assert!(
+        from_main
+            .iter()
+            .any(|hit| hit.path.as_deref() == Some("src/shared.rs")),
+        "byte-identical content shared by both checkouts remains visible"
+    );
+
+    database.destroy(pool).await;
+}
+
 /// `--path` narrows to a subtree, and the hit carries the live path back — a
 /// content-layer answer is not usable until the ref layer says where it is.
 #[tokio::test]

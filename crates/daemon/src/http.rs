@@ -258,6 +258,10 @@ async fn status(State(state): State<AppState>) -> Answer<StatusReport> {
     }
 }
 
+/// Advisory text for a result below the calibrated search confidence floor.
+const WEAK_MATCH_HINT: &str =
+    "Weak match: describe the component in its own vocabulary rather than asking a question.";
+
 async fn search(
     State(state): State<AppState>,
     Query(request): Query<SearchRequest>,
@@ -277,6 +281,15 @@ async fn search(
 
     match crate::search::search(&state, &request, &scope).await {
         Ok(results) => {
+            let weak_match = results.is_weak_match();
+            let mut meta = meta;
+            meta["truncation"] = serde_json::json!({
+                "limit": results.limit,
+                "truncated": results.truncated,
+            });
+            if weak_match {
+                meta["hint"] = serde_json::Value::String(WEAK_MATCH_HINT.to_string());
+            }
             let next = if results.results.is_empty() {
                 // The third cause is the one nobody guesses: vectors are only
                 // read under the model_key that wrote them, so searching with
@@ -291,11 +304,16 @@ async fn search(
                 "read a hit in full with `flowspace3 get <address>`, browse its file with \
                  `flowspace3 tree <address>`, or narrow with --path/--repo"
             };
+            let next = if weak_match {
+                format!("{WEAK_MATCH_HINT} — then: {next}")
+            } else {
+                next.to_string()
+            };
             ok(&state, COMMAND, results)
                 .await
                 .0
                 .with_meta(meta)
-                .with_next_action(crate::scope::steer(&scope, next))
+                .with_next_action(crate::scope::steer(&scope, &next))
                 .into()
         }
         Err(failure) => failed::<SearchResults>(&state, COMMAND, failure)
