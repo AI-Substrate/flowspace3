@@ -1,0 +1,18 @@
+crates/daemon/src/enrich.rs
+  h_9e71e8b09f7cf2 142-144,146-150,152-153,919-942
+crates/daemon/src/scan.rs
+  h_9e71e8b09f7cf2 80-82,192-196,276-284,286
+crates/daemon/tests/ddoc_rescan.rs
+  h_9e71e8b09f7cf2 9-11,22,114-124,132-150,238-292
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8cfad72483eab5fafb73adb0fbbba3f8987c0fc9",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
