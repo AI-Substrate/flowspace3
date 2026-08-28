@@ -1,0 +1,25 @@
+docs/plans/006-worktree-diff/assets/tasks/phase-2/tasks.dd.json
+  s_15d888f4b629c1::t_3d165f9111c95e 46
+docs/plans/006-worktree-diff/assets/tasks/phase-2/tasks.dd.md
+  s_15d888f4b629c1::t_a6e413538c7473 40
+docs/plans/006-worktree-diff/packet-coder-uc.dd.json
+  s_15d888f4b629c1::t_63955142b0628c 74-81
+docs/plans/006-worktree-diff/packet-coder-uc.dd.md
+  s_15d888f4b629c1::t_5ee9bf5bcba3ef 43-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "51ffc0c6f20ff31e84815612400e96433519c5b8",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
