@@ -1,0 +1,177 @@
+{
+  "dd": {
+    "schema": "pij-team/packet"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Coder packet — ddoc parser + discovery admission (008-ddocs-scan)",
+        "role": "coder",
+        "plan": "docs/plans/008-ddocs-scan/plan.dd.json",
+        "seat": "<pij seat name once spawned>",
+        "updated": "2026-08-28"
+      }
+    },
+    {
+      "name": "mission",
+      "value": "You build ONE unit of plan 008-ddocs-scan: **ddoc parser + discovery admission** — Turn the bytes of a `*.dd.json` into an element tree whose leaves are the id-bearing rows, and make discovery admit `.dd.json` while still skipping ordinary `.json` and the generated `.dd.md`. PURE: no I/O, no process spawning, no schema resolution — the schema arrives as a parameter.\n\nWHY THIS PLAN EXISTS, so you can spot a dead premise rather than implement one: flowspace3 cannot see deterministic documents today. A `*.dd.json` is classified as a config format and skipped by discovery (crates/parsers/src/discovery.rs:720), while its GENERATED `*.dd.md` sibling IS indexed as a flat heading tree — so the only ddoc content in the index is a lossy projection that can be arbitrarily stale with nothing in the file saying so. We make the ROW the chunk, keyed on (file, section, id), cited with dd's own address so a hit pastes straight into `ddocs get`.\n\nYou build this behind the interface below so the PM can compose it without reading your internals. You report to the PM (pij-driving-nigel), not to prime, not to Jordan.\n\nReport EVERY flowspace3 miss (a search that returned nothing where you expected matches, a confusing envelope, a bad next_action) to the PM immediately AND with `harness observe`. Day-one agent feedback IS this product's test suite. CAPTURE freely; NEVER clear the observation buffer — the drain is o-prime-owned and clearing destroys other seats' live observations."
+    },
+    {
+      "name": "instructions",
+      "value": [
+        {
+          "id": "i1",
+          "text": "Orient: read your unit's row in the impl-guide (impl-guide.dd.json), the plan phase/tasks you own, and the interface contract. Run `harness boot --json` in your worktree before changing anything. DOGFOOD FLOWSPACE: `flowspace3 search \"<question>\"` for every meaning-shaped question before grep (exact identifiers may still grep); report every miss or confusing envelope as friction."
+        },
+        {
+          "id": "i2",
+          "text": "Ack FIRST: reply to the PM with your read of the unit + a numbered implementation plan before writing code. Corrections to the packet are welcome — bring evidence."
+        },
+        {
+          "id": "i3",
+          "text": "Implement using the /builder implement discipline: work the tasks in order, keep the execution log honest, tests alongside code — your unit's test suite must prove the interface contract without the other units present."
+        },
+        {
+          "id": "i4",
+          "text": "Stay inside your unit's paths (scope below). If the work forces you outside them, STOP and ask the PM — that is a composition concern, not yours to solve unilaterally."
+        },
+        {
+          "id": "i5",
+          "text": "Commit with `harness commit` (conventional commits are binding), status card at start and end of each unit of work (`pij report now`)."
+        },
+        {
+          "id": "i6",
+          "text": "Done = `harness checks` green in YOUR worktree + your unit's tests proving the contract. Report done to the PM with the evidence, then hold for composition questions — do not merge anything."
+        },
+        {
+          "id": "i7",
+          "text": "Capture friction with `harness observe` the moment it bites; list, never clear the buffer."
+        },
+        {
+          "id": "i8",
+          "text": "DOGFOOD VIA THE CLI, NOT MCP. `flowspace3 search \"<question>\"` from a shell works; the flowspace3 MCP tools are NOT reachable from a subagent/worker context (o-prime backlog row 40, and four scouts hit it today). Exact identifiers may still grep. Also: `flowspace3 ask` on PROD currently answers from a FAKE provider (DL-059, disclosed in-envelope) — search/get/tree are real, so never report an `ask` answer as evidence."
+        },
+        {
+          "id": "i9",
+          "text": "RUN `--help` ON A VERB BEFORE YOU USE IT. This is a standing habit here, not a suggestion — it is how the pij send body hazard was found. Relatedly: NEVER compose a pij message body inside double quotes; backticks and $( ) are eaten by YOUR shell before pij runs and the command has already executed. Write the body to a file and use `pij send <peer> --body-file <path>`."
+        },
+        {
+          "id": "i10",
+          "text": "TOOLCHAIN IS PINNED AND YOU MAY NOT CHANGE IT: cargo 1.95.0 · ddocs 0.1.0 (node 24.7.0). All four units read ONE installed toolchain, so a unit upgrading it invalidates its siblings retroactively and INVISIBLY — they stay green and become wrong. Your done report MUST repeat the versions you actually observed (`cargo --version`, `ddocs --json version`), not the ones written here."
+        },
+        {
+          "id": "i11",
+          "text": "TEST DATABASE: do NOT run `docker compose up -d` — a shared `flowspace3-db` container is already healthy on port 5433 and belongs to no one seat. Do not remove, rename or restart it. Create your OWN database on that stack and point FS3_TEST_DATABASE_URL at it, e.g. `docker exec flowspace3-db psql -U flowspace3 -d flowspace3 -c 'CREATE DATABASE <your_unit>_test'` then `export FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5433/<your_unit>_test`. `harness checks` refuses to guess a database on purpose — on 2026-08-27 guessing migrated a production one."
+        },
+        {
+          "id": "i12",
+          "text": "MUTATION-CHECK EVERY TEST YOU ARE TOLD TO WRITE: break the code, watch that NAMED test fail, restore it, watch it pass. A test that has never been seen to fail is not evidence. Say in your done report which tests you mutation-checked and what mutation you used."
+        },
+        {
+          "id": "i13",
+          "text": "FILL THE CONTRACT, NEVER WIDEN IT (tenet 2). The wave-0 types in crates/core/src/ddoc.rs and crates/core/src/element.rs are FROZEN at commit f13186b. If your unit needs one of them changed, that is a PM ruling — stop and ask with the reason. Do not edit crates/core/src/ddoc.rs or element.rs yourself."
+        }
+      ]
+    },
+    {
+      "name": "working_with",
+      "value": [
+        {
+          "id": "w1",
+          "text": "The PM is your interface: acks, questions, done reports. You never message prime or Jordan directly unless the PM's seat is dead."
+        },
+        {
+          "id": "w2",
+          "text": "DEFER to the PM: interface changes (they affect sibling units), dependency additions, schema/migration changes, anything outside your paths."
+        },
+        {
+          "id": "w3",
+          "text": "Your evidence outranks the packet: if the brief is wrong, say so at ack or stop-and-ask with the measurement — do not silently code around it."
+        }
+      ]
+    },
+    {
+      "name": "scope",
+      "value": {
+        "worktree": "../fs3-ddocs-u1",
+        "branch": "008-ddocs-u1",
+        "fence": "crates/parsers/src/ddoc.rs (new) · crates/parsers/src/discovery.rs · crates/parsers/src/lib.rs (one `pub mod` + re-export line) · crates/parsers/fixtures/ddoc/** (new) · crates/parsers/tests/** · crates/parsers/Cargo.toml · crates/testkit/arch-allowlist.toml (ONE granted row: `serde_json` under `[crates.fs3-parsers] external`) — nothing else",
+        "forbidden_note": "Never touch another unit's paths, .harness/government/**, the plan's flow state, or crates/core/src/ddoc.rs and crates/core/src/element.rs (the wave-0 frozen contract). Never merge and never open a PR — the PM composes. Never remove/rename/restart the shared flowspace3-db container.\n\nLINE-LEVEL COLLISION MAP (wave 1): EXPLICITLY EMPTY. No other unit in wave 1 writes any file under crates/parsers/. Your only shared file in the whole plan is crates/testkit/arch-allowlist.toml, where you add exactly ONE row — `serde_json` under [crates.fs3-parsers] external — granted in writing by the PM and ruled by o-prime. An empty map is a promise, not an absence: if you find yourself editing a file outside crates/parsers/, stop and ask."
+      }
+    },
+    {
+      "name": "done_bar",
+      "value": [
+        {
+          "id": "d1",
+          "text": "Unit implements the interface contract in the impl-guide row, verbatim or with PM-ruled amendments."
+        },
+        {
+          "id": "d2",
+          "text": "Unit test suite passes standalone and proves the contract."
+        },
+        {
+          "id": "d3",
+          "text": "harness checks green in your worktree."
+        },
+        {
+          "id": "d4",
+          "text": "The SNAP-IN RECIPE shipped with the unit (tenet 4): the exact wiring the composer will paste — config shape, construction call, registration line — as a doc comment or section in your unit's service page. You never wire it in yourself."
+        },
+        {
+          "id": "d5",
+          "text": "Done report to PM: what shipped, evidence, deviations, anything the composer must know."
+        },
+        {
+          "id": "d6",
+          "text": "Your unit's REQUIRED test cases from the impl-guide row all exist and are mutation-checked. Named explicitly so acceptance is mechanical, not a judgement call: (a) plain `section -> row` shape; (b) dynamic-key map shape (`done_when` -> task id -> `dw-` assertion rows) producing rows whose trail carries the key; (c) a section with no ids chunking as one Section; (d) `facts: None` taking the fallback and setting `EmbedBasis::Fallback`; (e) THE REORDER FIXTURE — the same document with its rows reversed — asserting identical row addresses AND identical `raw_hash` values, which is the direct evidence that chunk identity is (file, section, id) and that a reorder cannot re-embed the corpus; (f) a row whose `state` field is present but whose schema declares a custom vocabulary, asserting the parser records the state verbatim and does not judge it; (g) discovery: `.dd.json` admitted, `.dd.md` skipped, ordinary `.json` still `ConfigFormat`-skipped, and the admission also reached via `discover_subtree` (the watcher path). Every one of these mutation-checked: break the code, watch the named test fail, restore."
+        },
+        {
+          "id": "d7",
+          "text": "Your done report names the OBSERVED cargo and ddocs versions, the mutations you used to check your tests, and — explicitly — what you ASSUMED about the composition you do not own (call order, key scoping, pre-existing store state, who runs first on a cold index). A unit can be green and mutation-checked and still carry a baked-in assumption that only surfaces at the seams; volunteering it beats the PM discovering it while wiring."
+        }
+      ]
+    },
+    {
+      "name": "refs",
+      "value": [
+        {
+          "id": "r0",
+          "path": ".agents/skills/pij-team/TENETS.md",
+          "note": "the doctrine — esp. tenets 2-6: fill contracts never widen them, ship the snap-in recipe, mechanical done"
+        },
+        {
+          "id": "r1",
+          "path": "docs/plans/008-ddocs-scan/impl-guide.dd.md",
+          "note": "YOUR UNIT ROW is u1. The Architecture section holds the WAVE-0 FROZEN CONTRACT verbatim — read it before writing anything."
+        },
+        {
+          "id": "r2",
+          "path": "docs/plans/008-ddocs-scan/plan.dd.md",
+          "note": "19 acceptance criteria, 11 risks, and the measured dd semantics your unit must not violate"
+        },
+        {
+          "id": "r3",
+          "path": "AGENTS.md",
+          "note": "dogfooding + harness commit rules. `harness commit`, never a chained git add && git commit."
+        },
+        {
+          "id": "r4",
+          "path": "docs/rules-idioms-architecture/fs3-architecture.md",
+          "note": "the five rules, the crate graph, the placement table, and the refused anti-patterns a reviewer will cite by name"
+        },
+        {
+          "id": "r5",
+          "path": "docs/plans/008-ddocs-scan/assets/brief-ddocs-scan.md",
+          "note": "the domain brief: the four load-bearing answers and the state-vs-derived trap"
+        },
+        {
+          "id": "r6",
+          "path": "crates/parsers/src/discovery.rs",
+          "note": "verdict() at :712 is the pure ordered filter — excluded, then Unknown, then Config, then size. Your admission MUST land before the Config branch at :720 or .dd.json stays invisible and every downstream unit tests against an empty corpus."
+        }
+      ]
+    }
+  ]
+}
