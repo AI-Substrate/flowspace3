@@ -1,0 +1,14 @@
+docs/plans/006-worktree-diff/assets/process-feedback.md
+  h_9e71e8b09f7cf2 91,106-113,141-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "fa93727483fab15b2fb7c3fbbbef0a92ec1fd978",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
