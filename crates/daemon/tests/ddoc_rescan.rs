@@ -111,6 +111,12 @@ fn tooling(version: &str, terminal: &[&str]) -> DdocTooling {
     }
 }
 
+fn tooling_without_facts(version: &str) -> DdocTooling {
+    let mut tooling = tooling(version, &["checked"]);
+    tooling.facts.clear();
+    tooling
+}
+
 fn tooling_with_task_prose(version: &str) -> DdocTooling {
     let mut tooling = tooling(version, &["checked"]);
     tooling
@@ -241,7 +247,7 @@ async fn unchanged_same_version_ddoc_reparses_when_schema_facts_appear() {
     let fixture = fixture("ddoc_reparse_facts").await;
     fixture
         .state
-        .set_ddoc_tooling(fixture.worktree_id, tooling("0.1.0", &["checked"]))
+        .set_ddoc_tooling(fixture.worktree_id, tooling_without_facts("0.1.0"))
         .await;
     scan::run(&fixture.state, fixture.job.clone())
         .await
