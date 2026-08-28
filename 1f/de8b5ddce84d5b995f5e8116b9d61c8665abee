@@ -1,0 +1,133 @@
+crates/daemon/tests/ask.rs
+  s_b668fefb3076c7::t_28b631ee243e32 1-179
+  s_b668fefb3076c7::t_a50c4a7384c29f 180-209
+docs/briefs/w-agentic-query/packet-coder.dd.json
+  s_15d888f4b629c1::t_71284ff1609b52 44
+  s_15d888f4b629c1::t_6e57f2c55de5c9 1-43,45-68
+docs/briefs/w-agentic-query/impl-guide.dd.json
+  s_15d888f4b629c1::t_9f750c0d97c7ec 1-16,18-28,30-66
+  s_15d888f4b629c1::t_bc85fc02fa8589 17
+  s_15d888f4b629c1::t_3bc386946497c9 29
+  s_b668fefb3076c7::t_bdc53eda76bce7 67-91
+crates/daemon/tests/first_light.rs
+  s_b668fefb3076c7::t_79c0f6055890ba 921
+crates/core/src/config.rs
+  s_b668fefb3076c7::t_bb73e96a584c0c 90-96,567,572,578,581
+  s_b668fefb3076c7::t_c7b5e37db4aa23 564-566
+  s_b668fefb3076c7::t_c595d50fbc0586 568-571
+  s_b668fefb3076c7::t_d80a6fc1fbfc8f 573-577
+  s_b668fefb3076c7::t_5a50f4289fd4c2 579-580
+  s_b668fefb3076c7::t_d6ad3019e4dc27 582-584
+  s_b668fefb3076c7::t_d002e3e55662bc 127-128,141,149,169,201,204,206,208-210,236,260-261,497-498,502-503,511,519-520,542-563,585-589,593-594,609-611,621,1698-1774
+crates/core/src/ports.rs
+  s_b668fefb3076c7::t_36d98315be1c09 221-334
+  s_b668fefb3076c7::t_8bb7df5204312c 1,8-16
+crates/core/src/lib.rs
+  s_b668fefb3076c7::t_26a2426fb374ad 9-13
+  s_b668fefb3076c7::t_0119b733272fe6 36
+  s_b668fefb3076c7::t_7e459e8c7e195c 16
+  s_b668fefb3076c7::t_e4ff2301729a45 60-62
+crates/daemon/src/ask.rs
+  s_b668fefb3076c7::t_a29966fa549577 1-189,191-193,197-331
+  s_b668fefb3076c7::t_b880e8e4017e4e 190,194-196
+  s_b668fefb3076c7::t_020f6234dd494c 332-333
+crates/providers/src/chat.rs
+  s_b668fefb3076c7::t_c08791470cc596 116-118
+  s_b668fefb3076c7::t_3db8063c44cfc1 20,28,32,37,40-41,43-115,119-157,159,168,181-182,194,199,203,209-210,213,223,232-233,243,251,259-260,268,281-282,288,294,303,310
+  s_b668fefb3076c7::t_287b296d92f6fa 17-19
+  s_b668fefb3076c7::t_f7c1e875ef79a7 21-23,25-27
+  s_b668fefb3076c7::t_9099ac48e35f50 29-31
+  s_b668fefb3076c7::t_2932e2cb88e756 33-36
+  s_b668fefb3076c7::t_a3f57b269333af 38-39
+  s_b668fefb3076c7::t_2b7087ef96e679 42
+  s_b668fefb3076c7::t_c718311c818f4a 158
+  s_b668fefb3076c7::t_13592966cdfd91 160-162,165-167
+  s_b668fefb3076c7::t_690afd83ec7683 169-171,178-180
+  s_b668fefb3076c7::t_430be156d60c90 183-185,191-193
+  s_b668fefb3076c7::t_be33d13f794985 195-198
+  s_b668fefb3076c7::t_5d73f5bec49aa0 200-202
+  s_b668fefb3076c7::t_1d3343e178a7e5 204-208
+  s_b668fefb3076c7::t_7b48190c542394 211-212
+  s_b668fefb3076c7::t_b59de9655508f4 214-216,220-222
+  s_b668fefb3076c7::t_073dae4fdae671 224-226,229-231
+  s_b668fefb3076c7::t_500310fbec7054 234-236,240-242
+  s_b668fefb3076c7::t_3f4b23b7235cef 244-246,248-250
+  s_b668fefb3076c7::t_2064dccc4a43e0 252-254,256-258
+  s_b668fefb3076c7::t_003367e826430d 261-263,265-267
+  s_b668fefb3076c7::t_c9ba3eb6ebe60f 269-271,278-280
+  s_b668fefb3076c7::t_00caf2969ec940 283-287
+  s_b668fefb3076c7::t_980cb2666f24fa 289-293
+  s_b668fefb3076c7::t_ada10cf9299da9 295-297,300-302
+  s_b668fefb3076c7::t_4f6b824c05ff7f 304-309
+  s_b668fefb3076c7::t_a23af1207be0b4 1-16,24,163-164,172-177,186-190,217-219,227-228,237-239,247,255,264,272-277,298-299
+crates/providers/src/azure_openai.rs
+  s_b668fefb3076c7::t_3402feb9bd0e20 191
+  s_b668fefb3076c7::t_57d94cbfdca83a 163,189,200,209,276
+crates/cli/src/show.rs
+  s_b668fefb3076c7::t_6fe3b42c529afd 195
+crates/core/src/agent.rs
+  s_b668fefb3076c7::t_6436e364a2de18 1-158,160-253,284-384,386-403,405-407,409-437,439-459,461-475,477-493,495-511,513-528
+  s_b668fefb3076c7::t_3e1c7d3b889771 494
+  s_b668fefb3076c7::t_f256f06549c6fd 476
+  s_b668fefb3076c7::t_09d7d60fe7afa0 254-262,264,266-283
+  s_b668fefb3076c7::t_e9016482068483 460
+  s_b668fefb3076c7::t_aea238e87039b1 159
+  s_b668fefb3076c7::t_499b48af070e37 263,265
+  s_b668fefb3076c7::t_1948c76c34417b 385
+  s_b668fefb3076c7::t_2b2607cd64dd2c 404
+  s_b668fefb3076c7::t_33e74a8368fe33 408
+  s_b668fefb3076c7::t_85c5f297b18b8b 438
+  s_b668fefb3076c7::t_c7a7dab2824646 512
+crates/daemon/src/http.rs
+  s_15d888f4b629c1::t_391097731cb1b1 64,71-123,348-353,358
+crates/daemon/src/lib.rs
+  s_b668fefb3076c7::t_d45ef71df38a3f 7-8
+crates/daemon/src/wiring.rs
+  s_b668fefb3076c7::t_066aa4b5019139 38-40,42-43,48,61-64,132-137,140,145,153-155,175-176,198-208,313-343
+docs/briefs/w-agentic-query/impl-guide.dd.md
+  s_b668fefb3076c7::t_6d1e2ccefe51c6 1-79
+docs/briefs/w-agentic-query/packet-coder.dd.md
+  s_15d888f4b629c1::t_28dec641bd51fb 1-79
+crates/cli/src/client.rs
+  s_15d888f4b629c1::t_6daf12d25e1d56 69-75,195-213
+crates/cli/src/main.rs
+  s_b668fefb3076c7::t_def0c78a552021 105-112,416-424
+crates/daemon/src/ask_hint.rs
+  s_b668fefb3076c7::t_562b3e29026602 1-90
+crates/providers/tests/chat_stub.rs
+  s_b668fefb3076c7::t_9a3e9960d0ffa3 1-204
+crates/testkit/src/fakes.rs
+  s_15d888f4b629c1::t_37ddff00186c94 1,3,6-9,355-449,454-520
+crates/testkit/src/lib.rs
+  s_b668fefb3076c7::t_061b03157ef6ab 6-9,36
+docs/reference/configuration.md
+  s_b668fefb3076c7::t_89474b51ab24fe 100-114,119-121,127
+crates/providers/src/lib.rs
+  s_b668fefb3076c7::t_f4c2382844351d 17,27-30
+docs/services/ask.md
+  s_b668fefb3076c7::t_b06d568ca4002b 1-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1fde8b5ddce84d5b995f5e8116b9d61c8665abee",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_b668fefb3076c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0e0064-8d84-48e6-b499-eca0c65baafc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
