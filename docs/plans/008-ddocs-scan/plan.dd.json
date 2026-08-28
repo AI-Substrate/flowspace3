@@ -153,7 +153,9 @@
           "objective": "Freeze the seams every unit codes against, in one commit, before any coder is spawned.",
           "brief": "The shared core types are authored by the PM on the plan branch so four units compile and test independently from their first minute: the `ElementKind::Row` variant, the additive `Element.ddoc` field, the `DdocMeta`/`DdocRel`/`DdocSchemaFacts` types, the positional dd address parser, and the single derived-state function. Tenet 2 — freeze the seams before you spawn anyone. Tenet 10 — the toolchain is pinned here (cargo 1.95.0, ddocs 0.1.0 / node 24.7.0 as measured 2026-08-28) and no unit may change it; every done receipt carries the versions it actually observed.",
           "key_risks": "If a unit needs to widen one of these types mid-flight that is a PM ruling, not a coder edit; a silent widening is the contract drift this phase exists to prevent.",
-          "state": "unchecked"
+          "state": "checked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks",
+          "receipt": "Wave 0 landed at f13186b; harness checks green 2026-08-28T05:56:52Z; tk-0001 assertions all checked with receipts."
         },
         {
           "id": "ph-0002",

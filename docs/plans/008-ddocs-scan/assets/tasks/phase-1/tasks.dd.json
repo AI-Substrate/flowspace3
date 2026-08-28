@@ -6,24 +6,379 @@
     {
       "name": "meta",
       "value": {
-        "title": "Phase 1",
+        "title": "Phase 1 — ddocs-scan tasks",
         "slug": "phase-1",
         "status": "draft",
-        "summary": ""
+        "summary": "One task per unit, plus wave 0 and composition. Each task's done_when assertions are the mechanical acceptance the PM checks with evidence."
       }
     },
     {
       "name": "summary",
-      "value": ""
+      "value": "Task ledger for plan 008-ddocs-scan. Task state is DERIVED from these assertions, never asserted independently — which is the same rule this plan teaches flowspace3 to apply to every ddoc row it indexes."
     },
     {
       "name": "tasks",
-      "value": []
+      "value": [
+        {
+          "id": "tk-0001",
+          "title": "Wave 0 — freeze the ddoc row contract in core",
+          "domain": "core",
+          "state": "checked",
+          "success": "ElementKind::Row, Element.ddoc (boxed, serde-skipped), DdocMeta/DdocRel/DdocSchemaFacts/DerivedState/EmbedBasis, the positional address parser and the single derive_state function exist in crates/core, with the store decoder taught 'row'. harness checks green. The two load-bearing tests mutation-checked.",
+          "done": "#done_when/tk-0001"
+        },
+        {
+          "id": "tk-0002",
+          "title": "Unit u1 — ddoc parser and discovery admission",
+          "domain": "parsers",
+          "state": "unchecked",
+          "success": "A *.dd.json parses to File -> section Container -> Row leaves, keyed on (file, section, id), addressed positionally; .dd.json is admitted by discovery before the config exclusion and .dd.md is skipped; the walker bounds no depth and never treats a row's own field as a row.",
+          "done": "#done_when/tk-0002"
+        },
+        {
+          "id": "tk-0003",
+          "title": "Unit u3 — ddoc persistence, filters and the inverse index",
+          "domain": "store",
+          "state": "unchecked",
+          "success": "One forward migration widens the kind CHECK and adds elements.ddoc plus ddoc_file_refs; Element.ddoc round-trips; three additive filters are no-ops when None; the inverse index answers from a repo-relative path and is empty-not-erroring before dd PR #12 lands.",
+          "done": "#done_when/tk-0003"
+        },
+        {
+          "id": "tk-0004",
+          "title": "Unit u2 — ddocs adapter, edges, gate semantics and degradation",
+          "domain": "daemon",
+          "state": "unchecked",
+          "success": "Typed edges come from ONE corpus-level ddocs graph call; schema facts and gate_terminal are resolved from the schema; the dd version is stamped; absence of the ddocs binary degrades to rows-indexed-edges-absent rather than erroring.",
+          "done": "#done_when/tk-0004"
+        },
+        {
+          "id": "tk-0005",
+          "title": "Unit u4 — agent-facing surface, get, docs and eval fixtures",
+          "domain": "daemon+cli",
+          "state": "unchecked",
+          "success": "A ddoc row hit carries its dd address and both state claims; search filters on id kind, gate-open and schema; flowspace3 get resolves a dd address; a bundled docs page explains a row hit; eval fixtures exist for the three named query shapes.",
+          "done": "#done_when/tk-0005"
+        },
+        {
+          "id": "tk-0006",
+          "title": "Composition, integration proof, review and ship",
+          "domain": "pm",
+          "state": "unchecked",
+          "success": "The four units are merged in dependency order, harness checks is green on the composed tree, the live integration proof runs against this repo's own ddoc corpus, the reviewer's findings are each fixed or refuted with evidence, and the PR is open into main.",
+          "done": "#done_when/tk-0006"
+        }
+      ]
     },
     {
       "name": "done_when",
-      "value": {}
+      "value": {
+        "tk-0001": [
+          {
+            "id": "dw-0001",
+            "assertion": "crates/core/src/ddoc.rs exists and its 17 unit tests pass",
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "crates/core/src/ddoc.rs at f13186b; `cargo test -p fs3-core ddoc` -> 17 passed, 0 failed"
+          },
+          {
+            "id": "dw-0002",
+            "assertion": "Element.ddoc is Option<Box<DdocMeta>> and serde-skipped when absent, so no shipped wire shape changed",
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "crates/core/src/element.rs: `pub ddoc: Option<Box<crate::ddoc::DdocMeta>>` with #[serde(default, skip_serializing_if = \"Option::is_none\")]"
+          },
+          {
+            "id": "dw-0003",
+            "assertion": "effective_state returns (value, was_derived) so a caller cannot surface the stored state unknowingly",
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "fn effective_state(&self) -> Option<(bool, bool)> returns (value, was_derived); test effective_state_prefers_the_derived_claim_over_the_stored_one"
+          },
+          {
+            "id": "dw-0004",
+            "assertion": "derive_state counts a missing state as INCOMPLETE, mutation-checked by inverting the predicate",
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "MUTATION: inverted the filter to `state.is_some_and(|s| !gate.contains(s))` -> derive_state_counts_a_missing_state_as_incomplete FAILED; restored -> passed"
+          },
+          {
+            "id": "dw-0005",
+            "assertion": "kind_from_str accepts 'row' and its round-trip test covers every ElementKind variant",
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "crates/store/src/elements.rs kind_from_str has `\"row\" => Ok(ElementKind::Row)`; kind_round_trips_through_its_stored_spelling covers Row"
+          },
+          {
+            "id": "dw-0006",
+            "assertion": "harness checks green: docs, lock, testdb, fmt, clippy -D warnings, prodguard before+after, cargo test --all",
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "`harness checks` -> status ok, gates: docs, lock, testdb, fmt, clippy, prodguard:before, test, prodguard:after (2026-08-28T05:56:52Z)"
+          }
+        ],
+        "tk-0002": [
+          {
+            "id": "dw-0007",
+            "assertion": "ddoc::scan(path, bytes, facts) is pure: no I/O, no process spawn, no schema resolution",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0008",
+            "assertion": "The walker recurses structurally with NO depth constant, proven by a fixture with four non-row container levels",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0009",
+            "assertion": "An id-bearing object inside a row's own field does NOT become a second row, mutation-checked by removing the terminal return",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-000a",
+            "assertion": "The reorder fixture proves identical row addresses and identical raw_hash values",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-000b",
+            "assertion": "Discovery admits .dd.json before the ConfigFormat branch, still skips ordinary .json, skips .dd.md, and the same holds via discover_subtree (the watcher path)",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-000c",
+            "assertion": "facts: None takes the documented fallback and records EmbedBasis::Fallback as data",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-000d",
+            "assertion": "Exactly one allowlist row was spent: serde_json under [crates.fs3-parsers] external",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-000e",
+            "assertion": "Every named test mutation-checked, with the mutation stated in the done report",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          }
+        ],
+        "tk-0003": [
+          {
+            "id": "dw-000f",
+            "assertion": "Exactly ONE forward migration (0014_ddoc_layer.sql); no other unit wrote SQL",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0010",
+            "assertion": "The elements unique key (blob_sha, parser_version, address, span_start) is UNCHANGED",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0011",
+            "assertion": "The widened kind CHECK retains every previously valid kind including 'turn', and adds only 'row'",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0012",
+            "assertion": "A code element still round-trips with ddoc as SQL NULL, mutation-checked by materialising {} instead",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0013",
+            "assertion": "gate_open treats an unknown (NULL) gate as NEITHER open nor closed, proven by seeding false, true and json-null rows",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0014",
+            "assertion": "rows_referencing on a corpus with no file edges returns Ok(vec![]) and never an error",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0015",
+            "assertion": "replace_file_refs never errors on an unmatched source; it returns FileRefOutcome{attached, unattached}",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0016",
+            "assertion": "The migration applies forward on a database already holding code elements",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0017",
+            "assertion": "Every named test mutation-checked, with the mutation stated in the done report",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          }
+        ],
+        "tk-0004": [
+          {
+            "id": "dw-0018",
+            "assertion": "No per-file `ddocs --json links` call exists on the scan or watcher path",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0019",
+            "assertion": "parse_graph defaults an ABSENT edge kind to 'document' and neither errors nor drops the edge",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-001a",
+            "assertion": "A recorded envelope with no kind field at all (the shape dd main emits today) parses cleanly",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-001b",
+            "assertion": "An unknown rel survives unfiltered; the built-in five buy meaning, not traversal rights",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-001c",
+            "assertion": "A pressure edge targeting the literal not-applicable is recognised as a sentinel keyed on the RELATION, never a field name",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-001d",
+            "assertion": "probe() against a missing binary returns absent with no Err and rows still index",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-001e",
+            "assertion": "Health is read from validate only; an ok-with-empty-issues envelope is never treated as healthy",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-001f",
+            "assertion": "derive_state is called, not reimplemented or inlined",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0020",
+            "assertion": "unattached file refs are surfaced as row findings rather than discarded",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          }
+        ],
+        "tk-0005": [
+          {
+            "id": "dw-0021",
+            "assertion": "Hit.ddoc is skip_serializing_if optional and the key is ABSENT (not null) on a code hit",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0022",
+            "assertion": "Address::parse accepts file#section/id, REJECTS the short file#id form as a row, and leaves every el:/conv: case byte-identical",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0023",
+            "assertion": "Both state claims are returned, with the stored one labelled as stored and the derived one preferred",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0024",
+            "assertion": "flowspace3 get resolves the same row ddocs get resolves for the same address",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0025",
+            "assertion": "The bundled docs page exists and crates/cli/tests/docs_bundle.rs stays green",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0026",
+            "assertion": "Eval fixtures exist for: which ACs are still open, which tasks claim this criterion, which criteria touch this source file",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0027",
+            "assertion": "The degraded shape surfaces None rels/derived with a next_action naming the missing binary",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          }
+        ],
+        "tk-0006": [
+          {
+            "id": "dw-0028",
+            "assertion": "Each coder was asked what it ASSUMED about the composition it does not own, before wiring",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0029",
+            "assertion": "Schema facts demonstrably REACH the parser at the composition root; a silently-None facts path is ruled out by evidence, not intent",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-002a",
+            "assertion": "PARSER_VERSION bumped exactly once",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-002b",
+            "assertion": "The live proof indexes this repo's ddoc corpus and runs the three named queries, transcripts captured",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-002c",
+            "assertion": "One returned address resolves identically through flowspace3 get and ddocs get",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-002d",
+            "assertion": "The reorder proof counts rows in embeddings_1024 before and after and they are equal",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-002e",
+            "assertion": "The degradation proof runs with ddocs off PATH and rows still index and search still answers",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-002f",
+            "assertion": "Reviewer verdict recorded as a ddoc; every finding fixed or refuted with evidence",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0030",
+            "assertion": "Observed cargo and ddocs versions recorded from every unit's done report",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          }
+        ]
+      }
     }
-  ],
-  "references": []
+  ]
 }
