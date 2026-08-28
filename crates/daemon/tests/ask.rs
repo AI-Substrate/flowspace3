@@ -86,6 +86,48 @@ fn tool_call(name: &str, arguments: &str) -> ChatTurn {
 }
 
 #[tokio::test]
+async fn a_daemon_that_cannot_answer_says_so_on_the_envelope_not_in_the_prose() {
+    // The reported bug, as a regression. A daemon wired to the offline fake
+    // returned ok:true with answer "The offline fake has no scripted answer."
+    // and citations [] — so a machine consumer, which our own envelope rule
+    // tells to branch on `ok` alone, banked a placeholder as a finding.
+    // `grounded:false` and a suspicious next_action were both present and both
+    // in the wrong place: neither is where a machine looks.
+    //
+    // An UNSCRIPTED fake is the production shape here, so this test asks for
+    // exactly that rather than scripting one.
+    let database = support::FreshDatabase::create("ask-cannot-answer").await;
+    let config = Config {
+        database: DatabaseConfig {
+            url: database.url(),
+        },
+        ..Config::default()
+    };
+    let state = AppState::from_config(config).expect("the fake arms wire with no keys");
+    fs3_store::migrate(&state.db).await.expect("migrates");
+    let pool = state.db.clone();
+    let auth = support::auth("ask-cannot-answer");
+    let key = auth.key.clone();
+    let base = support::spawn(router(state, auth.auth)).await;
+
+    let envelope = post_ask(&base, &key, "anything at all").await;
+
+    assert!(
+        !envelope.ok,
+        "a daemon that cannot answer must FAIL, not succeed with a placeholder: {envelope:?}"
+    );
+    let failure = envelope.error.expect("a failure");
+    assert_eq!(failure.code, "FS3-E-PROVIDER-CANNOT-ANSWER");
+    // The fix has to name the thing to change, or the caller is stuck knowing
+    // only that it did not work.
+    assert!(failure.fix.contains("[agent] active"), "{}", failure.fix);
+    // And nothing was spent finding out.
+    assert!(envelope.data.is_none(), "no report is produced");
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
 async fn a_question_comes_back_as_an_ask_envelope_naming_its_scope() {
     // Twice: an answer with no tool calls is ungrounded, so the loop pushes
     // back once and demands evidence before it will publish anything.

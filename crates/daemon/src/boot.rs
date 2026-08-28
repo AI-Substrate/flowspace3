@@ -93,9 +93,31 @@ pub fn run() -> Result<()> {
         database = %configuration.layer("database"),
         embedder = %configuration.config.selected(Port::Embedder, None),
         summarizer = %configuration.config.selected(Port::Summarizer, None),
+        agent = %configuration.config.selected(Port::Agent, None),
         repos = configuration.config.repos.len(),
         "fs3 daemon starting"
     );
+
+    // Prevention, beside the detection in the ask handler. A daemon can boot
+    // healthy with an agent port that cannot answer a single question, and
+    // nothing about its startup said so — which is how a production daemon
+    // served placeholder answers without anyone noticing. Refusing to boot
+    // would be wrong: search, get, tree and the whole indexing pipeline work
+    // perfectly without a chat model, and the sandbox posture runs fakes on
+    // purpose. So it is loud rather than fatal, and it names the fix.
+    if matches!(
+        configuration
+            .config
+            .provider(configuration.config.selected(Port::Agent, None)),
+        Ok(fs3_core::ProviderInstance::Fake)
+    ) {
+        tracing::warn!(
+            agent = %configuration.config.selected(Port::Agent, None),
+            "the agent port is the offline fake: `flowspace3 ask` will REFUSE every question \
+             with FS3-E-PROVIDER-CANNOT-ANSWER. Every other verb is unaffected. Point \
+             `[agent] active` at a real chat deployment to enable it"
+        );
+    }
 
     if let Some(problem) = &logging.problem {
         tracing::warn!(

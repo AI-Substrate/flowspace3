@@ -357,11 +357,23 @@ impl Summarizer for FakeSummarizer {
 /// The script makes multi-turn tool use deterministic; every request is kept
 /// so a test can prove the growing conversation and offered schemas that
 /// actually reached the port. Once the script is exhausted, the fake answers
-/// with prose instead of inventing a tool call it cannot follow up. That
-/// terminating fallback matters outside tests too: `kind = "fake"` is the
-/// keyless production configuration, not a mock-only escape hatch.
+/// with prose instead of inventing a tool call it cannot follow up.
+///
+/// An UNSCRIPTED fake is a different thing, and it reports itself as such
+/// through [`ChatProvider::can_answer`]. `kind = "fake"` is a legal keyless
+/// production value for the other two ports — a fake embedder emits real
+/// vectors and search genuinely works — but a fake chat model has no honest
+/// output at all. Its placeholder prose once reached callers as a real
+/// `answer` on an `ok: true` envelope, which is a non-answer that a machine
+/// consumer banks as a finding. It still answers when asked directly, so
+/// exhausting a script mid-test stays survivable, but a caller that checks
+/// first can refuse before spending anything.
 #[derive(Debug)]
 pub struct FakeChatProvider {
+    /// Whether this fake was given a script. Recorded at construction rather
+    /// than derived from the queue, which drains as a run proceeds — a fake
+    /// that answered three real turns has not become unusable on the fourth.
+    scripted: bool,
     turns: Mutex<VecDeque<ChatTurn>>,
     /// Message history passed to [`ChatProvider::turn`], in call order.
     pub messages: Mutex<Vec<Vec<ChatMessage>>>,
@@ -372,6 +384,7 @@ pub struct FakeChatProvider {
 impl Default for FakeChatProvider {
     fn default() -> Self {
         Self {
+            scripted: false,
             turns: Mutex::new(VecDeque::new()),
             messages: Mutex::new(Vec::new()),
             tools: Mutex::new(Vec::new()),
@@ -384,6 +397,7 @@ impl FakeChatProvider {
     /// terminating answer.
     pub fn scripted(turns: impl IntoIterator<Item = ChatTurn>) -> Self {
         Self {
+            scripted: true,
             turns: Mutex::new(turns.into_iter().collect()),
             ..Self::default()
         }
@@ -439,6 +453,17 @@ impl ChatProvider for FakeChatProvider {
     /// Stable model identity for traces produced without a hosted provider.
     fn key(&self) -> String {
         "fake@1".to_string()
+    }
+
+    /// An unscripted fake cannot answer anything.
+    ///
+    /// This is the whole reason the method exists on the port: the offline
+    /// fake is a legal keyless production value, and for the agent port that
+    /// means a daemon can be wired, healthy and completely unable to answer.
+    /// Saying so lets the caller refuse with a fix instead of publishing a
+    /// placeholder as a finding.
+    fn can_answer(&self) -> bool {
+        self.scripted
     }
 
     /// The fake stores text but never submits a bounded model prompt.

@@ -75,6 +75,7 @@ pub fn router(state: AppState, auth: Auth) -> Router {
         .route("/gc", post(gc))
         .route("/conversations", post(conversations).get(conversation_list))
         .route("/conversations/remove", post(conversation_remove))
+        .route("/conversations/ingest", post(conversation_ingest))
         .route("/ask", post(ask))
         .route("/search", get(search))
         .route("/get", get(get_address))
@@ -105,6 +106,24 @@ async fn ask(
     let scope =
         crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
     let meta = serde_json::json!({ "scope": scope });
+
+    // The verdict rides the ENVELOPE, not the prose. A daemon wired to the
+    // offline fake is healthy and cannot answer anything, and it used to say
+    // so only in `grounded` and a next_action — while `ok` stayed true, which
+    // is the field our own documentation tells consumers to branch on. So a
+    // caller banked a placeholder as a finding. This is a failure, before any
+    // model call is made and before anything is spent.
+    let agent = state.agent_for(scope.repo.as_deref());
+    if !agent.can_answer() {
+        let failure = fs3_core::envelope::Failure::new(
+            &fs3_core::catalog::PROVIDER_CANNOT_ANSWER,
+            format!(
+                "the agent port is wired to `{}`, which cannot answer questions",
+                agent.key()
+            ),
+        );
+        return failed(&state, COMMAND, failure).await;
+    }
 
     match crate::ask::ask(&state, &request, scope.clone()).await {
         Ok(report) => {
@@ -235,6 +254,30 @@ async fn conversations(
     match crate::conversations::intake(&state, request).await {
         Ok(report) => {
             let next = crate::conversations::next_after_intake(&report);
+            ok(&state, COMMAND, report)
+                .await
+                .0
+                .with_next_action(next)
+                .into()
+        }
+        Err(failure) => failed(&state, COMMAND, failure).await,
+    }
+}
+
+async fn conversation_ingest(
+    State(state): State<AppState>,
+    Json(request): Json<crate::convo_ingest::IngestRequest>,
+) -> Answer<crate::convo_ingest::IngestAccepted> {
+    const COMMAND: &str = "conversation ingest";
+    if let Err(failure) = crate::schema::guard(&state.db).await {
+        return failed(&state, COMMAND, failure).await;
+    }
+    // ENQUEUE ONLY. Ingest is fired from harness hooks, which run often and
+    // must not wait on a store read: the route validates the address, upserts
+    // one job, and returns. The runner does the reading.
+    match crate::convo_ingest::submit(&state, &request).await {
+        Ok(report) => {
+            let next = crate::convo_ingest::next_after_submit(&report);
             ok(&state, COMMAND, report)
                 .await
                 .0

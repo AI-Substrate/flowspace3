@@ -93,6 +93,14 @@ internal = ["fs3-core", "fs3-testkit@dev"]
 # async worker thread. Core stays tokio-free, which is the line that matters.
 # `axum@dev` serves the offline stub HTTP server the Azure tests answer from —
 # a fake, and dev-only by suffix.
+#
+# `rusqlite` is plan 005's ONE new dependency edge, granted by the impl-guide
+# for the git-ai metrics-db reader: that store is a sqlite database somebody
+# else writes, so reading it is a bundled-sqlite query and the alternative is
+# hand-rolling a file format. Bundled rather than system-linked, so a build
+# needs no libsqlite3 on the host. It lands HERE and not in `fs3-parsers`
+# because the readers are IO port impls (prime ruling SA1, 2026-08-28) and this
+# is the crate that already ships blocking, world-touching adapters.
 external = [
   "async-trait",
   "axum@dev",
@@ -100,6 +108,7 @@ external = [
   "azure_identity",
   "fastembed",
   "reqwest",
+  "rusqlite",
   "serde",
   "serde_json",
   "tokio",
