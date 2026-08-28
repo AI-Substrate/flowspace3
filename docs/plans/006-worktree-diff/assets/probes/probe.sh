@@ -517,6 +517,41 @@ if (( NULL_ROWS > 0 )); then
     > "$OUT/p3-unresolved-rows.json" 2>/dev/null || true
 fi
 
+# EXPOSURE, not a gate — read the distinction before adding a threshold to it.
+#
+# This counts a DATA SHAPE: raw_hashes that pass the candidate gate for the
+# caller (some caller-held blob carries an element with that hash) while the
+# globally lowest-id element carrying it sits in a blob the caller does NOT
+# hold. That is the population the resolver has to get right.
+#
+# It is deliberately NOT asserted to be zero, and the reason matters: the fix
+# changes which row a query CHOOSES, not which ids exist. This number stays
+# non-zero on any healthy multi-checkout database — the probe worktree creates
+# the shape by construction, because appending to a file changes the FILE blob
+# while leaving every pre-existing function's raw_hash identical. A "must be 0"
+# here would be a gate that can never go green, which is the same misleading
+# signal class as the fake-embedder zero this script already refuses to emit.
+#
+# So: p3_unresolved_rows is the PASS/FAIL invariant (a hit with no file behind
+# it is always wrong), and this is the exposure it was measured against — how
+# much of the corpus the resolver had the opportunity to get wrong. Restricted
+# to hashes that actually carry a raw vector, because only those can be
+# returned by a search at all. Amphibian's review measured 227 this way on a
+# 20-checkout database (assets/reviews/runtime/uc-resolver-mismatch.json).
+FOREIGN_REPS=$(sql "
+  with wt as (select id from worktrees where root_path = '$WT'),
+       held as (select distinct wf.blob_sha from worktree_files wf join wt on wf.worktree_id = wt.id),
+       gated as (select distinct e.raw_hash from elements e join held h on h.blob_sha = e.blob_sha
+                  where exists (select 1 from embeddings_1024 em
+                                 where em.source_hash = e.raw_hash and em.source_kind = 'raw')),
+       rep as (select distinct on (e.raw_hash) e.raw_hash, e.blob_sha
+                 from elements e where e.raw_hash in (select raw_hash from gated)
+                order by e.raw_hash, e.id)
+  select count(*) from rep left join held h on h.blob_sha = rep.blob_sha where h.blob_sha is null" 2>/dev/null || echo "unknown")
+note "P3d exposure: searchable raw_hashes whose representative sits in a blob the caller does NOT hold = $FOREIGN_REPS"
+note "  (expected NON-ZERO on a multi-checkout database — it is the population p3_unresolved_rows=0 was proven against)"
+echo "p3_foreign_representative_exposure=$FOREIGN_REPS" >> "$OUT/receipt.env"
+
 # The store's own answer.
 sqlt "select left(e.blob_sha,8) as blob, e.address, left(e.raw_text, 50) as raw_head
         from elements e where e.name like '${MARKER}%' order by e.address" > "$OUT/p3-elements-by-blob.txt"
