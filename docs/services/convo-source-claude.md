@@ -41,6 +41,18 @@ reader to emitting an in-order, repeat-free subsequence of the ids the store
 actually wrote, and those are the per-line uuids. `message.id` appears nowhere
 in that set, so it would fail on every record.
 
+**A record with no `uuid` is REFUSED, never given a placeholder.** `Line::uuid`
+is deliberately not an `Option`, so serde drops such a line exactly as it drops
+any other unreadable one. A defaulted empty ordinal would not be cosmetic: two
+of them collide, so the ledger stores the first and treats every later one as
+already seen — in that poll and in every future poll, because the placeholder is
+by then a durable ledger row — and real turns would be lost silently and
+permanently. Dropping a record that could never be addressed is recoverable;
+poisoning the dedupe key is not. (Found by u2 reviewing all four derivations,
+F-A1; pinned by `a_record_without_a_uuid_is_refused_not_given_an_empty_ordinal`,
+which was verified against the defaulting shape and sees `["ok-1", "", "",
+"ok-2"]` when it regresses.)
+
 ## FROZEN: the GROUPING RULE, not just the datum
 
 The derivation above is *first-uuid-of-**group***, so it depends on the rule

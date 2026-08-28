@@ -28,11 +28,19 @@ struct Scratch(PathBuf);
 
 impl Scratch {
     fn new(name: &str) -> Self {
+        // The label alone is safe only as long as every caller remembers to
+        // pass a distinct one, and `nanos` alone collides between threads that
+        // read the clock in the same tick. The counter makes uniqueness a
+        // property of the helper rather than of the caller's discipline, so a
+        // test added later by copy-paste cannot reintroduce a shared directory.
+        static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let unique = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
         let nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .expect("the clock is after 1970")
             .as_nanos();
-        let path = std::env::temp_dir().join(format!("fs3-claude-{name}-{nanos}"));
+        let path = std::env::temp_dir().join(format!("fs3-claude-{name}-{nanos}-{unique}"));
         std::fs::create_dir_all(&path).expect("scratch dir");
         Self(path)
     }
@@ -537,6 +545,58 @@ fn dropping_thinking_does_not_move_an_ordinal() {
             .any(|record| record.ordinal == "82ab2abe-25cd-4331-aa98-b0d4031948f5"),
         "the second block must not have become the group's ordinal — that is the exact \
          shape of a silent doubling"
+    );
+}
+
+/// A record with no `uuid` is REFUSED, never given a placeholder ordinal.
+///
+/// Found by u2 reviewing all four derivations (F-A1). A defaulted empty
+/// ordinal is not a cosmetic problem: two such records derive the SAME key, so
+/// the ledger stores the first and treats every later one as already seen — in
+/// this poll and in every future poll, because the placeholder is by then a
+/// durable ledger row. Real turns would be dropped silently and forever.
+///
+/// So the record is dropped, exactly like any other unreadable line, and its
+/// neighbours are unaffected. Dropping one record that could never have been
+/// addressed is recoverable; poisoning the dedupe key is not.
+#[test]
+fn a_record_without_a_uuid_is_refused_not_given_an_empty_ordinal() {
+    let (_scratch, root) = scratch_store("no-uuid");
+    let session = "22222222-3333-4444-5555-666666666666";
+
+    append(
+        &root.join(format!("{session}.jsonl")),
+        concat!(
+            r#"{"type":"user","uuid":"ok-1","timestamp":"2026-08-28T00:00:00.000Z","#,
+            r#""message":{"role":"user","content":"before"}}"#,
+            "\n",
+            // Two of them: one alone could hide behind a de-dupe, two prove the
+            // collision the ledger would have suffered.
+            r#"{"type":"user","timestamp":"2026-08-28T00:00:01.000Z","#,
+            r#""message":{"role":"user","content":"no uuid here"}}"#,
+            "\n",
+            r#"{"type":"user","timestamp":"2026-08-28T00:00:02.000Z","#,
+            r#""message":{"role":"user","content":"nor here"}}"#,
+            "\n",
+            r#"{"type":"user","uuid":"ok-2","timestamp":"2026-08-28T00:00:03.000Z","#,
+            r#""message":{"role":"user","content":"after"}}"#,
+            "\n",
+        ),
+    );
+
+    let records = read_all(&ClaudeSource::new(&root), &native(session));
+    let ordinals: Vec<&str> = records.iter().map(|r| r.ordinal.as_str()).collect();
+
+    assert_eq!(
+        ordinals,
+        vec!["ok-1", "ok-2"],
+        "a record with no uuid cannot have an ordinal, so it cannot be a turn — and the \
+         records around it must still parse"
+    );
+    assert!(
+        !records.iter().any(|record| record.ordinal.is_empty()),
+        "an empty ordinal would collide with every other empty ordinal and permanently \
+         suppress those turns in the ledger"
     );
 }
 

@@ -314,14 +314,27 @@ fn session_dir(file: &SessionFile) -> PathBuf {
 
 /// One jsonl line, reduced to the fields a turn is built from.
 ///
-/// Every field is optional because this store's rows are heterogeneous: an
+/// Most fields are optional because this store's rows are heterogeneous: an
 /// unparseable or unfamiliar line must be skipped, never fatal.
+///
+/// `uuid` is the EXCEPTION and is deliberately NOT an `Option`. The uuid
+/// becomes [`RawRecord::ordinal`], which is the durable dedupe key, so a record
+/// without one cannot be a turn: two such records would both derive the same
+/// placeholder ordinal, the ledger would store the first and treat every later
+/// one as already seen — in this poll and in every future poll, because the
+/// placeholder is by then a durable ledger row — and real turns would be
+/// dropped silently and permanently.
+///
+/// Making it required means serde REFUSES such a line and [`parse_lines`] drops
+/// it, the same way a line of any other unreadable shape is dropped. The
+/// invariant is then enforced by the type at the point of parsing rather than
+/// by a filter somewhere else that a later edit could remove.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Line {
     #[serde(rename = "type")]
     record_type: String,
-    uuid: Option<String>,
+    uuid: String,
     parent_uuid: Option<String>,
     timestamp: Option<String>,
     message: Option<Message>,
@@ -396,11 +409,14 @@ struct ToolUseResult {
 /// A line this reader cannot understand is a line the store grew without
 /// telling us, and skipping it keeps an ingest alive; failing on it would mean
 /// one new bookkeeping row could stop every conversation on the machine.
+///
+/// A line with no `uuid` is dropped HERE, by [`Line`]'s own shape, because it
+/// could not be given a durable ordinal — see the type's docs for why a
+/// placeholder would lose turns permanently.
 fn parse_lines(lines: &[String]) -> Vec<Line> {
     lines
         .iter()
         .filter_map(|line| serde_json::from_str::<Line>(line).ok())
-        .filter(|line| line.uuid.is_some())
         .collect()
 }
 
@@ -699,7 +715,9 @@ fn record(
     items: Vec<TurnItem>,
 ) -> RawRecord {
     RawRecord {
-        ordinal: line.uuid.clone().unwrap_or_default(),
+        // Never defaulted: `Line::uuid` is required, so an ordinal is always
+        // the id the store actually wrote.
+        ordinal: line.uuid.clone(),
         parent_ordinal: line.parent_uuid.clone(),
         at: line
             .timestamp

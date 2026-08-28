@@ -233,3 +233,41 @@ MEMBERSHIP.** The first block of a group is routinely a thinking block
 move that group's ordinal to `82ab2abe` and silently double every stored claude
 conversation. `dropping_thinking_does_not_move_an_ordinal` guards it. This is
 the concrete instance of u2's frozen-grouping-rule warning.
+
+---
+
+# Revision 3 — F-A1 and the scratch-dir hardening (2026-08-28)
+
+`harness checks` green. **20 tests** (was 19).
+
+## F-A1 — a record with no `uuid` is refused, not defaulted
+
+Fixed as u2 asked, and fixed structurally rather than locally: `Line::uuid` is
+no longer an `Option`, so serde refuses such a line and `parse_lines` drops it
+like any other unreadable one. `unwrap_or_default` is gone from the ordinal
+path entirely.
+
+**Honest reachability note.** The hazard was already unreachable in the shipped
+code: `parse_lines` filtered `uuid.is_some()` before any record was built, so no
+empty ordinal could be produced. What was wrong is what u2 identified — the
+invariant was enforced by a filter several functions away from the
+`unwrap_or_default` that depended on it, so a later edit removing the filter
+would have reintroduced silent, durable turn loss with nothing to catch it. The
+fix moves the invariant into the type, where it cannot be removed by accident.
+
+**Verified by regression, not asserted.** Restoring the exact defaulting shape
+(`uuid: Option<String>` + `unwrap_or_default`) makes the new test fail with
+`["ok-1", "", "", "ok-2"]` — two colliding empty ordinals, precisely the ledger
+poisoning u2 predicted. The test uses *two* uuid-less records for that reason:
+one alone could not demonstrate the collision.
+
+## Scratch directories are now unique by construction
+
+`Scratch::new` adds a process-static `AtomicUsize` alongside the label and the
+nanosecond stamp. Uniqueness was previously a property of every caller
+remembering to pass a distinct label; it is now a property of the helper, so a
+test added later by copy-paste cannot silently share a directory with another.
+
+## Final state
+
+20 tests, `harness checks` green, four commits on `005-convo-u1a`. Holding.
