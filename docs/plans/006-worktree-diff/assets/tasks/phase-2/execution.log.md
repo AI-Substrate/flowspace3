@@ -42,3 +42,23 @@ The representative resolver now repeats the caller anchor before its `ORDER BY â
 - Full affected suites: store `pg_first_light` 18/18, daemon `first_light` 14/14, daemon `conversation_query` 7/7.
 - Mutation proof on the minimal fixture: removing only the representative anchor made the test fail with the null provenance triplet; restoring it made the test pass.
 - Independent reviewer evidence found 227 raw hashes where the caller passed the candidate gate while the global lowest-id element belonged to a blob the caller did not hold (`assets/reviews/runtime/uc-resolver-mismatch.json`).
+
+## Review correction â€” smart-content chooser
+
+A smart vector can share one summary `text_hash` across different raw bodies. The previous candidate gates used unscoped, unordered `LIMIT 1` subqueries, and the later summary chooser selected the globally oldest mapping. In a feature-scoped search this could choose the foreign raw hash; the scoped element resolver then correctly rejected it, turning the bug into a silent false negative and under-filled page.
+
+Candidate admission now asks whether any eligible mapping exists without choosing one. The single smart mapping chooser repeats kind/repository/path/worktree eligibility and orders by creation time, model key, and raw hash before `LIMIT 1`. This applies the caller scope at every row-selection step.
+
+### Regression evidence
+
+- RED before fix: `smart_search_chooses_the_raw_body_held_by_the_caller` returned zero hits when main and feature raw bodies shared one summary text hash.
+- GREEN after fix: the caller-held feature smart hit is returned with its feature blob and path.
+- DL-002 cleanup: the pre-existing `best[\"score\"] > 0.0` first-light assertion was replaced by top-ranked address identity.
+
+### Final review-fix proof
+
+- Store `pg_first_light`: 19/19 passed.
+- Daemon `first_light`: 14/14 passed on the required sequential full rerun.
+- Daemon `conversation_query`: 7/7 passed.
+- Final isolated `harness checks`: 9/9 gates passed.
+- One parallel daemon-suite attempt collided while creating a temporary git fixture (`git commit` reported a clean existing repo); it was captured as harness friction and is not counted as proof. The full sequential rerun passed.

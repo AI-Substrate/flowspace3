@@ -800,6 +800,98 @@ async fn scoped_search_resolves_the_element_held_by_the_caller() {
     database.destroy(pool).await;
 }
 
+/// One summary text hash can describe different raw bodies in different
+/// checkouts. The smart-content chooser must select deterministically from the
+/// caller scope; choosing the globally oldest mapping makes a valid caller hit
+/// disappear when the later scoped element resolver rejects the foreign body.
+#[tokio::test]
+async fn smart_search_chooses_the_raw_body_held_by_the_caller() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let identity =
+        RepoIdentity::from_remote_parts(Some("github.com"), "AI-Substrate/flowspace3").unwrap();
+    let main_root = "/srv/fs3-main";
+    let feature_root = "/srv/fs3-feature";
+    let main = register_worktree(&pool, &identity, main_root, Some("main"))
+        .await
+        .unwrap();
+    let feature = register_worktree(&pool, &identity, feature_root, Some("feature"))
+        .await
+        .unwrap();
+
+    let main_body = "fn reconcile() { use_main_policy(); }";
+    let feature_body = "fn reconcile() { use_feature_policy(); }";
+    let main_blob = index_file(&pool, main, "src/reconcile.rs", &[main_body]).await;
+    let feature_blob = index_file(&pool, feature, "src/reconcile.rs", &[feature_body]).await;
+    assert_ne!(main_blob, feature_blob);
+
+    let summary = Summary {
+        text: "Reconciles worktree state with the index.".to_string(),
+        tags: vec!["worktree".to_string(), "reconcile".to_string()],
+        ..Summary::default()
+    };
+    let main_hash = content_hash_of(main_body);
+    let feature_hash = content_hash_of(feature_body);
+    // Insertion order is load-bearing in the broken query: main is the global
+    // oldest mapping, while feature is the only mapping eligible to the caller.
+    put_smart_content(&pool, &main_hash, SUMMARIZER, &summary)
+        .await
+        .unwrap();
+    put_smart_content(&pool, &feature_hash, SUMMARIZER, &summary)
+        .await
+        .unwrap();
+
+    let smart_hash = content_hash_of(&summary.text);
+    let smart_vector = vector_for(&summary.text).await;
+    put_embeddings(
+        &pool,
+        EMBEDDER,
+        &[NewEmbedding {
+            source_hash: &smart_hash,
+            source_kind: SourceKind::Smart,
+            vector: &smart_vector,
+            truncated: false,
+        }],
+    )
+    .await
+    .unwrap();
+
+    let query = vector_for("reconciles worktree state index").await;
+    let hits = search_elements(
+        &pool,
+        EMBEDDER,
+        &query,
+        &SearchFilters {
+            repo: Some(identity.key().to_string()),
+            worktree: Some(feature_root.to_string()),
+            source: Some(SourceKind::Smart),
+            ..SearchFilters::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        hits.len(),
+        1,
+        "the caller-held smart hit must not disappear"
+    );
+    assert_eq!(hits[0].root_path.as_deref(), Some(feature_root));
+    assert_eq!(hits[0].path.as_deref(), Some("src/reconcile.rs"));
+    assert_eq!(hits[0].similar.blob_sha, feature_blob.as_str());
+    assert_eq!(
+        hits[0]
+            .similar
+            .smart
+            .as_ref()
+            .map(|smart| smart.text.as_str()),
+        Some(summary.text.as_str())
+    );
+
+    database.destroy(pool).await;
+}
+
 /// `--path` narrows to a subtree, and the hit carries the live path back — a
 /// content-layer answer is not usable until the ref layer says where it is.
 #[tokio::test]
