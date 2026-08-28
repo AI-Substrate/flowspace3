@@ -281,13 +281,31 @@ impl Row {
     /// that lack it are all bookkeeping types that never reach here — so the
     /// fallback is robustness against a store that grows a new shape, not a
     /// path the fixture exercises.
-    fn at(&self) -> String {
+    /// `None` when the row carries NEITHER, and the caller must then DROP the
+    /// row. This returned an empty string until 2026-08-28, which is worse than
+    /// it sounds: `append_turns` casts `at::timestamptz` and an empty string
+    /// ERRORS, so the turn-plus-element transaction writes nothing — and
+    /// because `commit_poll` runs after the append, the cursor never advances
+    /// either. The next poll re-reads the same bytes, hits the same row, and
+    /// fails identically: a PERMANENT STALL on that one session, unrecoverable
+    /// without a code change.
+    ///
+    /// Dropping is the discipline this module already applies to every other
+    /// row it cannot interpret — an unknown tool, an unknown event type, an
+    /// unparseable `event_json` — and in each of those the cursor still
+    /// advances, so a reader cannot be stopped by one bad row.
+    ///
+    /// The general rule this instance earned (u2, 2026-08-28): a fallback may
+    /// be a VALUE or a HOLE, and only the first is safe. Claude's reader
+    /// defaults an absent timestamp to a 1970 sentinel, which stores fine and
+    /// reads as obviously wrong to a human. An empty string stores nothing and
+    /// stalls the session. Same construct, opposite outcomes.
+    fn at(&self) -> Option<String> {
         self.event
             .get("timestamp")
             .and_then(Value::as_str)
             .map(str::to_owned)
             .or_else(|| self.event_ts.map(rfc3339_from_unix_seconds))
-            .unwrap_or_default()
     }
 }
 
@@ -581,6 +599,14 @@ fn claude_row(row: &Row, records: &mut Vec<RawRecord>, open_groups: &mut BTreeMa
         return;
     }
 
+    // A row this reader cannot date is a row it cannot interpret, and it is
+    // dropped like any other — see `Row::at`. Dropping happens HERE rather than
+    // at the top of the function so a continuation block still folds into the
+    // turn its siblings opened: a fold contributes body, never a timestamp.
+    let Some(at) = row.at() else {
+        return;
+    };
+
     let (body, items) = claude_content(message, row);
     let source = claude_source(row, role, &body);
 
@@ -591,7 +617,7 @@ fn claude_row(row: &Row, records: &mut Vec<RawRecord>, open_groups: &mut BTreeMa
             .get("parentUuid")
             .and_then(Value::as_str)
             .map(str::to_owned),
-        at: row.at(),
+        at,
         role,
         source,
         body,
@@ -742,7 +768,7 @@ fn copilot_row(row: &Row, records: &mut Vec<RawRecord>, open_calls: &mut BTreeMa
             } else {
                 TurnSource::Human
             };
-            records.push(copilot_record(
+            records.extend(copilot_record(
                 row,
                 TurnRole::Human,
                 source,
@@ -778,7 +804,7 @@ fn copilot_row(row: &Row, records: &mut Vec<RawRecord>, open_calls: &mut BTreeMa
                 }
             }
 
-            records.push(copilot_record(
+            records.extend(copilot_record(
                 row,
                 TurnRole::Agent,
                 TurnSource::System,
@@ -798,7 +824,7 @@ fn copilot_row(row: &Row, records: &mut Vec<RawRecord>, open_calls: &mut BTreeMa
                     text: render(data.and_then(|data| data.get("arguments"))),
                 },
             };
-            records.push(copilot_record(
+            records.extend(copilot_record(
                 row,
                 TurnRole::Agent,
                 TurnSource::System,
@@ -851,21 +877,21 @@ fn copilot_record(
     source: TurnSource,
     body: String,
     items: Vec<TurnItem>,
-) -> RawRecord {
-    RawRecord {
+) -> Option<RawRecord> {
+    Some(RawRecord {
         ordinal: row.rowid.to_string(),
         parent_ordinal: row
             .event
             .get("parentId")
             .and_then(Value::as_str)
             .map(str::to_owned),
-        at: row.at(),
+        at: row.at()?,
         role,
         source,
         body,
         items,
         head_sha: None,
-    }
+    })
 }
 
 /// Fold a later block into the turn its siblings already opened.
@@ -948,6 +974,54 @@ mod tests {
             Some(Dialect::Copilot)
         );
         assert_eq!(Dialect::from_tool("some-tool-shipped-next-year"), None);
+    }
+
+    #[test]
+    fn a_row_with_no_timestamp_at_all_is_dropped_rather_than_dated_with_a_hole() {
+        // The poison pill this replaced: `at` returned an EMPTY STRING, and
+        // `append_turns` casts `at::timestamptz`, where an empty string ERRORS.
+        // The turn-plus-element transaction then writes nothing AND
+        // `commit_poll` never runs, so the cursor does not advance and every
+        // later poll re-reads the same row and fails identically — a permanent
+        // stall on that one session.
+        let dated = Row {
+            rowid: 1,
+            event_ts: None,
+            event: serde_json::json!({"type": "user", "timestamp": "2026-08-28T01:00:00Z"}),
+            dialect: Dialect::ClaudeMirror,
+        };
+        let from_column = Row {
+            rowid: 2,
+            event_ts: Some(1_787_817_816),
+            event: serde_json::json!({"type": "user"}),
+            dialect: Dialect::ClaudeMirror,
+        };
+        let undatable = Row {
+            rowid: 3,
+            event_ts: None,
+            event: serde_json::json!({"type": "user"}),
+            dialect: Dialect::ClaudeMirror,
+        };
+
+        assert_eq!(dated.at().as_deref(), Some("2026-08-28T01:00:00Z"));
+        assert_eq!(from_column.at().as_deref(), Some("2026-08-27T08:03:36Z"));
+        assert_eq!(
+            undatable.at(),
+            None,
+            "neither field: the row cannot be dated, and a hole is not a date"
+        );
+
+        let mut records = Vec::new();
+        let mut groups = BTreeMap::new();
+        for row in [&dated, &from_column, &undatable] {
+            claude_row(row, &mut records, &mut groups);
+        }
+        let ordinals: Vec<&str> = records.iter().map(|r| r.ordinal.as_str()).collect();
+        assert_eq!(
+            ordinals,
+            ["1", "2"],
+            "the undatable row is dropped, and the rows around it still emit"
+        );
     }
 
     #[test]
