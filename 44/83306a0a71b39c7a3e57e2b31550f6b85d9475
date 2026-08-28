@@ -1,0 +1,23 @@
+docs/plans/005-convo-ingest/plan.dd.json
+  s_b668fefb3076c7::t_fd68c6a0b649f6 75
+docs/plans/005-convo-ingest/plan.dd.md
+  s_b668fefb3076c7::t_7454d08be8746a 61
+docs/services/convo-ingest.md
+  s_b668fefb3076c7::t_6f65573704adfe 102-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4483306a0a71b39c7a3e57e2b31550f6b85d9475",
+  "prompts": {},
+  "sessions": {
+    "s_b668fefb3076c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0e0064-8d84-48e6-b499-eca0c65baafc",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
