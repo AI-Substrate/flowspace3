@@ -47,7 +47,7 @@
           "id": "tk-0004",
           "title": "Unit u2 — ddocs adapter, edges, gate semantics and degradation",
           "domain": "daemon",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Typed edges come from ONE corpus-level ddocs graph call; schema facts and gate_terminal are resolved from the schema; the dd version is stamped; absence of the ddocs binary degrades to rows-indexed-edges-absent rather than erroring.",
           "done": "#done_when/tk-0004"
         },
@@ -55,7 +55,7 @@
           "id": "tk-0005",
           "title": "Unit u4 — agent-facing surface, get, docs and eval fixtures",
           "domain": "daemon+cli",
-          "state": "unchecked",
+          "state": "checked",
           "success": "A ddoc row hit carries its dd address and both state claims; search filters on id kind, gate-open and schema; flowspace3 get resolves a dd address; a bundled docs page explains a row hit; eval fixtures exist for the three named query shapes.",
           "done": "#done_when/tk-0005"
         },
@@ -243,100 +243,116 @@
           {
             "id": "dw-0018",
             "assertion": "No per-file `ddocs --json links` call exists on the scan or watcher path",
-            "state": "unchecked",
-            "pressure": "not-applicable"
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "grep for '\"links\"' across crates/daemon and crates/core returns ZERO matches; edges come from one corpus-level graph call in ddoc.rs. Commits 325e523, 614bf2e."
           },
           {
             "id": "dw-0019",
             "assertion": "parse_graph defaults an ABSENT edge kind to 'document' and neither errors nor drops the edge",
-            "state": "unchecked",
-            "pressure": "not-applicable"
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "crates/core/src/ddoc_envelope.rs:119 `.unwrap_or(DdocRel::KIND_DOCUMENT)`. Mutation 'absent kind default' named in the done report; a recorded no-kind fixture is committed and clearly labelled authored."
           },
           {
             "id": "dw-001a",
             "assertion": "A recorded envelope with no kind field at all (the shape dd main emits today) parses cleanly",
-            "state": "unchecked",
-            "pressure": "not-applicable"
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "Recorded fixture crates/daemon/fixtures/ddocs/ contains a real two-edge kind:file graph from dd main after PR #12 merged (5aa18b7); the authored missing-kind fixture is retained as the only representation of the pre-merge shape."
           },
           {
             "id": "dw-001b",
             "assertion": "An unknown rel survives unfiltered; the built-in five buy meaning, not traversal rights",
-            "state": "unchecked",
-            "pressure": "not-applicable"
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "Unknown rels are never filtered: mutation 'unknown-rel/pressure sentinel keying' named in the done report."
           },
           {
             "id": "dw-001c",
             "assertion": "A pressure edge targeting the literal not-applicable is recognised as a sentinel keyed on the RELATION, never a field name",
-            "state": "unchecked",
-            "pressure": "not-applicable"
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "DdocRel::is_pressure_sentinel() keys on rel == \"pressure\", never a field name; crates/core/src/ddoc.rs. Same mutation covers it."
           },
           {
             "id": "dw-001d",
             "assertion": "probe() against a missing binary returns absent with no Err and rows still index",
-            "state": "unchecked",
-            "pressure": "not-applicable"
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "probe() returns DdocTooling::absent() and never Err; PM integration proof ran the daemon with ddocs OFF PATH and rows were still served (assets/integration-proof.md). Mutation 'missing binary/is_absent' plus the TAUTOLOGICAL ORACLE the seat found and repaired."
           },
           {
             "id": "dw-001e",
             "assertion": "Health is read from validate only; an ok-with-empty-issues envelope is never treated as healthy",
-            "state": "unchecked",
-            "pressure": "not-applicable"
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "Health comes only from `ddocs --json validate` (ddoc.rs:148); mutation 'fail-open links-empty health inference' named in the done report."
           },
           {
             "id": "dw-001f",
             "assertion": "derive_state is called, not reimplemented or inlined",
-            "state": "unchecked",
-            "pressure": "not-applicable"
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "derive_state is imported from fs3_core and called at crates/daemon/src/ddoc.rs:232 - not reimplemented, not inlined."
           },
           {
             "id": "dw-0020",
             "assertion": "unattached file refs are surfaced as row findings rather than discarded",
-            "state": "unchecked",
-            "pressure": "not-applicable"
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "Unattached refs are surfaced as row findings via record_unattached; mutation 'unattached finding omission' named in the done report."
           }
         ],
         "tk-0005": [
           {
             "id": "dw-0021",
             "assertion": "Hit.ddoc is skip_serializing_if optional and the key is ABSENT (not null) on a code hit",
-            "state": "unchecked",
-            "pressure": "not-applicable"
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "Hit.ddoc carries #[serde(skip_serializing_if = \"Option::is_none\")] at crates/daemon/src/search.rs:129-130. Mutation 2 removed it and the test caught `\"ddoc\": null`."
           },
           {
             "id": "dw-0022",
             "assertion": "Address::parse accepts file#section/id, REJECTS the short file#id form as a row, and leaves every el:/conv: case byte-identical",
-            "state": "unchecked",
-            "pressure": "not-applicable"
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "crates/core/src/address.rs:120-125 accepts the positional form and returns AddressError::DdocShortForm when a single-segment trail looks minted, while a legitimate single-segment SECTION address still parses. Mutation 1 inverted that predicate."
           },
           {
             "id": "dw-0023",
             "assertion": "Both state claims are returned, with the stored one labelled as stored and the derived one preferred",
-            "state": "unchecked",
-            "pressure": "not-applicable"
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "DdocHit carries state_stored and state_derived separately; DdocMeta::effective_state() returns (value, was_derived). PM proof shows both claims in a live hit."
           },
           {
             "id": "dw-0024",
             "assertion": "flowspace3 get resolves the same row ddocs get resolves for the same address",
-            "state": "unchecked",
-            "pressure": "not-applicable"
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "PM integration proof: `flowspace3 get \"docs/plans/008-ddocs-scan/plan.dd.json#acceptance_criteria/ac-0004\"` returns kind=row name=ac-0004, and `ddocs get` on the same address returns the row's claim. Mutation 5 named."
           },
           {
             "id": "dw-0025",
             "assertion": "The bundled docs page exists and crates/cli/tests/docs_bundle.rs stays green",
-            "state": "unchecked",
-            "pressure": "not-applicable"
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "crates/cli/docs/ddocs.md plus a TOPICS entry; docs_bundle.rs stays green. Mutations 6 and 7 named (taught a nonexistent verb; removed the derived-state instruction)."
           },
           {
             "id": "dw-0026",
             "assertion": "Eval fixtures exist for: which ACs are still open, which tasks claim this criterion, which criteria touch this source file",
-            "state": "unchecked",
-            "pressure": "not-applicable"
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "eval/ddocs/ holds all three scenarios; the source-file scenario records the currently correct EMPTY answer. Mutation 8 removed one manifest scenario."
           },
           {
             "id": "dw-0027",
             "assertion": "The degraded shape surfaces None rels/derived with a next_action naming the missing binary",
-            "state": "unchecked",
-            "pressure": "not-applicable"
+            "state": "checked",
+            "pressure": "not-applicable",
+            "receipt": "PM integration proof, both halves: ddocs off PATH yields rows plus a next_action naming the binary; ddocs restored yields the same rows and NO notice. Mutation 11 emitted the notice unconditionally and the healthy half failed."
           }
         ],
         "tk-0006": [

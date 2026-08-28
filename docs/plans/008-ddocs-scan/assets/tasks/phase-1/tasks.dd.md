@@ -38,8 +38,8 @@ Task ledger for plan 008-ddocs-scan. Task state is DERIVED from these assertions
 | tk-0001 | Wave 0 — freeze the ddoc row contract in core | core | — | [x] checked | — | — | [x] 6/6 [tk-0001](#tk-0001) | ElementKind::Row, Element.ddoc (boxed, serde-skipped), DdocMeta/DdocRel/DdocSchemaFacts/DerivedState/EmbedBasis, the positional address parser and the single derive_state function exist in crates/core, with the store decoder taught 'row'. harness checks green. The two load-bearing tests mutation-checked. | — | — |
 | tk-0002 | Unit u1 — ddoc parser and discovery admission | parsers | — | [x] checked | — | — | [x] 8/8 [tk-0002](#tk-0002) | A *.dd.json parses to File -&gt; section Container -&gt; Row leaves, keyed on (file, section, id), addressed positionally; .dd.json is admitted by discovery before the config exclusion and .dd.md is skipped; the walker bounds no depth and never treats a row's own field as a row. | — | — |
 | tk-0003 | Unit u3 — ddoc persistence, filters and the inverse index | store | — | [x] checked | — | — | [x] 9/9 [tk-0003](#tk-0003) | One forward migration widens the kind CHECK and adds elements.ddoc plus ddoc_file_refs; Element.ddoc round-trips; three additive filters are no-ops when None; the inverse index answers from a repo-relative path and is empty-not-erroring before dd PR #12 lands. | — | — |
-| tk-0004 | Unit u2 — ddocs adapter, edges, gate semantics and degradation | daemon | — | [ ] unchecked | — | — | [ ] 0/9 [tk-0004](#tk-0004) | Typed edges come from ONE corpus-level ddocs graph call; schema facts and gate_terminal are resolved from the schema; the dd version is stamped; absence of the ddocs binary degrades to rows-indexed-edges-absent rather than erroring. | — | — |
-| tk-0005 | Unit u4 — agent-facing surface, get, docs and eval fixtures | daemon+cli | — | [ ] unchecked | — | — | [ ] 0/7 [tk-0005](#tk-0005) | A ddoc row hit carries its dd address and both state claims; search filters on id kind, gate-open and schema; flowspace3 get resolves a dd address; a bundled docs page explains a row hit; eval fixtures exist for the three named query shapes. | — | — |
+| tk-0004 | Unit u2 — ddocs adapter, edges, gate semantics and degradation | daemon | — | [x] checked | — | — | [x] 9/9 [tk-0004](#tk-0004) | Typed edges come from ONE corpus-level ddocs graph call; schema facts and gate_terminal are resolved from the schema; the dd version is stamped; absence of the ddocs binary degrades to rows-indexed-edges-absent rather than erroring. | — | — |
+| tk-0005 | Unit u4 — agent-facing surface, get, docs and eval fixtures | daemon+cli | — | [x] checked | — | — | [x] 7/7 [tk-0005](#tk-0005) | A ddoc row hit carries its dd address and both state claims; search filters on id kind, gate-open and schema; flowspace3 get resolves a dd address; a bundled docs page explains a row hit; eval fixtures exist for the three named query shapes. | — | — |
 | tk-0006 | Composition, integration proof, review and ship | pm | — | [ ] unchecked | — | — | [ ] 0/9 [tk-0006](#tk-0006) | The four units are merged in dependency order, harness checks is green on the composed tree, the live integration proof runs against this repo's own ddoc corpus, the reviewer's findings are each fixed or refuted with evidence, and the PR is open into main. | — | — |
 
 <a id="done-when"></a>
@@ -86,29 +86,29 @@ Task ledger for plan 008-ddocs-scan. Task state is DERIVED from these assertions
 
 ### tk-0004
 
-| id | assertion | state | pressure |
-| --- | --- | --- | --- |
-| dw-0018 | No per-file `ddocs --json links` call exists on the scan or watcher path | [ ] unchecked | not-applicable |
-| dw-0019 | parse_graph defaults an ABSENT edge kind to 'document' and neither errors nor drops the edge | [ ] unchecked | not-applicable |
-| dw-001a | A recorded envelope with no kind field at all (the shape dd main emits today) parses cleanly | [ ] unchecked | not-applicable |
-| dw-001b | An unknown rel survives unfiltered; the built-in five buy meaning, not traversal rights | [ ] unchecked | not-applicable |
-| dw-001c | A pressure edge targeting the literal not-applicable is recognised as a sentinel keyed on the RELATION, never a field name | [ ] unchecked | not-applicable |
-| dw-001d | probe() against a missing binary returns absent with no Err and rows still index | [ ] unchecked | not-applicable |
-| dw-001e | Health is read from validate only; an ok-with-empty-issues envelope is never treated as healthy | [ ] unchecked | not-applicable |
-| dw-001f | derive_state is called, not reimplemented or inlined | [ ] unchecked | not-applicable |
-| dw-0020 | unattached file refs are surfaced as row findings rather than discarded | [ ] unchecked | not-applicable |
+| id | assertion | state | pressure | receipt |
+| --- | --- | --- | --- | --- |
+| dw-0018 | No per-file `ddocs --json links` call exists on the scan or watcher path | [x] checked | not-applicable | grep for '"links"' across crates/daemon and crates/core returns ZERO matches; edges come from one corpus-level graph call in ddoc.rs. Commits 325e523, 614bf2e. |
+| dw-0019 | parse_graph defaults an ABSENT edge kind to 'document' and neither errors nor drops the edge | [x] checked | not-applicable | crates/core/src/ddoc_envelope.rs:119 `.unwrap_or(DdocRel::KIND_DOCUMENT)`. Mutation 'absent kind default' named in the done report; a recorded no-kind fixture is committed and clearly labelled authored. |
+| dw-001a | A recorded envelope with no kind field at all (the shape dd main emits today) parses cleanly | [x] checked | not-applicable | Recorded fixture crates/daemon/fixtures/ddocs/ contains a real two-edge kind:file graph from dd main after PR #12 merged (5aa18b7); the authored missing-kind fixture is retained as the only representation of the pre-merge shape. |
+| dw-001b | An unknown rel survives unfiltered; the built-in five buy meaning, not traversal rights | [x] checked | not-applicable | Unknown rels are never filtered: mutation 'unknown-rel/pressure sentinel keying' named in the done report. |
+| dw-001c | A pressure edge targeting the literal not-applicable is recognised as a sentinel keyed on the RELATION, never a field name | [x] checked | not-applicable | DdocRel::is_pressure_sentinel() keys on rel == "pressure", never a field name; crates/core/src/ddoc.rs. Same mutation covers it. |
+| dw-001d | probe() against a missing binary returns absent with no Err and rows still index | [x] checked | not-applicable | probe() returns DdocTooling::absent() and never Err; PM integration proof ran the daemon with ddocs OFF PATH and rows were still served (assets/integration-proof.md). Mutation 'missing binary/is_absent' plus the TAUTOLOGICAL ORACLE the seat found and repaired. |
+| dw-001e | Health is read from validate only; an ok-with-empty-issues envelope is never treated as healthy | [x] checked | not-applicable | Health comes only from `ddocs --json validate` (ddoc.rs:148); mutation 'fail-open links-empty health inference' named in the done report. |
+| dw-001f | derive_state is called, not reimplemented or inlined | [x] checked | not-applicable | derive_state is imported from fs3_core and called at crates/daemon/src/ddoc.rs:232 - not reimplemented, not inlined. |
+| dw-0020 | unattached file refs are surfaced as row findings rather than discarded | [x] checked | not-applicable | Unattached refs are surfaced as row findings via record_unattached; mutation 'unattached finding omission' named in the done report. |
 
 ### tk-0005
 
-| id | assertion | state | pressure |
-| --- | --- | --- | --- |
-| dw-0021 | Hit.ddoc is skip_serializing_if optional and the key is ABSENT (not null) on a code hit | [ ] unchecked | not-applicable |
-| dw-0022 | Address::parse accepts file#section/id, REJECTS the short file#id form as a row, and leaves every el:/conv: case byte-identical | [ ] unchecked | not-applicable |
-| dw-0023 | Both state claims are returned, with the stored one labelled as stored and the derived one preferred | [ ] unchecked | not-applicable |
-| dw-0024 | flowspace3 get resolves the same row ddocs get resolves for the same address | [ ] unchecked | not-applicable |
-| dw-0025 | The bundled docs page exists and crates/cli/tests/docs_bundle.rs stays green | [ ] unchecked | not-applicable |
-| dw-0026 | Eval fixtures exist for: which ACs are still open, which tasks claim this criterion, which criteria touch this source file | [ ] unchecked | not-applicable |
-| dw-0027 | The degraded shape surfaces None rels/derived with a next_action naming the missing binary | [ ] unchecked | not-applicable |
+| id | assertion | state | pressure | receipt |
+| --- | --- | --- | --- | --- |
+| dw-0021 | Hit.ddoc is skip_serializing_if optional and the key is ABSENT (not null) on a code hit | [x] checked | not-applicable | Hit.ddoc carries #[serde(skip_serializing_if = "Option::is_none")] at crates/daemon/src/search.rs:129-130. Mutation 2 removed it and the test caught `"ddoc": null`. |
+| dw-0022 | Address::parse accepts file#section/id, REJECTS the short file#id form as a row, and leaves every el:/conv: case byte-identical | [x] checked | not-applicable | crates/core/src/address.rs:120-125 accepts the positional form and returns AddressError::DdocShortForm when a single-segment trail looks minted, while a legitimate single-segment SECTION address still parses. Mutation 1 inverted that predicate. |
+| dw-0023 | Both state claims are returned, with the stored one labelled as stored and the derived one preferred | [x] checked | not-applicable | DdocHit carries state_stored and state_derived separately; DdocMeta::effective_state() returns (value, was_derived). PM proof shows both claims in a live hit. |
+| dw-0024 | flowspace3 get resolves the same row ddocs get resolves for the same address | [x] checked | not-applicable | PM integration proof: `flowspace3 get "docs/plans/008-ddocs-scan/plan.dd.json#acceptance_criteria/ac-0004"` returns kind=row name=ac-0004, and `ddocs get` on the same address returns the row's claim. Mutation 5 named. |
+| dw-0025 | The bundled docs page exists and crates/cli/tests/docs_bundle.rs stays green | [x] checked | not-applicable | crates/cli/docs/ddocs.md plus a TOPICS entry; docs_bundle.rs stays green. Mutations 6 and 7 named (taught a nonexistent verb; removed the derived-state instruction). |
+| dw-0026 | Eval fixtures exist for: which ACs are still open, which tasks claim this criterion, which criteria touch this source file | [x] checked | not-applicable | eval/ddocs/ holds all three scenarios; the source-file scenario records the currently correct EMPTY answer. Mutation 8 removed one manifest scenario. |
+| dw-0027 | The degraded shape surfaces None rels/derived with a next_action naming the missing binary | [x] checked | not-applicable | PM integration proof, both halves: ddocs off PATH yields rows plus a next_action naming the binary; ddocs restored yields the same rows and NO notice. Mutation 11 emitted the notice unconditionally and the healthy half failed. |
 
 ### tk-0006
 

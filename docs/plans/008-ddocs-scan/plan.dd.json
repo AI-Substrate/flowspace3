@@ -173,7 +173,8 @@
           "objective": "Attach dd's typed graph, and make the rows answerable to an agent.",
           "brief": "Two units in parallel: the `ddocs --json` adapter in the imperative shell (one corpus-level graph call, schema facts, gate-terminal, derived state, version stamping, degradation) and the agent-facing surface (search filters, hit metadata, `get` by dd address, bundled doc page, eval fixtures).",
           "key_risks": "Both units live in crates/daemon; the collision surface is deliberately engineered down to one `pub mod` line each in the daemon's module list.",
-          "state": "unchecked"
+          "state": "checked",
+          "receipt": "Wave 2 composed: u2 614bf2e + u4 83cc5ca merged, PM wiring fd470a2, PARSER_VERSION bump 23ed91e. harness checks green 9/9 at 0d4163b."
         },
         {
           "id": "ph-0004",
