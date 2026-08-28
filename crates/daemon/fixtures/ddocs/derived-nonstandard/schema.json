@@ -1,0 +1,42 @@
+{
+  "dd_schema": 1,
+  "sections": {
+    "tasks": {
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "fields": {
+            "id": { "type": "string" },
+            "state": { "type": "state" },
+            "result": { "type": "link", "rel": "derives" }
+          }
+        }
+      }
+    },
+    "gates": {
+      "shape": {
+        "type": "object",
+        "allowAdditional": true,
+        "valuesShape": {
+          "type": "object",
+          "allowAdditional": true,
+          "valuesShape": {
+            "type": "object",
+            "allowAdditional": true,
+            "valuesShape": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "fields": {
+                  "id": { "type": "string" },
+                  "state": { "type": "state" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
