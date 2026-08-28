@@ -736,3 +736,86 @@ async fn two_sessions_keep_separate_ledgers() {
 
     database.destroy(pool).await;
 }
+
+/// A session may not move conversations, and the refusal must leave the ledger
+/// exactly as it was.
+///
+/// The silent version of this is the worst failure shape in the unit: the
+/// ledger is keyed `(harness, session_id, ordinal)` and carries no
+/// conversation, so a rebind strands its rows on the old conversation. The
+/// newly named one then dedupes every record it is offered and stays
+/// permanently empty, while the CLI, the ledger and `commit_poll` all report
+/// success. Mutation-check: turn the refusal back into `DO UPDATE SET
+/// conversation_id` and this fails on the error, then on the ledger.
+#[tokio::test]
+async fn a_session_may_not_be_rebound_to_another_conversation() {
+    let first = id('a');
+    let second = id('b');
+    let database = FreshDatabase::create().await;
+    let pool = seeded(&database, &first).await;
+    upsert_conversation(&pool, &conversation(&second))
+        .await
+        .expect("the second conversation should store");
+
+    let records = [record("r1", "first"), record("r2", "second")];
+    poll(
+        &pool,
+        Harness::Omp,
+        SESSION,
+        &first,
+        &records,
+        &SourceCursor::Seq { seq: 2 },
+    )
+    .await;
+
+    // The same session, offered under a different conversation.
+    let failure = commit_poll(
+        &pool,
+        Harness::Omp,
+        SESSION,
+        &second,
+        &SourceCursor::Seq { seq: 3 },
+        &[("r3", 3)],
+    )
+    .await
+    .expect_err("a session may not move conversations");
+
+    let message = failure.to_string();
+    assert!(
+        message.contains("already tails conversation"),
+        "the refusal must say what happened: {message}"
+    );
+
+    // Nothing was written: not the cursor, not the ledger.
+    let cursor = load_cursor(&pool, Harness::Omp, SESSION).await.unwrap();
+    assert_eq!(
+        cursor,
+        Some(SourceCursor::Seq { seq: 2 }),
+        "the cursor still points where the accepted poll left it"
+    );
+
+    let ordinals: Vec<String> = sqlx::query_scalar(
+        "SELECT ordinal FROM ingest_ledger
+          WHERE harness = $1 AND session_id = $2 ORDER BY ordinal",
+    )
+    .bind(Harness::Omp.as_str())
+    .bind(SESSION)
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        ordinals,
+        vec!["r1".to_string(), "r2".to_string()],
+        "the refused poll's ordinal was not recorded"
+    );
+
+    let stranded: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM turns WHERE conversation_id = $1::uuid")
+            .bind(second.as_str())
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(stranded, 0, "and the second conversation was never touched");
+
+    database.destroy(pool).await;
+}

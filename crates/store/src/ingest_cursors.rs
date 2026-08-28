@@ -209,6 +209,8 @@ pub async fn ledger_view(
 /// full re-read next time.
 ///
 /// # Errors
+/// [`StoreError::SessionRebound`] when this session is already tailing a
+/// DIFFERENT conversation; nothing is written.
 /// [`StoreError::Query`] when the transaction fails; nothing is written.
 /// [`StoreError::Corrupt`] when the cursor cannot be serialised.
 pub async fn commit_poll(
@@ -226,6 +228,41 @@ pub async fn commit_poll(
     })?;
 
     let mut tx = pool.begin().await?;
+
+    // A session may not move conversations. The ledger is keyed
+    // `(harness, session_id, ordinal)` and carries no conversation, so its
+    // rows do NOT move with a rebind: afterwards the ledger insists every
+    // record is stored while the new conversation holds nothing, and
+    // `prepare_batch` dedupes the whole batch to zero. The conversation stays
+    // permanently empty and every call reports success — the worst shape a
+    // failure can take, and invisible from every angle. So this is an error,
+    // not an update. (Ruled by the plan-005 PM on 2026-08-28; the real fix is
+    // that resolution is a lookup rather than a mint, and that is the
+    // composition root's.)
+    //
+    // Compared as `uuid` rather than as text so a difference in spelling is
+    // not mistaken for a difference in identity, and `FOR UPDATE` so two
+    // concurrent first polls cannot both see no row and insert under
+    // different conversations.
+    let rebound: Option<String> = sqlx::query_scalar(
+        "SELECT conversation_id::text FROM ingest_cursors
+          WHERE harness = $1 AND session_id = $2 AND conversation_id <> $3::uuid
+          FOR UPDATE",
+    )
+    .bind(harness.as_str())
+    .bind(session_id)
+    .bind(conversation.as_str())
+    .fetch_optional(&mut *tx)
+    .await?;
+
+    if let Some(stored) = rebound {
+        return Err(StoreError::SessionRebound {
+            harness: harness.as_str().to_string(),
+            session_id: session_id.to_string(),
+            stored,
+            offered: conversation.as_str().to_string(),
+        });
+    }
 
     sqlx::query(
         "INSERT INTO ingest_cursors

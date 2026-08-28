@@ -58,6 +58,17 @@ turns that ARE stored, so it appends the conversation again under fresh
 Ledger rows without a cursor are merely a re-read; the other way round is a
 duplicated conversation.
 
+**A session may not move conversations** (`commit_poll`, PM ruling
+2026-08-28). Rebinding a session's `conversation_id` used to be a silent
+`DO UPDATE`; it is now `StoreError::SessionRebound` and nothing is written.
+The ledger is keyed `(harness, session_id, ordinal)` and carries no
+conversation, so its rows would not move with a rebind — the ledger would
+insist every record was stored while the newly named conversation held
+nothing, `prepare_batch` would dedupe the whole batch to zero, and it would
+stay permanently empty with every call reporting success. The real fix is that
+resolution is a LOOKUP rather than a mint, which is the composition root's;
+this guard is what survives that being got wrong.
+
 **No `CursorStore` trait**, deliberately deviating from the impl-guide's u2
 interface column (PM ruling 2026-08-28). `grep -rn "^pub trait\|^trait "
 crates/store/src/` returns nothing — the crate has no trait convention to join
@@ -125,13 +136,13 @@ export FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5433/fs3
 cargo test -p fs3-core conversation_normalize        # 16 tests
 
 # The durable half, against a real database.
-cargo test -p fs3-store --test pg_ingest_cursors     # 16 tests
+cargo test -p fs3-store --test pg_ingest_cursors     # 17 tests
 
 # The regression oracle for the payload-policy move: unmodified, must be green.
 cargo test -p fs3-daemon --lib conversations         # 8 tests
 ```
 
-The three load-bearing tests, all mutation-checked:
+The four load-bearing tests, all mutation-checked:
 
 - `a_rescan_after_rotation_appends_nothing_through_the_store` — delete the
   `seen` lookup in `prepare_batch` and this fails on the turn count, together
@@ -144,6 +155,9 @@ The three load-bearing tests, all mutation-checked:
 - `an_oversized_tool_result_is_cut_to_its_head_and_says_so` — delete the
   `head.truncate(...)` in `shape_turn` and five truncation tests fail,
   including the multi-byte boundary cases.
+- `a_session_may_not_be_rebound_to_another_conversation` — turn the refusal
+  back into `DO UPDATE SET conversation_id` and this fails on the error, then
+  on the ledger.
 
 ## THE SNAP-IN RECIPE
 
@@ -256,6 +270,12 @@ orchestrator must.
 after the read, with that batch's ordinals. Reusing one numbers the second
 batch on top of the first. Named because it is the optimisation a future
 reader adds in good faith.
+
+**Handle `SessionRebound`.** `commit_poll` refuses when the session is already
+tailing a different conversation, and writes nothing. It means resolution
+handed out two different conversations for one session — a bug upstream of
+this call, not a retryable condition. Surface it; do not fall back to minting
+another conversation, which is the thing it is protecting against.
 
 **Compare the counts.** `append_turns` returns `Appended { accepted, already_stored }`,
 so a shortfall is visible: `accepted.len() + already_stored` should equal

@@ -12,35 +12,39 @@ Silent failures first, because those are the ones that cost a plan.
 
 ---
 
-## A1 — A session must always resolve to the SAME conversation. SILENT.
+## A1 — A session must always resolve to the SAME conversation. NOW ENFORCED.
 
-**Assumed:** the orchestrator derives `conversation_id` deterministically from
-`(harness, session_id)`, so a given session belongs to one conversation
+**Status: closed by a guard.** Ruled by PM3 on 2026-08-28 and implemented;
+this entry is kept because the reasoning is still the reason the guard exists.
+
+**Was assumed:** the orchestrator derives `conversation_id` deterministically
+from `(harness, session_id)`, so a given session belongs to one conversation
 forever.
 
-**What my code does:** `commit_poll` upserts
+**What the code used to do:** `commit_poll` upserted
 `ON CONFLICT (harness, session_id) DO UPDATE SET conversation_id =
-EXCLUDED.conversation_id`. It silently REBINDS the cursor to whatever
+EXCLUDED.conversation_id`, silently REBINDING the cursor to whatever
 conversation it was handed.
 
-**What breaks:** `ingest_ledger` has no `conversation_id` column — it is keyed
-`(harness, session_id, ordinal)` — so the ledger rows do NOT move with the
-rebind. After a rebind the ledger still says every record was stored, while the
-new conversation holds no turns. `prepare_batch` then dedupes the entire batch
-to zero and the new conversation stays permanently empty. Every call reports
-success.
+**Why that was the worst shape available:** `ingest_ledger` has no
+`conversation_id` column — it is keyed `(harness, session_id, ordinal)` — so
+ledger rows do NOT move with a rebind. Afterwards the ledger still insists
+every record was stored while the newly named conversation holds no turns,
+`prepare_batch` dedupes the entire batch to zero, and that conversation stays
+permanently empty. The CLI says fine, the ledger says stored, the conversation
+says nothing. A failure that reports success, invisible from every angle.
 
-**How it would happen:** any path where the conversation id is minted rather
-than looked up — a re-ingest that creates a new conversation because the
-mapping was not persisted, or a fixture/test that reuses a session id across
-conversations.
+**What the code does now:** `commit_poll` reads the stored `conversation_id`
+`FOR UPDATE` inside its transaction, compares as `uuid` rather than as text so
+a difference in spelling is not mistaken for a difference in identity, and
+returns [`StoreError::SessionRebound`] naming both conversations. Nothing is
+written — not the cursor, not the ledger. Proved by
+`a_session_may_not_be_rebound_to_another_conversation`, which asserts the
+refusal, the untouched cursor, the untouched ledger and the untouched second
+conversation.
 
-**Cheapest guard:** make the mapping a lookup, not a mint. If you want a
-belt: `commit_poll` could REFUSE a conversation change instead of applying it —
-a session moving conversations is a bug, not an update. That is a small
-additive change to my unit and I will make it if you want it; I did not do it
-unilaterally because refusing an upsert is a behaviour decision that belongs to
-whoever owns resolution.
+**Still the composer's, and it is the real fix:** resolution becomes a LOOKUP,
+not a mint. The guard survives that being got wrong; it does not replace it.
 
 ## A2 — A reader's ordinal derivation is a PERSISTED contract. SILENT.
 
