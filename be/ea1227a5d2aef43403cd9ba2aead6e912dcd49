@@ -1,0 +1,42 @@
+docs/plans/008-ddocs-scan/impl-guide.dd.json
+  h_9e71e8b09f7cf2 17
+docs/plans/008-ddocs-scan/impl-guide.dd.md
+  h_9e71e8b09f7cf2 43,107-112
+docs/plans/008-ddocs-scan/packet-coder-u1.dd.json
+  h_9e71e8b09f7cf2 12
+docs/plans/008-ddocs-scan/packet-coder-u1.dd.md
+  h_9e71e8b09f7cf2 15
+docs/plans/008-ddocs-scan/packet-coder-u2.dd.json
+  h_9e71e8b09f7cf2 12
+docs/plans/008-ddocs-scan/packet-coder-u2.dd.md
+  h_9e71e8b09f7cf2 15
+docs/plans/008-ddocs-scan/packet-coder-u3.dd.json
+  h_9e71e8b09f7cf2 12
+docs/plans/008-ddocs-scan/packet-coder-u3.dd.md
+  h_9e71e8b09f7cf2 15
+docs/plans/008-ddocs-scan/packet-coder-u4.dd.json
+  h_9e71e8b09f7cf2 12
+docs/plans/008-ddocs-scan/packet-coder-u4.dd.md
+  h_9e71e8b09f7cf2 15
+docs/plans/008-ddocs-scan/packet-pm.dd.json
+  h_9e71e8b09f7cf2 23-58,64-79,94-113,119-143
+docs/plans/008-ddocs-scan/packet-reviewer.dd.json
+  h_9e71e8b09f7cf2 12
+docs/plans/008-ddocs-scan/packet-reviewer.dd.md
+  h_9e71e8b09f7cf2 15
+docs/plans/008-ddocs-scan/plan.dd.json
+  h_9e71e8b09f7cf2 21,201
+docs/plans/008-ddocs-scan/plan.dd.md
+  h_9e71e8b09f7cf2 38-47,147-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "beea1227a5d2aef43403cd9ba2aead6e912dcd49",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
