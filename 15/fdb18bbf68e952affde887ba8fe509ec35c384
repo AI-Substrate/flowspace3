@@ -1,0 +1,21 @@
+docs/plans/005-convo-ingest/impl-guide.dd.json
+  s_af0fe1a82e54f0::t_ed2971dac43123 17
+docs/plans/005-convo-ingest/impl-guide.dd.md
+  s_af0fe1a82e54f0::t_f884f234d62976 39-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "15fdb18bbf68e952affde887ba8fe509ec35c384",
+  "prompts": {},
+  "sessions": {
+    "s_af0fe1a82e54f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9726a7d5-28df-47fe-bb2a-d5ffcb472da2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
