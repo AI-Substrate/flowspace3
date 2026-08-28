@@ -110,3 +110,13 @@ half-built worktree is worse than none.
 - `.agents/skills/pij-team/TENETS.md` — the doctrine the impl-guide instantiates
 - `scratch/team-new-poc/validation.md` — the POC this was ported from, and the
   extension notes that shaped it
+- `docs/plans/006-worktree-diff/` — the second validation run of this flow, and
+  the first in **investigate-then-build** mode: phase 1 measured the current
+  behaviour before anything was designed, and its
+  [probe report](../../../docs/plans/006-worktree-diff/assets/probe-report.md)
+  is what ruled the phase-2 unit set (two units, not the four the plan
+  provisionally named — one was refuted by measurement, one absorbed into its
+  twin). Read it when a plan's units are guesses: the report is the worked
+  example of freezing seams from evidence rather than from an armchair, and
+  `assets/probes/probe.sh` is the harness whose receipt predicates became the
+  units' done bars.

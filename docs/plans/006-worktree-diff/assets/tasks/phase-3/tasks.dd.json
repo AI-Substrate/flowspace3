@@ -1,33 +1,60 @@
 {
- "dd": {
-  "schema": "builder/plan"
- },
- "sections": [
-  {
-   "name": "meta",
-   "value": {
-    "title": "Phase 3: Composition + first light",
-    "slug": "phase-3",
-    "status": "draft",
-    "summary": "PM composes the ruled units; first light is the whole worktree loop live on our own repos."
-   }
+  "dd": {
+    "schema": "builder/plan"
   },
-  {
-   "name": "summary",
-   "value": "Composition is wiring; assumptions asked before wiring per the pm packet."
-  },
-  {
-   "name": "tasks",
-   "value": [
-    { "id": "tk-e301", "title": "Compose the ruled phase-2 units at the composition root; harness checks green on the composed tree.", "state": "unchecked", "success": "Gate green; allowlist reconciled against impl-guide grants.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0006"] },
-    { "id": "tk-e302", "title": "First light, live transcript: create worktree of this repo -> edit file -> search finds worktree version from inside + main version from main -> remove worktree -> GC reclaim shown. One transcript, committed as exit evidence.", "state": "unchecked", "success": "Transcript committed; ac-0002/0003/0004 receipts cite it.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0002", "../../../plan.dd.json#acceptance_criteria/ac-0003", "../../../plan.dd.json#acceptance_criteria/ac-0004"] },
-    { "id": "tk-e303", "title": "Reviewer pass (settings default model) after composition; findings fixed or refuted with evidence; PR into main held unmerged for prime.", "state": "unchecked", "success": "Review record ddoc + verdict; PR open.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0006"] }
-   ]
-  },
-  {
-   "name": "done_when",
-   "value": {}
-  }
- ],
- "references": []
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 3: Composition + first light",
+        "slug": "phase-3",
+        "status": "draft",
+        "summary": "PM composes the ruled units; first light is the whole worktree loop live on our own repos."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Composition is wiring; assumptions asked before wiring per the pm packet."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-e301",
+          "title": "Compose the ruled phase-2 units at the composition root; harness checks green on the composed tree.",
+          "state": "checked",
+          "success": "Gate green; allowlist reconciled against impl-guide grants.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0006"
+          ],
+          "receipt": "Composed at dc96453 (u-a) and 9e338f4 (u-c); disjoint fences meant both merges were clean with no unit-internal rework. harness checks GREEN on the composed branch, 9 gates, against a unique checks database. No new dependency edges: arch-allowlist.toml and every Cargo.toml unchanged across the whole plan (ac-0006)."
+        },
+        {
+          "id": "tk-e302",
+          "title": "First light, live transcript: create worktree of this repo -> edit file -> search finds worktree version from inside + main version from main -> remove worktree -> GC reclaim shown. One transcript, committed as exit evidence.",
+          "state": "blocked",
+          "success": "Transcript committed; ac-0002/0003/0004 receipts cite it.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002",
+            "../../../plan.dd.json#acceptance_criteria/ac-0003",
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ],
+          "note": "PARTIAL, deliberately. Composed run 20260828T035625Z (private database, fake providers) proved the lifecycle half live: one root registered by hand, TWENTY auto-registered by the detector, ~15k jobs drained at zero spend, p1_auto_discovered 0->1, p1_unchanged_reconcile_jobs=0, p4_root_still_registered 1->0, p4_deleted_content_still_served 1->0, p4_served_after_gc=0, p3_get_context_sensitive=1. The P3 retrieval half is NOT measurable under a fake embedder — a query quoting the marker's own body verbatim scored 0.1889 against unrelated files — and the harness now emits unmeasurable-fake-embedder rather than a misleading zero (af3fa10). Prime ruled the live P3 measurement happens AFTER merge, as the go-live record, because running it is the feature going live for the fleet rather than a test."
+        },
+        {
+          "id": "tk-e303",
+          "title": "Reviewer pass (settings default model) after composition; findings fixed or refuted with evidence; PR into main held unmerged for prime.",
+          "state": "unchecked",
+          "success": "Review record ddoc + verdict; PR open.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0006"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {}
+    }
+  ]
 }
