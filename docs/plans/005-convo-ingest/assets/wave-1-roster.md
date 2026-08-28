@@ -10,10 +10,10 @@ was doing what. This file is the fix. Update it at every seat edge.
 
 | unit | responsibility | seat | spawnId | worktree | branch | scratch db |
 | --- | --- | --- | --- | --- | --- | --- |
-| pm | phase 1, composition, review | pij-traditional-piranha | s1787877169374-10693 | ../fs3-convo-ingest | 005-convo-ingest | fs3_convo_ingest |
-| u1a | claude-native reader | pij-leading-worm | s1787878503007-38950 | ../fs3-convo-u1a | 005-convo-u1a | fs3_convo_u1a |
-| u1b | omp reader + pij-ledger reader | pij-delicious-salmon | s1787878503505-38974 | ../fs3-convo-u1b | 005-convo-u1b | fs3_convo_u1b |
-| u1d | metrics-db reader | pij-distinct-limpet | s1787878504076-39237 | ../fs3-convo-u1d | 005-convo-u1d | fs3_convo_u1d |
+| pm | phase 1, composition, review | **pij-pale-silkworm** (PM3) | s1787880073435-84015 | ../fs3-convo-ingest | 005-convo-ingest | fs3_convo_ingest |
+| u1a | claude-native reader | **pij-frightened-mastodon** | s1787880412627-13542 | ../fs3-convo-u1a | 005-convo-u1a | fs3_convo_u1a |
+| u1b | omp reader + pij-ledger reader | **pij-suitable-cormac** | s1787880413196-13981 | ../fs3-convo-u1b | 005-convo-u1b | fs3_convo_u1b |
+| u1d | metrics-db reader | **pij-causal-mollusk** | s1787880413791-15131 | ../fs3-convo-u1d | 005-convo-u1d | fs3_convo_u1d |
 | u2 | cursor-state service + normalizer | pij-appalling-slug | s1787878504607-39845 | ../fs3-convo-u2 | 005-convo-u2 | fs3_convo_u2 |
 
 All four coders: omp, `github-copilot/claude-opus-5`, effort high, per
@@ -23,6 +23,37 @@ coders' only upward interface.
 Seat-to-unit was assigned by spawn order and confirmed by asking each seat to
 contradict me if its own `--task` named a different unit — there is an active
 pij alias-minting defect (pij#19), so identity is verified, never assumed.
+
+For the second dispatch that verification was WEAKER than it looks, and both
+affected seats said so unprompted. `pij whoami` resolves a worktree-resident
+seat to the MAIN CLONE folder, not its own worktree; and a seat's
+`~/.pij/<id>/events.ndjson` carries no spawn-task record, so a coder cannot
+read its own assignment back out of pij. Each seat's corroboration of its unit
+was therefore circumstantial — the worktree it was sent to, that worktree's
+branch, and the scope row of the packet it read, all three agreeing — rather
+than a fact pij could confirm. Three seats, three independent agreements, no
+contradictions; good enough to proceed, and recorded as friction (it is the
+second time this gap has cost a seat something).
+
+### Seat history — three PMs and a second wave-1 dispatch
+
+| seat | unit | fate |
+| --- | --- | --- |
+| pij-linguistic-narwhal | pm (PM1) | killed by a machine event mid-phase-1, 00:30Z |
+| pij-traditional-piranha | pm (PM2) | closed and committed phase 1, wrote the coder packets, dispatched wave 1; killed by the disk exhaustion at 01:07Z |
+| pij-leading-worm | u1a | killed 01:07Z; **left nothing** |
+| pij-delicious-salmon | u1b | killed 01:07Z; **left nothing** |
+| pij-distinct-limpet | u1d | killed 01:07Z; **left nothing** |
+
+The three dead coder worktrees were inventoried with git before re-dispatch —
+zero commits past the fan-out commit `460883d`, clean trees, no file touched
+since dispatch. The successors started clean from the same packets plus
+`assets/wave-1-restart-note.md`; there were no deltas to reconcile. This
+CORRECTS `successor-context-pm3.md`, which recorded u1b and u1d as leaving
+partial work with sources intact; prime accepted the correction as the record.
+
+u2 survived the sweep and finished. Its seat is alive and holding for
+composition questions.
 
 ## Phase state
 
