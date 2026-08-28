@@ -17,6 +17,7 @@ pub mod conversation;
 pub mod element;
 pub mod envelope;
 pub mod error;
+pub mod events;
 pub mod git;
 pub mod logging;
 pub mod messages;
@@ -49,6 +50,7 @@ pub use element::{
 };
 pub use envelope::{ENVELOPE_VERSION, Envelope, Failure};
 pub use error::{Error, Result};
+pub use events::{Event, EventKind, HEARTBEAT_MS, Hello, STREAM_VERSION};
 pub use git::{BlobChange, ChangedSet, FileBlob, IdentitySource, RepoIdentity, TreeSnapshot, diff};
 pub use logging::{
     LOG_FILE_NAME, LOGGING_SOURCE, resolve_log_dir, rolled_name, unwritable_message,
