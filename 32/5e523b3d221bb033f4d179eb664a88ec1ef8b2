@@ -1,0 +1,51 @@
+crates/core/src/ddoc_envelope.rs
+  s_17c9cbb1047fec::t_42e34094b4ef53 1-456
+crates/daemon/fixtures/ddocs/graph-recorded-file-kind.json
+  s_a9ba6ef9f4b595::t_226c1dda73794b 1
+crates/daemon/fixtures/ddocs/schema-builder-plan.json
+  s_15d888f4b629c1::t_195ca3a4eb541d 1
+crates/daemon/fixtures/ddocs/validate-plan.json
+  s_15d888f4b629c1::t_2bc960e88cf074 1
+crates/daemon/fixtures/ddocs/version.json
+  s_15d888f4b629c1::t_4824104b063f15 1
+crates/daemon/src/ddoc.rs
+  s_17c9cbb1047fec::t_3c0708dee28cbf 1-583
+crates/daemon/src/lib.rs
+  s_17c9cbb1047fec::t_91ad1ffebbc0ba 14
+crates/daemon/src/scan.rs
+  s_17c9cbb1047fec::t_956bae93337f21 34,39,45-78,149-157,159,163-183,222-264
+crates/daemon/fixtures/ddocs/validate-degraded-file-links.json
+  s_15d888f4b629c1::t_129cd5f3845751 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "325e523b3d221bb033f4d179eb664a88ec1ef8b2",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_17c9cbb1047fec": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "72fa9d94-05ae-4606-ae8b-7ed3a337cb6e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a9ba6ef9f4b595": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "1b9d68b2-34b8-4b25-80a5-e5a7a844462f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
