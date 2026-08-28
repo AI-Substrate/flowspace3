@@ -29,7 +29,7 @@ use fs3_core::{
     TurnSource, prepare_batch,
 };
 use fs3_store::ingest_cursors::{
-    commit_poll, forget_session, ledger_view, load_cursor, sessions_for,
+    commit_poll, conversation_for, forget_session, ledger_view, load_cursor, sessions_for,
 };
 use fs3_store::{PgPool, append_turns, delete_conversation, upsert_conversation};
 use support::FreshDatabase;
@@ -816,6 +816,76 @@ async fn a_session_may_not_be_rebound_to_another_conversation() {
             .await
             .unwrap();
     assert_eq!(stranded, 0, "and the second conversation was never touched");
+
+    database.destroy(pool).await;
+}
+
+/// Resolution is a LOOKUP, not a mint — and this is the read that makes it
+/// one. No row means a first ingest, so the caller mints exactly once.
+#[tokio::test]
+async fn an_untailed_session_belongs_to_no_conversation_yet() {
+    let guid = id('c');
+    let database = FreshDatabase::create().await;
+    let pool = seeded(&database, &guid).await;
+
+    assert_eq!(
+        conversation_for(&pool, Harness::Claude, "never-tailed")
+            .await
+            .unwrap(),
+        None,
+        "absent means first ingest, which is the only time a caller may mint"
+    );
+
+    database.destroy(pool).await;
+}
+
+/// The lookup and the guard must read the SAME row, not two rows that agree by
+/// luck: whatever `commit_poll` committed under is what `conversation_for`
+/// answers, so a composition root that looks up before minting cannot produce
+/// the rebind `SessionRebound` exists to refuse.
+#[tokio::test]
+async fn the_lookup_answers_with_the_conversation_the_poll_committed_under() {
+    let guid = id('d');
+    let database = FreshDatabase::create().await;
+    let pool = seeded(&database, &guid).await;
+
+    let records = [record("r1", "first")];
+    poll(
+        &pool,
+        Harness::Omp,
+        SESSION,
+        &guid,
+        &records,
+        &SourceCursor::Seq { seq: 1 },
+    )
+    .await;
+
+    let resolved = conversation_for(&pool, Harness::Omp, SESSION)
+        .await
+        .unwrap()
+        .expect("a tailed session belongs to a conversation");
+
+    assert_eq!(
+        resolved, guid,
+        "the lookup reads the row the poll wrote, so resolution and the rebind \
+         guard cannot disagree about which conversation this session is"
+    );
+
+    // And the guard agrees: offering the session under anything else is refused.
+    let other = id('e');
+    upsert_conversation(&pool, &conversation(&other))
+        .await
+        .unwrap();
+    commit_poll(
+        &pool,
+        Harness::Omp,
+        SESSION,
+        &other,
+        &SourceCursor::Seq { seq: 2 },
+        &[],
+    )
+    .await
+    .expect_err("the guard refuses what the lookup would have prevented");
 
     database.destroy(pool).await;
 }

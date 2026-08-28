@@ -224,6 +224,18 @@ Per session, per poll. The store is blocking, the reader is blocking — hand th
 reader to `spawn_blocking` exactly as the local ONNX embedder is handled.
 
 ```rust
+// 0. WHICH conversation is this session? A LOOKUP, never a mint.
+//    `Some` means the mapping is already decided and there is nothing to
+//    choose. `None` means first ingest — mint exactly one, here, at the
+//    composition root. This unit can answer which conversation a session
+//    belongs to; it deliberately cannot invent one.
+let conversation_id = match fs3_store::ingest_cursors::conversation_for(
+    &pool, harness, &session_id,
+).await? {
+    Some(existing) => existing,
+    None => mint_conversation(/* caller-supplied guid, or a fresh one */),
+};
+
 // 1. Where did we stop? `None` means "from the beginning" — a first ingest and
 //    a forgotten one take the identical path.
 let cursor = fs3_store::ingest_cursors::load_cursor(&pool, harness, &session_id).await?;
