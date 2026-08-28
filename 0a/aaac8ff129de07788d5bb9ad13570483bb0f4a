@@ -1,0 +1,131 @@
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/daemon-p2a.log
+  s_15d888f4b629c1::t_874e08294cf90f 1-872
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/daemon-p2b.log
+  s_15d888f4b629c1::t_1c5f85fe6bd9a9 1-226
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/daemon-p4.log
+  s_15d888f4b629c1::t_a887fa23ee3e55 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p1-deltas.txt
+  s_15d888f4b629c1::t_48c9cb062a4e03 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p1-jobs.txt
+  s_15d888f4b629c1::t_27b98e753e33c8 1-4
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p1-search-default-limit.json
+  s_15d888f4b629c1::t_95596d5ef847ce 1-239
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p1-search-from-unregistered.json
+  s_15d888f4b629c1::t_d57a97808df41b 1-82
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p1-status.json
+  s_15d888f4b629c1::t_7f5d0dd4bfd12a 1-52
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p1-worktree-add.txt
+  s_15d888f4b629c1::t_7f102f476e593e 1-2
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2a-add.json
+  s_15d888f4b629c1::t_be796fe88edb73 1-66
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2a-deltas.txt
+  s_15d888f4b629c1::t_df5b98436c7f95 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2a-jobs.txt
+  s_15d888f4b629c1::t_4305df079ec76f 1-7
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2a-paid.txt
+  s_15d888f4b629c1::t_884748397be73e 1-24
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2b-deltas.txt
+  s_15d888f4b629c1::t_ef59c440a5f84b 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2b-divergent-paths.txt
+  s_15d888f4b629c1::t_658c34d4ceef80 1-12
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2b-edited-files.txt
+  s_15d888f4b629c1::t_74da28d8b79889 1-8
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2b-jobs.txt
+  s_15d888f4b629c1::t_f24f83336c6875 1-7
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2b-paid.txt
+  s_15d888f4b629c1::t_a1aa9f0a7cf537 1-25
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p2b-reference-map.txt
+  s_15d888f4b629c1::t_c3c2fb888b7aac 1-6
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-colliding-addresses.txt
+  s_15d888f4b629c1::t_b4a230be41382e 1-14
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-elements-by-blob.txt
+  s_15d888f4b629c1::t_ba4571b080c339 1-12
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-get-from-main.json
+  s_15d888f4b629c1::t_c843a6fb55068e 1-71
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-get-from-worktree.json
+  s_15d888f4b629c1::t_2b864e633511ed 1-80
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-marker-from-main.json
+  s_15d888f4b629c1::t_f5559578ec43ef 1-52
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-marker-from-worktree.json
+  s_15d888f4b629c1::t_5a7f5a5199397f 1-52
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-result-fields.txt
+  s_15d888f4b629c1::t_f427652da6e57e 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-search-flags.txt
+  s_15d888f4b629c1::t_37940a262c8637 1-15
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-search-repo-scoped.json
+  s_15d888f4b629c1::t_efd6c449006b77 1-51
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-shared-from-main.json
+  s_15d888f4b629c1::t_8b593c0f96acaf 1-114
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-shared-from-worktree.json
+  s_15d888f4b629c1::t_dae856b1767a5a 1-114
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-version-file-blobs.txt
+  s_15d888f4b629c1::t_d1245e3b477bd3 1-6
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p3-version-file.txt
+  s_15d888f4b629c1::t_083bcf5982db07 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-deltas-fs3-remove.txt
+  s_15d888f4b629c1::t_e4bb0bcbf5a3cd 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-deltas-gc.txt
+  s_15d888f4b629c1::t_6cd283914a3c52 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-deltas-git-remove.txt
+  s_15d888f4b629c1::t_180da12c6f5ea4 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-deltas-whole-run.txt
+  s_15d888f4b629c1::t_a27ff15aa6e6db 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-fs3-remove.json
+  s_15d888f4b629c1::t_b194c3c28acb26 1-21
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-gc.json
+  s_15d888f4b629c1::t_e45534dfbf3c87 1-13
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-jobs.txt
+  s_15d888f4b629c1::t_8444586032b56e 1-4
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-orphaned-after-gc.txt
+  s_15d888f4b629c1::t_a0d6b9bc280de8 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-orphaned-before-gc.txt
+  s_15d888f4b629c1::t_6edb8771937253 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-search-after-gc.json
+  s_15d888f4b629c1::t_e4fc029d4add61 1-35
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-search-after-git-remove.json
+  s_15d888f4b629c1::t_92094c9e17a6b4 1-52
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/p4-status-after-git-remove.json
+  s_15d888f4b629c1::t_14db96390de1a4 1-57
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/ping.json
+  s_15d888f4b629c1::t_3b76ff1bed3014 1
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/receipt.env
+  s_15d888f4b629c1::t_997da6bda7b27f 1-23
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/snap-00-baseline.env
+  s_15d888f4b629c1::t_da5b743adbd47f 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/snap-01-after-worktree-create.env
+  s_15d888f4b629c1::t_1f9e98e202424d 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/snap-02-before-add.env
+  s_15d888f4b629c1::t_6e70adb0ec95a9 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/snap-03-after-add.env
+  s_15d888f4b629c1::t_9838e8754b04f5 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/snap-04-before-edits.env
+  s_15d888f4b629c1::t_667cdd9e37004d 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/snap-05-after-edits.env
+  s_15d888f4b629c1::t_7dc782a145e811 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/snap-07-after-git-remove.env
+  s_15d888f4b629c1::t_005b9cc06698ce 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/snap-08-after-fs3-remove.env
+  s_15d888f4b629c1::t_8aa98d623974bc 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/snap-09-after-gc.env
+  s_15d888f4b629c1::t_1dc6bfb36c6478 1-10
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/status-before.json
+  s_15d888f4b629c1::t_0e60ed5c6015c6 1-52
+docs/plans/006-worktree-diff/assets/probes/out/run-20260828T024227Z/transcript.log
+  s_15d888f4b629c1::t_f8baeabe168804 1-512
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0aaaac8ff129de07788d5bb9ad13570483bb0f4a",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
