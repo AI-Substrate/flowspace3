@@ -1,0 +1,16 @@
+crates/store/tests/pg_ingest_cursors.rs
+  h_9e71e8b09f7cf2 20-22,144-146,361-364,384,516-519
+docs/services/convo-cursors.md
+  h_9e71e8b09f7cf2 1-250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "016fbff119702668d23559c202fd36ca28caadeb",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
