@@ -9,10 +9,10 @@
         "title": "Cross-model review — plan 005 convo ingest",
         "reviewer": "pij-weary-orangutan",
         "model": "github-copilot/gpt-5.6-sol",
-        "round": "3",
+        "round": "6",
         "date": "2026-08-28",
         "plan": "../../plan.dd.json#meta",
-        "note": "ROUND-3 VERDICT: REQUEST_CHANGES. F-005 implementation is correct: every nonzero `appended.already_stored` now fails, though no permanent regression exercises the mixed seen/new collision (F-011). F-006's detached session fixes panic/cancellation lock leakage and removes pool-slot exhaustion, but lock contention is now reported as successful ingest without reading; a live file can grow after the winner read and before the loser skips, leaving the later request's bytes unprocessed (F-009). F-007's duplicate item is fixed and its count assertion is now exact, but call/result association still keys by tool name and stores only the record index; multiple calls can be mis-attributed or results can inherit the first tool's name (F-010). F-008 is fully fixed: the new composed test runs real Claude ingest and reads the parent `conv:` address through daemon list; fresh 1/1 pass. F-004 remains fixed: complete plan validation reports 0 errors, 0 warnings, 0 open. Fresh targeted evidence: sidecar 1/1, metrics 16/16, cursor store 19/19; isolated `harness checks` passed all nine gates. DL-019 remains buffered and uncleared. Gist: ambient global config is a mutable higher-precedence input, so the unsealed gate failed before code checks on a newly unsupported `agent` field while the same branch passed with an empty FS3_CONFIG_DIR; deterministic branch validation should seal config and run user-config compatibility as a separate explicit probe."
+        "note": "ROUND-6 VERDICT: APPROVE — no_material_findings. F-001 through F-014 are addressed. The Copilot reader now uses exact toolCallId identity only; unknown identity is dropped, and the dated-old / undatable-requester / start+complete regression fails under the removed name fallback. Contention now returns a retryable failure, the runner's existing retry path owns rescheduling, and the composed contention test proves the job cannot settle successful without reading. Re-running already-completed session files is cursor-idempotent; the store rescan suite remains the ordinal-ledger backstop. The anomaly guard is the directly tested production predicate. Detached advisory-lock sessions remain panic/cancellation safe and do not hold pool slots. No remaining cross-fix interaction or contract mismatch was found. Fresh evidence: metrics reader 17/17; composed ingest sidecar/retry suite 3/3; contention exact 1/1; undatable-requester exact 1/1; rerun exact 1/1; complete plan validation 0 errors, 0 warnings, 0 open; isolated `harness checks` all nine gates green. No daemon was started. DL-019 and DL-021 remain buffered and were not cleared."
       }
     },
     {
@@ -76,7 +76,7 @@
             "../../plan.dd.json#acceptance_criteria/ac-0003"
           ],
           "receipt": "Fresh source trace: prepared.turns contains only ordinals absent from view.seen and the batch-local minted set; append_turns already_stored is computed only over that prepared slice. The deduped==0 conjunct has no valid bearing on whether a prepared turn may conflict.",
-          "note": "Round 3 code fix accepted: the deduped qualifier is gone. No regression forces the mixed seen/new conflict; see F-011."
+          "note": "Round 4 production condition remains correct. The new test does not execute the guard; permanent proof remains F-011."
         },
         {
           "id": "f-006",
@@ -88,7 +88,7 @@
             "../../plan.dd.json#acceptance_criteria/ac-0003"
           ],
           "receipt": "SQLx source explicitly states PoolConnection is returned to the pool on drop and does so unless close_on_drop is true. The fs3 pool is fixed at 8; worker_concurrency validation rejects only zero. Exact-symbol search found no test callsite for with_conversation_lock.",
-          "note": "Round 3 detached connection and try-lock fix the panic/cancellation and pool-slot mechanisms. Returning success on contention introduces a separate live-growth loss window; see F-009."
+          "note": "Round 3 detached try-lock fix remains accepted. Contention handling remains F-009."
         },
         {
           "id": "f-007",
@@ -100,7 +100,7 @@
             "../../plan.dd.json#acceptance_criteria/ac-0007"
           ],
           "receipt": "Fixture rows 936647 and 936648 share the same toolCallId. Current code pushes one ToolCall in the assistant request loop and a second in the execution-start branch. Fresh metrics suite passed 16/16, demonstrating the test does not reject the duplicate item.",
-          "note": "Round 3 fixes the duplicate ToolCall and asserts exact counts. Association still does not use the assistant request toolCallId; see F-010."
+          "note": "Round 4 exact call identity and per-call tool name fix the normal emitted-row path. Registration before emission creates F-012."
         },
         {
           "id": "f-008",
@@ -112,7 +112,7 @@
             "../../plan.dd.json#acceptance_criteria/ac-0004"
           ],
           "receipt": "Fresh parent test passed 1/1. Its body bypasses the worker and daemon mapping by calling upsert_conversation and list_conversations directly; no daemon or CLI test references parent_conversation_id or the named test.",
-          "note": "Round 3 fixed. The composed test executes real ingest and daemon list; fresh pass 1/1."
+          "note": "Round 4 rechecked and remains fixed by the composed ingest-to-daemon-list test."
         },
         {
           "id": "f-009",
@@ -123,7 +123,8 @@
           "links": [
             "../../plan.dd.json#acceptance_criteria/ac-0003"
           ],
-          "receipt": "Source trace: try-lock false returns Ok(None); ingest converts that to continue and ultimately Ok(report); run discards the report and returns Ok, so the queue settles the contending job done. The session store is live and the read occurs before the lock is released, leaving a concrete growth window."
+          "receipt": "Source trace: try-lock false returns Ok(None); ingest converts that to continue and ultimately Ok(report); run discards the report and returns Ok, so the queue settles the contending job done. The session store is live and the read occurs before the lock is released, leaving a concrete growth window.",
+          "note": "Round 5 fixed. Contention is a retryable failure settled through runner retry_job; bounded exhaustion is visible, not a silent success."
         },
         {
           "id": "f-010",
@@ -134,7 +135,8 @@
           "links": [
             "../../plan.dd.json#acceptance_criteria/ac-0007"
           ],
-          "receipt": "Fresh source trace shows request toolCallId is ignored in the assistant branch, start anchors with rposition by tool name, and completion derives its tool from records[index].items first element. Read-only fixture inspection found zero assistant rows with more than one toolRequest, so the 16/16 suite does not exercise the ambiguity."
+          "receipt": "Fresh source trace shows request toolCallId is ignored in the assistant branch, start anchors with rposition by tool name, and completion derives its tool from records[index].items first element. Read-only fixture inspection found zero assistant rows with more than one toolRequest, so the 16/16 suite does not exercise the ambiguity.",
+          "note": "Round 5 exact call/tool identity remains fixed for emitted records."
         },
         {
           "id": "f-011",
@@ -145,7 +147,45 @@
           "links": [
             "../../plan.dd.json#acceptance_criteria/ac-0003"
           ],
-          "receipt": "Exact search for the anomaly text and condition returned only crates/daemon/src/convo_ingest.rs. Fresh cursor-store tests passed 19/19 but none invokes the backstop."
+          "receipt": "Exact search for the anomaly text and condition returned only crates/daemon/src/convo_ingest.rs. Fresh cursor-store tests passed 19/19 but none invokes the backstop.",
+          "note": "Round 5 fixed. ledger_disagreement is the production predicate and the direct mixed-case test pins it."
+        },
+        {
+          "id": "f-012",
+          "kind": "defect",
+          "severity": "MAJOR",
+          "finding": "The assistant branch records `toolCallId -> (records.len(), tool)` before `copilot_record` proves the assistant row is emit-able. `copilot_record` returns `None` when `Row::at()` cannot date the row. In that case no record is appended, but the open-call map points one past the vector. A following execution-start prefers that exact stale association, and execution-complete indexes `records[index]`, panicking the reader instead of applying the intended undatable-row drop. This reintroduces a permanent session failure through the timestamp hole fixed earlier. Smallest fix: build the optional RawRecord first; only after `Some(record)` is pushed, register that record's request ids and actual index. Add an undatable assistant-with-toolRequest followed by start/complete regression, plus the multi-tool cases the round-3 finding named.",
+          "address": "/Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/providers/src/conversation_sources/metrics_db.rs:786-832,853-891,903-924; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/providers/tests/conversation_source_metrics_db.rs:403-439",
+          "links": [
+            "../../plan.dd.json#acceptance_criteria/ac-0007"
+          ],
+          "receipt": "Source trace: open_calls insertion uses records.len() before records.extend(copilot_record(...)); copilot_record is optional because row.at()? can return None; completion indexes records[index] without bounds recovery. Fresh 16/16 suite has no undatable assistant tool-request or multi-request fixture.",
+          "note": "Round 5 fixed. Request ids are registered only after optional assistant record emission succeeds."
+        },
+        {
+          "id": "f-013",
+          "kind": "defect",
+          "severity": "MINOR",
+          "finding": "The round-5 code fixes are correct, but the claim that every fix from round 2 onward has a test that fails without it is still false. Exact test search finds no contention case: reverting `run` to success on `report.contended > 0` leaves the suite unchanged. The metrics suite likewise has no undatable Copilot assistant carrying a tool request followed by start/complete events, and no dropped-assistant/older-same-tool fallback case. These are observable mechanisms that already regressed during this review cycle. Smallest fix: extract/test the contention disposition or add a runner-level contended-job test observing retry state; add an undatable Copilot sequence that proves no stale association, panic, or fallback mis-attachment. Mutation-check each against the prior broken shape.",
+          "address": "/Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/daemon/src/convo_ingest.rs:200-231; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/providers/src/conversation_sources/metrics_db.rs:786-840; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/providers/tests/conversation_source_metrics_db.rs:373-439",
+          "links": [
+            "../../plan.dd.json#acceptance_criteria/ac-0003",
+            "../../plan.dd.json#acceptance_criteria/ac-0007"
+          ],
+          "receipt": "Exact test search for contended/did-not-read text returned production code only. Exact search for an undatable assistant/tool-request or fallback mis-attachment sequence returned no provider test. The existing generic Row::at test exercises Claude-mirror rows and never touches Copilot open_calls.",
+          "note": "Round 6 fixed. Contention-to-retry and undatable Copilot requester sequences now have direct regressions; fresh exact tests passed."
+        },
+        {
+          "id": "f-014",
+          "kind": "defect",
+          "severity": "MAJOR",
+          "finding": "The narrowed name fallback in cbb2650 does not prevent the dropped-assistant mis-attachment it was written to stop. If an older emitted assistant turn called tool X, the next assistant turn also calls X but is dropped because it cannot be dated, and its execution-start arrives, the dropped turn contributes no record. The older X turn is therefore still `records.last()`, passes the new same-tool check, and receives the new call's result. The transcript is silently coherent but false. The committed fixture's assistant request actually carries `toolCallId`, so the fallback is not needed for that covered path and no test exercises it. Smallest safe fix: when a start's call id is absent from the exact assistant-request map, drop it; a tool-name match is not identity. If another real store shape requires fallback, preserve an event/call identity that can prove the parent instead. Add the older-X / undatable-X / start+complete regression and mutation-check the name fallback back in.",
+          "address": "/Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/providers/src/conversation_sources/metrics_db.rs:823-840,842-903; /Users/jordanknight/substrate/flowspace/fs3-convo-ingest/crates/providers/tests/conversation_source_metrics_db.rs:373-439",
+          "links": [
+            "../../plan.dd.json#acceptance_criteria/ac-0007"
+          ],
+          "receipt": "Source trace: registration is correctly skipped when copilot_record returns None; fallback then checks records.last(), which by definition remains the older emitted record. If that record contains the same tool, the result is attached there. Read-only fixture inspection confirms row 936647 does carry toolCallId, contradicting the comment that the committed fixture needs the name fallback.",
+          "note": "Round 6 fixed. Name fallback removed; unknown identity drops. The full older-same-tool / undatable-requester / start+complete regression is mutation-checked and passed fresh."
         }
       ]
     },
@@ -203,20 +243,38 @@
         {
           "id": "v-009",
           "finding": "#findings/f-009",
-          "resolution": "confirmed",
-          "rationale": "Round-3 evidence confirms this remaining gap."
+          "resolution": "fixed",
+          "rationale": "Contention now enters retry_job and cannot settle successful without reading."
         },
         {
           "id": "v-010",
           "finding": "#findings/f-010",
-          "resolution": "confirmed",
-          "rationale": "Round-3 evidence confirms this remaining gap."
+          "resolution": "fixed",
+          "rationale": "Exact request id and per-call tool identity now cover emitted assistant records; F-012 is a separate emission-order defect."
         },
         {
           "id": "v-011",
           "finding": "#findings/f-011",
-          "resolution": "confirmed",
-          "rationale": "Round-3 evidence confirms this remaining gap."
+          "resolution": "fixed",
+          "rationale": "Extracted production guard is directly pinned by the mixed-case test."
+        },
+        {
+          "id": "v-012",
+          "finding": "#findings/f-012",
+          "resolution": "fixed",
+          "rationale": "Call ids are registered only after assistant record emission succeeds."
+        },
+        {
+          "id": "v-013",
+          "finding": "#findings/f-013",
+          "resolution": "fixed",
+          "rationale": "Direct contention retry and undatable Copilot regressions now cover the repaired paths."
+        },
+        {
+          "id": "v-014",
+          "finding": "#findings/f-014",
+          "resolution": "fixed",
+          "rationale": "Name fallback removed and the full cross-fix misattachment sequence is permanently tested."
         }
       ]
     }
