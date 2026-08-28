@@ -69,13 +69,17 @@ note() { printf '    %s\n' "$*"; }
 # ---------------------------------------------------------------- primitives
 sql() { docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -At -c "$1"; }
 sqlt() { docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -c "$1"; }
+# The binary under test. Defaults to whatever `flowspace3` PATH resolves to —
+# which is the INSTALLED release, not this tree's build. First light needs the
+# composed binary, so it is an override rather than an assumption.
+CLI=${FS3_PROBE_CLI:-flowspace3}
 fs3() {
   local command=$1
   shift
   if [[ -n "$DAEMON_URL" ]]; then
-    flowspace3 "$command" --daemon-url "$DAEMON_URL" "$@"
+    "$CLI" "$command" --daemon-url "$DAEMON_URL" "$@"
   else
-    flowspace3 "$command" "$@"
+    "$CLI" "$command" "$@"
   fi
 }
 
@@ -215,7 +219,7 @@ env_receipt() {
     echo "run_id=$RUN_ID"
     echo "date_utc=$(date -u +%FT%TZ)"
     echo "host=$(hostname)"
-    echo "flowspace3=$(flowspace3 --version 2>&1)"
+    echo "flowspace3=$("$CLI" --version 2>&1) [$CLI]"
     echo "git=$(git --version)"
     echo "docker=$(docker --version)"
     echo "cargo=$(cargo --version 2>/dev/null || echo absent)"
@@ -418,28 +422,54 @@ for cwd in "$MAIN_ROOT" "$WT"; do
   note "from $tag — get $VERSION_FILE resolved to span $(jq -c '.data.span // .data.parents[0].span // "none"' "$OUT/p3-get-from-$tag.json")"
 done
 
-# Is the ANSWER the same from both sides? Compare the result IDENTITIES only.
-# `meta.scope` always differs (it echoes the caller's cwd), and scores carry
-# float jitter — the query is embedded afresh per call, so the same question
-# scored 0.7730240968 and 0.7730564295 microseconds apart on one run. Neither
-# is a version difference, and a diff that reports them as one is a broken
-# predicate, not a finding.
+# EMBEDDER GATE — read this before trusting any p3_* number.
+#
+# P1, P2 and P4 measure bookkeeping: rows, jobs, registrations, reclamation.
+# They are true under any provider. P3 measures RETRIEVAL, which only means
+# anything when the vectors carry semantics — so under a FAKE embedder the
+# marker function ranks nowhere, both checkouts return the same garbage, and
+# the naive predicates read "no version resolution, no leak". Both zeros look
+# like results and are artifacts. Measured on the first composed run
+# (2026-08-28): 8 divergent vectors existed, and the best score for a query
+# quoting the function's own body verbatim was 0.1889 against unrelated files.
+#
+# So this refuses to emit a verdict it cannot support, and says which run would.
+EMBEDDER=$(grep -oE 'embedder=[a-z_]+' "$OUT/daemon-p1.log" 2>/dev/null | tail -1 | cut -d= -f2)
+[[ -z "$EMBEDDER" ]] && EMBEDDER=$(grep -oE 'embedder=[a-z_]+' "$DAEMON_LOG" 2>/dev/null | tail -1 | cut -d= -f2)
+echo "embedder=${EMBEDDER:-unknown}" >> "$OUT/receipt.env"
+
 answer_identity() { jq -S '[.data.results[] | {address, path, name, kind, span, snippet}]' "$1"; }
-if diff -q <(answer_identity "$OUT/p3-marker-from-main.json") \
-          <(answer_identity "$OUT/p3-marker-from-worktree.json") >/dev/null; then
-  note "ANSWER P3a: search returns the IDENTICAL answer to both checkouts — no version resolution"
-  echo "p3_search_context_sensitive=0" >> "$OUT/receipt.env"
-else
-  note "ANSWER P3a: search answers DIFFER between checkouts — version resolution present"
-  echo "p3_search_context_sensitive=1" >> "$OUT/receipt.env"
-  diff <(answer_identity "$OUT/p3-marker-from-main.json") \
-       <(answer_identity "$OUT/p3-marker-from-worktree.json") > "$OUT/p3-answer-diff.txt" || true
-fi
-# Was the worktree-only function served to a caller standing in MAIN, where it
-# has never existed? That is the leak, stated as a number.
 P3_LEAK=$(jq -r --arg m "$MARKER" '[.data.results[]?|select(.name|startswith($m))]|length' "$OUT/p3-marker-from-main.json")
-note "ANSWER P3a2: worktree-only functions served to the MAIN checkout = $P3_LEAK"
-echo "p3_wrong_version_leak_to_main=$P3_LEAK" >> "$OUT/receipt.env"
+P3_FOUND=$(jq -r --arg m "$MARKER" '[.data.results[]?|select(.name|startswith($m))]|length' "$OUT/p3-marker-from-worktree.json")
+
+if [[ "$EMBEDDER" == "fake" ]]; then
+  note "ANSWER P3: NOT MEASURABLE — the daemon is running a fake embedder, so retrieval carries no semantics"
+  note "           (p1/p2/p4 above are unaffected: they measure bookkeeping, not ranking)"
+  echo "p3_search_context_sensitive=unmeasurable-fake-embedder" >> "$OUT/receipt.env"
+  echo "p3_wrong_version_leak_to_main=unmeasurable-fake-embedder" >> "$OUT/receipt.env"
+  echo "p3_note=rerun against a daemon with a real embedder over an already-embedded corpus" >> "$OUT/receipt.env"
+elif (( P3_FOUND == 0 )); then
+  # The control: the worktree's OWN divergent function must be findable FROM the
+  # worktree. If it is not, the run proves nothing about resolution — and a
+  # leak of 0 would be measuring absence, not exclusion.
+  note "ANSWER P3: NOT MEASURABLE — the probe's own function is not findable from its own worktree"
+  echo "p3_search_context_sensitive=unmeasurable-marker-not-retrievable" >> "$OUT/receipt.env"
+  echo "p3_wrong_version_leak_to_main=unmeasurable-marker-not-retrievable" >> "$OUT/receipt.env"
+else
+  if diff -q <(answer_identity "$OUT/p3-marker-from-main.json") \
+            <(answer_identity "$OUT/p3-marker-from-worktree.json") >/dev/null; then
+    note "ANSWER P3a: search returns the IDENTICAL answer to both checkouts — no version resolution"
+    echo "p3_search_context_sensitive=0" >> "$OUT/receipt.env"
+  else
+    note "ANSWER P3a: search answers DIFFER between checkouts — version resolution present"
+    echo "p3_search_context_sensitive=1" >> "$OUT/receipt.env"
+    diff <(answer_identity "$OUT/p3-marker-from-main.json") \
+         <(answer_identity "$OUT/p3-marker-from-worktree.json") > "$OUT/p3-answer-diff.txt" || true
+  fi
+  note "ANSWER P3a2: worktree-only functions served to the MAIN checkout = $P3_LEAK (found from its own worktree: $P3_FOUND)"
+  echo "p3_wrong_version_leak_to_main=$P3_LEAK" >> "$OUT/receipt.env"
+  echo "p3_marker_found_from_worktree=$P3_FOUND" >> "$OUT/receipt.env"
+fi
 if diff -q <(jq -S '.data' "$OUT/p3-get-from-main.json") \
           <(jq -S '.data' "$OUT/p3-get-from-worktree.json") >/dev/null; then
   note "ANSWER P3b: get returns the SAME version to both checkouts"
