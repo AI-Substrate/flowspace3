@@ -575,6 +575,7 @@ mod tests {
             &[],
         );
         let task = &tree.root.children[0].children[0];
+        assert_eq!(task.ddoc.as_ref().unwrap().gate_terminal, Some(true));
         assert_eq!(
             task.ddoc.as_ref().unwrap().effective_state(),
             Some((false, true))
