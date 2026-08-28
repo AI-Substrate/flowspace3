@@ -6,7 +6,7 @@
 
 use std::collections::VecDeque;
 use std::io::{self, Stdout};
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
@@ -39,6 +39,8 @@ const STREAM_RETRY_INTERVAL: Duration = Duration::from_secs(2);
 const UI_TICK: Duration = Duration::from_millis(100);
 const MAX_ACTIVITY: usize = 100;
 const MAX_QUEUE_HISTORY: usize = 60;
+const MESSAGE_CAPACITY: usize = 256;
+const MESSAGE_BUDGET: usize = 32;
 
 /// Run the dashboard until the user presses `q` outside the search editor.
 ///
@@ -46,15 +48,15 @@ const MAX_QUEUE_HISTORY: usize = 60;
 /// this function restores the alternate screen and raw mode through `Drop`.
 pub async fn run(client: DaemonClient) -> Result<()> {
     let mut terminal = TerminalSession::enter()?;
-    let (message_tx, message_rx) = mpsc::channel();
+    let messages = Mailbox::default();
     let (query_tx, query_rx) = async_mpsc::unbounded_channel();
 
-    let snapshot_task = spawn_snapshot_worker(client.clone(), message_tx.clone());
-    let search_task = spawn_search_worker(client.clone(), query_rx, message_tx.clone());
-    let stream_task = spawn_event_worker(client, message_tx);
+    let snapshot_task = spawn_snapshot_worker(client.clone(), messages.clone());
+    let search_task = spawn_search_worker(client.clone(), query_rx, messages.clone());
+    let stream_task = spawn_event_worker(client, messages.clone());
 
     let mut app = App::default();
-    let outcome = run_loop(&mut terminal.terminal, &mut app, &message_rx, &query_tx);
+    let outcome = run_loop(&mut terminal.terminal, &mut app, &messages, &query_tx);
 
     snapshot_task.abort();
     search_task.abort();
@@ -65,13 +67,11 @@ pub async fn run(client: DaemonClient) -> Result<()> {
 fn run_loop(
     terminal: &mut Terminal<CrosstermBackend<Stdout>>,
     app: &mut App,
-    messages: &Receiver<WorkerMessage>,
+    messages: &Mailbox,
     queries: &async_mpsc::UnboundedSender<String>,
 ) -> Result<()> {
     loop {
-        while let Ok(message) = messages.try_recv() {
-            app.apply(message);
-        }
+        messages.apply_to(app, MESSAGE_BUDGET);
 
         terminal.draw(|frame| draw(frame, app))?;
 
@@ -187,13 +187,100 @@ enum WorkerMessage {
     StreamDisconnected(String),
 }
 
-fn spawn_snapshot_worker(client: DaemonClient, tx: Sender<WorkerMessage>) -> JoinHandle<()> {
+/// A bounded, newest-wins handoff from I/O workers to the draw loop.
+///
+/// Snapshot, search, and connection-state messages coalesce. When the queue is
+/// full, an old stream event is discarded before control state, matching the
+/// activity pane's own bounded newest-first history.
+#[derive(Clone, Debug)]
+struct Mailbox {
+    queue: Arc<Mutex<VecDeque<WorkerMessage>>>,
+    capacity: usize,
+}
+
+impl Default for Mailbox {
+    fn default() -> Self {
+        Self::new(MESSAGE_CAPACITY)
+    }
+}
+
+impl Mailbox {
+    fn new(capacity: usize) -> Self {
+        assert!(capacity > 0, "mailbox capacity must be positive");
+        Self {
+            queue: Arc::new(Mutex::new(VecDeque::with_capacity(capacity))),
+            capacity,
+        }
+    }
+
+    fn push(&self, message: WorkerMessage) {
+        let mut queue = self
+            .queue
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+        let superseded = match &message {
+            WorkerMessage::Snapshot(_) => queue
+                .iter()
+                .position(|queued| matches!(queued, WorkerMessage::Snapshot(_))),
+            WorkerMessage::Search(_) => queue
+                .iter()
+                .position(|queued| matches!(queued, WorkerMessage::Search(_))),
+            WorkerMessage::StreamConnected(_) | WorkerMessage::StreamDisconnected(_) => {
+                queue.iter().position(|queued| {
+                    matches!(
+                        queued,
+                        WorkerMessage::StreamConnected(_) | WorkerMessage::StreamDisconnected(_)
+                    )
+                })
+            }
+            WorkerMessage::StreamEvent(_) => None,
+        };
+        if let Some(index) = superseded {
+            queue.remove(index);
+        }
+
+        if queue.len() == self.capacity {
+            let oldest_event = queue
+                .iter()
+                .position(|queued| matches!(queued, WorkerMessage::StreamEvent(_)));
+            if let Some(index) = oldest_event {
+                queue.remove(index);
+            } else {
+                queue.pop_front();
+            }
+        }
+        queue.push_back(message);
+    }
+
+    fn apply_to(&self, app: &mut App, budget: usize) -> usize {
+        let mut queue = self
+            .queue
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let count = budget.min(queue.len());
+        for _ in 0..count {
+            if let Some(message) = queue.pop_front() {
+                app.apply(message);
+            }
+        }
+        count
+    }
+
+    #[cfg(test)]
+    fn len(&self) -> usize {
+        self.queue
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .len()
+    }
+}
+
+fn spawn_snapshot_worker(client: DaemonClient, messages: Mailbox) -> JoinHandle<()> {
     tokio::spawn(async move {
         loop {
             let status = decode_envelope(client.status().await);
-            if tx.send(WorkerMessage::Snapshot(status)).is_err() {
-                return;
-            }
+            messages.push(WorkerMessage::Snapshot(status));
             tokio::time::sleep(SNAPSHOT_INTERVAL).await;
         }
     })
@@ -202,7 +289,7 @@ fn spawn_snapshot_worker(client: DaemonClient, tx: Sender<WorkerMessage>) -> Joi
 fn spawn_search_worker(
     client: DaemonClient,
     mut queries: async_mpsc::UnboundedReceiver<String>,
-    tx: Sender<WorkerMessage>,
+    messages: Mailbox,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
         while let Some(query) = queries.recv().await {
@@ -215,9 +302,7 @@ fn spawn_search_worker(
             }
             let result = decode_envelope::<SearchData>(client.search(&params).await)
                 .map(|data| data.results);
-            if tx.send(WorkerMessage::Search(result)).is_err() {
-                return;
-            }
+            messages.push(WorkerMessage::Search(result));
         }
     })
 }
@@ -233,16 +318,14 @@ fn decode_envelope<T: DeserializeOwned>(envelope: Envelope) -> Result<T, String>
         .map_err(|error| format!("daemon returned unexpected data: {error}"))
 }
 
-fn spawn_event_worker(client: DaemonClient, tx: Sender<WorkerMessage>) -> JoinHandle<()> {
+fn spawn_event_worker(client: DaemonClient, messages: Mailbox) -> JoinHandle<()> {
     tokio::spawn(async move {
         loop {
-            let outcome = consume_event_stream(&client, &tx).await;
+            let outcome = consume_event_stream(&client, &messages).await;
             let reason = outcome
                 .err()
                 .unwrap_or_else(|| "event stream ended".to_string());
-            if tx.send(WorkerMessage::StreamDisconnected(reason)).is_err() {
-                return;
-            }
+            messages.push(WorkerMessage::StreamDisconnected(reason));
             tokio::time::sleep(STREAM_RETRY_INTERVAL).await;
         }
     })
@@ -259,10 +342,7 @@ async fn event_source(client: &DaemonClient) -> Result<reqwest::Response, String
         .map_err(|failure| failure.render())
 }
 
-async fn consume_event_stream(
-    client: &DaemonClient,
-    tx: &Sender<WorkerMessage>,
-) -> Result<(), String> {
+async fn consume_event_stream(client: &DaemonClient, messages: &Mailbox) -> Result<(), String> {
     let mut response = event_source(client).await?;
 
     let mut decoder = EventDecoder::default();
@@ -282,9 +362,7 @@ async fn consume_event_stream(
                 StreamRecord::Hello(hello) => WorkerMessage::StreamConnected(hello.daemon),
                 StreamRecord::Event(event) => WorkerMessage::StreamEvent(event),
             };
-            if tx.send(message).is_err() {
-                return Ok(());
-            }
+            messages.push(message);
         }
     }
 }
@@ -1346,5 +1424,39 @@ mod tests {
             app.activity.is_empty(),
             "queue snapshots are not feed filler"
         );
+    }
+
+    #[test]
+    fn an_event_flood_cannot_delay_draw_or_quit_beyond_one_budget() {
+        let messages = Mailbox::default();
+        for sequence in 0..MESSAGE_CAPACITY * 10 {
+            messages.push(WorkerMessage::StreamEvent(Event::new(
+                "2026-08-28T03:11:05.001Z",
+                EventKind::JobDone {
+                    job: "scan_file".to_string(),
+                    subject: format!("src/{sequence}.rs"),
+                    ms: 1,
+                    left: 0,
+                },
+            )));
+        }
+        assert_eq!(messages.len(), MESSAGE_CAPACITY);
+
+        let mut app = App {
+            focus: Focus::Roots,
+            ..App::default()
+        };
+        assert_eq!(messages.apply_to(&mut app, MESSAGE_BUDGET), MESSAGE_BUDGET);
+        assert_eq!(messages.len(), MESSAGE_CAPACITY - MESSAGE_BUDGET);
+
+        let backend = ratatui::backend::TestBackend::new(120, 40);
+        let mut terminal = Terminal::new(backend).expect("headless terminal");
+        terminal
+            .draw(|frame| draw(frame, &mut app))
+            .expect("one frame draws while messages remain queued");
+        assert!(messages.len() > 0, "draw did not wait for an empty queue");
+
+        let quit = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
+        assert_eq!(app.handle_key(quit), Action::Quit);
     }
 }
