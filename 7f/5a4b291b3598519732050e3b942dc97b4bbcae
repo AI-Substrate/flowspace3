@@ -1,0 +1,18 @@
+crates/daemon/tests/lanes.rs
+  h_9e71e8b09f7cf2 102-109,111-113,117,125
+crates/daemon/tests/oversize.rs
+  h_9e71e8b09f7cf2 65-74,99,136,175,215,262
+crates/daemon/tests/support/mod.rs
+  h_9e71e8b09f7cf2 192-203,209-219,224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7f5a4b291b3598519732050e3b942dc97b4bbcae",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
