@@ -99,6 +99,12 @@ enum Command {
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
     },
+    /// Open the live terminal dashboard.
+    Tui {
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
     /// Ask a question of the index.
     Search {
         /// The question.
@@ -449,6 +455,11 @@ async fn run(command: Command) -> Result<ExitCode> {
         Command::Status { daemon_url } => {
             let client = client_for(daemon_url)?;
             Ok(emit(&client.status().await))
+        }
+        Command::Tui { daemon_url } => {
+            let client = client_for(daemon_url)?;
+            fs3_cli::tui::run(client).await?;
+            Ok(ExitCode::SUCCESS)
         }
         Command::Search {
             query,
