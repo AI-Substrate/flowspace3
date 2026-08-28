@@ -192,6 +192,7 @@ mod tests {
             RepoSelection {
                 embedder: None,
                 summarizer: Some("big".to_string()),
+                ..Default::default()
             },
         );
 

@@ -68,6 +68,13 @@ impl DaemonClient {
     /// walk only.
     pub const SCAN_TIMEOUT: Duration = Duration::from_secs(300);
 
+    /// How long an agentic question may keep making model and tool round trips.
+    ///
+    /// This overrides the client-wide scan ceiling: a healthy agent loop can
+    /// legitimately run longer than a repository walk, and must not look like
+    /// an unreachable daemon while it is still producing an answer.
+    pub const ASK_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+
     /// Build a client for `base_url`, reading this installation's daemon key
     /// from `config_dir` immediately before every request.
     ///
@@ -189,6 +196,25 @@ impl DaemonClient {
     /// Ask a question.
     pub async fn search(&self, query: &[(String, String)]) -> Envelope {
         self.get_json("search", "/search", query).await
+    }
+
+    /// Run one agentic question with its own long-lived request budget.
+    pub async fn ask(&self, params: &[(String, String)]) -> Envelope {
+        let url = format!("{}/ask", self.base_url);
+        let body = Value::Object(
+            params
+                .iter()
+                .map(|(name, value)| (name.clone(), Value::String(value.clone())))
+                .collect(),
+        );
+        let response = self
+            .http
+            .post(&url)
+            .timeout(Self::ASK_TIMEOUT)
+            .json(&body)
+            .send()
+            .await;
+        self.envelope("ask", response).await
     }
 
     /// Read one address in full.

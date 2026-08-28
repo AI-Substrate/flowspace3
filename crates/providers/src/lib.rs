@@ -14,6 +14,7 @@
 //! [`Embedder`]: fs3_core::Embedder
 
 mod azure_openai;
+mod chat;
 mod local;
 mod openai;
 mod openai_compat;
@@ -22,6 +23,10 @@ mod retry;
 pub use azure_openai::{
     AzureCredential, AzureOpenAiConfig, AzureOpenAiEmbedder, AzureOpenAiSummarizer,
     CHAT_API_VERSION, COGNITIVE_SERVICES_SCOPE, EMBEDDINGS_API_VERSION,
+};
+pub use chat::{
+    AzureOpenAiChatClient, ChatChoice, ChatCompletionRequest, ChatCompletionResponse,
+    ChatFunctionCall, ChatMessage, ChatRole, ChatTool, ChatToolCall, ChatToolDefinition,
 };
 pub use local::{
     DEFAULT_LOCAL_MODEL, LocalEmbedder, LocalEmbedderConfig, LocalModelInfo, default_cache_dir,

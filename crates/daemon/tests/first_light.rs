@@ -928,6 +928,7 @@ async fn a_repo_override_resolves_to_a_different_instance_than_the_default() {
         fs3_core::RepoSelection {
             embedder: Some("second".to_string()),
             summarizer: Some("second".to_string()),
+            ..Default::default()
         },
     );
 

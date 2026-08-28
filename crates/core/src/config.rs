@@ -96,7 +96,13 @@ pub const REDACTED: &str = "<redacted>";
 /// [summarizer]
 /// active = "offline"
 ///
-/// # A repo may name a different instance for either port.
+/// [agent]
+/// active = "offline"
+/// max_iterations = 8
+/// token_budget = 80000
+/// tool_result_max_chars = 7000
+///
+/// # A repo may name a different instance for any port.
 /// [repos."github.com/AI-Substrate/flowspace3"]
 /// summarizer = "offline"
 ///
@@ -127,6 +133,8 @@ pub struct Config {
     pub embedder: PortSelection,
     /// Which instance the [`crate::Summarizer`] port uses by default.
     pub summarizer: PortSelection,
+    /// Which instance drives agentic queries, and the bounds on one query loop.
+    pub agent: AgentConfig,
     /// Per-repo overrides of those choices, keyed by repo identity. Global
     /// file, per-repo *data* — not a second config file (PRD req 28).
     pub repos: BTreeMap<String, RepoSelection>,
@@ -139,7 +147,7 @@ pub struct Config {
 }
 
 impl Default for Config {
-    /// A fresh machine: one offline fake in the registry, both ports naming it.
+    /// A fresh machine: one offline fake in the registry, all ports naming it.
     fn default() -> Self {
         Self {
             daemon: DaemonConfig::default(),
@@ -147,6 +155,7 @@ impl Default for Config {
             providers: default_providers(),
             embedder: PortSelection::default(),
             summarizer: PortSelection::default(),
+            agent: AgentConfig::default(),
             repos: BTreeMap::new(),
             indexing: IndexingConfig::default(),
             scan: ScanConfig::default(),
@@ -166,6 +175,7 @@ pub const SECTIONS: &[&str] = &[
     "providers",
     "embedder",
     "summarizer",
+    "agent",
     "repos",
     "indexing",
     "scan",
@@ -197,15 +207,16 @@ impl Config {
     pub fn selected(&self, port: Port, repo: Option<&str>) -> &str {
         repo.and_then(|repo| self.repos.get(repo))
             .and_then(|selection| selection.get(port))
-            .unwrap_or_else(|| self.selection(port).active.as_str())
+            .unwrap_or_else(|| self.selection(port))
     }
 
-    /// The port's default selection.
+    /// The port's default instance name.
     #[must_use]
-    pub fn selection(&self, port: Port) -> &PortSelection {
+    pub fn selection(&self, port: Port) -> &str {
         match port {
-            Port::Embedder => &self.embedder,
-            Port::Summarizer => &self.summarizer,
+            Port::Embedder => self.embedder.active.as_str(),
+            Port::Summarizer => self.summarizer.active.as_str(),
+            Port::Agent => self.agent.active.as_str(),
         }
     }
 
@@ -231,7 +242,7 @@ impl Config {
     /// you never select must not cost an API key.
     #[must_use]
     pub fn referenced_providers(&self, port: Port) -> Vec<&str> {
-        let mut names = vec![self.selection(port).active.as_str()];
+        let mut names = vec![self.selection(port)];
         for selection in self.repos.values() {
             if let Some(name) = selection.get(port)
                 && !names.contains(&name)
@@ -255,8 +266,8 @@ impl Config {
         }
 
         for port in Port::ALL {
-            let active = &self.selection(port).active;
-            if !self.providers.contains_key(active.as_str()) {
+            let active = self.selection(port);
+            if !self.providers.contains_key(active) {
                 problems.push(unknown_instance(
                     &format!("{port}.active"),
                     active,
@@ -492,11 +503,13 @@ pub enum Port {
     Embedder,
     /// [`crate::Summarizer`].
     Summarizer,
+    /// Agentic query execution.
+    Agent,
 }
 
 impl Port {
-    /// Both ports, in the order `config show` prints them.
-    pub const ALL: [Port; 2] = [Port::Embedder, Port::Summarizer];
+    /// All ports, in the order `config show` prints them.
+    pub const ALL: [Port; 3] = [Port::Embedder, Port::Summarizer, Port::Agent];
 }
 
 impl std::fmt::Display for Port {
@@ -504,6 +517,7 @@ impl std::fmt::Display for Port {
         f.write_str(match self {
             Port::Embedder => "embedder",
             Port::Summarizer => "summarizer",
+            Port::Agent => "agent",
         })
     }
 }
@@ -511,8 +525,8 @@ impl std::fmt::Display for Port {
 /// Which registry instance a port uses.
 ///
 /// The section carries a *name*, not a shape: choosing and configuring are
-/// separate concerns, so two ports can share one instance (and one HTTP client)
-/// by naming it twice.
+/// separate concerns, so ports can share one instance (and one HTTP client) by
+/// naming it more than once.
 ///
 /// ```toml
 /// [embedder]
@@ -534,10 +548,59 @@ impl Default for PortSelection {
     }
 }
 
+/// Provider selection and hard bounds for one agentic query loop.
+///
+/// This repeats [`PortSelection::active`] rather than flattening that type:
+/// serde's `flatten` cannot uphold `deny_unknown_fields`. Keeping the field
+/// directly on this type preserves typo rejection and the intended flat TOML
+/// shape instead of introducing a misleading `[agent.selection]` table.
+///
+/// ```toml
+/// [agent]
+/// active = "azure-luna"
+/// max_iterations = 8
+/// token_budget = 80000
+/// tool_result_max_chars = 7000
+/// ```
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct AgentConfig {
+    /// The provider instance that drives the loop.
+    pub active: String,
+    /// Maximum model/tool turns before the loop must stop.
+    pub max_iterations: u32,
+    /// Total tokens the loop may spend across all model calls.
+    pub token_budget: u64,
+    /// Maximum characters retained from one tool result.
+    pub tool_result_max_chars: usize,
+}
+
+impl AgentConfig {
+    /// Eight turns covers the prototype's useful loops without permitting an
+    /// accidental unbounded conversation.
+    pub const DEFAULT_MAX_ITERATIONS: u32 = 8;
+    /// Whole-loop allowance proven by the prototype.
+    pub const DEFAULT_TOKEN_BUDGET: u64 = 80_000;
+    /// Enough evidence for the model without feeding whole files back to it.
+    pub const DEFAULT_TOOL_RESULT_MAX_CHARS: usize = 7_000;
+}
+
+impl Default for AgentConfig {
+    fn default() -> Self {
+        Self {
+            active: DEFAULT_PROVIDER.to_string(),
+            max_iterations: Self::DEFAULT_MAX_ITERATIONS,
+            token_budget: Self::DEFAULT_TOKEN_BUDGET,
+            tool_result_max_chars: Self::DEFAULT_TOOL_RESULT_MAX_CHARS,
+        }
+    }
+}
+
 /// One repo's overrides of the default selections.
 ///
 /// Keyed by repo identity in [`Config::repos`], so a monorepo of Rust can use a
-/// different summarizer from a repo of prose without a second config file.
+/// different provider instance from a repo of prose without a second config
+/// file.
 ///
 /// ```toml
 /// [repos."github.com/AI-Substrate/flowspace3"]
@@ -552,6 +615,9 @@ pub struct RepoSelection {
     /// Instance name for the summarizer port, or `None` to use the default.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summarizer: Option<String>,
+    /// Instance name for the agent port, or `None` to use the default.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent: Option<String>,
 }
 
 impl RepoSelection {
@@ -561,6 +627,7 @@ impl RepoSelection {
         match port {
             Port::Embedder => self.embedder.as_deref(),
             Port::Summarizer => self.summarizer.as_deref(),
+            Port::Agent => self.agent.as_deref(),
         }
     }
 }
@@ -1635,6 +1702,83 @@ mod tests {
             config.referenced_providers(Port::Summarizer),
             vec![DEFAULT_PROVIDER, "big"]
         );
+    }
+
+    #[test]
+    fn the_agent_port_defaults_to_the_offline_instance() {
+        let config = Config::from_toml_str("").unwrap();
+
+        assert_eq!(config.agent.active, DEFAULT_PROVIDER);
+        assert_eq!(config.selected(Port::Agent, None), DEFAULT_PROVIDER);
+        assert_eq!(
+            config.provider(config.selected(Port::Agent, None)).unwrap(),
+            &ProviderInstance::Fake
+        );
+    }
+
+    #[test]
+    fn the_agent_port_resolves_a_named_instance() {
+        let config = Config::from_toml_str(
+            r#"
+            [providers.luna]
+            kind = "openai"
+            model = "gpt-4o"
+
+            [agent]
+            active = "luna"
+            "#,
+        )
+        .unwrap();
+
+        assert_eq!(config.selected(Port::Agent, None), "luna");
+        assert!(matches!(
+            config.provider(config.selected(Port::Agent, None)).unwrap(),
+            ProviderInstance::OpenAi { .. }
+        ));
+    }
+
+    #[test]
+    fn the_agent_loop_bounds_parse_from_the_flat_section() {
+        let config = Config::from_toml_str(
+            r#"
+            [agent]
+            max_iterations = 12
+            token_budget = 64000
+            tool_result_max_chars = 4096
+            "#,
+        )
+        .unwrap();
+
+        assert_eq!(config.agent.max_iterations, 12);
+        assert_eq!(config.agent.token_budget, 64_000);
+        assert_eq!(config.agent.tool_result_max_chars, 4_096);
+    }
+
+    #[test]
+    fn a_repo_override_wins_for_the_agent_port() {
+        let config = Config::from_toml_str(
+            r#"
+            [providers.luna]
+            kind = "openai"
+            model = "gpt-4o"
+
+            [repos."github.com/AI-Substrate/flowspace3"]
+            agent = "luna"
+            "#,
+        )
+        .unwrap();
+
+        let repo = Some("github.com/AI-Substrate/flowspace3");
+        assert_eq!(config.selected(Port::Agent, repo), "luna");
+        assert_eq!(config.selected(Port::Agent, None), DEFAULT_PROVIDER);
+    }
+
+    #[test]
+    fn an_unknown_agent_instance_is_rejected() {
+        let err = Config::from_toml_str("[agent]\nactive = \"missing\"\n").unwrap_err();
+        let message = err.to_string();
+        assert!(message.contains("agent.active"), "{message}");
+        assert!(message.contains("\"missing\""), "{message}");
     }
 
     #[test]

@@ -104,6 +104,14 @@ enum Command {
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
     },
+    /// Ask an agentic question of the index.
+    Ask {
+        /// The question.
+        question: String,
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
     /// Read one address in full: an element with its children, or a whole file.
     ///
     /// The other half of the query surface (workshop 003). `search` finds an
@@ -421,6 +429,15 @@ async fn run(command: Command) -> Result<ExitCode> {
             push(&mut params, "source", source);
             push(&mut params, "cwd", here());
             emit(&client.search(&params).await)
+        }
+        Command::Ask {
+            question,
+            daemon_url,
+        } => {
+            let client = client_for(daemon_url)?;
+            let mut params = vec![("question".to_string(), question)];
+            push(&mut params, "cwd", here());
+            Ok(emit(&client.ask(&params).await))
         }
         Command::Get {
             address,

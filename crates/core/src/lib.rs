@@ -6,10 +6,14 @@
 //! **zero doubles**.
 //!
 //! Workshop 001 rule 3 — a trait earns its existence only when a second real
-//! implementation exists or is firmly planned. fs3 v1 has exactly two ports:
-//! [`Embedder`] and [`Summarizer`]. A third is stop-and-ask.
+//! implementation exists or is firmly planned. fs3 has exactly three ports:
+//! [`Embedder`], [`Summarizer`] and [`ChatProvider`]. A fourth is
+//! stop-and-ask. (The third was asked for and granted, 2026-08-28: the agentic
+//! `ask` verb needs a CHAT model, which is a different model from the one that
+//! summarises in bulk, and a port is the only way to say so.)
 
 pub mod address;
+pub mod agent;
 pub mod catalog;
 pub mod classify;
 pub mod config;
@@ -29,6 +33,7 @@ pub use address::{
     Address, AddressError, ConversationAddress, ElementAddress, ElementParts, element_address,
     element_path,
 };
+pub use agent::{AgentAnswer, AgentBounds, SYSTEM_PROMPT, StopReason, ToolBox, TraceEntry, ask};
 pub use catalog::{Area, Code};
 pub use classify::{category_hint, classify, is_declaration_shaped};
 pub use config::{
@@ -52,7 +57,9 @@ pub use logging::{
     LOG_FILE_NAME, LOGGING_SOURCE, resolve_log_dir, rolled_name, unwritable_message,
 };
 pub use messages::{Severity, UserMessage};
-pub use ports::{Embedder, Summarizer, Summary};
+pub use ports::{
+    ChatMessage, ChatProvider, ChatTurn, Embedder, Summarizer, Summary, ToolCall, ToolSchema,
+};
 pub use skew::{SCHEMA_SOURCE, SchemaSkew};
 pub use tokens::{BYTES_PER_TOKEN, estimate_tokens, fit_to_cap};
 pub use update::{UPDATE_SOURCE, UpdateState, Version, is_upgrade};
