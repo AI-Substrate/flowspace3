@@ -36,8 +36,8 @@ Task ledger for plan 008-ddocs-scan. Task state is DERIVED from these assertions
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | tk-0001 | Wave 0 — freeze the ddoc row contract in core | core | — | [x] checked | — | — | [x] 6/6 [tk-0001](#tk-0001) | ElementKind::Row, Element.ddoc (boxed, serde-skipped), DdocMeta/DdocRel/DdocSchemaFacts/DerivedState/EmbedBasis, the positional address parser and the single derive_state function exist in crates/core, with the store decoder taught 'row'. harness checks green. The two load-bearing tests mutation-checked. | — | — |
-| tk-0002 | Unit u1 — ddoc parser and discovery admission | parsers | — | [ ] unchecked | — | — | [ ] 0/8 [tk-0002](#tk-0002) | A *.dd.json parses to File -&gt; section Container -&gt; Row leaves, keyed on (file, section, id), addressed positionally; .dd.json is admitted by discovery before the config exclusion and .dd.md is skipped; the walker bounds no depth and never treats a row's own field as a row. | — | — |
-| tk-0003 | Unit u3 — ddoc persistence, filters and the inverse index | store | — | [ ] unchecked | — | — | [ ] 0/9 [tk-0003](#tk-0003) | One forward migration widens the kind CHECK and adds elements.ddoc plus ddoc_file_refs; Element.ddoc round-trips; three additive filters are no-ops when None; the inverse index answers from a repo-relative path and is empty-not-erroring before dd PR #12 lands. | — | — |
+| tk-0002 | Unit u1 — ddoc parser and discovery admission | parsers | — | [x] checked | — | — | [x] 8/8 [tk-0002](#tk-0002) | A *.dd.json parses to File -&gt; section Container -&gt; Row leaves, keyed on (file, section, id), addressed positionally; .dd.json is admitted by discovery before the config exclusion and .dd.md is skipped; the walker bounds no depth and never treats a row's own field as a row. | — | — |
+| tk-0003 | Unit u3 — ddoc persistence, filters and the inverse index | store | — | [x] checked | — | — | [x] 9/9 [tk-0003](#tk-0003) | One forward migration widens the kind CHECK and adds elements.ddoc plus ddoc_file_refs; Element.ddoc round-trips; three additive filters are no-ops when None; the inverse index answers from a repo-relative path and is empty-not-erroring before dd PR #12 lands. | — | — |
 | tk-0004 | Unit u2 — ddocs adapter, edges, gate semantics and degradation | daemon | — | [ ] unchecked | — | — | [ ] 0/9 [tk-0004](#tk-0004) | Typed edges come from ONE corpus-level ddocs graph call; schema facts and gate_terminal are resolved from the schema; the dd version is stamped; absence of the ddocs binary degrades to rows-indexed-edges-absent rather than erroring. | — | — |
 | tk-0005 | Unit u4 — agent-facing surface, get, docs and eval fixtures | daemon+cli | — | [ ] unchecked | — | — | [ ] 0/7 [tk-0005](#tk-0005) | A ddoc row hit carries its dd address and both state claims; search filters on id kind, gate-open and schema; flowspace3 get resolves a dd address; a bundled docs page explains a row hit; eval fixtures exist for the three named query shapes. | — | — |
 | tk-0006 | Composition, integration proof, review and ship | pm | — | [ ] unchecked | — | — | [ ] 0/9 [tk-0006](#tk-0006) | The four units are merged in dependency order, harness checks is green on the composed tree, the live integration proof runs against this repo's own ddoc corpus, the reviewer's findings are each fixed or refuted with evidence, and the PR is open into main. | — | — |
@@ -59,30 +59,30 @@ Task ledger for plan 008-ddocs-scan. Task state is DERIVED from these assertions
 
 ### tk-0002
 
-| id | assertion | state | pressure |
-| --- | --- | --- | --- |
-| dw-0007 | ddoc::scan(path, bytes, facts) is pure: no I/O, no process spawn, no schema resolution | [ ] unchecked | not-applicable |
-| dw-0008 | The walker recurses structurally with NO depth constant, proven by a fixture with four non-row container levels | [ ] unchecked | not-applicable |
-| dw-0009 | An id-bearing object inside a row's own field does NOT become a second row, mutation-checked by removing the terminal return | [ ] unchecked | not-applicable |
-| dw-000a | The reorder fixture proves identical row addresses and identical raw_hash values | [ ] unchecked | not-applicable |
-| dw-000b | Discovery admits .dd.json before the ConfigFormat branch, still skips ordinary .json, skips .dd.md, and the same holds via discover_subtree (the watcher path) | [ ] unchecked | not-applicable |
-| dw-000c | facts: None takes the documented fallback and records EmbedBasis::Fallback as data | [ ] unchecked | not-applicable |
-| dw-000d | Exactly one allowlist row was spent: serde_json under [crates.fs3-parsers] external | [ ] unchecked | not-applicable |
-| dw-000e | Every named test mutation-checked, with the mutation stated in the done report | [ ] unchecked | not-applicable |
+| id | assertion | state | pressure | receipt |
+| --- | --- | --- | --- | --- |
+| dw-0007 | ddoc::scan(path, bytes, facts) is pure: no I/O, no process spawn, no schema resolution | [x] checked | not-applicable | crates/parsers/src/ddoc.rs: pub fn scan(path, bytes, facts) — no I/O, no process spawn, no schema resolution. u1 commits cc02a16 + d79e9bc. |
+| dw-0008 | The walker recurses structurally with NO depth constant, proven by a fixture with four non-row container levels | [x] checked | not-applicable | Fixture carries four non-row container levels before the row; no depth constant exists. MUTATION 8: removing the row-terminal return emitted a row's own id-bearing field as a second row -&gt; test red. |
+| dw-0009 | An id-bearing object inside a row's own field does NOT become a second row, mutation-checked by removing the terminal return | [x] checked | not-applicable | MUTATION 8 (same): the id-bearing object inside a row's field must NOT become a row; verified red then green. |
+| dw-000a | The reorder fixture proves identical row addresses and identical raw_hash values | [x] checked | not-applicable | tests/ddoc.rs reordering_rows_preserves_addresses_and_raw_hashes over reorder-a/reorder-b at one logical path. MUTATION 3: adding sibling position to raw_text turned it red with both per-id hashes changing. |
+| dw-000b | Discovery admits .dd.json before the ConfigFormat branch, still skips ordinary .json, skips .dd.md, and the same holds via discover_subtree (the watcher path) | [x] checked | not-applicable | discovery.rs verdict(): .dd.json admitted ahead of the ConfigFormat branch; ordinary .json still ConfigFormat; .dd.md skips as the new truthful SkipReason::GeneratedSibling; asserted for both discover and discover_subtree. MUTATIONS 4 and 10 red. |
+| dw-000c | facts: None takes the documented fallback and records EmbedBasis::Fallback as data | [x] checked | not-applicable | facts: None takes the JSON-string fallback excluding id/state and records EmbedBasis::Fallback. MUTATION 6 red. Critic finding 2 fixed: a string-only schema section now stays SchemaDeclared instead of leaking to fallback. |
+| dw-000d | Exactly one allowlist row was spent: serde_json under [crates.fs3-parsers] external | [x] checked | not-applicable | crates/parsers/Cargo.toml `serde_json.workspace = true` + exactly one "serde_json" row under [crates.fs3-parsers] external. fs3-arch-check: 8 crates, 83 edges, 0 violations. |
+| dw-000e | Every named test mutation-checked, with the mutation stated in the done report | [x] checked | not-applicable | Ten mutations named in the done report, each observed red then restored green; final harness checks exit 0. |
 
 ### tk-0003
 
-| id | assertion | state | pressure |
-| --- | --- | --- | --- |
-| dw-000f | Exactly ONE forward migration (0014_ddoc_layer.sql); no other unit wrote SQL | [ ] unchecked | not-applicable |
-| dw-0010 | The elements unique key (blob_sha, parser_version, address, span_start) is UNCHANGED | [ ] unchecked | not-applicable |
-| dw-0011 | The widened kind CHECK retains every previously valid kind including 'turn', and adds only 'row' | [ ] unchecked | not-applicable |
-| dw-0012 | A code element still round-trips with ddoc as SQL NULL, mutation-checked by materialising {} instead | [ ] unchecked | not-applicable |
-| dw-0013 | gate_open treats an unknown (NULL) gate as NEITHER open nor closed, proven by seeding false, true and json-null rows | [ ] unchecked | not-applicable |
-| dw-0014 | rows_referencing on a corpus with no file edges returns Ok(vec![]) and never an error | [ ] unchecked | not-applicable |
-| dw-0015 | replace_file_refs never errors on an unmatched source; it returns FileRefOutcome{attached, unattached} | [ ] unchecked | not-applicable |
-| dw-0016 | The migration applies forward on a database already holding code elements | [ ] unchecked | not-applicable |
-| dw-0017 | Every named test mutation-checked, with the mutation stated in the done report | [ ] unchecked | not-applicable |
+| id | assertion | state | pressure | receipt |
+| --- | --- | --- | --- | --- |
+| dw-000f | Exactly ONE forward migration (0014_ddoc_layer.sql); no other unit wrote SQL | [x] checked | not-applicable | crates/store/migrations/0014_ddoc_layer.sql is the only migration added by this plan. u3 commit c3dca20. |
+| dw-0010 | The elements unique key (blob_sha, parser_version, address, span_start) is UNCHANGED | [x] checked | not-applicable | The unique key (blob_sha, parser_version, address, span_start) is untouched in the migration diff. |
+| dw-0011 | The widened kind CHECK retains every previously valid kind including 'turn', and adds only 'row' | [x] checked | not-applicable | Widened CHECK retains file/container/function/section/turn and adds row. MUTATION 11 (omit row) and MUTATION 12 (CHECK TRUE) both red. |
+| dw-0012 | A code element still round-trips with ddoc as SQL NULL, mutation-checked by materialising {} instead | [x] checked | not-applicable | code_element_round_trip_keeps_ddoc_null. MUTATION 2: coalescing None to {} JSONB turned it red. |
+| dw-0013 | gate_open treats an unknown (NULL) gate as NEITHER open nor closed, proven by seeding false, true and json-null rows | [x] checked | not-applicable | search_filter_gate_open_selects_known_rows_and_excludes_unknown seeds false, true and json-null rows. MUTATION 5 (inverted mapping) and MUTATION 6 (coalescing json null to false, leaking the unknown row into open results) both red. |
+| dw-0014 | rows_referencing on a corpus with no file edges returns Ok(vec![]) and never an error | [x] checked | not-applicable | rows_referencing_without_file_edges_is_empty returns Ok(vec![]). MUTATION 8: returning StoreError::RowNotFound turned it red. |
+| dw-0015 | replace_file_refs never errors on an unmatched source; it returns FileRefOutcome{attached, unattached} | [x] checked | not-applicable | FileRefOutcome{attached, unattached} frozen and implemented; replace_file_refs_reports_unattached_without_losing_attached_edges. MUTATION 10: converting an unattached source into a hard StoreError turned it red. |
+| dw-0016 | The migration applies forward on a database already holding code elements | [x] checked | not-applicable | migration_applies_over_existing_code_elements_and_accepts_row runs the migration over a database already holding code rows. |
+| dw-0017 | Every named test mutation-checked, with the mutation stated in the done report | [x] checked | not-applicable | Twelve mutations named in the done report, each observed red then green. cargo test -p fs3-store: 91 passed, 1 ignored, 0 failed. |
 
 ### tk-0004
 

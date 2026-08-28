@@ -163,7 +163,8 @@
           "objective": "Turn a `.dd.json` on disk into stored, embeddable rows.",
           "brief": "Two units in parallel behind the wave-0 contract: the pure ddoc parser plus discovery admission (crates/parsers), and the persistence layer plus inverse index (crates/store). They share no files; both consume the frozen core types.",
           "key_risks": "Discovery classifies `.dd.json` as a config format and skips it (crates/parsers/src/discovery.rs:720); admission must be an exact suffix exception placed BEFORE the config exclusion and must apply to the watcher path (crates/daemon/src/watch.rs:275) as well as add-root.",
-          "state": "unchecked"
+          "state": "checked",
+          "receipt": "Wave 1 composed on 008-ddocs-scan: u1 d79e9bc + u3 c3dca20 merged; harness checks green on all nine gates (docs, lock, testdb, fmt, clippy -D warnings, prodguard before/after, cargo test --all, arch) 2026-08-28."
         },
         {
           "id": "ph-0003",
