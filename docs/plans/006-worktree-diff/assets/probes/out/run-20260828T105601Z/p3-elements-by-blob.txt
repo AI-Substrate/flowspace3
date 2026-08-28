@@ -1,0 +1,12 @@
+   blob   |                                 address                                  |                      raw_head                      
+----------+--------------------------------------------------------------------------+----------------------------------------------------
+ 7e586183 | crates/cli/src/client.rs::poctest_20260828T105601Z_celsius_to_fahrenheit | fn poctest_20260828T105601Z_celsius_to_fahrenheit(
+ e3cd8461 | crates/cli/src/conversation.rs::poctest_20260828T105601Z_marker_1        | fn poctest_20260828T105601Z_marker_1() -> u32 { 1 
+ 5d823ccf | crates/cli/src/docs.rs::poctest_20260828T105601Z_marker_2                | fn poctest_20260828T105601Z_marker_2() -> u32 { 2 
+ 77c7b01f | crates/cli/src/doctor.rs::poctest_20260828T105601Z_marker_3              | fn poctest_20260828T105601Z_marker_3() -> u32 { 3 
+ 8ef94a1c | crates/cli/src/lib.rs::poctest_20260828T105601Z_marker_4                 | fn poctest_20260828T105601Z_marker_4() -> u32 { 4 
+ a7eb442a | crates/cli/src/main.rs::poctest_20260828T105601Z_marker_5                | fn poctest_20260828T105601Z_marker_5() -> u32 { 5 
+ ed48dd07 | crates/cli/src/render/mod.rs::poctest_20260828T105601Z_marker_6          | fn poctest_20260828T105601Z_marker_6() -> u32 { 6 
+ 8f9539f0 | crates/cli/src/render/progress.rs::poctest_20260828T105601Z_marker_7     | fn poctest_20260828T105601Z_marker_7() -> u32 { 7 
+(8 rows)
+

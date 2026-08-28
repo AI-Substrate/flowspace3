@@ -1,0 +1,14 @@
+                               address                               | element_rows | versions 
+---------------------------------------------------------------------+--------------+----------
+ crates/cli/src/client.rs                                            |            7 |        7
+ crates/cli/src/client.rs::authenticated                             |            6 |        6
+ crates/cli/src/client.rs::authenticated::Client                     |           12 |        6
+ crates/cli/src/client.rs::authenticated::Client::credential_failure |            6 |        6
+ crates/cli/src/client.rs::authenticated::Client::new                |            6 |        6
+ crates/cli/src/client.rs::authenticated::Client::request            |            6 |        6
+ crates/cli/src/client.rs::DaemonClient                              |           14 |        7
+ crates/cli/src/client.rs::DaemonClient::add                         |            7 |        7
+ crates/cli/src/client.rs::DaemonClient::ask                         |            6 |        6
+ crates/cli/src/client.rs::DaemonClient::base_url                    |            7 |        7
+(10 rows)
+

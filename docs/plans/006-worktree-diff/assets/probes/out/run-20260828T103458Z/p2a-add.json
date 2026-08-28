@@ -1,0 +1,71 @@
+{
+  "ok": true,
+  "command": "add",
+  "v": 1,
+  "data": {
+    "enqueued": 0,
+    "files": 592,
+    "identity": "git:github.com/AI-Substrate/flowspace3",
+    "identity_source": "remote",
+    "pruned": [
+      {
+        "fix": "index it anyway with `[scan] standard_ignores = false`",
+        "path": "crates/parsers/fixtures/discovery-bare/__pycache__",
+        "reason": "standard-ignore"
+      },
+      {
+        "fix": "index it anyway with `[scan] standard_ignores = false`",
+        "path": "crates/parsers/fixtures/discovery-bare/build",
+        "reason": "standard-ignore"
+      },
+      {
+        "fix": "index it anyway with `[scan] standard_ignores = false`",
+        "path": "crates/parsers/fixtures/discovery-bare/dist",
+        "reason": "standard-ignore"
+      },
+      {
+        "fix": "index it anyway with `[scan] standard_ignores = false`",
+        "path": "crates/parsers/fixtures/discovery-bare/node_modules",
+        "reason": "standard-ignore"
+      },
+      {
+        "fix": "index it anyway with `[scan] standard_ignores = false`",
+        "path": "crates/parsers/fixtures/discovery-bare/vendor",
+        "reason": "standard-ignore"
+      },
+      {
+        "fix": "index it anyway with `[scan] standard_ignores = false`",
+        "path": "crates/parsers/fixtures/discovery-bare/venv",
+        "reason": "standard-ignore"
+      },
+      {
+        "fix": "index it anyway with `[scan] standard_ignores = false`",
+        "path": "docs/plans/005-convo-ingest/assets/inputs/__pycache__",
+        "reason": "standard-ignore"
+      }
+    ],
+    "removed": 0,
+    "root_path": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T103458Z",
+    "skipped": [
+      {
+        "count": 1,
+        "reason": "binary"
+      },
+      {
+        "count": 257,
+        "reason": "config-format"
+      },
+      {
+        "count": 6,
+        "reason": "too-small"
+      },
+      {
+        "count": 55,
+        "reason": "unsupported-extension"
+      }
+    ],
+    "unchanged": 592,
+    "worktree_id": 73
+  },
+  "next_action": "nothing changed — 592 files already indexed; `flowspace3 search \"<question>\"` answers from the existing index"
+}

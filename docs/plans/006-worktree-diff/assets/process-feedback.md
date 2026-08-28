@@ -88,7 +88,7 @@ it. The honest workaround — leave the task unchecked, record execution
 evidence, check on proof — is fine, but the discipline and the schema disagree
 about whether in-progress is a state.
 
-## Three additions I would make to the tenets
+## Six additions I would make to the tenets
 
 ### A. A measurement has preconditions, and a predicate must refuse when they fail
 
@@ -159,6 +159,53 @@ returned:
 
 A defect class is not closed when the instance is fixed. It is closed when
 someone has walked the rule to the next surface and found nothing.
+
+### D. Capability landed ahead of its callers, five times in one plan
+
+Every substantive defect in this plan had the same shape: **the mechanism
+existed and the trigger did not use it.**
+
+| gap | mechanism already present |
+|---|---|
+| worktrees never discovered or unregistered | `roots.rs` add/remove/gc, complete and correct |
+| identical content re-scanned (feared) | blob dedupe — already free, so u-b was refuted |
+| search served another checkout's rows | `scope.worktree`, already resolved and already used by `read.rs` |
+| a new worktree's scans queued behind 50k jobs | `priority DESC`, already in the claim query |
+| 55k summaries starved at zero attempts | parallel claims AND a provider semaphore, both already in `runner.rs` |
+
+Not a coincidence — a property of how the system was built. And every one was
+invisible until something **ran** the composed artifact end to end; none was
+visible by reading the code, because reading code shows you what a mechanism
+*can* do, never what invokes it.
+
+The audit this earns: walk every config knob and every shipped mechanism and
+ask **what invokes this**. The fifth gap was found because a coder checked
+before building something I had told it to build — which already existed. The
+ignorance runs in both directions.
+
+### E. Writing a rule does not mean implementing a shape that can keep it
+
+Three times in one day, the words were right and the mechanism could not keep
+the promise — and each failure was invisible by construction:
+
+| rule | shape that could not keep it | why invisible |
+|---|---|---|
+| a predicate must refuse when preconditions fail (tenet 14) | a **deny-list** (`fake`, `unknown`) — `offline` sailed through | a deny-list that lets a case through looks like a pass |
+| the probe must name its abort | `trap … ERR` **without `set -E`** — never fires from a helper | a trap that never fires looks like a clean death |
+| the guard uses the product's own parser | it does — but built from *the seat's own checkout*, so a stale branch has a stale parser | the error named the field and blamed the file |
+
+The common root is reading a mechanism's **intent** instead of its
+**behaviour**. The discipline that catches it is the same one this plan used on
+the product: run the thing and look at what a caller actually receives.
+
+### F. A wait is not a predicate — but "I extended the timeout and then it passed" is still a smell
+
+With `ac-0003` blocked by a starved queue, the fastest close was to raise the
+probe's wait and measure. That is legal under the no-adjustment clause — a wait
+is not a threshold, and nothing about what counts as a pass changes. It was
+still the wrong call: the receipt that closes an AC should measure the promise
+under **the defaults a real user gets**, not under patience the probe granted
+itself. Escalated rather than decided alone, and ruled the slow way.
 
 ## On the reviewer
 

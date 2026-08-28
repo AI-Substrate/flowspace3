@@ -24,7 +24,15 @@
 #
 # The probe worktree always uses a poctest- slug and is always torn down.
 
-set -euo pipefail
+# -E so the ERR trap is INHERITED by functions, command substitutions and
+# subshells. Without it `trap … ERR` fires only at top level, which is why two
+# go-live runs exited 1 from inside a helper and wrote no abort line at all:
+# `set -e` killed the script and the reporter never ran. A diagnostic that is
+# silent in exactly the case it exists for is worse than no diagnostic.
+set -Eeuo pipefail
+
+# (There is no trace knob. See the note above `say` for why xtrace cannot work
+# in this script on this shell without destroying the evidence it captures.)
 
 # ---------------------------------------------------------------- parameters
 MAIN_ROOT=/Users/jordanknight/substrate/flowspace/flowspace3
@@ -62,6 +70,16 @@ MARKER="poctest_${RUN_ID}"
 
 mkdir -p "$OUT"
 exec > >(tee -a "$OUT/transcript.log") 2>&1
+# NO XTRACE HERE, deliberately, and this is the third shape of the same mistake
+# so it gets written down rather than re-attempted. On bash 3.2 (macOS system
+# bash) xtrace can only go to stderr — `exec {fd}>` and BASH_XTRACEFD are 4.1+
+# — and this script captures CLI output with `> file 2>&1`. So enabling xtrace
+# writes trace lines INSIDE the captured envelopes, `jq` then fails on the
+# corrupted artifact, and the run dies of its own instrumentation.
+#
+# The ERR trap plus `set -E` already reports the failing line, code and command,
+# which is all the trace was ever wanted for. A diagnostic that damages the
+# evidence is worse than none.
 
 say() { printf '\n=== %s — %s\n' "$(date -u +%FT%TZ)" "$*"; }
 note() { printf '    %s\n' "$*"; }
@@ -265,6 +283,12 @@ teardown() {
 # 2026-08-28 — the cleanup then falls to a human).
 trap teardown EXIT INT TERM
 
+# A probe that dies silently is the same misleading-signal class this script
+# exists to refuse: two go-live attempts aborted mid-P3 with no line, no
+# command and no status in the transcript, which cost more diagnosis than the
+# bugs did. `set -e` is a good default and a terrible reporter, so make it one.
+trap 'rc=$?; printf "\n!!! ABORT at line %s (exit %s): %s\n" "$LINENO" "$rc" "$BASH_COMMAND" | tee -a "$OUT/abort.txt"' ERR
+
 # ---------------------------------------------------------------- preflight
 say "PREFLIGHT"
 fs3 ping > "$OUT/ping.json"
@@ -359,15 +383,32 @@ fi
 # File 0 is the VERSION PROBE: an existing element diverges in place (same path,
 # same address, different content) — that is what P3 asks about. Files 1..K-1
 # are appended markers, which measure the cost of divergent content.
+# THE STIMULUS MUST BE RETRIEVABLE BY SOMETHING, or it cannot measure exclusion.
+#
+# It was a nonsense phrase — "pineapple lighthouse semaphore" — chosen because
+# it was distinctive TO A HUMAN: lexically unique, obviously the probe's. That
+# is the wrong kind of distinctive for a pure-vector index with no lexical
+# channel. Run eight proved it with the discriminating control: elements=8,
+# vectors=8, and still unranked. The same phrase sits in three indexed elements
+# on the live index and a search for it returns none of them.
+#
+# So the marker is now semantically COHERENT (an embedder can place it: a unit
+# conversion, named in the identifier, since doc comments are not indexed) and
+# semantically ISOLATED in this corpus (nothing here is about temperature, so
+# it competes with nothing). Both properties are required: coherent so it
+# embeds somewhere meaningful, isolated so it wins its own query.
+#
+# DISTINCTIVE-TO-A-HUMAN IS NOT DISTINCTIVE-TO-AN-EMBEDDER.
 VERSION_FILE=${EDIT_FILES[0]}
 {
   echo ""
-  echo "/// Worktree-diff probe marker. This doc comment exists ONLY in the probe"
-  echo "/// worktree $SLUG and never in the main checkout. It describes a"
-  echo "/// pineapple lighthouse semaphore that reconciles marmalade telemetry."
+  echo "/// Worktree-diff probe marker: exists ONLY in $SLUG, never in main."
+  echo "/// (Doc comments are not indexed — the identifier and body carry the"
+  echo "/// meaning, which is why the name spells the conversion out.)"
   echo "#[allow(dead_code)]"
-  echo "fn ${MARKER}_version_probe() -> &'static str {"
-  echo "    \"pineapple lighthouse semaphore\""
+  echo "fn ${MARKER}_celsius_to_fahrenheit(celsius_reading: f64) -> f64 {"
+  echo "    let fahrenheit = celsius_reading * 9.0 / 5.0 + 32.0;"
+  echo "    fahrenheit"
   echo "}"
 } >> "$WT/$VERSION_FILE"
 for (( i=1; i<K; i++ )); do
@@ -405,17 +446,46 @@ say "P3 — same query from main and from inside the worktree"
 # above a function does not: elements carry the item's own span, so a marker
 # hidden in a doc comment is unfindable for a reason that has nothing to do
 # with worktrees. The phrase below is inside the probe function's BODY.
-Q_MARKER="poctest version probe pineapple lighthouse semaphore function"
+# Describes the marker the way a caller would ask for it — meaning, not tokens.
+Q_MARKER="convert a celsius temperature reading into fahrenheit"
 Q_SHARED="cli client that talks to the fs3 daemon over http"
 IDENTITY=$(sql "select r.identity from repos r join worktrees w on w.repo_id = r.id where w.root_path = '$WT'")
 FILE_ADDRESS="el:$IDENTITY/$VERSION_FILE"
 echo "version_file_address=$FILE_ADDRESS" >> "$OUT/receipt.env"
 
+# A REFUSAL IS DATA HERE, NOT A FAILURE — and this is what killed the first five
+# go-live attempts. `flowspace3 get` exits non-zero when it refuses, and under
+# `set -e` that ended the run before a single p3_* predicate was written. The
+# refusal it kept hitting is honest and useful: "…is registered but has not been
+# parsed yet, so it has no elements to read" — the worktree's edits were queued
+# behind a starved scan lane, so the caller's version genuinely did not exist
+# yet. The CLI was right, the probe was wrong to die of it.
+#
+# These predicates read the ENVELOPES, never the exit codes; an ok:false
+# envelope is a measurement. So capture the envelope and carry on, and let the
+# gate below decide what it means.
+# WHAT DOES THE INDEX ACTUALLY HOLD FOR THE MARKER, at the moment we query it?
+#
+# "Not retrievable" has two very different causes and the receipt must say
+# which: the marker was never parsed or embedded (a timing/queue fact about
+# this run), or it is present and simply does not rank (a retrieval fact about
+# the product). Run seven could not distinguish them, which is one refusal too
+# many for a control that exists to prevent exactly that ambiguity.
+MARKER_ELEMENTS=$(sql "select count(*) from elements where name like '${MARKER}%'")
+MARKER_VECTORS=$(sql "
+  select count(*) from elements e
+   where e.name like '${MARKER}%'
+     and exists (select 1 from embeddings_1024 em
+                  where em.source_hash = e.raw_hash and em.source_kind = 'raw')")
+note "marker index state at query time: elements=$MARKER_ELEMENTS with raw vectors=$MARKER_VECTORS"
+echo "p3_marker_elements=$MARKER_ELEMENTS" >> "$OUT/receipt.env"
+echo "p3_marker_vectors=$MARKER_VECTORS" >> "$OUT/receipt.env"
+
 for cwd in "$MAIN_ROOT" "$WT"; do
   tag=main; [[ "$cwd" == "$WT" ]] && tag=worktree
-  ( cd "$cwd" && fs3 search "$Q_MARKER" --limit 5 --source raw ) > "$OUT/p3-marker-from-$tag.json" 2>&1
-  ( cd "$cwd" && fs3 search "$Q_SHARED" --limit 5 ) > "$OUT/p3-shared-from-$tag.json" 2>&1
-  ( cd "$cwd" && fs3 get "$FILE_ADDRESS" ) > "$OUT/p3-get-from-$tag.json" 2>&1
+  ( cd "$cwd" && fs3 search "$Q_MARKER" --limit 5 --source raw ) > "$OUT/p3-marker-from-$tag.json" 2>&1 || true
+  ( cd "$cwd" && fs3 search "$Q_SHARED" --limit 5 ) > "$OUT/p3-shared-from-$tag.json" 2>&1 || true
+  ( cd "$cwd" && fs3 get "$FILE_ADDRESS" ) > "$OUT/p3-get-from-$tag.json" 2>&1 || true
   note "from $tag — divergent-content query (the function exists ONLY in the worktree):"
   jq -r '.data.results[]? | "      \(.score|tostring[0:6])  \(.path)  \(.name)"' "$OUT/p3-marker-from-$tag.json" || true
   note "from $tag — meta.scope the daemon resolved: $(jq -c '.meta.scope // "none"' "$OUT/p3-marker-from-$tag.json")"
@@ -440,28 +510,56 @@ done
 #      returns 1, and an assignment adopts that status;
 #   2. `[[ -z X ]] && Y` as the LAST command of a line returns 1 when the test
 #      is false, which is the healthy case.
-# Both are silent until the boot line happens to fall outside the captured log
-# slice, which is exactly what a fresh isolated daemon does.
+# ASK THE LIVE DAEMON, and fall back to the log only if it will not say.
+#
+# A gate about CURRENT semantics must not trust a historical mouth. Reading the
+# boot line from log history reports what was true when it was written, which
+# during a restart window is a state that no longer exists — a go-live run read
+# `embedder=offline` from exactly such a window while the daemon was in fact on
+# azure_openai, and refused a measurement it could have made. `ping` answers
+# for the process that is running right now.
+embedder_live() { fs3 ping 2>/dev/null | grep -oE 'embedder: [a-z_]+' | tail -1 | cut -d' ' -f2 || true; }
 embedder_from() { grep -oE 'embedder=[a-z_]+' "$1" 2>/dev/null | tail -1 | cut -d= -f2 || true; }
-EMBEDDER=$(embedder_from "$OUT/daemon-p1.log")
+EMBEDDER=$(embedder_live)
+EMBEDDER_SOURCE=daemon-ping
+if [[ -z "$EMBEDDER" ]]; then
+  EMBEDDER=$(embedder_from "$OUT/daemon-p1.log")
+  EMBEDDER_SOURCE=probe-log-slice
+fi
 if [[ -z "$EMBEDDER" ]]; then
   EMBEDDER=$(embedder_from "$DAEMON_LOG")
+  EMBEDDER_SOURCE=daemon-log-history
 fi
 echo "embedder=${EMBEDDER:-unknown}" >> "$OUT/receipt.env"
+echo "embedder_source=$EMBEDDER_SOURCE" >> "$OUT/receipt.env"
 
 answer_identity() { jq -S '[.data.results[] | {address, path, name, kind, span, snippet}]' "$1"; }
 P3_LEAK=$(jq -r --arg m "$MARKER" '[.data.results[]?|select(.name|startswith($m))]|length' "$OUT/p3-marker-from-main.json")
 P3_FOUND=$(jq -r --arg m "$MARKER" '[.data.results[]?|select(.name|startswith($m))]|length' "$OUT/p3-marker-from-worktree.json")
 
-# Refuse on "fake" AND on "unknown". Absence of proof is not proof of a real
-# embedder: if the boot line was not found — a daemon logging somewhere this
-# script did not look, which `--sandbox` does by putting its log beside its own
-# temp config — then the semantics of every vector in the corpus are unverified,
-# and the P3 verdicts would be computed on faith. The whole point of this gate
-# is that a number nobody can defend is worse than a refusal, and that applies
-# to the precondition just as much as to the result.
-if [[ "$EMBEDDER" == "fake" || "$EMBEDDER" == "unknown" || -z "$EMBEDDER" ]]; then
-  reason=$([[ "$EMBEDDER" == "fake" ]] && echo "fake-embedder" || echo "embedder-unproven")
+# ALLOW-LIST the embedders that PROVE semantics; refuse everything else.
+#
+# This was a deny-list ("fake" or "unknown") until the production daemon turned
+# out to report `embedder=offline` — a third value meaning exactly "no real
+# vectors", which sailed straight through a gate built to catch it. Deny-lists
+# fail open on the case nobody thought of, and the whole point of this gate is
+# that a number nobody can defend is worse than a refusal.
+#
+# So: name the providers whose vectors carry meaning. Anything else — a new
+# provider, a typo, an empty boot line, `offline`, `fake` — refuses, and the
+# refusal says which value it saw so the next person can add it deliberately
+# rather than discover it as a wrong answer.
+# The names are the kinds' own serde spellings in crates/core/src/config.rs:
+# `openai` (:666), `openai_compat` (:682), `azure_openai` (:707). `fake` (:664)
+# and `offline` (the fresh-machine default, :85-107) are the two that mean
+# "no real vectors" — and `offline` is the one that taught this gate the
+# difference between a deny-list and an allow-list.
+case "$EMBEDDER" in
+  azure_openai|openai|openai_compat) SEMANTIC_EMBEDDER=1 ;;
+  *) SEMANTIC_EMBEDDER=0 ;;
+esac
+if (( SEMANTIC_EMBEDDER == 0 )); then
+  reason="embedder-${EMBEDDER:-unknown}"
   note "ANSWER P3: NOT MEASURABLE — embedder=${EMBEDDER:-unknown}, so retrieval semantics are not established"
   note "           (p1/p2/p4 above are unaffected: they measure bookkeeping, not ranking)"
   echo "p3_search_context_sensitive=unmeasurable-$reason" >> "$OUT/receipt.env"
@@ -471,9 +569,20 @@ elif (( P3_FOUND == 0 )); then
   # The control: the worktree's OWN divergent function must be findable FROM the
   # worktree. If it is not, the run proves nothing about resolution — and a
   # leak of 0 would be measuring absence, not exclusion.
-  note "ANSWER P3: NOT MEASURABLE — the probe's own function is not findable from its own worktree"
-  echo "p3_search_context_sensitive=unmeasurable-marker-not-retrievable" >> "$OUT/receipt.env"
-  echo "p3_wrong_version_leak_to_main=unmeasurable-marker-not-retrievable" >> "$OUT/receipt.env"
+  #
+  # Say WHICH absence, because the two mean opposite things: not indexed yet is
+  # a fact about this run's timing, while indexed-and-not-ranked is a fact about
+  # retrieval and would be a finding.
+  if (( MARKER_VECTORS == 0 )); then
+    marker_reason="marker-not-indexed-yet (elements=$MARKER_ELEMENTS, vectors=$MARKER_VECTORS)"
+    note "ANSWER P3: NOT MEASURABLE — the marker has no raw vector yet; its enrichment had not landed when the query ran"
+  else
+    marker_reason="marker-indexed-but-unranked (elements=$MARKER_ELEMENTS, vectors=$MARKER_VECTORS)"
+    note "ANSWER P3: NOT MEASURABLE — the marker IS indexed with $MARKER_VECTORS raw vector(s) and still did not rank."
+    note "           That is a RETRIEVAL finding, not a timing one — report it rather than re-running."
+  fi
+  echo "p3_search_context_sensitive=unmeasurable-$marker_reason" >> "$OUT/receipt.env"
+  echo "p3_wrong_version_leak_to_main=unmeasurable-$marker_reason" >> "$OUT/receipt.env"
 else
   if diff -q <(answer_identity "$OUT/p3-marker-from-main.json") \
             <(answer_identity "$OUT/p3-marker-from-worktree.json") >/dev/null; then
@@ -489,8 +598,20 @@ else
   echo "p3_wrong_version_leak_to_main=$P3_LEAK" >> "$OUT/receipt.env"
   echo "p3_marker_found_from_worktree=$P3_FOUND" >> "$OUT/receipt.env"
 fi
-if diff -q <(jq -S '.data' "$OUT/p3-get-from-main.json") \
-          <(jq -S '.data' "$OUT/p3-get-from-worktree.json") >/dev/null; then
+# Same discipline as the embedder gate: refuse a verdict the evidence cannot
+# support. If EITHER checkout's `get` was refused — most often "registered but
+# not parsed yet", which means the caller's version does not exist in the index
+# at this instant — then a difference between the two answers is a difference
+# between an answer and an error, not between two versions.
+GET_MAIN_OK=$(jq -r '.ok // false' "$OUT/p3-get-from-main.json" 2>/dev/null || echo false)
+GET_WT_OK=$(jq -r '.ok // false' "$OUT/p3-get-from-worktree.json" 2>/dev/null || echo false)
+if [[ "$GET_MAIN_OK" != "true" || "$GET_WT_OK" != "true" ]]; then
+  why=$(jq -r '.error.message // "refused"' "$OUT/p3-get-from-worktree.json" 2>/dev/null || echo refused)
+  note "ANSWER P3b: NOT MEASURABLE — a get was refused (main ok=$GET_MAIN_OK, worktree ok=$GET_WT_OK): $why"
+  echo "p3_get_context_sensitive=unmeasurable-get-refused" >> "$OUT/receipt.env"
+  echo "p3_get_refusal=$why" >> "$OUT/receipt.env"
+elif diff -q <(jq -S '.data' "$OUT/p3-get-from-main.json") \
+            <(jq -S '.data' "$OUT/p3-get-from-worktree.json") >/dev/null; then
   note "ANSWER P3b: get returns the SAME version to both checkouts"
   echo "p3_get_context_sensitive=0" >> "$OUT/receipt.env"
 else

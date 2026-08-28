@@ -1,0 +1,12 @@
+               path                | versions 
+-----------------------------------+----------
+ crates/cli/src/client.rs          |        2
+ crates/cli/src/conversation.rs    |        2
+ crates/cli/src/docs.rs            |        2
+ crates/cli/src/doctor.rs          |        2
+ crates/cli/src/lib.rs             |        2
+ crates/cli/src/main.rs            |        2
+ crates/cli/src/render/mod.rs      |        2
+ crates/cli/src/render/progress.rs |        2
+(8 rows)
+

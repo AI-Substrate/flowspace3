@@ -1,0 +1,2 @@
+Preparing worktree (new branch 'poctest-wtdiff-20260828T095159Z')
+HEAD is now at 8817b1f perf(daemon): newly discovered worktree scans claim ahead of backlog (#59)
