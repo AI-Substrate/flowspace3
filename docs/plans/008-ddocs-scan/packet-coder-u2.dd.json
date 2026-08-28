@@ -71,6 +71,18 @@
         {
           "id": "i13",
           "text": "FILL THE CONTRACT, NEVER WIDEN IT (tenet 2). The wave-0 types in crates/core/src/ddoc.rs and crates/core/src/element.rs are FROZEN at commit f13186b. If your unit needs one of them changed, that is a PM ruling — stop and ask with the reason. Do not edit crates/core/src/ddoc.rs or element.rs yourself."
+        },
+        {
+          "id": "i14",
+          "text": "FROZEN SINCE YOUR PACKET WAS WRITTEN — u3 owns these and you consume them verbatim; they are contract, not proposal:\n\n  pub struct FileRefOutcome { pub attached: usize, pub unattached: Vec<String> }\n  pub async fn replace_file_refs(pool, blob: &BlobRef, parser_version: &str, refs: &[DdocFileRef])\n      -> Result<FileRefOutcome, StoreError>;\n\nSemantics, ruled: `attached` counts post-replacement rows for refs whose source address resolved in the exact blob/parser scope, with duplicate identical input edges collapsing under the UNIQUE key. `unattached` lists each unresolved source address in INPUT ORDER, including repeats. A source miss is NEVER a StoreError — StoreError means the database refused. Resolution is exact scope + address + kind='row', never another blob/parser and never a code element.\n\nYOUR OBLIGATION: surface `unattached` as row findings rather than discarding it. An edge we could not attach is exactly the kind of thing that must stay queryable instead of becoming invisible — the same rule as EmbedBasis::Fallback. Discarding it silently is a review-blocking defect."
+        },
+        {
+          "id": "i15",
+          "text": "THE `ddocs --json derive` VERB IS BEING BUILT BY dd RIGHT NOW and you must NOT wait for it, code against it, or feature-flag it. Use `fs3_core::ddoc::derive_state` — the single frozen wave-0 function — exactly as your contract says. Context so you understand why it is one function: dd's own deriveItems/deriveState/deriveRollup are unreachable from both Node and the CLI, so flowspace3 must implement the rule itself, which is the drifting second implementation dd explicitly warned against. We have committed to consuming their verb and DELETING our implementation in the same commit the day it ships. Keeping the rule behind one function is what makes that a one-line change — so do not inline the logic, do not duplicate it, and do not 'optimise' it into a call site."
+        },
+        {
+          "id": "i16",
+          "text": "ISOLATION — a defect that cost your sibling 20 minutes today and is invisible when it happens. The `edit` tool resolves a RELATIVE section header against the SESSION ROOT, which is fixed at spawn and NOT changed by `cd`. Pass ABSOLUTE paths rooted at your own worktree in every edit section header and every write path, always. Never open any absolute path containing another tree's name — everything you need is committed on your own branch at the same relative paths. If an absolute header is ever rejected, STOP and tell the PM; do not fall back to relative. (Verified by the PM: absolute headers are accepted and apply correctly.)"
         }
       ]
     },

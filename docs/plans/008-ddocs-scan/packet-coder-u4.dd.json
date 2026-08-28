@@ -71,6 +71,18 @@
         {
           "id": "i13",
           "text": "FILL THE CONTRACT, NEVER WIDEN IT (tenet 2). The wave-0 types in crates/core/src/ddoc.rs and crates/core/src/element.rs are FROZEN at commit f13186b. If your unit needs one of them changed, that is a PM ruling — stop and ask with the reason. Do not edit crates/core/src/ddoc.rs or element.rs yourself."
+        },
+        {
+          "id": "i14",
+          "text": "ISOLATION — a defect that cost a sibling 20 minutes today and is invisible when it happens. The `edit` tool resolves a RELATIVE section header against the SESSION ROOT, fixed at spawn and NOT changed by `cd`. Pass ABSOLUTE paths rooted at your own worktree in every edit section header and every write path. Never open an absolute path containing another tree's name. If an absolute header is rejected, STOP and tell the PM; never fall back to relative. (Verified by the PM: absolute headers are accepted and apply correctly.)"
+        },
+        {
+          "id": "i15",
+          "text": "SearchFilters gained `..SearchFilters::default()` at the daemon's search literal (crates/daemon/src/search.rs) during wave 1, so the struct is additively extensible. Two consequences for you: any NEW literal you write must spread from the default rather than list fields exhaustively, and you must not remove that spread — an exhaustive literal in a crate that does not own the struct turns every future additive field into a compile break in someone else's fence."
+        },
+        {
+          "id": "i16",
+          "text": "When you add `ddoc` to the `Hit` wire struct it MUST be `#[serde(skip_serializing_if = \"Option::is_none\")]`. `Hit` is a shipped envelope that agents already parse; a field that appears unconditionally on a code hit is a breaking change to a live contract. Prove it with a test that serialises a code hit and asserts the `ddoc` KEY IS ABSENT — not null, absent."
         }
       ]
     },
