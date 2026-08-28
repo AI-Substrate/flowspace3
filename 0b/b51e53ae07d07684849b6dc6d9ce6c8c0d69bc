@@ -1,0 +1,30 @@
+crates/providers/tests/conversation_source_claude.rs
+  h_9e71e8b09f7cf2 668,678,680-699
+crates/providers/tests/conversation_source_metrics_db.rs
+  h_9e71e8b09f7cf2 209-212
+crates/providers/tests/conversation_sources.rs
+  h_9e71e8b09f7cf2 425-453,465-494
+crates/testkit/fixtures/conversations/claude/expectations.json
+  h_9e71e8b09f7cf2 54-134,164-182
+crates/testkit/fixtures/conversations/metrics_db/expectations.json
+  h_9e71e8b09f7cf2 35-43,77-90,126-151,174-193,210-218,235-243
+crates/testkit/fixtures/conversations/omp/expectations.json
+  h_9e71e8b09f7cf2 49-175
+crates/testkit/fixtures/conversations/pij/expectations.json
+  h_9e71e8b09f7cf2 38-98
+crates/testkit/src/expectations.rs
+  h_9e71e8b09f7cf2 157-195,211-213,412-502
+docs/plans/005-convo-ingest/assets/inputs/tools/oracle_expectations.py
+  h_9e71e8b09f7cf2 312-319,361-365,391-395,485-489,497-627
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0bb51e53ae07d07684849b6dc6d9ce6c8c0d69bc",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
