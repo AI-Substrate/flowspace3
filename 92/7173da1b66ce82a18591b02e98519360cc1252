@@ -1,0 +1,14 @@
+docs/plans/005-convo-ingest/assets/composition-notes.md
+  h_9e71e8b09f7cf2 1-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "927173da1b66ce82a18591b02e98519360cc1252",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
