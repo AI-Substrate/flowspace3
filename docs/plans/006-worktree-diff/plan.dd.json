@@ -52,7 +52,8 @@
         {
           "id": "ac-0003",
           "claim": "Search from inside a worktree returns that worktree's version of a changed file; the same query from the main tree returns main's version; results carry which context they came from.",
-          "state": "unchecked"
+          "state": "unchecked",
+          "note": "OPEN BY DESIGN until the go-live run, and the validator's tk-e203-is-checked-but-ac-0003-is-not contradiction is expected: u-c's unit is delivered and independently re-verified (store pg_first_light 17/17, daemon first_light 14/14 on the composed tree), but this AC is a claim about LIVE retrieval and cannot be measured under the fake embedder first light ran with — a query quoting the marker's own body verbatim scored 0.1889 against unrelated files. Prime ruled (2026-08-28) that the live P3 measurement happens AFTER merge, because running it IS the feature going live for the fleet rather than a test. The receipt from that run closes this AC."
         },
         {
           "id": "ac-0004",

@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "command": "search",
+  "v": 1,
+  "data": {
+    "results": []
+  },
+  "meta": {
+    "scope": {
+      "cwd": "/Users/jordanknight/substrate/flowspace/flowspace3",
+      "repo": "git:github.com/AI-Substrate/flowspace3",
+      "source": "cwd",
+      "worktree": "/Users/jordanknight/substrate/flowspace/flowspace3"
+    },
+    "truncation": {
+      "limit": 3,
+      "truncated": false
+    }
+  },
+  "next_action": "nothing matched — widen with a shorter query, drop --min-score, check `flowspace3 status` in case indexing has not finished, or run `flowspace3 doctor`: a search only reads vectors written by the ACTIVE embedder, so a provider change since indexing returns nothing from a full index"
+}

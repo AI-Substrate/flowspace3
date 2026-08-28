@@ -1,0 +1,2 @@
+Preparing worktree (new branch 'poctest-wtdiff-20260828T045428Z')
+HEAD is now at f8bd87b feat: add isolated daemon sandbox (#48)

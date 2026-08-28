@@ -1,0 +1,32 @@
+2026-08-28T04:59:32.487921Z  INFO fs3_daemon::watch: re-listed a changed directory directory=/Users/jordanknight/substrate/flowspace/fs3-worktree-diff/docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z events=120 enqueued=10 settled=Quiet
+2026-08-28T04:59:32.535243Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2b-divergent-paths.txt ms=9 left=10
+2026-08-28T04:59:32.535368Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2b-deltas.txt ms=13 left=10
+2026-08-28T04:59:32.541467Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2b-jobs.txt ms=11 left=10
+2026-08-28T04:59:32.546754Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2b-paid.txt ms=13 left=10
+2026-08-28T04:59:32.547359Z  INFO fs3_daemon::runner: progress phase="working" scanned=5425 scan_left=8 summarized=7336 summarize_left=0 embedded=14331 embed_left=2 failed=0
+2026-08-28T04:59:32.582656Z  INFO fs3_daemon::runner: batch kind="embed" subject=4 x raw jobs=4 ms=33
+2026-08-28T04:59:32.600623Z  INFO fs3_daemon::runner: done kind="embed" id=55115 left=9
+2026-08-28T04:59:32.603394Z  INFO fs3_daemon::runner: done kind="embed" id=55117 left=8
+2026-08-28T04:59:32.605537Z  INFO fs3_daemon::runner: done kind="embed" id=55114 left=7
+2026-08-28T04:59:32.607462Z  INFO fs3_daemon::runner: done kind="embed" id=55116 left=6
+2026-08-28T04:59:32.620067Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-colliding-addresses.txt ms=8 left=7
+2026-08-28T04:59:32.621119Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p2b-reference-map.txt ms=11 left=6
+2026-08-28T04:59:32.628937Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-result-fields.txt ms=11 left=7
+2026-08-28T04:59:32.630156Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-elements-by-blob.txt ms=15 left=6
+2026-08-28T04:59:32.641399Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x raw jobs=2 ms=19
+2026-08-28T04:59:32.643470Z  INFO fs3_daemon::runner: done kind="embed" id=55119 left=5
+2026-08-28T04:59:32.645322Z  INFO fs3_daemon::runner: done kind="embed" id=55118 left=4
+2026-08-28T04:59:32.656711Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-search-flags.txt ms=9 left=4
+2026-08-28T04:59:32.658060Z  INFO fs3_daemon::runner: batch kind="embed" subject=2 x raw jobs=2 ms=8
+2026-08-28T04:59:32.660263Z  INFO fs3_daemon::runner: done kind="embed" id=55121 left=3
+2026-08-28T04:59:32.662676Z  INFO fs3_daemon::runner: done kind="embed" id=55120 left=2
+2026-08-28T04:59:32.667545Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=0
+2026-08-28T04:59:32.670326Z  INFO fs3_daemon::runner: done kind="embed" id=55122 left=1
+2026-08-28T04:59:32.673131Z  INFO fs3_daemon::runner: done kind=scan_file subject=docs/plans/006-worktree-diff/assets/probes/out/run-20260828T045428Z/p3-version-file-blobs.txt ms=7 left=1
+2026-08-28T04:59:32.679567Z  INFO fs3_daemon::runner: batch kind="embed" subject=1 x raw jobs=1 ms=5
+2026-08-28T04:59:32.681866Z  INFO fs3_daemon::runner: done kind="embed" id=55123 left=0
+2026-08-28T04:59:32.693524Z  INFO fs3_daemon::runner: progress phase="idle" scanned=5433 scan_left=0 summarized=7336 summarize_left=0 embedded=14341 embed_left=0 failed=0
+2026-08-28T04:59:37.348728Z  INFO fs3_daemon::worktrees: unregistered a vanished git worktree root=/Users/jordanknight/substrate/flowspace/fs3-daemon-restart
+2026-08-28T04:59:42.122619Z  INFO fs3_daemon::watch: no longer watching root=/Users/jordanknight/substrate/flowspace/fs3-daemon-restart dropped_pending=0
+2026-08-28T05:00:07.175597Z  INFO fs3_daemon::worktrees: unregistered a vanished git worktree root=/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T045428Z
+2026-08-28T05:00:12.122746Z  INFO fs3_daemon::watch: no longer watching root=/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T045428Z dropped_pending=0
