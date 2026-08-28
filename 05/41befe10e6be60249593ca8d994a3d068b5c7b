@@ -1,0 +1,35 @@
+crates/daemon/tests/convo_ingest_sidecar.rs
+  s_15d888f4b629c1::t_93f3caca8388dc 1-139
+crates/store/src/ingest_cursors.rs
+  s_59d749bfeff5de::t_2be62fa7f9d876 439-457,461,465,471-476,478,480-482,486-488,490-492
+crates/daemon/src/convo_ingest.rs
+  s_15d888f4b629c1::t_4ecbe88d533412 453,553,605-610
+crates/providers/src/conversation_sources/metrics_db.rs
+  s_15d888f4b629c1::t_8f5e3b46db56ac 816-821,823-827,830-837,839-845
+crates/providers/tests/conversation_source_metrics_db.rs
+  s_15d888f4b629c1::t_5929cb50d49c05 414-438
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0541befe10e6be60249593ca8d994a3d068b5c7b",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_59d749bfeff5de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae4199d-c737-4ac3-a856-7e69531e4bab",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
