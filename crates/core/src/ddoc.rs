@@ -210,6 +210,19 @@ pub struct DdocMeta {
     /// still worth indexing — the finding rides as metadata and the query
     /// decides.
     pub findings: Vec<String>,
+    /// The `ddocs` version that produced the derived half of this row, as
+    /// reported by `ddocs --json version`. `None` when no tooling ran.
+    ///
+    /// PERSISTED deliberately, and this is the whole point: the version must
+    /// travel with the row rather than living in an in-memory snapshot, or a
+    /// dd upgrade cannot be detected and the derived half never re-derives.
+    /// dd states the envelope is frozen while the per-verb payload is NOT, and
+    /// the payload has already moved under us once — so a stamp that is not
+    /// stored is a check that cannot fire.
+    ///
+    /// Compared, never parsed: any difference means re-derive. Ordering two
+    /// version strings would be inventing a semantic dd does not promise.
+    pub tooling_version: Option<String>,
 }
 
 impl DdocMeta {
@@ -238,6 +251,7 @@ impl DdocMeta {
             embed_basis,
             rels: Vec::new(),
             findings: Vec::new(),
+            tooling_version: None,
         }
     }
 
