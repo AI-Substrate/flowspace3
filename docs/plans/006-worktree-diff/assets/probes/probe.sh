@@ -446,14 +446,28 @@ done
 #      returns 1, and an assignment adopts that status;
 #   2. `[[ -z X ]] && Y` as the LAST command of a line returns 1 when the test
 #      is false, which is the healthy case.
-# Both are silent until the boot line happens to fall outside the captured log
-# slice, which is exactly what a fresh isolated daemon does.
+# ASK THE LIVE DAEMON, and fall back to the log only if it will not say.
+#
+# A gate about CURRENT semantics must not trust a historical mouth. Reading the
+# boot line from log history reports what was true when it was written, which
+# during a restart window is a state that no longer exists — a go-live run read
+# `embedder=offline` from exactly such a window while the daemon was in fact on
+# azure_openai, and refused a measurement it could have made. `ping` answers
+# for the process that is running right now.
+embedder_live() { fs3 ping 2>/dev/null | grep -oE 'embedder: [a-z_]+' | tail -1 | cut -d' ' -f2 || true; }
 embedder_from() { grep -oE 'embedder=[a-z_]+' "$1" 2>/dev/null | tail -1 | cut -d= -f2 || true; }
-EMBEDDER=$(embedder_from "$OUT/daemon-p1.log")
+EMBEDDER=$(embedder_live)
+EMBEDDER_SOURCE=daemon-ping
+if [[ -z "$EMBEDDER" ]]; then
+  EMBEDDER=$(embedder_from "$OUT/daemon-p1.log")
+  EMBEDDER_SOURCE=probe-log-slice
+fi
 if [[ -z "$EMBEDDER" ]]; then
   EMBEDDER=$(embedder_from "$DAEMON_LOG")
+  EMBEDDER_SOURCE=daemon-log-history
 fi
 echo "embedder=${EMBEDDER:-unknown}" >> "$OUT/receipt.env"
+echo "embedder_source=$EMBEDDER_SOURCE" >> "$OUT/receipt.env"
 
 answer_identity() { jq -S '[.data.results[] | {address, path, name, kind, span, snippet}]' "$1"; }
 P3_LEAK=$(jq -r --arg m "$MARKER" '[.data.results[]?|select(.name|startswith($m))]|length' "$OUT/p3-marker-from-main.json")
