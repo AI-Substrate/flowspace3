@@ -1,0 +1,14 @@
+docs/plans/007-human-interface/assets/first-light-transcript.md
+  h_9e71e8b09f7cf2 8,96,98-214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2818a3345bf0f9a9d2b4caad64fb6e158ac84223",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
