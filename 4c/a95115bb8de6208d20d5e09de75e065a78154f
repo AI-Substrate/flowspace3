@@ -1,0 +1,14 @@
+crates/store/src/embeddings.rs
+  h_9e71e8b09f7cf2 712-714,725
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4ca95115bb8de6208d20d5e09de75e065a78154f",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
