@@ -1,36 +1,88 @@
 {
- "dd": {
-  "schema": "builder/plan"
- },
- "sections": [
-  {
-   "name": "meta",
-   "value": {
-    "title": "Phase 2: Parallel services (readers, cursor, normalizer)",
-    "slug": "phase-2",
-    "status": "draft",
-    "summary": "Six SRP units behind the frozen contracts — the fan-out wave."
-   }
+  "dd": {
+    "schema": "builder/plan"
   },
-  {
-   "name": "summary",
-   "value": "Each task is one coder-sized unit per the impl-guide units table: own worktree, own paths, standalone tests, snap-in recipe shipped, zero shared files beyond one export line."
-  },
-  {
-   "name": "tasks",
-   "value": [
-    { "id": "tk-c201", "title": "u1a claude-native reader: main jsonl + sidecar subagents (re-glob each poll, mid-session discovery) + spilled tool-results resolution; merge one-line-per-content-block by message.id; allowlist record types, skip bookkeeping rows.", "state": "unchecked", "success": "Contract suite green over claude fixtures; oracle expectations reproduced; sidecar-appears-mid-poll case covered.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0004", "../../../plan.dd.json#acceptance_criteria/ac-0007"] },
-    { "id": "tk-c202", "title": "u1b omp-native reader: sessions jsonl with xd:// virtual-write remap (pij_send et al), toolCallId/toolName pairing, per-message usage, compaction/injected-instruction turns surfaced not dropped.", "state": "unchecked", "success": "Contract suite green over omp fixtures; xd:// records appear with remapped names; compaction turn present in output.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0005", "../../../plan.dd.json#acceptance_criteria/ac-0007"] },
-    { "id": "tk-c203", "title": "u1c pij-ledger reader: events.ndjson with monotonic seq as the cursor; message/tool_call/tool_result/receipt events; receipts preserved (they exist nowhere else).", "state": "unchecked", "success": "Contract suite green over ledger fixtures; seq-based delta reads proven.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0007"] },
-    { "id": "tk-c204", "title": "u1d metrics-db reader: sqlite metrics table, event_kind=5, rowid cursor, BOTH dialects (claude mirror + copilot event-stream: name under type, model at data.modelCall.model), repo-scoped queries mandatory.", "state": "unchecked", "success": "Contract suite green over db fixtures; copilot dialect covered; an unscoped query is impossible through the public API.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0007"] },
-    { "id": "tk-c205", "title": "u2 cursor-state service: durable per-(conversation, file) cursor persistence in PG beside the conversations tables; partial-line tail buffering; rotation/truncation detection (inode change or size < offset) -> rescan-from-0 with dedupe on the store's natural ordinal.", "state": "unchecked", "success": "In-memory tests cover tail buffer, rotation, and dedupe; PG persistence round-trips behind a store trait fake.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0003"] },
-    { "id": "tk-c206", "title": "u3 normalizer: RawRecord -> ConversationTurn per the measured payload spec (turn kinds; 512B output heads; write-family path+length; thinking dropped; compaction -> system kind); pure functions, golden in/out pairs.", "state": "unchecked", "success": "Golden tests green incl. payload-size properties; kind mapping matches conversations-telemetry-sample.md; mutation-checked head-truncation case.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0005", "../../../plan.dd.json#acceptance_criteria/ac-0007"] }
-   ]
-  },
-  {
-   "name": "done_when",
-   "value": {}
-  }
- ],
- "references": []
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 2: Parallel services (readers, cursor, normalizer)",
+        "slug": "phase-2",
+        "status": "draft",
+        "summary": "Six SRP units behind the frozen contracts — the fan-out wave."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Each task is one coder-sized unit per the impl-guide units table: own worktree, own paths, standalone tests, snap-in recipe shipped, zero shared files beyond one export line."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-c201",
+          "title": "u1a claude-native reader: main jsonl + sidecar subagents (re-glob each poll, mid-session discovery) + spilled tool-results resolution; merge one-line-per-content-block by message.id; allowlist record types, skip bookkeeping rows.",
+          "state": "unchecked",
+          "success": "Contract suite green over claude fixtures; oracle expectations reproduced; sidecar-appears-mid-poll case covered.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004",
+            "../../../plan.dd.json#acceptance_criteria/ac-0007"
+          ]
+        },
+        {
+          "id": "tk-c202",
+          "title": "u1b omp-native reader: sessions jsonl with xd:// virtual-write remap (pij_send et al), toolCallId/toolName pairing, per-message usage, compaction/injected-instruction turns surfaced not dropped.",
+          "state": "unchecked",
+          "success": "Contract suite green over omp fixtures; xd:// records appear with remapped names; compaction turn present in output.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005",
+            "../../../plan.dd.json#acceptance_criteria/ac-0007"
+          ]
+        },
+        {
+          "id": "tk-c203",
+          "title": "u1c pij-ledger reader: events.ndjson with monotonic seq as the cursor; message/tool_call/tool_result/receipt events; receipts preserved (they exist nowhere else).",
+          "state": "unchecked",
+          "success": "Contract suite green over ledger fixtures; seq-based delta reads proven.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0007"
+          ]
+        },
+        {
+          "id": "tk-c204",
+          "title": "u1d metrics-db reader: sqlite metrics table, event_kind=5, rowid cursor, BOTH dialects (claude mirror + copilot event-stream: name under type, model at data.modelCall.model), repo-scoped queries mandatory.",
+          "state": "unchecked",
+          "success": "Contract suite green over db fixtures; copilot dialect covered; an unscoped query is impossible through the public API.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0007"
+          ]
+        },
+        {
+          "id": "tk-c205",
+          "title": "u2 cursor-state service: durable per-(conversation, file) cursor persistence in PG beside the conversations tables; partial-line tail buffering; rotation/truncation detection (inode change or size < offset) -> rescan-from-0 with dedupe on the store's natural ordinal.",
+          "state": "checked",
+          "success": "In-memory tests cover tail buffer, rotation, and dedupe; PG persistence round-trips behind a store trait fake.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ],
+          "receipt": "crates/store/src/ingest_cursors.rs + crates/store/migrations/0014_ingest_cursors.sql @ 005-convo-u2 0d3c694 (seat pij-appalling-slug). Durable cursor persistence for all three SourceCursor variants plus the ordinal ledger a post-rotation rescan is deduplicated against; cursor and ledger commit in ONE transaction (commit_poll), because a cursor that advanced without its ledger rows duplicates the conversation. 16 pg tests green against scratch db fs3_convo_u2. PM-AUDITED AT THE DIFF, not on the seat report: the two load-bearing tests are mutation-checked and pointing the high-water query back at the per-session ledger fails exactly the two new tests, 14 passed 2 failed. Numbering defect found by the seat AFTER it reported done, via the mandatory assumptions disclosure, and ruled to the authoritative fix: next_turn_no derives from MAX(turn_no) on the turns table (the conversation owns its primary key) while seen stays session-scoped. Six of the units own pg tests moved with that ruling because they encoded the defect; the eight daemon intake tests are the regression oracle for the payload-policy move and are green and UNMODIFIED."
+        },
+        {
+          "id": "tk-c206",
+          "title": "u3 normalizer: RawRecord -> ConversationTurn per the measured payload spec (turn kinds; 512B output heads; write-family path+length; thinking dropped; compaction -> system kind); pure functions, golden in/out pairs.",
+          "state": "checked",
+          "success": "Golden tests green incl. payload-size properties; kind mapping matches conversations-telemetry-sample.md; mutation-checked head-truncation case.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005",
+            "../../../plan.dd.json#acceptance_criteria/ac-0007"
+          ],
+          "receipt": "crates/core/src/conversation_normalize.rs @ 005-convo-u2 5f36dc7 (seat pij-appalling-slug). Pure RawRecord -> fs3_core::conversation::Turn per the measured payload spec; no new payload vocabulary minted (prime ruling F). The payload policy (OUTPUT_HEAD_BYTES = 512, char-boundary truncation, write-family elision to path plus length) moved ONCE into core as public functions per the prime ruling, so the importer and the intake apply the same rule instead of two copies that drift — plan risk r3 retired. 16 core tests green, no Postgres. Truncation MUTATION-CHECKED: deleting the head truncate fails five tests including the multi-byte character-boundary cases. parent_ordinal is deliberately dropped (v1 stores sequence, not the reply chain) and a test names the drop so it does not read as an oversight. Daemon shape() delegation is the composers edit, recipe step 2, not this units."
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {}
+    }
+  ]
 }
