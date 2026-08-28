@@ -10,7 +10,7 @@
     {"id":"G1","axis":"groundedness","type":"citations-all-resolve","params":{},"on_unavailable":"fail"},
     {"id":"G2","axis":"groundedness","type":"citations-include-any","params":{"addresses":["el:git:github.com/AI-Substrate/harness-engineering/docs/how/flow-conformance-eval.md::Flow-conformance evaluation::Reading the numbers — the statistics behind a report::Three-valued rows and where `unknown` goes"]},"on_unavailable":"fail"},
     {"id":"G3","axis":"groundedness","type":"answer-matches-all","params":{"patterns":["(?i)(unknown.*(evidence|channel).*(unavailable|missing)|(unavailable|missing).*(evidence|channel).*unknown)","(?i)excluded.*denominator"]},"on_unavailable":"fail"},
-    {"id":"W1","axis":"recovery","type":"trace-search-scope-sequence","params":{"sequence":[{"request_scope":"cwd","effective_repo":"git:github.com/AI-Substrate/flowspace3","repo_argument_allowed":[null,"git:github.com/AI-Substrate/flowspace3"]},{"repo_argument":"all","effective_repo":"all"}]},"on_unavailable":"fail"},
+    {"id":"W1","axis":"recovery","type":"trace-search-scope-sequence","params":{"sequence":[{"request_scope":"cwd","effective_repo":"git:github.com/AI-Substrate/flowspace3","repo_argument_allowed":[null,"git:github.com/AI-Substrate/flowspace3"],"failed":false,"evidence":false},{"repo_argument":"all","effective_repo":"all","failed":false,"evidence":true}]},"on_unavailable":"fail"},
     {"id":"W2","axis":"recovery","type":"trace-completes-after-scope-widening","params":{"final_citation_repo":"git:github.com/AI-Substrate/harness-engineering"},"on_unavailable":"fail"},
     {"id":"C1","axis":"cost","type":"field-u64-observed","params":{"field":"tokens_used","budget_compliance":false},"on_null":"unknown","on_unavailable":"fail"}
   ]

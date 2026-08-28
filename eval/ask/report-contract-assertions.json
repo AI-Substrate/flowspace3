@@ -6,13 +6,15 @@
     {"id":"S1","type":"field-type","params":{"path":"data.question","type":"string"},"on_unavailable":"fail"},
     {"id":"S2","type":"field-type","params":{"path":"data.answer","type":"string|null"},"on_unavailable":"fail"},
     {"id":"S3","type":"array-items-type","params":{"path":"data.citations","type":"string","ordered":true,"deduplicated":true},"on_unavailable":"fail"},
-    {"id":"S4","type":"trace-entry-shape","params":{"path":"data.trace","fields":{"iteration":"u32","tool":"string","arguments":"string","failed":"bool","result_chars":"usize"},"ordered":true},"on_unavailable":"fail"},
+    {"id":"S4","type":"trace-entry-shape","params":{"path":"data.trace","fields":{"iteration":"u32","tool":"string","arguments":"string","failed":"bool","evidence":"bool","result_chars":"usize"},"ordered":true},"on_unavailable":"fail"},
     {"id":"S5","type":"field-type","params":{"path":"data.iterations","type":"u32"},"on_unavailable":"fail"},
     {"id":"S6","type":"field-type","params":{"path":"data.tokens_used","type":"u64|null","null_status":"unknown","budget_compliance":false},"on_unavailable":"fail"},
     {"id":"S7","type":"field-enum","params":{"path":"data.stopped","values":["answered","max_iterations","token_budget"]},"on_unavailable":"fail"},
     {"id":"S8","type":"field-type","params":{"path":"data.model","type":"string","non_empty":true},"on_unavailable":"fail"},
     {"id":"S9","type":"field-present","params":{"path":"meta.scope","on_success":true,"on_error":true},"on_unavailable":"fail"},
-    {"id":"S10","type":"field-type","params":{"path":"data.grounded","type":"bool","evaluate_before":"citation-resolution"},"on_unavailable":"fail"}
+    {"id":"S10","type":"field-type","params":{"path":"data.grounded","type":"bool","evaluate_before":"citation-resolution"},"on_unavailable":"fail"},
+    {"id":"S11","type":"grounded-equals-any-trace-evidence","params":{"grounded_path":"data.grounded","trace_path":"data.trace","evidence_field":"evidence"},"on_unavailable":"fail"},
+    {"id":"S12","type":"trace-evidence-state-valid","params":{"trace_path":"data.trace","forbid":{"failed":true,"evidence":true}},"on_unavailable":"fail"}
   ],
   "three_valued_rule": "Rows resolve pass, fail, or unknown. Unknown is reserved for an unavailable evidence channel and is excluded from every denominator; contract-shape absence is a fail, not unknown."
 }
