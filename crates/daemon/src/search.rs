@@ -250,6 +250,7 @@ pub async fn search(
         kinds,
         max_distance,
         limit,
+        ..SearchFilters::default()
     };
 
     let hits = fs3_store::search_elements(&state.db, &model_key, &vector, &filters)

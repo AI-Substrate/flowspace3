@@ -14,6 +14,7 @@
 use fs3_core::{Element, ElementKind};
 use pgvector::Vector;
 use sqlx::Row;
+use sqlx::types::Json;
 use std::collections::HashSet;
 
 use crate::elements::kind_from_str;
@@ -286,7 +287,8 @@ pub async fn query_embeddings(
          SELECT n.source_kind, n.distance,
                 s.text, s.tags, s.extras,
                 e.blob_sha, e.parser_version, e.kind, e.subkind, e.name,
-                e.address, e.span_start, e.span_end, e.sibling_order, e.raw_text
+                e.address, e.span_start, e.span_end, e.sibling_order, e.raw_text,
+                e.ddoc
            FROM nearest n
            LEFT JOIN LATERAL (
                 SELECT sc.raw_hash, sc.text, sc.tags, sc.extras
@@ -298,7 +300,7 @@ pub async fn query_embeddings(
            JOIN LATERAL (
                 SELECT el.id, el.blob_sha, el.parser_version, el.kind, el.subkind,
                        el.name, el.address, el.span_start, el.span_end,
-                       el.sibling_order, el.raw_text
+                       el.sibling_order, el.raw_text, el.ddoc
                   FROM elements el
                  WHERE el.raw_hash = COALESCE(s.raw_hash, n.source_hash)
                  ORDER BY el.id
@@ -346,6 +348,13 @@ pub struct SearchFilters {
     /// Cosine DISTANCE ceiling — a hit further than this is not returned.
     /// Expressed as the caller's minimum score: `1.0 - min_score`.
     pub max_distance: Option<f64>,
+    /// Only ddoc rows carrying one of these raw minted-id prefixes.
+    pub id_kinds: Option<Vec<String>>,
+    /// `true` selects known non-terminal rows; `false` known terminal rows.
+    /// Rows whose gate membership is unknown match neither value.
+    pub gate_open: Option<bool>,
+    /// Only ddoc rows declaring this schema, verbatim.
+    pub ddoc_schema: Option<String>,
     /// How many hits to return.
     pub limit: i64,
 }
@@ -358,6 +367,9 @@ impl Default for SearchFilters {
             source: None,
             max_distance: None,
             kinds: None,
+            id_kinds: None,
+            gate_open: None,
+            ddoc_schema: None,
             limit: 10,
         }
     }
@@ -440,10 +452,14 @@ pub async fn search_elements(
               WHERE model_key = $2
                 AND ($4::text IS NULL OR source_kind = $4)
                 AND ($5::float8 IS NULL OR (vector <=> $1) <= $5)
-                -- The CONTENT-TYPE gate, and it is unconditional: a caller that
-                -- names kinds must not be answered with another kind, whether
-                -- or not it also named a repository.
+                -- Every element-shaped filter is satisfied by the SAME row.
+                -- Raw hashes are shared deliberately, so separate EXISTS legs
+                -- could otherwise admit a code row by one and a ddoc row by
+                -- another.
                 AND ($8::text[] IS NULL
+                     AND $9::text[] IS NULL
+                     AND $10::boolean IS NULL
+                     AND $11::text IS NULL
                      OR EXISTS (
                           SELECT 1
                             FROM elements el
@@ -453,7 +469,14 @@ pub async fn search_elements(
                                        AND sc.text_hash = e.source_hash
                                      LIMIT 1),
                                    e.source_hash)
-                             AND el.kind = ANY($8)))
+                             AND ($8::text[] IS NULL OR el.kind = ANY($8))
+                             AND ($9::text[] IS NULL
+                                  OR el.ddoc->>'id_kind' = ANY($9))
+                             AND ($10::boolean IS NULL
+                                  OR (el.ddoc->>'gate_terminal' IS NOT NULL
+                                      AND (el.ddoc->>'gate_terminal')::boolean = NOT $10))
+                             AND ($11::text IS NULL
+                                  OR el.ddoc->>'schema' = $11)))
                 -- The ANCHOR gate, conditional so that content which outlived
                 -- its checkout is still findable when nobody asked to narrow
                 -- (decision D7). Two legs, because content reaches a repository
@@ -494,7 +517,7 @@ pub async fn search_elements(
                 s.text, s.tags, s.extras,
                 e.blob_sha, e.parser_version, e.kind, e.subkind, e.name,
                 e.address, e.span_start, e.span_end, e.sibling_order, e.raw_text,
-                live.identity, live.path
+                e.ddoc, live.identity, live.path
            FROM nearest n
            LEFT JOIN LATERAL (
                 SELECT sc.raw_hash, sc.text, sc.tags, sc.extras
@@ -506,16 +529,18 @@ pub async fn search_elements(
            JOIN LATERAL (
                 SELECT el.id, el.blob_sha, el.parser_version, el.kind, el.subkind,
                        el.name, el.address, el.span_start, el.span_end,
-                       el.sibling_order, el.raw_text, el.raw_hash
+                       el.sibling_order, el.raw_text, el.raw_hash, el.ddoc
                   FROM elements el
                  WHERE el.raw_hash = COALESCE(s.raw_hash, n.source_hash)
-                   -- Critic finding 4, and it is not belt-and-braces: this
-                   -- resolver takes the LOWEST-id element carrying the hash, so
-                   -- a turn that shares its text with code — which is exactly
-                   -- what the dedupe makes common — would resolve to the code
-                   -- element and be rendered with an `el:` address. The kind
-                   -- has to be pinned on BOTH sides of the query.
+                   -- The resolver repeats every element gate: a shared hash
+                   -- must not resolve to the lowest-id row of another kind or
+                   -- another ddoc classification.
                    AND ($8::text[] IS NULL OR el.kind = ANY($8))
+                   AND ($9::text[] IS NULL OR el.ddoc->>'id_kind' = ANY($9))
+                   AND ($10::boolean IS NULL
+                        OR (el.ddoc->>'gate_terminal' IS NOT NULL
+                            AND (el.ddoc->>'gate_terminal')::boolean = NOT $10))
+                   AND ($11::text IS NULL OR el.ddoc->>'schema' = $11)
                  ORDER BY el.id
                  LIMIT 1
            ) e ON TRUE
@@ -545,6 +570,9 @@ pub async fn search_elements(
             .as_ref()
             .map(|kinds| kinds.iter().map(|kind| kind.as_str()).collect::<Vec<_>>()),
     )
+    .bind(filters.id_kinds.as_deref())
+    .bind(filters.gate_open)
+    .bind(filters.ddoc_schema.as_deref())
     .fetch_all(&mut *tx)
     .await?;
 
@@ -606,11 +634,14 @@ pub async fn anchor_has_vectors(
                 AND ($2::text IS NULL OR r.identity = $2)
                 AND ($3::text IS NULL OR f.path LIKE $3)
                 AND ($4::text[] IS NULL OR el.kind = ANY($4))
-                -- A smart-space search reads summary vectors, so eligibility
-                -- means the summary exists — not merely that the element does.
                 AND ($5::text IS NULL OR $5 <> 'smart'
                      OR EXISTS (SELECT 1 FROM smart_content sc
-                                 WHERE sc.raw_hash = el.raw_hash)))",
+                                 WHERE sc.raw_hash = el.raw_hash))
+                AND ($6::text[] IS NULL OR el.ddoc->>'id_kind' = ANY($6))
+                AND ($7::boolean IS NULL
+                     OR (el.ddoc->>'gate_terminal' IS NOT NULL
+                         AND (el.ddoc->>'gate_terminal')::boolean = NOT $7))
+                AND ($8::text IS NULL OR el.ddoc->>'schema' = $8))",
     )
     .bind(model_key)
     .bind(filters.repo.as_deref())
@@ -622,6 +653,9 @@ pub async fn anchor_has_vectors(
             .map(|kinds| kinds.iter().map(|kind| kind.as_str()).collect::<Vec<_>>()),
     )
     .bind(filters.source.map(SourceKind::as_str))
+    .bind(filters.id_kinds.as_deref())
+    .bind(filters.gate_open)
+    .bind(filters.ddoc_schema.as_deref())
     .fetch_one(pool)
     .await?;
 
@@ -630,7 +664,7 @@ pub async fn anchor_has_vectors(
 
 fn similar_from_row(row: &sqlx::postgres::PgRow) -> Result<SimilarElement, StoreError> {
     let kind: String = row.try_get("kind")?;
-    let element = Element::new(
+    let mut element = Element::new(
         kind_from_str(&kind)?,
         row.try_get::<String, _>("subkind")?,
         row.try_get::<String, _>("name")?,
@@ -642,6 +676,9 @@ fn similar_from_row(row: &sqlx::postgres::PgRow) -> Result<SimilarElement, Store
         row.try_get::<String, _>("raw_text")?,
     )
     .with_sibling_order(row.try_get::<i32, _>("sibling_order")? as u32);
+    element.ddoc = row
+        .try_get::<Option<Json<fs3_core::DdocMeta>>, _>("ddoc")?
+        .map(|Json(meta)| Box::new(meta));
 
     // Decoded by the same function `get_smart_content` uses. Two decoders is
     // how `extras` came to be dropped on one path and kept on the other, and

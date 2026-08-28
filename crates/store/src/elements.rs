@@ -25,6 +25,7 @@ use std::collections::HashMap;
 use fs3_core::{BlobRef, Element, ElementKind, Span};
 use sqlx::Row;
 use sqlx::postgres::PgRow;
+use sqlx::types::Json;
 
 use crate::{PgPool, StoreError};
 
@@ -62,8 +63,8 @@ pub async fn upsert_element_tree(
         let id: i64 = sqlx::query_scalar(
             "INSERT INTO elements
                (blob_sha, parser_version, parent_id, kind, subkind, name, address,
-                span_start, span_end, sibling_order, raw_text, raw_hash, enrich)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                span_start, span_end, sibling_order, raw_text, raw_hash, enrich, ddoc)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
              ON CONFLICT (blob_sha, parser_version, address, span_start) DO UPDATE SET
                parent_id     = EXCLUDED.parent_id,
                kind          = EXCLUDED.kind,
@@ -73,7 +74,8 @@ pub async fn upsert_element_tree(
                sibling_order = EXCLUDED.sibling_order,
                raw_text      = EXCLUDED.raw_text,
                raw_hash      = EXCLUDED.raw_hash,
-               enrich        = EXCLUDED.enrich
+               enrich        = EXCLUDED.enrich,
+               ddoc          = EXCLUDED.ddoc
              RETURNING id",
         )
         .bind(blob.as_str())
@@ -89,6 +91,7 @@ pub async fn upsert_element_tree(
         .bind(&element.raw_text)
         .bind(element.raw_hash())
         .bind(enrich(element))
+        .bind(element.ddoc.as_deref().map(Json))
         .fetch_one(&mut *tx)
         .await?;
 
@@ -116,7 +119,7 @@ pub async fn get_elements(
 ) -> Result<Option<Element>, StoreError> {
     let rows = sqlx::query(
         "SELECT id, parent_id, kind, subkind, name, address,
-                span_start, span_end, sibling_order, raw_text
+                span_start, span_end, sibling_order, raw_text, ddoc
            FROM elements
           WHERE blob_sha = $1 AND parser_version = $2
           ORDER BY sibling_order, id",
@@ -191,7 +194,7 @@ fn assemble(
 /// pass itself off as right.
 pub(crate) fn element_from_row(row: &PgRow) -> Result<Element, StoreError> {
     let kind: String = row.try_get("kind")?;
-    Ok(Element::new(
+    let mut element = Element::new(
         kind_from_str(&kind)?,
         row.try_get::<String, _>("subkind")?,
         row.try_get::<String, _>("name")?,
@@ -202,7 +205,16 @@ pub(crate) fn element_from_row(row: &PgRow) -> Result<Element, StoreError> {
         ),
         row.try_get::<String, _>("raw_text")?,
     )
-    .with_sibling_order(row.try_get::<i32, _>("sibling_order")? as u32))
+    .with_sibling_order(row.try_get::<i32, _>("sibling_order")? as u32);
+    // Some internal projections use this decoder without selecting optional
+    // metadata. Those code-only paths predate ddocs and remain valid; the ddoc
+    // round-trip query selects the column and its contract test proves it.
+    element.ddoc = match row.try_get::<Option<Json<fs3_core::DdocMeta>>, _>("ddoc") {
+        Ok(meta) => meta.map(|Json(meta)| Box::new(meta)),
+        Err(sqlx::Error::ColumnNotFound(_)) => None,
+        Err(error) => return Err(error.into()),
+    };
+    Ok(element)
 }
 
 pub(crate) fn kind_from_str(value: &str) -> Result<ElementKind, StoreError> {
