@@ -1,0 +1,14 @@
+.harness/extensions/team/extension.ts
+  h_9e71e8b09f7cf2 254-258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "30177d6ecb8313848e69d954c80ae6152c7de27b",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
