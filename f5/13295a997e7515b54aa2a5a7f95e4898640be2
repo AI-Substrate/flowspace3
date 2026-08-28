@@ -1,0 +1,27 @@
+crates/providers/src/lib.rs
+  s_15d888f4b629c1::t_ba59c7c818338e 49-50
+docs/briefs/w-openrouter.md
+  s_15d888f4b629c1::t_e9a2bb34b73f3e 1-58
+crates/cli/docs/providers.md
+  s_15d888f4b629c1::t_0759c790d91b5b 3-6,25,32-34,37-38,140-186,193,196-197
+crates/providers/Cargo.toml
+  s_15d888f4b629c1::t_16ece61c5fdec1 7
+docs/plans/prd/providers-roster.md
+  s_15d888f4b629c1::t_2b1c539c8594ed 2,9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f513295a997e7515b54aa2a5a7f95e4898640be2",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
