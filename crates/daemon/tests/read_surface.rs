@@ -105,6 +105,13 @@ struct Stack {
     state: AppState,
 }
 
+struct DdocFixture {
+    address: String,
+    blob: fs3_core::BlobRef,
+    worktree: i64,
+    raw_hash: String,
+}
+
 impl Stack {
     async fn create(label: &str) -> Self {
         let database = support::FreshDatabase::create(label).await;
@@ -145,16 +152,16 @@ impl Stack {
 
     /// Store the exact tree produced by the pure ddoc parser, without relying
     /// on the composition-owned scan dispatch.
-    async fn index_ddoc(&self, path: &str, source: &str) -> (String, fs3_core::BlobRef) {
+    async fn index_ddoc(&self, path: &str, source: &str) -> DdocFixture {
         let tree = fs3_parsers::scan_ddoc(Path::new(path), source.as_bytes(), None)
             .expect("the ddoc fixture parses");
-        let address = tree
+        let row = tree
             .root
             .iter()
             .find(|element| element.kind == fs3_core::ElementKind::Row)
-            .expect("the fixture contains a row")
-            .address
-            .clone();
+            .expect("the fixture contains a row");
+        let address = row.address.clone();
+        let raw_hash = row.raw_hash().to_string();
         let identity = fs3_core::RepoIdentity::from_path(Path::new("/srv/read-ddoc"));
         let worktree =
             fs3_store::register_worktree(&self.state.db, &identity, "/srv/read-ddoc", Some("main"))
@@ -176,7 +183,37 @@ impl Stack {
         )
         .await
         .expect("storing parsed ddoc tree");
-        (address, tree.blob)
+        DdocFixture {
+            address,
+            blob: tree.blob,
+            worktree,
+            raw_hash,
+        }
+    }
+
+    async fn embed_ddoc(&self, fixture: &DdocFixture, query: &str) {
+        let identity = fs3_core::RepoIdentity::from_path(Path::new("/srv/read-ddoc"));
+        let repo = identity.key();
+        let vector = self
+            .state
+            .embedder_for(repo)
+            .embed(&[query.to_string()])
+            .await
+            .expect("fake embedder answers")
+            .pop()
+            .expect("one query vector");
+        fs3_store::put_embeddings(
+            &self.state.db,
+            &self.state.embedder_key(repo),
+            &[fs3_store::NewEmbedding {
+                source_hash: &fixture.raw_hash,
+                source_kind: fs3_store::SourceKind::Raw,
+                vector: &vector,
+                truncated: false,
+            }],
+        )
+        .await
+        .expect("store row embedding");
     }
 
     async fn call(
@@ -298,7 +335,7 @@ async fn get_reads_one_element_with_its_children_and_parents() {
 #[tokio::test]
 async fn get_by_dd_address_resolves_the_same_row_the_parser_produced() {
     let stack = Stack::create("read_get_ddoc_row").await;
-    let (address, _) = stack
+    let fixture = stack
         .index_ddoc(
             "docs/plan.dd.json",
             r#"{
@@ -314,11 +351,14 @@ async fn get_by_dd_address_resolves_the_same_row_the_parser_produced() {
             }"#,
         )
         .await;
-    assert_eq!(address, "docs/plan.dd.json#acceptance_criteria/ac-0001");
+    assert_eq!(
+        fixture.address,
+        "docs/plan.dd.json#acceptance_criteria/ac-0001"
+    );
 
-    let envelope = stack.get(&[("address", address.as_str())]).await;
+    let envelope = stack.get(&[("address", fixture.address.as_str())]).await;
     let row = data(&envelope);
-    assert_eq!(row["address"], address);
+    assert_eq!(row["address"], fixture.address);
     assert_eq!(row["kind"], "row");
     assert_eq!(row["name"], "ac-0001");
     assert!(
@@ -326,6 +366,55 @@ async fn get_by_dd_address_resolves_the_same_row_the_parser_produced() {
             .as_str()
             .expect("row text")
             .contains("Agents can resolve this row")
+    );
+    stack.destroy().await;
+}
+
+#[tokio::test]
+async fn ddoc_degradation_notice_uses_live_worktree_tooling() {
+    let stack = Stack::create("search_ddoc_tooling").await;
+    let fixture = stack
+        .index_ddoc(
+            "docs/plan.dd.json",
+            r#"{
+                "dd": {"schema": "builder/plan"},
+                "sections": [{"name": "acceptance_criteria", "value": [
+                    {"id": "ac-0001", "claim": "Tooling state is live", "state": "unchecked"}
+                ]}]
+            }"#,
+        )
+        .await;
+    stack.embed_ddoc(&fixture, "tooling state probe").await;
+    let query = [("q", "tooling state probe"), ("cwd", "/srv/read-ddoc")];
+
+    let absent = stack.search(&query).await;
+    let absent_results = data(&absent)["results"].clone();
+    assert_eq!(absent_results[0]["address"], fixture.address);
+    let absent_next = absent.next_action.as_deref().expect("search steers");
+    assert!(absent_next.contains("`ddocs` binary is unavailable"));
+    assert!(absent_next.contains("link edges"));
+    assert!(absent_next.contains("gate-terminal membership"));
+    assert!(absent_next.contains("derived state"));
+
+    stack
+        .state
+        .set_ddoc_tooling(
+            fixture.worktree,
+            fs3_daemon::ddoc::DdocTooling {
+                version: Some("0.1.0".to_string()),
+                ..fs3_daemon::ddoc::DdocTooling::default()
+            },
+        )
+        .await;
+    let healthy = stack.search(&query).await;
+    assert_eq!(data(&healthy)["results"], absent_results);
+    assert!(
+        !healthy
+            .next_action
+            .as_deref()
+            .expect("search steers")
+            .contains("`ddocs` binary is unavailable"),
+        "healthy live tooling must not emit the degradation notice"
     );
     stack.destroy().await;
 }
@@ -364,7 +453,7 @@ async fn refs_with_no_rows_is_a_successful_empty_answer() {
 #[tokio::test]
 async fn refs_returns_the_source_rows_pasteable_dd_address() {
     let stack = Stack::create("refs_cited").await;
-    let (address, blob) = stack
+    let fixture = stack
         .index_ddoc(
             "docs/plan.dd.json",
             r#"{
@@ -377,11 +466,11 @@ async fn refs_returns_the_source_rows_pasteable_dd_address() {
         .await;
     fs3_store::replace_file_refs(
         &stack.state.db,
-        &blob,
+        &fixture.blob,
         fs3_daemon::scan::PARSER_VERSION,
         &[fs3_store::DdocFileRef {
             element_id: 0,
-            address: address.clone(),
+            address: fixture.address.clone(),
             path: "src/lib.rs".to_string(),
             rel: "ref".to_string(),
             location: "$.sections[0].value[0].source".to_string(),
@@ -393,7 +482,7 @@ async fn refs_returns_the_source_rows_pasteable_dd_address() {
     let envelope = stack.refs(&[("path", "src/lib.rs")]).await;
     let results = data(&envelope)["results"].as_array().expect("ref results");
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0]["address"], address);
+    assert_eq!(results[0]["address"], fixture.address);
     assert_eq!(results[0]["path"], "src/lib.rs");
     assert_eq!(results[0]["rel"], "ref");
     stack.destroy().await;

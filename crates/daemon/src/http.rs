@@ -400,7 +400,12 @@ async fn search(
             // that, and the steer says the known thing instead of listing
             // suspects: guessing out loud next to a fact we hold is how a user
             // ends up rephrasing a query that was never the problem.
+            let ddoc_notice = ddoc_degradation_notice(&state, &scope).await;
             let next = next_after_search(&outcome);
+            let next = match ddoc_notice {
+                Some(notice) => format!("{notice} — {next}"),
+                None => next,
+            };
             let meta = serde_json::json!({
                 "scope": scope,
                 "empty_because": outcome.empty_because,
@@ -442,6 +447,25 @@ fn next_after_search(outcome: &SearchOutcome) -> String {
     "read a hit in full with `flowspace3 get <address>`, browse its file with \
      `flowspace3 tree <address>`, or narrow with --path/--repo"
         .to_string()
+}
+
+/// Report unavailable ddocs tooling only when the request maps to one exact worktree.
+///
+/// Cwd-scoped searches carry that root in [`crate::scope::Scope::worktree`],
+/// which maps deterministically to the live tooling snapshot. Explicit-repo and
+/// all-repo scopes may cover several worktrees and deliberately stay silent: an
+/// absent snapshot elsewhere is not evidence about the corpus that answered.
+/// Store lookup failure also stays silent because tooling absence was not proven.
+async fn ddoc_degradation_notice(
+    state: &AppState,
+    scope: &crate::scope::Scope,
+) -> Option<&'static str> {
+    let root = scope.worktree.as_deref()?;
+    let worktree = fs3_store::find_worktree(&state.db, root).await.ok()??;
+    state.ddoc_tooling(worktree.id).await.is_absent().then_some(
+        "the `ddocs` binary is unavailable: rows are indexed and searchable, but link edges, \
+             gate-terminal membership and derived state are unavailable until `ddocs` is on PATH",
+    )
 }
 
 async fn refs(
