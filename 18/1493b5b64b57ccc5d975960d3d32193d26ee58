@@ -1,0 +1,16 @@
+crates/store/src/ddoc.rs
+  h_9e71e8b09f7cf2 24-35,156-157,159-162,171,180,190,194
+crates/store/tests/pg_ddoc.rs
+  h_9e71e8b09f7cf2 316-322,328,348-355,357,370-372,399-411,413-421,432-441,451-458,487,494
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "181493b5b64b57ccc5d975960d3d32193d26ee58",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
