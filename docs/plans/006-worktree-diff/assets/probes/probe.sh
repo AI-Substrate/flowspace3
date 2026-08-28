@@ -434,8 +434,19 @@ done
 # quoting the function's own body verbatim was 0.1889 against unrelated files.
 #
 # So this refuses to emit a verdict it cannot support, and says which run would.
-EMBEDDER=$(grep -oE 'embedder=[a-z_]+' "$OUT/daemon-p1.log" 2>/dev/null | tail -1 | cut -d= -f2)
-[[ -z "$EMBEDDER" ]] && EMBEDDER=$(grep -oE 'embedder=[a-z_]+' "$DAEMON_LOG" 2>/dev/null | tail -1 | cut -d= -f2)
+# Two `set -e` traps here, both found by running it (amphibian, 2026-08-28) —
+# the script exited 1 mid-P3 on the NORMAL isolated-daemon shape:
+#   1. a command substitution whose pipeline ends in a non-matching `grep`
+#      returns 1, and an assignment adopts that status;
+#   2. `[[ -z X ]] && Y` as the LAST command of a line returns 1 when the test
+#      is false, which is the healthy case.
+# Both are silent until the boot line happens to fall outside the captured log
+# slice, which is exactly what a fresh isolated daemon does.
+embedder_from() { grep -oE 'embedder=[a-z_]+' "$1" 2>/dev/null | tail -1 | cut -d= -f2 || true; }
+EMBEDDER=$(embedder_from "$OUT/daemon-p1.log")
+if [[ -z "$EMBEDDER" ]]; then
+  EMBEDDER=$(embedder_from "$DAEMON_LOG")
+fi
 echo "embedder=${EMBEDDER:-unknown}" >> "$OUT/receipt.env"
 
 answer_identity() { jq -S '[.data.results[] | {address, path, name, kind, span, snippet}]' "$1"; }
