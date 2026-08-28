@@ -13,10 +13,14 @@
 //! cache; it is the same answer by construction, because a blob IS the hash of
 //! the bytes.
 //!
-//! It is also where the plan's idempotence claim is paid: a re-scan of an
-//! unchanged tree enqueues no scans at all (the path→blob map is identical), and
-//! a scan that does run over already-known bytes writes nothing and enqueues no
-//! enrichment.
+//! It is also where the plan's idempotence claim is paid — but the claim is
+//! about COST, not about queue depth, and the two read very differently in
+//! `status`. A re-scan of an unchanged tree enqueues no scans at all (the
+//! path→blob map is identical). A scan that does run over already-known bytes
+//! writes nothing and deliberately RE-EMITS its enrichment (see the skip in
+//! [`run`]), so a burst of `summarize` and `embed` rows is the healthy shape
+//! rather than a leak: every one of them is content-keyed, and a handler whose
+//! work is already done skips it in one query.
 //!
 //! # Which blob key is used, and why it matters
 //!

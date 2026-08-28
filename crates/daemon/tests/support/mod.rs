@@ -168,3 +168,74 @@ pub async fn drop_database(name: &str) {
         .unwrap_or_else(|error| panic!("dropping {name}: {error}"));
     admin.close().await;
 }
+
+/// `(hash, text)` pairs shaped like the real thing: the hash is the content
+/// hash of the text, exactly as an element's `raw_hash` is, so [`hold`] can
+/// make the very same items referenced.
+pub fn items(range: std::ops::Range<u32>) -> Vec<(String, String)> {
+    range
+        .map(|n| {
+            let text = format!("fn f{n}() {{}}");
+            (fs3_core::content_hash(text.as_bytes()), text)
+        })
+        .collect()
+}
+
+/// Register a root that holds these texts.
+///
+/// The embed handler refuses to pay for content no registered root maps
+/// (req-0057), so a test that enqueues bare hashes is testing the guard rather
+/// than whatever it meant to test. One file element per batch with the items as
+/// its children is the shape a real scan produces, and it is what makes
+/// `elements.raw_hash` — the column the guard reads — carry exactly these
+/// hashes.
+pub async fn hold(
+    state: &fs3_daemon::wiring::AppState,
+    label: &str,
+    items: &[(String, String)],
+) {
+    let root = format!("/srv/{label}");
+    let identity = fs3_core::RepoIdentity::from_path(std::path::Path::new(&root));
+    let worktree = fs3_store::register_worktree(&state.db, &identity, &root, Some("main"))
+        .await
+        .expect("registering a root");
+    let blob = fs3_core::BlobRef::new(format!("{:040x}", items.len())).expect("a blob key");
+    fs3_store::sync_worktree_files(
+        &state.db,
+        worktree,
+        &[("src/held.rs".to_string(), blob.clone())],
+    )
+    .await
+    .expect("mapping the file to the root");
+
+    let file = fs3_core::Element::new(
+        fs3_core::ElementKind::File,
+        "rust",
+        "held.rs",
+        "src/held.rs",
+        fs3_core::Span::new(1, 1 + u32::try_from(items.len()).expect("a small batch")),
+        "// src/held.rs\n",
+    )
+    .with_children(
+        items
+            .iter()
+            .enumerate()
+            .map(|(index, (_, text))| {
+                fs3_core::Element::new(
+                    fs3_core::ElementKind::Function,
+                    "function_item",
+                    &format!("f{index}"),
+                    &format!("src/held.rs::f{index}"),
+                    fs3_core::Span::new(1, 1),
+                    text,
+                )
+            })
+            .collect(),
+    );
+
+    fs3_store::upsert_element_tree(&state.db, &blob, "test-parser@1", &file, |element| {
+        element.kind != fs3_core::ElementKind::File
+    })
+    .await
+    .expect("storing the parse");
+}

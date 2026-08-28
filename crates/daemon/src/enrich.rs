@@ -566,6 +566,57 @@ pub async fn embed_items(
         return Ok(());
     }
 
+    // THE SPEND GUARD, on the other provider (req-0057).
+    //
+    // `summarize` has had this since the day it could pay for a removed root's
+    // content; `embed` did not, and the asymmetry was invisible because the
+    // dedupe filter above LOOKS like a spend guard. It is not: it asks whether
+    // this text has already been bought, never whether it is still worth
+    // buying. A NEW hash for content nothing maps any more sails straight
+    // through it to the provider. Measured when the watcher pulled a
+    // gitignored tree into the index: 4,436 raw vectors bought for content the
+    // next full walk unreferenced, with the summarize guard saving the ~26,000
+    // summaries beside them purely because it existed.
+    //
+    // Placed after the dedupe filter and before `embedder_for`: the cheapest
+    // question first, and the provider reached only by items that survive both.
+    let live = fs3_store::referenced_source_hashes(
+        &state.db,
+        source_kind,
+        &items
+            .iter()
+            .map(|(hash, _)| hash.as_str())
+            .collect::<Vec<_>>(),
+    )
+    .await
+    .map_err(fail)?;
+
+    // Counted after the filter, never as `len() - live.len()`: a merged batch
+    // may carry one hash twice, and a count that assumed otherwise would
+    // report spending that never happened.
+    let offered = items.len();
+    let items: Vec<&(String, String)> = items
+        .into_iter()
+        .filter(|(hash, _)| live.contains(hash))
+        .collect();
+    let dropped = offered - items.len();
+
+    if dropped > 0 {
+        // INFO, not DEBUG: this is money not spent, and the one place a
+        // reader can see the guard working. Counted rather than listed — a
+        // batch is sixteen hashes and a log line is not a ledger.
+        tracing::info!(
+            dropped,
+            kept = items.len(),
+            kind = source_kind.as_str(),
+            "skipping embeds for content no registered root holds"
+        );
+    }
+
+    if items.is_empty() {
+        return Ok(());
+    }
+
     let embedder = state.embedder_for(identity);
 
     // THE PER-INPUT GUARD.

@@ -398,6 +398,98 @@ async fn writes_inside_ignored_directories_never_become_work() {
     stack.destroy().await;
 }
 
+/// DL-035: an event inside a tree the ROOT walk would never have entered must
+/// not put a single row in `worktree_files`.
+///
+/// The test above passes for a reason that does not generalise: `.git`,
+/// `target` and `node_modules` are on the watcher's own event filter, so no
+/// walk ever happens. Every OTHER refusal is decided when the walker is
+/// offered the DIRECTORY entry — a trailing-slash `.gitignore` pattern, the
+/// hidden filter — and a walk that starts INSIDE such a directory is never
+/// offered it. So the settled-directory walk accepted everything, `record_walk`
+/// merged it into the map, and the next full walk reaped it again: 886
+/// gitignored files admitted from one event, 4,436 vectors and 222 summaries
+/// bought for content no search could ever return.
+///
+/// Both shapes are exercised deliberately. `scratch/` is a gitignore directory
+/// pattern with the event landing one level BELOW it (`scratch/old`), which is
+/// the case a per-file gitignore match cannot catch; `.claude/` is the hidden
+/// filter, which is not gitignore at all and was the other half of the measured
+/// pollution (`.claude 47 · .harness 45` rows on a live daemon).
+///
+/// # Why the ignored trees exist before the root is added
+///
+/// This is the difference between a test that catches the defect and one that
+/// does not. CREATING `scratch/` dirties the ROOT, whose own re-list makes the
+/// correct decision — so a version of this test that created the tree during
+/// the watch phase passed with the defect fully present. The field case, and
+/// the one here, is an event inside an ignored tree that was ALREADY THERE:
+/// only the inner directory settles, and only its walk is asked.
+#[tokio::test]
+async fn an_event_inside_an_ignored_tree_never_enters_the_worktree_map() {
+    let stack = Stack::create("watch-ignored-map").await;
+    stack.write(".gitignore", "scratch/\n");
+    stack.write("src/first.rs", "/// One.\npub fn first() -> u8 { 1 }\n");
+    stack.write("scratch/old/seed.md", "# already here\n");
+    stack.write(".claude/seed.md", "# already here\n");
+    stack.add_root().await;
+    stack.drain().await;
+    assert_eq!(
+        stack.mapped_paths().await,
+        vec!["src/first.rs".to_string()],
+        "the full walk agrees these trees are not indexed — that is the answer \
+         the watcher has to match"
+    );
+
+    let mut supervisor = WatcherSupervisor::new(stack.state.clone());
+    supervisor.reconcile().await.expect("the boot pass");
+
+    // Writes into directories that already exist, so the settled directory is
+    // the ignored one and never its parent.
+    for index in 0..5 {
+        stack.write(&format!("scratch/old/note{index}.md"), "# ignored\n");
+        stack.write(&format!(".claude/agent{index}.md"), "# hidden\n");
+    }
+
+    // The canary is written last and inside an indexed directory, so the pass
+    // that enqueues it has already absorbed and swept everything above: a
+    // positive signal instead of a sleep.
+    stack.write(
+        "src/canary.rs",
+        "/// Canary.\npub fn canary() -> u8 { 7 }\n",
+    );
+    let saw_canary = reconcile_until(&mut supervisor, PATIENCE, async || {
+        stack
+            .queued_scan_paths()
+            .await
+            .contains(&"src/canary.rs".to_string())
+    })
+    .await;
+    assert!(
+        saw_canary,
+        "the canary never settled, so nothing was proved"
+    );
+
+    // Let the canary's own scan land, so the map is written by the same pass
+    // the ignored trees would have been written by.
+    stack.drain().await;
+
+    // Exact, so a leak fails by NAMING the file that leaked.
+    assert_eq!(
+        stack.mapped_paths().await,
+        vec!["src/canary.rs".to_string(), "src/first.rs".to_string()],
+        "an event inside a gitignored or hidden tree must add nothing to the \
+         worktree map"
+    );
+    assert_eq!(
+        stack.queued_scan_paths().await,
+        Vec::<String>::new(),
+        "and it must not have enqueued a scan for any of them either"
+    );
+
+    stack.destroy().await;
+}
+
 /// The property that makes over-reporting free, at the level the watcher works
 /// at: a directory that is dirty but whose CONTENT did not change enqueues
 /// nothing at all.

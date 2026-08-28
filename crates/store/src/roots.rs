@@ -257,6 +257,62 @@ pub async fn raw_hash_is_referenced(pool: &PgPool, raw_hash: &str) -> Result<boo
         > 0)
 }
 
+/// Which of these embedding source hashes still belong to content a live root
+/// holds, or a stored turn carries.
+///
+/// [`raw_hash_is_referenced`] answers this one text at a time, which is the
+/// right shape for `summarize` — one job, one text, one guard. An `embed` job
+/// carries a BATCH, so asking per item would be sixteen round trips to decide
+/// one provider call; this asks once and hands back the survivors.
+///
+/// The two kinds live in different spaces and both have to be asked about,
+/// exactly as the level-0 collector does. A `raw` hash IS an element's
+/// `raw_hash`. A `smart` hash is a summary's `text_hash`, which reaches an
+/// element only through the summary row — so asking the first question of a
+/// smart batch would answer "unreferenced" for every summary vector still
+/// waiting to be bought, and the guard would delete the index instead of
+/// protecting the bill.
+///
+/// # Errors
+/// [`StoreError::Query`] when the read fails.
+pub async fn referenced_source_hashes(
+    pool: &PgPool,
+    source_kind: crate::SourceKind,
+    hashes: &[&str],
+) -> Result<std::collections::HashSet<String>, StoreError> {
+    if hashes.is_empty() {
+        return Ok(std::collections::HashSet::new());
+    }
+
+    let sql = match source_kind {
+        crate::SourceKind::Raw => concat!(
+            "SELECT DISTINCT e.raw_hash AS source_hash
+               FROM elements e
+              WHERE e.raw_hash = ANY($1)
+                AND ",
+            held_by_a_live_root!()
+        ),
+        crate::SourceKind::Smart => concat!(
+            "SELECT DISTINCT s.text_hash AS source_hash
+               FROM smart_content s
+               JOIN elements e ON e.raw_hash = s.raw_hash
+              WHERE s.text_hash = ANY($1)
+                AND ",
+            held_by_a_live_root!()
+        ),
+    };
+
+    // ANY($1) over one indexed read, whatever the batch size — the same shape
+    // the dedupe pre-check uses, so the guard adds one round trip to an embed
+    // job rather than one per item.
+    let owned: Vec<String> = hashes.iter().map(|hash| (*hash).to_string()).collect();
+    let rows = sqlx::query(sql).bind(&owned).fetch_all(pool).await?;
+
+    rows.iter()
+        .map(|row| Ok(row.try_get("source_hash")?))
+        .collect()
+}
+
 /// What one GC pass reclaimed, or could.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Reclaimed {
