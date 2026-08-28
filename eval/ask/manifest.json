@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "suite": "ask",
+  "report_contract": "w-agentic-query/ask-contract@2026-08-28",
+  "report_contract_path": "../../docs/briefs/w-ask-eval/ask-contract.md",
+  "subject_prompt": "prompts/subject.md",
+  "responsiveness_rubric": "responsiveness-rubric.json",
+  "report_shape_assertions": "report-contract-assertions.json",
+  "request_variables": {
+    "${REPO_ROOT:git:github.com/AI-Substrate/flowspace3}": "Resolve from `flowspace3 status`; fail setup rather than substituting another checkout."
+  },
+  "counts": {
+    "answerable": 4,
+    "negative": 3,
+    "scoped-zero": 1
+  },
+  "mix_rationale": "Four answerables exercise Rust implementation/test evidence, evaluation policy, control-plane policy, and a legacy external repository. Three negatives make honesty measurable across never-indexed, deleted-path, and explicit-scope absence classes. One scoped-zero case isolates recovery: its answer exists globally, but not in the initial cwd scope.",
+  "scenarios": [
+    "scenarios/answerable-flowspace3-claim-locking/scenario.json",
+    "scenarios/answerable-harness-unknown/scenario.json",
+    "scenarios/answerable-pij-revive-liveness/scenario.json",
+    "scenarios/answerable-legacy-flowspace-practices/scenario.json",
+    "scenarios/negative-never-indexed-repo/scenario.json",
+    "scenarios/negative-deleted-path/scenario.json",
+    "scenarios/negative-explicit-scope/scenario.json",
+    "scenarios/scoped-zero-widening/scenario.json"
+  ]
+}

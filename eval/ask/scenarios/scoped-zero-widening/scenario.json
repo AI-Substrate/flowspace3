@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "slug": "scoped-zero-widening",
+  "title": "Recover from cwd-scoped zero by widening",
+  "lane": "scoped-zero",
+  "request": {
+    "question": "In flow-conformance evaluation, what does an UNKNOWN deterministic row mean, and how does it affect score denominators?",
+    "cwd": "${REPO_ROOT:git:github.com/AI-Substrate/flowspace3}",
+    "repo": null
+  },
+  "assertions": "assertions.json",
+  "ground_truth": {
+    "verified_at": "2026-08-28",
+    "initial_scope_proof": "A raw search constrained to git:github.com/AI-Substrate/flowspace3 and crates/** at min-score 0.60 returned ok=true, count=0, and next_action explicitly said to widen.",
+    "global_answer_address": "el:git:github.com/AI-Substrate/harness-engineering/docs/how/flow-conformance-eval.md::Flow-conformance evaluation::Reading the numbers — the statistics behind a report::Three-valued rows and where `unknown` goes",
+    "global_resolution": "The global address returned ok=true via flowspace3 get at span [287,298].",
+    "source_facts": [
+      "UNKNOWN means the evidence channel was unavailable, not that the subject failed.",
+      "UNKNOWN rows are excluded from every score denominator."
+    ]
+  },
+  "stability": {
+    "grade": "medium",
+    "reason": "The answer is durably owned by another repository, but the initial scoped zero can rot if flowspace3 later documents the same evaluation rule.",
+    "refresh_trigger": "Re-prove both the scoped zero and the global address before each committed baseline refresh."
+  }
+}

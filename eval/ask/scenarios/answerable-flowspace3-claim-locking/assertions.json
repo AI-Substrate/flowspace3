@@ -1,0 +1,16 @@
+{
+  "scenario": "answerable-flowspace3-claim-locking",
+  "rows": [
+    {"id":"B1","axis":"boundedness","type":"field-equals-request","params":{"field":"question","request_field":"question"},"on_unavailable":"fail"},
+    {"id":"B2","axis":"boundedness","type":"field-non-null","params":{"field":"answer"},"on_unavailable":"fail"},
+    {"id":"B3","axis":"boundedness","type":"field-equals","params":{"field":"stopped","value":"answered"},"on_unavailable":"fail"},
+    {"id":"B4","axis":"boundedness","type":"field-u32-min","params":{"field":"iterations","min":1},"on_unavailable":"fail"},
+    {"id":"B5","axis":"boundedness","type":"field-non-empty","params":{"field":"model"},"on_unavailable":"fail"},
+    {"id":"G1","axis":"groundedness","type":"citations-all-resolve","params":{},"on_unavailable":"fail"},
+    {"id":"G2","axis":"groundedness","type":"citations-include-any","params":{"addresses":["el:git:github.com/AI-Substrate/flowspace3/crates/store/src/jobs.rs::claim_jobs","el:git:github.com/AI-Substrate/flowspace3/crates/store/tests/pg_store_flows.rs::two_claimers_never_take_the_same_job"]},"on_unavailable":"fail"},
+    {"id":"G3","axis":"groundedness","type":"answer-matches-all","params":{"patterns":["(?i)skip locked","(?i)(atomic|one update|state.*running)"]},"on_unavailable":"fail"},
+    {"id":"G4","axis":"groundedness","type":"cited-source-matches-any","params":{"patterns":["FOR UPDATE SKIP LOCKED","assert_ne!","first.id, second.id"]},"on_unavailable":"fail"},
+    {"id":"R1","axis":"recovery","type":"trace-failure-recovers","params":{},"on_not_applicable":"unknown","on_unavailable":"unknown"},
+    {"id":"C1","axis":"cost","type":"field-u64-positive","params":{"field":"tokens_used"},"on_zero":"unknown","known_gap":"Azure usage is not yet read back."}
+  ]
+}
