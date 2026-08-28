@@ -149,6 +149,18 @@ impl ScanFileJob {
 /// Discovery failures (an unreadable root, an uncompilable glob), git failures,
 /// and store failures, each mapped to its own catalog code by the caller.
 pub async fn add_root(state: &AppState, root: &Path) -> Result<RootReport, RootError> {
+    add_root_with_priority(state, root, fs3_store::JOB_PRIORITY_DEFAULT).await
+}
+
+/// Register a newly discovered root and promote its initial scan work.
+///
+/// Kept crate-private: explicit add/rescan and watcher paths remain ordinary
+/// background work; only the lifecycle detector may select the raised lane.
+pub(crate) async fn add_root_with_priority(
+    state: &AppState,
+    root: &Path,
+    priority: fs3_store::JobPriority,
+) -> Result<RootReport, RootError> {
     let root = canonical(root)?;
     let identity = fs3_git::repo_identity(&root)?;
 
@@ -195,12 +207,13 @@ pub async fn add_root(state: &AppState, root: &Path) -> Result<RootReport, RootE
             path: path.clone(),
             blob: blob.as_str().to_string(),
         };
-        fs3_store::enqueue_job(
+        fs3_store::enqueue_job_with_priority(
             &state.db,
             SCAN_FILE,
             &job.dedupe_key(),
             &serde_json::to_value(&job).expect("a scan job always serialises"),
             Duration::ZERO,
+            priority,
         )
         .await?;
         enqueued += 1;

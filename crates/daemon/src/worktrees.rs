@@ -79,7 +79,12 @@ impl Reconcile for WorktreeSupervisor {
         let mut changed = 0;
 
         for root in plan.register {
-            let report = crate::roots::add_root(&self.state, &root).await?;
+            let report = crate::roots::add_root_with_priority(
+                &self.state,
+                &root,
+                fs3_store::JOB_PRIORITY_NEW_WORKTREE_SCAN,
+            )
+            .await?;
             tracing::info!(
                 root = %report.root_path,
                 files = report.files,

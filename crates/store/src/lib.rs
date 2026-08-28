@@ -48,7 +48,8 @@ pub use embeddings::{
     embedding_models, existing_embedding_hashes, put_embeddings, query_embeddings, search_elements,
 };
 pub use jobs::{
-    Job, QueueDepth, claim_job, claim_jobs, complete_job, enqueue_job, fail_job, jobs_remaining,
+    JOB_PRIORITY_DEFAULT, JOB_PRIORITY_NEW_WORKTREE_SCAN, Job, JobPriority, QueueDepth, claim_job,
+    claim_jobs, complete_job, enqueue_job, enqueue_job_with_priority, fail_job, jobs_remaining,
     last_failure, park_job, queue_depth, requeue_failed, requeue_running, retry_job,
 };
 pub use messages::{ack_message, live_messages, sync_messages};
