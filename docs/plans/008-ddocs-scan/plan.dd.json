@@ -200,8 +200,8 @@
       "value": [
         {
           "question": "Should dd export `./core/derive` (or, better for a Rust consumer, surface it as a `ddocs --json derive <address>` verb)? dd o-prime measured that `deriveItems`/`deriveState`/`deriveRollup` exist in src/core/derive.ts but are reachable from neither Node nor the CLI, and offered to put a scoped ask to Jordan if a named consumer exists. flowspace3 is that consumer.",
-          "state": "blocked",
-          "note": "Asked back to pij-mental-dajeil 2026-08-28. Does not block: the rule is fully specified and ships behind one function, so swapping it for a call is a one-line change."
+          "state": "unchecked",
+          "note": "ANSWERED 2026-08-28: dd is BUILDING the verb. pij-mental-dajeil confirmed and spawned pij-voiceless-porpoise (worktree dd-worktrees/derive-verb) with flowspace3 named as the consumer. Settled payload: data{address, complete, gate_terminal (resolved per node from that node's own schema), total (at every level), incomplete[]{id, address, state, section}, nodes[] (RECURSIVE, never flattened), basis[] (closure of documents consulted - repo-relative, sorted, includes the root; this is our invalidation key), degradations[]{reason, address, detail}}. Deterministic traversal order for nodes and incomplete, so we assert on order rather than sorting. Unreachable descendant => status degraded, nodes named, counted INCOMPLETE, complete=false (dajeil ruling). No input digest in this change. Our commitment: consume it and delete fs3_core::ddoc::derive_state in the same commit."
         },
         {
           "question": "Is a cheap corpus-change detector possible, so the corpus-level `ddocs --json graph` is refreshed only when the edge set could have moved? dd has node shas but no edge-set stamp, and dd o-prime declined to invent one, asking to see ours if we build it.",
