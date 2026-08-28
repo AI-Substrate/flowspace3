@@ -31,7 +31,7 @@ use serde::{Deserialize, Serialize};
 use crate::runner::fail;
 use crate::scope::Scope;
 use crate::wiring::AppState;
-use fs3_core::views::search::{Hit, SearchResults};
+use fs3_core::views::search::Hit;
 
 /// What a caller asks for.
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]

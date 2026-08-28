@@ -35,7 +35,6 @@ use std::time::{Duration, Instant};
 use fs3_core::envelope::{Envelope, Failure};
 use fs3_core::views::doctor::{DoctorReport, Step};
 use fs3_core::{Config, Effective, Port, ProviderInstance, catalog};
-use serde::{Deserialize, Serialize};
 
 /// Environment variable naming the container engine.
 ///
