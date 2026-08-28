@@ -31,7 +31,7 @@ pub mod wiring;
 
 pub use answer::{Answer, IntoFailure};
 pub use auth::Auth;
-pub use boot::run;
+pub use boot::{run, run_sandbox};
 pub use config::{
     ConfigError, SecretsLoaded, config_dir, load_config, load_effective_from, load_secrets,
 };

@@ -11,6 +11,45 @@ It lives inside the `flowspace3` binary rather than shipping separately — one
 file to install, one version, and no way for a CLI and a daemon of different
 vintages to meet.
 
+## Safe hand-run isolation
+
+Use the built-in sandbox for development, demonstrations, and manual checks:
+
+```bash
+flowspace3 daemon --sandbox
+```
+
+It creates and migrates a uniquely named database beside the configured one,
+forces both providers to the offline fake regardless of ambient configuration,
+reserves an ephemeral loopback port, and uses process-owned credential and log
+directories. Its first line names the complete posture:
+The configured database itself need not exist; only its Postgres server and
+credentials are reused to create the child through the maintenance database.
+
+```text
+sandbox=true embedder=fake summarizer=fake db=fs3_sandbox_<unique> port=<n> config=<dir>
+```
+
+Ctrl-C is a clean shutdown and drops the database. Point a client at the
+printed port and set `FS3_CONFIG_DIR` to the printed directory so it reads this
+sandbox's bearer key. A killed process cannot run async cleanup, so the same
+boot line deliberately leaves the unique database name visible for manual
+removal.
+
+Real providers over a real, read-only index are a separate capability: the
+daemon must mechanically disable add, scan, enrichment, reconciliation, and
+every other write path before such a mode can honestly claim safety. That
+read-live posture will use a sibling sandbox flag; bare `--sandbox` keeps this
+complete fake-provider meaning.
+
+### Appendix: manual overrides
+
+For diagnosis of the sandbox implementation itself, the old manual recipe is:
+an empty `FS3_CONFIG_DIR`, a disposable `FS3_DATABASE__URL`, a unique
+`FS3_DAEMON__URL`, and both provider selections forced to `fake`. The caller
+must create/drop the database and choose the port; normal manual work should
+not reproduce these steps—use `--sandbox`.
+
 ## What it does at boot
 
 1. Reads configuration from the same directory the CLI uses.
