@@ -43,7 +43,9 @@ pub use conversations::{
     AnchorFilter, Appended, ConversationSummary, Removed, TurnOutline, append_turns,
     delete_conversation, list_conversations, outline, upsert_conversation, window,
 };
-pub use ddoc::{DdocFileRef, FileRefOutcome, replace_file_refs, rows_referencing};
+pub use ddoc::{
+    DdocCitation, DdocFileRef, FileRefOutcome, replace_file_refs, rows_citing, rows_referencing,
+};
 pub use elements::{get_elements, upsert_element_tree};
 pub use embeddings::{
     EMBEDDING_DIMENSIONS, NewEmbedding, SearchFilters, SearchHit, SimilarElement, SourceKind,

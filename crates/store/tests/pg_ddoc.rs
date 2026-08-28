@@ -9,9 +9,9 @@ use fs3_core::{
     RepoIdentity, Span,
 };
 use fs3_store::{
-    DdocFileRef, EMBEDDING_DIMENSIONS, MIGRATOR, NewEmbedding, PgPool, SearchFilters, SearchHit,
-    SourceKind, get_elements, put_embeddings, register_worktree, replace_file_refs,
-    rows_referencing, search_elements, sync_worktree_files, upsert_element_tree,
+    DdocCitation, DdocFileRef, EMBEDDING_DIMENSIONS, MIGRATOR, NewEmbedding, PgPool, SearchFilters,
+    SearchHit, SourceKind, get_elements, put_embeddings, register_worktree, replace_file_refs,
+    rows_citing, rows_referencing, search_elements, sync_worktree_files, upsert_element_tree,
 };
 use fs3_testkit::fakes::FakeEmbedder;
 use support::{FreshDatabase, PARSER_VERSION, unique_blob};
@@ -373,6 +373,154 @@ fn file_ref(address: &str, target: &str, location: &str) -> DdocFileRef {
         rel: "implements".to_string(),
         location: location.to_string(),
     }
+}
+
+fn citing_row(
+    path: &str,
+    id: &str,
+    target: &str,
+    rel: &str,
+    location: &str,
+    order: u32,
+) -> Element {
+    let mut element = row(path, id, "builder/tasks", Some(false), order);
+    element
+        .ddoc
+        .as_deref_mut()
+        .expect("a ddoc row carries metadata")
+        .rels = vec![DdocRel {
+        rel: rel.to_string(),
+        target: target.to_string(),
+        kind: "document".to_string(),
+        location: location.to_string(),
+    }];
+    element
+}
+
+#[tokio::test]
+async fn rows_citing_without_matching_relations_is_empty() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+    let blob = unique_blob();
+    stored_ddoc(
+        &pool,
+        &blob,
+        PARSER_VERSION,
+        "docs/tasks.dd.json",
+        &["tk-0001"],
+    )
+    .await;
+
+    let rows = rows_citing(
+        &pool,
+        None,
+        "docs/plan.dd.json#criteria/ac-dead",
+        PARSER_VERSION,
+        20,
+    )
+    .await
+    .expect("an uncited qualified address is a successful empty result");
+    assert!(rows.is_empty());
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn rows_citing_returns_two_relations_in_stable_order() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+    let blob = unique_blob();
+    let path = "docs/tasks.dd.json";
+    let target = "docs/plan.dd.json#acceptance_criteria/ac-0001";
+    let rows = vec![
+        citing_row(
+            path,
+            "tk-0002",
+            target,
+            "derives",
+            "$.tasks[1].criterion",
+            0,
+        ),
+        citing_row(
+            path,
+            "tk-0001",
+            target,
+            "satisfies",
+            "$.tasks[0].criterion",
+            1,
+        ),
+        citing_row(
+            path,
+            "tk-0003",
+            "docs/plan.dd.json#acceptance_criteria/ac-other",
+            "satisfies",
+            "$.tasks[2].criterion",
+            2,
+        ),
+    ];
+    upsert_element_tree(&pool, &blob, PARSER_VERSION, &ddoc_tree(path, rows), |_| {
+        true
+    })
+    .await
+    .expect("store citing rows");
+    upsert_element_tree(
+        &pool,
+        &blob,
+        "test-parser@other",
+        &ddoc_tree(
+            path,
+            vec![citing_row(
+                path,
+                "tk-dead",
+                target,
+                "satisfies",
+                "$.tasks[3].criterion",
+                0,
+            )],
+        ),
+        |_| true,
+    )
+    .await
+    .expect("store retained-generation citing row");
+
+    let identity = RepoIdentity::from_path(Path::new("/srv/citation-index"));
+    let worktree = register_worktree(&pool, &identity, "/srv/citation-index", None)
+        .await
+        .expect("register citation fixture");
+    sync_worktree_files(&pool, worktree, &[(path.to_string(), blob)])
+        .await
+        .expect("register citation source path");
+
+    let citations = rows_citing(&pool, Some(identity.key()), target, PARSER_VERSION, 20)
+        .await
+        .expect("read citing rows");
+    assert_eq!(
+        citations
+            .iter()
+            .map(|citation| (
+                citation.address.as_str(),
+                citation.rel.as_str(),
+                citation.location.as_str(),
+            ))
+            .collect::<Vec<_>>(),
+        vec![
+            (
+                "docs/tasks.dd.json#criteria/tk-0001",
+                "satisfies",
+                "$.tasks[0].criterion",
+            ),
+            (
+                "docs/tasks.dd.json#criteria/tk-0002",
+                "derives",
+                "$.tasks[1].criterion",
+            ),
+        ]
+    );
+    assert!(
+        citations
+            .iter()
+            .all(|citation: &DdocCitation| citation.element_id > 0)
+    );
+    database.destroy(pool).await;
 }
 
 #[tokio::test]
