@@ -189,17 +189,39 @@ pub fn items(range: std::ops::Range<u32>) -> Vec<(String, String)> {
 /// its children is the shape a real scan produces, and it is what makes
 /// `elements.raw_hash` — the column the guard reads — carry exactly these
 /// hashes.
+///
+/// # Why the root is keyed by CONTENT and not by `label` alone
+///
+/// Calling this twice in one test must hold both batches, and the obvious
+/// shape does the opposite. [`fs3_store::sync_worktree_files`] REPLACES a
+/// worktree's file list, and [`fs3_store::upsert_element_tree`] replaces a
+/// blob's tree — so a second call under the same root and the same blob key
+/// silently unholds the first batch, and the test that depended on it fails
+/// somewhere else entirely. A digest of the items decides both the root and
+/// the blob instead: different content is a different root, identical content
+/// is the same root written twice with the same bytes. `label` survives only
+/// to keep the paths readable when a test fails.
 pub async fn hold(
     state: &fs3_daemon::wiring::AppState,
     label: &str,
     items: &[(String, String)],
 ) {
-    let root = format!("/srv/{label}");
+    // The item hashes, not the texts: they are already content-derived, and a
+    // blob key is 40 hex characters whatever went into it.
+    let digest = fs3_core::content_hash(
+        items
+            .iter()
+            .map(|(hash, _)| hash.as_str())
+            .collect::<Vec<_>>()
+            .join("\n")
+            .as_bytes(),
+    );
+    let root = format!("/srv/{label}-{}", &digest[..8]);
     let identity = fs3_core::RepoIdentity::from_path(std::path::Path::new(&root));
     let worktree = fs3_store::register_worktree(&state.db, &identity, &root, Some("main"))
         .await
         .expect("registering a root");
-    let blob = fs3_core::BlobRef::new(format!("{:040x}", items.len())).expect("a blob key");
+    let blob = fs3_core::BlobRef::new(digest[..40].to_string()).expect("a blob key");
     fs3_store::sync_worktree_files(
         &state.db,
         worktree,

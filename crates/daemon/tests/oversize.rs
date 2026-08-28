@@ -62,7 +62,16 @@ fn oversized() -> String {
     "fn handler(request: Request) -> Response { dispatch(request) }\n".repeat(2_000)
 }
 
-fn payload(items: &[(String, String)]) -> serde_json::Value {
+/// An embed payload for `items`, with a root registered that HOLDS them.
+///
+/// The hold is not scenery. The embed handler refuses to pay for content no
+/// registered root maps, so a payload built from bare hashes never reaches the
+/// provider at all — every assertion in this file about what ARRIVED there
+/// would then be asserting on an empty call list, and the cap guard would look
+/// broken when it is the precondition that is missing. Holding here rather
+/// than in each test means a new test cannot forget it.
+async fn payload(state: &AppState, items: &[(String, String)]) -> serde_json::Value {
+    support::hold(state, "oversize", items).await;
     json!({ "identity": IDENTITY, "source": "raw", "items": items })
 }
 
@@ -87,7 +96,7 @@ async fn an_oversized_input_arrives_at_the_provider_under_the_cap() {
     let text = oversized();
     let hash = fs3_core::content_hash(text.as_bytes());
 
-    enrich::embed(&state, payload(&[(hash.clone(), text.clone())]))
+    enrich::embed(&state, payload(&state, &[(hash.clone(), text.clone())]).await)
         .await
         .expect("an oversized element must still be embeddable");
 
@@ -124,7 +133,7 @@ async fn a_truncated_vector_is_stored_under_the_original_hash_and_marked() {
     let text = oversized();
     let hash = fs3_core::content_hash(text.as_bytes());
 
-    enrich::embed(&state, payload(&[(hash.clone(), text)]))
+    enrich::embed(&state, payload(&state, &[(hash.clone(), text)]).await)
         .await
         .expect("embeds");
 
@@ -163,7 +172,7 @@ async fn an_element_within_the_cap_is_neither_shortened_nor_marked() {
     let text = "fn small() -> u8 { 7 }".to_string();
     let hash = fs3_core::content_hash(text.as_bytes());
 
-    enrich::embed(&state, payload(&[(hash.clone(), text.clone())]))
+    enrich::embed(&state, payload(&state, &[(hash.clone(), text.clone())]).await)
         .await
         .expect("embeds");
 
@@ -203,7 +212,7 @@ async fn one_huge_element_rides_with_small_ones_and_only_it_is_shortened() {
             &state.db,
             enrich::EMBED,
             &format!("embed:oversize:{n}"),
-            &payload(std::slice::from_ref(item)),
+            &payload(&state, std::slice::from_ref(item)).await,
             Duration::ZERO,
         )
         .await
@@ -250,7 +259,7 @@ async fn a_job_that_failed_before_the_guard_is_requeued_and_lands() {
         &state.db,
         enrich::EMBED,
         "embed:oversize:recovered",
-        &payload(&[(hash.clone(), text)]),
+        &payload(&state, &[(hash.clone(), text)]).await,
         Duration::ZERO,
     )
     .await
