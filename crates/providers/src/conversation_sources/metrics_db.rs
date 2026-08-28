@@ -813,34 +813,36 @@ fn copilot_row(row: &Row, records: &mut Vec<RawRecord>, open_calls: &mut BTreeMa
             ));
         }
         "tool.execution_start" => {
-            // NOT a turn of its own. The assistant.message that requested this
-            // tool already carries it in `toolRequests`, so emitting a record
-            // here reports ONE tool call as two turns — and it made this reader
-            // disagree with claude, where a tool call is an item on the
-            // assistant turn rather than a turn beside it. Found by cross-model
-            // review, 2026-08-28: the committed expectation says four records
-            // for this session and this path was making five.
+            // NOT a turn, and NOT an item either — the assistant.message that
+            // requested this tool ALREADY converted its `toolRequests` entry
+            // into a `TurnItem::ToolCall` on its own record. Round 1 of review
+            // caught this emitting a fifth record; round 2 caught the first fix
+            // pushing a SECOND ToolCall for the same call onto the same turn.
+            // All this event has to contribute is WHERE the result belongs.
             //
-            // So the start event REGISTERS the open call against the record the
-            // assistant already opened, and contributes its arguments there.
-            let Some(index) = records.len().checked_sub(1) else {
-                // Nothing to attach to: the assistant record that requested it
-                // is older than the cursor. Dropping is right for the same
-                // reason a result whose call we never saw is dropped —
-                // attaching it to the wrong turn would be worse.
-                return;
-            };
-            let tool = data
+            // The anchor is found by walking back to the most recent record
+            // that already holds a ToolCall for this tool, rather than taking
+            // `records.last()`: an intervening emitted record would otherwise
+            // receive the result of a call it never made.
+            let Some(tool) = data
                 .and_then(|data| data.get("toolName"))
                 .and_then(Value::as_str)
-                .unwrap_or("unknown")
-                .to_owned();
-            records[index].items.push(TurnItem::ToolCall {
-                tool,
-                input: ToolInput::Verbatim {
-                    text: render(data.and_then(|data| data.get("arguments"))),
-                },
+            else {
+                return;
+            };
+            let anchor = records.iter().rposition(|record| {
+                record.items.iter().any(|item| match item {
+                    TurnItem::ToolCall { tool: named, .. } => named == tool,
+                    TurnItem::ToolResult { .. } => false,
+                })
             });
+            let Some(index) = anchor else {
+                // The assistant record that requested it is older than the
+                // cursor. Dropping is right for the same reason a result whose
+                // call we never saw is dropped: attaching it to the wrong turn
+                // would be worse than not having it.
+                return;
+            };
             if let Some(call) = data
                 .and_then(|data| data.get("toolCallId"))
                 .and_then(Value::as_str)

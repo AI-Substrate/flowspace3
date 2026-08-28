@@ -450,7 +450,7 @@ pub async fn ingest(state: &AppState, request: &IngestRequest) -> Result<IngestR
         // conversation's own stored turns, so two polls reading one high-water
         // mark before either commits is the loss path.
         let outcome =
-            fs3_store::ingest_cursors::with_conversation_lock(&state.db, &guid, || async {
+            fs3_store::ingest_cursors::try_with_conversation_lock(&state.db, &guid, || async {
                 let cursor =
                     fs3_store::ingest_cursors::load_cursor(&state.db, harness, &file.session_id)
                         .await
@@ -550,7 +550,7 @@ pub async fn ingest(state: &AppState, request: &IngestRequest) -> Result<IngestR
                 // the two disagree about what is stored — a concurrent poll numbering
                 // against the same high-water mark, or a ledger that lost rows a cursor
                 // advanced past.
-                if prepared.deduped == 0 && appended.already_stored > 0 {
+                if appended.already_stored > 0 {
                     return Err(Failure::new(
                     &catalog::QUERY_INVALID,
                     format!(
@@ -602,6 +602,12 @@ pub async fn ingest(state: &AppState, request: &IngestRequest) -> Result<IngestR
             .await
             .map_err(fail)?;
 
+        // `None` means another poll of this conversation holds the lock. It is
+        // reading the same bytes, so there is nothing to wait for and nothing
+        // to redo — leave the work to whichever poll got there first.
+        let Some(outcome) = outcome else {
+            continue;
+        };
         let Some(session) = outcome? else {
             continue;
         };

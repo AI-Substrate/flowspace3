@@ -411,14 +411,31 @@ fn a_copilot_tool_call_and_its_result_land_on_the_assistant_turn() {
     // Both land as ITEMS on the turn that requested the tool, never as a turn
     // of their own — the same shape claude uses for `tool_use` / `tool_result`.
     assert_eq!(paired.role, TurnRole::Agent);
-    assert!(matches!(
-        paired.items[paired.items.len() - 2],
-        TurnItem::ToolCall { .. }
-    ));
-    assert!(matches!(
-        paired.items[paired.items.len() - 1],
-        TurnItem::ToolResult { .. }
-    ));
+
+    // EXACTLY one call and one result, in that order. Asserting only that the
+    // LAST TWO items are Call then Result would pass on
+    // [Call, duplicate Call, Result], which is precisely what round 2 of the
+    // review found the first fix producing: the assistant record already turned
+    // its `toolRequests` entry into a ToolCall, and `tool.execution_start` was
+    // pushing a second one for the same call.
+    let calls = paired
+        .items
+        .iter()
+        .filter(|item| matches!(item, TurnItem::ToolCall { .. }))
+        .count();
+    let results = paired
+        .items
+        .iter()
+        .filter(|item| matches!(item, TurnItem::ToolResult { .. }))
+        .count();
+    assert_eq!(
+        calls, 1,
+        "one tool call, described once: {:?}",
+        paired.items
+    );
+    assert_eq!(results, 1, "and one result for it: {:?}", paired.items);
+    assert!(matches!(paired.items[0], TurnItem::ToolCall { .. }));
+    assert!(matches!(paired.items[1], TurnItem::ToolResult { .. }));
 }
 
 #[test]

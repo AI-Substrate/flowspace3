@@ -436,37 +436,60 @@ pub async fn sessions_for(
 /// same value, and the second one's turns collide on `(conversation_id,
 /// turn_no)` and are dropped.
 ///
-/// The lock is session-scoped and taken on a dedicated connection, so it is
-/// released here rather than at transaction end — the poll spans several
-/// transactions and a transaction-scoped lock would let the next one in
-/// halfway through.
+/// # Why TRY rather than wait
+///
+/// `Ok(None)` means another poll of this conversation holds it. The caller
+/// leaves the work to that poll rather than blocking, which is right twice
+/// over: the other poll is reading the same bytes, so waiting buys nothing —
+/// and a BLOCKING lock would let concurrent ingests each pin a connection while
+/// queueing for one, which review round 2 showed can deadlock a fixed-size pool
+/// (eight holders waiting on a ninth connection that cannot exist).
+///
+/// # Why the connection is detached
+///
+/// The lock is SESSION-scoped, so it lives with the connection rather than with
+/// a transaction — a poll spans several transactions and a transaction-scoped
+/// lock would let the next one in halfway through. A pooled connection returns
+/// to the pool on drop with its session, and therefore its lock, intact: a
+/// panic or a cancelled future would leak the hold and block every later poll
+/// of that conversation. Detaching makes drop CLOSE the connection instead, so
+/// Postgres releases the lock on every path — including the ones no `unlock`
+/// call can reach.
 ///
 /// # Errors
 /// [`StoreError::Query`] when the connection or either lock statement fails.
-/// The unlock runs on every path, including when `held` returned an error.
-pub async fn with_conversation_lock<T, F, Fut>(
+pub async fn try_with_conversation_lock<T, F, Fut>(
     pool: &PgPool,
     conversation: &ConversationId,
     held: F,
-) -> Result<T, StoreError>
+) -> Result<Option<T>, StoreError>
 where
     F: FnOnce() -> Fut,
     Fut: std::future::Future<Output = T>,
 {
     let key = advisory_key(conversation);
-    let mut connection = pool.acquire().await?;
-    sqlx::query("SELECT pg_advisory_lock($1)")
+    // Detached: dropping it closes the session, which is what makes the lock
+    // release panic- and cancellation-safe. It also keeps a held lock from
+    // occupying a pool slot for the length of a poll.
+    let mut connection = pool.acquire().await?.detach();
+
+    let taken: bool = sqlx::query_scalar("SELECT pg_try_advisory_lock($1)")
         .bind(key)
-        .execute(&mut *connection)
+        .fetch_one(&mut connection)
         .await?;
+    if !taken {
+        return Ok(None);
+    }
 
     let outcome = held().await;
 
-    sqlx::query("SELECT pg_advisory_unlock($1)")
+    // Best-effort: dropping `connection` below releases the lock regardless, so
+    // an error here is not worth failing a completed poll over.
+    let _ = sqlx::query("SELECT pg_advisory_unlock($1)")
         .bind(key)
-        .execute(&mut *connection)
-        .await?;
-    Ok(outcome)
+        .execute(&mut connection)
+        .await;
+    Ok(Some(outcome))
 }
 
 /// A stable 64-bit key for `pg_advisory_lock`, derived from the conversation.
