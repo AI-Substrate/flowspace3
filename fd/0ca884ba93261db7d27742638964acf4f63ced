@@ -1,0 +1,37 @@
+.harness/extensions/checks/check-result.mjs
+  s_15d888f4b629c1::t_73982642528d3c 1-48
+.harness/extensions/checks/check-result.test.mjs
+  s_15d888f4b629c1::t_486c594b034df9 1-47
+.harness/extensions/checks/instructions.md
+  s_15d888f4b629c1::t_c5668a561cdddb 8-9,17-30,49,53-58
+crates/store/src/admin.rs
+  s_15d888f4b629c1::t_276c6189e3299c 164-188
+crates/testkit/Cargo.toml
+  s_15d888f4b629c1::t_b083fd269c95e7 21,34-39
+crates/testkit/arch-allowlist.toml
+  s_15d888f4b629c1::t_3b3c3ef157298b 150
+crates/testkit/src/bin/test_suite.rs
+  s_15d888f4b629c1::t_e6063be3d31c6b 1-61
+crates/testkit/src/fresh_database.rs
+  s_15d888f4b629c1::t_1979cca042fb8d 4,8-20,81,96-133,177,183-201,217-222,225-228,237-286
+crates/testkit/src/lib.rs
+  s_15d888f4b629c1::t_9d8517af6caa47 46
+docs/how/database.md
+  s_15d888f4b629c1::t_1c2f6b09185b16 158-171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "fd0ca884ba93261db7d27742638964acf4f63ced",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
