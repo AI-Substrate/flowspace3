@@ -21,6 +21,18 @@
 //! ).await?;
 //! ```
 //!
+//! Query through the same parser generation the daemon selected explicitly:
+//!
+//! ```ignore
+//! let rows = fs3_store::rows_referencing(
+//!     &state.db,
+//!     scope.repo.as_deref(),
+//!     target_path,
+//!     fs3_parsers::PARSER_VERSION,
+//!     limit,
+//! ).await?;
+//! ```
+//!
 //! Surface every [`FileRefOutcome::unattached`] address as a row finding. A
 //! source miss must not hide the rest of a broken-but-indexable document.
 
@@ -141,11 +153,13 @@ pub async fn replace_file_refs(
     })
 }
 
-/// Ddoc rows that reference `target_path`, in deterministic order.
+/// Ddoc rows from `parser_version` that reference `target_path`, in
+/// deterministic order.
 ///
-/// `repo` limits ownership through live worktree paths. With no matching file
-/// edges — including a corpus produced before dd PR #12 — this returns an empty
-/// vector, not an error.
+/// `repo` limits ownership through live worktree paths. Requiring the parser
+/// generation prevents retained historical rows from leaking into a current
+/// answer. With no matching file edges — including a corpus produced before dd
+/// PR #12 — this returns an empty vector, not an error.
 ///
 /// # Errors
 ///
@@ -154,6 +168,7 @@ pub async fn rows_referencing(
     pool: &PgPool,
     repo: Option<&str>,
     target_path: &str,
+    parser_version: &str,
     limit: i64,
 ) -> Result<Vec<DdocFileRef>, StoreError> {
     let rows = sqlx::query(
@@ -162,6 +177,7 @@ pub async fn rows_referencing(
            FROM ddoc_file_refs refs
            JOIN elements ON elements.id = refs.element_id
           WHERE refs.target_path = $1
+            AND elements.parser_version = $3
             AND ($2::text IS NULL OR EXISTS (
                  SELECT 1
                    FROM worktree_files files
@@ -171,10 +187,11 @@ pub async fn rows_referencing(
                     AND repos.identity = $2))
           ORDER BY elements.address, refs.target_path, refs.rel,
                    refs.location, refs.element_id
-          LIMIT $3",
+          LIMIT $4",
     )
     .bind(target_path)
     .bind(repo)
+    .bind(parser_version)
     .bind(limit)
     .fetch_all(pool)
     .await?;
