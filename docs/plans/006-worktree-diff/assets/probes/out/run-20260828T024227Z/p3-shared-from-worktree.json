@@ -1,0 +1,114 @@
+{
+  "ok": true,
+  "command": "search",
+  "v": 1,
+  "data": {
+    "results": [
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/docs/reference/error-codes.md::fs3 error codes::DAEMON::`FS3-E-DAEMON-UNAVAILABLE`",
+        "kind": "section",
+        "match_field": "smart",
+        "name": "`FS3-E-DAEMON-UNAVAILABLE`",
+        "path": "docs/reference/error-codes.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.555484660127758,
+        "smart": "`FS3-E-DAEMON-UNAVAILABLE` indicates that the fs3 daemon did not respond at its configured URL. Start it with `flowspace3 daemon &` or use `flowspace3 doctor` for diagnosis; the error is retryable and maps to HTTP 503.",
+        "snippet": "### `FS3-E-DAEMON-UNAVAILABLE`\n\nThe fs3 daemon did not answer on its configured URL.\n\n**Fix**: start it with `flowspace3 daemon &`, or run `flowspace3 doctor` to diagnose the stack. Doctor reports the daemon but never starts one — a diagnostic command must not leave a process running that you did not ask for.",
+        "span": [
+          226,
+          235
+        ],
+        "subkind": "atx_heading",
+        "tags": [
+          "error code",
+          "daemon",
+          "availability",
+          "retryable",
+          "HTTP 503"
+        ]
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/cli/src/main.rs::ping",
+        "kind": "function",
+        "match_field": "smart",
+        "name": "ping",
+        "path": "crates/cli/src/main.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.5509656356391069,
+        "smart": "The asynchronous `ping` function creates a client, requests the fs3 daemon’s health status, and fails with an error if the status is not healthy. On success, it prints the daemon version, URL, embedder, and summarizer details, then returns a successful exit code.",
+        "snippet": "async fn ping(override_url: Option<String>) -> Result<ExitCode> {\n    let client = client_for(override_url)?;\n    let health = client.health().await?;\n\n    if !health.is_healthy() {",
+        "span": [
+          627,
+          647
+        ],
+        "subkind": "function_item",
+        "tags": [
+          "health check",
+          "daemon",
+          "HTTP client",
+          "CLI"
+        ]
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/cli/tests/doctor_daemon.rs::config_for",
+        "kind": "function",
+        "match_field": "raw",
+        "name": "config_for",
+        "path": "crates/cli/tests/doctor_daemon.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.5126753926897519,
+        "smart": null,
+        "snippet": "fn config_for(daemon_url: &str) -> fs3_core::Config {\n    fs3_core::Config {\n        database: fs3_core::DatabaseConfig {\n            url: database_url(),\n        },",
+        "span": [
+          29,
+          40
+        ],
+        "subkind": "function_item",
+        "tags": []
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/docs/reference/error-codes.md::fs3 error codes::DAEMON::`FS3-E-DAEMON-UNAVAILABLE`",
+        "kind": "section",
+        "match_field": "raw",
+        "name": "`FS3-E-DAEMON-UNAVAILABLE`",
+        "path": "docs/reference/error-codes.md",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.5106847600608021,
+        "smart": null,
+        "snippet": "### `FS3-E-DAEMON-UNAVAILABLE`\n\nThe fs3 daemon did not answer on its configured URL.\n\n**Fix**: start it with `flowspace3 daemon &`, or run `flowspace3 doctor` to diagnose the stack. Doctor reports the daemon but never starts one — a diagnostic command must not leave a process running that you did not ask for.",
+        "span": [
+          226,
+          235
+        ],
+        "subkind": "atx_heading",
+        "tags": []
+      },
+      {
+        "address": "el:git:github.com/AI-Substrate/flowspace3/crates/cli/tests/ping.rs::the_client_sends_a_get_to_health",
+        "kind": "function",
+        "match_field": "raw",
+        "name": "the_client_sends_a_get_to_health",
+        "path": "crates/cli/tests/ping.rs",
+        "repo": "git:github.com/AI-Substrate/flowspace3",
+        "score": 0.5096483211880917,
+        "smart": null,
+        "snippet": "fn the_client_sends_a_get_to_health() {\n    let listener = TcpListener::bind(\"127.0.0.1:0\").expect(\"an ephemeral port\");\n    let address = listener.local_addr().expect(\"the socket is bound\");\n\n    let probe = std::thread::spawn(move || {",
+        "span": [
+          137,
+          162
+        ],
+        "subkind": "function_item",
+        "tags": []
+      }
+    ]
+  },
+  "meta": {
+    "scope": {
+      "cwd": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T024227Z",
+      "repo": "git:github.com/AI-Substrate/flowspace3",
+      "source": "cwd",
+      "worktree": "/Users/jordanknight/substrate/flowspace/poctest-wtdiff-20260828T024227Z"
+    }
+  },
+  "next_action": "read a hit in full with `flowspace3 get <address>`, browse its file with `flowspace3 tree <address>`, or narrow with --path/--repo"
+}
