@@ -1,0 +1,297 @@
+.agents/skills/pij-team/EXPERIENCES.md
+  s_15d888f4b629c1::t_6ff8b6b2fb191a 54-433,436-443
+.agents/skills/pij-team/SKILL.md
+  s_15d888f4b629c1::t_76a13b22074065 89-94
+.agents/skills/pij-team/TENETS.md
+  s_15d888f4b629c1::t_dfd61b1688b7fc 108-125
+.agents/skills/pij-team/templates/packet-coder.dd.json
+  s_15d888f4b629c1::t_34e9ecbb4b3863 29-30,47,55-57
+.agents/skills/pij-team/templates/packet-pm.dd.json
+  s_15d888f4b629c1::t_99da6d03a09991 26-27
+.agents/skills/pij-team/templates/packet-reviewer.dd.json
+  s_15d888f4b629c1::t_a87b2edacb0fc1 24,26
+.harness/government/briefs/backlog.md
+  s_15d888f4b629c1::t_811f9b35580675 1-187
+.harness/government/briefs/w-agentic-query-poc.md
+  s_15d888f4b629c1::t_d89e73c7fb3cbc 1-48
+.harness/government/briefs/w-ask-eval.md
+  s_15d888f4b629c1::t_5c0ccf827bdc83 1-52
+.harness/government/briefs/w-daemon-auth.md
+  s_15d888f4b629c1::t_179f40adbfcb5d 1-35
+.harness/government/briefs/w-daemon-restart.md
+  s_15d888f4b629c1::t_4169d8f4891604 1-42
+.harness/government/briefs/w-daemon-sandbox.md
+  s_15d888f4b629c1::t_0d813a9f790172 1-47
+.harness/government/briefs/w-ddocs-scan.md
+  s_15d888f4b629c1::t_7a96b514d6be3d 1-67
+.harness/government/briefs/w-disk-usage.md
+  s_15d888f4b629c1::t_eef538fea19bc2 1-48
+.harness/government/briefs/w-epipe.md
+  s_15d888f4b629c1::t_0b14e3b300559a 1-24
+.harness/government/briefs/w-ingest-lane.md
+  s_15d888f4b629c1::t_bcb78e67fcab01 1-30
+.harness/government/briefs/w-retro-drain.md
+  s_15d888f4b629c1::t_e61e5932267e44 1-57
+.harness/government/briefs/w-search-degenerate-query.md
+  s_15d888f4b629c1::t_2128ce737cc359 1-68
+.harness/government/briefs/w-team-tidy.md
+  s_15d888f4b629c1::t_35e138696db282 1-52
+.harness/government/briefs/w-tui-poc.md
+  s_15d888f4b629c1::t_8944c8e10c2f59 1-64
+.harness/government/briefs/w-watcher-ignore-successor.md
+  s_15d888f4b629c1::t_2791a6a3ceec70 1-35
+.harness/government/briefs/w-watcher-ignore.md
+  s_15d888f4b629c1::t_29eec333cbff5a 1-71
+.harness/government/how-we-work.md
+  s_15d888f4b629c1::t_ef377cfcc06039 2-31,44,48-53,59-63,67-70,74-78,82,84-85,89-92,96,100,106-113,117
+.harness/government/settings.dd.json
+  s_15d888f4b629c1::t_57794fff138b1a 11,22,29,31
+.harness/government/settings.dd.md
+  s_15d888f4b629c1::t_2d42f54379c4fb 14,22-23
+AGENTS.md
+  s_15d888f4b629c1::t_a12e0b0e59d366 6-12
+Cargo.lock
+  s_15d888f4b629c1::t_0a1b9d43ea14ea 40-58,389-394,513-539,580,720-758,775-786,803-815,822,827-837,927,1203,1207-1208,1213-1214,1220,1261,1851,2671,2676-2684,2705-2717,2730-2738,2941-2946,2980-2988,3320-3325,3670-3690,3714,3928-3940,3950,4238-4258,4316-4321,4599-4620,4678-4688,4692-4702,4795,4800,5203-5213,5216,5218-5224,5336-5345
+Cargo.toml
+  s_15d888f4b629c1::t_ff8b5b6db45775 107
+crates/cli/Cargo.toml
+  s_15d888f4b629c1::t_66ce548be5592b 25-28,30-32
+crates/cli/docs/agents.md
+  s_15d888f4b629c1::t_bc43088cf8aed5 9-16
+crates/cli/docs/read.md
+  s_15d888f4b629c1::t_9f22fe081b7ade 7-13
+crates/cli/docs/search.md
+  s_15d888f4b629c1::t_d57662a2026946 10-16
+crates/cli/skills/flowspace/SKILL.md
+  s_15d888f4b629c1::t_b58a10e8eaac4f 13-19
+crates/cli/src/client.rs
+  s_15d888f4b629c1::t_6f5c5ec6ed9a3d 301-358
+crates/cli/src/doctor.rs
+  s_15d888f4b629c1::t_e4a2836c716b18 36
+crates/cli/src/lib.rs
+  s_15d888f4b629c1::t_5c25186f45cf27 11,15,17
+crates/cli/src/main.rs
+  s_15d888f4b629c1::t_1df2d3ed7f4c87 3-15,18,21,25,27,39-47,99-110,222-236,405-406,409-413,433-435,449-467,469-481,484,490,498-505,517-537,539,541-542,686-696,734-749,751-754,756-775,781-792,800-802,808-814,819,824-828,888,896,912-913,918
+crates/cli/src/render/mod.rs
+  s_15d888f4b629c1::t_52663456b30ddf 1-121
+crates/cli/src/render/progress.rs
+  s_15d888f4b629c1::t_b4435750d8e51e 1-152
+crates/cli/src/render/surfaces/doctor.rs
+  s_15d888f4b629c1::t_344e62a6fa4175 1-66
+crates/cli/src/render/surfaces/failure.rs
+  s_15d888f4b629c1::t_7ab3292f2c40ae 1-72
+crates/cli/src/render/surfaces/lists.rs
+  s_15d888f4b629c1::t_8ee0b9c5f8b330 1-102
+crates/cli/src/render/surfaces/mod.rs
+  s_15d888f4b629c1::t_b0cce37714b044 1-8
+crates/cli/src/render/surfaces/read.rs
+  s_15d888f4b629c1::t_0d7d64ab97669e 1-124
+crates/cli/src/render/surfaces/remove.rs
+  s_15d888f4b629c1::t_7f8b38cd27b169 1-64
+crates/cli/src/render/surfaces/roots.rs
+  s_15d888f4b629c1::t_039fae5f2fe49c 1-58
+crates/cli/src/render/surfaces/search.rs
+  s_15d888f4b629c1::t_37bce3af6c26cd 1-94
+crates/cli/src/render/surfaces/status.rs
+  s_15d888f4b629c1::t_006835b6d2d295 1-121
+crates/cli/src/render/theme.rs
+  s_15d888f4b629c1::t_4b21aa00f781c5 1-209
+crates/cli/src/tui.rs
+  s_15d888f4b629c1::t_db4d9bc6a68040 1-1462
+crates/cli/src/watch.rs
+  s_15d888f4b629c1::t_ad728751538d36 1-130
+crates/cli/tests/doctor_daemon.rs
+  s_15d888f4b629c1::t_c2650419ca66ba 13,44,78,249,317,330-331,336-337
+crates/cli/tests/envelope_goldens.rs
+  s_15d888f4b629c1::t_e931b99a72f854 1-455
+crates/cli/tests/fixtures/scan-progress.ndjson
+  s_15d888f4b629c1::t_4b0500d8fe9559 1-4
+crates/cli/tests/fixtures/tui-events.ndjson
+  s_15d888f4b629c1::t_bacae6c0ca5f17 1-6
+crates/cli/tests/goldens/PROVENANCE.md
+  s_15d888f4b629c1::t_c681337bf3c8cb 1-164
+crates/cli/tests/goldens/responses/add.json
+  s_15d888f4b629c1::t_824517ea799fcf 1
+crates/cli/tests/goldens/responses/conversation-list.json
+  s_15d888f4b629c1::t_3c88cb4d0d865d 1
+crates/cli/tests/goldens/responses/error-not-found.json
+  s_15d888f4b629c1::t_cade229e093f61 1
+crates/cli/tests/goldens/responses/error-query-empty.json
+  s_15d888f4b629c1::t_170899a81d9b11 1
+crates/cli/tests/goldens/responses/gc.json
+  s_15d888f4b629c1::t_a9d0e625e8d2c1 1
+crates/cli/tests/goldens/responses/get.json
+  s_15d888f4b629c1::t_86e67e8af2d825 1
+crates/cli/tests/goldens/responses/messages.json
+  s_15d888f4b629c1::t_f6bb1d49591d5c 1
+crates/cli/tests/goldens/responses/remove.json
+  s_15d888f4b629c1::t_38463b981c44aa 1
+crates/cli/tests/goldens/responses/scan.json
+  s_15d888f4b629c1::t_ef7d2bb6707b13 1
+crates/cli/tests/goldens/responses/search.json
+  s_15d888f4b629c1::t_2c7f9ba23f345f 1
+crates/cli/tests/goldens/responses/status.json
+  s_15d888f4b629c1::t_83cdc3a17e5c23 1
+crates/cli/tests/goldens/responses/tree.json
+  s_15d888f4b629c1::t_b4760e5d4147c3 1
+crates/cli/tests/goldens/stdout/add.stdout
+  s_15d888f4b629c1::t_f18ea2a27f3054 1-33
+crates/cli/tests/goldens/stdout/conversation-list.stdout
+  s_15d888f4b629c1::t_c56a3688178445 1-9
+crates/cli/tests/goldens/stdout/error-not-found.stdout
+  s_15d888f4b629c1::t_f3ca61d704eb1c 1-21
+crates/cli/tests/goldens/stdout/error-query-empty.stdout
+  s_15d888f4b629c1::t_2814ec39da68cd 1-17
+crates/cli/tests/goldens/stdout/gc.stdout
+  s_15d888f4b629c1::t_b5fad680f8044c 1-13
+crates/cli/tests/goldens/stdout/get.stdout
+  s_15d888f4b629c1::t_da6829b4d25fff 1-46
+crates/cli/tests/goldens/stdout/remove.stdout
+  s_15d888f4b629c1::t_699f7247fcd330 1-21
+crates/cli/tests/goldens/stdout/scan.stdout
+  s_15d888f4b629c1::t_cd70a776556489 1-18
+crates/cli/tests/goldens/stdout/search.stdout
+  s_15d888f4b629c1::t_37452dcaae9f74 1-73
+crates/cli/tests/goldens/stdout/status-with-messages.stdout
+  s_15d888f4b629c1::t_810d137a32d5b6 1-35
+crates/cli/tests/goldens/stdout/status.stdout
+  s_15d888f4b629c1::t_d5c965562cb338 1-87
+crates/cli/tests/goldens/stdout/tree.stdout
+  s_15d888f4b629c1::t_117c4ef93d18e4 1-39
+crates/cli/tests/messages_visible.rs
+  s_15d888f4b629c1::t_85bd381104f3d4 1-131
+crates/cli/tests/render_output.rs
+  s_15d888f4b629c1::t_ccd475fbb4886d 1-479
+crates/cli/tests/render_progress.rs
+  s_15d888f4b629c1::t_55c41a8a75aafc 1-117
+crates/cli/tests/status_watch.rs
+  s_15d888f4b629c1::t_6a925d381b033f 1-189
+crates/core/src/events.rs
+  s_15d888f4b629c1::t_24cfd565435c13 1-326
+crates/core/src/lib.rs
+  s_15d888f4b629c1::t_75bb3e11c89506 29,33,38,75,81
+crates/core/src/output.rs
+  s_15d888f4b629c1::t_e91cd237d08543 1-165
+crates/core/src/views/doctor.rs
+  s_15d888f4b629c1::t_43117dde54a648 1-186
+crates/core/src/views/mod.rs
+  s_15d888f4b629c1::t_2ab5e2b254499c 1-153
+crates/core/src/views/read.rs
+  s_15d888f4b629c1::t_5adf9cb0739bac 1-162
+crates/core/src/views/remove.rs
+  s_15d888f4b629c1::t_fe0fbaa524a650 1-47
+crates/core/src/views/roots.rs
+  s_15d888f4b629c1::t_7456404411a50e 1-65
+crates/core/src/views/search.rs
+  s_15d888f4b629c1::t_f57faa5b314c16 1-39
+crates/core/src/views/status.rs
+  s_15d888f4b629c1::t_fa088d4de785da 1-57
+crates/daemon/Cargo.toml
+  s_15d888f4b629c1::t_e98645f5f1502c 46
+crates/daemon/src/http.rs
+  s_15d888f4b629c1::t_17444f218715cf 19,21,25,27-29,36-38,40-44,72,152,273,291-358
+crates/daemon/src/read.rs
+  s_15d888f4b629c1::t_d979857cac3689 43,45,51-53
+crates/daemon/src/remove.rs
+  s_15d888f4b629c1::t_308ae71749701a 6,12,14-26,61,68,70-79,96
+crates/daemon/src/roots.rs
+  s_15d888f4b629c1::t_3e15613e5e9ed5 28,35-36,41-42,44-53,56-98,101,103-104,152-159,162-163,168,170-172,179,185,188,198-213,215-217,219,221-222,227,232,235-242,261
+crates/daemon/src/runner.rs
+  s_15d888f4b629c1::t_14ed85a812a3de 33,314-318,327-341,432,435-451,468-475,481,483-489,495,497-503,568-601,620-638,657-662,671-678,687-697
+crates/daemon/src/search.rs
+  s_15d888f4b629c1::t_8d9e75004ff7ac 34,103-106
+crates/daemon/src/status.rs
+  s_15d888f4b629c1::t_2976427c918cb6 12
+crates/daemon/src/wiring.rs
+  s_15d888f4b629c1::t_6035fd27bc9d80 39-40,49-56,70-71,170,187,195-220,460-490
+crates/daemon/tests/conversation_query.rs
+  s_15d888f4b629c1::t_1429b7c2745eee 15,18
+crates/daemon/tests/event_stream.rs
+  s_15d888f4b629c1::t_1106e2201c6a26 1-388
+crates/daemon/tests/watcher.rs
+  s_15d888f4b629c1::t_f3714590d64169 30,84
+crates/testkit/arch-allowlist.toml
+  s_15d888f4b629c1::t_4b1268d8b434a1 205-210,242,244-247,254
+docs/plans/007-human-interface/assets/first-light-transcript.md
+  s_15d888f4b629c1::t_d149ff1e3048f8 1-227
+docs/plans/007-human-interface/assets/first-light.md
+  s_15d888f4b629c1::t_877b4c694250e1 1-47
+docs/plans/007-human-interface/assets/inputs/README.md
+  s_15d888f4b629c1::t_9706772143a181 1-57
+docs/plans/007-human-interface/assets/inputs/tui-poc-VERDICT.md
+  s_15d888f4b629c1::t_e23a9f1b0ebd2b 1-71
+docs/plans/007-human-interface/assets/reviews/review-007.dd.json
+  s_15d888f4b629c1::t_5a670c2a897bfa 1-141
+docs/plans/007-human-interface/assets/reviews/review-007.dd.md
+  s_15d888f4b629c1::t_88a12aa466ab96 1-48
+docs/plans/007-human-interface/assets/run/pm-ack.md
+  s_15d888f4b629c1::t_bac7ba4dd1afd5 1-93
+docs/plans/007-human-interface/assets/run/process-feedback.md
+  s_15d888f4b629c1::t_65b20209d1db8a 1-160
+docs/plans/007-human-interface/assets/tasks/phase-1/tasks.dd.json
+  s_15d888f4b629c1::t_e0e5463872e61c 1-89
+docs/plans/007-human-interface/assets/tasks/phase-1/tasks.dd.md
+  s_15d888f4b629c1::t_31a3ae4adb83aa 1-49
+docs/plans/007-human-interface/assets/tasks/phase-2/tasks.dd.json
+  s_15d888f4b629c1::t_76e891802e4f6a 1-60
+docs/plans/007-human-interface/assets/tasks/phase-2/tasks.dd.md
+  s_15d888f4b629c1::t_e8d127ef55d190 1-46
+docs/plans/007-human-interface/assets/tasks/phase-3/tasks.dd.json
+  s_15d888f4b629c1::t_69b52a0342e272 1-60
+docs/plans/007-human-interface/assets/tasks/phase-3/tasks.dd.md
+  s_15d888f4b629c1::t_b8b0ad01e61536 1-46
+docs/plans/007-human-interface/impl-guide.dd.json
+  s_15d888f4b629c1::t_4179cfb7c1e457 1-117
+docs/plans/007-human-interface/impl-guide.dd.md
+  s_15d888f4b629c1::t_eab994948796b2 1-86
+docs/plans/007-human-interface/packet-coder-u-r.dd.json
+  s_15d888f4b629c1::t_fef09fa31d913c 1-186
+docs/plans/007-human-interface/packet-coder-u-r.dd.md
+  s_15d888f4b629c1::t_c6a33585eb5eb2 1-93
+docs/plans/007-human-interface/packet-coder-u-t.dd.json
+  s_15d888f4b629c1::t_e9d5422fc00de2 1-194
+docs/plans/007-human-interface/packet-coder-u-t.dd.md
+  s_15d888f4b629c1::t_fd03d53061ecfd 1-95
+docs/plans/007-human-interface/packet-coder-u-w.dd.json
+  s_15d888f4b629c1::t_22a65c2286d0ba 1-190
+docs/plans/007-human-interface/packet-coder-u-w.dd.md
+  s_15d888f4b629c1::t_269501c73fa827 1-94
+docs/plans/007-human-interface/packet-coder.dd.json
+  s_15d888f4b629c1::t_861f272f5841c8 1-68
+docs/plans/007-human-interface/packet-coder.dd.md
+  s_15d888f4b629c1::t_f4cea2327a40dc 1-79
+docs/plans/007-human-interface/packet-pm.dd.json
+  s_15d888f4b629c1::t_b9f22af7dbc8b6 1-75
+docs/plans/007-human-interface/packet-pm.dd.md
+  s_15d888f4b629c1::t_842efd6bcba95c 1-86
+docs/plans/007-human-interface/packet-reviewer.dd.json
+  s_15d888f4b629c1::t_835d39341e1304 1-127
+docs/plans/007-human-interface/packet-reviewer.dd.md
+  s_15d888f4b629c1::t_08718ac6b2eca0 1-79
+docs/plans/007-human-interface/plan.dd.json
+  s_15d888f4b629c1::t_d8d865c4d9bd98 1-110
+docs/plans/007-human-interface/plan.dd.md
+  s_15d888f4b629c1::t_2010ba933bac75 1-70
+docs/services/event-stream.md
+  s_15d888f4b629c1::t_e179ddc1282350 1-163
+docs/services/human-render.md
+  s_15d888f4b629c1::t_ba2fa4eedeabfe 1-72
+docs/services/tui.md
+  s_15d888f4b629c1::t_b832f313b7ebae 1-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "07d6683f9382877b738d187aa73c3d45d0c404e5",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
