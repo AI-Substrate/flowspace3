@@ -1,35 +1,79 @@
 {
- "dd": {
-  "schema": "builder/plan"
- },
- "sections": [
-  {
-   "name": "meta",
-   "value": {
-    "title": "Phase 1: Measure current behaviour (investigate)",
-    "slug": "phase-1",
-    "status": "draft",
-    "summary": "Four scripted probes, one variable each; output is the evidence contract that rules phase 2."
-   }
+  "dd": {
+    "schema": "builder/plan"
   },
-  {
-   "name": "summary",
-   "value": "Investigate mode per the impl-guide: a unit is a probe, its interface is the evidence contract, its done is the receipt (with observed tool versions), composition is the ruled phase-2 unit set."
-  },
-  {
-   "name": "tasks",
-   "value": [
-    { "id": "tk-e101", "title": "Probe harness: assets/probes/probe.sh (or .mjs) — creates a disposable worktree of this repo with a poctest- prefix, orchestrates the four probes below, captures daemon-log + DB-delta + CLI-envelope evidence per probe, tears everything down; runnable end-to-end by any future seat.", "state": "unchecked", "success": "One command runs all four probes and emits per-probe transcripts.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0005"] },
-    { "id": "tk-e102", "title": "P1 discovery + P2 incremental cost: untouched worktree (is it seen? what jobs?) then K edited files (what scans, what enqueues, what REACHES a provider — call counts from logs/DB, not inference). Distinguish blob-dedupe savings from enrichment re-emit behaviour explicitly.", "state": "unchecked", "success": "Measured numbers for both probes with transcripts; provider-call count for unchanged content stated exactly.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0001"] },
-    { "id": "tk-e103", "title": "P3 search resolution: same query from main and from inside the worktree; record which file versions rank, whether context is distinguishable in the envelope, and how ties behave. Include bobolink's case: uncommitted content in a worktree, is it findable at all?", "state": "unchecked", "success": "Version-resolution behaviour documented with envelopes pasted; the uncommitted-content answer explicit.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0001"] },
-    { "id": "tk-e104", "title": "P4 removal: git worktree remove, then measure references/GC — what becomes unreferenced, what the collector reaps on its next cycle, whether any PAID enrichment is orphaned (before/after counts).", "state": "unchecked", "success": "Reference/GC deltas measured; orphaned-paid count stated (target understanding, not necessarily zero today).", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0001"] },
-    { "id": "tk-e105", "title": "The ruling artifact: assets/probe-report.md — four evidence-backed answers, the gap list, and the RULED phase-2 unit set (confirm/replace the provisional u-a..u-d) delivered to prime for sign-off before any fan-out.", "state": "unchecked", "success": "Prime signs off the unit set; phase-2 tasks amended to match via ddocs.", "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-0001"] }
-   ]
-  },
-  {
-   "name": "done_when",
-   "value": {}
-  }
- ],
- "references": []
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: Measure current behaviour (investigate)",
+        "slug": "phase-1",
+        "status": "draft",
+        "summary": "Four scripted probes, one variable each; output is the evidence contract that rules phase 2."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Investigate mode per the impl-guide: a unit is a probe, its interface is the evidence contract, its done is the receipt (with observed tool versions), composition is the ruled phase-2 unit set."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-e101",
+          "title": "Probe harness: assets/probes/probe.sh (or .mjs) — creates a disposable worktree of this repo with a poctest- prefix, orchestrates the four probes below, captures daemon-log + DB-delta + CLI-envelope evidence per probe, tears everything down; runnable end-to-end by any future seat.",
+          "state": "checked",
+          "success": "One command runs all four probes and emits per-probe transcripts.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ],
+          "receipt": "assets/probes/probe.sh at 0aaaac8 — one command runs all four probes; teardown on EXIT INT TERM; evidence in assets/probes/out/run-<UTC>/"
+        },
+        {
+          "id": "tk-e102",
+          "title": "P1 discovery + P2 incremental cost: untouched worktree (is it seen? what jobs?) then K edited files (what scans, what enqueues, what REACHES a provider — call counts from logs/DB, not inference). Distinguish blob-dedupe savings from enrichment re-emit behaviour explicitly.",
+          "state": "checked",
+          "success": "Measured numbers for both probes with transcripts; provider-call count for unchanged content stated exactly.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ],
+          "receipt": "run-20260828T024227Z: P1 p1_auto_discovered=0 (0 rows, 0 jobs after 6 reconcile passes); P2a 305 files registered for 0 elements/0 summaries/0 vectors and 0 provider round trips (289 embed batches, all smart, max 18ms); P2b 8 files -> 149 elements, 8 raw vectors, 1 provider call (455ms)"
+        },
+        {
+          "id": "tk-e103",
+          "title": "P3 search resolution: same query from main and from inside the worktree; record which file versions rank, whether context is distinguishable in the envelope, and how ties behave. Include bobolink's case: uncommitted content in a worktree, is it findable at all?",
+          "state": "checked",
+          "success": "Version-resolution behaviour documented with envelopes pasted; the uncommitted-content answer explicit.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ],
+          "receipt": "run-20260828T024227Z: p3_search_context_sensitive=0, p3_wrong_version_leak_to_main=1 (worktree-only fn at 0.7730 from main), p3_get_context_sensitive=1 (span 262 vs 270); envelope has no per-result provenance; scope.rs:153 resolves worktree, read.rs:619 uses it, search.rs:194/210 does not"
+        },
+        {
+          "id": "tk-e104",
+          "title": "P4 removal: git worktree remove, then measure references/GC — what becomes unreferenced, what the collector reaps on its next cycle, whether any PAID enrichment is orphaned (before/after counts).",
+          "state": "checked",
+          "success": "Reference/GC deltas measured; orphaned-paid count stated (target understanding, not necessarily zero today).",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ],
+          "receipt": "run-20260828T024227Z: git worktree remove leaves root registered (p4_root_still_registered=1) and still serving (p4_deleted_content_still_served=1); flowspace3 remove unmaps 305 files; gc reclaims 149 elements + 8 vectors; orphaned-paid after gc = 0; p4_served_after_gc=0"
+        },
+        {
+          "id": "tk-e105",
+          "title": "The ruling artifact: assets/probe-report.md — four evidence-backed answers, the gap list, and the RULED phase-2 unit set (confirm/replace the provisional u-a..u-d) delivered to prime for sign-off before any fan-out.",
+          "state": "checked",
+          "success": "Prime signs off the unit set; phase-2 tasks amended to match via ddocs.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ],
+          "receipt": "assets/probe-report.md at 0aaaac8 — four answers, six-gap list, ruled unit set (u-a lifecycle detector absorbing provisional u-a+u-d, u-c search resolution+provenance+truncation visibility, u-b ruled OUT), delivered to prime for sign-off"
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {}
+    }
+  ]
 }
