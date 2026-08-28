@@ -339,6 +339,21 @@ impl ToolBox for IndexTools<'_> {
 /// they are fed back to the model, which is what lets it recover.
 pub async fn ask(state: &AppState, request: &AskRequest, scope: Scope) -> CoreResult<AskReport> {
     let chat = state.agent_for(scope.repo.as_deref());
+
+    // Refuse BEFORE the first turn when the port cannot answer. The offline
+    // fake is wired, healthy and incapable: it can only emit a placeholder,
+    // and that placeholder once reached callers as a real `answer` on an
+    // `ok: true` envelope. Our own envelope rule tells consumers to branch on
+    // `ok` alone, so a non-answer riding a success is not a cosmetic problem —
+    // it is the verb lying in the one field everything downstream trusts.
+    // `grounded: false` and the suspicious next_action were both present and
+    // both insufficient, because neither is where a machine looks.
+    if !chat.can_answer() {
+        return Err(fs3_core::Error::Provider(format!(
+            "the agent port is wired to `{}`, which cannot answer questions",
+            chat.key()
+        )));
+    }
     let bounds = AgentBounds {
         max_iterations: state.config.agent.max_iterations,
         token_budget: state.config.agent.token_budget,

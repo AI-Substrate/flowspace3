@@ -324,6 +324,26 @@ pub trait ChatProvider: Send + Sync {
     /// Which model answered, for the trace and for support questions.
     fn key(&self) -> String;
 
+    /// Whether this provider can actually produce an answer.
+    ///
+    /// `false` means the port is WIRED BUT NOT USABLE — the offline fake with
+    /// no script is the case that matters: it is a legal keyless production
+    /// value for the other two ports, where a fake embedder still yields real
+    /// vectors and search genuinely works. A fake CHAT model has no such
+    /// honest output. It can only emit a placeholder, and a placeholder
+    /// rendered into `answer` is a non-answer wearing an answer's clothes.
+    ///
+    /// Callers must refuse BEFORE running rather than publish that, because
+    /// the envelope's `ok` is the documented branch point for every machine
+    /// consumer: a run that cannot answer has to fail, not succeed quietly
+    /// with prose that reads like a finding.
+    ///
+    /// Defaults to `true`: a real provider can answer, and only a stand-in
+    /// knows it is one.
+    fn can_answer(&self) -> bool {
+        true
+    }
+
     /// The most tokens this model accepts in the PROMPT of one call.
     ///
     /// The same declaration [`Summarizer::max_input_tokens`] makes, and it
