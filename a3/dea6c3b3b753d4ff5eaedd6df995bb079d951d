@@ -1,0 +1,16 @@
+docs/plans/008-ddocs-scan/review.dd.json
+  h_9e71e8b09f7cf2 12,15,130-271
+docs/plans/008-ddocs-scan/review.dd.md
+  h_9e71e8b09f7cf2 4,15,18,36-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a3dea6c3b3b753d4ff5eaedd6df995bb079d951d",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
