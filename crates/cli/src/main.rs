@@ -1,18 +1,29 @@
 //! `flowspace3` — the fs3 command-line client (PRD req 28).
 //!
-//! Every verb prints one workshop-004 envelope to stdout and exits by its
-//! shape: 0 for `ok`, 1 for an error, 2 for a usage problem. JSON only in v1
-//! (workshop 003 D5) — a human-readable layer renders from the same envelope
-//! later, and building it now would mean two output paths to keep honest
-//! instead of one.
+//! Every verb produces one workshop-004 envelope and exits by its shape: 0 for
+//! `ok`, 1 for an error, 2 for a usage problem. What stdout RECEIVES depends on
+//! who is reading it: a terminal gets the human rendering, and a pipe, a file,
+//! a CI log or an agent gets the frozen JSON envelope, byte for byte as before
+//! (`fs3_core::output`, Jordan's ruling 2026-08-28). `--json` forces JSON
+//! anywhere, `--human` forces the renderer anywhere, and `FS3_OUTPUT` settles
+//! it for a harness whose terminal probe would lie — an agent inside a tmux
+//! PTY looks exactly like a person.
+//!
+//! There is still one output path: the envelope is serialised first, in both
+//! modes, and the human screen is rendered FROM those bytes
+//! (`fs3_cli::render`). The two views cannot disagree, because one is made out
+//! of the other.
 
+use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::process::ExitCode;
+use std::sync::OnceLock;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use fs3_cli::{DaemonClient, daemon_url, doctor, settings, show, skill};
+use fs3_cli::{DaemonClient, daemon_url, doctor, render, settings, show, skill};
 use fs3_core::envelope::Envelope;
+use fs3_core::output::{OUTPUT_ENV, OutputMode};
 
 #[derive(Parser)]
 #[command(
@@ -24,6 +35,15 @@ use fs3_core::envelope::Envelope;
 struct Cli {
     #[command(subcommand)]
     command: Command,
+    /// Print the JSON envelope, even at a terminal.
+    ///
+    /// Global so it can be written where a person naturally writes it — after
+    /// the verb, next to the thing they are looking at.
+    #[arg(long, global = true, conflicts_with = "human")]
+    json: bool,
+    /// Print the human rendering, even into a pipe.
+    #[arg(long, global = true)]
+    human: bool,
 }
 
 #[derive(Subcommand)]
@@ -353,14 +373,44 @@ fn main() -> ExitCode {
     }
 }
 
-/// Parse the command line and load the secrets chain, single-threaded.
+/// How this process prints, decided once at startup.
+///
+/// A process-wide cell rather than a parameter threaded through twenty-five
+/// `emit` call sites: "who is reading stdout" is a property of the PROCESS,
+/// settled before the first byte and never changing mid-run. Threading it
+/// would also mean every future verb author has to remember to pass it, which
+/// is the kind of thing nobody remembers on the twenty-sixth arm.
+///
+/// Unset reads as [`OutputMode::Json`] — the safe direction, and the shape any
+/// caller that bypassed `boot` (the daemon verb) would want anyway.
+static OUTPUT: OnceLock<OutputMode> = OnceLock::new();
+
+/// What stdout should receive, as `boot` resolved it.
+fn output_mode() -> OutputMode {
+    OUTPUT.get().copied().unwrap_or(OutputMode::Json)
+}
+
+/// Parse the command line, settle the output mode, and load the secrets chain,
+/// single-threaded.
 fn boot() -> Result<Command> {
-    let command = Cli::parse().command;
+    let cli = Cli::parse();
+
+    // The terminal probe lives here and nowhere else: `fs3_core::output` is
+    // pure and takes the answer as an argument, so the rule can be tested
+    // exhaustively without a tty.
+    let mode = fs3_core::output::resolve(
+        std::io::stdout().is_terminal(),
+        cli.json,
+        cli.human,
+        std::env::var(OUTPUT_ENV).ok().as_deref(),
+    );
+    let _ = OUTPUT.set(mode);
+
     if let Ok(dir) = settings::config_dir() {
         // A broken secrets file is worth failing on; a missing one is normal.
         settings::load_secrets_from(&dir)?;
     }
-    Ok(command)
+    Ok(cli.command)
 }
 
 async fn run(command: Command) -> Result<ExitCode> {
@@ -543,9 +593,37 @@ async fn run(command: Command) -> Result<ExitCode> {
 /// conditions print BEFORE the failure, because a message like "a newer binary
 /// is waiting for a restart" is very often the explanation for the failure
 /// underneath it.
+///
+/// # The seam
+///
+/// The envelope is serialised FIRST, the same way, in both modes — and the
+/// human screen is rendered from those exact bytes, never from the typed value
+/// beside them. Two consequences, both deliberate:
+///
+/// * the JSON path is a byte-for-byte passthrough of what it always printed
+///   (`crates/cli/tests/envelope_goldens.rs` asserts it against goldens
+///   captured before this layer existed), and
+/// * the human view cannot drift ahead of the machine view, because it is made
+///   out of it. A fact a person needs that the envelope does not carry is a gap
+///   in the contract, not something to fetch on the side.
+///
+/// A renderer that declines, or bytes that will not round-trip, fall through to
+/// the JSON — the reader sees the answer either way.
 fn emit<T: serde::Serialize>(envelope: &Envelope<T>) -> ExitCode {
     match serde_json::to_string_pretty(envelope) {
-        Ok(json) => println!("{json}"),
+        Ok(json) => {
+            let screen = match output_mode() {
+                OutputMode::Json => None,
+                OutputMode::Human => serde_json::from_str::<Envelope<serde_json::Value>>(&json)
+                    .ok()
+                    .as_ref()
+                    .and_then(render::render),
+            };
+            match screen {
+                Some(text) => print!("{text}"),
+                None => println!("{json}"),
+            }
+        }
         Err(error) => eprintln!("flowspace3: cannot render the response: {error}"),
     }
 

@@ -20,6 +20,7 @@ pub mod error;
 pub mod git;
 pub mod logging;
 pub mod messages;
+pub mod output;
 pub mod ports;
 pub mod skew;
 pub mod tokens;
@@ -53,6 +54,7 @@ pub use logging::{
     LOG_FILE_NAME, LOGGING_SOURCE, resolve_log_dir, rolled_name, unwritable_message,
 };
 pub use messages::{Severity, UserMessage};
+pub use output::{OUTPUT_AUTO, OUTPUT_ENV, OutputMode};
 pub use ports::{Embedder, Summarizer, Summary};
 pub use skew::{SCHEMA_SOURCE, SchemaSkew};
 pub use tokens::{BYTES_PER_TOKEN, estimate_tokens, fit_to_cap};

@@ -8,6 +8,7 @@ pub mod client;
 pub mod conversation;
 pub mod docs;
 pub mod doctor;
+pub mod render;
 pub mod settings;
 pub mod show;
 pub mod skill;
