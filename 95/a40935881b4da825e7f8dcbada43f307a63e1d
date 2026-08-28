@@ -1,0 +1,21 @@
+docs/plans/006-worktree-diff/assets/tasks/phase-1/tasks.dd.json
+  s_b668fefb3076c7::t_e6698461654729 2-3,5-78
+docs/plans/006-worktree-diff/assets/tasks/phase-1/tasks.dd.md
+  s_b668fefb3076c7::t_8b67588dde089e 38-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "95a40935881b4da825e7f8dcbada43f307a63e1d",
+  "prompts": {},
+  "sessions": {
+    "s_b668fefb3076c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0e0064-8d84-48e6-b499-eca0c65baafc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
