@@ -17,8 +17,8 @@ use std::sync::Arc;
 
 use fs3_core::envelope::Envelope;
 use fs3_core::{
-    BlobRef, ChatTurn, Config, DatabaseConfig, Element, ElementKind, RepoIdentity, Span, ToolCall,
-    content_hash, element_address,
+    BlobRef, ChatMessage, ChatTurn, Config, DatabaseConfig, Element, ElementKind, RepoIdentity,
+    Span, ToolCall, content_hash, element_address,
 };
 use fs3_daemon::router;
 use fs3_daemon::wiring::AppState;
@@ -364,6 +364,60 @@ async fn search_hits_and_full_reads_are_distinct_in_the_trace() {
     assert_eq!(trace[1]["tool"], "get");
     assert_eq!(trace[1]["search_hits"], json!([]));
     assert_eq!(data["citations"], json!([address]));
+    assert_eq!(data["coverage"]["iterations_used"], data["iterations"]);
+    assert_eq!(data["coverage"]["iteration_limit"], 8);
+    assert_eq!(data["coverage"]["retrieval_top_k"], json!([6]));
+    assert_eq!(data["coverage"]["exhaustive"], false);
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn an_unmatched_path_filter_is_reported_to_the_model_as_a_bad_filter() {
+    let question = "where is watcher debounce implemented?";
+    let database = support::FreshDatabase::create("ask-path-unmatched").await;
+    let config = Config {
+        database: DatabaseConfig {
+            url: database.url(),
+        },
+        ..Config::default()
+    };
+    let mut state = AppState::from_config(config).expect("the fake stack wires");
+    fs3_store::migrate(&state.db).await.expect("migrates");
+    seed_search_hit(&state, question).await;
+    let chat = Arc::new(FakeChatProvider::scripted(vec![
+        tool_call("search", r#"{"query":"watcher debounce","path":"apps/**"}"#),
+        prose("the path filter matched no indexed paths, so this does not prove absence"),
+        prose("the path filter matched no indexed paths, so this does not prove absence"),
+    ]));
+    state.agent = chat.clone();
+
+    let pool = state.db.clone();
+    let auth = support::auth("ask-path-unmatched");
+    let base = support::spawn(router(state, auth.auth)).await;
+    let envelope = post_ask(&base, &auth.key, question).await;
+    assert!(envelope.ok, "{envelope:?}");
+    let data = envelope.data.expect("an ask report");
+    assert_eq!(data["trace"][0]["failed"], false);
+    assert_eq!(data["trace"][0]["evidence"], false);
+    assert_eq!(data["coverage"]["retrieval_top_k"], json!([6]));
+
+    let tool_result = chat
+        .received_messages()
+        .into_iter()
+        .flatten()
+        .find_map(|message| match message {
+            ChatMessage::ToolResult { content, .. }
+                if content.contains("PATH FILTER UNMATCHED") =>
+            {
+                Some(content)
+            }
+            _ => None,
+        })
+        .expect("the model receives the path diagnostic");
+    assert!(tool_result.contains("apps/**"), "{tool_result}");
+    assert!(tool_result.contains("src"), "{tool_result}");
+    assert!(tool_result.contains("Do NOT conclude"), "{tool_result}");
 
     database.destroy(pool).await;
 }

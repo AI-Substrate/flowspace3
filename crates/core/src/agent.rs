@@ -54,7 +54,9 @@ RULES:\n\
 2. Cite the addresses you used at the end, under 'Sources:'.\n\
 3. If the tools do not surface real evidence, say plainly that you could not find it. \
 An honest 'not found' beats a plausible guess.\n\
-4. Prefer a few focused tool calls over many speculative ones.\n\
+4. Prefer a few focused tool calls over many speculative ones.
+5. Treat every enumeration as findings from a bounded search, never a complete inventory. Say \
+what the search found and state that it does not prove those are the only items.
 Finish with a concise answer in prose.";
 
 /// The three caps on one run.
@@ -886,5 +888,7 @@ mod tests {
         assert!(SYSTEM_PROMPT.contains("Never answer from prior knowledge"));
         assert!(SYSTEM_PROMPT.contains("could not find it"));
         assert!(SYSTEM_PROMPT.contains("Cite the addresses"));
+        assert!(SYSTEM_PROMPT.contains("bounded search"));
+        assert!(SYSTEM_PROMPT.contains("does not prove those are the only items"));
     }
 }

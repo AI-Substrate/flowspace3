@@ -110,13 +110,14 @@ Reading it:
   from another repository as yours.
 - Empty results are `ok: true` with `"results": []`. **Read `meta.empty_because`
   before rephrasing.** When it is present the surface knows why the list is empty and
-  says so: `below_floor` (rows were found and your `--min-score` rejected them) or
+  says so: `below_floor` (rows were found and your `--min-score` rejected them),
   `scan_incomplete` (content IS indexed in this scope and the approximate
-  nearest-neighbour scan stopped before reaching it — widen with `--repo all`).
-  When it is absent, the `next_action` steer names the boring causes instead.
-  A repository with nothing indexed under the active model is an ERROR
-  (`FS3-E-QUERY-NO-INDEX`) naming the anchor, not an empty answer. Low scores under
-  a real embedder are the same answer with numbers attached.
+  nearest-neighbour scan stopped before reaching it — widen with `--repo all`), or
+  `path_unmatched` (the glob matches zero indexed paths; read its `hint` for the
+  indexed top-level layout and correct `--path`). When it is absent, the `next_action`
+  steer names the boring causes instead. A repository with nothing indexed under the
+  active model is an ERROR (`FS3-E-QUERY-NO-INDEX`) naming the anchor, not an empty
+  answer. Low scores under a real embedder are the same answer with numbers attached.
 
 ## 4b. Get and tree — read what you found
 
@@ -176,6 +177,8 @@ to the same filters `search` exposes — so a question phrased with real nouns
     "grounded": true,
     "citations": ["el:git:github.com/org/repo/crates/daemon/src/watch.rs::relist"],
     "trace": [ { "iteration": 1, "tool": "search", "failed": false, "evidence": true } ],
+    "coverage": { "iterations_used": 5, "iteration_limit": 8,
+                  "retrieval_top_k": [6], "exhaustive": false },
     "stopped": "answered", "iterations": 5, "tokens_used": null,
     "model": "gpt-4o" } }
 ```
@@ -189,6 +192,9 @@ to the same filters `search` exposes — so a question phrased with real nouns
 - **`stopped`** is `answered`, `max_iterations` or `token_budget`. Only `answered`
   carries an answer; a bounded run returns `null` rather than inventing one, and the
   fix is a narrower question or higher `[agent]` bounds.
+- **`coverage` names the probe's finite reach.** `retrieval_top_k` records each search
+  cap and `exhaustive` is always false. Enumerations are findings from that bounded
+  probe, never proof that the listed items are the only ones.
 - **`trace[].evidence`** distinguishes a call that WORKED AND FOUND NOTHING
   (`failed: false, evidence: false`) from one that BROKE (`failed: true`). Both are
   survivable — bad tool calls are fed back to the model, which corrects itself.

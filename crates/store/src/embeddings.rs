@@ -376,6 +376,19 @@ pub struct AnchorScope<'a> {
     pub path: Option<&'a str>,
 }
 
+/// What an indexed-path filter can reach inside one ownership scope.
+///
+/// This is deliberately independent of embeddings and ranking: it distinguishes
+/// a filter that matches no indexed path from a valid path whose content did not
+/// rank for a query.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PathFilterProbe {
+    /// Whether at least one indexed path matches the SQL `LIKE` pattern.
+    pub matches: bool,
+    /// Distinct first path segments available in the same scope, sorted.
+    pub top_level_entries: Vec<String>,
+}
+
 impl Default for SearchFilters {
     fn default() -> Self {
         SearchFilters {
@@ -745,6 +758,42 @@ pub async fn anchor_has_vectors(
     .await?;
 
     Ok(found)
+}
+
+/// Check whether a path pattern matches anything and summarize the scoped layout.
+///
+/// # Errors
+/// [`StoreError::Query`] on failure.
+pub async fn path_filter_probe(
+    pool: &PgPool,
+    repo: Option<&str>,
+    worktree: Option<&str>,
+    path: &str,
+) -> Result<PathFilterProbe, StoreError> {
+    let row = sqlx::query(
+        "SELECT COALESCE(bool_or(f.path LIKE $3), false) AS matches,
+                COALESCE(
+                    array_agg(DISTINCT split_part(f.path, '/', 1)
+                              ORDER BY split_part(f.path, '/', 1))
+                        FILTER (WHERE f.path <> ''),
+                    ARRAY[]::text[]
+                ) AS top_level_entries
+           FROM worktree_files f
+           JOIN worktrees w ON w.id = f.worktree_id
+           JOIN repos r     ON r.id = w.repo_id
+          WHERE ($1::text IS NULL OR r.identity = $1)
+            AND ($2::text IS NULL OR w.root_path = $2)",
+    )
+    .bind(repo)
+    .bind(worktree)
+    .bind(path)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(PathFilterProbe {
+        matches: row.try_get("matches")?,
+        top_level_entries: row.try_get("top_level_entries")?,
+    })
 }
 
 fn similar_from_row(row: &sqlx::postgres::PgRow) -> Result<SimilarElement, StoreError> {

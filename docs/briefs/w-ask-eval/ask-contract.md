@@ -31,6 +31,13 @@ envelope.data:
                                `search_hits` = addresses whose summaries this
                                search surfaced to the model
 
+- coverage       object        measured probe bounds:
+                               `{iterations_used u32, iteration_limit u32,
+                               retrieval_top_k i64[], exhaustive false}`.
+                               One top-k value per valid search call; bounded
+                               nearest-neighbour retrieval never proves a
+                               complete enumeration.
+
 - iterations     u32
 - tokens_used    u64|null      NULL = evidence unavailable: the COST row is
                                UNKNOWN and excluded from denominators. It is
@@ -78,6 +85,15 @@ another repo is a legitimate scope-trap negative-control variant: it must test
 that the loop WIDENS rather than concluding absence. Because an ungrounded
 answer receives one in-conversation refusal, that path may consume one extra
 iteration; fixtures assert an iteration ceiling, never an exact count.
+
+Enumerations are reported as what this bounded loop found, never as a closed
+inventory. The synthesis prompt requires the answer to state that retrieval
+does not prove the surfaced items are the only ones.
+
+When a search tool's `path` glob matches zero indexed paths in its effective
+scope, its result says `PATH FILTER UNMATCHED`, includes the indexed top-level
+layout, and forbids an absence conclusion. This is a worked call with
+`failed:false/evidence:false`, not evidence that the requested code is absent.
 
 ## Search-surfaced provenance (added 2026-08-28)
 

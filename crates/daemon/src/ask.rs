@@ -88,6 +88,19 @@ pub struct AskTraceEntry {
     pub result_chars: usize,
 }
 
+/// The finite probe behind an answer, stated separately from its prose.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct AskCoverage {
+    /// Model turns consumed by this run.
+    pub iterations_used: u32,
+    /// Maximum model turns the run was allowed to consume.
+    pub iteration_limit: u32,
+    /// The top-k requested by each valid search call, in call order.
+    pub retrieval_top_k: Vec<i64>,
+    /// Always false: bounded nearest-neighbour retrieval cannot prove completeness.
+    pub exhaustive: bool,
+}
+
 /// What `POST /ask` answers with.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct AskReport {
@@ -105,6 +118,8 @@ pub struct AskReport {
     pub citations: Vec<String>,
     /// Every tool call.
     pub trace: Vec<AskTraceEntry>,
+    /// The measured bounds of this probe; never a claim of exhaustive coverage.
+    pub coverage: AskCoverage,
     /// Turns taken.
     pub iterations: u32,
     /// Tokens spent, or `null` when the provider reported nothing.
@@ -132,6 +147,8 @@ pub struct IndexTools<'a> {
     scope: Scope,
     /// Addresses actually read, in call order — the citation record.
     read: std::sync::Mutex<Vec<String>>,
+    /// Top-k used by each valid search call, in call order.
+    search_limits: std::sync::Mutex<Vec<i64>>,
 }
 
 impl<'a> IndexTools<'a> {
@@ -141,6 +158,7 @@ impl<'a> IndexTools<'a> {
             state,
             scope,
             read: std::sync::Mutex::new(Vec::new()),
+            search_limits: std::sync::Mutex::new(Vec::new()),
         }
     }
 
@@ -153,6 +171,14 @@ impl<'a> IndexTools<'a> {
             }
         }
         seen
+    }
+
+    /// The top-k used by each valid search call, in call order.
+    pub fn search_limits(&self) -> Vec<i64> {
+        self.search_limits
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     /// How a scope should be described to the model, every time.
@@ -198,13 +224,18 @@ impl<'a> IndexTools<'a> {
                 .map(str::to_string),
             source: None,
             min_score: None,
-            limit: Some(
-                arguments
+            limit: Some({
+                let limit = arguments
                     .get("limit")
                     .and_then(Value::as_i64)
                     .unwrap_or(6)
-                    .clamp(1, 15),
-            ),
+                    .clamp(1, 15);
+                self.search_limits
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .push(limit);
+                limit
+            }),
             ..SearchRequest::default()
         };
 
@@ -213,6 +244,22 @@ impl<'a> IndexTools<'a> {
             .map_err(|failure| {
                 provider_error(&format!("[{}] {}", failure.code, failure.message))
             })?;
+
+        if let Some(reason) = &results.empty_because
+            && reason.reason == "path_unmatched"
+        {
+            let hint = reason
+                .hint
+                .as_deref()
+                .unwrap_or("correct the --path filter");
+            return Ok(ToolOutcome::nothing(format!(
+                "PATH FILTER UNMATCHED ({}).\n{}\n{}\nDo NOT conclude that the requested \
+                 code is absent. Correct the path filter and search again.",
+                Self::scope_line(&scope),
+                reason.detail,
+                hint
+            )));
+        }
 
         if results.results.is_empty() {
             // The scope-trap guard. A bare "no results" invites the model to
@@ -390,6 +437,12 @@ pub async fn ask(state: &AppState, request: &AskRequest, scope: Scope) -> CoreRe
                 result_chars: entry.result_chars,
             })
             .collect(),
+        coverage: AskCoverage {
+            iterations_used: answer.iterations,
+            iteration_limit: bounds.max_iterations,
+            retrieval_top_k: tools.search_limits(),
+            exhaustive: false,
+        },
         iterations: answer.iterations,
         tokens_used: answer.tokens_used,
         grounded: answer.grounded,
