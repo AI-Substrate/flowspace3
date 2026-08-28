@@ -1,0 +1,21 @@
+bin/daemon-restart
+  s_b668fefb3076c7::t_a55455388fddd0 1-220
+tests/daemon-restart.sh
+  s_b668fefb3076c7::t_bb39a33d42f34d 1-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b8090b3e308c90c1d1bfc762a500acfb8b9f68e3",
+  "prompts": {},
+  "sessions": {
+    "s_b668fefb3076c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0e0064-8d84-48e6-b499-eca0c65baafc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
