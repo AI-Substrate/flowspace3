@@ -26,7 +26,7 @@ use serde_json::{Value, json};
 async fn daemon_answering_with(
     label: &str,
     turns: Vec<ChatTurn>,
-) -> (String, support::FreshDatabase, fs3_store::PgPool) {
+) -> (String, String, support::FreshDatabase, fs3_store::PgPool) {
     let database = support::FreshDatabase::create(label).await;
     let config = Config {
         database: DatabaseConfig {
@@ -45,13 +45,17 @@ async fn daemon_answering_with(
     // Kept out of the router so the test can close the pool when it destroys
     // the database — `Drop` cannot await, so cleanup is explicit here.
     let pool = state.db.clone();
-    let base = support::spawn(router(state)).await;
-    (base, database, pool)
+    // Since #43 every route sits behind the daemon key, so the test carries one
+    // like any real caller.
+    let auth = support::auth(label);
+    let base = support::spawn(router(state, auth.auth)).await;
+    (base, auth.key, database, pool)
 }
 
-async fn post_ask(base: &str, question: &str) -> Envelope<Value> {
+async fn post_ask(base: &str, key: &str, question: &str) -> Envelope<Value> {
     reqwest::Client::new()
         .post(format!("{base}/ask"))
+        .bearer_auth(key)
         .json(&json!({ "question": question }))
         .send()
         .await
@@ -83,13 +87,13 @@ fn tool_call(name: &str, arguments: &str) -> ChatTurn {
 
 #[tokio::test]
 async fn a_question_comes_back_as_an_ask_envelope_naming_its_scope() {
-    let (base, database, pool) = daemon_answering_with(
+    let (base, key, database, pool) = daemon_answering_with(
         "ask-answer",
         vec![prose("the watcher debounces per directory")],
     )
     .await;
 
-    let envelope = post_ask(&base, "how does the watcher decide what to rescan?").await;
+    let envelope = post_ask(&base, &key, "how does the watcher decide what to rescan?").await;
 
     assert!(envelope.ok, "{envelope:?}");
     assert_eq!(envelope.command, "ask");
@@ -116,7 +120,7 @@ async fn a_question_comes_back_as_an_ask_envelope_naming_its_scope() {
 
 #[tokio::test]
 async fn a_search_against_an_empty_index_is_reported_to_the_model_not_hidden() {
-    let (base, database, pool) = daemon_answering_with(
+    let (base, key, database, pool) = daemon_answering_with(
         "ask-trace",
         vec![
             tool_call("search", r#"{"query":"watcher debounce"}"#),
@@ -125,7 +129,7 @@ async fn a_search_against_an_empty_index_is_reported_to_the_model_not_hidden() {
     )
     .await;
 
-    let envelope = post_ask(&base, "how does the watcher work?").await;
+    let envelope = post_ask(&base, &key, "how does the watcher work?").await;
     let data = envelope.data.expect("an ask report");
 
     let trace = data["trace"].as_array().expect("a trace");
@@ -154,7 +158,7 @@ async fn a_search_against_an_empty_index_is_reported_to_the_model_not_hidden() {
 
 #[tokio::test]
 async fn an_unknown_tool_is_reported_to_the_model_rather_than_failing_the_request() {
-    let (base, database, pool) = daemon_answering_with(
+    let (base, key, database, pool) = daemon_answering_with(
         "ask-badtool",
         vec![
             tool_call("summon_oracle", "{}"),
@@ -163,7 +167,7 @@ async fn an_unknown_tool_is_reported_to_the_model_rather_than_failing_the_reques
     )
     .await;
 
-    let envelope = post_ask(&base, "anything").await;
+    let envelope = post_ask(&base, &key, "anything").await;
 
     // The HTTP call SUCCEEDS: a model asking for a tool that does not exist is
     // a recoverable turn, not a failed request. This is the property that let
@@ -188,9 +192,9 @@ async fn a_model_that_never_stops_calling_tools_is_cut_off_without_inventing_an_
     let turns = (0..12)
         .map(|_| tool_call("search", r#"{"query":"again"}"#))
         .collect();
-    let (base, database, pool) = daemon_answering_with("ask-bound", turns).await;
+    let (base, key, database, pool) = daemon_answering_with("ask-bound", turns).await;
 
-    let envelope = post_ask(&base, "a question it will never answer").await;
+    let envelope = post_ask(&base, &key, "a question it will never answer").await;
     let data = envelope.data.expect("an ask report");
 
     assert_eq!(data["stopped"], "max_iterations");
