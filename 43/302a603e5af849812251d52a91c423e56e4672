@@ -1,0 +1,16 @@
+docs/plans/005-convo-ingest/plan.dd.json
+  h_9e71e8b09f7cf2 12
+docs/plans/005-convo-ingest/plan.dd.md
+  h_9e71e8b09f7cf2 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "43302a603e5af849812251d52a91c423e56e4672",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
