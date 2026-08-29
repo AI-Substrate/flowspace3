@@ -8,21 +8,26 @@
 `WorktreeSupervisor` implements the daemon's existing `Reconcile` trait. A
 scheduled pass reads registered roots, groups them by repository identity, asks
 Git once per identity for linked worktrees, and diffs those paths against the
-store. Appeared paths go through the existing root-registration path with its
-initial `scan_file` jobs promoted; vanished paths go through `remove::remove`.
+store. Appeared paths go through the existing root-registration path, which
+syncs every path→blob mapping and promotes only scan work that cannot reuse a
+blob parsed by the current parser version; vanished paths go through
+`remove::remove`.
 The supervisor never deletes content and never invokes GC. Reference removal
 and later reclamation therefore remain the existing `fs3_store::roots`/GC
 mechanism.
 
 The shared queue has a closed two-level priority scale in
 `fs3_store::jobs`: priority 0 is ordinary explicit add/rescan, watcher, and
-enrichment work; priority 1 is reserved for initial scans of a root newly
-discovered by this supervisor. The claim query already orders priority
-descending, so the new checkout's files jump an older scan backlog. Live-job
-dedupe keeps the higher priority on conflict, preventing an ordinary re-fire
-from demoting promoted work. Any future lane must declare another named value
-and its preemption policy beside these constants rather than passing an
-anonymous integer.
+enrichment work; priority 1 is reserved for non-reusable content in a root
+newly discovered by this supervisor. The claim query already orders priority
+descending, so those files jump an older scan backlog. Live-job dedupe keeps
+the higher priority on conflict, preventing an ordinary re-fire from demoting
+promoted work. Ddoc files are the deliberate exception to cross-worktree
+reuse: their parsed tree carries graph/tooling-derived state from the
+presenting worktree, so a newly mapped ddoc is scanned once even when its blob
+was parsed elsewhere. Any future lane must declare another named value and its
+preemption policy beside these constants rather than passing an anonymous
+integer.
 
 Git is the authority for membership. The process runs:
 
@@ -56,16 +61,19 @@ disables automatic discovery.
 
 The path diff happens before `add_root`. An unchanged registered worktree calls
 neither add nor remove, performs no file walk, and enqueues zero jobs. First
-registration may remain O(files); later unchanged passes are O(repositories +
-worktrees).
+registration still walks and hashes every accepted file and fully syncs its
+path→blob map, so worktree-scoped search resolves immediately. It enqueues only
+blobs absent at the current parser version, plus newly mapped ddocs whose
+worktree-specific derived state must be refreshed. An identical ordinary file
+reuses the shared content layer without passing through the scan queue. Later
+unchanged passes are O(repositories + worktrees).
 
 On the first pass after enabling this service, every previously unregistered
 linked checkout is an addition. Registration remains sequential through the
 existing verb, but the appeared set is newest-first so the checkout a user just
-created becomes searchable before older stragglers. Before this ordering, a
-measured bootstrap added 17 linked checkouts beside the registered main root,
-advanced the job-id sequence by 14,783, and reached the newly created 18th path
-after 89 seconds. Later unchanged passes retain the zero-enqueue bound.
+created becomes searchable before older stragglers. The path-map sync remains
+O(files); queue growth is bounded by divergent or parser-stale content rather
+than checkout size. Later unchanged passes retain the zero-enqueue bound.
 
 An I/O or permission error while checking a registered path fails the pass and
 is retried. `Ok(false)` must occur on two consecutive scheduled passes before

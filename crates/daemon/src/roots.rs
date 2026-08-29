@@ -136,14 +136,13 @@ impl ScanFileJob {
     }
 }
 
-/// Register `root` and enqueue a scan for every file whose content the store
-/// has not already seen at that path.
+/// Register `root`, sync every discovered path→blob mapping, and enqueue only
+/// files whose current parsed content cannot be reused.
 ///
-/// Idempotent in the way that matters: the second call over an unchanged tree
-/// enqueues nothing, because the path→blob map it would write is the one
-/// already there. That is the acceptance criterion "re-scanning an unchanged
-/// repo costs zero enrichment", and it falls out of blob keying rather than
-/// being implemented.
+/// Idempotence is content-addressed as well as path-addressed: an unchanged
+/// path enqueues nothing, and a new worktree reuses blobs already parsed by
+/// this parser version. The mapping is still written before this decision, so
+/// the reused content resolves from the new worktree immediately.
 ///
 /// # Errors
 /// Discovery failures (an unreadable root, an uncompilable glob), git failures,
@@ -180,6 +179,9 @@ async fn scan_root(
     let discovery = discovery::discover(&root, &settings)?;
     let mut progress = ScanProgress::new(identity_key.clone(), root_path.clone());
 
+    let is_new_worktree = fs3_store::find_worktree(&state.db, &root_path)
+        .await?
+        .is_none();
     let worktree_id =
         fs3_store::register_worktree(&state.db, &identity, &root_path, ref_name(&root).as_deref())
             .await?;
@@ -219,12 +221,9 @@ async fn scan_root(
 
     let mut unchanged = 0;
     for (path, blob) in &files {
-        // Keep independent invalidators explicit and conjunctive: a file is
-        // unchanged only when its path mapping and every generation stamp are
-        // current. A later invalidator is one more membership predicate here.
         let same_blob = known.get(path.as_str()).map(String::as_str) == Some(blob.as_str());
         let parser_is_current = parsed_by_current_version.contains(blob.as_str());
-        if same_blob && parser_is_current {
+        if !needs_scan_job(path, same_blob, parser_is_current, is_new_worktree) {
             unchanged += 1;
         } else {
             let job = ScanFileJob {
@@ -303,6 +302,23 @@ async fn known_blobs(
         return Ok(std::collections::HashMap::new());
     }
     fs3_store::worktree_file_map(pool, worktree_id).await
+}
+
+/// Whether this path needs work beyond its already-synced worktree mapping.
+///
+/// Ordinary parsed blobs are reusable when a worktree is first registered.
+/// An existing worktree whose mapping vanished must still run the scan so its
+/// stored tree re-emits enrichment after a partial write or recovery. Ddoc
+/// trees also carry graph/tooling-derived state from the presenting worktree,
+/// so a newly mapped ddoc runs once even when its blob is already parsed.
+fn needs_scan_job(
+    path: &str,
+    same_blob: bool,
+    parser_is_current: bool,
+    is_new_worktree: bool,
+) -> bool {
+    !parser_is_current
+        || (!same_blob && (!is_new_worktree || fs3_parsers::is_ddoc_source(Path::new(path))))
 }
 
 /// Group the skip ledger by reason. The whole ledger would be thousands of rows
@@ -421,6 +437,15 @@ mod tests {
             blob: "aaaa".to_string(),
         };
         assert_ne!(job(1).dedupe_key(), job(2).dedupe_key());
+    }
+
+    #[test]
+    fn current_blobs_are_reused_only_for_safe_new_worktree_paths() {
+        assert!(!needs_scan_job("src/lib.rs", false, true, true));
+        assert!(needs_scan_job("src/lib.rs", false, false, true));
+        assert!(needs_scan_job("src/lib.rs", false, true, false));
+        assert!(needs_scan_job("docs/plan.dd.json", false, true, true));
+        assert!(!needs_scan_job("docs/plan.dd.json", true, true, true));
     }
 
     #[test]
