@@ -1,0 +1,55 @@
+crates/cli/docs/search.md
+  s_50df1925a3e0a3::t_ac22381adbaccf 7-8,34-38,44-51,137
+crates/core/src/views/search.rs
+  s_15d888f4b629c1::t_95b2e327f56092 36-48,56-58
+crates/store/migrations/0018_lexical_search.sql
+  s_59d749bfeff5de::t_30d1e58fec9e00 1-9
+crates/store/src/lib.rs
+  s_50df1925a3e0a3::t_e220b82231ab65 32,62
+crates/store/tests/pg_migrations.rs
+  s_15d888f4b629c1::t_13ed71b3f13df8 79-85,102-108
+docs/services/store-schema.md
+  s_59d749bfeff5de::t_eb32c00e1ff5a6 120-140,265-267
+crates/cli/src/render/surfaces/search.rs
+  s_15d888f4b629c1::t_7705596a0b54ec 2-5,46-51,53,104-124
+crates/daemon/src/search.rs
+  s_15d888f4b629c1::t_d4dfca4e0a45bd 43-44,50,294-311,321-334,340-346,348,640,661-713,747-750,754,853-906
+crates/daemon/tests/search_lexical.rs
+  s_15d888f4b629c1::t_78b0e6e5da6e7d 1-143
+crates/store/src/lexical.rs
+  s_15d888f4b629c1::t_151c51b7652bb8 1-204
+crates/store/tests/pg_lexical.rs
+  s_15d888f4b629c1::t_028fcbb3a93b5c 1-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ea231b0386f451bc868cb55519775f0412e5ead3",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_50df1925a3e0a3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c5967bc2-f25c-438e-a23f-a61c15de973e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_59d749bfeff5de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae4199d-c737-4ac3-a856-7e69531e4bab",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
