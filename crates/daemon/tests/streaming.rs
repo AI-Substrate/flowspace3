@@ -14,7 +14,7 @@ mod support;
 
 use std::sync::{Arc, Mutex};
 
-use fs3_core::{Config, DatabaseConfig};
+use fs3_core::{Config, DatabaseConfig, EventKind};
 use fs3_daemon::runner;
 use fs3_daemon::wiring::AppState;
 use serde_json::json;
@@ -186,6 +186,71 @@ async fn progress_is_reported_while_the_queue_is_still_draining() {
         .filter(|line| line.contains("runner: done"))
         .count();
     assert_eq!(done_lines, 4, "and the per-job lines are still there");
+
+    let pool = state.db.clone();
+    database.destroy(pool).await;
+}
+
+/// Queue censuses are reporting work, not settlement work.
+///
+/// A fast drain finishes inside one five-second window. Its number of grouped
+/// snapshots therefore stays fixed while its per-job completion events scale
+/// with the number of settled rows. The final snapshot must also observe the
+/// terminal zero so a watcher never stops on stale in-flight counts.
+#[tokio::test]
+async fn queue_snapshots_follow_reporting_cadence_not_settlements() {
+    const JOBS: usize = 24;
+    const HISTORY: i64 = 50_000;
+    let (database, state) = stack_with_jobs("streaming_queue_cadence", JOBS).await;
+    sqlx::query(
+        "INSERT INTO jobs (kind, dedupe_key, payload, state) \
+         SELECT 'embed', 'history:' || n, '{}'::jsonb, 'done' \
+         FROM generate_series(1, $1) AS n",
+    )
+    .bind(HISTORY)
+    .execute(&state.db)
+    .await
+    .expect("seeds a large settled history");
+    let mut events = state.subscribe();
+
+    runner::drain(&state, 1).await;
+
+    let mut completed = 0;
+    let mut snapshots = Vec::new();
+    while let Ok(event) = events.try_recv() {
+        match event.kind {
+            EventKind::JobDone { job, .. } if job == "embed" => completed += 1,
+            EventKind::Queue { rows } => snapshots.push(rows),
+            _ => {}
+        }
+    }
+
+    assert_eq!(completed, JOBS, "one observable completion per settled row");
+    assert_eq!(
+        snapshots.len(),
+        2,
+        "one working snapshot plus one final snapshot, not one census per job"
+    );
+    let final_rows = snapshots
+        .last()
+        .expect("the drain publishes terminal state");
+    assert_eq!(
+        final_rows
+            .iter()
+            .filter(|row| row.state == "pending" || row.state == "running")
+            .map(|row| row.count)
+            .sum::<i64>(),
+        0,
+        "the final snapshot observes an empty live queue"
+    );
+    assert_eq!(
+        final_rows
+            .iter()
+            .filter(|row| row.kind == "embed" && row.state == "done")
+            .map(|row| row.count)
+            .sum::<i64>(),
+        HISTORY + JOBS as i64
+    );
 
     let pool = state.db.clone();
     database.destroy(pool).await;
