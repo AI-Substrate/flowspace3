@@ -85,6 +85,34 @@ named `fake`, and it may be redefined.
 | `api_base` | string | *unset* | Override the API base — an Azure-compatible gateway, a LAN server, anything that speaks the OpenAI shape. |
 | `api_key_env` | string | `OPENAI_API_KEY` | The **name** of the environment variable holding the key. Never the key. |
 
+### `kind = "openai_compat"`
+
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `base_url` | string | *required* | OpenAI-compatible API root, including its version prefix. |
+| `model` | string | *required* | Model id sent in chat and embedding requests. |
+| `api_key_env` | string | *unset* | Optional environment variable holding a bearer key. Keyless LAN endpoints omit it. |
+| `dimensions` | integer | *unset* | Requested and verified embedding width. |
+| `max_tokens` | integer | *unset* (`4000` adapter default) | Maximum generated tokens for summaries and agent turns. |
+
+### `kind = "github_copilot"`
+
+GitHub Copilot's OpenAI-shaped chat and embeddings API. Authenticate once with
+`flowspace3 login github-copilot`; existing GitHub Copilot and OMP credentials
+are reused read-only before a new device flow is offered.
+
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `model` | string | *required* | Copilot model id sent to chat or embeddings. Use `flowspace3 models <provider-name>` to list the ids available to the logged-in account. |
+| `dimensions` | integer | *unset* | Requested and verified embedding width. Used only when the instance is explicitly selected by `[embedder]` or a repo override. |
+| `max_tokens` | integer | *unset* (`4000` adapter default) | Maximum generated tokens for summaries and agent turns. |
+
+Credential precedence: `COPILOT_GITHUB_TOKEN` (including the value loaded from
+flowspace3's mode-0600 `secrets.env`) →
+`~/.config/github-copilot/{hosts,apps}.json` → OMP's OAuth row in
+`~/.omp/agent/agent.db`, opened immutable/read-only. Credentials and discovered
+API endpoints are never part of `config.toml` or command envelopes.
+
 ### `kind = "azure_openai"`
 
 One instance per DEPLOYMENT, not per resource: Azure names the model by a

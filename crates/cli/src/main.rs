@@ -293,6 +293,23 @@ enum Command {
         #[command(subcommand)]
         command: ConfigCommand,
     },
+    /// Authenticate GitHub Copilot, reusing an existing local login when possible.
+    Login {
+        /// Provider to authenticate.
+        #[arg(value_parser = ["github-copilot"])]
+        provider: String,
+        /// Store credentials in this isolated configuration directory.
+        #[arg(long, value_name = "DIR")]
+        config_dir: Option<PathBuf>,
+    },
+    /// List models currently available from a configured provider instance.
+    Models {
+        /// Name under `[providers.<name>]`.
+        provider: String,
+        /// Read this isolated configuration directory.
+        #[arg(long, value_name = "DIR")]
+        config_dir: Option<PathBuf>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -757,6 +774,26 @@ async fn run(command: Command) -> Result<ExitCode> {
         Command::Config {
             command: ConfigCommand::Show { config_dir },
         } => config_show(config_dir).map(|()| ExitCode::SUCCESS),
+        Command::Login {
+            provider: _,
+            config_dir,
+        } => {
+            let dir = match config_dir {
+                Some(dir) => dir,
+                None => settings::config_dir()?,
+            };
+            emit(&fs3_cli::github_copilot::login(&dir).await?)
+        }
+        Command::Models {
+            provider,
+            config_dir,
+        } => {
+            let dir = match config_dir {
+                Some(dir) => dir,
+                None => settings::config_dir()?,
+            };
+            emit(&fs3_cli::github_copilot::models(&provider, &dir).await?)
+        }
         // Routed before the runtime was built; see `main`.
         Command::Daemon { .. } => unreachable!("the daemon verb is handled in main"),
     }
@@ -1057,5 +1094,25 @@ mod tests {
             .is_err(),
             "open and closed are mutually exclusive"
         );
+    }
+
+    #[test]
+    fn copilot_login_and_models_commands_parse() {
+        let login = Cli::try_parse_from([
+            "flowspace3",
+            "login",
+            "github-copilot",
+            "--config-dir",
+            "/tmp/fs3-copilot",
+        ])
+        .unwrap();
+        assert!(matches!(login.command, Command::Login { .. }));
+        assert!(
+            Cli::try_parse_from(["flowspace3", "login", "unknown-provider"]).is_err(),
+            "login accepts only implemented interactive providers"
+        );
+
+        let models = Cli::try_parse_from(["flowspace3", "models", "copilot-chat"]).unwrap();
+        assert!(matches!(models.command, Command::Models { .. }));
     }
 }

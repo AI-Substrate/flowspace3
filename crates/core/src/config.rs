@@ -698,6 +698,20 @@ pub enum ProviderInstance {
         #[serde(default)]
         max_tokens: Option<usize>,
     },
+    /// GitHub Copilot's OpenAI-shaped API, authenticated through a GitHub
+    /// device login or a reusable local Copilot credential.
+    #[serde(rename = "github_copilot")]
+    GitHubCopilot {
+        /// Model id sent in every request and used in the provider key.
+        model: String,
+        /// Requested and verified embedding width. Used only when this instance
+        /// is explicitly selected for the embedder surface.
+        #[serde(default)]
+        dimensions: Option<usize>,
+        /// Maximum generated tokens for summaries and agent turns.
+        #[serde(default)]
+        max_tokens: Option<usize>,
+    },
     /// One Azure OpenAI DEPLOYMENT.
     ///
     /// One instance per port, not per resource: Azure names the model by a
@@ -739,6 +753,7 @@ impl ProviderInstance {
             ProviderInstance::Fake => None,
             ProviderInstance::OpenAi { api_key_env, .. } => Some(api_key_env),
             ProviderInstance::OpenAiCompat { api_key_env, .. } => api_key_env.as_deref(),
+            ProviderInstance::GitHubCopilot { .. } => None,
             // `None` here means Entra rather than "needs no credential", which
             // is why the absence is reported honestly instead of as `Fake`'s
             // keyless case: a printer says "Entra", not "no key needed".
@@ -753,6 +768,7 @@ impl ProviderInstance {
             ProviderInstance::Fake => "fake",
             ProviderInstance::OpenAi { .. } => "openai",
             ProviderInstance::OpenAiCompat { .. } => "openai_compat",
+            ProviderInstance::GitHubCopilot { .. } => "github_copilot",
             ProviderInstance::AzureOpenAi { .. } => "azure_openai",
         }
     }
@@ -767,7 +783,8 @@ impl ProviderInstance {
         match self {
             ProviderInstance::Fake => None,
             ProviderInstance::OpenAi { model, .. }
-            | ProviderInstance::OpenAiCompat { model, .. } => Some(model),
+            | ProviderInstance::OpenAiCompat { model, .. }
+            | ProviderInstance::GitHubCopilot { model, .. } => Some(model),
             ProviderInstance::AzureOpenAi { deployment, .. } => Some(deployment),
         }
     }
@@ -832,6 +849,33 @@ impl ProviderInstance {
                         format!("providers.{name}.dimensions"),
                         "must be greater than zero",
                         "dimensions = 1024",
+                    ));
+                }
+                if max_tokens == &Some(0) {
+                    problems.push(Problem::file(
+                        format!("providers.{name}.max_tokens"),
+                        "must be greater than zero",
+                        "max_tokens = 4000",
+                    ));
+                }
+            }
+            ProviderInstance::GitHubCopilot {
+                model,
+                dimensions,
+                max_tokens,
+            } => {
+                if model.trim().is_empty() {
+                    problems.push(Problem::file(
+                        format!("providers.{name}.model"),
+                        "must name a GitHub Copilot model",
+                        "model = \"gpt-5.4\"",
+                    ));
+                }
+                if dimensions == &Some(0) {
+                    problems.push(Problem::file(
+                        format!("providers.{name}.dimensions"),
+                        "must be greater than zero",
+                        "dimensions = 1536",
                     ));
                 }
                 if max_tokens == &Some(0) {
@@ -1838,6 +1882,53 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn github_copilot_entries_keep_model_and_embedding_width() {
+        let config = Config::from_toml_str(
+            r#"
+            [providers.copilot]
+            kind = "github_copilot"
+            model = "text-embedding-3-small"
+            dimensions = 1536
+            max_tokens = 4000
+
+            [embedder]
+            active = "copilot"
+            "#,
+        )
+        .unwrap();
+
+        assert_eq!(config.provider("copilot").unwrap().kind(), "github_copilot");
+        assert_eq!(
+            config.provider("copilot").unwrap().model(),
+            Some("text-embedding-3-small")
+        );
+        assert!(matches!(
+            config.provider("copilot").unwrap(),
+            ProviderInstance::GitHubCopilot {
+                dimensions: Some(1536),
+                max_tokens: Some(4000),
+                ..
+            }
+        ));
+        assert_eq!(config.selected(Port::Embedder, None), "copilot");
+    }
+
+    #[test]
+    fn github_copilot_refuses_zero_dimensions_and_budget() {
+        let error = Config::from_toml_str(
+            "[providers.copilot]\nkind = \"github_copilot\"\nmodel = \"\"\ndimensions = 0\nmax_tokens = 0\n",
+        )
+        .unwrap_err()
+        .to_string();
+        for key in ["model", "dimensions", "max_tokens"] {
+            assert!(
+                error.contains(&format!("providers.copilot.{key}")),
+                "{error}"
+            );
+        }
     }
 
     #[test]

@@ -764,9 +764,21 @@ async fn check_auth(daemon_url: &str, config_dir: &std::path::Path) -> Step {
 /// Never repaired: choosing a model and supplying its credentials is a
 /// decision, and a diagnostic command must not make it for you.
 fn check_providers(config: &Config) -> Step {
+    check_providers_with_copilot_state(
+        config,
+        fs3_daemon::github_copilot::GitHubCopilotCredential::login_state(),
+    )
+}
+
+fn check_providers_with_copilot_state(
+    config: &Config,
+    copilot_state: fs3_daemon::github_copilot::LoginState,
+) -> Step {
     let started = Instant::now();
     let mut findings = Vec::new();
     let mut fake_ports = Vec::new();
+    let mut copilot_checked = false;
+    let mut copilot_problem = false;
 
     for port in Port::ALL {
         let selected = config.selected(port, None);
@@ -779,6 +791,20 @@ fn check_providers(config: &Config) -> Step {
             )),
             Ok(ProviderInstance::Fake) => fake_ports.push(port.to_string()),
             Ok(instance) => {
+                if matches!(instance, ProviderInstance::GitHubCopilot { .. }) && !copilot_checked {
+                    copilot_checked = true;
+                    match copilot_state {
+                        fs3_daemon::github_copilot::LoginState::LoggedIn => {}
+                        fs3_daemon::github_copilot::LoginState::Expired => {
+                            copilot_problem = true;
+                            findings.push("github_copilot credential is expired".to_string());
+                        }
+                        fs3_daemon::github_copilot::LoginState::NotLoggedIn => {
+                            copilot_problem = true;
+                            findings.push("github_copilot is not logged in".to_string());
+                        }
+                    }
+                }
                 // A real provider whose key variable is unset fails at the
                 // first call, deep inside a job, hours into an index. Naming it
                 // now costs one environment lookup.
@@ -795,17 +821,18 @@ fn check_providers(config: &Config) -> Step {
     }
 
     if !findings.is_empty() {
-        return Step::warn(
-            "providers",
-            findings.join("; "),
-            "run `flowspace3 docs get providers` — it covers the registry, both Azure auth \
-             modes, and setting actives",
-            started,
-        )
-        .with_steer(
-            "a provider selection is unusable — `flowspace3 docs get providers` explains the \
-             registry and how to set the actives",
-        );
+        let (action, steer) = if copilot_problem {
+            (
+                "run `flowspace3 login github-copilot`, then restart the daemon",
+                "GitHub Copilot is not usable — run `flowspace3 login github-copilot`",
+            )
+        } else {
+            (
+                "run `flowspace3 docs get providers` — it covers the registry, both Azure auth modes, and setting actives",
+                "a provider selection is unusable — `flowspace3 docs get providers` explains the registry and how to set the actives",
+            )
+        };
+        return Step::warn("providers", findings.join("; "), action, started).with_steer(steer);
     }
 
     if fake_ports.len() == Port::ALL.len() {
@@ -831,7 +858,16 @@ fn check_providers(config: &Config) -> Step {
             let kind = config
                 .provider(name)
                 .map_or("unknown", ProviderInstance::kind);
-            format!("{port}={name} ({kind})")
+            if kind == "github_copilot" {
+                let state = match copilot_state {
+                    fs3_daemon::github_copilot::LoginState::LoggedIn => "logged in",
+                    fs3_daemon::github_copilot::LoginState::Expired => "token expired",
+                    fs3_daemon::github_copilot::LoginState::NotLoggedIn => "not logged in",
+                };
+                format!("{port}={name} ({kind}, {state})")
+            } else {
+                format!("{port}={name} ({kind})")
+            }
         })
         .collect();
     Step::ok("providers", described.join(", "), started)
@@ -1270,5 +1306,40 @@ mod tests {
             Some(SKILL_MISSING_STEER),
             "mixed states take the stronger ask"
         );
+    }
+
+    #[test]
+    fn copilot_login_state_is_visible_and_actionable() {
+        let config = Config::from_toml_str(
+            r#"
+            [providers.copilot]
+            kind = "github_copilot"
+            model = "gpt-5.4-mini"
+            [agent]
+            active = "copilot"
+            "#,
+        )
+        .unwrap();
+
+        let missing = check_providers_with_copilot_state(
+            &config,
+            fs3_daemon::github_copilot::LoginState::NotLoggedIn,
+        );
+        assert_eq!(missing.outcome, "warn");
+        assert!(missing.found.contains("not logged in"), "{missing:?}");
+        assert!(
+            missing
+                .steer
+                .as_deref()
+                .is_some_and(|steer| steer.contains("flowspace3 login github-copilot")),
+            "{missing:?}"
+        );
+
+        let logged_in = check_providers_with_copilot_state(
+            &config,
+            fs3_daemon::github_copilot::LoginState::LoggedIn,
+        );
+        assert_eq!(logged_in.outcome, "ok");
+        assert!(logged_in.found.contains("logged in"), "{logged_in:?}");
     }
 }

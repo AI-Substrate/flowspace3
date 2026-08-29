@@ -77,6 +77,8 @@ pub struct OpenAiCompatConfig {
     api_key: Option<Secret>,
     dimensions: Option<usize>,
     max_tokens: usize,
+    default_headers: reqwest::header::HeaderMap,
+    use_max_completion_tokens: bool,
 }
 
 impl OpenAiCompatConfig {
@@ -89,6 +91,8 @@ impl OpenAiCompatConfig {
             api_key: None,
             max_tokens: DEFAULT_MAX_TOKENS,
             dimensions: None,
+            default_headers: reqwest::header::HeaderMap::new(),
+            use_max_completion_tokens: false,
         }
     }
 
@@ -127,12 +131,46 @@ impl OpenAiCompatConfig {
         Ok(self)
     }
 
+    /// Supply bearer bytes acquired by another authentication flow.
+    ///
+    /// Kept crate-private so provider-specific adapters can reuse this wire
+    /// implementation without making raw-secret construction part of the
+    /// public generic API.
+    #[must_use]
+    pub(crate) fn with_bearer_token(mut self, token: String) -> Self {
+        self.api_key = Some(Secret(token));
+        self
+    }
+
+    /// Add provider-specific, non-secret headers to every request.
+    #[must_use]
+    pub(crate) fn with_default_headers(mut self, headers: reqwest::header::HeaderMap) -> Self {
+        self.default_headers = headers;
+        self
+    }
+
+    /// Use the modern OpenAI completion-budget field required by Copilot's
+    /// newer chat-completions models.
+    #[must_use]
+    pub(crate) fn with_max_completion_tokens(mut self) -> Self {
+        self.use_max_completion_tokens = true;
+        self
+    }
+
     /// Raise or lower the token budget. **Raise it for reasoning models**: the
     /// thinking and the answer share this number.
     #[must_use]
     pub fn with_max_tokens(mut self, max_tokens: usize) -> Self {
         self.max_tokens = max_tokens;
         self
+    }
+
+    fn token_limits(&self) -> (Option<usize>, Option<usize>) {
+        if self.use_max_completion_tokens {
+            (None, Some(self.max_tokens))
+        } else {
+            (Some(self.max_tokens), None)
+        }
     }
 
     fn url(&self, route: &str) -> String {
@@ -149,7 +187,8 @@ impl OpenAiCompatConfig {
         let request = match &self.api_key {
             Some(key) => http.post(&url).bearer_auth(key.expose()),
             None => http.post(&url),
-        };
+        }
+        .headers(self.default_headers.clone());
         let response =
             request.json(body).send().await.map_err(|error| {
                 PostFailure::Fatal(Error::Provider(format!("POST {url}: {error}")))
@@ -350,7 +389,8 @@ impl OpenAiCompatSummarizer {
         let request = match &config.api_key {
             Some(key) => http.get(&url).bearer_auth(key.expose()),
             None => http.get(&url),
-        };
+        }
+        .headers(config.default_headers.clone());
         let response = request.send().await.map_err(|e| {
             Error::Provider(format!(
                 "openai-compat: GET {url}: {e}; check the host is up and on this network — \
@@ -421,9 +461,11 @@ impl OpenAiCompatSummarizer {
         response_format: &serde_json::Value,
     ) -> std::result::Result<ChatResponse, PostFailure> {
         let url = self.config.url("chat/completions");
+        let (max_tokens, max_completion_tokens) = self.config.token_limits();
         let body = ChatRequest {
             model: &self.config.model,
-            max_tokens: self.config.max_tokens,
+            max_tokens,
+            max_completion_tokens,
             messages: vec![
                 ChatMessage {
                     role: "system",
@@ -440,7 +482,8 @@ impl OpenAiCompatSummarizer {
         let request = match &self.config.api_key {
             Some(key) => self.http.post(&url).bearer_auth(key.expose()),
             None => self.http.post(&url),
-        };
+        }
+        .headers(self.config.default_headers.clone());
 
         let response = request
             .json(&body)
@@ -474,7 +517,10 @@ impl OpenAiCompatSummarizer {
 #[derive(Serialize)]
 struct ChatRequest<'a> {
     model: &'a str,
-    max_tokens: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    max_tokens: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    max_completion_tokens: Option<usize>,
     messages: Vec<ChatMessage<'a>>,
     response_format: &'a serde_json::Value,
 }
@@ -631,7 +677,10 @@ struct AgentRequest<'a> {
     model: &'a str,
     messages: Vec<AgentMessage>,
     tools: Vec<AgentTool>,
-    max_tokens: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    max_tokens: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    max_completion_tokens: Option<usize>,
 }
 
 #[derive(Serialize)]
@@ -749,6 +798,7 @@ impl fs3_core::ChatProvider for OpenAiCompatChatClient {
         messages: &[fs3_core::ChatMessage],
         tools: &[fs3_core::ToolSchema],
     ) -> Result<fs3_core::ChatTurn> {
+        let (max_tokens, max_completion_tokens) = self.config.token_limits();
         let request = AgentRequest {
             model: &self.config.model,
             messages: messages.iter().map(agent_message).collect(),
@@ -763,7 +813,8 @@ impl fs3_core::ChatProvider for OpenAiCompatChatClient {
                     },
                 })
                 .collect(),
-            max_tokens: self.config.max_tokens,
+            max_tokens,
+            max_completion_tokens,
         };
         let response: AgentResponse = tokio::time::timeout(
             std::time::Duration::from_secs(180),
