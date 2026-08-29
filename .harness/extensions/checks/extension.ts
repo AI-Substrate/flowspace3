@@ -2,6 +2,8 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { defineExtension } from '@ai-substrate/engineering-harness/contract';
 
+import { outputDetails, testGateVerdict } from './check-result.mjs';
+
 /** The quality gate: every command an agent must see green before calling work done. */
 const GATES: { name: string; cmd: string; args: string[]; guarded?: boolean }[] = [
   // First, because it is two seconds and needs no compilation — and because a
@@ -27,12 +29,22 @@ const GATES: { name: string; cmd: string; args: string[]; guarded?: boolean }[] 
     cmd: 'cargo',
     args: ['run', '--quiet', '-p', 'fs3-testkit', '--bin', 'fs3-test-db-check'],
   },
+  {
+    name: 'checks-contract',
+    cmd: 'node',
+    args: ['--test', '.harness/extensions/checks/check-result.test.mjs'],
+  },
   { name: 'fmt', cmd: 'cargo', args: ['fmt', '--all', '--check'] },
   { name: 'clippy', cmd: 'cargo', args: ['clippy', '--all-targets', '--', '-D', 'warnings'] },
   // `guarded`: this is the gate that WRITES. The production database's schema
   // version is snapshotted either side of it and any change fails the run —
   // see `productionSchema` below.
-  { name: 'test', cmd: 'cargo', args: ['test', '--all'], guarded: true },
+  {
+    name: 'test',
+    cmd: 'cargo',
+    args: ['run', '--quiet', '-p', 'fs3-testkit', '--bin', 'fs3-test-suite'],
+    guarded: true,
+  },
   // Architecture drift: the crate graph judged against testkit/arch-allowlist.toml.
   // Cargo stops undeclared imports and cycles; this stops declared-but-refused
   // edges (sqlx in the functional core, a mocking framework anywhere).
@@ -216,7 +228,14 @@ export default defineExtension({
 
           const r = await ctx.exec(gate.cmd, gate.args, { timeoutMs: 600_000 });
           const command = `${gate.cmd} ${gate.args.join(' ')}`;
-          results.push({ gate: gate.name, command, ok: r.ok, code: r.code ?? -1 });
+          const verdict = gate.name === 'test' ? testGateVerdict(r) : null;
+          const gateOk = verdict ? verdict.kind === 'pass' : r.ok;
+          results.push({
+            gate: gate.name,
+            command,
+            ok: gateOk,
+            code: gateOk ? 0 : (r.code ?? 1),
+          });
 
           // Snapshot AFTER, and BEFORE reporting any test failure. A run that
           // failed can still have migrated production on its way down — that is
@@ -240,10 +259,25 @@ export default defineExtension({
               });
             }
           }
+          if (verdict?.kind === 'infrastructure') {
+            const wholeSuite = verdict.evidence.wholeSuiteFailed
+              ? ' The whole suite failed together.'
+              : '';
+            return ctx.error(
+              'E_CHECKS_INFRASTRUCTURE',
+              `INFRASTRUCTURE FAILED — this red is not about your code.${wholeSuite}`,
+              {
+                details: outputDetails(r, 40),
+                data: { gate: gate.name, verdict: 'infrastructure', evidence: verdict.evidence, results },
+                next_action:
+                  'Postgres lost one or more test connections. Stabilize the shared database cluster, then run the entire gate again. Do not bank any PASS from this run.',
+              },
+            );
+          }
 
           if (!r.ok) {
             return ctx.error('E_CHECKS_FAILED', `${command} failed (exit ${r.code})`, {
-              details: tail(`${r.stdout}\n${r.stderr}`, 40),
+              details: outputDetails(r, 40),
               data: { gate: gate.name, results },
               next_action: `Fix the failure above, then re-run \`harness checks\`.`,
             });

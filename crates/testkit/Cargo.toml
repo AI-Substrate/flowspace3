@@ -16,9 +16,8 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 toml.workspace = true
-
-[dev-dependencies]
 tokio.workspace = true
+
 
 # The architecture drift check. Run by `harness checks`; its logic is also
 # asserted RED against a committed drifted fixture by a normal cargo test.
@@ -32,3 +31,9 @@ path = "src/bin/arch_check.rs"
 [[bin]]
 name = "fs3-test-db-check"
 path = "src/bin/test_db_check.rs"
+
+# The `test` gate runner: mints one migrated database for this suite, injects
+# only that URL into `cargo test --all`, and removes it after the child exits.
+[[bin]]
+name = "fs3-test-suite"
+path = "src/bin/test_suite.rs"

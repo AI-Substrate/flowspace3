@@ -37,8 +37,8 @@ pub mod smart;
 pub mod updates;
 
 pub use admin::{
-    SchemaStatus, create_database, database_exists, database_url, drop_database,
-    is_missing_database, maintenance_url, schema_current,
+    SchemaStatus, create_database, database_exists, database_names_with_prefix, database_url,
+    drop_database, is_missing_database, maintenance_url, schema_current,
 };
 pub use conversations::{
     AnchorFilter, Appended, ConversationSummary, Removed, TurnOutline, append_turns,
