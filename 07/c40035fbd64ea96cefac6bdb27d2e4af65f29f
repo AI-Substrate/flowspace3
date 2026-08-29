@@ -1,0 +1,19 @@
+crates/daemon/tests/worktree_lifecycle.rs
+  s_15d888f4b629c1::t_432f8203b7b331 15,18,37-38,63-64,68-79,84,94,96,100-103,106-107,110-118,120-131,133-146,148,152,159,164,174,181-183,186-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "07c40035fbd64ea96cefac6bdb27d2e4af65f29f",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
