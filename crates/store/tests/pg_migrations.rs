@@ -76,10 +76,13 @@ async fn migrating_an_empty_database_bootstraps_the_whole_schema() {
         );
     }
 
-    // The two indexes that are load-bearing rather than merely helpful: without
-    // the HNSW index every similarity query is a sequential scan, and without
-    // the partial unique index the debounce upsert has nothing to conflict on.
-    for index in ["embeddings_1024_vector_idx", "jobs_live_dedupe_idx"] {
+    // These indexes carry query shapes, not micro-optimisations: removing one
+    // restores a whole-table scan for its retrieval leg.
+    for index in [
+        "embeddings_1024_vector_idx",
+        "elements_lexical_trgm_idx",
+        "jobs_live_dedupe_idx",
+    ] {
         assert_eq!(
             relation(&pool, index).await.as_deref(),
             Some(index),
@@ -95,6 +98,13 @@ async fn migrating_an_empty_database_bootstraps_the_whole_schema() {
             .await
             .expect("asking for the extension should succeed");
     assert_eq!(vector, 1, "0001 should have created the vector extension");
+
+    let trigram: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM pg_extension WHERE extname = 'pg_trgm'")
+            .fetch_one(&pool)
+            .await
+            .expect("asking for the extension should succeed");
+    assert_eq!(trigram, 1, "0018 should have created the trigram extension");
 
     database.destroy(pool).await;
 }

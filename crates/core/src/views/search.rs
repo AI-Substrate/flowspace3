@@ -33,6 +33,19 @@ pub struct DdocHit {
     pub findings: Vec<String>,
 }
 
+/// Retrieval channel responsible for a hit's placement.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SearchChannel {
+    /// Vector similarity only.
+    #[default]
+    Semantic,
+    /// Indexed exact text only.
+    Lexical,
+    /// Both legs found it; lexical placement and score win.
+    Both,
+}
+
 /// One hit, in the workshop-003 row shape.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Hit {
@@ -40,6 +53,9 @@ pub struct Hit {
     pub address: String,
     /// 1.0 is identical; highest first.
     pub score: f64,
+    /// Which retrieval leg found this hit.
+    #[serde(default)]
+    pub channel: SearchChannel,
     /// Which vector space won this hit: `raw` or `smart`.
     pub match_field: String,
     /// The element's universal category.

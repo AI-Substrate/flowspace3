@@ -1297,6 +1297,7 @@ mod tests {
         SearchHit {
             address: "el:git:example/repo/src/lib.rs::run".to_string(),
             score: 0.8,
+            channel: fs3_core::views::search::SearchChannel::Semantic,
             match_field: "raw".to_string(),
             kind: "function".to_string(),
             subkind: "function_item".to_string(),

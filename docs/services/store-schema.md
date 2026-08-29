@@ -117,6 +117,27 @@ resolves to the lowest-id element that has it. The same body exists at many
 one is an example, not the answer. Resolving a hit to every live path that holds
 it is the ref layer's job.
 
+**Lexical search.** `search_lexical(query, &SearchFilters)` uses one GIN
+`pg_trgm` index over `lower(name || '\n' || raw_text)`. The contract is
+case-insensitive verbatim substring identity, including snake_case names and
+punctuated error codes; declaration-name matches sort ahead of body-only
+matches. A measured `tsvector` alternative was smaller and slightly faster for
+one phrase, but tokenizes punctuation and cannot itself prove verbatim identity,
+so it lost the contract decision. The daemon pins these exact rows before the
+vector list and deduplicates without averaging channel-native scores.
+
+Measurement receipt (2026-08-30, isolated clone of the 149,238-row,
+421 MiB production `elements` corpus): the chosen combined trigram index built
+in 37.922 s and occupies 129,818,624 bytes; its indexed exact-phrase query was
+7.99 ms p95 over 50 runs versus 1,138.35 ms p95 over 12 unindexed runs. The
+losing `to_tsvector('simple', name || ' ' || raw_text)` GIN index built in
+40.454 s, occupies 78,995,456 bytes, and answered the sample phrase in 4.210 ms.
+It lost despite the smaller/faster read because build emitted many
+"word is too long to be indexed" notices and tokenization cannot establish the
+verbatim punctuation/substring contract. Both candidates returned 2 phrase
+rows, 49 `FS3-E-DAEMON-UNAUTHORIZED` rows, and 64 `search_elements` rows on the
+probe corpus.
+
 **Queue.** `enqueue_job(kind, dedupe_key, payload, delay)` is an upsert against a
 PARTIAL unique index covering only `pending` and `running` rows. A watcher firing
 five times for one save gets one row whose `not_before` is pushed out each time —
@@ -241,6 +262,9 @@ interpolated identifier.
 - **An HNSW index is built for ONE operator class.** `vector_cosine_ops` answers
   `<=>` and nothing else; a query written with `<->` silently gets a sequential
   scan.
+- **The lexical query and its expression index are one contract.** Both use
+  `lower(name || E'\\n' || raw_text) LIKE <escaped-pattern>`; changing the
+  expression on only one side silently restores a sequential scan.
 - **The two `model_key` columns are different namespaces.**
   `smart_content.model_key` names the summarising model, `embeddings_*.model_key`
   the embedding model. Joining them to each other looks natural and is wrong.
