@@ -223,6 +223,50 @@ async fn mixed_surfaces_wire_without_cross_contamination() {
     std::fs::remove_dir_all(&dir).ok();
 }
 
+#[tokio::test]
+async fn github_copilot_wires_only_when_explicitly_selected() {
+    const TOKEN_ENV: &str = "COPILOT_GITHUB_TOKEN";
+    unsafe {
+        std::env::set_var(
+            TOKEN_ENV,
+            r#"{"token":"fixture-not-a-secret","apiEndpoint":"http://127.0.0.1:9"}"#,
+        )
+    };
+    let dir = support::temp_dir("github-copilot-config");
+    std::fs::write(
+        dir.join("config.toml"),
+        r#"
+        [providers.copilot-chat]
+        kind = "github_copilot"
+        model = "gpt-5.4-mini"
+
+        [providers.copilot-embed]
+        kind = "github_copilot"
+        model = "text-embedding-3-small"
+        dimensions = 1536
+
+        [embedder]
+        active = "copilot-embed"
+        [summarizer]
+        active = "copilot-chat"
+        [agent]
+        active = "copilot-chat"
+        "#,
+    )
+    .unwrap();
+
+    let config = config::load_config_from(&dir).unwrap();
+    let state = AppState::from_config(config).expect("all explicit Copilot surfaces wire");
+    assert_eq!(state.active_kind(Port::Embedder), "github_copilot");
+    assert_eq!(state.active_kind(Port::Summarizer), "github_copilot");
+    assert_eq!(state.active_kind(Port::Agent), "github_copilot");
+    assert_eq!(state.embedder.key(), "text-embedding-3-small@1536");
+    assert_eq!(state.agent.key(), "gpt-5.4-mini");
+
+    unsafe { std::env::remove_var(TOKEN_ENV) };
+    std::fs::remove_dir_all(&dir).ok();
+}
+
 /// An instance nobody selects is never constructed, so declaring a provider you
 /// have no key for must not stop the daemon starting.
 #[tokio::test]

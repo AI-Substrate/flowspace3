@@ -107,7 +107,13 @@ fn every_key_documents_its_environment_override() {
 fn every_provider_kind_has_its_own_section() {
     let page = std::fs::read_to_string(reference_path()).expect("the reference page");
 
-    for kind in ["fake", "openai", "azure_openai"] {
+    for kind in [
+        "fake",
+        "openai",
+        "openai_compat",
+        "azure_openai",
+        "github_copilot",
+    ] {
         assert!(
             page.contains(&format!("### `kind = \"{kind}\"`")),
             "the {kind} provider has no section in the configuration reference"

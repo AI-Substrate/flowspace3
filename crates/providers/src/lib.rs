@@ -27,6 +27,7 @@
 mod azure_openai;
 mod chat;
 pub mod conversation_sources;
+mod github_copilot;
 mod local;
 mod openai;
 mod openai_compat;
@@ -39,6 +40,12 @@ pub use azure_openai::{
 pub use chat::{
     AzureOpenAiChatClient, ChatChoice, ChatCompletionRequest, ChatCompletionResponse,
     ChatFunctionCall, ChatMessage, ChatRole, ChatTool, ChatToolCall, ChatToolDefinition,
+};
+pub use github_copilot::{
+    COPILOT_API_VERSION, COPILOT_USER_AGENT, CredentialSource, DEFAULT_BASE_URL, DeviceCode,
+    GitHubCopilotChatClient, GitHubCopilotConfig, GitHubCopilotCredential, GitHubCopilotEmbedder,
+    GitHubCopilotModel, GitHubCopilotModelList, GitHubCopilotSummarizer, LoginState, TOKEN_ENV,
+    finish_device_login, list_models, start_device_login,
 };
 pub use local::{
     DEFAULT_LOCAL_MODEL, LocalEmbedder, LocalEmbedderConfig, LocalModelInfo, default_cache_dir,

@@ -41,7 +41,8 @@ use fs3_core::{
 };
 use fs3_providers::{
     AzureCredential, AzureOpenAiChatClient, AzureOpenAiConfig, AzureOpenAiEmbedder,
-    AzureOpenAiSummarizer, OpenAiCompatChatClient, OpenAiCompatConfig, OpenAiCompatEmbedder,
+    AzureOpenAiSummarizer, GitHubCopilotChatClient, GitHubCopilotConfig, GitHubCopilotEmbedder,
+    GitHubCopilotSummarizer, OpenAiCompatChatClient, OpenAiCompatConfig, OpenAiCompatEmbedder,
     OpenAiCompatSummarizer, OpenAiEmbedder, OpenAiSummarizer,
 };
 // `PgPool` reaches the daemon through `fs3-store`, which owns the sqlx edge.
@@ -395,6 +396,15 @@ fn build_embedder(name: &str, instance: &ProviderInstance) -> Result<Arc<dyn Emb
             *dimensions,
             *max_tokens,
         )?)),
+        ProviderInstance::GitHubCopilot {
+            model,
+            dimensions,
+            max_tokens,
+        } => Arc::new(GitHubCopilotEmbedder::new(
+            GitHubCopilotConfig::discover(model, *dimensions, *max_tokens).with_context(|| {
+                format!("provider instance `{name}` is kind = \"github_copilot\"")
+            })?,
+        )),
         ProviderInstance::AzureOpenAi {
             endpoint,
             deployment,
@@ -451,6 +461,15 @@ fn build_agent(name: &str, instance: &ProviderInstance) -> Result<Arc<dyn ChatPr
             *dimensions,
             *max_tokens,
         )?)),
+        ProviderInstance::GitHubCopilot {
+            model,
+            dimensions,
+            max_tokens,
+        } => Arc::new(GitHubCopilotChatClient::new(
+            GitHubCopilotConfig::discover(model, *dimensions, *max_tokens).with_context(|| {
+                format!("provider instance `{name}` is kind = \"github_copilot\"")
+            })?,
+        )),
         ProviderInstance::OpenAi { .. } => anyhow::bail!(
             "provider instance `{name}` is kind = \"openai\", which cannot serve the agent \
              port: fs3 has no OpenAI chat adapter yet. Name an `azure_openai` instance in \
@@ -485,6 +504,15 @@ fn build_summarizer(name: &str, instance: &ProviderInstance) -> Result<Arc<dyn S
             *dimensions,
             *max_tokens,
         )?)),
+        ProviderInstance::GitHubCopilot {
+            model,
+            dimensions,
+            max_tokens,
+        } => Arc::new(GitHubCopilotSummarizer::new(
+            GitHubCopilotConfig::discover(model, *dimensions, *max_tokens).with_context(|| {
+                format!("provider instance `{name}` is kind = \"github_copilot\"")
+            })?,
+        )),
         ProviderInstance::AzureOpenAi {
             endpoint,
             deployment,

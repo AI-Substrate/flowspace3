@@ -16,6 +16,7 @@ pub mod ddoc;
 pub mod debounce;
 pub mod enrich;
 pub mod gc;
+pub mod github_copilot;
 pub mod http;
 pub mod logging;
 pub mod read;

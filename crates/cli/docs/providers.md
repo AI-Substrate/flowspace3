@@ -22,7 +22,7 @@ Config lives in `~/.config/flowspace3/config.toml`
 
 ```toml
 [providers.<name>]          # any name you like — this is the registry key
-kind = "fake" | "openai" | "azure_openai" | "openai_compat"
+kind = "fake" | "openai" | "azure_openai" | "openai_compat" | "github_copilot"
 
 [embedder]
 active = "<name>"           # which instance embeds
@@ -127,6 +127,51 @@ They are mutually confusable and individually fixable:
 beats `az login`, and the resulting 401 reads like a broken Entra setup. If
 Entra auth fails unexpectedly, unset the key variables first.
 
+## kind = "github_copilot"
+
+Authenticate first. The command reuses an existing GitHub Copilot or OMP login
+when possible; otherwise it runs GitHub's device-code flow and stores the token
+in flowspace3's mode-0600 `secrets.env`.
+
+```bash
+flowspace3 login github-copilot
+```
+
+Then declare one entry per model and list the ids your account can use:
+
+```toml
+[providers.copilot-chat]
+kind = "github_copilot"
+model = "gpt-5.4"
+max_tokens = 4000
+
+[providers.copilot-embed]
+kind = "github_copilot"
+model = "text-embedding-3-small"
+dimensions = 1536
+
+[agent]
+active = "copilot-chat"
+[summarizer]
+active = "copilot-chat"
+# Capability, not a default: embedding changes only by explicit selection.
+[embedder]
+active = "copilot-embed"
+```
+
+```bash
+flowspace3 models copilot-chat
+```
+
+Credential precedence is `COPILOT_GITHUB_TOKEN` (including `secrets.env`) →
+`~/.config/github-copilot/{hosts,apps}.json` → OMP's OAuth row, read from its
+SQLite store immutable/read-only. Tokens never enter config or envelopes.
+
+Copilot uses the OpenAI chat and embeddings request shapes. `dimensions` is
+sent, verified, and included in the embedder key. A corpus embedded under one
+provider or width is not silently mixed with another: changing `[embedder]` is
+an explicit operator decision and causes enrichment under a new key.
+
 ## kind = "openai"
 
 ```toml
@@ -191,6 +236,7 @@ than remaining dormant behind unknown (`null`) usage.
 | `fake` | in process | none | offline, deterministic, real vectors |
 | `azure_openai` | Azure | Entra or key | `dimensions` must match the store's table |
 | `openai_compat` | OpenRouter or compatible endpoint | optional by endpoint | configured `dimensions` is sent, verified, and keyed |
+| `github_copilot` | GitHub Copilot | GitHub login | capability only; explicit selection, configured width is sent, verified, and keyed |
 | `openai` | OpenAI | key | |
 
 One more adapter exists in the codebase and is **not yet selectable from
