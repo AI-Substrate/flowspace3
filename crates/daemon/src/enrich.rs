@@ -662,7 +662,34 @@ pub async fn embed_items(
         }
     }
 
-    let vectors = embedder.embed(&texts).await.map_err(fail)?;
+    let started = std::time::Instant::now();
+    let vectors = match embedder.embed(&texts).await {
+        Ok(vectors) => {
+            tracing::info!(
+                kind = EMBED,
+                source = source_kind.as_str(),
+                items = texts.len(),
+                outcome = "ok",
+                ms = started.elapsed().as_millis() as u64,
+                "embed: sent batch of {} texts",
+                texts.len()
+            );
+            vectors
+        }
+        Err(error) => {
+            tracing::info!(
+                kind = EMBED,
+                source = source_kind.as_str(),
+                items = texts.len(),
+                outcome = "error",
+                ms = started.elapsed().as_millis() as u64,
+                error = %error,
+                "embed: sent batch of {} texts",
+                texts.len()
+            );
+            return Err(fail(error));
+        }
+    };
 
     // A provider that returns a different number of vectors than it was given
     // texts has silently misaligned the batch, and storing it would attach every

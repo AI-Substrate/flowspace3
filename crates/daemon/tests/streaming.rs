@@ -75,9 +75,14 @@ fn field(line: &str, key: &str) -> Option<String> {
     Ok::<_, ()>(raw.trim_matches('"').to_string()).ok()
 }
 
-/// A stack with a queue full of jobs that need no provider and no filesystem —
-/// `embed` over inline texts, which the fake serves offline.
-async fn stack_with_jobs(label: &str, jobs: usize) -> (support::FreshDatabase, AppState) {
+/// A stack with a queue full of held embed jobs served by the offline fake.
+/// Holding the texts is a measurement precondition: the spend guard correctly
+/// drops unreferenced content before any provider call.
+async fn stack_with_jobs(
+    label: &str,
+    jobs: usize,
+    held: bool,
+) -> (support::FreshDatabase, AppState) {
     let database = support::FreshDatabase::create(label).await;
     let config = Config {
         database: DatabaseConfig {
@@ -88,7 +93,11 @@ async fn stack_with_jobs(label: &str, jobs: usize) -> (support::FreshDatabase, A
     let state = AppState::from_config(config).expect("the fake stack wires");
     fs3_store::migrate(&state.db).await.expect("migrates");
 
-    for n in 0..jobs {
+    let items = support::items(0..u32::try_from(jobs).expect("small test batch"));
+    if held {
+        support::hold(&state, label, &items).await;
+    }
+    for (n, (hash, text)) in items.into_iter().enumerate() {
         fs3_store::enqueue_job(
             &state.db,
             "embed",
@@ -96,7 +105,7 @@ async fn stack_with_jobs(label: &str, jobs: usize) -> (support::FreshDatabase, A
             &json!({
                 "identity": "git:test",
                 "source": "raw",
-                "items": [[format!("{n:040x}"), format!("body {n}")]],
+                "items": [[hash, text]],
             }),
             std::time::Duration::ZERO,
         )
@@ -106,15 +115,12 @@ async fn stack_with_jobs(label: &str, jobs: usize) -> (support::FreshDatabase, A
     (database, state)
 }
 
-/// Every completion line must say how much is LEFT, and the numbers must fall
-/// to zero.
-///
-/// Jordan, watching a live index: "I have no idea how far through I am." The
-/// lines were there and each one was true, but a stream of facts with no
-/// denominator is not a position. This is the denominator.
+/// Provider work is reported once for the merged batch, not once per queue row.
+/// The five-second progress rollup owns position; provider lines own request
+/// shape, outcome, and duration.
 #[tokio::test]
-async fn every_completion_line_says_how_much_is_left() {
-    let (database, state) = stack_with_jobs("streaming_left", 6).await;
+async fn embed_provider_calls_are_reported_as_groups() {
+    let (database, state) = stack_with_jobs("streaming_grouped", 6, true).await;
     let log = Captured::default();
 
     {
@@ -122,29 +128,27 @@ async fn every_completion_line_says_how_much_is_left() {
         runner::drain(&state, 1).await;
     }
 
-    let left: Vec<i64> = log
-        .lines()
+    let lines = log.lines();
+    let calls: Vec<&String> = lines
         .iter()
-        .filter(|line| line.contains("runner: done"))
-        .map(|line| {
-            field(line, "left")
-                .unwrap_or_else(|| panic!("a completion line with no position: {line}"))
-                .parse()
-                .expect("left is a number")
-        })
+        .filter(|line| line.contains("embed: sent batch"))
         .collect();
-
-    assert_eq!(left.len(), 6, "one line per job, each carrying a position");
     assert_eq!(
-        left,
-        vec![5, 4, 3, 2, 1, 0],
-        "the count must fall to zero, and must EXCLUDE the job the line is \
-         reporting — a line that says `1 left` when it is the last one is off \
-         by one at the only moment anybody is still reading"
+        calls.len(),
+        1,
+        "six jobs merge into one provider line: {lines:#?}"
+    );
+    let call = calls[0];
+    assert_eq!(field(call, "items").as_deref(), Some("6"));
+    assert_eq!(field(call, "source").as_deref(), Some("raw"));
+    assert_eq!(field(call, "outcome").as_deref(), Some("ok"));
+    assert!(field(call, "ms").is_some(), "duration is present: {call}");
+    assert!(
+        lines.iter().all(|line| !line.contains("runner: done")),
+        "per-item completion lines stay below INFO: {lines:#?}"
     );
 
-    let pool = state.db.clone();
-    database.destroy(pool).await;
+    database.destroy(state.db.clone()).await;
 }
 
 /// The periodic summary must appear WHILE work is happening.
@@ -156,7 +160,7 @@ async fn every_completion_line_says_how_much_is_left() {
 /// tests and the demo both looked fine.
 #[tokio::test]
 async fn progress_is_reported_while_the_queue_is_still_draining() {
-    let (database, state) = stack_with_jobs("streaming_progress", 4).await;
+    let (database, state) = stack_with_jobs("streaming_progress", 4, true).await;
     let log = Captured::default();
 
     {
@@ -181,11 +185,15 @@ async fn progress_is_reported_while_the_queue_is_still_draining() {
         "reported from inside the drain, so the phase is the truth: {first}"
     );
 
-    let done_lines = lines
+    let provider_lines = lines
         .iter()
-        .filter(|line| line.contains("runner: done"))
+        .filter(|line| line.contains("embed: sent batch"))
         .count();
-    assert_eq!(done_lines, 4, "and the per-job lines are still there");
+    assert_eq!(provider_lines, 1, "the four jobs share one provider line");
+    assert!(
+        lines.iter().all(|line| !line.contains("runner: done")),
+        "per-item completion lines stay below INFO"
+    );
 
     let pool = state.db.clone();
     database.destroy(pool).await;
@@ -198,7 +206,7 @@ async fn progress_is_reported_while_the_queue_is_still_draining() {
 /// exact inversion of what the number is for.
 #[tokio::test]
 async fn remaining_counts_live_work_and_ignores_settled_history() {
-    let (database, state) = stack_with_jobs("streaming_remaining", 3).await;
+    let (database, state) = stack_with_jobs("streaming_remaining", 3, true).await;
 
     assert_eq!(
         fs3_store::jobs_remaining(&state.db).await.expect("counts"),
@@ -258,7 +266,7 @@ async fn remaining_counts_live_work_and_ignores_settled_history() {
 /// its business. What it owes a reader is the total.
 #[tokio::test]
 async fn the_embed_spend_guard_says_what_it_refused_to_buy() {
-    let (database, state) = stack_with_jobs("streaming_guard", 3).await;
+    let (database, state) = stack_with_jobs("streaming_guard", 3, false).await;
     let log = Captured::default();
 
     {
