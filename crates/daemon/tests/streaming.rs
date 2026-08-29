@@ -76,9 +76,16 @@ fn field(line: &str, key: &str) -> Option<String> {
 }
 
 /// A stack with a queue full of held embed jobs served by the offline fake.
-/// Holding the texts is a measurement precondition: the spend guard correctly
-/// drops unreferenced content before any provider call.
-async fn stack_with_jobs(
+async fn stack_with_jobs(label: &str, jobs: usize) -> (support::FreshDatabase, AppState) {
+    stack_with_jobs_inner(label, jobs, true).await
+}
+
+/// The spend-guard twin: identical jobs whose texts no root holds.
+async fn stack_with_unheld_jobs(label: &str, jobs: usize) -> (support::FreshDatabase, AppState) {
+    stack_with_jobs_inner(label, jobs, false).await
+}
+
+async fn stack_with_jobs_inner(
     label: &str,
     jobs: usize,
     held: bool,
@@ -120,7 +127,7 @@ async fn stack_with_jobs(
 /// shape, outcome, and duration.
 #[tokio::test]
 async fn embed_provider_calls_are_reported_as_groups() {
-    let (database, state) = stack_with_jobs("streaming_grouped", 6, true).await;
+    let (database, state) = stack_with_jobs("streaming_grouped", 6).await;
     let log = Captured::default();
 
     {
@@ -160,7 +167,7 @@ async fn embed_provider_calls_are_reported_as_groups() {
 /// tests and the demo both looked fine.
 #[tokio::test]
 async fn progress_is_reported_while_the_queue_is_still_draining() {
-    let (database, state) = stack_with_jobs("streaming_progress", 4, true).await;
+    let (database, state) = stack_with_jobs("streaming_progress", 4).await;
     let log = Captured::default();
 
     {
@@ -206,7 +213,7 @@ async fn progress_is_reported_while_the_queue_is_still_draining() {
 /// exact inversion of what the number is for.
 #[tokio::test]
 async fn remaining_counts_live_work_and_ignores_settled_history() {
-    let (database, state) = stack_with_jobs("streaming_remaining", 3, true).await;
+    let (database, state) = stack_with_jobs("streaming_remaining", 3).await;
 
     assert_eq!(
         fs3_store::jobs_remaining(&state.db).await.expect("counts"),
@@ -257,8 +264,8 @@ async fn remaining_counts_live_work_and_ignores_settled_history() {
 /// no failures, jobs completed — and the only place the saving exists at all
 /// is the log. That is precisely this binary's subject.
 ///
-/// [`stack_with_jobs`] enqueues exactly the shape the guard refuses: bare
-/// hashes nothing maps. So a drain over it must narrate the refusal, and must
+/// [`stack_with_unheld_jobs`] enqueues exactly the shape the guard refuses:
+/// bare hashes nothing maps. So a drain over it must narrate the refusal and
 /// say HOW MUCH it refused rather than merely that it happened.
 ///
 /// Summed across lines rather than read off one: the batch planner may merge
@@ -266,7 +273,7 @@ async fn remaining_counts_live_work_and_ignores_settled_history() {
 /// its business. What it owes a reader is the total.
 #[tokio::test]
 async fn the_embed_spend_guard_says_what_it_refused_to_buy() {
-    let (database, state) = stack_with_jobs("streaming_guard", 3, false).await;
+    let (database, state) = stack_with_unheld_jobs("streaming_guard", 3).await;
     let log = Captured::default();
 
     {
