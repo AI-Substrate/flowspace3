@@ -1,0 +1,14 @@
+crates/daemon/tests/streaming.rs
+  h_9e71e8b09f7cf2 79-88,130,170,216,267-268,276
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e3b41c01d2ee9cc852e1135ea11b9eba3e924751",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
