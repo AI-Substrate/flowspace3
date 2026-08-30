@@ -94,32 +94,38 @@
     {
       "title": "backlog rows 68 + 87 (defect ledger, prime-governance branch)",
       "path": "../fs3-governance/government/briefs/backlog.md",
-      "sha": "be4cbb1a046ada80fda41adfb846938843fe36d0"
+      "sha": "be4cbb1a046ada80fda41adfb846938843fe36d0",
+      "mode": "pinned"
     },
     {
       "title": "krill queue-waste audit: live poison receipts (530/442/667-text rejections, boot-sweep revival)",
       "path": "../fs3-governance/scratch/queue-waste-audit.md",
-      "sha": "be4cbb1a046ada80fda41adfb846938843fe36d0"
+      "sha": "be4cbb1a046ada80fda41adfb846938843fe36d0",
+      "mode": "pinned"
     },
     {
       "title": "fs2 prior art: ChunkItem chunker, content-type-aware sizes, line spans",
       "path": "/Users/jordanknight/substrate/fs2/flow_squared/src/fs2/core/services/embedding/embedding_service.py",
-      "sha": "be4cbb1a046ada80fda41adfb846938843fe36d0"
+      "sha": "be4cbb1a046ada80fda41adfb846938843fe36d0",
+      "mode": "pinned"
     },
     {
       "title": "2026-08-27 truncate-now ruling this plan supersedes by design",
       "path": "../fs3-governance/government/briefs/w-embed-oversize.md",
-      "sha": "be4cbb1a046ada80fda41adfb846938843fe36d0"
+      "sha": "be4cbb1a046ada80fda41adfb846938843fe36d0",
+      "mode": "pinned"
     },
     {
       "title": "vector key + truncated flag",
       "path": "crates/store/src/embeddings.rs",
-      "sha": "be4cbb1a046ada80fda41adfb846938843fe36d0"
+      "sha": "be4cbb1a046ada80fda41adfb846938843fe36d0",
+      "mode": "pinned"
     },
     {
       "title": "cap-WARN site, mint sites, batch planner",
       "path": "crates/daemon/src/enrich.rs",
-      "sha": "be4cbb1a046ada80fda41adfb846938843fe36d0"
+      "sha": "be4cbb1a046ada80fda41adfb846938843fe36d0",
+      "mode": "pinned"
     }
   ]
 }
