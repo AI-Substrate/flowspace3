@@ -1160,3 +1160,14 @@ leaving this file should name where it went.
     only checked for an error field — I reported three removals that
     never happened. Encoding: never render a success word from the
     ABSENCE of an error; render it from the presence of the effect.
+
+112-NOTE (2026-08-31): the sweep-before-force rule paid for itself within
+    the hour. The 009 PM worktree held the reviewer's FINAL DELTA APPROVE
+    verdict (f-001 marked fixed, with the exact-200k-token edge probe and
+    comment-only batch.rs diff receipts) UNCOMMITTED — main's review record
+    stopped at round 1 REQUEST_CHANGES, so the government's record of the
+    plan was incomplete and a --force teardown would have destroyed the
+    only copy. Rescued as PR #89. Encoding candidate: PM close-out should
+    assert a CLEAN worktree (git status empty) as a done-bar item, since
+    "the review is recorded" and "the review record is committed" are
+    different facts — same family as row 111's stranded commit.
