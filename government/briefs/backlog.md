@@ -943,3 +943,8 @@ leaving this file should name where it went.
     "fix" it and hit 93b. One dispatch should take 93b + 104 together:
     compose-project-scoped naming + boot probing the CONTAINER, not the
     project.
+
+100-CLOSED (2026-08-30): PR #83 merged + bounced; store-write
+    normalization + migration 0021 backfill. Verified live by lynx (get
+    ok:true, conversation search composition 132 vs 0) — dajeil's
+    enriched-proof re-run is the formal acceptance. Report-to-prod ~1h.
