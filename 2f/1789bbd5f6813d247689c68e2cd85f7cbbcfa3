@@ -1,0 +1,239 @@
+README.md
+  s_15d888f4b629c1::t_adf138b572c8e5 1-13
+docs/prd/base-prd.dd.json
+  s_15d888f4b629c1::t_a9b858725b2a73 1-505
+docs/prd/base-prd.dd.md
+  s_15d888f4b629c1::t_f367a7598ce00b 1-82
+docs/prd/base-prd.md
+  s_15d888f4b629c1::t_f1e31f1e1b669a 1-3
+docs/prd/daemon-worker-architecture.md
+  s_15d888f4b629c1::t_5afcbb03171edb 1-38
+docs/prd/doctor-design.md
+  s_15d888f4b629c1::t_bd54462108a8a9 1-31
+docs/prd/providers-roster.md
+  s_15d888f4b629c1::t_6511fbeb0d105d 1-25
+docs/prd/workshops/002-pg-schema.md
+  s_15d888f4b629c1::t_c14391cf78c861 1-127
+docs/prd/workshops/003-query-surface.md
+  s_15d888f4b629c1::t_59237b2d7dca5a 1-92
+docs/prd/workshops/004-envelopes-and-errors.md
+  s_15d888f4b629c1::t_e4b0ee93718c13 1-52
+docs/prd/workshops/005-conversations.md
+  s_15d888f4b629c1::t_0d5375c76c4ed6 1-153
+government/briefs/backlog.md
+  s_15d888f4b629c1::t_5552d7d74a2d56 1-674
+government/briefs/pa-bitter-swan-2026-08-26.md
+  s_15d888f4b629c1::t_b74e4f36a2a680 1-101
+government/briefs/s001-fs3-foundations-brief.md
+  s_15d888f4b629c1::t_adf9637c81c5e0 1-77
+government/briefs/s002-docker-daemon-brief.md
+  s_15d888f4b629c1::t_83a02f5a3059c2 1-45
+government/briefs/w-agentic-query-poc.md
+  s_15d888f4b629c1::t_eceb9fdbd9af4b 1-48
+government/briefs/w-arch-compare-pij.md
+  s_15d888f4b629c1::t_694c3d16927b5d 1-46
+government/briefs/w-ask-budget-honesty.md
+  s_15d888f4b629c1::t_1b0ba6f5821473 1-40
+government/briefs/w-ask-eval.md
+  s_15d888f4b629c1::t_a1e64ba3679510 1-87
+government/briefs/w-ask-honesty.md
+  s_15d888f4b629c1::t_15fbae8cd80ffe 1-67
+government/briefs/w-auto-update.md
+  s_15d888f4b629c1::t_320cdeb1a38594 1-104
+government/briefs/w-azure-openai-kazimir.md
+  s_15d888f4b629c1::t_72340d27b687a7 1-24
+government/briefs/w-claim-index.md
+  s_15d888f4b629c1::t_560e1a2b9bbd20 1-33
+government/briefs/w-config-egret.md
+  s_15d888f4b629c1::t_465856f45a89e5 1-39
+government/briefs/w-conv-scope.md
+  s_15d888f4b629c1::t_3b774a7d2ab32a 1-54
+government/briefs/w-conversations.md
+  s_15d888f4b629c1::t_d5fe4198f041f2 1-43
+government/briefs/w-copilot-provider.md
+  s_15d888f4b629c1::t_4364d9c5e62638 1-62
+government/briefs/w-daemon-auth.md
+  s_15d888f4b629c1::t_e0e616addd0402 1-35
+government/briefs/w-daemon-bounce.md
+  s_15d888f4b629c1::t_aa500b13e86fdb 1-51
+government/briefs/w-daemon-churn.md
+  s_15d888f4b629c1::t_97e8c28b285954 1-48
+government/briefs/w-daemon-logs.md
+  s_15d888f4b629c1::t_080b00bccf87a6 1-55
+government/briefs/w-daemon-restart.md
+  s_15d888f4b629c1::t_6b6dab42cf972e 1-42
+government/briefs/w-daemon-sandbox.md
+  s_15d888f4b629c1::t_3de73f6c4f9bd4 1-47
+government/briefs/w-daemon-shell.md
+  s_15d888f4b629c1::t_b13bf0b646c479 1-26
+government/briefs/w-daemon-shutdown.md
+  s_15d888f4b629c1::t_a533fa2d7ff73b 1-57
+government/briefs/w-ddoc-dup-root.md
+  s_15d888f4b629c1::t_ebd33fdec9e267 1-42
+government/briefs/w-ddocs-scan.md
+  s_15d888f4b629c1::t_a13859b5892af0 1-67
+government/briefs/w-discovery.md
+  s_15d888f4b629c1::t_a633a9f2d3ad4e 1-16
+government/briefs/w-disk-usage.md
+  s_15d888f4b629c1::t_2a87535d4e5635 1-48
+government/briefs/w-embed-microbatch.md
+  s_15d888f4b629c1::t_6f59c38733b570 1-49
+government/briefs/w-embed-oversize.md
+  s_15d888f4b629c1::t_19af22ca87bf1b 1-63
+government/briefs/w-epipe.md
+  s_15d888f4b629c1::t_884c5ed9fcb63e 1-24
+government/briefs/w-first-light.md
+  s_15d888f4b629c1::t_1dff960123b0ba 1-19
+government/briefs/w-flowspace-skill.md
+  s_15d888f4b629c1::t_4f24f90d8132a3 1-18
+government/briefs/w-get-verb.md
+  s_15d888f4b629c1::t_dacaaaccfc7720 1-66
+government/briefs/w-git-blob.md
+  s_15d888f4b629c1::t_a3f37a60e0028f 1-17
+government/briefs/w-human-render.md
+  s_15d888f4b629c1::t_4025861aabdf70 1-19
+government/briefs/w-ingest-lane.md
+  s_15d888f4b629c1::t_2c9b1794319032 1-30
+government/briefs/w-lexical-channel.md
+  s_15d888f4b629c1::t_a0d6331c958ea6 1-80
+government/briefs/w-linux-test.md
+  s_15d888f4b629c1::t_e3fd6656c75a3d 1-66
+government/briefs/w-local-embed.md
+  s_15d888f4b629c1::t_711f368189c913 1-19
+government/briefs/w-migrations-cicada.md
+  s_15d888f4b629c1::t_ffa3a3ef35b54d 1-23
+government/briefs/w-openrouter.md
+  s_15d888f4b629c1::t_a23722fa56ba7e 1-58
+government/briefs/w-parser-reindex.md
+  s_15d888f4b629c1::t_360b5cf3746c3b 1-60
+government/briefs/w-release-window.md
+  s_15d888f4b629c1::t_18079397247488 1-51
+government/briefs/w-remove-root.md
+  s_15d888f4b629c1::t_cf87b999f4a290 1-63
+government/briefs/w-retro-drain.md
+  s_15d888f4b629c1::t_3da55e8ff6bdb2 1-57
+government/briefs/w-scan-churn.md
+  s_15d888f4b629c1::t_0943ecf7c84a78 1-54
+government/briefs/w-scan-throughput-review.md
+  s_15d888f4b629c1::t_8314e06c21c867 1-67
+government/briefs/w-scanner-v1.md
+  s_15d888f4b629c1::t_8961e5809d3054 1-33
+government/briefs/w-schema.md
+  s_15d888f4b629c1::t_bc9fcc29fbd9d5 1-15
+government/briefs/w-search-degenerate-query.md
+  s_15d888f4b629c1::t_7d5160af57b5a2 1-68
+government/briefs/w-settle-hotpath.md
+  s_15d888f4b629c1::t_907623edc32c1e 1-34
+government/briefs/w-structured-summaries.md
+  s_15d888f4b629c1::t_54d6789b3ce34f 1-35
+government/briefs/w-team-new-poc.md
+  s_15d888f4b629c1::t_2f9658139527f0 1-67
+government/briefs/w-team-tidy.md
+  s_15d888f4b629c1::t_33076298602b45 1-61
+government/briefs/w-test-blast-radius.md
+  s_15d888f4b629c1::t_c934778f865bd1 1-60
+government/briefs/w-test-db-isolation.md
+  s_15d888f4b629c1::t_3091b86e23cc9c 1-69
+government/briefs/w-tui-poc.md
+  s_15d888f4b629c1::t_4976593c926e75 1-64
+government/briefs/w-update-truth.md
+  s_15d888f4b629c1::t_8ad3c7ed5e0e0b 1-85
+government/briefs/w-watcher-ignore-successor.md
+  s_15d888f4b629c1::t_aff39fa47a3ce8 1-35
+government/briefs/w-watcher-ignore.md
+  s_15d888f4b629c1::t_dca8a9b5ce1c7d 1-71
+government/briefs/w-watcher-live.md
+  s_15d888f4b629c1::t_ed4ab5f30a6585 1-20
+government/canaries/pa-bitter-swan-2026-08-26.md
+  s_15d888f4b629c1::t_09f4c2e392d364 1-22
+government/canaries/s001-bitter-gibbon.md
+  s_15d888f4b629c1::t_913a32540ab0b8 1-12
+government/canaries/s002-impressive-ox.md
+  s_15d888f4b629c1::t_379c9d2b33ab4e 1-11
+government/handovers/2026-08-27-telemetry-retro-xoxarle.md
+  s_15d888f4b629c1::t_a73a5afc85cbe8 1-121
+government/how-we-work.md
+  s_15d888f4b629c1::t_f98a0591309d14 1-117
+government/orient-local.md
+  s_15d888f4b629c1::t_7af8a649b5c9b4 1-70
+government/reviews/2026-08-26-oprime-review-first-light.md
+  s_15d888f4b629c1::t_64dcc139948979 1-16
+government/reviews/2026-08-26-oprime-review-s001.md
+  s_15d888f4b629c1::t_1c915f7ca1b72c 1-20
+government/rulings/2026-08-26-commit-push-as-you-go.md
+  s_15d888f4b629c1::t_6679afd0eb5ecb 1-13
+government/rulings/2026-08-26-context-single-responsibility.md
+  s_15d888f4b629c1::t_d2600b8a0ee471 1-16
+government/rulings/2026-08-26-crates-dir-layout.md
+  s_15d888f4b629c1::t_97bab7df5e07fd 1-9
+government/rulings/2026-08-26-daemon-native-on-host.md
+  s_15d888f4b629c1::t_0184cfbbb2a613 1-8
+government/rulings/2026-08-26-pr-workflow-cutover.md
+  s_15d888f4b629c1::t_0bbc1bb3297ef3 1-25
+government/rulings/2026-08-27-production-database.md
+  s_15d888f4b629c1::t_8597617871b975 1-30
+government/rulings/2026-08-30-always-bounce-daemon-on-merge.md
+  s_15d888f4b629c1::t_f22e5bf411a009 1-10
+government/rulings/2026-08-30-prime-governance-branch.md
+  s_15d888f4b629c1::t_e1f0d3019136be 1-20
+government/settings.dd.json
+  s_15d888f4b629c1::t_516f7bde3f7a9d 1-44
+government/settings.dd.md
+  s_15d888f4b629c1::t_a66bcff45b4815 1-24
+government/worker-roster.md
+  s_15d888f4b629c1::t_fea69664a466dd 1-53
+records/retro/2026-08-26/001.md
+  s_15d888f4b629c1::t_82d4a982d00904 1-90
+records/retro/2026-08-26/002.md
+  s_15d888f4b629c1::t_db5833759c1fb7 1-38
+records/retro/2026-08-26/003.md
+  s_15d888f4b629c1::t_e8a28dba6e39a5 1-58
+records/retro/2026-08-26/004.md
+  s_15d888f4b629c1::t_12d482b62b9cad 1-35
+records/retro/2026-08-26/005.md
+  s_15d888f4b629c1::t_1dfc17c355cb4a 1-158
+records/retro/2026-08-26/006.md
+  s_15d888f4b629c1::t_96c39271047dd9 1-137
+records/retro/2026-08-26/007.md
+  s_15d888f4b629c1::t_f830465d8b8d1a 1-55
+records/retro/2026-08-27/008.md
+  s_15d888f4b629c1::t_12d7cfd71d0700 1-1256
+records/retro/2026-08-27/raw-drain-buffer.json
+  s_15d888f4b629c1::t_e2238b1e6e511b 1
+records/retro/2026-08-28/001-fleet-observation-snapshot.md
+  s_15d888f4b629c1::t_f5737b9df31ed7 1-1294
+records/retro/2026-08-28/002-drain-2026-08-28-evening.md
+  s_15d888f4b629c1::t_b8729f44aaf7c5 1-337
+records/retro/2026-08-28/003-drain-2026-08-29-second.md
+  s_15d888f4b629c1::t_c34b8974874bd0 1-53
+scratch/arch-compare-pij.md
+  s_15d888f4b629c1::t_31cc8c07632e52 1-41
+scratch/meadowlark-flowspace-handover.md
+  s_15d888f4b629c1::t_7fc66fcd63313e 1-190
+scratch/meadowlark-ingest-command-brief.md
+  s_15d888f4b629c1::t_9d80a534ef5c18 1-55
+scratch/meadowlark-operations-interview.md
+  s_15d888f4b629c1::t_01b6c09ff779cd 1-290
+scratch/parallel-wrangling-interview.md
+  s_15d888f4b629c1::t_4d6007943a6d80 1-264
+scratch/scan-throughput-review.md
+  s_15d888f4b629c1::t_7fcb9a257eb252 1-169
+scratch/w-scan-churn-root-cause.md
+  s_15d888f4b629c1::t_90bbc6f4a64c5e 1-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2f1789bbd5f6813d247689c68e2cd85f7cbbcfa3",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
