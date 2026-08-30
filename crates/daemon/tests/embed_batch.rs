@@ -10,10 +10,11 @@ mod support;
 
 use std::sync::Arc;
 
-use fs3_core::{Config, DatabaseConfig};
+use fs3_core::{Config, DatabaseConfig, Element, ElementKind, Span};
+use fs3_daemon::enrich::{SUMMARIZE, SummarizeJob};
 use fs3_daemon::runner;
 use fs3_daemon::wiring::AppState;
-use fs3_testkit::fakes::FakeEmbedder;
+use fs3_testkit::fakes::{FakeEmbedder, FakeSummarizer};
 use serde_json::json;
 use sqlx::Row;
 
@@ -64,6 +65,30 @@ async fn enqueue(state: &AppState, n: u32) {
     )
     .await
     .expect("enqueues");
+}
+async fn enqueue_summary(state: &AppState, n: u32) {
+    let (raw_hash, text) = support::items(n..n + 1).remove(0);
+    let job = SummarizeJob {
+        identity: IDENTITY.to_string(),
+        raw_hash,
+        element: Element::new(
+            ElementKind::Function,
+            "function_item",
+            format!("f{n}"),
+            format!("src/batch.rs::f{n}"),
+            Span::new(n + 1, n + 1),
+            text,
+        ),
+    };
+    fs3_store::enqueue_job(
+        &state.db,
+        SUMMARIZE,
+        &job.dedupe_key(),
+        &serde_json::to_value(job).expect("summary payload"),
+        std::time::Duration::ZERO,
+    )
+    .await
+    .expect("enqueues summary");
 }
 
 async fn states(state: &AppState) -> Vec<(String, i32)> {
@@ -118,6 +143,37 @@ async fn many_jobs_become_one_call_and_are_settled_individually() {
 
     let pool = state.db.clone();
     database.destroy(pool).await;
+}
+/// Smart embeds emitted by one summary wave accumulate before the runner
+/// claims them. The old per-completion drain makes this assertion report
+/// sixteen calls, so the test guards the trigger cadence rather than merely
+/// the planner's already-covered merge behavior.
+#[tokio::test]
+async fn summaries_completing_together_produce_one_smart_embed_call() {
+    const SUMMARIES: u32 = 16;
+
+    let (database, mut state, embedder) = stack("summary_microbatch", working()).await;
+    state.summarizer = Arc::new(FakeSummarizer::default());
+    let items = support::items(100..100 + SUMMARIES);
+    support::hold(&state, "summary-microbatch", &items).await;
+    for n in 100..100 + SUMMARIES {
+        enqueue_summary(&state, n).await;
+    }
+
+    runner::drain(&state, SUMMARIES as usize).await;
+
+    assert_eq!(
+        embedder.call_count(),
+        1,
+        "sixteen smart texts completed inside one window and must share one call"
+    );
+    assert_eq!(
+        embedder.calls.lock().expect("lock")[0].len(),
+        SUMMARIES as usize,
+        "the provider receives the full accumulated smart batch"
+    );
+
+    database.destroy(state.db.clone()).await;
 }
 
 /// When the merged call fails, EVERY job it carried goes back.

@@ -134,6 +134,14 @@ const IDLE_POLL: Duration = Duration::from_millis(250);
 /// lines rather than a scroll, and fast enough that a watcher can tell "moving"
 /// from "stuck" without waiting.
 const PROGRESS_EVERY: Duration = Duration::from_secs(5);
+/// Number of completed summaries that wakes the embed lane immediately.
+///
+/// Smart embeds arrive one row at a time. Waiting for sixteen restores the
+/// provider batch shape without making a busy general lane the only clock.
+const EMBED_ACCUMULATE: usize = 16;
+
+/// Maximum time ready embeds wait while general work remains in flight.
+const EMBED_MAX_WAIT: Duration = Duration::from_secs(1);
 
 /// The process-wide shutdown phase shared by HTTP and every queue lane.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -172,6 +180,51 @@ impl Drained {
         self.retried += other.retried;
         self.failed += other.failed;
         self.parked += other.parked;
+    }
+}
+#[derive(Debug, Default)]
+struct SummaryReport {
+    items: usize,
+    outcome: Drained,
+    started: Option<std::time::Instant>,
+}
+
+impl SummaryReport {
+    fn record(&mut self, started: std::time::Instant, outcome: Drained) {
+        self.items += outcome.total();
+        self.outcome.absorb(outcome);
+        self.started = Some(self.started.map_or(started, |current| current.min(started)));
+    }
+
+    fn flush(&mut self) {
+        if self.items == 0 {
+            return;
+        }
+        let outcome = if self.outcome.failed > 0 {
+            "failed"
+        } else if self.outcome.retried > 0 {
+            "retrying"
+        } else if self.outcome.parked > 0 {
+            "parked"
+        } else {
+            "ok"
+        };
+        let ms = self.started.map_or(0, |started| {
+            started.elapsed().as_millis().try_into().unwrap_or(u64::MAX)
+        });
+        tracing::info!(
+            kind = SUMMARIZE,
+            items = self.items,
+            completed = self.outcome.completed,
+            retried = self.outcome.retried,
+            failed = self.outcome.failed,
+            parked = self.outcome.parked,
+            outcome,
+            ms,
+            "summarize: dispatched group of {} items",
+            self.items
+        );
+        *self = Self::default();
     }
 }
 
@@ -220,6 +273,15 @@ async fn drain_general(
     // case the summary exists for, it never printed at all.
     let mut last_report: Option<std::time::Instant> = None;
     let mut summarize_lanes: BTreeMap<usize, Arc<Semaphore>> = BTreeMap::new();
+    let mut summary_report = SummaryReport::default();
+
+    // Embed work is deliberately NOT claimed after every summary. Sixteen
+    // completed summaries fill the fs2-proven shape; the timer bounds
+    // staleness while a busy general lane never goes idle; an actually idle
+    // lane drains immediately below. Starting due also recovers embed-only
+    // work left ready across a daemon restart without waiting a second.
+    let mut summaries_waiting = 0usize;
+    let mut next_embed = tokio::time::Instant::now();
 
     loop {
         if *shutdown.borrow() == Shutdown::Forced {
@@ -227,18 +289,23 @@ async fn drain_general(
             return total;
         }
 
-        // Embed first, and batched: it is the only kind whose work merges.
-        // Once draining begins no lane may make another claim.
-        let embedded = if *shutdown.borrow() == Shutdown::Running {
-            drain_embed(state, shutdown).await
-        } else {
-            Drained::default()
-        };
-        total.absorb(embedded);
+        let embed_due =
+            summaries_waiting >= EMBED_ACCUMULATE || tokio::time::Instant::now() >= next_embed;
+        let mut embedded = Drained::default();
+        if embed_due && *shutdown.borrow() == Shutdown::Running {
+            summary_report.flush();
+            embedded = drain_embed(state, shutdown).await;
+            total.absorb(embedded);
+            summaries_waiting = 0;
+            next_embed = tokio::time::Instant::now() + EMBED_MAX_WAIT;
+        }
+
+        let mut general_exhausted = *shutdown.borrow() != Shutdown::Running;
         while *shutdown.borrow() == Shutdown::Running && tasks.len() < workers {
             match fs3_store::claim_job(&state.db, GENERAL_KINDS).await {
                 Ok(Some(job)) => {
                     let state = state.clone();
+                    let kind = job.kind.clone();
                     // The SUMMARIZE lane. Held for the whole call so the count
                     // is requests in flight, and clamped per identity by the
                     // summarizer's own ceiling.
@@ -261,18 +328,32 @@ async fn drain_general(
                             Some(lane) => lane.acquire().await.ok(),
                             None => None,
                         };
-                        settle(&state, job).await
+                        let started = std::time::Instant::now();
+                        (kind, started, settle(&state, job).await)
                     });
                 }
-                Ok(None) => break,
+                Ok(None) => {
+                    general_exhausted = true;
+                    break;
+                }
                 Err(error) => {
                     tracing::error!(%error, "cannot claim jobs");
+                    general_exhausted = true;
                     break;
                 }
             }
         }
 
-        if tasks.is_empty() {
+        if tasks.is_empty() && general_exhausted {
+            summary_report.flush();
+            // No general work can add another item: flush a partial batch now
+            // rather than making an idle daemon wait for the max-wait clock.
+            if !embed_due && *shutdown.borrow() == Shutdown::Running {
+                embedded = drain_embed(state, shutdown).await;
+                total.absorb(embedded);
+                summaries_waiting = 0;
+                next_embed = tokio::time::Instant::now() + EMBED_MAX_WAIT;
+            }
             if embedded.total() == 0 || *shutdown.borrow() != Shutdown::Running {
                 return total;
             }
@@ -284,15 +365,22 @@ async fn drain_general(
         }
 
         tokio::select! {
-            result = tasks.join_next() => {
+            result = tasks.join_next(), if !tasks.is_empty() => {
                 if let Some(result) = result {
                     match result {
-                        Ok(outcome) => total.absorb(outcome),
+                        Ok((kind, started, outcome)) => {
+                            if kind == SUMMARIZE {
+                                summaries_waiting += outcome.completed;
+                                summary_report.record(started, outcome);
+                            }
+                            total.absorb(outcome);
+                        }
                         // A panicking handler leaves its row `running` for boot recovery.
                         Err(error) => tracing::error!(%error, "a job handler panicked"),
                     }
                 }
             }
+            () = tokio::time::sleep_until(next_embed), if *shutdown.borrow() == Shutdown::Running => {}
             changed = shutdown.changed() => {
                 if changed.is_err() || *shutdown.borrow() == Shutdown::Forced {
                     tasks.shutdown().await;
@@ -550,24 +638,13 @@ async fn drain_embed(state: &AppState, shutdown: &mut watch::Receiver<Shutdown>)
             // Held for the whole call, so the count is requests IN FLIGHT
             // rather than requests started.
             let _permit = permits.acquire().await;
-            let started = std::time::Instant::now();
-            let outcome = match enrich::source_kind_of(&one.source) {
-                Ok(kind) => enrich::embed_items(&state, &one.identity, kind, &one.items).await,
-                Err(failure) => Err(failure),
+            let failure = match enrich::source_kind_of(&one.source) {
+                Ok(kind) => enrich::embed_items(&state, &one.identity, kind, &one.items)
+                    .await
+                    .err(),
+                Err(failure) => Some(failure),
             };
-            match outcome {
-                Ok(()) => {
-                    tracing::info!(
-                        kind = EMBED,
-                        subject = %format!("{} x {}", one.items.len(), one.source),
-                        jobs = one.job_ids.len(),
-                        ms = started.elapsed().as_millis() as u64,
-                        "batch"
-                    );
-                    (one.job_ids, None)
-                }
-                Err(failure) => (one.job_ids, Some(failure)),
-            }
+            (one.job_ids, failure)
         });
     }
 
@@ -600,7 +677,7 @@ async fn drain_embed(state: &AppState, shutdown: &mut watch::Receiver<Shutdown>)
                 match fs3_store::complete_job(&state.db, id).await {
                     Ok(()) => {
                         let left = fs3_store::jobs_remaining(&state.db).await.ok();
-                        tracing::info!(kind = EMBED, id, left, "done");
+                        tracing::debug!(kind = EMBED, id, left, "done");
                         if let Some(left) = left {
                             state.emit(EventKind::JobDone {
                                 job: EMBED.to_string(),
@@ -622,7 +699,7 @@ async fn drain_embed(state: &AppState, shutdown: &mut watch::Receiver<Shutdown>)
                 match verdict(&failure, attempt, parked_before) {
                     Verdict::Park => {
                         let delay = park_delay(parked_before, retry_after_of(&failure));
-                        tracing::warn!(
+                        tracing::debug!(
                             id,
                             kind = EMBED,
                             parks = parked_before,
@@ -640,7 +717,7 @@ async fn drain_embed(state: &AppState, shutdown: &mut watch::Receiver<Shutdown>)
                         total.parked += 1;
                     }
                     Verdict::Retry => {
-                        tracing::warn!(id, kind = EMBED, attempt, retrying = true, "{message}");
+                        tracing::debug!(id, kind = EMBED, attempt, retrying = true, "{message}");
                         match fs3_store::retry_job(&state.db, id, backoff(attempt), &message).await
                         {
                             Ok(()) => {
@@ -653,7 +730,7 @@ async fn drain_embed(state: &AppState, shutdown: &mut watch::Receiver<Shutdown>)
                         total.retried += 1;
                     }
                     Verdict::Fail => {
-                        tracing::warn!(id, kind = EMBED, attempt, retrying = false, "{message}");
+                        tracing::debug!(id, kind = EMBED, attempt, retrying = false, "{message}");
                         match fs3_store::fail_job(&state.db, id, &message, !failure.retryable).await
                         {
                             Ok(()) => {
@@ -774,13 +851,23 @@ async fn settle(state: &AppState, job: Job) -> Drained {
             } else {
                 // Counted after settling, so `left` excludes this event's job.
                 let left = fs3_store::jobs_remaining(&state.db).await.ok();
-                tracing::info!(
-                    kind = %kind,
-                    subject = %subject,
-                    ms = started.elapsed().as_millis() as u64,
-                    left,
-                    "done"
-                );
+                if kind == SUMMARIZE {
+                    tracing::debug!(
+                        kind = %kind,
+                        subject = %subject,
+                        ms = started.elapsed().as_millis() as u64,
+                        left,
+                        "done"
+                    );
+                } else {
+                    tracing::info!(
+                        kind = %kind,
+                        subject = %subject,
+                        ms = started.elapsed().as_millis() as u64,
+                        left,
+                        "done"
+                    );
+                }
                 if let Some(left) = left {
                     state.emit(EventKind::JobDone {
                         job: kind.clone(),
@@ -800,13 +887,23 @@ async fn settle(state: &AppState, job: Job) -> Drained {
             match verdict(&failure, attempts, parks) {
                 Verdict::Park => {
                     let delay = park_delay(parks, retry_after_of(&failure));
-                    tracing::warn!(
-                        id,
-                        %kind,
-                        parks,
-                        wait_s = delay.as_secs(),
-                        "parked, no attempt spent: {message}"
-                    );
+                    if kind == SUMMARIZE {
+                        tracing::debug!(
+                            id,
+                            %kind,
+                            parks,
+                            wait_s = delay.as_secs(),
+                            "parked, no attempt spent: {message}"
+                        );
+                    } else {
+                        tracing::warn!(
+                            id,
+                            %kind,
+                            parks,
+                            wait_s = delay.as_secs(),
+                            "parked, no attempt spent: {message}"
+                        );
+                    }
                     match fs3_store::park_job(&state.db, id, delay).await {
                         Ok(_) => {
                             emit_failure(state, &kind, &subject, &message, attempts, false);
@@ -819,7 +916,11 @@ async fn settle(state: &AppState, job: Job) -> Drained {
                     }
                 }
                 Verdict::Retry => {
-                    tracing::warn!(id, %kind, %key, attempts, retrying = true, "{message}");
+                    if kind == SUMMARIZE {
+                        tracing::debug!(id, %kind, %key, attempts, retrying = true, "{message}");
+                    } else {
+                        tracing::warn!(id, %kind, %key, attempts, retrying = true, "{message}");
+                    }
                     match fs3_store::retry_job(&state.db, id, backoff(attempts), &message).await {
                         Ok(()) => {
                             emit_failure(state, &kind, &subject, &message, attempts, false);
@@ -834,7 +935,11 @@ async fn settle(state: &AppState, job: Job) -> Drained {
                     }
                 }
                 Verdict::Fail => {
-                    tracing::warn!(id, %kind, %key, attempts, retrying = false, "{message}");
+                    if kind == SUMMARIZE {
+                        tracing::debug!(id, %kind, %key, attempts, retrying = false, "{message}");
+                    } else {
+                        tracing::warn!(id, %kind, %key, attempts, retrying = false, "{message}");
+                    }
                     // The store's terminal bit answers whether this work may
                     // revive after a fix. The event's terminal bit answers
                     // whether this run has stopped trying: every Fail is news.

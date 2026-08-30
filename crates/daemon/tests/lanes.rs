@@ -27,6 +27,7 @@ use fs3_daemon::enrich::{SUMMARIZE, SummarizeJob};
 use fs3_daemon::roots::{self, ScanFileJob};
 use fs3_daemon::runner;
 use fs3_daemon::wiring::AppState;
+use fs3_testkit::fakes::FakeEmbedder;
 use serde_json::json;
 use tokio::sync::{Notify, Semaphore, watch};
 
@@ -563,6 +564,44 @@ async fn blocked_runner(
     }
 
     (database, state, blocker)
+}
+/// A partial smart batch cannot wait for the general lane to become idle.
+/// The second summary stays blocked, so observing the first embed proves the
+/// max-wait trigger rather than the idle flush or sixteen-item threshold.
+#[tokio::test]
+async fn a_busy_general_lane_releases_a_partial_embed_batch_after_the_max_wait() {
+    let (database, mut state, blocker) = blocked_runner("embed-max-wait", 2).await;
+    let embedder = Arc::new(FakeEmbedder {
+        dimensions: fs3_store::EMBEDDING_DIMENSIONS,
+        ..FakeEmbedder::default()
+    });
+    state.embedder = embedder.clone();
+
+    let drain_state = state.clone();
+    let draining = tokio::spawn(async move { runner::drain(&drain_state, 2).await });
+    blocker.wait_for_calls(1).await;
+    blocker.release(1);
+    blocker.wait_for_calls(2).await;
+
+    tokio::time::timeout(Duration::from_secs(3), async {
+        while embedder.call_count() == 0 {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("the partial smart batch is released while summary two is blocked");
+    assert_eq!(
+        blocker.calls().len(),
+        2,
+        "the general lane remains occupied when the embed call starts"
+    );
+
+    blocker.release(1);
+    tokio::time::timeout(Duration::from_secs(10), draining)
+        .await
+        .expect("drain finishes after the blocker is released")
+        .expect("drain task succeeds");
+    database.destroy(state.db.clone()).await;
 }
 
 #[tokio::test]
