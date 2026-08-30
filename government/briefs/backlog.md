@@ -1014,3 +1014,10 @@ leaving this file should name where it went.
     answered with evidence, not assertion. (Had the predicate keyed on
     body, it would have been silent content-loss wearing a hygiene fix's
     clothes — the verify was worth mandating.)
+
+106-NOTE (2026-08-30): upstream halves landed same-day — harness-eng s093
+    (c2050aef): loader now SKIPS a core-verb-colliding extension with a
+    degraded row naming both sides, never aborts (repo can never be
+    bricked this way again); s095 (ef895a3c): convo-sync dispatch
+    false-green fixed (argv + DOA detection + read-back delta). Our side
+    (#85 rename) + their side both closed; row 106 fully resolved.
