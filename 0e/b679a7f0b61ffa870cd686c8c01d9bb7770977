@@ -1,0 +1,16 @@
+docs/plans/009-embed-split/plan.dd.json
+  h_9e71e8b09f7cf2 9,12,18,25,37,46-48,52-55,60-62,66-69,74-76,80-83,88-90,100-103,146
+docs/plans/009-embed-split/plan.dd.md
+  h_9e71e8b09f7cf2 15,58-64,72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0eb679a7f0b61ffa870cd686c8c01d9bb7770977",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
