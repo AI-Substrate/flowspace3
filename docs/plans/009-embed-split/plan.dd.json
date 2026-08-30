@@ -92,28 +92,28 @@
   ],
   "references": [
     {
-      "title": "government/briefs/backlog.md rows 68, 87",
-      "path": "government/briefs/backlog.md rows 68, 87 (fs3-governance branch)"
+      "title": "backlog rows 68 + 87 (defect ledger, prime-governance branch)",
+      "path": "../fs3-governance/government/briefs/backlog.md"
     },
     {
-      "title": "fs3-governance/scratch/queue-waste-audit.md",
-      "path": "fs3-governance/scratch/queue-waste-audit.md (krill: live poison receipts, 530/442/667-text rejections, boot-sweep revival)"
+      "title": "krill queue-waste audit: live poison receipts (530/442/667-text rejections, boot-sweep revival)",
+      "path": "../fs3-governance/scratch/queue-waste-audit.md"
     },
     {
-      "title": "fs2 prior art: flow_squared src/fs2/core/services/embedding/embedding_service.py",
-      "path": "fs2 prior art: flow_squared src/fs2/core/services/embedding/embedding_service.py (ChunkItem, content-type-aware sizes, line spans)"
+      "title": "fs2 prior art: ChunkItem chunker, content-type-aware sizes, line spans",
+      "path": "/Users/jordanknight/substrate/fs2/flow_squared/src/fs2/core/services/embedding/embedding_service.py"
     },
     {
-      "title": "w-embed-oversize brief",
-      "path": "w-embed-oversize brief (2026-08-27 truncate-now ruling this plan supersedes by design)"
+      "title": "2026-08-27 truncate-now ruling this plan supersedes by design",
+      "path": "../fs3-governance/government/briefs/w-embed-oversize.md"
     },
     {
-      "title": "crates/store/src/embeddings.rs",
-      "path": "crates/store/src/embeddings.rs (PK (source_hash, source_kind, model_key) + truncated flag)"
+      "title": "vector key + truncated flag",
+      "path": "crates/store/src/embeddings.rs"
     },
     {
-      "title": "crates/daemon/src/enrich.rs",
-      "path": "crates/daemon/src/enrich.rs (cap WARN site, mint sites), crates/daemon/src/batch.rs (planner, token-budget splitting)"
+      "title": "cap-WARN site, mint sites, batch planner",
+      "path": "crates/daemon/src/enrich.rs"
     }
   ]
 }
