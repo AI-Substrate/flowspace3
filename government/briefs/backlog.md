@@ -778,3 +778,18 @@ leaving this file should name where it went.
     container — should be compose-project-scoped. (c)+(d) two bounce-rig
     test-harness lessons (persistent-pane fixture; envelope-discriminator
     assertion) — fold into any row-90 BOOTING-verdict dispatch.
+
+91-ADDENDUM (2026-08-30, meadowlark verbatim capture): "[Command timed out
+    after 120 seconds] / Wall time: 121.61 seconds / NO flowspace3 envelope
+    at all." Meadowlark classifies CLIENT-BOUND (no envelope = client
+    killed it). Lynx refinement: that message text is the signature of the
+    SEAT'S OWN Bash-tool default timeout (120s in most harnesses), not a
+    flowspace3 limit — the ask was probably still legitimately working.
+    So the defect splits: (a) agent-guidance defect — ask is a minutes-
+    scale command and our docs/next_actions never say "raise your tool
+    timeout or background it" (cheap fix, agents-start-here + ask docs);
+    (b) coral's product defect, endorsed: ask emits NOTHING until done, so
+    a killed-slow ask and a hung ask are indistinguishable — a heartbeat/
+    partial-progress line before the deadline separates the classes for
+    free and delivers row 89's client-side half. The capture is the
+    evidence; no rerun.
