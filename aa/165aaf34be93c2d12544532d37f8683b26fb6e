@@ -1,0 +1,22 @@
+docs/plans/009-embed-split/impl-guide.dd.json
+  s_15d888f4b629c1::t_c607e5f1c94e78 17
+  s_15d888f4b629c1::t_c2cbc169c1d4c2 44
+docs/plans/009-embed-split/plan.dd.json
+  s_15d888f4b629c1::t_b6c7018ed8c8d5 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "aa165aaf34be93c2d12544532d37f8683b26fb6e",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
