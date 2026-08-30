@@ -948,3 +948,17 @@ leaving this file should name where it went.
     normalization + migration 0021 backfill. Verified live by lynx (get
     ok:true, conversation search composition 132 vs 0) — dajeil's
     enriched-proof re-run is the formal acceptance. Report-to-prod ~1h.
+
+105. **empty body is not an empty TURN — item-bearing turns must not be
+    skipped by embed hygiene** (dajeil, 2026-08-30, from row-100
+    acceptance read-back). A turn can carry "body": "" with
+    body_empty_reason "typed items but no prose" and its full content in
+    `items` (tool calls — which in agent transcripts carry most of the
+    measurements). If plan 009's u2 mint-side empty predicate keys on
+    BODY emptiness it silently drops tool-call turns from search; if the
+    current pipeline embeds body-only, item-bearing turns are ALREADY
+    unsearchable and the empty-string poison jobs may be exactly these
+    turns. Judgment: 009's predicate must key on the PREPARED text;
+    whether items feed prepared text is a VERIFY for u2 (relayed to owl);
+    embedding FROM items when body is empty is this row, dispatched
+    separately if 009 confirms the gap.
