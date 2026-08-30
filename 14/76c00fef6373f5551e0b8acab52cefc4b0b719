@@ -1,0 +1,20 @@
+crates/daemon/src/batch.rs
+  h_9e71e8b09f7cf2 90,100-122,226-284
+crates/daemon/src/enrich.rs
+  h_9e71e8b09f7cf2 48-134,239-242,330-333,344-346,509-511,591-593,721-729,731-732,734-745,750-752,755-759,782,795,797,803,809,812-813,815,817,879-960
+crates/daemon/tests/embed_batch.rs
+  h_9e71e8b09f7cf2 14,109-150
+crates/daemon/tests/oversize.rs
+  h_9e71e8b09f7cf2 58-59,61-65,74-108,112,125,127-130,133-134,136-140,142,144,148,160-161,163,167,197,199-210,212-213,216,219,223,232,251-252,260-262,264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1476c00fef6373f5551e0b8acab52cefc4b0b719",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
