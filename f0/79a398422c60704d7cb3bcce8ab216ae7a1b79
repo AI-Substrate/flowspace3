@@ -1,0 +1,16 @@
+docs/plans/009-embed-split/impl-guide.dd.md
+  h_9e71e8b09f7cf2 37,65
+docs/plans/009-embed-split/plan.dd.md
+  h_9e71e8b09f7cf2 58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f079a398422c60704d7cb3bcce8ab216ae7a1b79",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
