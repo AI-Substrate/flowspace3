@@ -1,0 +1,21 @@
+.harness/extensions/convo/extension.ts
+  s_15d888f4b629c1::t_dea50c1dcd885e 4,80,107,111-112
+.harness/extensions/convo/instructions.md
+  s_15d888f4b629c1::t_28a76c2dadad48 3,34-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "349e55e67de4fe55884d0611095ad0e0d0d4d949",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
