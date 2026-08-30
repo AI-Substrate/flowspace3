@@ -1,0 +1,47 @@
+docs/plans/009-embed-split/plan.dd.json
+  s_15d888f4b629c1::t_a5275e00b7bbea 9-100
+  s_15d888f4b629c1::t_9554d49a69c701 6-8
+  s_15d888f4b629c1::t_a0d68a19cc7829 101
+  s_15d888f4b629c1::t_94a249fc1aff9f 1-5
+docs/plans/009-embed-split/impl-guide.dd.json
+  s_15d888f4b629c1::t_850fe26fa05523 9-72
+  s_15d888f4b629c1::t_06a149ad0a15fb 6-8
+  s_15d888f4b629c1::t_2a3217a8f8e7fb 73
+  s_15d888f4b629c1::t_426b332979cc19 1-5
+docs/plans/009-embed-split/assets/tasks/phase-1/tasks.dd.json
+  s_15d888f4b629c1::t_2970f2dbce1a90 1-29
+docs/plans/009-embed-split/assets/tasks/phase-1/tasks.dd.md
+  s_15d888f4b629c1::t_6830dfb1fb8a90 1-42
+docs/plans/009-embed-split/impl-guide.dd.md
+  s_15d888f4b629c1::t_285d3f609b1b65 1-65
+docs/plans/009-embed-split/packet-coder.dd.json
+  s_15d888f4b629c1::t_267b5ae84fa0b7 1-141
+docs/plans/009-embed-split/packet-coder.dd.md
+  s_15d888f4b629c1::t_438093f08e4796 1-83
+docs/plans/009-embed-split/packet-pm.dd.json
+  s_15d888f4b629c1::t_6fe84e77e95ad8 1-159
+docs/plans/009-embed-split/packet-pm.dd.md
+  s_15d888f4b629c1::t_143ada4f9d4c21 1-87
+docs/plans/009-embed-split/packet-reviewer.dd.json
+  s_15d888f4b629c1::t_33f4a30140c3f7 1-65
+docs/plans/009-embed-split/packet-reviewer.dd.md
+  s_15d888f4b629c1::t_eb3a16528507f3 1-76
+docs/plans/009-embed-split/plan.dd.md
+  s_15d888f4b629c1::t_44a091663d96ef 1-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6bedb42c3bb9db5745ff0369214c4a9b2cd3d2d3",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
