@@ -1,0 +1,165 @@
+.harness/extensions/convo/extension.ts
+  s_96ea69804eea72::t_af6ffad7640fe7 4,80,107,111-112
+.harness/extensions/convo/instructions.md
+  s_96ea69804eea72::t_05aa7296c3d8c8 3,34-35
+.harness/settings.json
+  s_96ea69804eea72::t_e8fbb062e51b52 1-8
+crates/cli/docs/agents.md
+  s_96ea69804eea72::t_afb821491714e2 39,48-51,152
+crates/cli/docs/conversations.md
+  s_96ea69804eea72::t_91f73e2fc628ff 19-22,25,28,35-41,43-47
+crates/cli/docs/search.md
+  s_96ea69804eea72::t_3f20210ee45d20 25,54,56-60,62-63,72-75
+crates/cli/skills/flowspace/SKILL.md
+  s_96ea69804eea72::t_c43d950918c064 77-82,197-203,220-221,244
+crates/cli/src/main.rs
+  s_96ea69804eea72::t_85b092a7820072 131-132,221-222,259-266,635-636,642-643,1111-1139
+crates/cli/src/render/surfaces/ask.rs
+  s_96ea69804eea72::t_469ffb402d7849 16-17,24-57,118-126,309-325
+crates/cli/src/render/surfaces/failure.rs
+  s_96ea69804eea72::t_4c967f147cc119 4,9-17,40-64,80-82,110-146
+crates/cli/src/render/surfaces/read.rs
+  s_96ea69804eea72::t_047338900138bb 63-72,133-151
+crates/cli/src/render/surfaces/search.rs
+  s_96ea69804eea72::t_eca462fd025310 92-116,134-152
+crates/cli/tests/envelope_goldens.rs
+  s_96ea69804eea72::t_a93f0b609073f1 273
+crates/cli/tests/render_output.rs
+  s_96ea69804eea72::t_32e1e71724158d 452
+crates/core/src/agent.rs
+  s_96ea69804eea72::t_927a658b8ee503 175-176,212-215,268-284,317,322,347-358,360-361,376,381,425,430,460,503-526,904-980
+crates/core/src/catalog.rs
+  s_96ea69804eea72::t_e7febb8407c7b9 391-408,554-555
+crates/core/src/views/mod.rs
+  s_96ea69804eea72::t_b40763efe2f6ee 111,145-146
+crates/core/src/views/read.rs
+  s_96ea69804eea72::t_f426bd727376e3 95-97
+crates/core/src/views/search.rs
+  s_96ea69804eea72::t_192a9932141b75 87-97,103-105
+crates/daemon/src/ask.rs
+  s_96ea69804eea72::t_d2c565ee2c2740 32-33,54-59,97-117,127-128,133-143,153-156,175-176,189-271,276-279,289-309,313-314,339-353,387-396,413-420,432,446-454,456-457,463,484-528,534,543-547,574-578,586,594-597,630-635,657-658,666,685,695
+crates/daemon/src/batch.rs
+  s_96ea69804eea72::t_a4433a93d7dab0 90,100-122,226-284
+crates/daemon/src/boot.rs
+  s_96ea69804eea72::t_e33a932ca20911 151-196,494
+crates/daemon/src/conversations.rs
+  s_96ea69804eea72::t_25384203d945cc 39,44,270-363,409,416,621-656
+crates/daemon/src/convo_ingest.rs
+  s_96ea69804eea72::t_2e5ba940647c06 239-240,685
+crates/daemon/src/enrich.rs
+  s_96ea69804eea72::t_f1b05228355a0a 48-134,239-242,330-333,344-346,509-511,591-593,721-729,731-732,734-745,750-752,755-759,782,795,797,803,809,812-813,815,817,879-960
+crates/daemon/src/http.rs
+  s_96ea69804eea72::t_94d8ac8818684c 170-183,202-216,225-267,314,604
+crates/daemon/src/read.rs
+  s_96ea69804eea72::t_f9ccdc1dd461a1 156,851,872,906-929,935-946
+crates/daemon/src/search.rs
+  s_96ea69804eea72::t_162240f7a5e2e6 43-44,50,68,119-126,132,169-170,188-207,221-242,261-264,300,302,305,311-315,352,358,365,368,381,387-388,394-405,841
+crates/daemon/tests/ask.rs
+  s_96ea69804eea72::t_86108e0643eec6 17,22,24,31-59,139,152-177,180-181,188-192,194,200,204,212-237,264,285,289,298-301,321-568,821-834,836-889,891-896,898-907,909-912,914-930,935-1005
+crates/daemon/tests/boot_recovery.rs
+  s_96ea69804eea72::t_07039991283d06 1-151
+crates/daemon/tests/conversation_query.rs
+  s_96ea69804eea72::t_3c05f4ba04eeac 16-18,59-68,73-74,107,109,119-121,130-135,138,265-609
+crates/daemon/tests/embed_batch.rs
+  s_96ea69804eea72::t_b488b42f6195ab 14,109-150
+crates/daemon/tests/enrichment_recovery.rs
+  s_96ea69804eea72::t_4f21e5865727c3 140
+crates/daemon/tests/oversize.rs
+  s_96ea69804eea72::t_1d32b6571233d0 58-59,61-65,74-108,112,125,127-130,133-134,136-140,142,144,148,160-161,163,167,197,199-210,212-213,216,219,223,232,251-252,260-262,264
+crates/daemon/tests/read_surface.rs
+  s_96ea69804eea72::t_3e4e396fb3f4e9 269
+crates/daemon/tests/search_empty.rs
+  s_96ea69804eea72::t_8bde012bea17b0 55
+crates/daemon/tests/search_lexical.rs
+  s_96ea69804eea72::t_0bbaa5c92aaa16 95,102
+crates/daemon/tests/search_scope_starvation.rs
+  s_96ea69804eea72::t_0f7f35ca2485f8 265
+crates/store/migrations/0021_conversation_repo_identity.sql
+  s_96ea69804eea72::t_d4331a71b15324 1-25
+crates/store/migrations/0022_embed_chunks.sql
+  s_96ea69804eea72::t_cf0aa28689c25c 1-19
+crates/store/src/conversations.rs
+  s_96ea69804eea72::t_990772dcdd81d6 107-109,137-146,155-163,166-170,449-452,469
+crates/store/src/jobs.rs
+  s_96ea69804eea72::t_8f27c2dd0aaa58 402-476
+crates/store/src/lexical.rs
+  s_96ea69804eea72::t_2a35a42f52cd4d 67-68,91-92,114,142-143,163
+crates/store/src/lib.rs
+  s_96ea69804eea72::t_b223135dc18299 63-64
+crates/store/tests/pg_ddoc.rs
+  s_96ea69804eea72::t_427cdd52788e0d 133
+crates/store/tests/pg_first_light.rs
+  s_96ea69804eea72::t_d0daeefdf5a8d3 93,944,1017,1123,1130
+crates/store/tests/pg_migrations.rs
+  s_96ea69804eea72::t_be1ac0702a66a0 239-323,488-541
+crates/store/tests/pg_store_flows.rs
+  s_96ea69804eea72::t_6661feedeab94c 19-21,299,586-646,747-815,1025,1086,1175,1224
+docs/briefs/w-ask-eval/ask-contract.md
+  s_96ea69804eea72::t_b99427ba9623cc 13-15,18,42-45,48-64
+docs/plans/009-embed-split/assets/composition-checklist.md
+  s_96ea69804eea72::t_7a3d99fb8510c4 1-106
+docs/plans/009-embed-split/impl-guide.dd.json
+  s_96ea69804eea72::t_9d76b2ae14261e 43,68
+docs/plans/009-embed-split/impl-guide.dd.md
+  s_96ea69804eea72::t_2f68c0d7a7b78b 21,27,37,43,65
+docs/plans/009-embed-split/packet-coder-u1.dd.json
+  s_96ea69804eea72::t_7ea8c51c1777ab 3,9-13,17-21,24-25,28-29,32-33,36-37,40-41,44-45,48-49,52-53,56-57,60-61,64-65,68-69,72-73,76-77,80-81,84-85,88-95,97-98,101-102,105-106,109-125,127-128,131-132,135-136,139-140,143-150,152-154,157-159,162-164,167-169,172-174,177-179
+docs/plans/009-embed-split/packet-coder-u1.dd.md
+  s_96ea69804eea72::t_34c772fe77adb8 1-93
+docs/plans/009-embed-split/packet-coder-u2.dd.json
+  s_96ea69804eea72::t_e4c53ef2f14201 1-184
+docs/plans/009-embed-split/packet-coder-u2.dd.md
+  s_96ea69804eea72::t_069c14d459ee9d 1-93
+docs/plans/009-embed-split/packet-coder-u3.dd.json
+  s_96ea69804eea72::t_f958cc20272c6f 1-184
+docs/plans/009-embed-split/packet-coder-u3.dd.md
+  s_96ea69804eea72::t_34bac210148bb0 1-93
+docs/plans/009-embed-split/packet-reviewer.dd.json
+  s_96ea69804eea72::t_e0201f9eb12823 9,11-13,18,23-66,72-83,89-92,98-113,119-148
+docs/plans/009-embed-split/packet-reviewer.dd.md
+  s_96ea69804eea72::t_b63f4613e13260 2,12,14-16,22,30-40,48-50,58-61,69-72,80-85
+docs/plans/009-embed-split/plan.dd.json
+  s_96ea69804eea72::t_8f0dd6297be233 45
+docs/plans/009-embed-split/plan.dd.md
+  s_96ea69804eea72::t_21f00c3d634ecc 58,60
+docs/reference/error-codes.md
+  s_96ea69804eea72::t_190e64a2774fde 187-204
+docs/services/ask.md
+  s_96ea69804eea72::t_4ddf49fc364328 72-87,104-124,189-190
+docs/services/conversations.md
+  s_96ea69804eea72::t_860cdcdbf46deb 19-22,64-77
+eval/ask/manifest.json
+  s_96ea69804eea72::t_e74401904b5bf2 9,14-15,18-19,22-23,25-26,28,34,38,41-42
+eval/ask/report-contract-assertions.json
+  s_96ea69804eea72::t_b17f62ec992e45 7,12,21-22
+eval/ask/scenarios/answerable-conversation-pinned/assertions.json
+  s_96ea69804eea72::t_0e810913957c67 1-14
+eval/ask/scenarios/answerable-conversation-pinned/scenario.json
+  s_96ea69804eea72::t_8fca26857d7c4e 1-27
+eval/ask/scenarios/mutation-conversation-unpinned/assertions.json
+  s_96ea69804eea72::t_7983e4208f9e77 1-9
+eval/ask/scenarios/mutation-conversation-unpinned/scenario.json
+  s_96ea69804eea72::t_4068bf9a18d4c2 1-21
+eval/ask/scenarios/negative-conversation-unknown/assertions.json
+  s_96ea69804eea72::t_61a6c88a87ebd9 1-10
+eval/ask/scenarios/negative-conversation-unknown/scenario.json
+  s_96ea69804eea72::t_506dafa92ade06 1-18
+eval/ask/terminal-fixtures/token-budget.json
+  s_96ea69804eea72::t_cf3085a5574a61 1-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0f2221db57af72452fefbeba857437e88d094f8e",
+  "prompts": {},
+  "sessions": {
+    "s_96ea69804eea72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "adfc5af3-8eed-43a0-bc07-7b0e104def01",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
