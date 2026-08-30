@@ -902,3 +902,15 @@ leaving this file should name where it went.
     joins correctly. Every fleet's compaction-recovery mechanism is dark
     until this lands. Dispatched w-conv-readback (o-prime initiative,
     severity; Jordan may veto).
+
+101. **PRODUCT QUESTION for Jordan — should explicit conv:<guid> get be
+    address-authoritative (cross-repo)?** (surfaced by zakalwe's
+    stop-and-ask on w-conv-readback, 2026-08-30). #80's shipped law:
+    scoped get REJECTS foreign-repo conversations with an explanatory
+    envelope; the row-100 hotfix preserves that byte-for-byte. But the
+    fleet use case is real: dajeil validating a dd ingest, vicuna reading
+    ermine's pij transcripts, primes reading each other's handovers — an
+    explicit full-guid address arguably IS consent to cross the repo
+    boundary (it is not discoverable by accident). Options: (a) keep
+    rejection, callers pass --repo; (b) explicit conv: address admits any
+    repo, search stays scoped. One-question ruling when convenient.
