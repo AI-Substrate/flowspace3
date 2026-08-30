@@ -766,3 +766,15 @@ leaving this file should name where it went.
     plan 009 u3's element collapse (o-prime-ratified amended S4 — collapse
     inside the nearest CTE, LIMIT over elements). Row exists so the ledger
     is honest about the defect predating 009; verify closed at 009 review.
+
+93. **halibut's rescued observation buffer (4 items, w-daemon-bounce)** —
+    tidy's stash-rescue recovered these; full text at main-clone
+    .harness/temp/agent/daemon-bounce-observations.md. (a) semantic search
+    cannot see .harness extension sources — index excludes .harness paths,
+    agents fall back to raw reads (pairs with row 84's exclusion-policy
+    question: make the exclusion explicit or index repo-trusted harness
+    code). (b) docker-compose hardcodes container_name flowspace3-db, so
+    worktree-scoped `harness docker up` collides with the main checkout's
+    container — should be compose-project-scoped. (c)+(d) two bounce-rig
+    test-harness lessons (persistent-pane fixture; envelope-discriminator
+    assertion) — fold into any row-90 BOOTING-verdict dispatch.
