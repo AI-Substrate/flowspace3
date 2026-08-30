@@ -315,6 +315,79 @@ async fn default_scope_admits_only_its_repository_conversations() {
     database.destroy(state.db).await;
 }
 
+/// Conversation imports historically stored the remote without the identity
+/// scheme, while query scopes use the canonical `git:` identity. Both forms
+/// name the same repository and must meet at one normalization seam.
+#[tokio::test]
+async fn legacy_repo_identity_remains_gettable_and_searchable() {
+    let (database, state) = stack("conv-query-legacy-repo-identity").await;
+    let stored_repo = "https://github.com/fs3/legacy-anchor.git";
+    let canonical_repo = "git:github.com/fs3/legacy-anchor";
+    let worktree = "/srv/legacy-anchor";
+    let identity =
+        fs3_core::RepoIdentity::from_remote_parts(Some("github.com"), "fs3/legacy-anchor")
+            .expect("a canonical repository identity");
+    fs3_store::register_worktree(&state.db, &identity, worktree, Some("main"))
+        .await
+        .expect("registering the conversation worktree");
+    store_at(
+        &state,
+        GUID,
+        Some(stored_repo),
+        Some(worktree),
+        vec![turn(1, "legacy anchored conversation readback")],
+    )
+    .await;
+    drain(&state).await;
+
+    let payload = fs3_daemon::read::get(
+        &state,
+        &GetRequest {
+            address: format!("conv:{GUID}#t1"),
+            ..GetRequest::default()
+        },
+        &scoped(canonical_repo),
+    )
+    .await
+    .expect("canonical scope gets the legacy-anchored conversation")
+    .0;
+    let GetPayload::Conversation(window) = payload else {
+        panic!("a conversation window");
+    };
+    assert_eq!(
+        window.window[0].body,
+        "legacy anchored conversation readback"
+    );
+
+    let scoped_hits = search(
+        &state,
+        &ask(
+            "legacy anchored conversation readback",
+            Some("conversation"),
+        ),
+        &scoped(canonical_repo),
+    )
+    .await
+    .expect("canonical scope searches the legacy-anchored conversation");
+    assert_eq!(scoped_hits.results.len(), 1);
+    assert_eq!(scoped_hits.results[0].address, format!("conv:{GUID}#t1"));
+
+    let unscoped_hits = search(
+        &state,
+        &ask(
+            "legacy anchored conversation readback",
+            Some("conversation"),
+        ),
+        &Scope::unscoped(),
+    )
+    .await
+    .expect("unscoped search reads the legacy-anchored conversation");
+    assert_eq!(unscoped_hits.results.len(), 1);
+    assert_eq!(unscoped_hits.results[0].address, format!("conv:{GUID}#t1"));
+
+    database.destroy(state.db).await;
+}
+
 #[tokio::test]
 async fn ask_tools_search_and_get_conversations_under_the_same_scope() {
     let (database, state) = stack("conv-query-ask-tools").await;
