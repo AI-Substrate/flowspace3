@@ -10,13 +10,12 @@ ENDPOINT: POST /ask (sync); CLI `--repo` maps to the body request. REQUEST:
 a repository identity or "all"; `repo="all"` genuinely widens across every
 indexed repository.
 
-RESPONSE: standard envelope v=1, NEW payload (no existing bytes move).
-envelope.data:
+RESPONSE: standard envelope v=1. `ok` remains the only discriminator.
+
+Successful answers have `ok: true` and `envelope.data`:
 
 - question       string        echoed, so a stored report is self-describing
-- answer         string|null   NULL = loop hit a bound before answering (a
-                               caller must say so, never present another field
-                               as the answer)
+- answer         string        non-empty synthesized answer text
 - citations      string[]      addresses the loop ACTUALLY READ (measured by
                                the tool layer), in order, deduplicated — NOT
                                what the model claimed in prose
@@ -30,26 +29,38 @@ envelope.data:
                                `failed:false/evidence:true` = real index material
                                `search_hits` = addresses whose summaries this
                                search surfaced to the model
-
 - coverage       object        measured probe bounds:
                                `{iterations_used u32, iteration_limit u32,
                                retrieval_top_k i64[], exhaustive false}`.
                                One top-k value per valid search call; bounded
                                nearest-neighbour retrieval never proves a
                                complete enumeration.
-
 - iterations     u32
 - tokens_used    u64|null      NULL = evidence unavailable: the COST row is
                                UNKNOWN and excluded from denominators. It is
                                never asserted as token-budget compliance.
-- grounded       bool          true iff at least one trace entry has
-                               `evidence:true`; false = the model insisted on
-                               answering from memory after one in-conversation
-                               refusal
-- stopped        string        "answered" | "max_iterations" | "token_budget"
-                               (a refusal IS "answered" — it is an answer,
-                               not a bound hit)
+- grounded       bool          true iff the answer rests on at least one trace
+                               entry with `evidence:true`; false means the model
+                               insisted on answering from memory after one pushback
+- stopped        string        always `answered` on success
 - model          string        which chat deployment answered
+
+`stopped: answered` with null or empty `answer` is invalid. The implementation
+must turn that shape into a terminal failure.
+
+Bounded and mid-loop provider terminals have `ok: false`, absent `data`, and:
+
+- `error.code`: `FS3-E-QUERY-ASK-ITERATION-LIMIT`,
+  `FS3-E-QUERY-ASK-TOKEN-BUDGET`, or `FS3-E-PROVIDER-FAILED`
+- `error.details.stopped`: `max_iterations`, `token_budget`, or
+  `provider_failure`
+- `error.details.grounded`: always false because no answer was synthesized
+- `error.details.evidence`: `{label, citations, findings}`, where `label`
+  explicitly says partial, `citations` retains addresses read in full, and
+  `findings` contains one measured line per completed iteration
+
+The terminal's partial evidence supports a narrower follow-up. It is never an
+answer and never makes the failure grounded.
 
 envelope.meta carries {"scope": <resolved Scope>} on BOTH outcomes, as search
 does.

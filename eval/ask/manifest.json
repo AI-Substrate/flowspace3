@@ -6,6 +6,7 @@
   "subject_prompt": "prompts/subject.md",
   "responsiveness_rubric": "responsiveness-rubric.json",
   "report_shape_assertions": "report-contract-assertions.json",
+  "terminal_contract_fixture": "terminal-fixtures/token-budget.json",
   "request_variables": {
     "${REPO_ROOT:git:github.com/AI-Substrate/flowspace3}": "Resolve from `flowspace3 status`; fail setup rather than substituting another checkout."
   },

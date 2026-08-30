@@ -91,6 +91,19 @@ it cannot prove that an enumeration is complete. The standing synthesis prompt
 therefore requires enumerations to be phrased as findings, never as “all” or
 “the only” paths.
 
+Reaching `max_iterations` or `token_budget` without answer text is a terminal
+failure, not a successful report with `answer: null`. The standard envelope has
+`ok: false`, no `data`, and a dedicated error code. Structured facts live under
+`error.details`: `stopped`, `grounded: false`, measured iteration/token counts,
+and `evidence`. That evidence is labelled **partial** and retains both addresses
+read in full and one measured finding per completed iteration. It is useful for
+a follow-up, but it is not a synthesized answer.
+
+A chat-provider failure after completed iterations uses the same shape and keeps
+the same partial evidence. A provider failure before any turn remains an ordinary
+provider error. Conversely, `stopped: answered` always carries non-empty answer
+text; `answered` plus null/empty text is rejected as a provider failure.
+
 ### Grounded
 
 A confident wrong answer about your own codebase is worse than no answer,
@@ -154,3 +167,5 @@ whose remaining length is unknowable.
 - `crates/daemon/src/ask_hint.rs` — the conservative search-to-ask steer
 - `crates/cli/src/client.rs` — the long-lived `POST /ask` request
 - `crates/cli/src/main.rs` — the `ask` CLI verb
+- `crates/daemon/src/http.rs` — success/failure envelope classification and partial evidence
+- `crates/cli/src/render/surfaces/failure.rs` — labelled partial-evidence TTY render

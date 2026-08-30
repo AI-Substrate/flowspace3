@@ -388,6 +388,24 @@ pub const QUERY_INVALID: Code = Code::new(
     false,
 );
 
+/// Ask reached its configured model-turn ceiling before producing an answer.
+pub const QUERY_ASK_ITERATION_LIMIT: Code = Code::new(
+    "FS3-E-QUERY-ASK-ITERATION-LIMIT",
+    Area::Query,
+    "Ask reached its iteration limit before producing an answer.",
+    "ask a narrower question or raise `[agent] max_iterations` in config.toml.",
+    false,
+);
+
+/// Ask spent its configured token budget before producing an answer.
+pub const QUERY_ASK_TOKEN_BUDGET: Code = Code::new(
+    "FS3-E-QUERY-ASK-TOKEN-BUDGET",
+    Area::Query,
+    "Ask exhausted its token budget before producing an answer.",
+    "ask a narrower question or raise `[agent] token_budget` in config.toml.",
+    false,
+);
+
 /// Nothing has been indexed for the selected model, so search cannot answer.
 pub const QUERY_NO_INDEX: Code = Code::new(
     "FS3-E-QUERY-NO-INDEX",
@@ -533,6 +551,8 @@ pub const ALL: &[Code] = &[
     PROVIDER_DIMENSIONS,
     QUEUE_JOB_FAILED,
     QUERY_INVALID,
+    QUERY_ASK_ITERATION_LIMIT,
+    QUERY_ASK_TOKEN_BUDGET,
     QUERY_NO_INDEX,
     QUERY_NOT_FOUND,
     QUERY_INVALID_ADDRESS,
