@@ -1,0 +1,51 @@
+crates/daemon/src/http.rs
+  s_a6b77772852964::t_21f8c6b60d8cd4 531,533-542,548,550-551,556,560-561,584
+crates/cli/skills/flowspace/SKILL.md
+  s_b668fefb3076c7::t_8dcc645bcbe378 111-112,114
+crates/daemon/src/search.rs
+  s_b668fefb3076c7::t_ad82e8ec46b63e 135-143,145-147,151-157,162-169,174-175,196,227-238,347,349,352-354,366-371,375-377,383,385-392,403-419,421-427,449-458,460-462,508-514,519-524,528,564-573,578-585,587,589-593,600-605,615-628,630-633,837,853,1054-1161
+crates/daemon/tests/search_scope_starvation.rs
+  s_b668fefb3076c7::t_63863cd0213501 1-475,538-621
+crates/store/src/embeddings.rs
+  s_15d888f4b629c1::t_ecbbd5682173eb 26-49,439-456,474-476,699,702-706,720,725,729-734,736,738-749,752-753,757-762
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c7357f3eca060e74eedd57c985d6fe55acccca74",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a6b77772852964": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "c800c9ff-86e7-4a5f-bdc3-f63517243af6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_af0fe1a82e54f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9726a7d5-28df-47fe-bb2a-d5ffcb472da2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_b668fefb3076c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0e0064-8d84-48e6-b499-eca0c65baafc",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
