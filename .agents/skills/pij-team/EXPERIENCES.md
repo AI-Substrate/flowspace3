@@ -751,4 +751,45 @@ we hand the pattern to pij and the harness. Also `harness observe` each one.
   the wrong transition entirely. PIN MIGRATION PROOFS TO EXPLICIT VERSIONS —
   the ordinal race is a known recurring hazard in this repo, and a version-
   pinned test is the only kind that notices it.
+- 2026-08-30 (owl/009 — I SHIPPED THE EXACT DEFECT I HAD BEEN FLAGGING ALL DAY,
+  IN THE COMMAND MEANT TO BE AUTHORITATIVE): after the wrapper gate kept dying
+  on infrastructure, the PM ran every gate command directly to get per-step
+  verdicts. The script printed `GATE-test-OK`. The test suite had FAILED. The
+  step was `cargo run ... | tail -5 && echo GATE-test-OK`, and a shell pipeline
+  returns the exit status of its LAST command — so the verdict was `tail`'s,
+  which always succeeds. Caught only because the failure was re-run without the
+  pipe. THE LESSON IS NOT "use pipefail". It is that the command which
+  ADJUDICATES is the one that must never lie, and it is the one written last,
+  under time pressure, by whoever is tired — the same day this PM captured four
+  separate findings about tools reporting the wrong subject. Verdict commands
+  get the same scrutiny as the code they judge: no pipes between the thing that
+  fails and the thing that reports, or capture the status explicitly.
+
+- 2026-08-30 (owl/009 — WHEN THE ENVIRONMENT IS THE DEFECT, SAY SO AND STOP
+  ROLLING DICE): five composed gates were lost to infrastructure and zero to
+  code. Three died on "the production migration guard could not read a schema
+  version, timed out at 300s" while that guard, run directly, answered in 1.9
+  SECONDS with version=21 — the budget was eaten by I/O-starved cargo work and
+  the message accused a database nothing had contacted. Two died on a
+  machine-wide `~/.cargo/.package-cache` lock held partly by a cargo process
+  from an UNRELATED REPOSITORY. Underneath it all: load average 92 with 0% CPU
+  on every process, a disk at 95% full, a `ps` that took 503 seconds, and a
+  full-suite run that red a DIFFERENT innocent timing test each time. The PM
+  refused to retry until the dice landed green, proved the changed surface
+  green suite by suite, and let a clean CI runner be the arbiter — with the
+  reason recorded, so the precedent reads "local gates were proven pathological
+  HERE" rather than "local gates are optional".
+
+- 2026-08-30 (owl/009 — AN ISOLATION MECHANISM MUST SHIP WITH ITS REAPER): the
+  packet mandated a per-seat CARGO_TARGET_DIR per coder, correctly, to stop
+  cargo serialising every seat behind its siblings. Six seats later that was
+  ~13G each of build artefacts on a disk that hit 95% full, and the resulting
+  I/O starvation broke the very gates the isolation existed to make trustworthy
+  — the mandate ate its own benefit. The matching database story ran in
+  parallel: 328 databases on the shared test cluster, hundreds of orphaned
+  FreshDatabase mints, because `destroy()` is only reached on the happy path
+  that a panicking or SIGKILLed test never takes. CLEANUP THAT DEPENDS ON THE
+  HAPPY PATH IS NOT CLEANUP, and any packet that tells N seats to each create a
+  large durable resource must say in the same breath what removes it, and when,
+  without relying on anyone remembering.
 - (add as they arise)
