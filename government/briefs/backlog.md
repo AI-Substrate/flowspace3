@@ -1113,3 +1113,10 @@ leaving this file should name where it went.
     correctly refused cross-tree drops); sweep mechanism gets its own
     packet + owner (not the 009 PM); timeout-as-no-verdict-retry
     ratified as classification, not rerun-until-green.
+
+110-NOTE (2026-08-31, centipede): the shared cargo package-cache lock now
+    has a defect PRODUCER — pij bg cancel reports cancelled while leaving
+    the cargo child alive holding the machine-wide lock (pid 73490
+    incident; PM hand-killed). Reported to vicuna (pij platform): kill
+    full process group + await before claiming cancelled. Same accept-law
+    family as row 107.
