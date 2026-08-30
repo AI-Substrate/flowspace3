@@ -12,7 +12,7 @@
 ## Fix contract
 1. Root-cause with a failing integration test FIRST: fixture conversation ingested, then get + scoped search + unscoped search all return it (three assertions that fail today).
 2. Normalize repo identity ONCE at a named seam (store or scope resolution) — do not sprinkle string fixups at call sites.
-3. Conversations with NULL/foreign repo must remain reachable per the #80 mixed-scope ruling (a conversation from another repo is still gettable by explicit conv: address; ruled scope semantics live in the #80 PR description — read it).
+3. [CORRECTED 2026-08-30 after coder stop-and-ask — the original clause here was a prime paraphrase error] #80's shipped law is preserved byte-for-byte for foreign repos: scoped get REJECTS a foreign-repo conversation with its explanatory envelope (test: get_rejects_foreign_conversations_and_explains_body_less_turns). The fix scope is ONLY the repo-string normalization so SAME-repo conversations admit again. Matrix: scoped get same-repo ADMIT / foreign REJECT-with-explanation; scoped search same-repo only; unscoped search all. Making get address-authoritative is a product decision for Jordan, not this hotfix.
 4. Mutation check: with the normalization removed, the new test goes red.
 5. `harness checks` green; conventional commit (fix:); PR into main; note in PR that this unblocks row 100 and every fleet's conversation recovery.
 
