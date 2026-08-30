@@ -65,6 +65,15 @@ fn oversized() -> String {
         .collect()
 }
 
+/// Large enough that its bounded chunks exceed the aggregate request budget.
+fn request_whale() -> String {
+    (0..10_000)
+        .map(|n| {
+            format!("fn request_whale_{n:05}(input: Request) -> Response {{ dispatch(input) }}\n")
+        })
+        .collect()
+}
+
 /// An embed payload for `items`, with a root registered that HOLDS them.
 async fn payload(state: &AppState, items: &[(String, String)]) -> serde_json::Value {
     support::hold(state, "oversize", items).await;
@@ -121,6 +130,12 @@ async fn an_oversized_input_arrives_as_lossless_under_cap_chunks() {
     .await
     .expect("an oversized element must still be embeddable");
 
+    assert_eq!(
+        embedder.call_count(),
+        1,
+        "ordinary chunk expansion below the request budget stays one call"
+    );
+
     let received = embedder.received();
     assert_lossless_coverage(&text, &received);
     assert!(
@@ -140,6 +155,83 @@ async fn an_oversized_input_arrives_as_lossless_under_cap_chunks() {
         (0..stored.len() as i16).collect::<Vec<_>>()
     );
     assert!(stored.iter().all(|(_, truncated)| !truncated));
+
+    database.destroy(state.db.clone()).await;
+}
+
+#[tokio::test]
+async fn expanded_chunks_are_split_into_budgeted_provider_calls_then_stored_together() {
+    let (database, state, embedder) = stack("oversize_request_budget").await;
+    let text = request_whale();
+    let hash = fs3_core::content_hash(text.as_bytes());
+
+    enrich::embed(
+        &state,
+        payload(&state, &[(hash.clone(), text.clone())]).await,
+    )
+    .await
+    .expect("a request-sized whale must split across provider calls");
+
+    let calls = embedder.calls.lock().expect("fake calls lock").clone();
+    assert!(calls.len() > 1, "expanded inputs must exceed one request");
+    for call in &calls {
+        let tokens: usize = call
+            .iter()
+            .map(|chunk| fs3_core::estimate_tokens(chunk))
+            .sum();
+        assert!(
+            tokens <= fs3_daemon::batch::TOKEN_BUDGET,
+            "provider call spent {tokens} tokens against budget {}",
+            fs3_daemon::batch::TOKEN_BUDGET
+        );
+    }
+
+    let received: Vec<String> = calls.into_iter().flatten().collect();
+    assert_lossless_coverage(&text, &received);
+    assert_eq!(
+        received
+            .iter()
+            .map(String::as_str)
+            .collect::<std::collections::HashSet<_>>()
+            .len(),
+        received.len(),
+        "every prepared chunk reaches exactly one provider call"
+    );
+    assert_eq!(
+        stored_chunks(&state, &hash).await.len(),
+        received.len(),
+        "all sub-call vectors land in the one complete store write"
+    );
+
+    database.destroy(state.db.clone()).await;
+}
+
+#[tokio::test]
+async fn a_later_provider_call_failure_stores_no_partial_chunk_set() {
+    let (database, mut state, _embedder) = stack("oversize_request_atomic").await;
+    let embedder = Arc::new(FakeEmbedder {
+        dimensions: fs3_store::EMBEDDING_DIMENSIONS,
+        max_input_tokens: CAP,
+        ..FakeEmbedder::failing_after(1)
+    });
+    state.embedder = embedder.clone();
+    let text = request_whale();
+    let hash = fs3_core::content_hash(text.as_bytes());
+
+    let failure = enrich::embed(&state, payload(&state, &[(hash.clone(), text)]).await)
+        .await
+        .expect_err("the fake fails the second provider call");
+
+    assert!(failure.retryable, "a provider outage remains retryable");
+    assert_eq!(
+        embedder.call_count(),
+        2,
+        "the second sub-call is the failure"
+    );
+    assert!(
+        stored_chunks(&state, &hash).await.is_empty(),
+        "no prefix chunk set may become visible after a later call fails"
+    );
 
     database.destroy(state.db.clone()).await;
 }
