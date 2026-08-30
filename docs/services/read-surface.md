@@ -28,9 +28,10 @@ One service function per verb, wrapped by the HTTP route, wrapped by the CLI —
 so an MCP surface later calls the same function with the same parameters
 (workshop 003's parity property) rather than reimplementing the resolution.
 
-`sqlx` never leaves `fs3-store`; the daemon gets typed reads. No new tables and
-no migration: everything here is a different question asked of the schema
-workshop 002 already built.
+`sqlx` never leaves `fs3-store`; the daemon gets typed reads. Migration 0020
+repairs the historical duplicate-root shape and installs the write invariant;
+the read surface still reports that shape defensively if dirty rows are ever
+encountered again.
 
 ## Addresses are resolved, not parsed
 
@@ -68,6 +69,25 @@ comment explaining the hack — and the result would look like a file while bein
 a different file. The test asserts byte equality with what is on disk.
 
 A named element is served the same way, from its own row.
+
+### Identical bytes at multiple paths
+
+The content tree is shared by `(blob_sha, parser_version)`, while
+`worktree_files` remains the authority for every live path holding those bytes.
+The first path to store a tree owns its persisted address prefix. A read through
+another mapped path rebases that prefix in memory, so whole-file and descendant
+`get`/`tree` requests work under both paths without storing a second tree.
+
+Historical rows with more than one root no longer hard-fail readers. The
+lowest-id root answers deterministically, while `get`, `tree`, and `status`
+carry `inconsistencies` entries naming the blob, parser version, all root paths,
+and the repair action. `status` prioritises that repair in its `next_action`.
+
+Named limitation: ddoc file-reference rows belong to the persisted survivor
+tree. A losing path remains visible and its content is readable under that path,
+but its path-relative ddoc references resolve through the survivor's stored
+tree; they are not independently recomputed because that would reintroduce a
+second path-shaped content tree.
 
 ## Two ways an address is legitimately not one thing
 

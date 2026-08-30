@@ -9,8 +9,9 @@
 
 mod support;
 
-use fs3_store::{MIGRATOR, PgPool, migrate};
-use support::FreshDatabase;
+use fs3_core::{Element, ElementKind, Span};
+use fs3_store::{ElementTreeWrite, MIGRATOR, PgPool, migrate, upsert_element_tree};
+use support::{FreshDatabase, PARSER_VERSION, unique_blob};
 
 /// Every version the binary carries, in order. Asserting against the embedded
 /// set rather than a hardcoded `[1]` keeps this test honest when `0006` lands.
@@ -317,6 +318,85 @@ async fn migrating_to_per_install_update_state_kills_the_store_keyed_fossils() {
     .await
     .expect("reading the primary key");
     assert_eq!(key_column, "install_path");
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn migration_0020_keeps_lowest_root_requeues_failures_and_enforces_uniqueness() {
+    let database = FreshDatabase::create().await;
+    let pool = database.pool().await;
+    apply_migrations(&pool, 1..=19).await;
+    let blob = unique_blob();
+    let file = |path: &str| {
+        Element::new(
+            ElementKind::File,
+            "rust",
+            path,
+            path,
+            Span::new(1, 1),
+            "same bytes",
+        )
+    };
+
+    upsert_element_tree(&pool, &blob, PARSER_VERSION, &file("src/first.rs"), |_| {
+        true
+    })
+    .await
+    .expect("seed first pre-fix root");
+    upsert_element_tree(&pool, &blob, PARSER_VERSION, &file("src/second.rs"), |_| {
+        true
+    })
+    .await
+    .expect("seed second pre-fix root");
+    sqlx::query(
+        "INSERT INTO jobs (kind, dedupe_key, payload, state, attempts, last_error)
+         VALUES ('scan_file', 'scan:repair:src/second.rs',
+                 jsonb_build_object('blob', $1, 'path', 'src/second.rs'),
+                 'failed', 3,
+                 'blob has 2 file roots, expected exactly one')",
+    )
+    .bind(blob.as_str())
+    .execute(&pool)
+    .await
+    .expect("seed affected failed scan");
+
+    apply_migrations(&pool, 20..=20).await;
+
+    let roots: Vec<String> = sqlx::query_scalar(
+        "SELECT address FROM elements
+          WHERE blob_sha = $1 AND parser_version = $2 AND parent_id IS NULL
+          ORDER BY id",
+    )
+    .bind(blob.as_str())
+    .bind(PARSER_VERSION)
+    .fetch_all(&pool)
+    .await
+    .expect("read repaired roots");
+    assert_eq!(roots, ["src/first.rs"], "lowest-id root survives");
+
+    let repaired_job: (String, i32, String) = sqlx::query_as(
+        "SELECT state, attempts, last_error FROM jobs
+          WHERE dedupe_key = 'scan:repair:src/second.rs'",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("read repaired job");
+    assert_eq!(repaired_job.0, "pending");
+    assert_eq!(repaired_job.1, 0);
+    assert!(repaired_job.2.contains("migration 0020"));
+
+    let outcome = upsert_element_tree(&pool, &blob, PARSER_VERSION, &file("src/third.rs"), |_| {
+        true
+    })
+    .await
+    .expect("post-migration writer converges");
+    assert_eq!(
+        outcome,
+        ElementTreeWrite::Reused {
+            stored_path: "src/first.rs".to_string()
+        }
+    );
 
     database.destroy(pool).await;
 }

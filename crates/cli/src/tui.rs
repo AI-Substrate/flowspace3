@@ -141,6 +141,8 @@ struct StatusData {
     roots: Vec<RootRow>,
     #[serde(default)]
     queue: Vec<QueueRow>,
+    #[serde(default)]
+    inconsistencies: Vec<fs3_core::views::status::ElementTreeInconsistency>,
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
@@ -572,6 +574,7 @@ struct App {
     input: InputBuffer,
     roots: Vec<RootRow>,
     queue: Vec<QueueRow>,
+    inconsistencies: Vec<fs3_core::views::status::ElementTreeInconsistency>,
     queue_history: VecDeque<u64>,
     activity: VecDeque<ActivityLine>,
     results: Vec<SearchHit>,
@@ -593,6 +596,7 @@ impl Default for App {
             input: InputBuffer::default(),
             roots: Vec::new(),
             queue: Vec::new(),
+            inconsistencies: Vec::new(),
             queue_history: VecDeque::new(),
             activity: VecDeque::new(),
             results: Vec::new(),
@@ -615,6 +619,7 @@ impl App {
             WorkerMessage::Snapshot(Ok(status)) => {
                 self.roots = status.roots;
                 self.queue = status.queue;
+                self.inconsistencies = status.inconsistencies;
                 self.last_snapshot = Some(Instant::now());
                 self.snapshot_error = None;
                 self.remember_queue_depth();
@@ -833,7 +838,15 @@ impl App {
                 first_line(error)
             )
         } else if let Some(at) = self.last_snapshot {
-            format!("LIVE · {}s ago", at.elapsed().as_secs())
+            if self.inconsistencies.is_empty() {
+                format!("LIVE · {}s ago", at.elapsed().as_secs())
+            } else {
+                format!(
+                    "LIVE · {} DATA ISSUE(S) · {}s ago",
+                    self.inconsistencies.len(),
+                    at.elapsed().as_secs()
+                )
+            }
         } else {
             "CONNECTING · no snapshot yet".to_string()
         }
@@ -1437,6 +1450,7 @@ mod tests {
                 files: 7,
             }],
             queue: Vec::new(),
+            inconsistencies: Vec::new(),
         })));
         app.last_snapshot = Some(Instant::now() - Duration::from_secs(5));
         app.apply(WorkerMessage::Snapshot(Err(
@@ -1455,9 +1469,27 @@ mod tests {
         app.apply(WorkerMessage::Snapshot(Ok(StatusData {
             roots: Vec::new(),
             queue: Vec::new(),
+            inconsistencies: Vec::new(),
         })));
         assert!(app.snapshot_error.is_none());
         assert!(app.snapshot_badge().starts_with("LIVE"));
+    }
+
+    #[test]
+    fn successful_snapshot_names_data_inconsistencies() {
+        let mut app = App::default();
+        app.apply(WorkerMessage::Snapshot(Ok(StatusData {
+            roots: Vec::new(),
+            queue: Vec::new(),
+            inconsistencies: vec![fs3_core::views::status::ElementTreeInconsistency {
+                blob_sha: "a".repeat(40),
+                parser_version: "parser@1".to_string(),
+                paths: vec!["a.rs".to_string(), "b.rs".to_string()],
+                next_action: "repair".to_string(),
+            }],
+        })));
+        assert!(app.snapshot_error.is_none(), "dirty data is not an outage");
+        assert!(app.snapshot_badge().contains("1 DATA ISSUE(S)"));
     }
 
     #[test]

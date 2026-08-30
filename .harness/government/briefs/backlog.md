@@ -370,6 +370,7 @@ leaving this file should name where it went.
     infrastructure verdict); (3) FreshDatabase per-run mint. Never bank a
     PASS over a suite that lost its connection mid-run — "a green that
     means nothing is strictly worse than a red that means nothing" (flea).
+    DISPATCHED 2026-08-29: brief w-test-db-isolation.md, coder seated.
 59. **guard error must name the LAYER: stale-branch parser vs bad config**
     (fleet blocker, root-caused): harness checks builds fs3-migration-guard
     from THE SEAT'S OWN TREE; a branch predating a config-schema addition
@@ -391,6 +392,11 @@ leaving this file should name where it went.
     enrichment toggle surfaced in config [repos]. Pairs with rows 30/32
     (worktree posture) and the newest-first lane (#59): the priority story
     solved WHEN work runs; this row is WHETHER it should.
+    RULED (Jordan, 2026-08-29): current design is the intent — dedupe by
+    content hash means unchanged files are shared rows (tagged into each
+    checkout, zero provider spend, 006-measured) and only a worktree's
+    genuinely changed files enrich; that changed-file spend is the
+    feature, not waste. No cheaper tier; auto-discovery stays on. CLOSED.
 61. **PARSER_VERSION bump does not re-index an existing corpus** (nigel,
     008 composition, MEASURED: bump to @2 + restart + scan = enqueued 0 of
     351 files; only remove+add forced re-parse): roots.rs:197 decides
@@ -404,6 +410,10 @@ leaving this file should name where it went.
     decision treats different-parser_version as changed, OR delete the
     claim and document remove+add as the migration. Own packet, own test;
     outside 008's fence by nigel's correct refusal.
+    RULED (Jordan, 2026-08-29): WONTFIX the invalidator — re-index only
+    when the document itself changes; remaining scope is to delete the
+    false doc claim at scan.rs:198-201 and document remove+add as the
+    migration path (folds into a governance/docs pass, no packet).
 62. **ask answers assert enumeration they cannot know** (roadrunner, graded
     ask run): "two main paths" read as complete by a consumer with no
     ground truth (a third — OSC 52 via ClipboardAddon — existed);
@@ -412,6 +422,7 @@ leaving this file should name where it went.
     is" — a bounded loop cannot know it enumerated a space and must not
     phrase as if it did. Owner: flea (ask contract) on revival; pairs
     with tapir's fixture doctrine (semantic vs exact).
+    DISPATCHED 2026-08-29: brief w-ask-honesty.md (with row 63).
 63. **unsatisfiable path glob reads as absence** (roadrunner, same run):
     loop spent 1 of 7 iterations on --path "src/**" in a repo whose paths
     are repo-root-relative ("apps/web/src/...") — a glob that CANNOT
@@ -420,3 +431,244 @@ leaving this file should name where it went.
     "matched paths, none relevant" — the scoped-zero family
     (empty_because vocabulary gains a member: path_unmatched). Also:
     the ask loop could read repo layout (tree) before path-filtering.
+    DISPATCHED 2026-08-29: brief w-ask-honesty.md (with row 62).
+64. **no lexical channel: provably-present exact strings do not retrieve**
+    (leopon, run eight — the strongest instance of the lexical family):
+    a phrase existing verbatim in three indexed elements (SQL-confirmed
+    against raw_text) returns NONE of them; top hits unrelated at 0.31.
+    Pure-vector retrieval has no fallback for exact-string lookup, so an
+    agent searching for a symbol/error-code/identifier it just wrote gets
+    nothing. Joins rows 21-26 + CONF-003 as the anchor case (content
+    provably present). Candidate: a text-match leg (trigram/tsvector) 
+    fused with vector rank, or an exact-substring escape hatch the
+    envelope names. Paired lesson for probe/fixture authors, encoded:
+    DISTINCTIVE-TO-A-HUMAN IS NOT DISTINCTIVE-TO-AN-EMBEDDER.
+65. **sandbox daemons auto-discover sibling worktrees — measurement
+    contamination** (crayfish, cost probe): adding the main clone to a
+    SANDBOX daemon auto-registered a sibling fleet worktree mid-
+    measurement (740 → 1,481 files), poisoning the corpus. Auto-discovery
+    (006's feature) is correct for prod and wrong for a measurement
+    posture: --sandbox should default to index-exactly-what-you-add
+    (detector off, or opt-in), because a probe corpus that grows itself
+    invalidates the numbers taken over it. Rows 50/60 family; hand to the
+    same owner as the sandbox-hermetic work (feran's packet touches the
+    posture seam — evaluate whether it is one line there or its own
+    follow-up).
+66. **the reviewer packet needs a THIRD terminal verdict:
+    correct-but-not-complete** (nigel, CONF-002, from the 008 ship
+    decision): a pipeline whose only terminal verdicts are APPROVED and
+    BLOCKED will quietly convert one into the other under pressure. Today
+    the third state was invented in prose by a reviewer and carried up
+    unlaundered by a PM — two people's judgement where structure should
+    stand. Encoding: packet-reviewer gains the third verdict; a PM cannot
+    report done without naming which of three it earned; a reviewer never
+    chooses between blocking a working feature and rubber-stamping open
+    promises. Template change, one field; HELD under drain order.
+    RULED (Jordan, 2026-08-29): WONTFIX — REQUEST_CHANGES was the
+    technically correct verdict (it did request a fix); keep the two
+    verdicts, no third state.
+67. **the sealed gate proves REPRODUCIBILITY, not PORTABILITY** (nigel,
+    #65's CI red): nine green gates on six developer machines all sealed
+    the SAME hidden dependency (`ddocs` resolving to the local sibling
+    repo via symlink, not a registry install) — CI was the first
+    environment honest enough to lack the binary. Sealed-input discipline
+    makes local runs reproducible and still cannot see a dependency every
+    seat shares. Encoding candidates: harness checks reports external
+    binaries the test suite RESOLVES outside the repo/toolchain pin (a
+    which-audit over test-invoked commands); and/or a periodic clean-
+    runner canary gate. Beside row 66; HELD under drain.
+    RULED (Jordan, 2026-08-29): CLOSED, no further work — CI-on-PR is the
+    clean-host proof and it caught this one; no scheduled from-scratch job.
+68. **embed job sends an empty string to the provider** (o-prime, live
+    prod queue 2026-08-29): job
+    embed:conv:recovery:raw:5704b480… failed with Azure 400 "Invalid
+    'input[1]': input cannot be an empty string" — a conversation-recovery
+    row produced an empty chunk and we shipped it to the provider instead
+    of filtering it pre-batch. One bad row can poison a 64-batch. Fix:
+    drop/skip empty (or whitespace-only) inputs before batching, and
+    decide the row's terminal state (done-with-note, not failed-forever).
+
+69. **team tidy deletes the active seat's cwd out from under it** (DL-002,
+    retro drain 2026-08-29): immediately after tidy removed a seat's
+    worktree, a parallel shell init failed ENOENT despite a surviving
+    explicit cwd; retry from the main clone succeeded. Encoding: tidy
+    should relocate/rebind (or at least warn about) an ACTIVE seat's cwd
+    before deleting its worktree. Joins the tidy family (rows 33/46/51);
+    fold into w-team-tidy.md.
+
+70. **lean-ctx wrapper mangles harness command output for OMP seats** (two
+    strikes 2026-08-29: wee-viper — 'harness docker up' failure collapsed to
+    an unactionable form, needed a second jq-selected call; wolverine —
+    'lean-ctx -c "harness docs the-harness-distilled"' returned an
+    unrelated 'mocha: 0 passed' instead of the document). The context-
+    compression layer is eating exactly the output an agent needs when
+    something goes wrong. Encoding candidate: seats bypass lean-ctx for
+    harness verbs (or lean-ctx passes harness envelopes through verbatim);
+    route to whoever owns the lean-ctx config for OMP spawns.
+    THIRD strike same day: mawhrin — lean-ctx erased a shell loop variable
+    in a stat probe, yielding empty paths (silent data corruption, not just
+    output collapse). Escalates the row: this is now correctness, not
+    ergonomics. FOURTH strike: mawhrin — backticks in a flowspace3 element
+    address were shell-interpreted by lean-ctx, silently CHANGING the
+    address queried. FIFTH strike: grasshopper — 'lean-ctx ls
+    crates/store/migrations' returned a project-root overview instead of
+    the requested directory. SIXTH strike: camel — the injected rule
+    instructs 'lean-ctx -c "ctx_read ..."' but the wrapper reports
+    'ctx_read: command not found' — the mandate names tools the wrapper
+    does not provide. SEVENTH/EIGHTH (camel): compression erased search
+    hit identities into '{...13 keys}' placeholders; absolute-path ls
+    again listed repo root. NINTH (camel): a failed cargo test compressed
+    to 'FAILED: 0 pass, 1 fail' with the actionable panic hidden — the
+    evidence-retention defect (row 58's lesson) reintroduced at the
+    wrapper layer.
+
+71. **ask token-budget exhaustion returns ok:true + grounded:true +
+    answer:null** (sylac, dogfood 2026-08-29): an 8-iteration run that
+    ran out of budget reports SUCCESS shape with a null answer —
+    grounded:true describing an answer that does not exist is incoherent,
+    and ok:true makes a consumer parse null. Fix: budget exhaustion is its
+    own honest terminal (ok:false or an explicit stopped envelope where
+    grounded is absent/false), next_action already good. Joins the ask
+    honesty family (rows 42/62/63; brief w-ask-honesty just merged — this
+    is a NEW surface of the same law: the envelope must not claim more
+    than it measured). Second sighting (camel, 2026-08-30): focused ask
+    stopped answer=null WITH 6 citations attached. THIRD sighting
+    (bedbug): 4 citations, answer:null. Three seats in one day — this is
+    the next ask packet.
+
+72. **no per-path freshness introspection: "is my edit indexed yet?" is
+    unanswerable** (mawhrin, dogfood 2026-08-29): post-edit search missed
+    a new roots.rs predicate in a registered+watched worktree — probably
+    backlog lag, but nothing in the envelope or any verb can SAY when a
+    path was last indexed, so an agent cannot distinguish "not indexed
+    yet" from "indexed and not retrieved" (the row-64 lexical gap and this
+    row compound each other). Candidates: `flowspace3 status --path <p>`
+    returning last-indexed blob + timestamp + pending-job presence, and/or
+    search hits carrying indexed_at. Kin: rows 21-26 family.
+
+73. **scan failures: a ddoc blob produces 2 file roots where exactly 1 is
+    expected** (jackal, prod status read 2026-08-29): 14 failed scan_file
+    jobs, last_error names the invariant violation. New defect surface in
+    the ddoc scan path (008 family) — needs a repro + fix packet. Also
+    note: prod still runs pre-#69 code, so worktree scan churn continues
+    (12,371 pending) until the ruled rebuild+bounce. ESCALATED 2026-08-30
+    (bedbug): the same blob-with-2-file-roots invariant violation now
+    makes 'flowspace3 status' itself fail (FS3-E-STORE-QUERY-FAILED, blob
+    402efae…) — a read verb broken by dirty data, on the daemon post-#69.
+    Two defects: the writer that minted the duplicate root, and the
+    reader that hard-fails instead of reporting the inconsistency.
+
+74. **get returns ok:true + content:null while next_action claims the whole
+    element was returned** (camel, dogfood 2026-08-30): both
+    jobs.rs::claim_jobs and migration 0016 resolved as hits but get
+    delivered null content with a next_action asserting delivery. Same
+    law as rows 71/42: the envelope claims more than it measured — a
+    null-content get must be an honest error/empty_because, never
+    ok:true+delivery-claim. Repro is exact (two named addresses).
+
+75. **PLATFORM (pij) evidence awaiting an ermine revival — omp delivery +
+    session-detection regression** (2026-08-30): (a) pij sends to
+    pij-hard-camel stay state=queued indefinitely (three ACKs never
+    delivered; tmux pane-paste used as the authoritative fallback);
+    (b) camel's 'pij inbox' fails E-AMBIG 'cannot detect a current
+    Claude, Copilot, or Codex session' on a REGISTERED omp pi seat;
+    (c) jackal hit the same on 'pij inbox --wait' (workaround: explicit
+    PIJ_SESSION_ID). All ermine seats dead; deliver on revival — never
+    fix locally (standing doctrine).
+
+76. **compose hard-codes container name flowspace3-db — every worktree's
+    'harness docker up' collides with the main checkout's container**
+    (third seat today: jackal, bedbug, camel; all self-resolved to the
+    shared :5433 cluster + disposable DBs). Encoding candidates: drop the
+    fixed container_name / derive it from the checkout path so per-seat
+    stacks are possible, OR make 'harness docker up' in a linked worktree
+    detect the running shared cluster and say 'using shared :5433' instead
+    of failing into a name collision. Post-#70 the gate no longer needs a
+    per-seat stack, so the second (cheaper) shape may be all we want.
+
+77. **checks red envelope truncates the decisive failure detail — second
+    sighting** (heron 2026-08-30; jackal saw the same during its d3 proof:
+    'background delivery truncated even the bounded details before the
+    failing test identity'). #70 fixed retention INSIDE checks (labelled
+    stdout+stderr tails); the truncation now lives a layer up — whatever
+    relays the envelope to the seat clips it. Find the clipping layer and
+    bound-and-label there too; the failing test IDENTITY must always
+    survive. THIRD sighting (camel): exit 124 timeout at 766s and the
+    tail omitted WHICH suite was unfinished — the timeout path needs the
+    same identity guarantee as the failure path.
+
+78. **embed settlement deadlocks under a large ingest burst** (Jordan's
+    pane paste, 2026-08-30): dozens of 'deadlock detected' WARNs across
+    concurrent embed jobs (attempt=1 retrying=true) right after a 7,436-
+    turn conversation ingest; retries cleared them and the queue kept
+    draining, so no work lost — but sustained deadlock+retry is wasted
+    provider/DB work and a lock-order smell in embeddings insert vs job
+    settlement. Find the two lock orders and make them consistent (or
+    batch the settlement); a burst should drain deadlock-free.
+
+79. **checkout-scoped search excludes conversation rows — conversation
+    content is invisible to the DEFAULT search** (o-prime proof
+    2026-08-30): 7,788 conv elements stored, raw_text present, vectors
+    joined by raw_hash — yet cwd-scoped search returns 0 for them and
+    '--repo all --source conversation' returns them at 0.75. The
+    conversation row NAMES this repo (conversations.repo) but the scope
+    join (006, worktree_files) never consults it, so 005's content
+    silently fell out of 006's default view — the tenet-15/16 composition
+    shape: the scoping rule was never walked to the conversation surface.
+    Fix: scope filter admits conversation elements via conversations.repo
+    (and worktree when recorded). Also re-verify `get conv:...#t<n>`
+    content:null (row 74 kin) on the same walk.
+
+80. **a LOSING daemon mutates shared state before its bind refusal**
+    (bobcat, 2026-08-30): a second daemon started during a bounce window
+    spent ~108s on schema/ddocs/requeue work — including the
+    requeue_failed sweep, a WRITE — then lost 7373 to the incumbent and
+    exited. Boot's mutation phase runs before port ownership is
+    established, so every losing racer re-queues failed jobs and touches
+    ddoc state it does not own. Fix: bind/reserve the port (or take an
+    ownership lease) BEFORE any mutating boot work; probes/reads may
+    precede, writes may not. Kin: row 53 (key-before-bind) — same
+    boot-ordering family, opposite direction.
+
+81. **adopt from the pij rust port (arch-compare verdicts, 2026-08-30,
+    scratch/arch-compare-pij.md)**: (a) raw unknown-event-byte
+    preservation — fs3 deserialises unknown kinds to a unit
+    EventKind::Unknown and LOSES the fields (events.rs:201-206); pij
+    keeps kind + raw line so old readers forward new facts losslessly.
+    (b) arch-gate hardenings: required 'why' rationale per allowlist row,
+    runtime workspace resolution (not compile-time CARGO_MANIFEST_DIR),
+    and cargo metadata --locked (never silently repair a stale lock).
+    (c) housekeeping: stale test comment health.rs:155-156 still says
+    'publishes daemon.key before binding' — implementation moved on.
+
+82. **encode the bounce ritual as 'harness daemon bounce'** (self-identified
+    while answering vicuna's adoption ask, 2026-08-30): the merge->restart
+    rule is a ruling + o-prime muscle memory today. The verb: refuse if
+    HEAD != origin/main (the stale-binary bounce I shipped), cargo build
+    --release, drain-restart the pane daemon, poll health until the 401
+    tell, print version. Encode-don't-document — this is the exact
+    twice-inferred shape the harness doctrine names.
+
+83. **ask silently substitutes the nearest ANSWERABLE question**
+    (meadowlark, cross-repo dogfood 2026-08-30): asked about 'harness team
+    new' in a repo where that verb does not exist; ask answered about
+    'harness new' (a different verb) — grounded:true, real citations,
+    WRONG QUESTION. A near-miss substitution with citations reads as
+    authoritative and is MORE dangerous than a refusal. Fix at the
+    contract (rows 42/62/71 family): when evidence matches a DIFFERENT
+    subject than the question names, the answer must say 'X does not
+    appear; the nearest thing is Y' — never silently answer Y as if it
+    were X. Feed flea's negative-fixture lane. ALSO: state expected
+    latency somewhere honest (~53s on glm-flash is fine for considered
+    questions, unusable in agent inner loops — envelope or docs should
+    say which it is for).
+
+84. **dot-dirs (.harness/extensions/**) are excluded from indexing —
+    invisible-by-construction for exactly the code agents ask about**
+    (meadowlark cross-repo + halibut same day; FS-1 fourth confirmation):
+    fs3's own team-new extension source never surfaces for any query, and
+    #67's path_unmatched correctly names a layout that excludes .harness.
+    Decide the policy deliberately: index .harness/extensions (agent-
+    facing CODE) while keeping noisy dot-dirs (temp, buffers) out; walker
+    skip-list becomes explicit config, not an accident of dot-prefixing.
+

@@ -806,7 +806,6 @@ pub async fn path_filter_probe(
         top_level_entries: row.try_get("top_level_entries")?,
     })
 }
-
 fn similar_from_row(row: &sqlx::postgres::PgRow) -> Result<SimilarElement, StoreError> {
     let kind: String = row.try_get("kind")?;
     let mut element = Element::new(

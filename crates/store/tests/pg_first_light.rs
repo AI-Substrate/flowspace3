@@ -228,6 +228,7 @@ async fn syncing_a_worktree_forgets_paths_that_are_gone_and_keeps_their_content(
         fs3_store::get_elements(&pool, &doomed, PARSER_VERSION)
             .await
             .unwrap()
+            .tree
             .is_some(),
         "its parsed content survives the pointer — D8 refuses the cascade"
     );

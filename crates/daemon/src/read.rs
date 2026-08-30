@@ -128,6 +128,7 @@ struct Located {
     file: IndexedFile,
     parser_version: String,
     root: Element,
+    inconsistencies: Vec<fs3_core::views::status::ElementTreeInconsistency>,
 }
 
 /// Fetch one address.
@@ -220,6 +221,7 @@ pub async fn get(
                 .map(|child| outline(child, &located.file.identity, depth - 1))
                 .collect()
         },
+        inconsistencies: located.inconsistencies.clone(),
     };
 
     Ok((
@@ -332,6 +334,7 @@ pub async fn tree(
         total,
         showing: files.len(),
         entries,
+        inconsistencies: Vec::new(),
     })
 }
 
@@ -368,6 +371,7 @@ async fn index_tree(state: &AppState, limit: i64) -> Result<TreeResult, Failure>
         total,
         showing: entries.len(),
         entries,
+        inconsistencies: Vec::new(),
     })
 }
 
@@ -380,7 +384,7 @@ async fn file_tree(
     scope: &Scope,
 ) -> Result<TreeResult, Failure> {
     let file = choose_file(files, path, scope)?;
-    let (_, root) = parse_tree(state, &file).await?;
+    let (_, root, inconsistencies) = parse_tree(state, &file).await?;
 
     let entries: Vec<TreeEntry> = root
         .children
@@ -396,6 +400,7 @@ async fn file_tree(
         total,
         showing: entries.len(),
         entries,
+        inconsistencies,
     })
 }
 
@@ -454,11 +459,12 @@ async fn locate(
     }
 
     let file = choose_file(files, path, scope)?;
-    let (parser_version, root) = parse_tree(state, &file).await?;
+    let (parser_version, root, inconsistencies) = parse_tree(state, &file).await?;
     Ok(Located {
         file,
         parser_version,
         root,
+        inconsistencies,
     })
 }
 
@@ -506,7 +512,17 @@ fn choose_file(files: Vec<IndexedFile>, path: &str, scope: &Scope) -> Result<Ind
 }
 
 /// Read the element tree for one indexed file, current parser version first.
-async fn parse_tree(state: &AppState, file: &IndexedFile) -> Result<(String, Element), Failure> {
+async fn parse_tree(
+    state: &AppState,
+    file: &IndexedFile,
+) -> Result<
+    (
+        String,
+        Element,
+        Vec<fs3_core::views::status::ElementTreeInconsistency>,
+    ),
+    Failure,
+> {
     let versions = fs3_store::parser_versions_for_blob(&state.db, &file.blob_sha)
         .await
         .map_err(fail)?;
@@ -526,8 +542,7 @@ async fn parse_tree(state: &AppState, file: &IndexedFile) -> Result<(String, Ele
             .with_detail("path", file.path.clone())
             .with_detail("repo", file.identity.clone())
             .with_fix(
-                "wait for the queue to drain — `flowspace3 status` reports what is left — then \
-                 ask again",
+                "wait for the queue to drain — `flowspace3 status` reports what is left — then ask again",
             )
         })?
         .clone();
@@ -542,19 +557,56 @@ async fn parse_tree(state: &AppState, file: &IndexedFile) -> Result<(String, Ele
         )
     })?;
 
-    let root = fs3_store::get_elements(&state.db, &blob, &version)
+    let read = fs3_store::get_elements(&state.db, &blob, &version)
         .await
-        .map_err(fail)?
-        .ok_or_else(|| {
-            Failure::new(
-                &catalog::QUERY_NOT_FOUND,
-                format!("{} has no parsed elements under {version}", file.path),
-            )
-            .with_detail("path", file.path.clone())
-            .with_fix("re-scan the root with `flowspace3 scan <path>`")
-        })?;
+        .map_err(fail)?;
+    let mut root = read.tree.ok_or_else(|| {
+        Failure::new(
+            &catalog::QUERY_NOT_FOUND,
+            format!("{} has no parsed elements under {version}", file.path),
+        )
+        .with_detail("path", file.path.clone())
+        .with_fix("re-scan the root with `flowspace3 scan <path>`")
+    })?;
+    rebase_tree(&mut root, &file.path);
 
-    Ok((version, root))
+    let inconsistencies = read
+        .inconsistency
+        .into_iter()
+        .map(|issue| fs3_core::views::status::ElementTreeInconsistency {
+            blob_sha: issue.blob_sha,
+            parser_version: issue.parser_version,
+            paths: issue.paths,
+            next_action: "restart the current flowspace3 daemon to apply the duplicate-root repair migration; if this remains, run `flowspace3 doctor`".to_string(),
+        })
+        .collect();
+
+    Ok((version, root, inconsistencies))
+}
+
+/// Present one shared tree under every live path that maps to its blob.
+fn rebase_tree(root: &mut Element, requested_path: &str) {
+    let stored_path = root.address.clone();
+    if stored_path == requested_path {
+        return;
+    }
+
+    fn visit(element: &mut Element, stored_path: &str, requested_path: &str) {
+        if let Some(suffix) = element.address.strip_prefix(stored_path)
+            && (suffix.is_empty() || suffix.starts_with("::") || suffix.starts_with('#'))
+        {
+            element.address = format!("{requested_path}{suffix}");
+        }
+        for child in &mut element.children {
+            visit(child, stored_path, requested_path);
+        }
+    }
+
+    visit(root, &stored_path, requested_path);
+    root.name = requested_path
+        .rsplit_once('/')
+        .map_or(requested_path, |(_, name)| name)
+        .to_string();
 }
 
 /// Find the one element an address names, with its ancestors.
@@ -968,6 +1020,7 @@ async fn conversation_outline(
                 children: Vec::new(),
             })
             .collect(),
+        inconsistencies: Vec::new(),
     })
 }
 

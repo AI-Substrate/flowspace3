@@ -94,10 +94,18 @@ async fn persist_tree(
     tooling: &DdocTooling,
     is_ddoc: bool,
     enrich_policy: &impl Fn(&Element) -> bool,
-) -> Result<(), Failure> {
-    fs3_store::upsert_element_tree(&state.db, blob, PARSER_VERSION, &tree.root, enrich_policy)
-        .await
-        .map_err(fail)?;
+) -> Result<fs3_store::ElementTreeWrite, Failure> {
+    let written =
+        fs3_store::upsert_element_tree(&state.db, blob, PARSER_VERSION, &tree.root, enrich_policy)
+            .await
+            .map_err(fail)?;
+
+    // Another path won the content-tree race. Its path->blob mapping remains
+    // live, but path-specific ddoc refs must stay attached to the surviving
+    // tree rather than point at rows this writer deliberately did not store.
+    if matches!(written, fs3_store::ElementTreeWrite::Reused { .. }) {
+        return Ok(written);
+    }
 
     if is_ddoc && let Some(graph) = &tooling.graph {
         let refs = ddoc::file_refs(graph, &tree.path, tree);
@@ -116,7 +124,7 @@ async fn persist_tree(
             .map_err(fail)?;
         }
     }
-    Ok(())
+    Ok(written)
 }
 
 /// Parse one file and record it.
@@ -188,6 +196,7 @@ pub async fn run(state: &AppState, value: serde_json::Value) -> Result<(), Failu
     if let Some(stored) = fs3_store::get_elements(&state.db, &blob, PARSER_VERSION)
         .await
         .map_err(fail)?
+        .tree
     {
         if is_ddoc && !tooling.is_absent() {
             // A presented ddoc consumes the whole current snapshot. Trying to

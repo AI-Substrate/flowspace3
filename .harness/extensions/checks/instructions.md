@@ -5,7 +5,7 @@ before you call any work done; do not substitute your own reading of the diff.
 
 ## What it computes deterministically
 
-Seven gates, in order, stopping at the first red — with the one that WRITES
+Eight gates, in order, stopping at the first red — with the one that WRITES
 straddled by the production guard:
 
 1. `cargo metadata --locked` — `Cargo.lock` matches the manifests. First
@@ -20,9 +20,12 @@ straddled by the production guard:
    default, deliberately; the refusal prints the command. CI sets it itself.
 3. `node --test .harness/extensions/checks/check-result.test.mjs` — the gate's
    own output-retention and failure-classification contract.
-4. `cargo fmt --all --check` — formatting is not a matter of opinion here.
-5. `cargo clippy --all-targets -- -D warnings` — lint warnings are failures.
-6. `fs3-test-suite` — sweeps `fs3_test_*` databases older than the named
+4. `node --test .harness/extensions/daemon/bounce.test.mjs` — freshness,
+   bounded build evidence, listener/pane discovery, drain-restart, verify
+   timeout, 401 tell, and queue/version envelope contracts.
+5. `cargo fmt --all --check` — formatting is not a matter of opinion here.
+6. `cargo clippy --all-targets -- -D warnings` — lint warnings are failures.
+7. `fs3-test-suite` — sweeps `fs3_test_*` databases older than the named
    `ORPHAN_SWEEP_AGE`, mints and migrates a unique `fs3_test_<epoch>_<entropy>`
    child with `FreshDatabase`, injects only that URL into `cargo test --all`,
    then force-drops it. The sweep prints both its threshold and swept names.
@@ -46,7 +49,7 @@ straddled by the production guard:
    migrates and never creates; a guard that repairs is a guard that can cause
    the incident it watches for, which is exactly what calling
    `flowspace3 doctor` here would be.
-7. `cargo run -p fs3-testkit --bin fs3-arch-check` — architecture drift. The
+8. `cargo run -p fs3-testkit --bin fs3-arch-check` — architecture drift. The
    crate graph is judged against `testkit/arch-allowlist.toml`, which is an
    allow-list: an edge nobody added deliberately is a failure.
 

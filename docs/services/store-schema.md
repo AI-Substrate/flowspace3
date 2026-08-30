@@ -86,16 +86,20 @@ parse and one summary.
 The API is one function per flow, not CRUD per table, and speaks `fs3_core`
 types throughout — there is no DTO layer between crates.
 
-**Scan.** `get_elements(blob, parser_version)` → `None` means nobody has parsed
-these bytes with this parser, on any branch; that is the signal to do the work.
-`Some` is the skip. `upsert_element_tree(blob, parser_version, root, enrich)`
-writes the whole tree in one transaction, assigning parent links as it descends.
-`enrich` is the scanner's injected policy (D5) — the store records the verdict,
-it never computes it.
+**Scan.** `get_elements(blob, parser_version)` returns a tree plus any root-count
+inconsistency. No rows means nobody has parsed these bytes with this parser; a
+dirty historical shape serves the lowest-id root and reports every root path
+instead of failing the read.
 
-Because a blob is the hash of the bytes, the key set for a given
-`(blob, parser_version)` cannot change between runs. There is no stale row to
-reconcile and no reconciling delete to write.
+`upsert_element_tree(blob, parser_version, root, enrich)` writes the whole tree
+in one transaction. The first path to write a `(blob, parser_version)` owns the
+shared content tree; a simultaneous different-path writer returns `Reused`
+rather than crashing on the partial unique root index. Both paths remain in
+`worktree_files`, so path visibility is not collapsed with the content tree.
+Migration 0020 deterministically keeps the lowest-id root from pre-fix data,
+deletes later trees by cascade, requeues affected failed scans, and installs the
+unique index. Because a blob hashes the bytes, same-parser descendants remain a
+deterministic parse; only their path prefix is projected by readers.
 
 **Enrich.** `missing_enrichment(model_key, limit)` is the D6 reconciler sweep:
 elements marked `enrich` with no `smart_content` row for that model, deduplicated
