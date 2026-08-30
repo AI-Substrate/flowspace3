@@ -12,7 +12,7 @@
 | title | Coder packet — u1 store: chunked vector key + poison heal (009-embed-split) |
 | role | coder |
 | plan | docs/plans/009-embed-split/plan.dd.json |
-| seat | &lt;filled at canary&gt; |
+| seat | pij-above-ferbin |
 | updated | 2026-08-30 |
 
 <a id="mission"></a>

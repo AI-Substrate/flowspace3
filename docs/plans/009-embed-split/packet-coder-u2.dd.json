@@ -9,7 +9,7 @@
         "title": "Coder packet — u2 enrich: hygiene at mint + chunk windowing at prepare (009-embed-split)",
         "role": "coder",
         "plan": "docs/plans/009-embed-split/plan.dd.json",
-        "seat": "<filled at canary>",
+        "seat": "pij-striped-guan",
         "updated": "2026-08-30"
       }
     },

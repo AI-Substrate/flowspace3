@@ -12,7 +12,7 @@
 | title | Coder packet — u3 search read + end-to-end proof (009-embed-split) |
 | role | coder |
 | plan | docs/plans/009-embed-split/plan.dd.json |
-| seat | &lt;filled at canary&gt; |
+| seat | pij-surprised-hare |
 | updated | 2026-08-30 |
 
 <a id="mission"></a>
