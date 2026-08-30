@@ -82,11 +82,11 @@
         },
         {
           "id": "i13",
-          "text": "ABSOLUTE PATHS ALWAYS for every file tool (read/edit/write), rooted at /Users/jordanknight/substrate/flowspace/fs3-embed-split. Never a relative path — OMP edit resolves relatives against a session root fixed at spawn, and if that root is wrong your edits land in ANOTHER TREE while reporting success (DL-044/DL-007/DL-008). State your worktree root once at ack and prefix every path with it. Do NOT `flowspace3 add` this worktree even if a next_action suggests it."
+          "text": "ABSOLUTE PATHS ALWAYS for every file tool (read/edit/write), rooted at YOUR OWN worktree /Users/jordanknight/substrate/flowspace/fs3-embed-split-u1. Never a relative path — OMP edit resolves relatives against a session root fixed at spawn, and if that root is wrong your edits land in ANOTHER TREE while reporting success (DL-044/DL-007/DL-008). State your worktree root once at ack and prefix every path with it. The ONLY path outside your worktree you may touch is READ-ONLY: the packets and plan docs under /Users/jordanknight/substrate/flowspace/fs3-embed-split/docs/plans/009-embed-split/. Do NOT `flowspace3 add` this worktree even if a next_action suggests it."
         },
         {
           "id": "i14",
-          "text": "SHARED TREE — this is the one rule whose breach is invisible to you. You share /Users/jordanknight/substrate/flowspace/fs3-embed-split with the PM and two sibling coders, each on its own branch. Touch ONLY the files in your fence. Never `git checkout`/`switch`/`stash`/`rebase`/`merge` — branch switching in a shared tree yanks the floor out from under your siblings mid-edit. Your branch is already checked out via git worktree by the PM if applicable; if `git branch --show-current` does not show YOUR branch at ack time, STOP and ask the PM rather than switching it yourself."
+          "text": "YOU HAVE YOUR OWN WORKTREE — /Users/jordanknight/substrate/flowspace/fs3-embed-split-u1 on branch u1-store — so edit-time collision with your siblings is impossible by construction. What isolation does NOT remove (TENETS tenet 10): merge order, the shared Postgres CLUSTER (your per-seat database base is a server selector, not a private server — a cluster-wide crash kills every connection in every database, and the tell is whole-suite-fails-together or connection-shaped errors rather than a single assertion failure), and the SHARED GLOBAL TOOLCHAIN — every unit reads one installed cargo, so nobody upgrades it and every done-receipt carries the version it actually observed. MERGE-FORWARD IS ALLOWED AND EXPECTED, rebase and checkout are not: when the PM tells you a dependency has landed, run `git merge origin/009-embed-split` INSIDE YOUR OWN WORKTREE. Never `git checkout`/`switch`/`rebase`, never touch a sibling's worktree, never merge your branch into anything."
         }
       ]
     },
@@ -114,7 +114,7 @@
     {
       "name": "scope",
       "value": {
-        "worktree": "/Users/jordanknight/substrate/flowspace/fs3-embed-split (SHARED with the PM and two sibling coders — see i14)",
+        "worktree": "/Users/jordanknight/substrate/flowspace/fs3-embed-split-u1 (YOUR OWN git worktree, branch u1-store — o-prime ratified worktree-per-coder on 2026-08-30; you share NOTHING with your siblings but the repo history)",
         "branch": "u1-store",
         "fence": "crates/store/migrations/0021_embed_chunks.sql (new), crates/store/src/embeddings.rs (NewEmbedding + put_embeddings + existing_embedding_hashes ONLY — NOT the query_embeddings/search_elements read path, which is u3's), crates/store/src/jobs.rs (the new heal fn), crates/store/tests/**. NO daemon code at all.",
         "forbidden_note": "Never touch another unit's paths, .harness/government/**, or the plan's flow state. Never merge, rebase, or open a PR — the PM composes u1 -> u2 -> u3. Never `git checkout`/`switch`/`stash` in this shared tree. Never touch the production daemon on port 7373. ABSOLUTE PATHS FOR EVERY FILE READ AND EDIT, ALWAYS. Do NOT edit crates/store/src/embeddings.rs read-path functions (query_embeddings/search_elements) — u3 owns those in the same file. Do NOT wire the heal into boot.rs; ship the recipe."
