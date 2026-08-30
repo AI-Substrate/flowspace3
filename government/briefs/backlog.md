@@ -812,3 +812,29 @@ leaving this file should name where it went.
     (archive-over-source) — both are "staleness should demote" ranking
     defects, likely one dispatch. Hard part: detecting the correction edge
     (explicit retraction language vs silent revision).
+
+88-NOTE (2026-08-30): sixth independent confirmation of the archive-ranking
+    trap (meadowlark's fifth-observer dogfood seat: archived 047 plan docs
+    outranked live docs/how/telemetry/*.md on every query; explicitly
+    code-flavoured query still returned ~90 doc / ~5 code). Their magic
+    wand matches the dispatch shape: --prefer-live / archive-downweight
+    ON BY DEFAULT for docs/plans/archive/**.
+
+96. **per-source indexing status — the landed-vs-findable gap made
+    inspectable** (meadowlark fifth-observer seat, 2026-08-30; endorsed
+    hardest by meadowlark, seconded by lynx). An empty --source
+    conversation result is indistinguishable between "nothing relevant"
+    and "nothing enriched yet" — the seat hit zero twice during whale
+    enrichment lag and COULD NOT TELL, and the empty-envelope next_action
+    only offers the boilerplate embedder-mismatch hint. Dispatch shape:
+    `flowspace3 status --source conversation` (per-source landed/
+    summarized/embedded counts + queue depth), AND the empty-result
+    next_action should point at it when the searched source has a
+    non-empty enrichment backlog. Closes the diagnosis half of row 86's
+    whale-lag docs ask.
+
+97. **ask plain-text rendering buries the answer under the tool trace**
+    (same seat, 2026-08-30). Human-mode ask output leads with a long
+    tool-trace tail; the seat's first read caught only the trace and
+    re-ran with --json — one wasted probe. Fix: answer first, trace
+    below a fold/flag (--trace to show), citations adjacent to answer.
