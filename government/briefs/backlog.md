@@ -1091,3 +1091,25 @@ leaving this file should name where it went.
     the retro: "a flaky test makes every green that contains it weaker
     than it looks" — owl's three earlier composed greens contained it and
     were luck, not proof, on that axis.
+
+110. **orphan test-DB accumulation + the sweep spec defect + shared cargo
+    package cache** (owl escalation, 2026-08-30; 328 DBs on the shared
+    test postgres, container at 75% CPU idle; owl lost TWO composed gates
+    to infrastructure and ZERO to code). Three defects, one packet:
+    (a) SPEC DEFECT, tenet-17-inside-a-brief: w-test-db-isolation item 3
+    said sweep "fs3_test_*" but FreshDatabase mints fs3_<label>_<entropy>
+    — a sweep built to the brief WOULD MATCH NOTHING and look like it
+    worked; the specification itself carried the defect (prime-authored;
+    recorded honestly). (b) cleanup depends on the happy path: destroy()
+    is never reached by panicking/timing-out/SIGKILLed tests — durable
+    shape is Drop-on-Drop + age-based sweep keyed on the REAL prefix.
+    (c) DL-010: per-worktree CARGO_TARGET_DIR isolates artifacts but NOT
+    cargo's global package cache — "per-seat target dirs give independent
+    gates" is FALSE; four concurrent builds serialize into the harness's
+    own timeout, and exit 124 with empty diagnostics reads as RED to
+    every agent. Gate must report NO VERDICT (timed out on shared lock)
+    distinctly from red. RULINGS 2026-08-30: one-off manual clear of
+    unconnected fs3_%_% orphans executed BY O-PRIME (313 dropped; owl
+    correctly refused cross-tree drops); sweep mechanism gets its own
+    packet + owner (not the 009 PM); timeout-as-no-verdict-retry
+    ratified as classification, not rerun-until-green.
