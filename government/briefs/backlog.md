@@ -1073,3 +1073,21 @@ leaving this file should name where it went.
     with misleading attribution. The s093 loader fix covers verb
     collisions; the npm-transient case wants a pinned-version or
     vendored-CLI story for gates — fold into any row 106-family dispatch.
+
+109. **flaky shared-gate test — summaries_completing_together_produce_one_
+    smart_embed_call asserts a BATCHING OUTCOME, racing the debounce
+    window against machine load** (owl escalation, 2026-08-30; reviewer-
+    era discovery during 009 f-001 fix). Proven flaky by control: same
+    tree, same sha, same command — one run FAILED at embed_batch.rs:207
+    (2 calls vs 1), a later run passed 5/5; u2's instrumentation showed
+    the two calls carried [14,2] items / [238,34] tokens — orders below
+    budget, i.e. two smart jobs missed the microbatch window under load,
+    not a splitter defect. It nearly cost a correct fix (u2 rightly
+    refused to commit past an unexplained red; owl paid the control-run
+    cost). Encoding (owl's DL-009): drive the window DETERMINISTICALLY —
+    inject the clock or the debounce boundary — never trust wall time;
+    same family as w-test-db-isolation's shared-cluster flakiness. Needs
+    its own packet and an owner who is not the 009 PM. Doctrine line for
+    the retro: "a flaky test makes every green that contains it weaker
+    than it looks" — owl's three earlier composed greens contained it and
+    were luck, not proof, on that axis.
