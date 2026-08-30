@@ -87,7 +87,7 @@ pub fn plan(jobs: &[Job]) -> (Vec<Batch>, Vec<Unreadable>) {
     let mut groups: Vec<Group> = Vec::new();
 
     for job in jobs {
-        let parsed: EmbedJob = match serde_json::from_value(job.payload.clone()) {
+        let mut parsed: EmbedJob = match serde_json::from_value(job.payload.clone()) {
             Ok(parsed) => parsed,
             Err(error) => {
                 unreadable.push(Unreadable {
@@ -97,6 +97,29 @@ pub fn plan(jobs: &[Job]) -> (Vec<Batch>, Vec<Unreadable>) {
                 continue;
             }
         };
+        parsed.items.retain(|(source_hash, text)| {
+            if !text.trim().is_empty() {
+                return true;
+            }
+            tracing::warn!(
+                %source_hash,
+                "dropping empty or whitespace-only embedding input at batch assembly"
+            );
+            false
+        });
+
+        // Keep an empty shell so the runner touches and completes an all-poison
+        // job without making a provider call; dropping the batch would strand
+        // its claimed job in `running` forever.
+        if parsed.items.is_empty() {
+            batches.push(Batch {
+                identity: parsed.identity,
+                source: parsed.source,
+                items: Vec::new(),
+                job_ids: vec![job.id],
+            });
+            continue;
+        }
 
         // A suspect travels alone, even if it would have fitted.
         if job.attempts >= SOLO_FROM_ATTEMPT {
@@ -198,6 +221,65 @@ mod tests {
             attempts,
             parks: 0,
         }
+    }
+
+    #[test]
+    fn blank_items_are_removed_while_every_batchmate_survives() {
+        let valid = vec![
+            ("good-1".to_string(), "first text".to_string()),
+            ("good-2".to_string(), "second text".to_string()),
+        ];
+        let payload = json!({
+            "identity": "git:a",
+            "source": "raw",
+            "items": [
+                [valid[0].0.clone(), valid[0].1.clone()],
+                ["poison", " \n\t"],
+                [valid[1].0.clone(), valid[1].1.clone()],
+            ],
+        });
+        let poisoned = Job {
+            id: 1,
+            kind: "embed".to_string(),
+            dedupe_key: "embed:poison".to_string(),
+            payload,
+            attempts: 1,
+            parks: 0,
+        };
+
+        let (batches, bad) = plan(&[poisoned]);
+
+        assert!(bad.is_empty());
+        assert_eq!(batches.len(), 1);
+        assert_eq!(batches[0].items, valid, "every innocent reaches the call");
+        assert!(
+            batches[0].items.iter().all(|(hash, _)| hash != "poison"),
+            "the poison cannot reach the provider wire"
+        );
+    }
+
+    #[test]
+    fn an_all_blank_job_still_returns_a_batch_shell_for_settlement() {
+        let payload = json!({
+            "identity": "git:a",
+            "source": "raw",
+            "items": [["poison", ""]],
+        });
+        let poisoned = Job {
+            id: 7,
+            kind: "embed".to_string(),
+            dedupe_key: "embed:only-poison".to_string(),
+            payload,
+            attempts: 1,
+            parks: 0,
+        };
+
+        let (batches, bad) = plan(&[poisoned]);
+
+        assert!(bad.is_empty());
+        assert_eq!(batches.len(), 1);
+        assert!(batches[0].items.is_empty());
+        assert_eq!(batches[0].job_ids, vec![7]);
     }
 
     #[test]

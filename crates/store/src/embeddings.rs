@@ -112,14 +112,15 @@ pub struct NewEmbedding<'a> {
     pub source_hash: &'a str,
     /// Which of the two this vector describes.
     pub source_kind: SourceKind,
+    /// Zero-based position of this vector's overlapping source-text chunk.
+    pub chunk_no: i16,
     /// The vector itself, [`EMBEDDING_DIMENSIONS`] wide.
     pub vector: &'a [f32],
-    /// Whether the text embedded was a PREFIX of the content `source_hash`
-    /// names, because the whole of it exceeded the model's per-input cap.
+    /// Whether the text embedded was a PREFIX of its chunk because even that
+    /// chunk exceeded the model's per-input cap.
     ///
-    /// The row is still keyed by the original hash — a truncated embedding is
-    /// THE embedding for that content — so this flag is the only thing that
-    /// distinguishes complete coverage from partial. See migration 0010.
+    /// Retained as inventory for a deferred backfill of vectors written before
+    /// chunking replaced whole-content prefix truncation.
     pub truncated: bool,
 }
 
@@ -131,14 +132,12 @@ pub struct NewEmbedding<'a> {
 /// strand elements), and this is what makes RE-EXECUTION free rather than just
 /// re-execution CORRECT.
 ///
-/// # Why all three key columns
+/// # Why the key includes kind and chunk
 ///
-/// The primary key is `(source_hash, source_kind, model_key)`. Filtering on
-/// hash and model alone would treat a stored `raw` vector as covering the
-/// `smart` vector for the same hash — the two are different text and different
-/// meaning. That would silently under-embed and leave a permanently incomplete
-/// index that looks exactly like a working one, which is the same failure
-/// class as a misaligned batch and just as undetectable after the fact.
+/// The primary key is `(source_hash, source_kind, chunk_no, model_key)`.
+/// Filtering on hash and model alone would treat a stored `raw` vector as
+/// covering the `smart` vector for the same hash. The pre-check deliberately
+/// answers at hash granularity: any chunk proves the atomic batch landed.
 ///
 /// # Errors
 /// [`StoreError::Query`] when the lookup fails.
@@ -152,11 +151,10 @@ pub async fn existing_embedding_hashes(
         return Ok(HashSet::new());
     }
 
-    // ANY($3) over the primary key: one round trip whatever the batch size,
-    // and an index lookup rather than a scan of the settled history.
+    // DISTINCT collapses a chunked source back to the hash-level pre-check.
     let owned: Vec<String> = hashes.iter().map(|hash| (*hash).to_string()).collect();
     let rows = sqlx::query(
-        "SELECT source_hash FROM embeddings_1024
+        "SELECT DISTINCT source_hash FROM embeddings_1024
           WHERE model_key = $1 AND source_kind = $2 AND source_hash = ANY($3)",
     )
     .bind(model_key)
@@ -229,14 +227,16 @@ pub async fn put_embeddings(
     let mut tx = pool.begin().await?;
     for row in embeddings {
         sqlx::query(
-            "INSERT INTO embeddings_1024 (source_hash, source_kind, model_key, vector, truncated)
-             VALUES ($1, $2, $3, $4, $5)
-             ON CONFLICT (source_hash, source_kind, model_key) DO UPDATE SET
+            "INSERT INTO embeddings_1024
+               (source_hash, source_kind, chunk_no, model_key, vector, truncated)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (source_hash, source_kind, chunk_no, model_key) DO UPDATE SET
                vector = EXCLUDED.vector,
                truncated = EXCLUDED.truncated",
         )
         .bind(row.source_hash)
         .bind(row.source_kind.as_str())
+        .bind(row.chunk_no)
         .bind(model_key)
         .bind(Vector::from(row.vector.to_vec()))
         .bind(row.truncated)
@@ -388,6 +388,12 @@ pub struct SearchFilters {
     pub repo: Option<String>,
     /// Only content held by this registered worktree root.
     pub worktree: Option<String>,
+    /// Only turns belonging to this exact conversation guid.
+    ///
+    /// This predicate is repeated at every chooser, like the ownership and
+    /// kind predicates: applying it only to admission can resolve a shared
+    /// raw hash through a different transcript.
+    pub conversation: Option<String>,
     /// Only content held by a live path matching this SQL `LIKE` pattern.
     pub path: Option<String>,
     /// Which element kinds may answer — the CONTENT-TYPE axis.
@@ -453,6 +459,7 @@ impl Default for SearchFilters {
         SearchFilters {
             repo: None,
             worktree: None,
+            conversation: None,
             path: None,
             source: None,
             max_distance: None,
@@ -539,9 +546,9 @@ pub async fn search_elements(
     // and could not be read as a single thing.
     // Bind map: $1 vector, $2 model, $3 element limit, $4 source, $5 distance,
     // $6 repo, $7 path, $8 kinds, $9 worktree, $10 id_kinds,
-    // $11 gate_open, $12 ddoc_schema, $13 vector candidate limit. Keep SQL and
-    // binds in this order: these types overlap, so a shifted parameter can
-    // compile and answer incorrectly.
+    // $11 gate_open, $12 ddoc_schema, $13 conversation, $14 vector candidate
+    // limit. Keep SQL and binds in this order: these types overlap, so a shifted
+    // parameter can compile and answer incorrectly.
     let mut candidate_limit = filters.limit.saturating_mul(INITIAL_CANDIDATE_MULTIPLIER);
     for expansion in 0..=MAX_CANDIDATE_EXPANSIONS {
         let rows = sqlx::query(
@@ -584,6 +591,8 @@ pub async fn search_elements(
                                      END = NOT $11))
                             AND ($12::text IS NULL
                                  OR admitted.ddoc->>'schema' = $12)
+                            AND ($13::text IS NULL
+                                 OR strpos(admitted.address, 'conv:' || $13 || '#t') = 1)
                             -- The caller worktree belongs here, before LIMIT:
                             -- filtering a ranked page afterwards both under-fills
                             -- it and can leak a foreign version beyond the cap.
@@ -604,9 +613,9 @@ pub async fn search_elements(
                                        WHERE t.blob_sha = admitted.blob_sha
                                          AND ($6::text IS NULL OR c.repo_identity = $6)
                                          AND ($7::text IS NULL OR c.worktree LIKE $7)
-                                         AND ($9::text IS NULL OR c.worktree = $9))))
+                                         AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9))))
                   ORDER BY vector <=> $1
-                  LIMIT $13
+                  LIMIT $14
              ),
              candidate_meta AS (
                  SELECT count(*)::bigint AS candidate_count
@@ -648,6 +657,8 @@ pub async fn search_elements(
                                             END = NOT $11))
                                    AND ($12::text IS NULL
                                         OR choice.ddoc->>'schema' = $12)
+                                   AND ($13::text IS NULL
+                                        OR strpos(choice.address, 'conv:' || $13 || '#t') = 1)
                                    AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
                                         OR EXISTS (
                                              SELECT 1
@@ -665,7 +676,7 @@ pub async fn search_elements(
                                               WHERE t.blob_sha = choice.blob_sha
                                                 AND ($6::text IS NULL OR c.repo_identity = $6)
                                                 AND ($7::text IS NULL OR c.worktree LIKE $7)
-                                                AND ($9::text IS NULL OR c.worktree = $9))))
+                                                AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9))))
                          ORDER BY sc.created_at, sc.model_key, sc.raw_hash
                          LIMIT 1
                    ) s ON TRUE
@@ -693,6 +704,8 @@ pub async fn search_elements(
                                       ELSE (el.ddoc->>'gate_terminal')::boolean
                                     END = NOT $11))
                            AND ($12::text IS NULL OR el.ddoc->>'schema' = $12)
+                           AND ($13::text IS NULL
+                                OR strpos(el.address, 'conv:' || $13 || '#t') = 1)
                            -- The candidate gate above proves that SOME element with
                            -- this raw hash is anchored in the caller scope. Without
                            -- repeating that anchor here, the global lowest-id element
@@ -717,7 +730,7 @@ pub async fn search_elements(
                                       WHERE t.blob_sha = el.blob_sha
                                         AND ($6::text IS NULL OR c.repo_identity = $6)
                                         AND ($7::text IS NULL OR c.worktree LIKE $7)
-                                        AND ($9::text IS NULL OR c.worktree = $9)))
+                                        AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)))
                          ORDER BY el.id
                          LIMIT 1
                    ) e ON TRUE
@@ -756,7 +769,8 @@ pub async fn search_elements(
                      WHERE t.blob_sha = n.blob_sha
                        AND ($6::text IS NULL OR c.repo_identity = $6)
                        AND ($7::text IS NULL OR c.worktree LIKE $7)
-                       AND ($9::text IS NULL OR c.worktree = $9)
+                       AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)
+                       AND ($13::text IS NULL OR c.guid = $13::uuid)
                      ORDER BY c.repo_identity, c.worktree
                      LIMIT 1
                ) anchored ON TRUE
@@ -780,6 +794,7 @@ pub async fn search_elements(
         .bind(filters.id_kinds.as_deref())
         .bind(filters.gate_open)
         .bind(filters.ddoc_schema.as_deref())
+        .bind(filters.conversation.as_deref())
         .bind(candidate_limit)
         .fetch_all(&mut *tx)
         .await?;
@@ -815,9 +830,9 @@ pub async fn search_elements(
 /// empty result cannot become a false "repository is not indexed" diagnosis
 /// when a new predicate is added.
 ///
-/// Raw vectors and live paths only, which is what makes it cheap and excludes
-/// conversations: a turn reaches its repository through its conversation's
-/// anchor and has no `worktree_files` row at all.
+/// Raw vectors whose element is reachable through either a live file or a
+/// conversation anchor. The ownership legs mirror search admission; otherwise
+/// mixed default search could diagnose a conversation-only repository as empty.
 ///
 /// # Errors
 /// [`StoreError::Query`] on failure.
@@ -831,15 +846,26 @@ pub async fn anchor_has_vectors(
         "SELECT EXISTS (
              SELECT 1
                FROM embeddings_1024 e
-               JOIN elements el       ON el.raw_hash = e.source_hash
-               JOIN worktree_files f  ON f.blob_sha = el.blob_sha
-               JOIN worktrees w       ON w.id = f.worktree_id
-               JOIN repos r           ON r.id = w.repo_id
+               JOIN elements el ON el.raw_hash = e.source_hash
               WHERE e.model_key = $1
                 AND e.source_kind = 'raw'
-                AND ($2::text IS NULL OR r.identity = $2)
-                AND ($3::text IS NULL OR f.path LIKE $3)
-                AND ($4::text IS NULL OR w.root_path = $4)
+                AND (EXISTS (
+                     SELECT 1
+                       FROM worktree_files f
+                       JOIN worktrees w ON w.id = f.worktree_id
+                       JOIN repos r ON r.id = w.repo_id
+                      WHERE f.blob_sha = el.blob_sha
+                        AND ($2::text IS NULL OR r.identity = $2)
+                        AND ($3::text IS NULL OR f.path LIKE $3)
+                        AND ($4::text IS NULL OR w.root_path = $4))
+                     OR EXISTS (
+                     SELECT 1
+                       FROM turns t
+                       JOIN conversations c ON c.guid = t.conversation_id
+                      WHERE t.blob_sha = el.blob_sha
+                        AND ($2::text IS NULL OR c.repo_identity = $2)
+                        AND ($3::text IS NULL OR c.worktree LIKE $3)
+                        AND ($4::text IS NULL OR c.worktree IS NULL OR c.worktree = $4)))
                 )",
     )
     .bind(model_key)

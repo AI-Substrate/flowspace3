@@ -16,9 +16,9 @@ use fs3_core::{
 };
 use fs3_store::{
     EMBEDDING_DIMENSIONS, NewEmbedding, PgPool, SearchFilters, SourceKind, StoreError, claim_job,
-    complete_job, enqueue_job, fail_job, get_smart_content, missing_embeddings, missing_enrichment,
-    put_embeddings, put_smart_content, query_embeddings, register_worktree, search_elements,
-    sync_worktree_files, upsert_element_tree,
+    complete_job, enqueue_job, existing_embedding_hashes, fail_job, get_smart_content,
+    missing_embeddings, missing_enrichment, put_embeddings, put_smart_content, query_embeddings,
+    register_worktree, requeue_failed, search_elements, sync_worktree_files, upsert_element_tree,
 };
 use fs3_testkit::fakes::{FakeEmbedder, FakeSummarizer};
 use pgvector::Vector;
@@ -296,6 +296,7 @@ async fn the_vector_sweep_finds_both_spaces_and_forgets_what_lands() {
         &pool,
         EMBEDDER,
         &[NewEmbedding {
+            chunk_no: 0,
             source_hash: &raw_hash,
             source_kind: SourceKind::Raw,
             vector: &vector[0],
@@ -582,6 +583,67 @@ async fn failing_a_job_records_why() {
     database.destroy(pool).await;
 }
 
+/// The boot heal retires only failed embed jobs whose every text is blank.
+#[tokio::test]
+async fn empty_embed_job_heal_is_terminal_counted_and_refuses_real_text() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let poison_payload = serde_json::json!({
+        "identity": "github.com/acme/repo",
+        "source": "raw",
+        "items": [["not-the-empty-hash", ""], ["also-not-empty-hash", " \t\n\u{2003}"]]
+    });
+    let real_payload = serde_json::json!({
+        "identity": "github.com/acme/repo",
+        "source": "raw",
+        "items": [["e3b0c44298fc1c149afbf4c8996fb924", "real text"]]
+    });
+    let poison_id: i64 = sqlx::query_scalar(
+        "INSERT INTO jobs (kind, dedupe_key, payload, state, attempts, last_error)
+         VALUES ('embed', 'embed:blank', $1, 'failed', 3, 'empty provider input')
+         RETURNING id",
+    )
+    .bind(poison_payload)
+    .fetch_one(&pool)
+    .await
+    .expect("seed blank failed embed job");
+    let real_id: i64 = sqlx::query_scalar(
+        "INSERT INTO jobs (kind, dedupe_key, payload, state, attempts, last_error)
+         VALUES ('embed', 'embed:real', $1, 'failed', 3, 'provider unavailable')
+         RETURNING id",
+    )
+    .bind(real_payload)
+    .fetch_one(&pool)
+    .await
+    .expect("seed real-text failed embed job");
+
+    let retired = fs3_store::jobs::retire_empty_embed_jobs(&pool)
+        .await
+        .expect("heal empty embed jobs");
+    assert_eq!(retired, 1, "the count is the boot receipt");
+
+    let swept = requeue_failed(&pool, &["embed"])
+        .await
+        .expect("run the real boot sweep");
+    assert_eq!(swept, 1, "the real-text control must remain revivable");
+
+    let poison: (String, bool) = sqlx::query_as("SELECT state, terminal FROM jobs WHERE id = $1")
+        .bind(poison_id)
+        .fetch_one(&pool)
+        .await
+        .expect("read healed poison job");
+    assert_eq!(poison, ("failed".to_string(), true));
+    let control: (String, bool) = sqlx::query_as("SELECT state, terminal FROM jobs WHERE id = $1")
+        .bind(real_id)
+        .fetch_one(&pool)
+        .await
+        .expect("read real-text control job");
+    assert_eq!(control, ("pending".to_string(), false));
+
+    database.destroy(pool).await;
+}
+
 // ── Decision D4: FOR UPDATE SKIP LOCKED ─────────────────────────────────────
 
 /// A row another worker holds is STEPPED OVER, not waited on.
@@ -677,6 +739,75 @@ async fn two_claimers_never_take_the_same_job() {
         claim_job(&pool, &["scan_file"]).await.expect("claim"),
         None,
         "both jobs are now running, so a third worker finds nothing"
+    );
+
+    database.destroy(pool).await;
+}
+
+/// One source may own many chunks, while rewriting one chunk remains an upsert.
+#[tokio::test]
+async fn embedding_chunks_round_trip_and_same_chunk_upserts() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+    let source_hash = content_hash(b"one source split into overlapping chunks");
+    let zero = vec![0.0; EMBEDDING_DIMENSIONS];
+    let mut changed = zero.clone();
+    changed[0] = 1.0;
+
+    put_embeddings(
+        &pool,
+        EMBEDDER,
+        &[
+            NewEmbedding {
+                source_hash: &source_hash,
+                source_kind: SourceKind::Raw,
+                chunk_no: 0,
+                vector: &zero,
+                truncated: false,
+            },
+            NewEmbedding {
+                source_hash: &source_hash,
+                source_kind: SourceKind::Raw,
+                chunk_no: 1,
+                vector: &zero,
+                truncated: false,
+            },
+        ],
+    )
+    .await
+    .expect("write both chunks atomically");
+    put_embeddings(
+        &pool,
+        EMBEDDER,
+        &[NewEmbedding {
+            source_hash: &source_hash,
+            source_kind: SourceKind::Raw,
+            chunk_no: 1,
+            vector: &changed,
+            truncated: false,
+        }],
+    )
+    .await
+    .expect("rewrite one chunk");
+
+    let chunks: Vec<(i16, bool)> = sqlx::query_as(
+        "SELECT chunk_no, vector::text LIKE '[1,%'
+           FROM embeddings_1024
+          WHERE source_hash = $1 AND source_kind = 'raw' AND model_key = $2
+          ORDER BY chunk_no",
+    )
+    .bind(&source_hash)
+    .bind(EMBEDDER)
+    .fetch_all(&pool)
+    .await
+    .expect("read stored chunks");
+    assert_eq!(chunks, [(0, false), (1, true)]);
+    assert_eq!(
+        existing_embedding_hashes(&pool, EMBEDDER, SourceKind::Raw, &[&source_hash])
+            .await
+            .expect("run hash-level pre-check"),
+        [source_hash].into_iter().collect(),
+        "many chunks still collapse to one completed source hash"
     );
 
     database.destroy(pool).await;
@@ -891,6 +1022,7 @@ async fn similarity_ranks_nearest_first_and_resolves_back_to_elements() {
         .iter()
         .zip(&vectors)
         .map(|(element, vector)| NewEmbedding {
+            chunk_no: 0,
             source_hash: element.raw_hash(),
             source_kind: SourceKind::Raw,
             vector,
@@ -951,6 +1083,7 @@ async fn similarity_ranks_nearest_first_and_resolves_back_to_elements() {
         &pool,
         EMBEDDER,
         &[NewEmbedding {
+            chunk_no: 0,
             source_hash: &content_hash(summary.text.as_bytes()),
             source_kind: SourceKind::Smart,
             vector: &summary_vector,
@@ -1039,6 +1172,7 @@ async fn the_filtered_search_surface_carries_extras_and_a_live_path() {
         &pool,
         EMBEDDER,
         &[NewEmbedding {
+            chunk_no: 0,
             source_hash: &content_hash(summary.text.as_bytes()),
             source_kind: SourceKind::Smart,
             vector: &vector,
@@ -1087,6 +1221,7 @@ async fn a_vector_of_the_wrong_width_is_refused_by_name() {
         &pool,
         EMBEDDER,
         &[NewEmbedding {
+            chunk_no: 0,
             source_hash: &content_hash(b"anything"),
             source_kind: SourceKind::Raw,
             vector: &narrow,

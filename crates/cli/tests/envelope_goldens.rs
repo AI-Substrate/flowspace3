@@ -270,7 +270,7 @@ const CASES: &[Case] = &[
     // helpful human paragraph.
     Case {
         name: "usage-error-prints-no-envelope",
-        args: &["search", "anything", "--source", "code"],
+        args: &["search", "anything", "--source", "raw"],
         response: None,
         exit: 2,
     },

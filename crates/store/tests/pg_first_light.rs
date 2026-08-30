@@ -90,6 +90,7 @@ async fn index_file(pool: &PgPool, worktree_id: i64, path: &str, bodies: &[&str]
     let rows: Vec<NewEmbedding<'_>> = vectors
         .iter()
         .map(|(hash, vector)| NewEmbedding {
+            chunk_no: 0,
             source_hash: hash,
             source_kind: SourceKind::Raw,
             vector,
@@ -940,6 +941,7 @@ async fn smart_search_chooses_the_raw_body_held_by_the_caller() {
         &pool,
         EMBEDDER,
         &[NewEmbedding {
+            chunk_no: 0,
             source_hash: &smart_hash,
             source_kind: SourceKind::Smart,
             vector: &smart_vector,
@@ -1012,6 +1014,7 @@ async fn a_path_filter_narrows_to_a_subtree_and_hits_carry_their_live_path() {
         &pool,
         EMBEDDER,
         &[NewEmbedding {
+            chunk_no: 0,
             source_hash: &hash,
             source_kind: SourceKind::Raw,
             vector: &vector,
@@ -1117,12 +1120,14 @@ async fn a_source_filter_chooses_which_vector_space_is_searched() {
         EMBEDDER,
         &[
             NewEmbedding {
+                chunk_no: 0,
                 source_hash: &raw_hash,
                 source_kind: SourceKind::Raw,
                 vector: &raw_vector,
                 truncated: false,
             },
             NewEmbedding {
+                chunk_no: 0,
                 source_hash: &smart_hash,
                 source_kind: SourceKind::Smart,
                 vector: &smart_vector,

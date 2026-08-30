@@ -36,6 +36,7 @@ the hit came from. `flowspace3 docs get read` is the detail.
 ```bash
 flowspace3 conversation import ./session.jsonl        # turns become content
 flowspace3 search "why did we drop it" --source conversation
+flowspace3 ask "what did we decide?" --conversation <guid> # one transcript only
 flowspace3 get conv:<guid>#t42 --before 10 --after 20 # read around the hit
 ```
 
@@ -44,10 +45,10 @@ and how the bug was actually found. Import a transcript and its turns are
 indexed like any other content — summarised, embedded, searchable by meaning.
 Re-import the same file as it grows and only the new turns land.
 
-Conversations are OPT-IN on search, and that is deliberate: they are opinions
-at a point in time and code is current truth, so `search` without
-`--source conversation` never blends them in. `flowspace3 docs get
-conversations` is the detail.
+Default search mixes code, documents, and conversations in one relevance
+ranking. `data.composition` names how many threshold-matching rows came from
+each source even when top-k truncation hides one source; use `--source
+code|doc|conversation` only when the question itself requires narrowing.
 
 `doctor` is repair-as-it-goes: it starts the container stack, creates the
 database and applies migrations. There is no separate setup step, and you never
@@ -148,7 +149,7 @@ Exit codes: `0` ok, `1` error, `2` usage.
   referring to something later.
 
 Useful filters: `--repo <identity>`, `--path <glob>`, `--limit N`,
-`--min-score 0.0-1.0`, `--source raw|smart|all`.
+`--min-score 0.0-1.0`, `--source code|doc|conversation|all`.
 
 **A bare search is about the repository you are standing in** (the CLI sends
 your working directory). `meta.scope` reports which repository answered and

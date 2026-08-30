@@ -399,6 +399,81 @@ pub async fn requeue_running(pool: &PgPool) -> Result<u64, StoreError> {
     Ok(swept)
 }
 
+/// Permanently retire failed embed jobs whose payload contains only blank text.
+///
+/// The payload is inspected rather than matching a known empty-content hash:
+/// every empty body shares that hash, while the text itself is the rule. Using
+/// Rust's [`str::trim`] keeps this predicate identical to the enqueue filter.
+/// Malformed or empty `items` arrays are refused here so the runner can classify
+/// them through its ordinary terminal-failure path.
+///
+/// # Daemon boot snap-in
+///
+/// Call this immediately before `requeue_failed` in `crates/daemon/src/boot.rs`:
+///
+/// ```ignore
+/// match fs3_store::jobs::retire_empty_embed_jobs(&state.db).await {
+///     Ok(0) => {}
+///     Ok(retired) => tracing::info!(
+///         retired,
+///         "terminally retired failed embed jobs containing only empty input"
+///     ),
+///     Err(error) => tracing::error!(%error, "cannot retire empty failed embed jobs"),
+/// }
+/// ```
+///
+/// # Errors
+/// [`StoreError::Query`] when reading or updating the candidate rows fails.
+pub async fn retire_empty_embed_jobs(pool: &PgPool) -> Result<u64, StoreError> {
+    let mut tx = pool.begin().await?;
+    let candidates = sqlx::query(
+        "SELECT id, payload
+           FROM jobs
+          WHERE state = 'failed' AND NOT terminal AND kind = 'embed'
+          FOR UPDATE",
+    )
+    .fetch_all(&mut *tx)
+    .await?;
+
+    let mut ids = Vec::new();
+    for row in candidates {
+        let id: i64 = row.try_get("id")?;
+        let payload: serde_json::Value = row.try_get("payload")?;
+        let all_empty = payload
+            .get("items")
+            .and_then(serde_json::Value::as_array)
+            .is_some_and(|items| {
+                !items.is_empty()
+                    && items.iter().all(|item| {
+                        item.as_array().is_some_and(|pair| {
+                            pair.len() == 2
+                                && pair[1].as_str().is_some_and(|text| text.trim().is_empty())
+                        })
+                    })
+            });
+        if all_empty {
+            ids.push(id);
+        }
+    }
+
+    let retired = if ids.is_empty() {
+        0
+    } else {
+        sqlx::query(
+            "UPDATE jobs
+                SET terminal = true, updated_at = now()
+              WHERE id = ANY($1)
+                AND state = 'failed' AND NOT terminal AND kind = 'embed'",
+        )
+        .bind(&ids)
+        .execute(&mut *tx)
+        .await?
+        .rows_affected()
+    };
+    tx.commit().await?;
+    Ok(retired)
+}
+
 /// Return non-terminal `failed` jobs of `kinds` to `pending`. Returns how many.
 ///
 /// The path back for work that was wanted, was attempted, and lost — and whose

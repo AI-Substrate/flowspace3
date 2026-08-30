@@ -1,0 +1,9 @@
+{
+  "scenario": "mutation-conversation-unpinned",
+  "rows": [
+    {"id":"P1","axis":"precondition","type":"indexed-conversation-count-min","params":{"min":2},"on_unavailable":"fail"},
+    {"id":"S1","axis":"scope","type":"field-absent","params":{"field":"coverage.corpus.conversation"},"on_unavailable":"fail"},
+    {"id":"S2","axis":"scope","type":"trace-search-hits-distinct-conversation-guids-min","params":{"min":2},"on_unavailable":"fail"},
+    {"id":"S3","axis":"scope","type":"trace-searches-use-source","params":{"source":"conversation"},"on_unavailable":"fail"}
+  ]
+}

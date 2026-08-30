@@ -14,18 +14,49 @@
 mod support;
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use fs3_core::envelope::Envelope;
 use fs3_core::{
     BlobRef, ChatMessage, ChatTurn, Config, DatabaseConfig, Element, ElementKind, RepoIdentity,
-    Span, ToolCall, content_hash, element_address,
+    Span, ToolCall, Turn, TurnRole, TurnSource, content_hash, element_address,
 };
+use fs3_daemon::conversations::{IntakeRequest, intake};
 use fs3_daemon::router;
 use fs3_daemon::wiring::AppState;
 use fs3_store::{NewEmbedding, SourceKind};
 use fs3_testkit::fakes::FakeChatProvider;
 use serde_json::{Value, json};
 
+const CONVERSATION: &str = "11111111-1111-4111-8111-111111111111";
+const OTHER_CONVERSATION: &str = "22222222-2222-4222-8222-222222222222";
+
+struct FailingChatProvider {
+    turns: Vec<ChatTurn>,
+    calls: AtomicUsize,
+}
+
+#[async_trait::async_trait]
+impl fs3_core::ChatProvider for FailingChatProvider {
+    async fn turn(
+        &self,
+        _messages: &[ChatMessage],
+        _tools: &[fs3_core::ToolSchema],
+    ) -> fs3_core::Result<ChatTurn> {
+        let call = self.calls.fetch_add(1, Ordering::Relaxed);
+        self.turns.get(call).cloned().ok_or_else(|| {
+            fs3_core::Error::Provider("injected chat failure after evidence".to_string())
+        })
+    }
+
+    fn key(&self) -> String {
+        "failing-chat@1".to_string()
+    }
+
+    fn max_input_tokens(&self) -> usize {
+        100_000
+    }
+}
 /// Wire a daemon whose chat model says exactly what the test tells it to.
 async fn daemon_answering_with(
     label: &str,
@@ -105,6 +136,7 @@ async fn seed_search_hit(state: &AppState, question: &str) -> String {
         &state.db,
         &state.embedder_key(&identity_text),
         &[NewEmbedding {
+            chunk_no: 0,
             source_hash: &raw_hash,
             source_kind: SourceKind::Raw,
             vector: &vector,
@@ -115,6 +147,66 @@ async fn seed_search_hit(state: &AppState, question: &str) -> String {
     .expect("stores the fixture vector");
 
     element_address(Some(&identity_text), &child_address)
+}
+
+async fn seed_conversation(state: &AppState, guid: &str, body: &str) {
+    intake(
+        state,
+        IntakeRequest {
+            guid: guid.to_string(),
+            repo_identity: None,
+            worktree: None,
+            base_sha: None,
+            title: Some("ask scope fixture".to_string()),
+            started_at: "2026-08-30T00:00:00Z".to_string(),
+            turns: vec![Turn {
+                turn_no: 1,
+                role: TurnRole::Agent,
+                source: TurnSource::Peer,
+                head_sha: None,
+                at: "2026-08-30T00:00:00Z".to_string(),
+                body: body.to_string(),
+                items: Vec::new(),
+            }],
+        },
+    )
+    .await
+    .expect("stores conversation fixture");
+}
+
+async fn daemon_with_search_hit_using<F, C>(
+    label: &str,
+    question: &str,
+    configure: C,
+    agent: F,
+) -> (
+    String,
+    String,
+    String,
+    support::FreshDatabase,
+    fs3_store::PgPool,
+)
+where
+    F: FnOnce(&str) -> Arc<dyn fs3_core::ChatProvider>,
+    C: FnOnce(&mut Config),
+{
+    let database = support::FreshDatabase::create(label).await;
+    let mut config = Config {
+        database: DatabaseConfig {
+            url: database.url(),
+        },
+        ..Config::default()
+    };
+    configure(&mut config);
+    let mut state = AppState::from_config(config).expect("the fake stack wires");
+    fs3_store::migrate(&state.db).await.expect("migrates");
+    let address = seed_search_hit(&state, question).await;
+    state.agent = agent(&address);
+
+    let pool = state.db.clone();
+    let auth = support::auth(label);
+    let base = support::spawn(router(state, auth.auth)).await;
+    (base, auth.key, address, database, pool)
 }
 
 /// Wire a daemon with one real search hit and a scripted search → get → answer run.
@@ -128,26 +220,19 @@ async fn daemon_with_search_hit(
     support::FreshDatabase,
     fs3_store::PgPool,
 ) {
-    let database = support::FreshDatabase::create(label).await;
-    let config = Config {
-        database: DatabaseConfig {
-            url: database.url(),
+    daemon_with_search_hit_using(
+        label,
+        question,
+        |_| {},
+        |address| {
+            Arc::new(FakeChatProvider::scripted(vec![
+                tool_call("search", &json!({"query": question}).to_string()),
+                tool_call("get", &json!({"address": address}).to_string()),
+                prose("the watcher returns only changed directories"),
+            ]))
         },
-        ..Config::default()
-    };
-    let mut state = AppState::from_config(config).expect("the fake stack wires");
-    fs3_store::migrate(&state.db).await.expect("migrates");
-    let address = seed_search_hit(&state, question).await;
-    state.agent = Arc::new(FakeChatProvider::scripted(vec![
-        tool_call("search", &json!({"query": question}).to_string()),
-        tool_call("get", &json!({"address": address}).to_string()),
-        prose("the watcher returns only changed directories"),
-    ]));
-
-    let pool = state.db.clone();
-    let auth = support::auth(label);
-    let base = support::spawn(router(state, auth.auth)).await;
-    (base, auth.key, address, database, pool)
+    )
+    .await
 }
 
 /// Wire a daemon whose active model has an index but whose search resolves no hits.
@@ -176,6 +261,7 @@ async fn daemon_with_no_hit_search(
         &state.db,
         &state.embedder_key(""),
         &[NewEmbedding {
+            chunk_no: 0,
             source_hash: &orphan_hash,
             source_kind: SourceKind::Raw,
             vector: &vector,
@@ -196,17 +282,21 @@ async fn daemon_with_no_hit_search(
     (base, auth.key, database, pool)
 }
 
-async fn post_ask(base: &str, key: &str, question: &str) -> Envelope<Value> {
+async fn post_ask_request(base: &str, key: &str, request: Value) -> Envelope<Value> {
     reqwest::Client::new()
         .post(format!("{base}/ask"))
         .bearer_auth(key)
-        .json(&json!({ "question": question }))
+        .json(&request)
         .send()
         .await
         .expect("the daemon answers")
         .json()
         .await
         .expect("the answer is an envelope")
+}
+
+async fn post_ask(base: &str, key: &str, question: &str) -> Envelope<Value> {
+    post_ask_request(base, key, json!({ "question": question })).await
 }
 
 fn prose(text: &str) -> ChatTurn {
@@ -227,6 +317,254 @@ fn tool_call(name: &str, arguments: &str) -> ChatTurn {
         }],
         tokens_used: Some(10),
     }
+}
+#[tokio::test]
+async fn unknown_conversation_refuses_before_chat() {
+    let database = support::FreshDatabase::create("ask-conversation-unknown").await;
+    let config = Config {
+        database: DatabaseConfig {
+            url: database.url(),
+        },
+        ..Config::default()
+    };
+    let mut state = AppState::from_config(config).expect("the fake stack wires");
+    fs3_store::migrate(&state.db).await.expect("migrates");
+    seed_conversation(
+        &state,
+        "aaaaaaaa-1111-4111-8111-111111111111",
+        "first ambiguous transcript",
+    )
+    .await;
+    seed_conversation(
+        &state,
+        "aaaaaaaa-2222-4222-8222-222222222222",
+        "second ambiguous transcript",
+    )
+    .await;
+    let chat = Arc::new(FakeChatProvider::scripted(vec![prose("must not run")]));
+    state.agent = chat.clone();
+    let pool = state.db.clone();
+    let auth = support::auth("ask-conversation-unknown");
+    let base = support::spawn(router(state, auth.auth)).await;
+
+    let envelope = post_ask_request(
+        &base,
+        &auth.key,
+        json!({"question":"what happened?", "conversation":"00000000-0000-0000-0000-000000000000"}),
+    )
+    .await;
+    assert!(!envelope.ok, "unknown pins must refuse: {envelope:?}");
+    let failure = envelope.error.expect("query failure");
+    assert_eq!(failure.code, "FS3-E-QUERY-INVALID");
+    assert!(failure.message.contains("no indexed conversation"));
+    assert!(failure.fix.contains("conversation list"));
+    assert!(
+        chat.received_messages().is_empty(),
+        "chat cost must be zero"
+    );
+
+    let conflict = post_ask_request(
+        &base,
+        &auth.key,
+        json!({
+            "question":"what happened?",
+            "source":"code",
+            "conversation":CONVERSATION
+        }),
+    )
+    .await;
+    assert!(!conflict.ok, "contradictory filters must refuse");
+    let failure = conflict.error.expect("scope conflict");
+    assert_eq!(failure.code, "FS3-E-QUERY-INVALID");
+    assert!(failure.message.contains("conflicts"));
+    assert!(chat.received_messages().is_empty(), "chat cost stays zero");
+    let ambiguous = post_ask_request(
+        &base,
+        &auth.key,
+        json!({"question":"what happened?", "conversation":"aaaaaaaa"}),
+    )
+    .await;
+    assert!(!ambiguous.ok, "ambiguous short guid must refuse");
+    let failure = ambiguous.error.expect("ambiguous scope failure");
+    assert_eq!(failure.code, "FS3-E-QUERY-INVALID");
+    assert!(failure.message.contains("more than one"));
+    assert!(failure.fix.contains("conversation list"));
+    assert!(chat.received_messages().is_empty(), "chat cost stays zero");
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn conversation_pin_filters_every_search_read_citation_and_coverage() {
+    let database = support::FreshDatabase::create("ask-conversation-pinned").await;
+    let config = Config {
+        database: DatabaseConfig {
+            url: database.url(),
+        },
+        ..Config::default()
+    };
+    let mut state = AppState::from_config(config).expect("the fake stack wires");
+    fs3_store::migrate(&state.db).await.expect("migrates");
+    seed_conversation(
+        &state,
+        CONVERSATION,
+        "shared transcript decision hard boundary",
+    )
+    .await;
+    seed_conversation(
+        &state,
+        OTHER_CONVERSATION,
+        "shared transcript decision hard boundary",
+    )
+    .await;
+    let pinned = format!("conv:{CONVERSATION}#t1");
+    let foreign = format!("conv:{OTHER_CONVERSATION}#t1");
+    let chat = Arc::new(FakeChatProvider::scripted(vec![
+        tool_call(
+            "search",
+            r#"{"query":"shared transcript decision hard boundary","source":"code","repo":"all"}"#,
+        ),
+        tool_call("get", &json!({"address": foreign}).to_string()),
+        tool_call("get", &json!({"address": pinned}).to_string()),
+        prose("the pinned transcript chose a hard boundary"),
+    ]));
+    state.agent = chat.clone();
+    let pool = state.db.clone();
+    let auth = support::auth("ask-conversation-pinned");
+    let base = support::spawn(router(state, auth.auth)).await;
+
+    let envelope = post_ask_request(
+        &base,
+        &auth.key,
+        json!({
+            "question":"what boundary was chosen?",
+            "source":"all",
+            "conversation":"11111111"
+        }),
+    )
+    .await;
+    assert!(envelope.ok, "{envelope:?}");
+    let data = envelope.data.expect("ask report");
+    assert_eq!(
+        data["citations"],
+        json!([format!("conv:{CONVERSATION}#t1")])
+    );
+    assert_eq!(
+        data["trace"][0]["search_hits"],
+        json!([format!("conv:{CONVERSATION}#t1")])
+    );
+    assert_eq!(data["trace"][1]["failed"], true, "foreign get is refused");
+    assert_eq!(data["trace"][2]["evidence"], true);
+    assert_eq!(data["coverage"]["corpus"]["source"], "conversation");
+    assert_eq!(
+        data["coverage"]["corpus"]["conversation"]["guid"],
+        CONVERSATION
+    );
+    assert_eq!(data["coverage"]["corpus"]["conversation"]["count"], 1);
+    assert_eq!(data["coverage"]["corpus"]["conversation"]["turns"], 1);
+
+    let tool_results: Vec<_> = chat
+        .received_messages()
+        .into_iter()
+        .flatten()
+        .filter_map(|message| match message {
+            ChatMessage::ToolResult { content, .. } => Some(content),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        tool_results
+            .iter()
+            .any(|result| result.contains(CONVERSATION))
+    );
+    assert!(!tool_results[0].contains(OTHER_CONVERSATION));
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn unpinned_conversation_ask_keeps_multiple_transcripts_retrievable() {
+    let database = support::FreshDatabase::create("ask-conversation-unpinned").await;
+    let config = Config {
+        database: DatabaseConfig {
+            url: database.url(),
+        },
+        ..Config::default()
+    };
+    let mut state = AppState::from_config(config).expect("the fake stack wires");
+    fs3_store::migrate(&state.db).await.expect("migrates");
+    seed_conversation(&state, CONVERSATION, "shared unpinned transcript evidence").await;
+    seed_conversation(
+        &state,
+        OTHER_CONVERSATION,
+        "shared unpinned transcript evidence",
+    )
+    .await;
+    let foreign = format!("conv:{OTHER_CONVERSATION}#t1");
+    state.agent = Arc::new(FakeChatProvider::scripted(vec![
+        tool_call(
+            "search",
+            r#"{"query":"shared unpinned transcript evidence"}"#,
+        ),
+        tool_call("get", &json!({"address": foreign}).to_string()),
+        prose("both transcripts remained in scope"),
+    ]));
+    let pool = state.db.clone();
+    let auth = support::auth("ask-conversation-unpinned");
+    let base = support::spawn(router(state, auth.auth)).await;
+
+    let envelope = post_ask_request(
+        &base,
+        &auth.key,
+        json!({"question":"where was this discussed?", "source":"conversation"}),
+    )
+    .await;
+    assert!(envelope.ok, "{envelope:?}");
+    let data = envelope.data.expect("ask report");
+    let hits = data["trace"][0]["search_hits"].as_array().expect("hits");
+    assert_eq!(
+        hits.len(),
+        2,
+        "unpinned search must not collapse to one transcript"
+    );
+    assert!(data["coverage"]["corpus"]["conversation"].is_null());
+    assert_eq!(data["coverage"]["corpus"]["source"], "conversation");
+    assert_eq!(
+        data["citations"],
+        json!([format!("conv:{OTHER_CONVERSATION}#t1")])
+    );
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn ask_source_overrides_a_model_attempt_to_change_the_corpus() {
+    let question = "how does the watcher debounce changed directories?";
+    let (base, key, address, database, pool) = daemon_with_search_hit_using(
+        "ask-source-hard-boundary",
+        question,
+        |_| {},
+        |address| {
+            Arc::new(FakeChatProvider::scripted(vec![
+                tool_call(
+                    "search",
+                    &json!({"query": question, "source": "conversation"}).to_string(),
+                ),
+                tool_call("get", &json!({"address": address}).to_string()),
+                prose("the watcher returns only changed directories"),
+            ]))
+        },
+    )
+    .await;
+    let envelope =
+        post_ask_request(&base, &key, json!({"question":question, "source":"code"})).await;
+    assert!(envelope.ok, "{envelope:?}");
+    let data = envelope.data.expect("ask report");
+    assert_eq!(data["trace"][0]["search_hits"], json!([address.clone()]));
+    assert_eq!(data["citations"], json!([address]));
+    assert_eq!(data["coverage"]["corpus"]["source"], "code");
+
+    database.destroy(pool).await;
 }
 
 #[tokio::test]
@@ -480,27 +818,188 @@ async fn an_unknown_tool_is_reported_to_the_model_rather_than_failing_the_reques
 }
 
 #[tokio::test]
-async fn a_model_that_never_stops_calling_tools_is_cut_off_without_inventing_an_answer() {
-    // More tool calls than the configured iteration bound allows.
-    let turns = (0..12)
-        .map(|_| tool_call("search", r#"{"query":"again"}"#))
-        .collect();
-    let (base, key, database, pool) = daemon_answering_with("ask-bound", turns).await;
+async fn iteration_exhaustion_is_a_failure_with_partial_evidence() {
+    let question = "where is watcher debounce implemented?";
+    let (base, key, address, database, pool) = daemon_with_search_hit_using(
+        "ask-iteration-bound",
+        question,
+        |config| config.agent.max_iterations = 2,
+        |address| {
+            Arc::new(FakeChatProvider::scripted(vec![
+                tool_call("search", &json!({"query": question}).to_string()),
+                tool_call("get", &json!({"address": address}).to_string()),
+            ]))
+        },
+    )
+    .await;
 
-    let envelope = post_ask(&base, &key, "a question it will never answer").await;
-    let data = envelope.data.expect("an ask report");
-
-    assert_eq!(data["stopped"], "max_iterations");
-    // The bound is the whole point: no answer is better than a fabricated one,
-    // and the caller is told which bound stopped it.
+    let envelope = post_ask(&base, &key, question).await;
     assert!(
-        data["answer"].is_null(),
-        "a bounded run must not present something as the answer"
+        !envelope.ok,
+        "a bound is not a successful answer: {envelope:?}"
     );
+    assert!(
+        envelope.data.is_none(),
+        "failure envelopes never carry success data"
+    );
+    let failure = envelope.error.expect("an honest terminal failure");
+    assert_eq!(failure.code, "FS3-E-QUERY-ASK-ITERATION-LIMIT");
+    assert_eq!(failure.details["stopped"], "max_iterations");
+    assert_eq!(failure.details["grounded"], false);
     assert_eq!(
-        data["iterations"], 8,
-        "the configured default bound applied"
+        failure.details["evidence"]["label"],
+        "partial evidence — no answer was synthesized"
+    );
+    assert_eq!(failure.details["evidence"]["citations"], json!([address]));
+    assert_eq!(
+        failure.details["evidence"]["findings"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
     );
 
     database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn token_budget_exhaustion_is_a_failure_and_salvages_reads() {
+    let fixture: Value = serde_json::from_str(include_str!(
+        "../../../eval/ask/terminal-fixtures/token-budget.json"
+    ))
+    .expect("the eval fixture is valid JSON");
+    let expected = &fixture["expected"];
+    let question = "where is watcher debounce implemented?";
+    let (base, key, address, database, pool) = daemon_with_search_hit_using(
+        "ask-token-bound",
+        question,
+        |config| {
+            config.agent.token_budget = fixture["setup"]["token_budget"]
+                .as_u64()
+                .expect("fixture token budget")
+        },
+        |address| {
+            Arc::new(FakeChatProvider::scripted(vec![
+                tool_call("search", &json!({"query": question}).to_string()),
+                tool_call("get", &json!({"address": address}).to_string()),
+                tool_call("search", &json!({"query": "one more"}).to_string()),
+            ]))
+        },
+    )
+    .await;
+
+    let envelope = post_ask(&base, &key, question).await;
+    assert_eq!(envelope.ok, expected["ok"].as_bool().unwrap());
+    assert!(
+        envelope.data.is_none(),
+        "fixture requires absent success data"
+    );
+    assert!(
+        envelope
+            .next_action
+            .as_deref()
+            .unwrap_or_default()
+            .contains("narrower question")
+            && envelope
+                .next_action
+                .as_deref()
+                .unwrap_or_default()
+                .contains("token_budget")
+    );
+    let failure = envelope.error.expect("an honest terminal failure");
+    assert_eq!(failure.code, expected["error_code"].as_str().unwrap());
+    assert_eq!(failure.details["stopped"], expected["stopped"]);
+    assert_eq!(failure.details["grounded"], expected["grounded"]);
+    assert_eq!(
+        failure.details["evidence"]["label"],
+        expected["evidence_label"]
+    );
+    assert!(
+        failure.details["evidence"]["citations"]
+            .as_array()
+            .unwrap()
+            .len()
+            >= expected["minimum_citations"].as_u64().unwrap() as usize
+    );
+    assert_eq!(failure.details["evidence"]["citations"], json!([address]));
+    assert_eq!(
+        failure.details["evidence"]["findings"]
+            .as_array()
+            .unwrap()
+            .len(),
+        expected["findings"].as_u64().unwrap() as usize
+    );
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn provider_failure_mid_loop_is_a_failure_and_salvages_reads() {
+    let question = "where is watcher debounce implemented?";
+    let (base, key, address, database, pool) = daemon_with_search_hit_using(
+        "ask-provider-terminal",
+        question,
+        |_| {},
+        |address| {
+            Arc::new(FailingChatProvider {
+                turns: vec![
+                    tool_call("search", &json!({"query": question}).to_string()),
+                    tool_call("get", &json!({"address": address}).to_string()),
+                ],
+                calls: AtomicUsize::new(0),
+            })
+        },
+    )
+    .await;
+
+    let envelope = post_ask(&base, &key, question).await;
+    assert!(!envelope.ok);
+    assert!(envelope.data.is_none());
+    let failure = envelope.error.expect("an honest terminal failure");
+    assert_eq!(failure.code, "FS3-E-PROVIDER-FAILED");
+    assert_eq!(failure.details["stopped"], "provider_failure");
+    assert_eq!(failure.details["grounded"], false);
+    assert_eq!(failure.details["evidence"]["citations"], json!([address]));
+    assert_eq!(
+        failure.details["evidence"]["findings"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn answered_with_null_or_empty_text_is_impossible() {
+    for (label, content) in [
+        ("ask-null-answer", None),
+        ("ask-empty-answer", Some(String::new())),
+    ] {
+        let turns = vec![
+            ChatTurn {
+                content: content.clone(),
+                tool_calls: vec![],
+                tokens_used: Some(10),
+            },
+            ChatTurn {
+                content,
+                tool_calls: vec![],
+                tokens_used: Some(10),
+            },
+        ];
+        let (base, key, database, pool) = daemon_answering_with(label, turns).await;
+        let envelope = post_ask(&base, &key, "return no answer text").await;
+
+        assert!(
+            !envelope.ok,
+            "empty answer text must never be successful: {envelope:?}"
+        );
+        let failure = envelope.error.expect("a terminal failure");
+        assert_eq!(failure.code, "FS3-E-PROVIDER-FAILED");
+        assert_eq!(failure.details["stopped"], "provider_failure");
+
+        database.destroy(pool).await;
+    }
 }

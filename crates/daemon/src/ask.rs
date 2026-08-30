@@ -29,8 +29,8 @@
 
 use async_trait::async_trait;
 use fs3_core::{
-    AgentAnswer, AgentBounds, Result as CoreResult, ToolBox, ToolOutcome, ToolSchema,
-    agent::StopReason,
+    Address, AgentAnswer, AgentBounds, ConversationId, Result as CoreResult, ToolBox, ToolOutcome,
+    ToolSchema, agent::StopReason, catalog, envelope::Failure, views::read::GetPayload,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -51,6 +51,12 @@ pub struct AskRequest {
     /// Restrict to one repository identity, or `all` to search every one.
     #[serde(default)]
     pub repo: Option<String>,
+    /// Content source: `code`, `doc`, `conversation`, or `all` (the default).
+    #[serde(default)]
+    pub source: Option<String>,
+    /// Pin every retrieval and citation to one indexed transcript.
+    #[serde(default)]
+    pub conversation: Option<String>,
 }
 
 /// One tool call, as it happened.
@@ -88,6 +94,27 @@ pub struct AskTraceEntry {
     pub result_chars: usize,
 }
 
+/// One transcript's measured corpus boundary.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct AskConversationCoverage {
+    /// The canonical full guid selected from the caller's short/full/address form.
+    pub guid: String,
+    /// Always one: explicit so consumers do not mistake this for repo coverage.
+    pub count: u8,
+    /// Turns stored in that transcript when the request began.
+    pub turns: i64,
+}
+
+/// The content corpus the loop was actually allowed to inspect.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct AskCorpusCoverage {
+    /// Effective source axis after applying a transcript pin.
+    pub source: String,
+    /// Present only when retrieval was pinned to exactly one conversation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub conversation: Option<AskConversationCoverage>,
+}
+
 /// The finite probe behind an answer, stated separately from its prose.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct AskCoverage {
@@ -97,8 +124,21 @@ pub struct AskCoverage {
     pub iteration_limit: u32,
     /// The top-k requested by each valid search call, in call order.
     pub retrieval_top_k: Vec<i64>,
+    /// The corpus boundary applied to every search and read.
+    pub corpus: AskCorpusCoverage,
     /// Always false: bounded nearest-neighbour retrieval cannot prove completeness.
     pub exhaustive: bool,
+}
+
+/// Evidence retained when ask stops before synthesizing an answer.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct AskPartialEvidence {
+    /// Explicit classification: these facts support investigation, not an answer.
+    pub label: String,
+    /// Addresses the loop read in full before it stopped.
+    pub citations: Vec<String>,
+    /// One measured summary for every completed model iteration.
+    pub findings: Vec<String>,
 }
 
 /// What `POST /ask` answers with.
@@ -110,6 +150,10 @@ pub struct AskReport {
     /// answering — the caller must say so rather than present something else
     /// as the answer.
     pub answer: Option<String>,
+    /// Provider failure text for a run that stopped after gathering evidence.
+    /// Never used as answer prose.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub failure: Option<String>,
     /// Every address the loop actually READ, in order, deduplicated.
     ///
     /// Deliberately what the loop read, not what the model claimed at the end:
@@ -128,7 +172,8 @@ pub struct AskReport {
     /// know; publishing `0` would be a number nobody measured, and a budget
     /// assertion against it would pass while measuring nothing.
     pub tokens_used: Option<u64>,
-    /// Why the run ended: `answered`, `max_iterations` or `token_budget`.
+    /// Why the run ended: `answered`, `max_iterations`, `token_budget`, or
+    /// `provider_failure`.
     pub stopped: String,
     /// Which chat model answered.
     pub model: String,
@@ -141,10 +186,97 @@ pub struct AskReport {
     pub grounded: bool,
 }
 
+impl AskReport {
+    /// Preserve useful reads without presenting them as a synthesized answer.
+    #[must_use]
+    pub fn partial_evidence(&self) -> AskPartialEvidence {
+        let findings = (1..=self.coverage.iterations_used)
+            .map(|iteration| {
+                let calls: Vec<_> = self
+                    .trace
+                    .iter()
+                    .filter(|entry| entry.iteration == iteration)
+                    .collect();
+                if calls.is_empty() {
+                    return format!("iteration {iteration}: no tool result was completed");
+                }
+                let evidence = calls.iter().filter(|entry| entry.evidence).count();
+                let failed = calls.iter().filter(|entry| entry.failed).count();
+                format!(
+                    "iteration {iteration}: {} tool call(s), {evidence} returned evidence, {failed} failed",
+                    calls.len()
+                )
+            })
+            .collect();
+
+        AskPartialEvidence {
+            label: "partial evidence — no answer was synthesized".to_string(),
+            citations: self.citations.clone(),
+            findings,
+        }
+    }
+}
+
+/// Validated request filters, resolved before the first model turn.
+pub struct AskCorpus {
+    source: Option<String>,
+    conversation: Option<fs3_store::ConversationSummary>,
+}
+
+impl AskCorpus {
+    fn coverage(&self) -> AskCorpusCoverage {
+        AskCorpusCoverage {
+            source: if self.conversation.is_some() {
+                "conversation".to_string()
+            } else {
+                self.source.clone().unwrap_or_else(|| "all".to_string())
+            },
+            conversation: self
+                .conversation
+                .as_ref()
+                .map(|conversation| AskConversationCoverage {
+                    guid: conversation.guid.as_str().to_string(),
+                    count: 1,
+                    turns: conversation.turns,
+                }),
+        }
+    }
+}
+
+/// Validate source and resolve a conversation selector without invoking chat.
+pub async fn resolve_corpus(
+    state: &AppState,
+    request: &AskRequest,
+    scope: &Scope,
+) -> Result<AskCorpus, Failure> {
+    crate::search::source_filter(request.source.as_deref())?;
+    if request.conversation.is_some() && matches!(request.source.as_deref(), Some("code" | "doc")) {
+        return Err(Failure::new(
+            &catalog::QUERY_INVALID,
+            "--conversation conflicts with --source code or doc",
+        )
+        .with_fix("use `--source conversation` or `--source all` with `--conversation`"));
+    }
+    let conversation = match request.conversation.as_deref() {
+        Some(selector) => {
+            Some(crate::conversations::resolve_selector(state, selector, scope).await?)
+        }
+        None => None,
+    };
+    Ok(AskCorpus {
+        source: request.source.clone(),
+        conversation,
+    })
+}
+
 /// The tools the loop may call, bound to one request's scope.
 pub struct IndexTools<'a> {
     state: &'a AppState,
     scope: Scope,
+    /// Caller-selected source, immutable across model-issued searches.
+    source: Option<String>,
+    /// Canonical conversation pin, immutable across searches and reads.
+    conversation: Option<ConversationId>,
     /// Addresses actually read, in call order — the citation record.
     read: std::sync::Mutex<Vec<String>>,
     /// Top-k used by each valid search call, in call order.
@@ -154,9 +286,32 @@ pub struct IndexTools<'a> {
 impl<'a> IndexTools<'a> {
     /// Bind the toolbox to the state and the scope this request resolved to.
     pub fn new(state: &'a AppState, scope: Scope) -> Self {
+        Self::with_filters(state, scope, None, None)
+    }
+
+    fn with_corpus(state: &'a AppState, scope: Scope, corpus: &AskCorpus) -> Self {
+        Self::with_filters(
+            state,
+            scope,
+            corpus.source.clone(),
+            corpus
+                .conversation
+                .as_ref()
+                .map(|conversation| conversation.guid.clone()),
+        )
+    }
+
+    fn with_filters(
+        state: &'a AppState,
+        scope: Scope,
+        source: Option<String>,
+        conversation: Option<ConversationId>,
+    ) -> Self {
         Self {
             state,
             scope,
+            source,
+            conversation,
             read: std::sync::Mutex::new(Vec::new()),
             search_limits: std::sync::Mutex::new(Vec::new()),
         }
@@ -181,14 +336,21 @@ impl<'a> IndexTools<'a> {
             .clone()
     }
 
-    /// How a scope should be described to the model, every time.
-    ///
-    /// Takes the scope that was actually APPLIED rather than reading the
-    /// request's, so a widened call reports the width it really had.
-    fn scope_line(scope: &Scope) -> String {
-        match &scope.repo {
-            Some(repo) => format!("scope: repository `{repo}` only"),
-            None => "scope: every indexed repository".to_string(),
+    /// How the immutable scope should be described to the model, every time.
+    fn scope_line(&self, scope: &Scope) -> String {
+        let repository = match &scope.repo {
+            Some(repo) => format!("repository `{repo}` only"),
+            None => "every indexed repository".to_string(),
+        };
+        if let Some(conversation) = &self.conversation {
+            return format!(
+                "scope: {repository}; corpus: one conversation `conv:{}` only",
+                conversation.as_str()
+            );
+        }
+        match self.source.as_deref() {
+            Some(source) => format!("scope: {repository}; source: {source} only"),
+            None => format!("scope: {repository}; source: model-selectable within all sources"),
         }
     }
 
@@ -222,7 +384,16 @@ impl<'a> IndexTools<'a> {
                 .get("path")
                 .and_then(Value::as_str)
                 .map(str::to_string),
-            source: None,
+            source: if self.conversation.is_some() {
+                Some("conversation".to_string())
+            } else {
+                self.source.clone().or_else(|| {
+                    arguments
+                        .get("source")
+                        .and_then(Value::as_str)
+                        .map(str::to_string)
+                })
+            },
             min_score: None,
             limit: Some({
                 let limit = arguments
@@ -239,11 +410,14 @@ impl<'a> IndexTools<'a> {
             ..SearchRequest::default()
         };
 
-        let results = crate::search::search(self.state, &request, &scope)
-            .await
-            .map_err(|failure| {
-                provider_error(&format!("[{}] {}", failure.code, failure.message))
-            })?;
+        let results = match &self.conversation {
+            Some(conversation) => {
+                crate::search::search_in_conversation(self.state, &request, &scope, conversation)
+                    .await
+            }
+            None => crate::search::search(self.state, &request, &scope).await,
+        }
+        .map_err(|failure| provider_error(&format!("[{}] {}", failure.code, failure.message)))?;
 
         if let Some(reason) = &results.empty_because
             && reason.reason == "path_unmatched"
@@ -255,7 +429,7 @@ impl<'a> IndexTools<'a> {
             return Ok(ToolOutcome::nothing(format!(
                 "PATH FILTER UNMATCHED ({}).\n{}\n{}\nDo NOT conclude that the requested \
                  code is absent. Correct the path filter and search again.",
-                Self::scope_line(&scope),
+                self.scope_line(&scope),
                 reason.detail,
                 hint
             )));
@@ -269,17 +443,24 @@ impl<'a> IndexTools<'a> {
             // "nothing here" — counting that as grounding would let a model
             // search once, match nothing, and invent an answer that the report
             // then vouches for.
+            let guidance = if self.conversation.is_some() {
+                "This does NOT mean the subject is absent from the repository — only that nothing \
+                 matched in this ONE pinned conversation. Try a shorter, differently worded query, \
+                 or remove --conversation if the question is not transcript-specific."
+            } else {
+                "This does NOT mean the subject does not exist — only that nothing matched IN THIS \
+                 SCOPE. If the answer might live in another repository, call search again with \
+                 repo=\"all\". Otherwise try a shorter, differently worded query."
+            };
             return Ok(ToolOutcome::nothing(format!(
-                "NO HITS ({}).\nThis does NOT mean the subject does not exist — only that nothing \
-                 matched IN THIS SCOPE. If the answer might live in another repository, call \
-                 search again with repo=\"all\". Otherwise try a shorter, differently worded query.",
-                Self::scope_line(&scope)
+                "NO HITS ({}).\n{guidance}",
+                self.scope_line(&scope)
             )));
         }
 
         let mut rendered = format!(
             "{} — {} hits\n",
-            Self::scope_line(&scope),
+            self.scope_line(&scope),
             results.results.len()
         );
         let mut addresses = Vec::with_capacity(results.results.len());
@@ -300,11 +481,57 @@ impl<'a> IndexTools<'a> {
         Ok(ToolOutcome::evidence_with_references(rendered, addresses))
     }
 
+    fn guard_address(&self, address: &str) -> CoreResult<()> {
+        let parsed = Address::parse(address)
+            .map_err(|error| provider_error(&format!("get address is invalid: {error}")))?;
+        if let Some(conversation) = &self.conversation {
+            return match parsed {
+                Address::Conversation(candidate)
+                    if candidate.guid == conversation.as_str() && candidate.turn.is_some() =>
+                {
+                    Ok(())
+                }
+                _ => Err(provider_error(&format!(
+                    "get is outside the pinned conversation `conv:{}`; use an address returned by search",
+                    conversation.as_str()
+                ))),
+            };
+        }
+        match (self.source.as_deref(), parsed) {
+            (Some("conversation"), Address::Conversation(_)) | (None | Some("all"), _) => Ok(()),
+            (Some("conversation"), _) => Err(provider_error(
+                "get is outside the caller's --source conversation scope",
+            )),
+            (Some("code" | "doc"), Address::Conversation(_)) => Err(provider_error(
+                "get is outside the caller's non-conversation source scope",
+            )),
+            (Some("code" | "doc"), _) => Ok(()),
+            (Some(other), _) => Err(provider_error(&format!(
+                "unsupported immutable ask source `{other}`"
+            ))),
+        }
+    }
+
+    fn payload_in_source(&self, payload: &GetPayload) -> bool {
+        match (self.source.as_deref(), payload) {
+            (None | Some("all"), _) => true,
+            (Some("conversation"), GetPayload::Conversation(_)) => true,
+            (Some("code"), GetPayload::Element(element)) => {
+                matches!(element.kind.as_str(), "file" | "container" | "function")
+            }
+            (Some("doc"), GetPayload::Element(element)) => {
+                matches!(element.kind.as_str(), "section" | "row")
+            }
+            _ => false,
+        }
+    }
+
     async fn run_get(&self, arguments: &Value) -> CoreResult<ToolOutcome> {
         let address = arguments
             .get("address")
             .and_then(Value::as_str)
             .ok_or_else(|| provider_error("get needs a string `address`"))?;
+        self.guard_address(address)?;
         let request = crate::read::GetRequest {
             address: address.to_string(),
             ..Default::default()
@@ -313,6 +540,11 @@ impl<'a> IndexTools<'a> {
         let (payload, _source) = crate::read::get(self.state, &request, &self.scope)
             .await
             .map_err(|failure| provider_error(&failure.message))?;
+        if !self.payload_in_source(&payload) {
+            return Err(provider_error(
+                "get resolved outside the caller's immutable --source scope",
+            ));
+        }
 
         self.read
             .lock()
@@ -339,11 +571,11 @@ impl ToolBox for IndexTools<'_> {
             ToolSchema {
                 name: "search".into(),
                 description: format!(
-                    "Semantic search over the code index. Returns hits with an `address` to pass \
-                     to `get`. Ask meaning-shaped questions, not identifiers. Current {}. Pass \
-                     repo=\"all\" to search every indexed repository when the answer may live \
-                     outside the current one.",
-                    Self::scope_line(&self.scope)
+                    "Semantic search over the complete code, document, and conversation index. \
+                     Returns hits with an `address` to pass to `get`. Ask meaning-shaped questions, \
+                     not identifiers. Current {}. Pass repo=\"all\" to search every indexed \
+                     repository, or source=\"code\"|\"doc\"|\"conversation\" to narrow the corpus.",
+                    self.scope_line(&self.scope)
                 ),
                 parameters: json!({
                     "type": "object",
@@ -351,6 +583,7 @@ impl ToolBox for IndexTools<'_> {
                         "query": {"type": "string", "description": "A short, meaning-shaped question or phrase."},
                         "repo": {"type": "string", "description": "A repository identity, or \"all\" to widen to every indexed repository."},
                         "path": {"type": "string", "description": "Optional glob to restrict paths, e.g. \"crates/daemon/**\"."},
+                        "source": {"type": "string", "enum": ["all", "code", "doc", "conversation"], "description": "Content corpus; absent or all searches every source."},
                         "limit": {"type": "integer", "description": "How many hits (1-15, default 6)."}
                     },
                     "required": ["query"]
@@ -358,9 +591,10 @@ impl ToolBox for IndexTools<'_> {
             },
             ToolSchema {
                 name: "get".into(),
-                description: "Read one address in full — an element with its children, or a whole \
-                              file. Use the `address` exactly as `search` returned it."
-                    .into(),
+                description:
+                    "Read one address in full — a code/document element or a conversation \
+                              turn window. Use the `address` exactly as `search` returned it."
+                        .into(),
                 parameters: json!({
                     "type": "object",
                     "properties": {
@@ -393,7 +627,12 @@ impl ToolBox for IndexTools<'_> {
 /// # Errors
 /// Only when the chat provider itself fails. Tool failures never surface here:
 /// they are fed back to the model, which is what lets it recover.
-pub async fn ask(state: &AppState, request: &AskRequest, scope: Scope) -> CoreResult<AskReport> {
+pub async fn ask(
+    state: &AppState,
+    request: &AskRequest,
+    scope: Scope,
+    corpus: AskCorpus,
+) -> CoreResult<AskReport> {
     let chat = state.agent_for(scope.repo.as_deref());
 
     // Refuse BEFORE the first turn when the port cannot answer. The offline
@@ -415,7 +654,8 @@ pub async fn ask(state: &AppState, request: &AskRequest, scope: Scope) -> CoreRe
         token_budget: state.config.agent.token_budget,
         tool_result_max_chars: state.config.agent.tool_result_max_chars,
     };
-    let tools = IndexTools::new(state, scope);
+    let corpus_coverage = corpus.coverage();
+    let tools = IndexTools::with_corpus(state, scope, &corpus);
 
     let answer: AgentAnswer =
         fs3_core::ask(chat.as_ref(), &tools, bounds, &request.question).await?;
@@ -423,6 +663,7 @@ pub async fn ask(state: &AppState, request: &AskRequest, scope: Scope) -> CoreRe
     Ok(AskReport {
         question: request.question.clone(),
         answer: answer.answer,
+        failure: answer.failure,
         citations: tools.citations(),
         trace: answer
             .trace
@@ -441,6 +682,7 @@ pub async fn ask(state: &AppState, request: &AskRequest, scope: Scope) -> CoreRe
             iterations_used: answer.iterations,
             iteration_limit: bounds.max_iterations,
             retrieval_top_k: tools.search_limits(),
+            corpus: corpus_coverage,
             exhaustive: false,
         },
         iterations: answer.iterations,
@@ -450,6 +692,7 @@ pub async fn ask(state: &AppState, request: &AskRequest, scope: Scope) -> CoreRe
             StopReason::Answered => "answered",
             StopReason::MaxIterations => "max_iterations",
             StopReason::TokenBudget => "token_budget",
+            StopReason::ProviderFailure => "provider_failure",
         }
         .to_string(),
         model: chat.key(),

@@ -127,7 +127,7 @@ fn turn(turn_no: u32, role: TurnRole, body: String) -> Turn {
 }
 
 fn whale() -> String {
-    let prefix = "ordinary prefix material with no retrieval marker ".repeat(500);
+    let prefix = "ordinary prefix material with no retrieval marker ".repeat(320);
     let tail = format!("{ANCHOR} ").repeat(250);
     let body = format!("{prefix}{tail}");
     assert!(

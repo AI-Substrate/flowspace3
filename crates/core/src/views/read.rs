@@ -92,6 +92,9 @@ pub struct TurnView {
     pub at: String,
     /// The turn's prose, verbatim.
     pub body: String,
+    /// Why prose is empty. Absent when `body` contains text.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub body_empty_reason: Option<String>,
     /// Its typed sub-items, already shaped by the intake policy.
     pub items: Vec<TurnItem>,
 }

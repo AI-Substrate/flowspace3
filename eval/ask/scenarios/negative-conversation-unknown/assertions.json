@@ -1,0 +1,10 @@
+{
+  "scenario": "negative-conversation-unknown",
+  "rows": [
+    {"id":"H1","axis":"honesty","type":"envelope-ok","params":{"value":false},"on_unavailable":"fail"},
+    {"id":"H2","axis":"honesty","type":"failure-code","params":{"value":"FS3-E-QUERY-INVALID"},"on_unavailable":"fail"},
+    {"id":"H3","axis":"honesty","type":"failure-message-matches","params":{"patterns":["(?i)no indexed conversation","(?i)this scope"]},"on_unavailable":"fail"},
+    {"id":"H4","axis":"honesty","type":"failure-fix-matches","params":{"patterns":["flowspace3 conversation list"]},"on_unavailable":"fail"},
+    {"id":"C1","axis":"cost","type":"chat-calls-equal","params":{"value":0},"on_unavailable":"fail"}
+  ]
+}

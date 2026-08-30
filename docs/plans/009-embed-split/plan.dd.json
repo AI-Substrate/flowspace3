@@ -42,7 +42,7 @@
       "value": [
         {
           "id": "ac-0001",
-          "claim": "A synthetic input over the per-input cap produces ceil(len/window) chunk vectors with the configured overlap, all sharing (source_hash, source_kind, model_key) and distinct chunk_no; migration proves existing rows read back as chunk_no=0 with no re-embed jobs minted.",
+          "claim": "A synthetic input over the per-input cap produces the step-formula chunk count — 1 + ceil((len - window) / (window - overlap)) for len > window, which equals ceil(len/window) only at overlap=0 — with the configured overlap, all sharing (source_hash, source_kind, model_key) and distinct chunk_no; migration proves existing rows read back as chunk_no=0 with no re-embed jobs minted. [Arithmetic corrected 2026-08-30: original ceil(len/window) promise was wrong for positive overlap — u2's implementation ruled authoritative, prose follows the code's math.]",
           "state": "unchecked"
         },
         {
