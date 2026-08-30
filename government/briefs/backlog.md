@@ -853,3 +853,25 @@ leaving this file should name where it went.
     STORE PATH actually read (and the dedupe_key should derive from the
     resolved path, not the request). Cheap, high-trust fix — this is an
     honesty defect in a surface we are telling other fleets to adopt.
+
+98-NOTE (2026-08-30, coral): the DAEMON-KEY error from the same session is
+    the in-repo counterexample — it printed the exact path it could not
+    read and was fixed in seconds. Dispatch framing: "make the ingest
+    envelope look like the key error" (name what you looked at, never
+    assert a cause you didn't resolve).
+
+99. **incrementality CI canary — coral's three-fire rig, offered as a
+    regression test** (via meadowlark, 2026-08-30). Daemon-isolated
+    (HOME=<fixture> on the DAEMON, not the client — row 98 in action),
+    fixture transcript copied under <fixture-home>/.claude/projects/...,
+    sandbox daemon.key copied into fixture config. Three fires: cold /
+    grown / UNCHANGED — fire 3 is the discriminator (full-re-read-with-
+    dedupe matches fire 2's count; only true position-tracking gives
+    no-growth), and as CI it is ONE number: fire-3 wall drifting 39ms ->
+    ~1900ms alarms incrementality regression with zero semantic
+    assertions. CAVEAT RECORDED WITH THE RECEIPT (coral's words: "a
+    caveat that arrives with the claim is just the claim stated
+    properly"): the 2026-08-30 incremental proof ran under daemon
+    --sandbox with FAKE providers — PROVEN: ingest/store position
+    tracking; UNTESTED: real embedder/summarizer timing. The banked
+    contract receipt is hereby regraded to that honest scope.
