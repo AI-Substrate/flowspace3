@@ -1,0 +1,28 @@
+docs/plans/009-embed-split/packet-coder-u1.dd.json
+  h_9e71e8b09f7cf2 12
+docs/plans/009-embed-split/packet-coder-u1.dd.md
+  h_9e71e8b09f7cf2 15
+docs/plans/009-embed-split/packet-coder-u2.dd.json
+  h_9e71e8b09f7cf2 12
+docs/plans/009-embed-split/packet-coder-u2.dd.md
+  h_9e71e8b09f7cf2 15
+docs/plans/009-embed-split/packet-coder-u3.dd.json
+  h_9e71e8b09f7cf2 12
+docs/plans/009-embed-split/packet-coder-u3.dd.md
+  h_9e71e8b09f7cf2 15
+docs/plans/009-embed-split/packet-reviewer.dd.json
+  h_9e71e8b09f7cf2 9,11-13,18,23-66,72-83,89-92,98-113,119-148
+docs/plans/009-embed-split/packet-reviewer.dd.md
+  h_9e71e8b09f7cf2 2,12,14-16,22,30-40,48-50,58-61,69-72,80-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "775614d469bad7bd7b156a45a7726f1e29b888d3",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
