@@ -189,9 +189,13 @@ to the same filters `search` exposes — so a question phrased with real nouns
 - **`grounded: false` means the answer rests on nothing the loop read.** The loop
   pushes back once and demands evidence before allowing it, so a `false` here is a
   model that insisted. Treat that answer as a guess.
-- **`stopped`** is `answered`, `max_iterations` or `token_budget`. Only `answered`
-  carries an answer; a bounded run returns `null` rather than inventing one, and the
-  fix is a narrower question or higher `[agent]` bounds.
+- **Only `ok: true` + `stopped: answered` carries an answer, and that answer is
+  always non-empty.** `max_iterations`, `token_budget`, and a provider failure
+  after useful reads are `ok: false` terminals with no success `data`. Their
+  `error.details.evidence` is explicitly labelled partial and preserves citations
+  plus one finding per completed iteration. Use it to narrow a follow-up; never
+  present it as the missing answer. For a bound, ask a narrower question or raise
+  the matching `[agent]` bound (`token_budget` defaults to 80,000 and is configurable).
 - **`coverage` names the probe's finite reach.** `retrieval_top_k` records each search
   cap and `exhaustive` is always false. Enumerations are findings from that bounded
   probe, never proof that the listed items are the only ones.
@@ -232,5 +236,5 @@ not a restatement of what went wrong. **Trust the fix field.**
 | Daemon down | `FS3-E-DAEMON-UNAVAILABLE` → `flowspace3 daemon &` (doctor diagnoses but never starts one) |
 | Repo not indexed | `status` shows no root for it → `flowspace3 add /abs/path` |
 | `ask` returned `grounded: false` | it answered without reading anything — treat it as a guess. Check `status` in case nothing is indexed here, then re-ask more narrowly |
-| `ask` stopped at a bound | `stopped` names which; ask a narrower question, or raise `[agent] max_iterations` / `token_budget` |
+| `ask` stopped at a bound | The envelope is `ok:false`; inspect labelled `error.details.evidence`, then ask a narrower question or raise the matching `[agent] max_iterations` / `token_budget` setting. |
 | Anything else | `ok: false` → run the `fix`; `retryable: false` means stop and fix something, do not loop |

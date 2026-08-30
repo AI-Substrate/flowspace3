@@ -184,6 +184,24 @@ The search request is not valid — an empty query, or a filter outside its rang
 | retryable | status |
 | --- | --- |
 | false | 400 |
+### `FS3-E-QUERY-ASK-ITERATION-LIMIT`
+
+Ask reached its iteration limit before producing an answer.
+
+**Fix**: ask a narrower question or raise `[agent] max_iterations` in config.toml.
+
+| retryable | status |
+| --- | --- |
+| false | 500 |
+### `FS3-E-QUERY-ASK-TOKEN-BUDGET`
+
+Ask exhausted its token budget before producing an answer.
+
+**Fix**: ask a narrower question or raise `[agent] token_budget` in config.toml.
+
+| retryable | status |
+| --- | --- |
+| false | 500 |
 ### `FS3-E-QUERY-NO-INDEX`
 
 No embeddings exist for the active model, so a semantic search has nothing to rank.
