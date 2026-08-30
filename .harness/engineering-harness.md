@@ -46,6 +46,7 @@ traces, or screenshots yet — see Back-pressure gaps.
 | Tests | `cargo test --all` | unit/integration behaviour | wired, unexercised |
 | Build | `cargo build --all-targets` (via `harness boot`) | the crate compiles | wired, unexercised |
 | Toolchain | `cargo --version` (via `harness boot`) | the environment can build at all | **live — passes today** |
+| Daemon bounce | `harness daemon bounce --json` | fetched HEAD is current, release builds, the configured listener drains/restarts, and auth + queue surfaces answer | isolated `:17373` drain/restart + 401 tell proven; production transcript is o-prime-owned |
 
 "Wired, unexercised" is the honest reading: the commands are encoded, but no
 crate exists yet, so none of them has proved anything.

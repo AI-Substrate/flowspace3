@@ -34,6 +34,11 @@ const GATES: { name: string; cmd: string; args: string[]; guarded?: boolean }[] 
     cmd: 'node',
     args: ['--test', '.harness/extensions/checks/check-result.test.mjs'],
   },
+  {
+    name: 'daemon-bounce-contract',
+    cmd: 'node',
+    args: ['--test', '.harness/extensions/daemon/bounce.test.mjs'],
+  },
   { name: 'fmt', cmd: 'cargo', args: ['fmt', '--all', '--check'] },
   { name: 'clippy', cmd: 'cargo', args: ['clippy', '--all-targets', '--', '-D', 'warnings'] },
   // `guarded`: this is the gate that WRITES. The production database's schema
