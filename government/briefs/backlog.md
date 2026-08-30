@@ -741,3 +741,17 @@ leaving this file should name where it went.
     pane/log for boot progress and extend the bound while progress is
     visible, or take a --verify-timeout. The honest failure was correct
     behaviour; it just needs a third verdict: BOOTING.
+
+91. **ask TIMEOUT class — scoped ask died at 120s** (meadowlark, 091 fleet,
+    2026-08-30 — seat pij-changing-vulture via PM coral, harness-engineering
+    repo). A scoped ask for transcript-path identity hit a hard 120s timeout
+    and returned nothing. This is a DISTINCT defect class from bad ranking
+    (row 88) and question-substitution (row 83): the ask never answered at
+    all. Unknown split: client timeout vs daemon-side LLM stall vs tool-loop
+    runaway inside the ask agent. Row 89's query/ask ledger is the missing
+    diagnostic — without it we cannot see what the ask agent was doing at
+    death. Meadowlark notes today's dogfood misses now span FOUR seats and
+    TWO repos. Dispatch shape: instrument ask with a per-stage duration
+    trace in the envelope (retrieval / tool loop / synthesis), surface a
+    partial answer + citations on timeout instead of a bare death, and make
+    the timeout configurable. Pairs naturally with row 89.
