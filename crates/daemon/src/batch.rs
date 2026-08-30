@@ -161,12 +161,12 @@ pub fn plan(jobs: &[Job]) -> (Vec<Batch>, Vec<Unreadable>) {
     (batches, unreadable)
 }
 
-/// Cut one group into as few calls as the token budget allows.
+/// Cut one group into as few pre-expansion calls as the token budget allows.
 ///
-/// A single item larger than the whole budget still goes out ALONE rather than
-/// being dropped or split: we cannot divide one text, and refusing it would
-/// leave that element permanently unvectorised — a silent hole in the index,
-/// which is worse than one oversized request the provider may well accept.
+/// A single original item larger than the budget still rides alone here. The
+/// enrichment prepare step now divides it into bounded chunks and re-budgets
+/// those actual provider inputs; retaining this shell preserves job grouping
+/// and retry semantics without sending one unbounded request.
 fn split_to_budget(
     identity: &str,
     source: &str,

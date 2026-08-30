@@ -51,6 +51,8 @@ const CHUNK_WINDOW_TOKENS: usize = 7_500;
 /// Two hundred tokens preserve meaning that straddles a window boundary while
 /// adding little request overhead compared with a 7,500-token window.
 const CHUNK_OVERLAP_TOKENS: usize = 200;
+// A prepared chunk must always be splittable into a legal request by itself.
+const _: () = assert!(CHUNK_WINDOW_TOKENS <= crate::batch::TOKEN_BUDGET);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct ChunkText {
@@ -760,51 +762,76 @@ pub async fn embed_items(
         }
     }
 
-    let started = std::time::Instant::now();
-    let vectors = match embedder.embed(&texts).await {
-        Ok(vectors) => {
-            tracing::info!(
-                kind = EMBED,
-                source = source_kind.as_str(),
-                items = texts.len(),
-                outcome = "ok",
-                ms = started.elapsed().as_millis() as u64,
-                "embed: sent batch of {} texts",
-                texts.len()
-            );
-            vectors
+    // Chunk expansion can increase the request sum through overlap, and a
+    // formerly ride-alone source can expand far beyond one request. Re-budget
+    // the ACTUAL provider inputs here. A single chunk cannot exceed this budget:
+    // CHUNK_WINDOW_TOKENS is far below TOKEN_BUDGET, so every split advances.
+    let mut vectors = Vec::with_capacity(texts.len());
+    let mut first = 0;
+    while first < texts.len() {
+        let mut last = first;
+        let mut spent = 0;
+        while last < texts.len() {
+            let cost = fs3_core::estimate_tokens(&texts[last]);
+            debug_assert!(cost <= crate::batch::TOKEN_BUDGET);
+            if last > first && spent + cost > crate::batch::TOKEN_BUDGET {
+                break;
+            }
+            spent += cost;
+            last += 1;
         }
-        Err(error) => {
-            tracing::info!(
-                kind = EMBED,
-                source = source_kind.as_str(),
-                items = texts.len(),
 
-                outcome = "error",
-                ms = started.elapsed().as_millis() as u64,
-                error = %error,
-                "embed: sent batch of {} texts",
-                texts.len()
-            );
-            return Err(fail(error));
+        let call = &texts[first..last];
+        let started = std::time::Instant::now();
+        let returned = match embedder.embed(call).await {
+            Ok(returned) => {
+                tracing::info!(
+                    kind = EMBED,
+                    source = source_kind.as_str(),
+                    items = call.len(),
+                    tokens = spent,
+                    outcome = "ok",
+                    ms = started.elapsed().as_millis() as u64,
+                    "embed: sent batch of {} texts",
+                    call.len()
+                );
+                returned
+            }
+            Err(error) => {
+                tracing::info!(
+                    kind = EMBED,
+                    source = source_kind.as_str(),
+                    items = call.len(),
+                    tokens = spent,
+                    outcome = "error",
+                    ms = started.elapsed().as_millis() as u64,
+                    error = %error,
+                    "embed: sent batch of {} texts",
+                    call.len()
+                );
+                return Err(fail(error));
+            }
+        };
+
+        if returned.len() != call.len() {
+            return Err(Failure::new(
+                &catalog::PROVIDER_FAILED,
+                format!(
+                    "embedder returned {} vectors for {} texts; the batch cannot be aligned",
+                    returned.len(),
+                    call.len()
+                ),
+            )
+            .retryable(false));
         }
-    };
-
-    // A provider that returns a different number of vectors than it was given
-    // texts has silently misaligned the batch, and storing it would attach every
-    // vector to the wrong hash and chunk — corruption that looks like a working
-    // index until somebody searches.
-    if vectors.len() != prepared.len() {
-        return Err(Failure::new(
-            &catalog::PROVIDER_FAILED,
-            format!(
-                "embedder returned {} vectors for {} texts; the batch cannot be aligned",
-                vectors.len(),
-                prepared.len()
-            ),
-        )
-        .retryable(false));
+        vectors.extend(returned);
+        first = last;
     }
+
+    // No rows are written until EVERY sub-call succeeds and aligns. The one
+    // put_embeddings call below therefore retains the store's all-chunks-in-one
+    // transaction guarantee even when buying the vectors takes several calls.
+    debug_assert_eq!(vectors.len(), prepared.len());
 
     let rows: Vec<NewEmbedding<'_>> = prepared
         .iter()
