@@ -1,0 +1,18 @@
+crates/daemon/tests/embed_split.rs
+  h_9e71e8b09f7cf2 1-264
+crates/store/src/embeddings.rs
+  h_9e71e8b09f7cf2 50-74,304-374,376,540,542-683,686-688,691-693,695-702,709,717,720-785,787-806,808
+crates/store/tests/pg_store_flows.rs
+  h_9e71e8b09f7cf2 24,75-96,687-853
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9ad6c91b2ec9440ed0a956b2783bec0e99b14610",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
