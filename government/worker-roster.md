@@ -51,3 +51,16 @@ All revivable. "CLOSED" = pane killed, descriptor dissolved, work fully landed o
 
 - Address ONLY canaried ids. Canary records live in `.harness/government/canaries/`.
 - Released ≠ dead ≠ closed: a released seat is adopted-idle; a CLOSED seat's pane is gone and needs `pij revive <id>`; native session ids above are the resume keys.
+
+## 2026-08-30 seats (post-governance-cutover; canaries verified by owl for its coders)
+
+| seat | packet / role | status |
+|---|---|---|
+| pij-associated-owl | PM plan 009-embed-split (opus-5 med, fs3-embed-split). Two doctrine-grade stop-and-asks (S4 phantom collapse; impossible shared-worktree + u2->u1 type dep) — both ratified, plan amended aa165aaf/50aeeb71 | ACTIVE |
+| pij-above-ferbin | 009 u1-store (sol-fast-1m high, fs3-embed-split-u1, branch u1-store): chunk_no key + terminal-heal | ACTIVE |
+| pij-striped-guan | 009 u2-enrich (fs3-embed-split-u2, u2-enrich): chunk_plan + two-layer hygiene | ACTIVE |
+| pij-surprised-hare | 009 u3-read (fs3-embed-split-u3, u3-read): element collapse in nearest CTE + ac-0002/3/6 fixtures | ACTIVE |
+| pij-unhappy-mollusk | w-ask-budget-honesty row 71 (fs3-ask-budget-honesty): honest ask terminals + partial-evidence salvage; lands ask.rs BEFORE bovid (ruling) | ACTIVE |
+| pij-light-bovid | w-ask-conv-scope row 85 (fs3-ask-conv-scope): enforced --conversation/--source pinning; rebases after mollusk | ACTIVE |
+| pij-cloudy-krill | standing read-only queue/ingest-efficiency monitor (Jordan-ordered); audit + live alerts in scratch/queue-waste-audit.md | STANDING |
+| pij-double-halibut | w-daemon-bounce #77 (bounce verb) — merged; observations rescued to main .harness/temp/agent/daemon-bounce-observations.md (row 93) | CLOSED 2026-08-30 |
