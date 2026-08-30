@@ -838,3 +838,18 @@ leaving this file should name where it went.
     tool-trace tail; the seat's first read caught only the trace and
     re-ran with --json — one wasted probe. Fix: answer first, trace
     below a fold/flag (--trace to show), citations adjacent to answer.
+
+38-NOTE (2026-08-30, coral via meadowlark): sandbox DB leak confirmed
+    KILL-only — graceful exit drops the minted DB (verified against
+    docker pg_database). Row narrows to the SIGTERM/SIGKILL path.
+
+98. **conversation ingest envelope echoes CALLER INTENT, not the resolved
+    store** (coral R1 proof via meadowlark, 2026-08-30; fixture-only,
+    sandboxed, read-only). dedupe_key/envelope carry the REQUESTED folder
+    while the daemon resolves the session store from ITS OWN env — so a
+    client-side HOME override silently ingests the REAL store while every
+    visible signal says fixture. Misleading-success family (same genus as
+    the git-rm no-op and stale-binary bounce). Fix: envelope must name the
+    STORE PATH actually read (and the dedupe_key should derive from the
+    resolved path, not the request). Cheap, high-trust fix — this is an
+    honesty defect in a surface we are telling other fleets to adopt.
