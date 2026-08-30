@@ -101,6 +101,17 @@ pub struct AskCoverage {
     pub exhaustive: bool,
 }
 
+/// Evidence retained when ask stops before synthesizing an answer.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct AskPartialEvidence {
+    /// Explicit classification: these facts support investigation, not an answer.
+    pub label: String,
+    /// Addresses the loop read in full before it stopped.
+    pub citations: Vec<String>,
+    /// One measured summary for every completed model iteration.
+    pub findings: Vec<String>,
+}
+
 /// What `POST /ask` answers with.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct AskReport {
@@ -110,6 +121,10 @@ pub struct AskReport {
     /// answering — the caller must say so rather than present something else
     /// as the answer.
     pub answer: Option<String>,
+    /// Provider failure text for a run that stopped after gathering evidence.
+    /// Never used as answer prose.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub failure: Option<String>,
     /// Every address the loop actually READ, in order, deduplicated.
     ///
     /// Deliberately what the loop read, not what the model claimed at the end:
@@ -128,7 +143,8 @@ pub struct AskReport {
     /// know; publishing `0` would be a number nobody measured, and a budget
     /// assertion against it would pass while measuring nothing.
     pub tokens_used: Option<u64>,
-    /// Why the run ended: `answered`, `max_iterations` or `token_budget`.
+    /// Why the run ended: `answered`, `max_iterations`, `token_budget`, or
+    /// `provider_failure`.
     pub stopped: String,
     /// Which chat model answered.
     pub model: String,
@@ -139,6 +155,37 @@ pub struct AskReport {
     /// model that insisted. Carried as a FIELD rather than as prose in
     /// `next_action` because an evaluator cannot assert on a warning.
     pub grounded: bool,
+}
+
+impl AskReport {
+    /// Preserve useful reads without presenting them as a synthesized answer.
+    #[must_use]
+    pub fn partial_evidence(&self) -> AskPartialEvidence {
+        let findings = (1..=self.coverage.iterations_used)
+            .map(|iteration| {
+                let calls: Vec<_> = self
+                    .trace
+                    .iter()
+                    .filter(|entry| entry.iteration == iteration)
+                    .collect();
+                if calls.is_empty() {
+                    return format!("iteration {iteration}: no tool result was completed");
+                }
+                let evidence = calls.iter().filter(|entry| entry.evidence).count();
+                let failed = calls.iter().filter(|entry| entry.failed).count();
+                format!(
+                    "iteration {iteration}: {} tool call(s), {evidence} returned evidence, {failed} failed",
+                    calls.len()
+                )
+            })
+            .collect();
+
+        AskPartialEvidence {
+            label: "partial evidence — no answer was synthesized".to_string(),
+            citations: self.citations.clone(),
+            findings,
+        }
+    }
 }
 
 /// The tools the loop may call, bound to one request's scope.
@@ -428,6 +475,7 @@ pub async fn ask(state: &AppState, request: &AskRequest, scope: Scope) -> CoreRe
     Ok(AskReport {
         question: request.question.clone(),
         answer: answer.answer,
+        failure: answer.failure,
         citations: tools.citations(),
         trace: answer
             .trace
@@ -455,6 +503,7 @@ pub async fn ask(state: &AppState, request: &AskRequest, scope: Scope) -> CoreRe
             StopReason::Answered => "answered",
             StopReason::MaxIterations => "max_iterations",
             StopReason::TokenBudget => "token_budget",
+            StopReason::ProviderFailure => "provider_failure",
         }
         .to_string(),
         model: chat.key(),
