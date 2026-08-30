@@ -1,0 +1,29 @@
+government/handovers/2026-08-30-lynx-compaction-packet.md
+  s_15d888f4b629c1::t_6202a001989c5c 1-96
+scratch/whale-drain-rate.csv
+  s_f5a59eaabcfb7d::t_9140ed61da8b67 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a800f0e82973dcfb16eb30b3e432cfe86adea5f9",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_f5a59eaabcfb7d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a8ee5f-0c77-4a73-9109-a12db9cd18a8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
