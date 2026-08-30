@@ -962,3 +962,11 @@ leaving this file should name where it went.
     whether items feed prepared text is a VERIFY for u2 (relayed to owl);
     embedding FROM items when body is empty is this row, dispatched
     separately if 009 confirms the gap.
+
+104-NOTE (2026-08-30, bovid post-coding): sharper failure order for the
+    93b/104 dispatch — `harness docker status` MISSES the global named DB
+    entirely, then `up` creates a stray worktree volume BEFORE hitting the
+    container-name collision, leaving cleanup debris. Fix status/adoption
+    to see the named container first; four seat-hits today across the
+    family. Also recurring: cargo multi-filter misuse x3 -> encoding is a
+    harness focused-test verb accepting multiple names.
