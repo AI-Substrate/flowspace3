@@ -18,3 +18,8 @@ It's entirely a prime concept." Ruled GO ("Q1: yes - do it").
 - STAYS in main: `docs/plans/<ord>-<slug>/` plan folders (they ride code
   PRs and the-flow archival), anything CI/gates read, product code and docs.
 - Main keeps a stub `.harness/government/README.md` pointing here.
+
+---
+**Addendum (same day)**: Jordan GO'd ("ye") the prod dup-root repair —
+migration 0020 (PR #78) heals the four duplicate-root blobs and requeues the
+29 failed scans, applied at the post-train daemon bounce.
