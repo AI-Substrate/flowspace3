@@ -875,3 +875,30 @@ leaving this file should name where it went.
     --sandbox with FAKE providers — PROVEN: ingest/store position
     tracking; UNTESTED: real embedder/summarizer timing. The banked
     contract receipt is hereby regraded to that honest scope.
+
+99-RESHAPE (2026-08-30, coral retraction, relayed before action): absolute
+    wall-time alarm WITHDRAWN — coral ran its own rig twice (1909/373/39ms
+    vs 516/571/107ms): ~4x run-to-run drift, and the grown<cold ordering
+    reversed. Row 99 gates on STRUCTURAL invariants only, reproduced twice
+    on independent DBs: growth ingested (91->168), no-growth re-fire adds
+    NOTHING (168->168), guid stable. Timing prints as an advisory NOTE of
+    the within-run ratio (fire3 << fire1; 49x and 4.8x measured). Script
+    to lift wholesale: scratch/smoke091/run-smoke.sh in the s091 worktree
+    (daemon-side isolation baked in, client-HOME trap documented). Also:
+    third confirmation of row 38's graceful-stop-drops-DB narrowing.
+
+100. **P1 REGRESSION — conversations are WRITE-ONLY: listed but neither
+    gettable nor searchable** (dajeil dd-repro + lynx flowspace3-repro,
+    2026-08-30, post-#80/bounce). conversation list shows guid + turn
+    counts; get "conv:<guid>#t<n>" returns FS3-E-QUERY-NOT-FOUND "no
+    conversation ... is indexed"; --source conversation search returns
+    composition conversation:0 for ANY term (e.g. "watchdog") in ANY repo
+    scope; unscoped search returns code+doc healthy, conversation 0.
+    PRIME SUSPECT: #80's conversation scope filter compares mismatched
+    repo-string formats — list renders repo "github.com/AI-Substrate/dd"
+    while query scope carries "git:github.com/AI-Substrate/...". ask with
+    explicit --repo still retrieves turns (ermine dossier + lynx 179s ask
+    both worked TODAY), so storage is intact and at least one read path
+    joins correctly. Every fleet's compaction-recovery mechanism is dark
+    until this lands. Dispatched w-conv-readback (o-prime initiative,
+    severity; Jordan may veto).
