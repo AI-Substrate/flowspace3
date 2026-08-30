@@ -1,0 +1,14 @@
+crates/store/tests/pg_migrations.rs
+  h_9e71e8b09f7cf2 285,288,304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "35bc8ef0391740884c8b5ea32149445268744012",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
