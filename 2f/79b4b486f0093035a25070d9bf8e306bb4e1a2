@@ -1,0 +1,23 @@
+eval/ask/terminal-fixtures/token-budget.json
+  s_15d888f4b629c1::t_c60dc2ef7fc0dc 1-25
+crates/core/src/agent.rs
+  s_15d888f4b629c1::t_075d671ffeb5a8 175-176,212-215,268-284,317,322,347-358,360-361,376,381,425,430,460,503-526,904-980
+crates/daemon/src/http.rs
+  s_15d888f4b629c1::t_0cb71b457d5ed8 189-202,211-253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2f79b4b486f0093035a25070d9bf8e306bb4e1a2",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
