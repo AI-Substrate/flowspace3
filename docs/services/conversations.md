@@ -16,9 +16,10 @@ CLI                    daemon                     store
 conversation import →  POST /conversations     →  conversations + turns
                        (shape, then append)       + elements(kind='turn')
                        enqueue delta only      →  summarize / embed lanes
-search --source conversation → kind filter     →  embeddings_1024
-get conv:<guid>#t<n>   → window()              →  turns, by primary key
-tree conv:<guid>       → outline()             →  turns, lean columns
+search --source conversation → kind filter     → embeddings_1024
+ask --conversation <guid>    → guid + kind     → every search/get in one transcript
+get conv:<guid>#t<n>         → window()        → turns, by primary key
+tree conv:<guid>             → outline()       → turns, lean columns
 ```
 
 Two ref-layer tables (migration 0013) and ONE join key. `turns.blob_sha` is the
@@ -66,6 +67,14 @@ ranks code, document, and conversation elements together. `--source code`,
 Raw and smart remain internal vector spaces, and `match_field` says which won.
 The pre-limit scored set also produces `composition`, so threshold-matching
 turns remain visible as a count when file hits occupy the returned top-k.
+
+**A conversation pin is a hard retrieval boundary.** `ask --conversation`
+resolves a short guid, full guid, or `conv:` address before chat begins, then
+binds the resolved guid inside every semantic and lexical candidate chooser and
+rejects `get` outside that transcript. Coverage reports one conversation and
+its stored turn count. Unknown, malformed, ambiguous, or source-contradictory
+pins return `FS3-E-QUERY-INVALID` and point to `conversation list`; they never
+spend a model turn.
 
 ## Gotchas discovered
 

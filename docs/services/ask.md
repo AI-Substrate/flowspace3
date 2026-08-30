@@ -69,6 +69,22 @@ The HTTP endpoint is synchronous today: one request remains open until the
 answer or a bound ends the loop. That is an honest first transport for a
 bounded operation, not the final progress experience.
 
+## Corpus scope
+
+`ask` shares search's content axis: `--source code|doc|conversation|all`, with
+the caller's repository scope applied independently. A caller-selected source
+is immutable for the run; model tool calls cannot widen or replace it.
+
+`--conversation <guid-or-conv:address>` is the sharper boundary. It accepts a
+full guid, a unique short prefix, or a `conv:` address, resolves it before chat,
+and pins every semantic/lexical search and `get` to that transcript. Citations
+can therefore only be `conv:<resolved-guid>#t<n>`. `--source code` or `doc`
+contradicts a conversation pin and is rejected rather than broadened.
+
+Unknown, malformed, and ambiguous selectors return `FS3-E-QUERY-INVALID` with
+`flowspace3 conversation list` as the repair. Resolution precedes the first
+chat turn, so this refusal spends zero model tokens.
+
 ## The two properties that are the point
 
 ### Bounded
@@ -85,11 +101,14 @@ amount of text back into the next paid turn. Reaching a bound is a named stop,
 not permission to continue optimistically.
 
 The response also carries `coverage`: `iterations_used`, `iteration_limit`,
-the `retrieval_top_k` used by each search, and `exhaustive: false`. The last
-field is invariant. A bounded nearest-neighbour loop can report what it found;
-it cannot prove that an enumeration is complete. The standing synthesis prompt
-therefore requires enumerations to be phrased as findings, never as “all” or
-“the only” paths.
+the `retrieval_top_k` used by each search, `corpus`, and `exhaustive: false`.
+`corpus.source` names the effective source axis. A pinned run additionally
+reports `corpus.conversation = { guid, count: 1, turns }`, making “one
+conversation of N turns” machine-visible and human-visible. `exhaustive` stays
+false: a bounded nearest-neighbour loop can report what it found, but cannot
+prove an enumeration complete. The standing synthesis prompt therefore
+requires enumerations to be phrased as findings, never as “all” or “the only”
+paths.
 
 Reaching `max_iterations` or `token_budget` without answer text is a terminal
 failure, not a successful report with `answer: null`. The standard envelope has

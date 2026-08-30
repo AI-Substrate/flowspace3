@@ -13,10 +13,46 @@ struct AskReport {
     grounded: bool,
     #[serde(default)]
     trace: Vec<TraceEntry>,
+    #[serde(default)]
+    coverage: Coverage,
     iterations: u32,
     tokens_used: Option<u64>,
     stopped: String,
     model: String,
+}
+
+#[derive(Default, Deserialize)]
+struct Coverage {
+    #[serde(default)]
+    corpus: CorpusCoverage,
+}
+
+#[derive(Default, Deserialize)]
+struct CorpusCoverage {
+    #[serde(default)]
+    source: String,
+    conversation: Option<ConversationCoverage>,
+}
+
+#[derive(Deserialize)]
+struct ConversationCoverage {
+    guid: String,
+    turns: i64,
+}
+
+impl CorpusCoverage {
+    fn summary(&self) -> Option<String> {
+        if let Some(conversation) = &self.conversation {
+            return Some(format!(
+                "one conversation of {} turns (conv:{})",
+                conversation.turns, conversation.guid
+            ));
+        }
+        match self.source.as_str() {
+            "" | "all" => None,
+            source => Some(format!("{source} source only")),
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -77,6 +113,15 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
         for citation in &report.citations {
             append_wrapped(&mut out, citation, width, false);
         }
+    }
+
+    if let Some(corpus) = report.coverage.corpus.summary() {
+        out.push_str(&format!(
+            "\n{}{}  {}\n",
+            theme::GUTTER,
+            "scope".bright_black(),
+            corpus.bright_black()
+        ));
     }
 
     out.push_str(&format!(
@@ -260,5 +305,22 @@ mod tests {
         let screen = plain(&render(&envelope(answered(true, Value::Null)), 80).unwrap());
         assert!(screen.contains("tokens unreported"));
         assert!(!screen.contains("0 tokens"));
+    }
+    #[test]
+    fn pinned_conversation_coverage_is_visible() {
+        let mut report = answered(true, json!(420));
+        report["coverage"] = json!({
+            "corpus": {
+                "source": "conversation",
+                "conversation": {
+                    "guid": "11111111-1111-4111-8111-111111111111",
+                    "count": 1,
+                    "turns": 42
+                }
+            }
+        });
+        let screen = plain(&render(&envelope(report), 100).unwrap());
+        assert!(screen.contains("one conversation of 42 turns"), "{screen}");
+        assert!(screen.contains("conv:11111111-1111-4111-8111-111111111111"));
     }
 }

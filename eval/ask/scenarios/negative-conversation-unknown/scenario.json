@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "slug": "negative-conversation-unknown",
+  "title": "An unknown conversation pin refuses before chat",
+  "lane": "negative-conversation",
+  "request": {
+    "question": "What did this transcript decide about ask scoping?",
+    "cwd": null,
+    "repo": "all",
+    "conversation": "00000000-0000-0000-0000-000000000000"
+  },
+  "assertions": "assertions.json",
+  "ground_truth": {
+    "verified_at": "2026-08-30",
+    "resolution": "The all-zero sentinel guid is not present in conversation list. The endpoint must reject the request before invoking the chat provider.",
+    "refresh_trigger": "Replace the sentinel if that exact guid is ever indexed."
+  }
+}

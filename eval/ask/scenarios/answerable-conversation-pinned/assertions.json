@@ -1,0 +1,14 @@
+{
+  "scenario": "answerable-conversation-pinned",
+  "rows": [
+    {"id":"B1","axis":"boundedness","type":"field-equals-request","params":{"field":"question","request_field":"question"},"on_unavailable":"fail"},
+    {"id":"B2","axis":"boundedness","type":"field-non-null","params":{"field":"answer"},"on_unavailable":"fail"},
+    {"id":"G0","axis":"groundedness","type":"field-equals","params":{"field":"grounded","value":true},"on_unavailable":"fail"},
+    {"id":"G1","axis":"groundedness","type":"citations-all-resolve","params":{},"on_unavailable":"fail"},
+    {"id":"G2","axis":"groundedness","type":"citations-all-match","params":{"pattern":"^conv:f3a6f4d9-f037-864a-a824-c436aa5febb2#t[0-9]+$","min":1},"on_unavailable":"fail"},
+    {"id":"G3","axis":"groundedness","type":"answer-matches-all","params":{"patterns":["(?i)only.*--repo|--repo.*only","(?i)--source","(?i)--conversation"]},"on_unavailable":"fail"},
+    {"id":"S1","axis":"scope","type":"field-equals","params":{"field":"coverage.corpus.conversation.guid","value":"f3a6f4d9-f037-864a-a824-c436aa5febb2"},"on_unavailable":"fail"},
+    {"id":"S2","axis":"scope","type":"field-equals","params":{"field":"coverage.corpus.conversation.count","value":1},"on_unavailable":"fail"},
+    {"id":"S3","axis":"scope","type":"field-i64-min","params":{"field":"coverage.corpus.conversation.turns","min":1},"on_unavailable":"fail"}
+  ]
+}
