@@ -716,3 +716,17 @@ leaving this file should name where it went.
     queries), an archived: flag/downweight on docs/plans/archive/**, or
     kind-aware boosts in the fused ranking (#74 opened the fusion seam).
     Distinct from row 84 (dot-dir exclusion).
+
+89. **no query/ask ledger — searches and asks leave no durable trace**
+    (Jordan, 2026-08-30): the ask envelope's trace (iterations, tool
+    calls, queries issued, citations, tokens, stop reason) is returned to
+    the caller and GONE; search queries aren't persisted at all
+    (user_messages is an operator-notice table, empty). So 'what is ask
+    being used for and is it behaving' is unanswerable after the fact —
+    especially bad for ask, which is non-deterministic and tool-using.
+    Fix: a query ledger — persist every ask run (question, full trace,
+    citations, tokens, model, outcome) and search (query, filters,
+    hit-count, top score, channel mix) with timestamps + caller identity;
+    surfaces: 'flowspace3 ask history / show <id>', retention policy,
+    and it becomes eval-fixture MINING (real failed asks -> fixtures).
+    Jordan's emphasis: tool use matters — the trace is the artifact.

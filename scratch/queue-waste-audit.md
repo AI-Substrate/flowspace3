@@ -208,3 +208,48 @@ That is strong historical confirmation of LIFO. The earliest 04:36 rows include 
 - **Waste:** **137,410 repeat summarize-key generations** and **1.10M repeated embed-item occurrences** consumed queue/SQL work but should not call providers.
 - **Loop:** no hot loop. One bounded defect remains: 8 empty-string embed jobs are non-terminal and revive only on boot, generating repeated 400s and occasionally poisoning large first-attempt batches.
 - **Design:** post-#72/#73/#75 behavior is present: grouped settlement/progress, smart embed median 16, wide raw batches, ~11.3 summaries/s, and clear LIFO correlations.
+
+## Live ingest-efficiency monitor
+
+### 04:47–04:48Z — second wave arrived; empty-input leakage reproduced
+
+At 04:47:50Z, 20 additional conversations had landed after 04:47Z: one 13,040-turn whale plus 19 conversations of 18–130 turns (15,077 turns total). At 04:48:08Z a further 1,223-turn `pij` conversation arrived, taking the wave to 21 conversations / 15,077 turns at the first monitor tick because the 20-conversation count preceded it.
+
+The 13,040-turn whale contained 12,006 unique turn hashes. **433 turns reused content from an earlier conversation**; of the 34 repeated turns eligible for summarization, 33 already had Luna summaries before ingest, and 430/433 repeated turns already had raw vectors. The remaining overlap was either below the summary floor or shared live work, not a second provider purchase.
+
+```sql
+-- conversation e30db99c-bf09-8e83-a803-9ac365bb6d4f
+-- turns | unique hashes | repeated turns | repeated+eligible |
+-- summary pre-cached | raw-vector pre-cached
+-- 13040 | 12006 | 433 | 34 | 33 | 430
+```
+
+**Immediate alert sent to `pij-instant-lynx`: active empty-string leakage.** Between monitor ticks 04:48:30Z and 04:48:45Z, the new wave produced two rejected raw-embed provider calls carrying 544 texts:
+
+```text
+04:48:31.958Z embed: sent batch of 530 texts ... outcome="error"
+  Invalid 'input[204]': input cannot be an empty string.
+04:48:40.131Z embed: sent batch of 14 texts ... outcome="error"
+  Invalid 'input[2]': input cannot be an empty string.
+```
+
+This is the live form of finding 3: one empty turn poisoned **530 innocent texts** in its first merged attempt. The suspect-job rule reduced the next failure to its 14-text source job, but isolation is job-level, not item-level. At 04:48:45Z `empty_failed` remained 8 only because this new poison had not exhausted its ladder.
+
+First 15-second efficiency tick: summarize settled 64 items; raw embed issued 47 successful calls / 1,407 texts (**29.9 texts/call**); smart embed issued 6 successful calls / 63 texts (**10.5/call**). The burst has not degraded raw embedding toward one text per call; smart fill is temporarily below 16 during concurrent ingest/flush and needs continued observation.
+
+At 04:49:01Z the third 14-text rejection completed the ladder: `embed_failed` and `empty_failed` both rose **8 → 9**. The poison is bounded for this process but remains `terminal=false`, so it will be revived at the next daemon boot. The prime received an immediate update.
+
+### 04:49Z — two more live poison jobs
+
+Two additional empty inputs reached Azure. Their first attempts rejected merged batches of **442** and **667** texts; each then failed twice as an isolated 14-text source job. At 04:49:33Z `empty_failed` rose **9 → 11**. Across the live wave so far: **3 new poison jobs, 9 rejected provider calls, and 1,639 texts in the three rejected first-attempt merged batches**. A second immediate alert was sent.
+
+```text
+04:49:05.933Z 442 texts error: empty input[347]
+04:49:08.975Z 667 texts error: empty input[365]
+04:49:12.652Z 14 texts error: empty input[7]
+04:49:17.804Z 14 texts error: empty input[9]
+04:49:21.304Z 14 texts error: empty input[7]
+04:49:29.344Z 14 texts error: empty input[9]
+```
+
+SQL traced all three to conversation `e30db99c-bf09-8e83-a803-9ac365bb6d4f`, turns **1866, 2761, 6548**: `role=agent`, `source=system`, `body_bytes=0`, `items=[]`, `raw_hash=e3b0c442…b855`. The identical empty hash occupied three different 16-item embed payloads, so batch-key dedupe did not collapse it.
