@@ -82,6 +82,8 @@ async fn migrating_an_empty_database_bootstraps_the_whole_schema() {
         "embeddings_1024_vector_idx",
         "elements_lexical_trgm_idx",
         "jobs_live_dedupe_idx",
+        "jobs_claim_embed_idx",
+        "jobs_claim_general_idx",
     ] {
         assert_eq!(
             relation(&pool, index).await.as_deref(),
@@ -105,6 +107,34 @@ async fn migrating_an_empty_database_bootstraps_the_whole_schema() {
             .await
             .expect("asking for the extension should succeed");
     assert_eq!(trigram, 1, "0018 should have created the trigram extension");
+    let definitions: Vec<(String, String)> = sqlx::query_as(
+        "SELECT indexname, indexdef
+           FROM pg_indexes
+          WHERE schemaname = 'public'
+            AND indexname IN ('jobs_claim_embed_idx', 'jobs_claim_general_idx')
+          ORDER BY indexname",
+    )
+    .fetch_all(&pool)
+    .await
+    .expect("the pending claim indexes should be inspectable");
+    assert_eq!(definitions.len(), 2, "both claim lanes need an access path");
+    for (name, definition) in definitions {
+        assert!(
+            definition.contains("(priority DESC, id DESC) INCLUDE (not_before)"),
+            "{name} must retain priority-first LIFO ordering: {definition}"
+        );
+        assert!(
+            definition.contains("state = 'pending'"),
+            "{name} must exclude settled history: {definition}"
+        );
+        match name.as_str() {
+            "jobs_claim_embed_idx" => assert!(definition.contains("kind = 'embed'")),
+            "jobs_claim_general_idx" => {
+                assert!(definition.contains("scan_file") && definition.contains("summarize"));
+            }
+            _ => unreachable!("the query admits only the two claim indexes"),
+        }
+    }
 
     database.destroy(pool).await;
 }
