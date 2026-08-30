@@ -1,0 +1,23 @@
+government/briefs/backlog.md
+  s_15d888f4b629c1::t_e6ddd0bf766aca 719-732
+scratch/queue-waste-audit.md
+  s_15d888f4b629c1::t_1995a2e45a8aab 211-255
+scratch/whale-drain-rate.csv
+  s_15d888f4b629c1::t_5f712367a96904 7-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "875a6fcacd64db178007346b09f5d7e5622c07f4",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
