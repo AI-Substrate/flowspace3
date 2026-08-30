@@ -681,3 +681,16 @@ leaving this file should name where it went.
     source/scope filters search has, plus --conversation <guid> pinning
     retrieval (and citations) to that transcript's turns. Natural
     follow-on to #80.
+
+86. **conv-guid trap + whale-scale searchability lag (docs/envelope)**
+    (meadowlark's 14.5k-turn ingest, 2026-08-30): (a) every integrator
+    will query conv:<session-uuid> once and get NOT-FOUND, because the
+    conversation guid is DERIVED — the ingest envelope's next_action
+    names only claude/<session>; it should ALSO name the derived
+    conv:<guid> so the trap dies at the moment it fires. (b) at whale
+    size the gap between "landed" (get serves 14.5k turns instantly) and
+    "findable" (10k summarize pending, hours) is real — one honest docs
+    sentence: rows are immediate, semantic findability follows the
+    enrichment queue. RECEIPT of the day: 14,575 turns, 29ms submit,
+    ZERO deadlocks — the same burst shape that stormed at 7.4k pre-#72/73;
+    the settlement+microbatch fixes measurably cured row 78.
