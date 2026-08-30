@@ -86,8 +86,8 @@
     {
       "name": "scope",
       "value": {
-        "worktree": "<PM fills: read-only checkout path at review time>",
-        "branch": "009-embed-split",
+        "worktree": "/Users/jordanknight/substrate/flowspace/fs3-embed-split-review (READ-ONLY detached worktree pinned to the sha below; it exists so you review a frozen tree nobody is editing)",
+        "branch": "009-embed-split at sha 3387d7612816d87dec9b95bce2ca29c54dbfa02a (base for the diff: origin/main)",
         "fence": "READ-ONLY on all code; you may write ONLY docs/plans/009-embed-split/assets/reviews/**",
         "forbidden_note": "No code edits, no commits, no merges, no government files, no PRs. Never touch the production daemon on port 7373. Review a committed sha, never a moving tree."
       }
