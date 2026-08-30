@@ -1,0 +1,21 @@
+crates/store/migrations/0021_conversation_repo_identity.sql
+  s_15d888f4b629c1::t_82edc845a49f59 1-25
+crates/store/src/conversations.rs
+  s_15d888f4b629c1::t_71cc18286b4794 137-146,155-163,166-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c287b6dd130d93dc5500c22b41725ff291cd623b",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
