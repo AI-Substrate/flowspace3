@@ -136,6 +136,7 @@ async fn seed_search_hit(state: &AppState, question: &str) -> String {
         &state.db,
         &state.embedder_key(&identity_text),
         &[NewEmbedding {
+            chunk_no: 0,
             source_hash: &raw_hash,
             source_kind: SourceKind::Raw,
             vector: &vector,
@@ -260,6 +261,7 @@ async fn daemon_with_no_hit_search(
         &state.db,
         &state.embedder_key(""),
         &[NewEmbedding {
+            chunk_no: 0,
             source_hash: &orphan_hash,
             source_kind: SourceKind::Raw,
             vector: &vector,

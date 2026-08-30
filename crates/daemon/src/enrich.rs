@@ -45,6 +45,95 @@ pub const EMBED: &str = "embed";
 /// rather than a whole file's worth.
 pub const EMBED_BATCH: usize = 16;
 
+/// A provider input stays below the 8,192-token hosted-model cap with enough
+/// headroom for the byte-based estimate to be conservative rather than exact.
+const CHUNK_WINDOW_TOKENS: usize = 7_500;
+/// Two hundred tokens preserve meaning that straddles a window boundary while
+/// adding little request overhead compared with a 7,500-token window.
+const CHUNK_OVERLAP_TOKENS: usize = 200;
+// A prepared chunk must always be splittable into a legal request by itself.
+const _: () = assert!(CHUNK_WINDOW_TOKENS <= crate::batch::TOKEN_BUDGET);
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ChunkText {
+    chunk_no: usize,
+    text: String,
+}
+
+/// Split one text into overlapping, UTF-8-safe provider inputs.
+///
+/// For `len > window`, the count is
+/// `1 + ceil((len - window) / (window - overlap))`: overlap advances each
+/// subsequent window by the smaller step, not by the full window width.
+fn chunk_plan(text: &str, window_tokens: usize, overlap_tokens: usize) -> Vec<ChunkText> {
+    assert!(window_tokens > 0, "a chunk window must be non-zero");
+    assert!(
+        overlap_tokens < window_tokens,
+        "chunk overlap must be smaller than its window"
+    );
+
+    let window_bytes = window_tokens.saturating_mul(fs3_core::BYTES_PER_TOKEN);
+    if text.len() <= window_bytes {
+        return vec![ChunkText {
+            chunk_no: 0,
+            text: text.to_string(),
+        }];
+    }
+
+    let overlap_bytes = overlap_tokens.saturating_mul(fs3_core::BYTES_PER_TOKEN);
+    let mut chunks = Vec::new();
+    let mut start = 0;
+
+    while start < text.len() {
+        let target_end = start.saturating_add(window_bytes).min(text.len());
+        let mut end = target_end;
+        while end > start && !text.is_char_boundary(end) {
+            end -= 1;
+        }
+        if end == start {
+            end = text[start..]
+                .char_indices()
+                .nth(1)
+                .map_or(text.len(), |(offset, _)| start + offset);
+        }
+
+        chunks.push(ChunkText {
+            chunk_no: chunks.len(),
+            text: text[start..end].to_string(),
+        });
+        if end == text.len() {
+            break;
+        }
+
+        let target_start = end.saturating_sub(overlap_bytes);
+        let mut next = target_start;
+        while next > start && !text.is_char_boundary(next) {
+            next -= 1;
+        }
+        if next <= start {
+            next = text[start..]
+                .char_indices()
+                .nth(1)
+                .map_or(end, |(offset, _)| start + offset);
+        }
+        start = next.min(end);
+    }
+
+    chunks
+}
+
+fn embedding_text_is_nonblank(source_hash: &str, source_kind: SourceKind, text: &str) -> bool {
+    if !text.trim().is_empty() {
+        return true;
+    }
+    tracing::warn!(
+        %source_hash,
+        kind = source_kind.as_str(),
+        "dropping empty or whitespace-only embedding input at mint"
+    );
+    false
+}
+
 /// Summarise one element's text.
 ///
 /// The job carries everything the summariser reads — kind, name, address, span,
@@ -149,8 +238,10 @@ pub fn source_kind_of(source: &str) -> Result<SourceKind, Failure> {
 /// NO children is the opposite case: prose, an unknown language, a grammar fs3
 /// does not have. There the file element IS the content.
 fn earns_raw_vector(element: &Element) -> bool {
-    !element.raw_text.is_empty()
-        && (element.kind != fs3_core::ElementKind::File || element.children.is_empty())
+    if element.kind == fs3_core::ElementKind::File && !element.children.is_empty() {
+        return false;
+    }
+    embedding_text_is_nonblank(element.raw_hash(), SourceKind::Raw, &element.raw_text)
 }
 
 /// Queue the enrichment a freshly-scanned tree earns.
@@ -238,7 +329,10 @@ pub async fn enqueue_for_turns(
     let mut summarized = 0;
 
     for element in turns {
-        raw_batch.push((element.raw_hash().to_string(), element.raw_text.clone()));
+        let earns_vector = earns_raw_vector(element);
+        if earns_vector {
+            raw_batch.push((element.raw_hash().to_string(), element.raw_text.clone()));
+        }
         if raw_batch.len() == EMBED_BATCH {
             enqueue_embed(
                 state,
@@ -249,7 +343,9 @@ pub async fn enqueue_for_turns(
             .await?;
         }
 
-        if fs3_core::conversation::earns_summary(&element.raw_text, summary_floor_bytes) {
+        if earns_vector
+            && fs3_core::conversation::earns_summary(&element.raw_text, summary_floor_bytes)
+        {
             let summarize = SummarizeJob {
                 identity: identity.to_string(),
                 raw_hash: element.raw_hash().to_string(),
@@ -412,6 +508,9 @@ pub async fn summarize(state: &AppState, value: serde_json::Value) -> Result<(),
         .map_err(fail)?
     {
         let text_hash = fs3_core::content_hash(existing.text.as_bytes());
+        if !embedding_text_is_nonblank(&text_hash, SourceKind::Smart, &existing.text) {
+            return Ok(());
+        }
         return enqueue_embed(
             state,
             &job.identity,
@@ -491,6 +590,9 @@ pub async fn summarize(state: &AppState, value: serde_json::Value) -> Result<(),
     // keyed by the hash of the summary TEXT, which is what lets a smart hit
     // resolve back to the code it describes.
     let text_hash = fs3_core::content_hash(summary.text.as_bytes());
+    if !embedding_text_is_nonblank(&text_hash, SourceKind::Smart, &summary.text) {
+        return Ok(());
+    }
     enqueue_embed(
         state,
         &job.identity,
@@ -618,108 +720,128 @@ pub async fn embed_items(
 
     // THE PER-INPUT GUARD.
     //
-    // The batch planner budgets the SUM of a request; nothing budgeted any
-    // single member of it, and an embeddings API caps both. An input over the
-    // cap is not a slow or an expensive call — it is
-    // `400 Invalid 'input[0]': maximum input length is 8192 tokens`, which the
-    // retry ladder reproduces exactly three times before failing the job for
-    // good. Fifty-nine elements of a real repository sat in that state,
-    // unsearchable, with the queue's own memory saying the work was finished.
-    //
-    // Truncate rather than skip: the head of a large element is most of what a
-    // search wants from it, and a vector of the head beats no vector at all.
-    // Splitting one element into several vectors is the better answer and is
-    // deliberately NOT here — it changes what a `source_hash` addresses (one
-    // hash would own an ordered set of vectors, and every consumer that treats
-    // "has a vector" as a boolean would need to learn about partial sets). It
-    // slots in exactly at this loop, where one item currently becomes one
-    // text.
+    // The batch planner budgets the SUM of a request; this prepares each
+    // individual member. Oversized content becomes overlapping inputs under
+    // one source hash, so every byte is represented without changing job
+    // identity or provider wire shape.
+    struct PreparedChunk<'a> {
+        source_hash: &'a str,
+        chunk_no: i16,
+    }
+
     let cap = embedder.max_input_tokens();
-    let mut texts: Vec<String> = Vec::with_capacity(items.len());
-    let mut shortened: Vec<bool> = Vec::with_capacity(items.len());
+    let mut prepared = Vec::with_capacity(items.len());
+    let mut texts = Vec::with_capacity(items.len());
     for (hash, text) in &items {
-        match fs3_core::fit_to_cap(text, cap) {
-            None => {
-                texts.push(text.clone());
-                shortened.push(false);
-            }
-            Some(prefix) => {
-                // WARN rather than DEBUG: this is a permanent, invisible
-                // reduction in what the index knows about one element. It is
-                // the right trade and it is still a loss, and a loss nobody is
-                // told about is how an index quietly stops being trustworthy.
+        for chunk in chunk_plan(text, CHUNK_WINDOW_TOKENS, CHUNK_OVERLAP_TOKENS) {
+            let chunk_no = i16::try_from(chunk.chunk_no).map_err(|_| {
+                Failure::new(
+                    &catalog::PROVIDER_FAILED,
+                    format!("input {hash} needs more chunks than the store can address"),
+                )
+                .retryable(false)
+            })?;
+            if fs3_core::estimate_tokens(&chunk.text) > cap {
+                // This should be unreachable for current hosted models because
+                // the chosen window is below their cap. Keep it loud: a future
+                // smaller model or denser tokenizer must not fail invisibly.
                 tracing::warn!(
                     source_hash = %hash,
                     kind = source_kind.as_str(),
                     cap,
-                    from_bytes = text.len(),
-                    to_bytes = prefix.len(),
-                    "input exceeds the model's per-input cap; embedding a prefix of it"
+                    chunk_no,
+                    bytes = chunk.text.len(),
+                    "input exceeds the model's per-input cap after chunking"
                 );
-                texts.push(prefix.to_string());
-                shortened.push(true);
             }
+            prepared.push(PreparedChunk {
+                source_hash: hash,
+                chunk_no,
+            });
+            texts.push(chunk.text);
         }
     }
 
-    let started = std::time::Instant::now();
-    let vectors = match embedder.embed(&texts).await {
-        Ok(vectors) => {
-            tracing::info!(
-                kind = EMBED,
-                source = source_kind.as_str(),
-                items = texts.len(),
-                outcome = "ok",
-                ms = started.elapsed().as_millis() as u64,
-                "embed: sent batch of {} texts",
-                texts.len()
-            );
-            vectors
+    // Chunk expansion can increase the request sum through overlap, and a
+    // formerly ride-alone source can expand far beyond one request. Re-budget
+    // the ACTUAL provider inputs here. A single chunk cannot exceed this budget:
+    // CHUNK_WINDOW_TOKENS is far below TOKEN_BUDGET, so every split advances.
+    let mut vectors = Vec::with_capacity(texts.len());
+    let mut first = 0;
+    while first < texts.len() {
+        let mut last = first;
+        let mut spent = 0;
+        while last < texts.len() {
+            let cost = fs3_core::estimate_tokens(&texts[last]);
+            debug_assert!(cost <= crate::batch::TOKEN_BUDGET);
+            if last > first && spent + cost > crate::batch::TOKEN_BUDGET {
+                break;
+            }
+            spent += cost;
+            last += 1;
         }
-        Err(error) => {
-            tracing::info!(
-                kind = EMBED,
-                source = source_kind.as_str(),
-                items = texts.len(),
-                outcome = "error",
-                ms = started.elapsed().as_millis() as u64,
-                error = %error,
-                "embed: sent batch of {} texts",
-                texts.len()
-            );
-            return Err(fail(error));
-        }
-    };
 
-    // A provider that returns a different number of vectors than it was given
-    // texts has silently misaligned the batch, and storing it would attach every
-    // vector to the wrong hash — a corruption that looks exactly like a working
-    // index until somebody searches.
-    if vectors.len() != items.len() {
-        return Err(Failure::new(
-            &catalog::PROVIDER_FAILED,
-            format!(
-                "embedder returned {} vectors for {} texts; the batch cannot be aligned",
-                vectors.len(),
-                items.len()
-            ),
-        )
-        .retryable(false));
+        let call = &texts[first..last];
+        let started = std::time::Instant::now();
+        let returned = match embedder.embed(call).await {
+            Ok(returned) => {
+                tracing::info!(
+                    kind = EMBED,
+                    source = source_kind.as_str(),
+                    items = call.len(),
+                    tokens = spent,
+                    outcome = "ok",
+                    ms = started.elapsed().as_millis() as u64,
+                    "embed: sent batch of {} texts",
+                    call.len()
+                );
+                returned
+            }
+            Err(error) => {
+                tracing::info!(
+                    kind = EMBED,
+                    source = source_kind.as_str(),
+                    items = call.len(),
+                    tokens = spent,
+                    outcome = "error",
+                    ms = started.elapsed().as_millis() as u64,
+                    error = %error,
+                    "embed: sent batch of {} texts",
+                    call.len()
+                );
+                return Err(fail(error));
+            }
+        };
+
+        if returned.len() != call.len() {
+            return Err(Failure::new(
+                &catalog::PROVIDER_FAILED,
+                format!(
+                    "embedder returned {} vectors for {} texts; the batch cannot be aligned",
+                    returned.len(),
+                    call.len()
+                ),
+            )
+            .retryable(false));
+        }
+        vectors.extend(returned);
+        first = last;
     }
 
-    // Keyed by the ORIGINAL hash, deliberately. A truncated embedding is THE
-    // embedding for that content: keying it by the prefix's hash would make
-    // the dedupe pre-check above answer "not embedded" for ever, and every
-    // scan would buy the same vector again.
-    let rows: Vec<NewEmbedding<'_>> = items
+    // No rows are written until EVERY sub-call succeeds and aligns. The one
+    // put_embeddings call below therefore retains the store's all-chunks-in-one
+    // transaction guarantee even when buying the vectors takes several calls.
+    debug_assert_eq!(vectors.len(), prepared.len());
+
+    let rows: Vec<NewEmbedding<'_>> = prepared
         .iter()
         .zip(&vectors)
-        .zip(&shortened)
-        .map(|(((hash, _), vector), truncated)| NewEmbedding {
-            source_hash: hash,
+        .map(|(chunk, vector)| NewEmbedding {
+            source_hash: chunk.source_hash,
             source_kind,
+            chunk_no: chunk.chunk_no,
             vector,
-            truncated: *truncated,
+            truncated: false,
         })
         .collect();
 
@@ -781,6 +903,88 @@ fn subject(address: &str) -> Element {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn token_bytes(tokens: usize) -> String {
+        "x".repeat(tokens * fs3_core::BYTES_PER_TOKEN)
+    }
+
+    fn reassemble_overlaps(chunks: &[ChunkText]) -> String {
+        let mut whole = chunks.first().expect("at least one chunk").text.clone();
+        for chunk in &chunks[1..] {
+            let overlap = (0..=whole.len().min(chunk.text.len()))
+                .rev()
+                .find(|&bytes| {
+                    whole.is_char_boundary(whole.len() - bytes)
+                        && chunk.text.is_char_boundary(bytes)
+                        && whole.ends_with(&chunk.text[..bytes])
+                })
+                .expect("zero bytes always overlap");
+            whole.push_str(&chunk.text[overlap..]);
+        }
+        whole
+    }
+
+    #[test]
+    fn chunk_plan_keeps_cap_minus_one_and_exactly_cap_whole() {
+        for tokens in [3, 4] {
+            let text = token_bytes(tokens);
+            assert_eq!(
+                chunk_plan(&text, 4, 1),
+                vec![ChunkText { chunk_no: 0, text }]
+            );
+        }
+    }
+
+    #[test]
+    fn chunk_plan_splits_one_token_over_cap() {
+        let chunks = chunk_plan(&token_bytes(5), 4, 1);
+        assert_eq!(chunks.len(), 2);
+        assert_eq!(chunks[0].chunk_no, 0);
+        assert_eq!(chunks[1].chunk_no, 1);
+    }
+
+    #[test]
+    fn chunk_plan_uses_the_overlap_step_for_three_windows_of_input() {
+        // 12 bytes per window, 3 bytes overlap: 1 + ceil((36 - 12) / 9) = 4.
+        let chunks = chunk_plan(&token_bytes(12), 4, 1);
+        assert_eq!(chunks.len(), 4);
+        assert_eq!(
+            chunks
+                .iter()
+                .map(|chunk| chunk.chunk_no)
+                .collect::<Vec<_>>(),
+            vec![0, 1, 2, 3]
+        );
+    }
+
+    #[test]
+    fn chunk_plan_preserves_a_phrase_crossing_the_window_boundary() {
+        let text = "123456789needleTAIL";
+        let chunks = chunk_plan(text, 4, 2);
+        assert!(
+            chunks.iter().any(|chunk| chunk.text.contains("needle")),
+            "the overlap must keep a boundary-spanning phrase intact: {chunks:?}"
+        );
+        assert_eq!(reassemble_overlaps(&chunks), text);
+    }
+
+    #[test]
+    fn chunk_plan_snaps_utf8_boundaries_and_always_advances() {
+        let text = "aé中🙂z";
+        let chunks = chunk_plan(text, 2, 1);
+        assert!(chunks.len() > 1, "the fixture must cross a window");
+        assert_eq!(reassemble_overlaps(&chunks), text);
+        assert!(chunks.iter().all(|chunk| !chunk.text.is_empty()));
+
+        let wider_than_window = "🙂🙂";
+        let tiny = chunk_plan(wider_than_window, 1, 0);
+        assert_eq!(
+            tiny.iter()
+                .map(|chunk| chunk.text.as_str())
+                .collect::<String>(),
+            wider_than_window
+        );
+        assert_eq!(tiny.len(), 2, "one wide character per progressing chunk");
+    }
 
     /// Keyed by CONTENT, so forty branches holding one body enqueue one job —
     /// the D2 saving, made visible at the queue rather than only at the table.

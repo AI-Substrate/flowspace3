@@ -148,6 +148,52 @@ pub fn run() -> Result<()> {
         ))
 }
 
+/// Recover enrichment jobs the queue's own memory has written off, in the one
+/// order that works: retire the unrunnable, THEN revive the rest.
+///
+/// Order is the whole contract of this function. [`fs3_store::requeue_failed`]
+/// wakes every failed `summarize`/`embed` job that is not `terminal`, so a
+/// retirement that ran afterwards would hand the empty-input jobs a fresh life
+/// on every boot and merely close the door behind them. Retiring first is what
+/// makes the poison stay dead.
+///
+/// The rows each half catches are both measured, not hypothetical. An
+/// empty-bodied conversation turn mints an embed job whose text is the empty
+/// string, and the provider rejects the WHOLE merged call it rides in: one such
+/// turn rejected 530 innocent texts on 2026-08-30, and three of them cost nine
+/// calls and 1,639 texts. Separately, fifty-nine elements of a live index sat
+/// failed three-attempts-at-a-time against the model's per-input token cap
+/// until the binary learned to split them. `enrich` now refuses to mint empty
+/// inputs and `batch::plan` drops any handed to it, so no new poison appears —
+/// this is how each fix reaches the rows its bug already claimed, with no
+/// repair command to discover and no SQL to write.
+///
+/// Cheap by construction: a requeued job whose vectors already exist settles on
+/// its own pre-check without a provider call.
+///
+/// Public so the boot recovery sequence can be proven by test rather than
+/// assumed — a heal nothing invokes is a heal that does not exist.
+pub async fn recover_enrichment_jobs(db: &fs3_store::PgPool) {
+    match fs3_store::retire_empty_embed_jobs(db).await {
+        Ok(0) => {}
+        Ok(retired) => tracing::info!(
+            retired,
+            "terminally retired failed embed jobs containing only empty input"
+        ),
+        Err(error) => tracing::error!(%error, "cannot retire empty failed embed jobs"),
+    }
+
+    match fs3_store::requeue_failed(db, &[crate::enrich::SUMMARIZE, crate::enrich::EMBED]).await {
+        Ok(0) => {}
+        Ok(swept) => tracing::info!(
+            swept,
+            "requeued enrichment jobs that had run out of attempts; a fix in this binary may \
+             cover them"
+        ),
+        Err(error) => tracing::error!(%error, "cannot requeue failed enrichment jobs"),
+    }
+}
+
 /// Run an isolated daemon until it is asked to stop.
 ///
 /// Only the ambient database location is reused, narrowly, to choose the
@@ -445,35 +491,7 @@ async fn serve(
         }
     }
 
-    // Give work that ran out of attempts one more life, also BEFORE the runner
-    // starts. Enrichment failures have no other way back: `summarize` and
-    // `embed` jobs are minted by a scan, and a scan of an unchanged tree
-    // enqueues nothing, so a failed one is the end of the line for that
-    // element's vector or summary — permanently unsearchable content that the
-    // queue's own memory records as finished business.
-    //
-    // That is not hypothetical. Fifty-nine elements of a live index sat exactly
-    // there, killed three attempts at a time by the embedding model's
-    // per-input token cap, until the guard in `enrich::embed_items` gave them a
-    // request that can succeed. This sweep is how the fix reaches the rows the
-    // bug already claimed — and it is why the fix arriving as a new binary is
-    // enough, with no repair command to discover and no SQL to write.
-    //
-    // Cheap by construction: a requeued job whose vectors already exist settles
-    // on its own pre-check without a provider call, and jobs that failed for a
-    // reason no rerun can fix are marked `terminal` and never woken (migration
-    // 0011).
-    match fs3_store::requeue_failed(&state.db, &[crate::enrich::SUMMARIZE, crate::enrich::EMBED])
-        .await
-    {
-        Ok(0) => {}
-        Ok(swept) => tracing::info!(
-            swept,
-            "requeued enrichment jobs that had run out of attempts; a fix in this binary may \
-             cover them"
-        ),
-        Err(error) => tracing::error!(%error, "cannot requeue failed enrichment jobs"),
-    }
+    recover_enrichment_jobs(&state.db).await;
 
     // Re-enqueue vectors that were never bought, also BEFORE the runner starts.
     //

@@ -16,11 +16,12 @@ use fs3_core::{
 };
 use fs3_store::{
     EMBEDDING_DIMENSIONS, NewEmbedding, PgPool, SearchFilters, SourceKind, StoreError, claim_job,
-    complete_job, enqueue_job, fail_job, get_smart_content, missing_embeddings, missing_enrichment,
-    put_embeddings, put_smart_content, query_embeddings, register_worktree, search_elements,
-    sync_worktree_files, upsert_element_tree,
+    complete_job, enqueue_job, existing_embedding_hashes, fail_job, get_smart_content,
+    missing_embeddings, missing_enrichment, put_embeddings, put_smart_content, query_embeddings,
+    register_worktree, requeue_failed, search_elements, sync_worktree_files, upsert_element_tree,
 };
 use fs3_testkit::fakes::{FakeEmbedder, FakeSummarizer};
+use pgvector::Vector;
 use std::collections::BTreeMap;
 use std::time::Duration;
 use support::{FreshDatabase, PARSER_VERSION, unique_blob};
@@ -69,6 +70,28 @@ async fn count(pool: &PgPool, sql: &str) -> i64 {
         .fetch_one(pool)
         .await
         .expect("counting should succeed")
+}
+
+fn test_vector(x: f32, y: f32) -> Vec<f32> {
+    let mut vector = vec![0.0; EMBEDDING_DIMENSIONS];
+    vector[0] = x;
+    vector[1] = y;
+    vector
+}
+
+async fn insert_chunk(pool: &PgPool, source_hash: &str, chunk_no: i16, vector: &[f32]) {
+    sqlx::query(
+        "INSERT INTO embeddings_1024
+             (source_hash, source_kind, chunk_no, model_key, vector, truncated)
+         VALUES ($1, 'raw', $2, $3, $4, false)",
+    )
+    .bind(source_hash)
+    .bind(chunk_no)
+    .bind(EMBEDDER)
+    .bind(Vector::from(vector.to_vec()))
+    .execute(pool)
+    .await
+    .expect("inserting a chunk vector");
 }
 
 // ── Decision D2: enrichment is content-addressed ────────────────────────────
@@ -273,6 +296,7 @@ async fn the_vector_sweep_finds_both_spaces_and_forgets_what_lands() {
         &pool,
         EMBEDDER,
         &[NewEmbedding {
+            chunk_no: 0,
             source_hash: &raw_hash,
             source_kind: SourceKind::Raw,
             vector: &vector[0],
@@ -559,6 +583,67 @@ async fn failing_a_job_records_why() {
     database.destroy(pool).await;
 }
 
+/// The boot heal retires only failed embed jobs whose every text is blank.
+#[tokio::test]
+async fn empty_embed_job_heal_is_terminal_counted_and_refuses_real_text() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let poison_payload = serde_json::json!({
+        "identity": "github.com/acme/repo",
+        "source": "raw",
+        "items": [["not-the-empty-hash", ""], ["also-not-empty-hash", " \t\n\u{2003}"]]
+    });
+    let real_payload = serde_json::json!({
+        "identity": "github.com/acme/repo",
+        "source": "raw",
+        "items": [["e3b0c44298fc1c149afbf4c8996fb924", "real text"]]
+    });
+    let poison_id: i64 = sqlx::query_scalar(
+        "INSERT INTO jobs (kind, dedupe_key, payload, state, attempts, last_error)
+         VALUES ('embed', 'embed:blank', $1, 'failed', 3, 'empty provider input')
+         RETURNING id",
+    )
+    .bind(poison_payload)
+    .fetch_one(&pool)
+    .await
+    .expect("seed blank failed embed job");
+    let real_id: i64 = sqlx::query_scalar(
+        "INSERT INTO jobs (kind, dedupe_key, payload, state, attempts, last_error)
+         VALUES ('embed', 'embed:real', $1, 'failed', 3, 'provider unavailable')
+         RETURNING id",
+    )
+    .bind(real_payload)
+    .fetch_one(&pool)
+    .await
+    .expect("seed real-text failed embed job");
+
+    let retired = fs3_store::jobs::retire_empty_embed_jobs(&pool)
+        .await
+        .expect("heal empty embed jobs");
+    assert_eq!(retired, 1, "the count is the boot receipt");
+
+    let swept = requeue_failed(&pool, &["embed"])
+        .await
+        .expect("run the real boot sweep");
+    assert_eq!(swept, 1, "the real-text control must remain revivable");
+
+    let poison: (String, bool) = sqlx::query_as("SELECT state, terminal FROM jobs WHERE id = $1")
+        .bind(poison_id)
+        .fetch_one(&pool)
+        .await
+        .expect("read healed poison job");
+    assert_eq!(poison, ("failed".to_string(), true));
+    let control: (String, bool) = sqlx::query_as("SELECT state, terminal FROM jobs WHERE id = $1")
+        .bind(real_id)
+        .fetch_one(&pool)
+        .await
+        .expect("read real-text control job");
+    assert_eq!(control, ("pending".to_string(), false));
+
+    database.destroy(pool).await;
+}
+
 // ── Decision D4: FOR UPDATE SKIP LOCKED ─────────────────────────────────────
 
 /// A row another worker holds is STEPPED OVER, not waited on.
@@ -659,7 +744,243 @@ async fn two_claimers_never_take_the_same_job() {
     database.destroy(pool).await;
 }
 
+/// One source may own many chunks, while rewriting one chunk remains an upsert.
+#[tokio::test]
+async fn embedding_chunks_round_trip_and_same_chunk_upserts() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+    let source_hash = content_hash(b"one source split into overlapping chunks");
+    let zero = vec![0.0; EMBEDDING_DIMENSIONS];
+    let mut changed = zero.clone();
+    changed[0] = 1.0;
+
+    put_embeddings(
+        &pool,
+        EMBEDDER,
+        &[
+            NewEmbedding {
+                source_hash: &source_hash,
+                source_kind: SourceKind::Raw,
+                chunk_no: 0,
+                vector: &zero,
+                truncated: false,
+            },
+            NewEmbedding {
+                source_hash: &source_hash,
+                source_kind: SourceKind::Raw,
+                chunk_no: 1,
+                vector: &zero,
+                truncated: false,
+            },
+        ],
+    )
+    .await
+    .expect("write both chunks atomically");
+    put_embeddings(
+        &pool,
+        EMBEDDER,
+        &[NewEmbedding {
+            source_hash: &source_hash,
+            source_kind: SourceKind::Raw,
+            chunk_no: 1,
+            vector: &changed,
+            truncated: false,
+        }],
+    )
+    .await
+    .expect("rewrite one chunk");
+
+    let chunks: Vec<(i16, bool)> = sqlx::query_as(
+        "SELECT chunk_no, vector::text LIKE '[1,%'
+           FROM embeddings_1024
+          WHERE source_hash = $1 AND source_kind = 'raw' AND model_key = $2
+          ORDER BY chunk_no",
+    )
+    .bind(&source_hash)
+    .bind(EMBEDDER)
+    .fetch_all(&pool)
+    .await
+    .expect("read stored chunks");
+    assert_eq!(chunks, [(0, false), (1, true)]);
+    assert_eq!(
+        existing_embedding_hashes(&pool, EMBEDDER, SourceKind::Raw, &[&source_hash])
+            .await
+            .expect("run hash-level pre-check"),
+        [source_hash].into_iter().collect(),
+        "many chunks still collapse to one completed source hash"
+    );
+
+    database.destroy(pool).await;
+}
+
 // ── Search: HNSW, then the join back to the element ─────────────────────────
+
+/// Several chunk vectors for one element collapse to its best-scored chunk.
+///
+/// Mutation check: removing `nearest`'s DISTINCT ON returns all three rows;
+/// choosing the first or last chunk reports a non-zero distance.
+#[tokio::test]
+async fn chunk_matches_collapse_to_one_element_with_the_best_score() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let file = file_with(
+        "src/whale.rs",
+        &["pub fn whale() { search_the_whole_turn() }"],
+    );
+    upsert_element_tree(
+        &pool,
+        &unique_blob(),
+        PARSER_VERSION,
+        &file,
+        declarations_only,
+    )
+    .await
+    .expect("insert element");
+
+    let hash = file.children[0].raw_hash();
+    let query = test_vector(1.0, 0.0);
+    insert_chunk(&pool, hash, 0, &test_vector(0.0, 1.0)).await;
+    insert_chunk(&pool, hash, 1, &query).await;
+    insert_chunk(&pool, hash, 2, &test_vector(1.0, 0.5)).await;
+
+    let hits = query_embeddings(&pool, EMBEDDER, &query, 10)
+        .await
+        .expect("query chunks");
+    assert_eq!(hits.len(), 1, "one element must produce one result row");
+    assert_eq!(hits[0].element.address, file.children[0].address);
+    assert!(
+        hits[0].distance < 1e-6,
+        "the middle chunk is the exact match and must supply the score, got {}",
+        hits[0].distance
+    );
+
+    database.destroy(pool).await;
+}
+
+/// A whale with more chunks than the initial candidate cap cannot consume the
+/// whole result page. The read path must expand and return distinct elements.
+///
+/// Mutation check: removing the collapse returns three whale rows and loses
+/// both non-whale elements.
+#[tokio::test]
+async fn a_whale_beyond_the_initial_candidate_cap_cannot_crowd_out_other_elements() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let bodies = [
+        "pub fn whale() { repeated_matching_chunks() }",
+        "pub fn dolphin() { still_deserves_a_result() }",
+        "pub fn minnow() { still_deserves_a_result_too() }",
+    ];
+    let file = file_with("src/ocean.rs", &bodies);
+    upsert_element_tree(
+        &pool,
+        &unique_blob(),
+        PARSER_VERSION,
+        &file,
+        declarations_only,
+    )
+    .await
+    .expect("insert elements");
+
+    let query = test_vector(1.0, 0.0);
+    // LIMIT 3 starts with 12 candidates. Thirteen closer whale chunks force
+    // the geometric expansion path before either other element can appear.
+    for chunk_no in 0..13 {
+        insert_chunk(&pool, file.children[0].raw_hash(), chunk_no, &query).await;
+    }
+    insert_chunk(
+        &pool,
+        file.children[1].raw_hash(),
+        0,
+        &test_vector(1.0, 0.1),
+    )
+    .await;
+    insert_chunk(
+        &pool,
+        file.children[2].raw_hash(),
+        0,
+        &test_vector(1.0, 0.2),
+    )
+    .await;
+
+    let hits = search_elements(
+        &pool,
+        EMBEDDER,
+        &query,
+        &SearchFilters {
+            limit: 3,
+            ..SearchFilters::default()
+        },
+    )
+    .await
+    .expect("search chunks");
+
+    assert_eq!(hits.len(), 3, "LIMIT 3 means three elements, not vectors");
+    let addresses = hits
+        .iter()
+        .map(|hit| hit.similar.element.address.as_str())
+        .collect::<Vec<_>>();
+    for child in &file.children {
+        assert!(
+            addresses.contains(&child.address.as_str()),
+            "{} was crowded out by whale chunks: {addresses:?}",
+            child.address
+        );
+    }
+
+    database.destroy(pool).await;
+}
+
+/// A tail-only match is searchable only when the whale's tail chunk exists.
+/// The prefix-only sibling is the reproducible chunking-off control.
+#[tokio::test]
+async fn a_tail_chunk_is_retrievable_while_a_prefix_only_control_is_not() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let bodies = [
+        "whale with a stored tail chunk containing the retrieval anchor",
+        "whale control whose stored vector covers only its prefix",
+    ];
+    let file = file_with("src/tails.rs", &bodies);
+    upsert_element_tree(
+        &pool,
+        &unique_blob(),
+        PARSER_VERSION,
+        &file,
+        declarations_only,
+    )
+    .await
+    .expect("insert elements");
+
+    let query = test_vector(1.0, 0.0);
+    let prefix = test_vector(0.0, 1.0);
+    insert_chunk(&pool, file.children[0].raw_hash(), 0, &prefix).await;
+    insert_chunk(&pool, file.children[0].raw_hash(), 1, &query).await;
+    insert_chunk(&pool, file.children[1].raw_hash(), 0, &prefix).await;
+
+    let hits = search_elements(
+        &pool,
+        EMBEDDER,
+        &query,
+        &SearchFilters {
+            source: Some(SourceKind::Raw),
+            max_distance: Some(0.05),
+            limit: 10,
+            ..SearchFilters::default()
+        },
+    )
+    .await
+    .expect("search tail anchor");
+
+    assert_eq!(hits.len(), 1, "the prefix-only control must not match");
+    assert_eq!(hits[0].similar.element.address, file.children[0].address);
+    assert!(hits[0].similar.distance < 1e-6);
+
+    database.destroy(pool).await;
+}
 
 /// Nearest first, and a summary hit resolves to the element it describes.
 #[tokio::test]
@@ -701,6 +1022,7 @@ async fn similarity_ranks_nearest_first_and_resolves_back_to_elements() {
         .iter()
         .zip(&vectors)
         .map(|(element, vector)| NewEmbedding {
+            chunk_no: 0,
             source_hash: element.raw_hash(),
             source_kind: SourceKind::Raw,
             vector,
@@ -761,6 +1083,7 @@ async fn similarity_ranks_nearest_first_and_resolves_back_to_elements() {
         &pool,
         EMBEDDER,
         &[NewEmbedding {
+            chunk_no: 0,
             source_hash: &content_hash(summary.text.as_bytes()),
             source_kind: SourceKind::Smart,
             vector: &summary_vector,
@@ -849,6 +1172,7 @@ async fn the_filtered_search_surface_carries_extras_and_a_live_path() {
         &pool,
         EMBEDDER,
         &[NewEmbedding {
+            chunk_no: 0,
             source_hash: &content_hash(summary.text.as_bytes()),
             source_kind: SourceKind::Smart,
             vector: &vector,
@@ -897,6 +1221,7 @@ async fn a_vector_of_the_wrong_width_is_refused_by_name() {
         &pool,
         EMBEDDER,
         &[NewEmbedding {
+            chunk_no: 0,
             source_hash: &content_hash(b"anything"),
             source_kind: SourceKind::Raw,
             vector: &narrow,

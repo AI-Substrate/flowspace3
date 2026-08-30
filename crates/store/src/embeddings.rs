@@ -47,6 +47,31 @@ pub const EMBEDDING_DIMENSIONS: usize = 1024;
 /// ignores it instead of taking search down.
 const ITERATIVE_SCAN: &str = "SET LOCAL hnsw.iterative_scan = strict_order";
 
+/// Start with enough vectors for ordinary two- or three-chunk elements while
+/// keeping the common ANN scan small.
+const INITIAL_CANDIDATE_MULTIPLIER: i64 = 4;
+/// Double only when the current candidate page is full and still under-fills
+/// the requested number of distinct elements.
+const CANDIDATE_GROWTH_FACTOR: i64 = 2;
+/// Refuse rather than return a silently under-filled page after eight retries.
+/// At the largest page a limit of ten examines at most 10,240 vectors.
+const MAX_CANDIDATE_EXPANSIONS: usize = 8;
+
+fn candidate_count(rows: &[sqlx::postgres::PgRow]) -> Result<i64, StoreError> {
+    rows.first()
+        .map(|row| row.try_get("candidate_count"))
+        .transpose()
+        .map(|count| count.unwrap_or(0))
+        .map_err(StoreError::from)
+}
+
+fn candidate_limit_exhausted(limit: i64) -> StoreError {
+    StoreError::Query(sqlx::Error::Protocol(format!(
+        "semantic search could not fill {limit} distinct elements after \
+         {MAX_CANDIDATE_EXPANSIONS} candidate expansions"
+    )))
+}
+
 /// Which text a vector was made from.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SourceKind {
@@ -87,14 +112,15 @@ pub struct NewEmbedding<'a> {
     pub source_hash: &'a str,
     /// Which of the two this vector describes.
     pub source_kind: SourceKind,
+    /// Zero-based position of this vector's overlapping source-text chunk.
+    pub chunk_no: i16,
     /// The vector itself, [`EMBEDDING_DIMENSIONS`] wide.
     pub vector: &'a [f32],
-    /// Whether the text embedded was a PREFIX of the content `source_hash`
-    /// names, because the whole of it exceeded the model's per-input cap.
+    /// Whether the text embedded was a PREFIX of its chunk because even that
+    /// chunk exceeded the model's per-input cap.
     ///
-    /// The row is still keyed by the original hash — a truncated embedding is
-    /// THE embedding for that content — so this flag is the only thing that
-    /// distinguishes complete coverage from partial. See migration 0010.
+    /// Retained as inventory for a deferred backfill of vectors written before
+    /// chunking replaced whole-content prefix truncation.
     pub truncated: bool,
 }
 
@@ -106,14 +132,12 @@ pub struct NewEmbedding<'a> {
 /// strand elements), and this is what makes RE-EXECUTION free rather than just
 /// re-execution CORRECT.
 ///
-/// # Why all three key columns
+/// # Why the key includes kind and chunk
 ///
-/// The primary key is `(source_hash, source_kind, model_key)`. Filtering on
-/// hash and model alone would treat a stored `raw` vector as covering the
-/// `smart` vector for the same hash — the two are different text and different
-/// meaning. That would silently under-embed and leave a permanently incomplete
-/// index that looks exactly like a working one, which is the same failure
-/// class as a misaligned batch and just as undetectable after the fact.
+/// The primary key is `(source_hash, source_kind, chunk_no, model_key)`.
+/// Filtering on hash and model alone would treat a stored `raw` vector as
+/// covering the `smart` vector for the same hash. The pre-check deliberately
+/// answers at hash granularity: any chunk proves the atomic batch landed.
 ///
 /// # Errors
 /// [`StoreError::Query`] when the lookup fails.
@@ -127,11 +151,10 @@ pub async fn existing_embedding_hashes(
         return Ok(HashSet::new());
     }
 
-    // ANY($3) over the primary key: one round trip whatever the batch size,
-    // and an index lookup rather than a scan of the settled history.
+    // DISTINCT collapses a chunked source back to the hash-level pre-check.
     let owned: Vec<String> = hashes.iter().map(|hash| (*hash).to_string()).collect();
     let rows = sqlx::query(
-        "SELECT source_hash FROM embeddings_1024
+        "SELECT DISTINCT source_hash FROM embeddings_1024
           WHERE model_key = $1 AND source_kind = $2 AND source_hash = ANY($3)",
     )
     .bind(model_key)
@@ -204,14 +227,16 @@ pub async fn put_embeddings(
     let mut tx = pool.begin().await?;
     for row in embeddings {
         sqlx::query(
-            "INSERT INTO embeddings_1024 (source_hash, source_kind, model_key, vector, truncated)
-             VALUES ($1, $2, $3, $4, $5)
-             ON CONFLICT (source_hash, source_kind, model_key) DO UPDATE SET
+            "INSERT INTO embeddings_1024
+               (source_hash, source_kind, chunk_no, model_key, vector, truncated)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (source_hash, source_kind, chunk_no, model_key) DO UPDATE SET
                vector = EXCLUDED.vector,
                truncated = EXCLUDED.truncated",
         )
         .bind(row.source_hash)
         .bind(row.source_kind.as_str())
+        .bind(row.chunk_no)
         .bind(model_key)
         .bind(Vector::from(row.vector.to_vec()))
         .bind(row.truncated)
@@ -276,45 +301,79 @@ pub async fn query_embeddings(
         });
     }
 
-    let rows = sqlx::query(
-        "WITH nearest AS (
-             SELECT source_hash, source_kind, vector <=> $1 AS distance
-               FROM embeddings_1024
-              WHERE model_key = $2
-              ORDER BY vector <=> $1
-              LIMIT $3
-         )
-         SELECT n.source_kind, n.distance,
-                s.text, s.tags, s.extras,
-                e.blob_sha, e.parser_version, e.kind, e.subkind, e.name,
-                e.address, e.span_start, e.span_end, e.sibling_order, e.raw_text,
-                e.ddoc
-           FROM nearest n
-           LEFT JOIN LATERAL (
-                SELECT sc.raw_hash, sc.text, sc.tags, sc.extras
-                  FROM smart_content sc
-                 WHERE n.source_kind = 'smart' AND sc.text_hash = n.source_hash
-                 ORDER BY sc.created_at, sc.model_key
-                 LIMIT 1
-           ) s ON TRUE
-           JOIN LATERAL (
-                SELECT el.id, el.blob_sha, el.parser_version, el.kind, el.subkind,
-                       el.name, el.address, el.span_start, el.span_end,
-                       el.sibling_order, el.raw_text, el.ddoc
-                  FROM elements el
-                 WHERE el.raw_hash = COALESCE(s.raw_hash, n.source_hash)
-                 ORDER BY el.id
-                 LIMIT 1
-           ) e ON TRUE
-          ORDER BY n.distance",
-    )
-    .bind(Vector::from(query.to_vec()))
-    .bind(model_key)
-    .bind(limit)
-    .fetch_all(pool)
-    .await?;
+    let mut candidate_limit = limit.saturating_mul(INITIAL_CANDIDATE_MULTIPLIER);
+    for expansion in 0..=MAX_CANDIDATE_EXPANSIONS {
+        let rows = sqlx::query(
+            "WITH candidate_vectors AS MATERIALIZED (
+                 SELECT source_hash, source_kind, chunk_no,
+                        vector <=> $1 AS distance
+                   FROM embeddings_1024
+                  WHERE model_key = $2
+                  ORDER BY vector <=> $1
+                  LIMIT $3
+             ),
+             candidate_meta AS (
+                 SELECT count(*)::bigint AS candidate_count
+                   FROM candidate_vectors
+             ),
+             resolved AS (
+                 SELECT c.source_hash, c.source_kind, c.chunk_no, c.distance,
+                        s.text, s.tags, s.extras,
+                        e.id AS element_id,
+                        e.blob_sha, e.parser_version, e.kind, e.subkind, e.name,
+                        e.address, e.span_start, e.span_end, e.sibling_order,
+                        e.raw_text, e.ddoc
+                   FROM candidate_vectors c
+                   LEFT JOIN LATERAL (
+                        SELECT sc.raw_hash, sc.text, sc.tags, sc.extras
+                          FROM smart_content sc
+                         WHERE c.source_kind = 'smart' AND sc.text_hash = c.source_hash
+                         ORDER BY sc.created_at, sc.model_key
+                         LIMIT 1
+                   ) s ON TRUE
+                   JOIN LATERAL (
+                        SELECT el.id, el.blob_sha, el.parser_version, el.kind,
+                               el.subkind, el.name, el.address, el.span_start,
+                               el.span_end, el.sibling_order, el.raw_text, el.ddoc
+                          FROM elements el
+                         WHERE el.raw_hash = COALESCE(s.raw_hash, c.source_hash)
+                         ORDER BY el.id
+                         LIMIT 1
+                   ) e ON TRUE
+             ),
+             nearest AS (
+                 SELECT DISTINCT ON (element_id) *
+                   FROM resolved
+                  ORDER BY element_id, distance, source_kind, source_hash, chunk_no
+             )
+             SELECT n.source_kind, n.distance,
+                    n.text, n.tags, n.extras,
+                    n.blob_sha, n.parser_version, n.kind, n.subkind, n.name,
+                    n.address, n.span_start, n.span_end, n.sibling_order, n.raw_text,
+                    n.ddoc, m.candidate_count
+               FROM nearest n
+               CROSS JOIN candidate_meta m
+              ORDER BY n.distance, n.element_id
+              LIMIT $4",
+        )
+        .bind(Vector::from(query.to_vec()))
+        .bind(model_key)
+        .bind(candidate_limit)
+        .bind(limit)
+        .fetch_all(pool)
+        .await?;
 
-    rows.iter().map(similar_from_row).collect()
+        let scanned = candidate_count(&rows)?;
+        if rows.len() as i64 >= limit || scanned < candidate_limit {
+            return rows.iter().map(similar_from_row).collect();
+        }
+        if expansion == MAX_CANDIDATE_EXPANSIONS {
+            return Err(candidate_limit_exhausted(limit));
+        }
+        candidate_limit = candidate_limit.saturating_mul(CANDIDATE_GROWTH_FACTOR);
+    }
+
+    unreachable!("candidate expansion loop returns or refuses at its bound")
 }
 
 /// Which candidates a search is allowed to rank, and how many to return.
@@ -485,122 +544,182 @@ pub async fn search_elements(
     // there is ONE statement text whatever the caller asked for. A query built
     // by string concatenation would have a different plan per flag combination
     // and could not be read as a single thing.
-    // Bind map: $1 vector, $2 model, $3 limit, $4 source, $5 distance,
+    // Bind map: $1 vector, $2 model, $3 element limit, $4 source, $5 distance,
     // $6 repo, $7 path, $8 kinds, $9 worktree, $10 id_kinds,
-    // $11 gate_open, $12 ddoc_schema, $13 conversation. Keep SQL and binds in
-    // this order: these types overlap, so a shifted parameter can compile and
-    // answer incorrectly.
-    let rows = sqlx::query(
-        "WITH nearest AS (
-             SELECT source_hash, source_kind, vector <=> $1 AS distance
-               FROM embeddings_1024 e
-              WHERE model_key = $2
-                AND ($4::text IS NULL OR source_kind = $4)
-                AND ($5::float8 IS NULL OR (vector <=> $1) <= $5)
-                -- Admission asks whether ANY eligible element carries the
-                -- vector source; it does not choose a smart raw_hash. Choosing
-                -- here with LIMIT 1 used to let an unordered foreign mapping
-                -- erase a valid caller-held smart hit before ranking.
-                AND EXISTS (
-                     SELECT 1
-                       FROM elements admitted
-                      WHERE (
-                            (e.source_kind = 'raw' AND admitted.raw_hash = e.source_hash)
-                            OR (e.source_kind = 'smart' AND EXISTS (
-                                 SELECT 1
-                                   FROM smart_content candidate
-                                  WHERE candidate.text_hash = e.source_hash
-                                    AND candidate.raw_hash = admitted.raw_hash)))
-                        AND ($8::text[] IS NULL OR admitted.kind = ANY($8))
-                        -- Every ddoc classification must belong to this SAME
-                        -- admitted element; raw hashes are shared deliberately.
-                        AND ($10::text[] IS NULL
-                             OR admitted.ddoc->>'id_kind' = ANY($10))
-                        AND ($11::boolean IS NULL
-                             OR (CASE
-                                   WHEN jsonb_typeof(admitted.ddoc->'derived_state') = 'object'
-                                   THEN (admitted.ddoc->'derived_state'->>'complete')::boolean
-                                   ELSE (admitted.ddoc->>'gate_terminal')::boolean
-                                 END IS NOT NULL
-                                 AND CASE
-                                   WHEN jsonb_typeof(admitted.ddoc->'derived_state') = 'object'
-                                   THEN (admitted.ddoc->'derived_state'->>'complete')::boolean
-                                   ELSE (admitted.ddoc->>'gate_terminal')::boolean
-                                 END = NOT $11))
-                        AND ($12::text IS NULL
-                             OR admitted.ddoc->>'schema' = $12)
-                        AND ($13::text IS NULL
-                             OR strpos(admitted.address, 'conv:' || $13 || '#t') = 1)
-                        -- The caller worktree belongs here, before LIMIT:
-                        -- filtering a ranked page afterwards both under-fills
-                        -- it and can leak a foreign version beyond the cap.
-                        AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
-                             OR EXISTS (
-                                  SELECT 1
-                                    FROM worktree_files f
-                                    JOIN worktrees w ON w.id = f.worktree_id
-                                    JOIN repos r     ON r.id = w.repo_id
-                                   WHERE f.blob_sha = admitted.blob_sha
-                                     AND ($6::text IS NULL OR r.identity = $6)
-                                     AND ($7::text IS NULL OR f.path LIKE $7)
-                                     AND ($9::text IS NULL OR w.root_path = $9))
-                             OR EXISTS (
-                                  SELECT 1
-                                    FROM turns t
-                                    JOIN conversations c ON c.guid = t.conversation_id
-                                   WHERE t.blob_sha = admitted.blob_sha
-                                     AND ($6::text IS NULL OR c.repo_identity = $6)
-                                     AND ($7::text IS NULL OR c.worktree LIKE $7)
-                                     AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9))))
-              ORDER BY vector <=> $1
-              LIMIT $3
-         )
-         SELECT n.source_kind, n.distance,
-                s.text, s.tags, s.extras,
-                e.blob_sha, e.parser_version, e.kind, e.subkind, e.name,
-                e.address, e.span_start, e.span_end, e.sibling_order, e.raw_text,
-                e.ddoc,
-                COALESCE(live.identity, anchored.identity) AS identity,
-                COALESCE(live.root_path, anchored.root_path) AS root_path,
-                live.path
-           FROM nearest n
-           LEFT JOIN LATERAL (
-                SELECT sc.raw_hash, sc.text, sc.tags, sc.extras
-                  FROM smart_content sc
-                 WHERE n.source_kind = 'smart' AND sc.text_hash = n.source_hash
-                   -- A shared summary text_hash can describe different raw
-                   -- bodies. This is the chooser, so it repeats every caller
-                   -- filter and orders all ties; otherwise a foreign oldest
-                   -- mapping silently removes a valid caller smart hit.
-                   AND EXISTS (
-                        SELECT 1
-                          FROM elements choice
-                         WHERE choice.raw_hash = sc.raw_hash
-                           AND ($8::text[] IS NULL OR choice.kind = ANY($8))
-                           AND ($10::text[] IS NULL
-                                OR choice.ddoc->>'id_kind' = ANY($10))
+    // $11 gate_open, $12 ddoc_schema, $13 conversation, $14 vector candidate
+    // limit. Keep SQL and binds in this order: these types overlap, so a shifted
+    // parameter can compile and answer incorrectly.
+    let mut candidate_limit = filters.limit.saturating_mul(INITIAL_CANDIDATE_MULTIPLIER);
+    for expansion in 0..=MAX_CANDIDATE_EXPANSIONS {
+        let rows = sqlx::query(
+            "WITH candidate_vectors AS MATERIALIZED (
+                 SELECT source_hash, source_kind, chunk_no,
+                        vector <=> $1 AS distance
+                   FROM embeddings_1024 e
+                  WHERE model_key = $2
+                    AND ($4::text IS NULL OR source_kind = $4)
+                    AND ($5::float8 IS NULL OR (vector <=> $1) <= $5)
+                    -- Admission asks whether ANY eligible element carries the
+                    -- vector source; it does not choose a smart raw_hash. Choosing
+                    -- here with LIMIT 1 used to let an unordered foreign mapping
+                    -- erase a valid caller-held smart hit before ranking.
+                    AND EXISTS (
+                         SELECT 1
+                           FROM elements admitted
+                          WHERE (
+                                (e.source_kind = 'raw' AND admitted.raw_hash = e.source_hash)
+                                OR (e.source_kind = 'smart' AND EXISTS (
+                                     SELECT 1
+                                       FROM smart_content candidate
+                                      WHERE candidate.text_hash = e.source_hash
+                                        AND candidate.raw_hash = admitted.raw_hash)))
+                            AND ($8::text[] IS NULL OR admitted.kind = ANY($8))
+                            -- Every ddoc classification must belong to this SAME
+                            -- admitted element; raw hashes are shared deliberately.
+                            AND ($10::text[] IS NULL
+                                 OR admitted.ddoc->>'id_kind' = ANY($10))
+                            AND ($11::boolean IS NULL
+                                 OR (CASE
+                                       WHEN jsonb_typeof(admitted.ddoc->'derived_state') = 'object'
+                                       THEN (admitted.ddoc->'derived_state'->>'complete')::boolean
+                                       ELSE (admitted.ddoc->>'gate_terminal')::boolean
+                                     END IS NOT NULL
+                                     AND CASE
+                                       WHEN jsonb_typeof(admitted.ddoc->'derived_state') = 'object'
+                                       THEN (admitted.ddoc->'derived_state'->>'complete')::boolean
+                                       ELSE (admitted.ddoc->>'gate_terminal')::boolean
+                                     END = NOT $11))
+                            AND ($12::text IS NULL
+                                 OR admitted.ddoc->>'schema' = $12)
+                            AND ($13::text IS NULL
+                                 OR strpos(admitted.address, 'conv:' || $13 || '#t') = 1)
+                            -- The caller worktree belongs here, before LIMIT:
+                            -- filtering a ranked page afterwards both under-fills
+                            -- it and can leak a foreign version beyond the cap.
+                            AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
+                                 OR EXISTS (
+                                      SELECT 1
+                                        FROM worktree_files f
+                                        JOIN worktrees w ON w.id = f.worktree_id
+                                        JOIN repos r     ON r.id = w.repo_id
+                                       WHERE f.blob_sha = admitted.blob_sha
+                                         AND ($6::text IS NULL OR r.identity = $6)
+                                         AND ($7::text IS NULL OR f.path LIKE $7)
+                                         AND ($9::text IS NULL OR w.root_path = $9))
+                                 OR EXISTS (
+                                      SELECT 1
+                                        FROM turns t
+                                        JOIN conversations c ON c.guid = t.conversation_id
+                                       WHERE t.blob_sha = admitted.blob_sha
+                                         AND ($6::text IS NULL OR c.repo_identity = $6)
+                                         AND ($7::text IS NULL OR c.worktree LIKE $7)
+                                         AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9))))
+                  ORDER BY vector <=> $1
+                  LIMIT $14
+             ),
+             candidate_meta AS (
+                 SELECT count(*)::bigint AS candidate_count
+                   FROM candidate_vectors
+             ),
+             resolved AS (
+                 SELECT c.source_hash, c.source_kind, c.chunk_no, c.distance,
+                        s.text, s.tags, s.extras,
+                        e.id AS element_id,
+                        e.blob_sha, e.parser_version, e.kind, e.subkind, e.name,
+                        e.address, e.span_start, e.span_end, e.sibling_order,
+                        e.raw_text, e.ddoc
+                   FROM candidate_vectors c
+                   LEFT JOIN LATERAL (
+                        SELECT sc.raw_hash, sc.text, sc.tags, sc.extras
+                          FROM smart_content sc
+                         WHERE c.source_kind = 'smart' AND sc.text_hash = c.source_hash
+                           -- A shared summary text_hash can describe different raw
+                           -- bodies. This is the chooser, so it repeats every caller
+                           -- filter and orders all ties; otherwise a foreign oldest
+                           -- mapping silently removes a valid caller smart hit.
+                           AND EXISTS (
+                                SELECT 1
+                                  FROM elements choice
+                                 WHERE choice.raw_hash = sc.raw_hash
+                                   AND ($8::text[] IS NULL OR choice.kind = ANY($8))
+                                   AND ($10::text[] IS NULL
+                                        OR choice.ddoc->>'id_kind' = ANY($10))
+                                   AND ($11::boolean IS NULL
+                                        OR (CASE
+                                              WHEN jsonb_typeof(choice.ddoc->'derived_state') = 'object'
+                                              THEN (choice.ddoc->'derived_state'->>'complete')::boolean
+                                              ELSE (choice.ddoc->>'gate_terminal')::boolean
+                                            END IS NOT NULL
+                                            AND CASE
+                                              WHEN jsonb_typeof(choice.ddoc->'derived_state') = 'object'
+                                              THEN (choice.ddoc->'derived_state'->>'complete')::boolean
+                                              ELSE (choice.ddoc->>'gate_terminal')::boolean
+                                            END = NOT $11))
+                                   AND ($12::text IS NULL
+                                        OR choice.ddoc->>'schema' = $12)
+                                   AND ($13::text IS NULL
+                                        OR strpos(choice.address, 'conv:' || $13 || '#t') = 1)
+                                   AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
+                                        OR EXISTS (
+                                             SELECT 1
+                                               FROM worktree_files f
+                                               JOIN worktrees w ON w.id = f.worktree_id
+                                               JOIN repos r     ON r.id = w.repo_id
+                                              WHERE f.blob_sha = choice.blob_sha
+                                                AND ($6::text IS NULL OR r.identity = $6)
+                                                AND ($7::text IS NULL OR f.path LIKE $7)
+                                                AND ($9::text IS NULL OR w.root_path = $9))
+                                        OR EXISTS (
+                                             SELECT 1
+                                               FROM turns t
+                                               JOIN conversations c ON c.guid = t.conversation_id
+                                              WHERE t.blob_sha = choice.blob_sha
+                                                AND ($6::text IS NULL OR c.repo_identity = $6)
+                                                AND ($7::text IS NULL OR c.worktree LIKE $7)
+                                                AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9))))
+                         ORDER BY sc.created_at, sc.model_key, sc.raw_hash
+                         LIMIT 1
+                   ) s ON TRUE
+                   JOIN LATERAL (
+                        SELECT el.id, el.blob_sha, el.parser_version,
+                               el.kind, el.subkind, el.name, el.address,
+                               el.span_start, el.span_end, el.sibling_order,
+                               el.raw_text, el.ddoc
+                          FROM elements el
+                         WHERE el.raw_hash = COALESCE(s.raw_hash, c.source_hash)
+                           -- The resolver repeats every element gate: a shared hash
+                           -- must not resolve to the lowest-id row of another kind or
+                           -- another ddoc classification.
+                           AND ($8::text[] IS NULL OR el.kind = ANY($8))
+                           AND ($10::text[] IS NULL OR el.ddoc->>'id_kind' = ANY($10))
                            AND ($11::boolean IS NULL
                                 OR (CASE
-                                      WHEN jsonb_typeof(choice.ddoc->'derived_state') = 'object'
-                                      THEN (choice.ddoc->'derived_state'->>'complete')::boolean
-                                      ELSE (choice.ddoc->>'gate_terminal')::boolean
+                                      WHEN jsonb_typeof(el.ddoc->'derived_state') = 'object'
+                                      THEN (el.ddoc->'derived_state'->>'complete')::boolean
+                                      ELSE (el.ddoc->>'gate_terminal')::boolean
                                     END IS NOT NULL
                                     AND CASE
-                                      WHEN jsonb_typeof(choice.ddoc->'derived_state') = 'object'
-                                      THEN (choice.ddoc->'derived_state'->>'complete')::boolean
-                                      ELSE (choice.ddoc->>'gate_terminal')::boolean
+                                      WHEN jsonb_typeof(el.ddoc->'derived_state') = 'object'
+                                      THEN (el.ddoc->'derived_state'->>'complete')::boolean
+                                      ELSE (el.ddoc->>'gate_terminal')::boolean
                                     END = NOT $11))
-                           AND ($12::text IS NULL
-                                OR choice.ddoc->>'schema' = $12)
+                           AND ($12::text IS NULL OR el.ddoc->>'schema' = $12)
                            AND ($13::text IS NULL
-                                OR strpos(choice.address, 'conv:' || $13 || '#t') = 1)
+                                OR strpos(el.address, 'conv:' || $13 || '#t') = 1)
+                           -- The candidate gate above proves that SOME element with
+                           -- this raw hash is anchored in the caller scope. Without
+                           -- repeating that anchor here, the global lowest-id element
+                           -- may come from a foreign blob; the LEFT JOIN provenance
+                           -- lookups then return nulls and detach the hit from its repo.
+                           -- Scoping the representative also makes shared content
+                           -- report the caller's own path and address.
                            AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
                                 OR EXISTS (
                                      SELECT 1
                                        FROM worktree_files f
                                        JOIN worktrees w ON w.id = f.worktree_id
                                        JOIN repos r     ON r.id = w.repo_id
-                                      WHERE f.blob_sha = choice.blob_sha
+                                      WHERE f.blob_sha = el.blob_sha
                                         AND ($6::text IS NULL OR r.identity = $6)
                                         AND ($7::text IS NULL OR f.path LIKE $7)
                                         AND ($9::text IS NULL OR w.root_path = $9))
@@ -608,128 +727,100 @@ pub async fn search_elements(
                                      SELECT 1
                                        FROM turns t
                                        JOIN conversations c ON c.guid = t.conversation_id
-                                      WHERE t.blob_sha = choice.blob_sha
+                                      WHERE t.blob_sha = el.blob_sha
                                         AND ($6::text IS NULL OR c.repo_identity = $6)
                                         AND ($7::text IS NULL OR c.worktree LIKE $7)
-                                        AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9))))
-                 ORDER BY sc.created_at, sc.model_key, sc.raw_hash
-                 LIMIT 1
-           ) s ON TRUE
-           JOIN LATERAL (
-                SELECT el.id, el.blob_sha, el.parser_version, el.kind, el.subkind,
-                       el.name, el.address, el.span_start, el.span_end,
-                       el.sibling_order, el.raw_text, el.raw_hash, el.ddoc
-                  FROM elements el
-                 WHERE el.raw_hash = COALESCE(s.raw_hash, n.source_hash)
-                   -- The resolver repeats every element gate: a shared hash
-                   -- must not resolve to the lowest-id row of another kind or
-                   -- another ddoc classification.
-                   AND ($8::text[] IS NULL OR el.kind = ANY($8))
-                   AND ($10::text[] IS NULL OR el.ddoc->>'id_kind' = ANY($10))
-                   AND ($11::boolean IS NULL
-                        OR (CASE
-                              WHEN jsonb_typeof(el.ddoc->'derived_state') = 'object'
-                              THEN (el.ddoc->'derived_state'->>'complete')::boolean
-                              ELSE (el.ddoc->>'gate_terminal')::boolean
-                            END IS NOT NULL
-                            AND CASE
-                              WHEN jsonb_typeof(el.ddoc->'derived_state') = 'object'
-                              THEN (el.ddoc->'derived_state'->>'complete')::boolean
-                              ELSE (el.ddoc->>'gate_terminal')::boolean
-                            END = NOT $11))
-                   AND ($12::text IS NULL OR el.ddoc->>'schema' = $12)
-                   AND ($13::text IS NULL
-                        OR strpos(el.address, 'conv:' || $13 || '#t') = 1)
-                   -- The candidate gate above proves that SOME element with
-                   -- this raw hash is anchored in the caller scope. Without
-                   -- repeating that anchor here, the global lowest-id element
-                   -- may come from a foreign blob; the LEFT JOIN provenance
-                   -- lookups then return nulls and detach the hit from its repo.
-                   -- Scoping the representative also makes shared content
-                   -- report the caller's own path and address.
-                   AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
-                        OR EXISTS (
-                             SELECT 1
-                               FROM worktree_files f
-                               JOIN worktrees w ON w.id = f.worktree_id
-                               JOIN repos r     ON r.id = w.repo_id
-                              WHERE f.blob_sha = el.blob_sha
-                                AND ($6::text IS NULL OR r.identity = $6)
-                                AND ($7::text IS NULL OR f.path LIKE $7)
-                                AND ($9::text IS NULL OR w.root_path = $9))
-                        OR EXISTS (
-                             SELECT 1
-                               FROM turns t
-                               JOIN conversations c ON c.guid = t.conversation_id
-                              WHERE t.blob_sha = el.blob_sha
-                                AND ($6::text IS NULL OR c.repo_identity = $6)
-                                AND ($7::text IS NULL OR c.worktree LIKE $7)
-                                AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)))
-                 ORDER BY el.id
-                 LIMIT 1
-           ) e ON TRUE
-           LEFT JOIN LATERAL (
-                SELECT r.identity, w.root_path, f.path
-                  FROM worktree_files f
-                  JOIN worktrees w ON w.id = f.worktree_id
-                  JOIN repos r     ON r.id = w.repo_id
-                 WHERE f.blob_sha = e.blob_sha
-                   AND ($6::text IS NULL OR r.identity = $6)
-                   AND ($7::text IS NULL OR f.path LIKE $7)
-                   AND ($9::text IS NULL OR w.root_path = $9)
-                 ORDER BY r.identity, w.root_path, f.path
-                 LIMIT 1
-           ) live ON TRUE
-           LEFT JOIN LATERAL (
-                SELECT c.repo_identity AS identity, c.worktree AS root_path
-                  FROM turns t
-                  JOIN conversations c ON c.guid = t.conversation_id
-                 WHERE t.blob_sha = e.blob_sha
-                   AND ($6::text IS NULL OR c.repo_identity = $6)
-                   AND ($7::text IS NULL OR c.worktree LIKE $7)
-                   AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)
-                   AND ($13::text IS NULL OR c.guid = $13::uuid)
-                 ORDER BY c.repo_identity, c.worktree
-                 LIMIT 1
-           ) anchored ON TRUE
-          ORDER BY n.distance",
-    )
-    .bind(Vector::from(query.to_vec()))
-    .bind(model_key)
-    .bind(filters.limit)
-    .bind(filters.source.map(SourceKind::as_str))
-    .bind(filters.max_distance)
-    .bind(filters.repo.as_deref())
-    .bind(filters.path.as_deref())
-    .bind(
-        filters
-            .kinds
-            .as_ref()
-            .map(|kinds| kinds.iter().map(|kind| kind.as_str()).collect::<Vec<_>>()),
-    )
-    .bind(filters.worktree.as_deref())
-    .bind(filters.id_kinds.as_deref())
-    .bind(filters.gate_open)
-    .bind(filters.ddoc_schema.as_deref())
-    .bind(filters.conversation.as_deref())
-    .fetch_all(&mut *tx)
-    .await?;
+                                        AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)))
+                         ORDER BY el.id
+                         LIMIT 1
+                   ) e ON TRUE
+             ),
+             nearest AS (
+                 SELECT DISTINCT ON (element_id) *
+                   FROM resolved
+                  ORDER BY element_id, distance, source_kind, source_hash, chunk_no
+             )
+             SELECT n.source_kind, n.distance,
+                    n.text, n.tags, n.extras,
+                    n.blob_sha, n.parser_version, n.kind, n.subkind, n.name,
+                    n.address, n.span_start, n.span_end, n.sibling_order, n.raw_text,
+                    n.ddoc,
+                    COALESCE(live.identity, anchored.identity) AS identity,
+                    COALESCE(live.root_path, anchored.root_path) AS root_path,
+                    live.path, m.candidate_count
+               FROM nearest n
+               CROSS JOIN candidate_meta m
+               LEFT JOIN LATERAL (
+                    SELECT r.identity, w.root_path, f.path
+                      FROM worktree_files f
+                      JOIN worktrees w ON w.id = f.worktree_id
+                      JOIN repos r     ON r.id = w.repo_id
+                     WHERE f.blob_sha = n.blob_sha
+                       AND ($6::text IS NULL OR r.identity = $6)
+                       AND ($7::text IS NULL OR f.path LIKE $7)
+                       AND ($9::text IS NULL OR w.root_path = $9)
+                     ORDER BY r.identity, w.root_path, f.path
+                     LIMIT 1
+               ) live ON TRUE
+               LEFT JOIN LATERAL (
+                    SELECT c.repo_identity AS identity, c.worktree AS root_path
+                      FROM turns t
+                      JOIN conversations c ON c.guid = t.conversation_id
+                     WHERE t.blob_sha = n.blob_sha
+                       AND ($6::text IS NULL OR c.repo_identity = $6)
+                       AND ($7::text IS NULL OR c.worktree LIKE $7)
+                       AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)
+                       AND ($13::text IS NULL OR c.guid = $13::uuid)
+                     ORDER BY c.repo_identity, c.worktree
+                     LIMIT 1
+               ) anchored ON TRUE
+              ORDER BY n.distance, n.element_id
+              LIMIT $3",
+        )
+        .bind(Vector::from(query.to_vec()))
+        .bind(model_key)
+        .bind(filters.limit)
+        .bind(filters.source.map(SourceKind::as_str))
+        .bind(filters.max_distance)
+        .bind(filters.repo.as_deref())
+        .bind(filters.path.as_deref())
+        .bind(
+            filters
+                .kinds
+                .as_ref()
+                .map(|kinds| kinds.iter().map(|kind| kind.as_str()).collect::<Vec<_>>()),
+        )
+        .bind(filters.worktree.as_deref())
+        .bind(filters.id_kinds.as_deref())
+        .bind(filters.gate_open)
+        .bind(filters.ddoc_schema.as_deref())
+        .bind(filters.conversation.as_deref())
+        .bind(candidate_limit)
+        .fetch_all(&mut *tx)
+        .await?;
 
-    // Read-only, so the transaction has nothing to write; committing rather
-    // than dropping returns the connection to the pool cleanly and, being
-    // `SET LOCAL`, takes the scan setting with it.
-    tx.commit().await?;
+        let scanned = candidate_count(&rows)?;
+        if rows.len() as i64 >= filters.limit || scanned < candidate_limit {
+            tx.commit().await?;
+            return rows
+                .iter()
+                .map(|row| {
+                    Ok(SearchHit {
+                        similar: similar_from_row(row)?,
+                        identity: row.try_get("identity")?,
+                        root_path: row.try_get("root_path")?,
+                        path: row.try_get("path")?,
+                    })
+                })
+                .collect();
+        }
+        if expansion == MAX_CANDIDATE_EXPANSIONS {
+            return Err(candidate_limit_exhausted(filters.limit));
+        }
+        candidate_limit = candidate_limit.saturating_mul(CANDIDATE_GROWTH_FACTOR);
+    }
 
-    rows.iter()
-        .map(|row| {
-            Ok(SearchHit {
-                similar: similar_from_row(row)?,
-                identity: row.try_get("identity")?,
-                root_path: row.try_get("root_path")?,
-                path: row.try_get("path")?,
-            })
-        })
-        .collect()
+    unreachable!("candidate expansion loop returns or refuses at its bound")
 }
 
 /// Does `model_key` hold reachable content in `scope`?

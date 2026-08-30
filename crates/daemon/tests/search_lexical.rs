@@ -92,12 +92,14 @@ async fn leopon_verbatim_phrase_hits_are_all_pinned_before_semantic_noise() {
         &model_key,
         &[
             NewEmbedding {
+                chunk_no: 0,
                 source_hash: children[3].raw_hash(),
                 source_kind: SourceKind::Raw,
                 vector: &query_vector,
                 truncated: false,
             },
             NewEmbedding {
+                chunk_no: 0,
                 source_hash: children[0].raw_hash(),
                 source_kind: SourceKind::Raw,
                 vector: &weaker,

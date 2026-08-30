@@ -130,6 +130,7 @@ impl SearchFixture {
         let embeddings: Vec<NewEmbedding<'_>> = owned_vectors
             .iter()
             .map(|(hash, vector)| NewEmbedding {
+                chunk_no: 0,
                 source_hash: hash,
                 source_kind: SourceKind::Raw,
                 vector,

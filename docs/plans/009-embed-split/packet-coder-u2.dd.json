@@ -1,0 +1,184 @@
+{
+  "dd": {
+    "schema": "pij-team/packet"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Coder packet — u2 enrich: hygiene at mint + chunk windowing at prepare (009-embed-split)",
+        "role": "coder",
+        "plan": "docs/plans/009-embed-split/plan.dd.json",
+        "seat": "pij-striped-guan",
+        "updated": "2026-08-30"
+      }
+    },
+    {
+      "name": "mission",
+      "value": "You build ONE unit of plan 009-embed-split: u2 — enrich: hygiene at mint + chunk windowing at prepare. Oversize inputs stop being truncated to a searchable prefix and become N overlapping chunks that all get embedded, and no empty or whitespace-only input ever reaches a provider again — filtered where jobs are minted AND dropped where batches are assembled. You are closing a measured production incident: one empty turn rejected 530 innocent texts; three poison turns cost 9 rejected calls and 1,639 texts. You report to the PM (pij-associated-owl), not to prime."
+    },
+    {
+      "name": "instructions",
+      "value": [
+        {
+          "id": "i1",
+          "text": "Orient FIRST: read your unit row in /Users/jordanknight/substrate/flowspace/fs3-embed-split/docs/plans/009-embed-split/impl-guide.dd.md, the plan at /Users/jordanknight/substrate/flowspace/fs3-embed-split/docs/plans/009-embed-split/plan.dd.md (acceptance criteria ac-0001..0007), and .agents/skills/pij-team/TENETS.md (the doctrine — cited, not restated here). Run `harness instructions` and `harness boot --json` before changing anything. The compose Postgres is ALREADY UP on host port 5433 (container flowspace3-db) — the PM started it; if boot reports compose degraded for a different service, report it, do not fix it."
+        },
+        {
+          "id": "i1b",
+          "text": "DOGFOOD FLOWSPACE — not optional in this repo. Run `flowspace3 search \"<question>\"` for every meaning-shaped question before you grep (exact identifiers may still grep). Read-only search/ask against the running index is allowed and encouraged. NEVER touch the production daemon on port 7373 — do not restart it, do not point it anywhere, do not `flowspace3 add` this worktree. Report every search miss or confusing envelope as friction via `harness observe`, and mention it to the PM."
+        },
+        {
+          "id": "i2",
+          "text": "ACK FIRST, BEFORE ANY CODE: reply to the PM seat pij-associated-owl via `pij send pij-associated-owl \"<text>\"` with (a) the output of `pij whoami` quoted verbatim as your identity, (b) your OMP FOOTER model line quoted verbatim, (c) `git branch --show-current` and `echo $CARGO_TARGET_DIR $FS3_TEST_DATABASE_URL` output, and (d) your read of this unit plus a NUMBERED implementation plan. Then WAIT for the PM to rule your plan by number. Corrections to this packet are WELCOME and outrank it — bring evidence (file:line quotes), and raise them at ack rather than coding around them."
+        },
+        {
+          "id": "i20",
+          "text": "YOUR ENVIRONMENT — export these in every shell you gate from, and quote them back at ack (i2c):\n  export CARGO_TARGET_DIR=/Users/jordanknight/substrate/flowspace/fs3-embed-split-u2/target\n  export FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5433/flowspace3_test_u2\nWhy each: the per-worktree target dir stops cargo's package/artifact locks serialising your build behind your two siblings' (measured on a previous run: 145s of queueing for a 0.01s test). The per-seat database base is a SERVER SELECTOR — the gate mints per-run disposable databases beside it via FreshDatabase (crates/testkit/src/fresh_database.rs), so concurrent seats cannot share one database by accident (w-test-db-isolation, backlog row 58). FS3_TEST_DATABASE_URL has NO default and the testkit REFUSES rather than guessing (crates/testkit/src/database.rs:29-48 explains why: the shipped default is the REAL store on a developer machine, and `doctor` MIGRATES what it reads — three correct behaviours once composed into a production write). The compose Postgres is already running on host port 5433 (container flowspace3-db, docker-compose.yml:21-22, deliberately off 5432). BOTH of these are torn down with you at stand-down — the PM removes your worktree (which takes the target dir with it) and drops the database; duplicated build dirs were a named contributor to a disk-full incident (DL-043)."
+        },
+        {
+          "id": "i21",
+          "text": "CURRENT STATE — assembled by three independent read-only recon agents on 2026-08-30, written to be FALSIFIABLE in one read. Every line carries file:line. If a quote does not match what you find, that is a FINDING — tell the PM immediately.\nTRUNCATION (the path this plan kills): crates/daemon/src/enrich.rs:637 `let cap = embedder.max_input_tokens();` then :641-642 `match fs3_core::fit_to_cap(text, cap)`. The WARN at :651-658 is verbatim `tracing::warn!(source_hash = %hash, kind = source_kind.as_str(), cap, from_bytes = text.len(), to_bytes = prefix.len(), \"input exceeds the model's per-input cap; embedding a prefix of it\")`. Comments at :631-636 say explicitly that splitting is NOT here — you are the change that makes that comment obsolete. The marker is written at :714-723 into `NewEmbedding { source_hash, source_kind, vector, truncated }`; recon found NO production read site for `truncated` (only test helper crates/daemon/tests/oversize.rs:96-101).\nTOKEN CONVENTION — ONE CONVENTION, NOT TWO: crates/core/src/tokens.rs:35 `pub const BYTES_PER_TOKEN: usize = 3`; :58-60 `estimate_tokens(text) -> text.len().div_ceil(BYTES_PER_TOKEN)`; :87-90 `fit_to_cap` uses the same budget. The cap is crates/providers/src/openai.rs:125-126 `pub const MAX_INPUT_TOKENS: usize = 8192`, surfaced through the trait at :195-197. Reuse `estimate_tokens` — do not invent a second counting rule.\nMINT SITES: crates/daemon/src/enrich.rs:151-153 `fn earns_raw_vector(element: &Element) -> bool { !element.raw_text.is_empty() && (...) }` — rejects EXACT empty only, never whitespace. :165-203 `enqueue_for_tree` pushes `raw_batch.push((element.raw_hash().to_string(), element.raw_text.clone()))` at :173-175, flushing at :177-184 and :202-203. :231-265 `enqueue_for_turns` pushes the SAME expression at :240-242 with NO emptiness check of any kind — that is the hole that cost 530 innocent texts. :414-425 and :493-500 mint smart-summary embeds from `summary.text`; recon found no emptiness check there either. :731-746 `enqueue_embed` guards only the whole vector: `if items.is_empty() { return Ok(()); }`.\nJOB IDENTITY — DO NOT DISTURB IT: crates/daemon/src/enrich.rs:107-112 builds the dedupe key by sorting the item hashes, joining with newline, hashing, and formatting `embed:{identity}:{source}:{digest}`; crates/store/src/jobs.rs:123-128 upserts `ON CONFLICT (dedupe_key) ... SET payload = EXCLUDED.payload`. If chunks became N JOBS they would not merely inflate the queue — sibling chunk jobs would REPLACE each other's payloads. See your contract item 2.\nPREPARE / PROVIDER: :529-535 `embed_items(state, identity, source_kind, all: &[(String,String)])`; :549-564 existing-hash precheck via `existing_embedding_hashes`; :638-644 builds `texts: Vec<String>`; :666 `embedder.embed(&texts)`; :700-708 asserts `vectors.len() == items.len()`; :714-723 zips positionally back to source_hash. Inputs are NOT 1:1 with jobs — one EmbedJob carries a Vec of items and the planner merges jobs.\nBATCH: crates/daemon/src/batch.rs:44-52 `Batch { identity, source, items: Vec<(String,String)>, job_ids }`; :83 `pub fn plan(jobs: &[Job]) -> (Vec<Batch>, Vec<Unreadable>)`; :90-100 deserializes EmbedJob; :102-112 solo-retry with :40 `SOLO_FROM_ATTEMPT: i32 = 2`; :115-127 merges; :147-180 `split_to_budget` sums `estimate_tokens` against :34 `TOKEN_BUDGET: usize = 200_000` — a per-call SUM, never a per-input cap. There is NO empty filtering anywhere. Dispatch is crates/daemon/src/runner.rs:539-628 `drain_embed` (claims jobs, calls `batch::plan`, then `enrich::embed_items`); a provider error fails EVERY job riding that batch (:658-670, verdicts :700-761). Comments at batch.rs:234-240 state plainly that one bad item fails the whole merged call — that is the defect you are closing.\nTEST IDIOM: pure-unit idiom is crates/daemon/src/enrich.rs:947-968 (`#[test] fn empty_structural_container...` constructs an Element and asserts `earns_raw_vector`); batch idiom is crates/daemon/src/batch.rs:185-214 (helper `job(...)`, then `let (batches, bad) = plan(...)`). The fake provider is crates/testkit/src/fakes.rs:79-177 `FakeEmbedder`, whose rejection path at :157-177 rejects the WHOLE call — that is the behaviour your batch-survival test must defeat. Existing coverage: enrich has ONLY the earns_raw_vector tests; batch has grouping/isolation/retry/budget/oversize/unreadable tests and NO empty-item test."
+        },
+        {
+          "id": "i22",
+          "text": "YOUR CONTRACT (fill it, never widen it — TENETS tenet 2):\n1. `chunk_plan(text, window_tokens, overlap_tokens) -> Vec<ChunkText { chunk_no, text }>` — a PURE function in crates/daemon/src/enrich.rs, unit-testable with no database, no provider, no async. Window sized just under the model cap (~7500 tokens by the BYTES_PER_TOKEN=3 convention), overlap ~200 tokens. Both are NAMED CONSTANTS with a comment saying why that number — 'a default is a number nobody chose' (tenet 6). A single-chunk input returns EXACTLY ONE entry with chunk_no = 0, so the common path is byte-identical to today.\n2. CHUNK AT PREPARE TIME, INSIDE `embed_items` (:637-660) — NOT at mint. PM ruling, and it is load-bearing: it keeps `EmbedJob.items` as `Vec<(String,String)>`, keeps the dedupe key at :107-112 untouched BY CONSTRUCTION, and keeps batch.rs/runner.rs free of type churn (your collision surface with your siblings stays at zero). Expand each item into N provider inputs, track (source_hash, chunk_no) alongside, and extend the existing positional zip at :714-723 so each vector lands on its own chunk row. Chunks are inputs WITHIN one job, never N jobs.\n3. UTF-8 IS A TRAP HERE, NOT A DETAIL. `estimate_tokens` counts BYTES (`text.len().div_ceil(3)`), so a token-sized window is a byte offset — and slicing a String at a byte offset that falls inside a multi-byte codepoint PANICS. A 25KB conversation turn full of tool output is exactly where non-ASCII lives. Snap every boundary to a char boundary (or iterate char_indices) and TEST IT with a multi-byte fixture. A panic here takes down the enrichment runner.\n4. THE TRUNCATION WRITE PATH DIES: `fit_to_cap` is no longer called from the embed prepare site and nothing writes `truncated = true` any more. The COLUMN stays (u1 keeps it; the plan's non-goals make the already-truncated inventory a deferred backfill). Keep the cap WARN at :651-658 as a LAST-RESORT guard for a pathological input that beats the bytes/3 estimate — the impl-guide's risk register wants it alive precisely because its firing post-merge is the regression signal krill's monitor watches for. It should now never fire in practice.\n5. MINT-SIDE HYGIENE (S3, first predicate): a turn or element whose prepared text is empty OR WHITESPACE-ONLY mints NO embed job, with ONE WARN naming the source. Fix all of the holes recon found, not just the famous one: `earns_raw_vector` at :151-153 tests exact-empty only; `enqueue_for_turns` at :240-242 has no check at all; the smart-summary mints at :414-425 and :493-500 have none. Use `trim().is_empty()` semantics and make u1's heal predicate and yours agree on what 'empty' means — a heal that retires rows your filter would still mint is a treadmill.\n6. ASSEMBLY-SIDE HYGIENE (S3, second predicate — defense in depth, and it is NOT redundant): in `batch::plan` after deserialization (batch.rs:90-100, before solo/group handling), DROP any item whose text is empty-or-whitespace, WARN naming its source_hash, and let the call proceed for the rest. The whole point is that a planted empty input must not reject its batchmates — today it rejects all of them.\n7. FROZEN, DO NOT TOUCH: `TOKEN_BUDGET` and `split_to_budget`'s per-call SUM semantics, `SOLO_FROM_ATTEMPT` / retry-travels-alone, and the provider wire shapes. Chunks are just more inputs to the same planner. Any urge to 'improve' the planner while you are in there is a stop-and-ask.\n8. NewEmbedding.chunk_no IS u1's FIELD, AND IT WILL NOT EXIST ON YOUR BRANCH AT FIRST. This is a known, PM-owned build dependency, not your bug: u1 lands first and the PM merges it to 009-embed-split. Do all of items 1 and 3-6 immediately — none of them touch store types. When you reach the :714-723 construction, if `origin/009-embed-split` does not yet carry `chunk_no`, tell the PM and keep working; when it does, `git merge origin/009-embed-split` into your OWN branch in your OWN worktree and finish. Do NOT invent a local shim, and do NOT edit crates/store yourself — that is u1's fence."
+        },
+        {
+          "id": "i23",
+          "text": "TESTS YOU OWE (each must FAIL if its subject is removed — the two hygiene mutation checks are named in the plan and the reviewer WILL open the diffs to confirm they actually mutate):\n- chunk_plan, standalone and pure, at the boundaries: cap-1 (one chunk, chunk_no 0), exactly cap (one chunk), cap+1 (two chunks), 3x cap (the expected count with overlap arithmetic spelled out), and OVERLAP CONTINUITY — a phrase straddling a boundary appears intact in at least one chunk, which is the entire reason overlap exists.\n- chunk_plan on multi-byte UTF-8 that forces a boundary inside a codepoint: must not panic and must reassemble losslessly.\n- MINT MUTATION CHECK: a whitespace-only turn mints no embed job. Removing your mint-side filter must make this test FAIL. Cover the turn path (:231-265) specifically — that is the one with no check at all today.\n- ASSEMBLY MUTATION CHECK, WITH BATCHMATE SURVIVAL: plant one empty-text item among several real ones; assert the empty one is dropped with its WARN AND that the others still reach the provider. Removing your assembly-side drop must make this test FAIL. Use FakeEmbedder (crates/testkit/src/fakes.rs:157-177) whose rejection path fails the whole call — that is what makes this test meaningful rather than decorative.\n- These are TWO SEPARATE tests failing for TWO SEPARATE reasons. If deleting one predicate reds both, your defense-in-depth is really one layer wearing two hats, and the plan's ac-0004 ('mutation-checked both layers') is not met. Verify by actually deleting each one locally and watching exactly one test go red — then restore. Report both observations in your done report."
+        },
+        {
+          "id": "i10",
+          "text": "TRIPWIRE: `cargo test -p fs3-daemon` — specifically the existing batch tests at crates/daemon/src/batch.rs:185-329 (grouping, repo/source isolation, retry-alone, token budget, oversized item, unreadable payload) and crates/daemon/tests/oversize.rs. Those encode the FROZEN planner semantics. A red one means you changed the batch planner, which the impl-guide freezes. STOP and report to the PM; do not adjust the test to match your code."
+        },
+        {
+          "id": "i11",
+          "text": "READS DECLARATION — what you CONSUME but do not OWN: (1) `fs3_store::NewEmbedding` and `put_embeddings` at crates/store/src/embeddings.rs:84-98/:187-219 — u1 OWNS these and is ADDING the `chunk_no` field you need (see contract item 8; this is the named build dependency). (2) `fs3_core::estimate_tokens` / `BYTES_PER_TOKEN` at crates/core/src/tokens.rs:35-60 — shared, read-only, do not change the convention. (3) `crates/providers/src/openai.rs:125-126` MAX_INPUT_TOKENS and the trait accessor at :195-197 — read-only. (4) crates/daemon/src/runner.rs:539-628 — you READ it to confirm your change needs no edit there; if it turns out to need one, that is a STOP-AND-ASK to the PM, because zero type churn outside your fence is the property that keeps your collision surface at zero."
+        },
+        {
+          "id": "i3",
+          "text": "Implement using the /builder implement discipline: work in order, keep the execution log honest, tests alongside code. Your unit's test suite must prove the interface contract WITHOUT the other units present."
+        },
+        {
+          "id": "i4",
+          "text": "Stay inside your fence (scope below). If the work forces you outside it, STOP and ask the PM (pij-associated-owl) — that is a composition concern, not yours to solve unilaterally. Fill contracts, never widen them: a third port is a stop-and-ask (TENETS tenet 2)."
+        },
+        {
+          "id": "i5",
+          "text": "Commit with `harness commit \"<conventional subject>\" -- <paths>` (conventional commits are BINDING — release-please reads them). Status card at start and end of each unit of work: `pij report now \"<did>\" \"<next>\"`."
+        },
+        {
+          "id": "i6",
+          "text": "Done = `harness checks` green with YOUR env exports (below) + your unit's tests proving the contract. Report done to the PM with evidence, then HOLD for composition questions — do not merge anything, do not open a PR, do not touch another unit's branch."
+        },
+        {
+          "id": "i7",
+          "text": "Capture friction with `harness observe \"<what>\" --kind difficulty|confusion` the moment it bites. LIST, never CLEAR — the buffer is shared across every agent in this tree and the drain is o-prime-owned."
+        },
+        {
+          "id": "i8",
+          "text": "OMP seat: use your LSP (go-to-definition, find-references, rename, diagnostics) for symbol-level questions and refactors instead of text search, and structured edit surfaces over raw shell. If the Rust LSP is not configured in your seat, report it as friction AT ACK TIME rather than silently grepping for the whole packet."
+        },
+        {
+          "id": "i13",
+          "text": "ABSOLUTE PATHS ALWAYS for every file tool (read/edit/write), rooted at YOUR OWN worktree /Users/jordanknight/substrate/flowspace/fs3-embed-split-u2. Never a relative path — OMP edit resolves relatives against a session root fixed at spawn, and if that root is wrong your edits land in ANOTHER TREE while reporting success (DL-044/DL-007/DL-008). State your worktree root once at ack and prefix every path with it. The ONLY path outside your worktree you may touch is READ-ONLY: the packets and plan docs under /Users/jordanknight/substrate/flowspace/fs3-embed-split/docs/plans/009-embed-split/. Do NOT `flowspace3 add` this worktree even if a next_action suggests it."
+        },
+        {
+          "id": "i14",
+          "text": "YOU HAVE YOUR OWN WORKTREE — /Users/jordanknight/substrate/flowspace/fs3-embed-split-u2 on branch u2-enrich — so edit-time collision with your siblings is impossible by construction. What isolation does NOT remove (TENETS tenet 10): merge order, the shared Postgres CLUSTER (your per-seat database base is a server selector, not a private server — a cluster-wide crash kills every connection in every database, and the tell is whole-suite-fails-together or connection-shaped errors rather than a single assertion failure), and the SHARED GLOBAL TOOLCHAIN — every unit reads one installed cargo, so nobody upgrades it and every done-receipt carries the version it actually observed. MERGE-FORWARD IS ALLOWED AND EXPECTED, rebase and checkout are not: when the PM tells you a dependency has landed, run `git merge origin/009-embed-split` INSIDE YOUR OWN WORKTREE. Never `git checkout`/`switch`/`rebase`, never touch a sibling's worktree, never merge your branch into anything."
+        }
+      ]
+    },
+    {
+      "name": "working_with",
+      "value": [
+        {
+          "id": "w1",
+          "text": "The PM (pij-associated-owl) is your ONLY interface: acks, questions, done reports. You never message prime or Jordan directly unless the PM's seat is dead. One question per message, one sentence of context plus one sentence of ask."
+        },
+        {
+          "id": "w2",
+          "text": "DEFER to the PM: interface changes (they affect sibling units), dependency additions, schema/migration changes outside your own migration, anything outside your fence, and any disagreement between this packet and the impl-guide."
+        },
+        {
+          "id": "w3",
+          "text": "YOUR EVIDENCE OUTRANKS THIS PACKET. The current-state section below was assembled by read-only recon and is written to be FALSIFIABLE in one read: if a line:number quote in it does not match what you find, say so immediately — that is a finding, not an inconvenience. The PM has already had to correct the impl-guide once this run on exactly this basis."
+        },
+        {
+          "id": "w4",
+          "text": "Your siblings: u1-store (store schema + heal), u2-enrich (chunk plan + hygiene), u3-read (search collapse + end-to-end proof). All three run CONCURRENTLY against the frozen seams. You do not read or write their branches; if you need something they own, that is a stop-and-ask to the PM."
+        }
+      ]
+    },
+    {
+      "name": "scope",
+      "value": {
+        "worktree": "/Users/jordanknight/substrate/flowspace/fs3-embed-split-u2 (YOUR OWN git worktree, branch u2-enrich — o-prime ratified worktree-per-coder on 2026-08-30; you share NOTHING with your siblings but the repo history)",
+        "branch": "u2-enrich",
+        "fence": "crates/daemon/src/enrich.rs (mint sites, the prepare/cap site, chunk_plan and its tests), crates/daemon/src/batch.rs (assembly-side drop ONLY — the planner's budget/solo semantics are frozen), crates/daemon/tests/** for your own fixtures. NO store code.",
+        "forbidden_note": "Never touch another unit's paths, .harness/government/**, or the plan's flow state. Never merge, rebase, or open a PR — the PM composes u1 -> u2 -> u3. Never `git checkout`/`switch`/`stash` in this shared tree. Never touch the production daemon on port 7373. ABSOLUTE PATHS FOR EVERY FILE READ AND EDIT, ALWAYS. Do NOT edit crates/store — u1 owns it. Do NOT change TOKEN_BUDGET, split_to_budget semantics, SOLO_FROM_ATTEMPT, or any provider wire shape."
+      }
+    },
+    {
+      "name": "done_bar",
+      "value": [
+        {
+          "id": "d1",
+          "text": "chunk_plan is pure, standalone-testable, and correct at cap-1 / cap / cap+1 / 3x-cap / overlap-continuity / multi-byte-UTF-8 boundaries."
+        },
+        {
+          "id": "d2",
+          "text": "BOTH hygiene predicates exist and are INDEPENDENTLY mutation-checked: deleting the mint filter reds exactly one test, deleting the assembly drop reds exactly the other. You have actually performed both deletions locally, observed exactly one red each time, restored, and reported both observations."
+        },
+        {
+          "id": "d3",
+          "text": "The truncation write path is gone (no caller of fit_to_cap in the embed prepare path, nothing writes truncated=true) while the cap WARN survives as the last-resort guard, and the `truncated` COLUMN is untouched."
+        },
+        {
+          "id": "d4",
+          "text": "`harness checks` green in YOUR worktree with YOUR env exports, EXCEPT the single known build dependency on u1's `NewEmbedding.chunk_no` if u1 has not yet landed — which is PM-owned, must be reported explicitly rather than worked around, and is resolved by merging origin/009-embed-split into your own branch once u1 lands. Prove the change is in the tree you built, not just that the build exited 0."
+        },
+        {
+          "id": "d5",
+          "text": "Done report to the PM including an explicit ASSUMPTIONS section: what you assumed about call order, about what put_embeddings does with N rows for one hash, about whether anything downstream reads `truncated`, and about who guarantees a source_hash's chunks are written together. Name them — the composer cannot test an assumption you kept to yourself."
+        }
+      ]
+    },
+    {
+      "name": "refs",
+      "value": [
+        {
+          "id": "r0",
+          "path": ".agents/skills/pij-team/TENETS.md",
+          "note": "the doctrine — esp. tenets 2-6 (fill contracts never widen; ship the snap-in recipe; mechanical done) and tenet 14 (a predicate must REFUSE when its preconditions fail)"
+        },
+        {
+          "id": "r1",
+          "path": "docs/plans/009-embed-split/impl-guide.dd.md",
+          "note": "your unit row + the frozen seams S1-S4 + composition contract"
+        },
+        {
+          "id": "r2",
+          "path": "docs/plans/009-embed-split/plan.dd.md",
+          "note": "the promises: ac-0001..0007, goals, and NON-GOALS (read the non-goals — they fence you as hard as the goals)"
+        },
+        {
+          "id": "r3",
+          "path": "AGENTS.md",
+          "note": "dogfooding duty + `harness commit` rules (a chained `git commit` can silently lose attribution)"
+        },
+        {
+          "id": "r4",
+          "path": ".harness/government/briefs/w-embed-oversize.md",
+          "note": "the 2026-08-27 'truncate now, split later' ruling this plan supersedes — 'later' is now"
+        },
+        {
+          "id": "r5",
+          "path": "docs/plans/009-embed-split/impl-guide.dd.md",
+          "note": "AMENDED TWICE on 2026-08-30 (commits aa165aa + 50aeeb7) after PM recon found two defects in it — read the CURRENT version, not a cached memory of it"
+        }
+      ]
+    }
+  ]
+}
