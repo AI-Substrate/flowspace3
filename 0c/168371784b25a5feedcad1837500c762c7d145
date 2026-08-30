@@ -1,0 +1,18 @@
+crates/daemon/src/batch.rs
+  h_9e71e8b09f7cf2 164,166-169
+crates/daemon/src/enrich.rs
+  h_9e71e8b09f7cf2 54-55,765-781,784-828,831-835
+crates/daemon/tests/oversize.rs
+  h_9e71e8b09f7cf2 68-76,133-138,162-238
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0c168371784b25a5feedcad1837500c762c7d145",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
