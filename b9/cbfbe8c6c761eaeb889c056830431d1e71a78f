@@ -1,0 +1,95 @@
+.harness/government/briefs/w-claim-index.md
+  s_15d888f4b629c1::t_9d0b041b01196a 1-33
+.harness/government/briefs/w-parser-reindex.md
+  s_15d888f4b629c1::t_92d7646370bc41 1-60
+.harness/government/briefs/w-settle-hotpath.md
+  s_15d888f4b629c1::t_99efc5a3b66893 1-34
+.harness/government/briefs/w-team-tidy.md
+  s_15d888f4b629c1::t_157ce5c6eebb29 53-61
+.harness/government/briefs/w-ddoc-dup-root.md
+  s_15d888f4b629c1::t_32d4175442ced4 1-42
+.harness/government/briefs/w-lexical-channel.md
+  s_15d888f4b629c1::t_90117978a30f73 69
+  s_15d888f4b629c1::t_2a93a2e5b70bb5 32-44
+  s_15d888f4b629c1::t_60713eac885142 1-31,45-68,70-80
+.harness/government/briefs/w-conv-scope.md
+  s_15d888f4b629c1::t_42e65f24fdf327 36-46
+  s_15d888f4b629c1::t_a88dee9e6e9cfd 1-35,47-54
+.harness/government/briefs/w-embed-microbatch.md
+  s_15d888f4b629c1::t_94095408bcc984 1-49
+.harness/government/briefs/w-arch-compare-pij.md
+  s_15d888f4b629c1::t_66c2cc7a029c43 1-46
+.harness/government/briefs/w-ask-budget-honesty.md
+  s_15d888f4b629c1::t_84448a3dee0114 1-40
+.harness/government/briefs/backlog.md
+  s_15d888f4b629c1::t_616f0984e72d6a 520-523
+  s_15d888f4b629c1::t_d167445766d929 435-445
+  s_15d888f4b629c1::t_57c8be4774fd05 554-559
+  s_15d888f4b629c1::t_219bd4702ab320 589-595
+  s_15d888f4b629c1::t_63f27a44f6993b 569-578
+  s_15d888f4b629c1::t_d11a69034ed6f5 482-490
+  s_15d888f4b629c1::t_765384f60ae9cf 395-399
+  s_15d888f4b629c1::t_f3da2ddacfc51f 539-548
+  s_15d888f4b629c1::t_f8a31524eb97dc 644-651
+  s_15d888f4b629c1::t_c210806e3346e8 457-466
+  s_15d888f4b629c1::t_e1a948be0f31b1 579-588
+  s_15d888f4b629c1::t_d6efbbde3fa20b 515-517
+  s_15d888f4b629c1::t_7e70d1992486c7 446-456
+  s_15d888f4b629c1::t_dbdfa9b073bccd 596-598
+  s_15d888f4b629c1::t_5f42d06a41b27b 561-568
+  s_15d888f4b629c1::t_05403253568c34 535-537
+  s_15d888f4b629c1::t_bfd7c7115bd894 470-479
+  s_15d888f4b629c1::t_8c48d1fb32a70f 373
+  s_15d888f4b629c1::t_d841c840e3bec3 518-519,534
+  s_15d888f4b629c1::t_0636194fb6877b 632-643
+  s_15d888f4b629c1::t_e22e50bd3b1bb0 413-416
+  s_15d888f4b629c1::t_eafd9d3b780800 425,434
+  s_15d888f4b629c1::t_85c843c94a0069 621-631
+  s_15d888f4b629c1::t_34d5c2848f529b 480-481
+  s_15d888f4b629c1::t_748c5ff40c8610 652-674
+  s_15d888f4b629c1::t_5d2f72bca5ef88 508-510
+  s_15d888f4b629c1::t_c103732bd1e1b8 609-620
+  s_15d888f4b629c1::t_344f42da02eefd 513-514
+  s_15d888f4b629c1::t_db06d9e7610ba0 467-469
+  s_15d888f4b629c1::t_157ce5c6eebb29 491-498
+  s_15d888f4b629c1::t_683b3a9ee4b420 499-507,511-512,524-533,538,549-553,560,599-608
+.harness/government/briefs/w-ask-honesty.md
+  s_15d888f4b629c1::t_85ac767f8d4207 1-67
+.harness/records/retro/2026-08-28/003-drain-2026-08-29-second.md
+  s_15d888f4b629c1::t_be310b00d0aa01 1-6,8-9,14-16,24,43,46,51
+  s_15d888f4b629c1::t_b10b29bdcf4fc6 7,10-13,17-23,25-42,44-45,47-50,52-53
+.harness/government/briefs/w-daemon-bounce.md
+  s_15d888f4b629c1::t_497c1435013c3d 1-51
+.harness/government/briefs/w-scan-churn.md
+  s_15d888f4b629c1::t_46b39600c5257b 1-54
+.harness/government/rulings/2026-08-30-always-bounce-daemon-on-merge.md
+  s_15d888f4b629c1::t_caf1c4b454ae83 1-10
+.harness/government/briefs/w-copilot-provider.md
+  s_15d888f4b629c1::t_47905020955e8f 1-62
+.harness/government/briefs/w-scan-throughput-review.md
+  s_15d888f4b629c1::t_9c65c107b9d4c7 1-67
+.agents/skills/pij-team/EXPERIENCES.md
+  s_15d888f4b629c1::t_dcab632566e4f6 627-638
+  s_15d888f4b629c1::t_7387055f1efcc1 646-658
+  s_15d888f4b629c1::t_232e42cdbe53ea 639-645
+.harness/government/briefs/w-test-db-isolation.md
+  s_15d888f4b629c1::t_0bb327c56a13cc 1-69
+.harness/government/README.md
+  s_15d888f4b629c1::t_01797bf8e19190 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b9cbfbe8c6c761eaeb889c056830431d1e71a78f",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
