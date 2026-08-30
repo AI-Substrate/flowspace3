@@ -914,3 +914,32 @@ leaving this file should name where it went.
     boundary (it is not discoverable by accident). Options: (a) keep
     rejection, callers pass --repo; (b) explicit conv: address admits any
     repo, search stays scoped. One-question ruling when convenient.
+
+102. **rust-analyzer returns silent-zero cross-crate references — FOUR
+    seats in one hour** (owl's three 009 coders: embed_items vs
+    runner.rs:642, search_elements vs search.rs:296/:303; zakalwe:
+    fs3_store::upsert_conversation; 2026-08-30). An empty reference
+    result is indistinguishable from "no callers" — the failure mode
+    where an agent confidently concludes nothing calls a thing. All four
+    fell back to exact identifier search (correct per repo guidance).
+    Encoding (owl's DL-003): probe the LSP at boot with a known-multi-
+    caller symbol and REFUSE/mark-degraded rather than serve zeros.
+
+103. **ddocs render staleness is SILENT — .dd.json newer than .dd.md
+    sibling has no gate** (owl's DL-002, 2026-08-30). My ratified S4
+    amendment sat in the JSON while coders read stale markdown carrying
+    the disproven premise; u3 refused to code off it (correctly) and owl
+    rebuilt by hand. Two-file design means a reader cannot tell which
+    file lies. Encoding: harness gate fails when any .dd.json mtime/hash
+    is newer than its rendered sibling; bonus: `harness ddocs render`
+    discoverable from the CLI surface (prime could not find it in one
+    probe).
+
+104. **harness boot reports "compose db is not running" from ANY worktree**
+    (owl's CONF-003, 2026-08-30; cousin of row 93b's container_name
+    collision — three seats bitten today). docker compose scopes projects
+    by directory, so worktree seats see a false negative while the
+    container is Up and the testdb gate passes; some seats will try to
+    "fix" it and hit 93b. One dispatch should take 93b + 104 together:
+    compose-project-scoped naming + boot probing the CONTAINER, not the
+    project.
