@@ -1065,3 +1065,11 @@ leaving this file should name where it went.
     row 81. Day totals for the product ledger: six observers, two
     repos, ~12 rows, "the cost structure was the complaint, never the
     capability."
+
+102/106-FAMILY-NOTE (2026-08-30, u2's DL-003 via owl): second same-class
+    instance in one day — a GLOBAL npm CLI update broke every worktree
+    mid-run with an error naming ANOTHER repo (transient harness-eng npm
+    break during u2's gate). Family: fleet-wide shared-tool blast radius
+    with misleading attribution. The s093 loader fix covers verb
+    collisions; the npm-transient case wants a pinned-version or
+    vendored-CLI story for gates — fold into any row 106-family dispatch.
