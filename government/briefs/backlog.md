@@ -1141,3 +1141,22 @@ leaving this file should name where it went.
 108-NOTE (2026-08-31): second tenet candidate added from owl's completion
     report: "an isolation mechanism must ship with its reaper, and a
     verdict command must never be able to lie."
+
+112. **harness team tidy leaves a HALF-REMOVED worktree: files deleted,
+    registration kept, then refuses as "dirty"** (lynx, 2026-08-31, three
+    instances: ask-conv-scope/conv-scope/ddoc-dup-root). First run returns
+    DEGRADED having already deleted the working-tree files; the worktree
+    stays registered, so a second run reports E_WORKTREE_DIRTY with ~390
+    "D" (deleted) paths and demands --force. To whoever finds it next,
+    that status is indistinguishable from catastrophic data loss in a
+    live tree — I had to verify via merged-PR lookup that nothing was
+    lost. Fixes: (a) tidy must be atomic or ordered registration-first;
+    (b) a degraded tidy must NAME what it already did; (c) the dirty
+    report should distinguish "all files deleted by a prior tidy" from
+    "user has uncommitted work". Aggravated by, but not caused by, the
+    row-110 disk thrash (each attempt is slow enough to look hung).
+    SELF-CATCH, same day I adopted "a verdict command must never be able
+    to lie": my own status parse printed "removed" for these because it
+    only checked for an error field — I reported three removals that
+    never happened. Encoding: never render a success word from the
+    ABSENCE of an error; render it from the presence of the effect.
