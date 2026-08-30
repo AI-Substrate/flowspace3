@@ -262,6 +262,7 @@ async fn seed(
         .iter()
         .zip(&vectors)
         .map(|(hash, vector)| NewEmbedding {
+            chunk_no: 0,
             source_hash: hash,
             source_kind: SourceKind::Raw,
             vector,

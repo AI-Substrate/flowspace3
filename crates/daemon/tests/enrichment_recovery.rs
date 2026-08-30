@@ -137,6 +137,7 @@ async fn a_healthy_index_sweeps_to_nothing() {
         &state.db,
         &state.embedder.key(),
         &[fs3_store::NewEmbedding {
+            chunk_no: 0,
             source_hash: &content_hash(BODY.as_bytes()),
             source_kind: fs3_store::SourceKind::Raw,
             vector: &vector[0],

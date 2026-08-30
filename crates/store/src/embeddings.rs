@@ -87,14 +87,15 @@ pub struct NewEmbedding<'a> {
     pub source_hash: &'a str,
     /// Which of the two this vector describes.
     pub source_kind: SourceKind,
+    /// Zero-based position of this vector's overlapping source-text chunk.
+    pub chunk_no: i16,
     /// The vector itself, [`EMBEDDING_DIMENSIONS`] wide.
     pub vector: &'a [f32],
-    /// Whether the text embedded was a PREFIX of the content `source_hash`
-    /// names, because the whole of it exceeded the model's per-input cap.
+    /// Whether the text embedded was a PREFIX of its chunk because even that
+    /// chunk exceeded the model's per-input cap.
     ///
-    /// The row is still keyed by the original hash — a truncated embedding is
-    /// THE embedding for that content — so this flag is the only thing that
-    /// distinguishes complete coverage from partial. See migration 0010.
+    /// Retained as inventory for a deferred backfill of vectors written before
+    /// chunking replaced whole-content prefix truncation.
     pub truncated: bool,
 }
 
@@ -106,14 +107,12 @@ pub struct NewEmbedding<'a> {
 /// strand elements), and this is what makes RE-EXECUTION free rather than just
 /// re-execution CORRECT.
 ///
-/// # Why all three key columns
+/// # Why the key includes kind and chunk
 ///
-/// The primary key is `(source_hash, source_kind, model_key)`. Filtering on
-/// hash and model alone would treat a stored `raw` vector as covering the
-/// `smart` vector for the same hash — the two are different text and different
-/// meaning. That would silently under-embed and leave a permanently incomplete
-/// index that looks exactly like a working one, which is the same failure
-/// class as a misaligned batch and just as undetectable after the fact.
+/// The primary key is `(source_hash, source_kind, chunk_no, model_key)`.
+/// Filtering on hash and model alone would treat a stored `raw` vector as
+/// covering the `smart` vector for the same hash. The pre-check deliberately
+/// answers at hash granularity: any chunk proves the atomic batch landed.
 ///
 /// # Errors
 /// [`StoreError::Query`] when the lookup fails.
@@ -127,11 +126,10 @@ pub async fn existing_embedding_hashes(
         return Ok(HashSet::new());
     }
 
-    // ANY($3) over the primary key: one round trip whatever the batch size,
-    // and an index lookup rather than a scan of the settled history.
+    // DISTINCT collapses a chunked source back to the hash-level pre-check.
     let owned: Vec<String> = hashes.iter().map(|hash| (*hash).to_string()).collect();
     let rows = sqlx::query(
-        "SELECT source_hash FROM embeddings_1024
+        "SELECT DISTINCT source_hash FROM embeddings_1024
           WHERE model_key = $1 AND source_kind = $2 AND source_hash = ANY($3)",
     )
     .bind(model_key)
@@ -204,14 +202,16 @@ pub async fn put_embeddings(
     let mut tx = pool.begin().await?;
     for row in embeddings {
         sqlx::query(
-            "INSERT INTO embeddings_1024 (source_hash, source_kind, model_key, vector, truncated)
-             VALUES ($1, $2, $3, $4, $5)
-             ON CONFLICT (source_hash, source_kind, model_key) DO UPDATE SET
+            "INSERT INTO embeddings_1024
+               (source_hash, source_kind, chunk_no, model_key, vector, truncated)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (source_hash, source_kind, chunk_no, model_key) DO UPDATE SET
                vector = EXCLUDED.vector,
                truncated = EXCLUDED.truncated",
         )
         .bind(row.source_hash)
         .bind(row.source_kind.as_str())
+        .bind(row.chunk_no)
         .bind(model_key)
         .bind(Vector::from(row.vector.to_vec()))
         .bind(row.truncated)

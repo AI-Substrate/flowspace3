@@ -716,6 +716,7 @@ pub async fn embed_items(
         .zip(&vectors)
         .zip(&shortened)
         .map(|(((hash, _), vector), truncated)| NewEmbedding {
+            chunk_no: 0,
             source_hash: hash,
             source_kind,
             vector,

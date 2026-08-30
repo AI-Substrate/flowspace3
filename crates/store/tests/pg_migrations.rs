@@ -236,6 +236,91 @@ async fn apply_migrations(pool: &PgPool, versions: std::ops::RangeInclusive<i64>
     }
 }
 
+#[tokio::test]
+async fn embedding_chunks_have_the_exact_key_and_defaulted_smallint_column() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let key_columns: Vec<String> = sqlx::query_scalar(
+        "SELECT a.attname::text
+           FROM pg_index i
+          CROSS JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS key(attnum, ordinal)
+           JOIN pg_attribute a
+             ON a.attrelid = i.indrelid AND a.attnum = key.attnum
+          WHERE i.indrelid = 'embeddings_1024'::regclass
+            AND i.indisprimary
+          ORDER BY key.ordinal",
+    )
+    .fetch_all(&pool)
+    .await
+    .expect("the embedding primary key should be inspectable");
+    assert_eq!(
+        key_columns,
+        ["source_hash", "source_kind", "chunk_no", "model_key"],
+        "the chunk number is part of vector identity, not row metadata"
+    );
+
+    let column: (String, bool, Option<String>) = sqlx::query_as(
+        "SELECT format_type(a.atttypid, a.atttypmod),
+                a.attnotnull,
+                pg_get_expr(d.adbin, d.adrelid)
+           FROM pg_attribute a
+           LEFT JOIN pg_attrdef d
+             ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+          WHERE a.attrelid = 'embeddings_1024'::regclass
+            AND a.attname = 'chunk_no'",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("the chunk column should be inspectable");
+    assert_eq!(
+        column,
+        ("smallint".to_string(), true, Some("0".to_string()))
+    );
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn migration_0021_grandfathers_vectors_without_minting_embed_jobs() {
+    let database = FreshDatabase::create().await;
+    let pool = database.pool().await;
+    apply_migrations(&pool, 1..=20).await;
+
+    sqlx::query(
+        "INSERT INTO embeddings_1024
+             (source_hash, source_kind, model_key, vector, truncated)
+         VALUES ('grandfathered', 'raw', 'legacy-model',
+                 array_fill(0.0::real, ARRAY[1024])::vector, true)",
+    )
+    .execute(&pool)
+    .await
+    .expect("the old three-column key should accept a vector");
+    let jobs_before: i64 = sqlx::query_scalar("SELECT count(*) FROM jobs WHERE kind = 'embed'")
+        .fetch_one(&pool)
+        .await
+        .expect("count pre-migration embed jobs");
+
+    apply_migrations(&pool, 21..=21).await;
+
+    let grandfathered: (i16, bool) = sqlx::query_as(
+        "SELECT chunk_no, truncated
+           FROM embeddings_1024
+          WHERE source_hash = 'grandfathered'",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("the pre-chunk vector should survive");
+    assert_eq!(grandfathered, (0, true));
+    let jobs_after: i64 = sqlx::query_scalar("SELECT count(*) FROM jobs WHERE kind = 'embed'")
+        .fetch_one(&pool)
+        .await
+        .expect("count post-migration embed jobs");
+    assert_eq!(jobs_after, jobs_before, "the migration must not mint work");
+
+    database.destroy(pool).await;
+}
+
 /// The migration that had to double as a RECOVERY (Jordan, 2026-08-27).
 ///
 /// A daemon run from a throwaway dev worktree wrote `update:blocked` naming its
