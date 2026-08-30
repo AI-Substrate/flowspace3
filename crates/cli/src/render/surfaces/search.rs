@@ -1,5 +1,8 @@
 use comfy_table::{Cell, CellAlignment, ColumnConstraint, Width};
-use fs3_core::{envelope::Envelope, views::search::SearchResults};
+use fs3_core::{
+    envelope::Envelope,
+    views::search::{SearchChannel, SearchResults},
+};
 use owo_colors::OwoColorize;
 use serde_json::Value;
 
@@ -40,8 +43,14 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
             if !hit.subkind.is_empty() && hit.subkind != hit.kind {
                 kind.push_str(&format!("\n{}", hit.subkind.bright_black()));
             }
+            let channel = match hit.channel {
+                SearchChannel::Lexical => format!("{}", "lexical".green()),
+                SearchChannel::Semantic => format!("{}", "semantic".blue()),
+                SearchChannel::Both => format!("{}", "both".cyan()),
+            };
+            kind.push_str(&format!("\n{channel}"));
             if !hit.match_field.is_empty() {
-                kind.push_str(&format!("\n{}", hit.match_field.blue()));
+                kind.push_str(&format!(" · {}", hit.match_field.blue()));
             }
             let mut element = format!("{}", hit.name.bold().bright_white());
             element.push_str(&format!(
@@ -90,5 +99,26 @@ fn append_next(out: &mut String, envelope: &Envelope<Value>, width: u16) {
         out.push('\n');
         out.push_str(&theme::next_action(next, usize::from(width)));
         out.push('\n');
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn channel_and_exact_match_reason_are_visible() {
+        let envelope: Envelope<Value> = serde_json::from_str(
+            r#"{"ok":true,"command":"search","v":1,
+                "data":{"results":[{"address":"el:a/b.rs::needle","score":1.0,
+                    "channel":"both","match_field":"exact_name","kind":"function",
+                    "subkind":"function_item","name":"needle","span":[1,1],
+                    "snippet":"fn needle() {}","smart":null,"tags":[],"repo":null,
+                    "path":null,"worktree":null}]}}"#,
+        )
+        .unwrap();
+        let screen = anstream::adapter::strip_str(&render(&envelope, 120).unwrap()).to_string();
+        assert!(screen.contains("both"), "{screen}");
+        assert!(screen.contains("exact_name"), "{screen}");
     }
 }

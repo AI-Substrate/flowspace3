@@ -4,8 +4,8 @@
 flowspace3 search "how does the queue avoid two workers taking the same job"
 ```
 
-Semantic search: the query is embedded with the same model that embedded the
-index, and the nearest elements come back ranked.
+Search runs two legs together: indexed verbatim text and vector similarity.
+Exact text hits are pinned first; semantic hits follow in similarity order.
 
 ## Output shape
 
@@ -31,22 +31,24 @@ filter that matches nothing returns nothing rather than a padded list.
 
 ```json
 { "address": "el:git:github.com/org/repo/src/auth.rs::validate_session_token",
-  "score": 0.83, "match_field": "smart", "kind": "function",
-  "subkind": "function_item", "name": "validate_session_token",
-  "span": [42, 58], "path": "src/auth.rs", "repo": "git:github.com/org/repo",
-  "worktree": "/srv/code/repo", "snippet": "…",
-  "smart": "Validates a session token…", "tags": ["auth"] }
+  "score": 1.0, "channel": "both", "match_field": "exact_name",
+  "kind": "function", "subkind": "function_item",
+  "name": "validate_session_token", "span": [42, 58],
+  "path": "src/auth.rs", "repo": "git:github.com/org/repo",
+  "worktree": "/srv/code/repo", "snippet": "…", "smart": null, "tags": [] }
 ```
 
 - `path` + `span` is what you open; `span` is inclusive, 1-based.
 - `worktree` names the registered checkout that supplied the hit. It is the
   absolute root; `path` is relative to it.
-- `score` is `1 - cosine distance`: 1.0 is identical, higher is better. That
-  conversion happens once, at the boundary, so `--min-score 0.7` means what it
-  looks like.
-- `match_field` is `raw` or `smart`. **A `smart` hit found the answer by
-  meaning** — the words you typed may appear nowhere in the code. This is why
-  "why is enrichment keyed by a hash" can find the right function.
+- `score` is channel-native. Semantic rows use `1 - cosine distance`. Exact
+  lexical rows use `1.0` because the substring is identical, not because a
+  vector was identical.
+- `channel` is `lexical`, `semantic`, or `both`. A `both` row keeps lexical
+  placement and score; the values are never averaged.
+- `match_field` explains the winning evidence: `raw`/`smart` for semantic,
+  `exact_name`/`exact_text` for lexical. A `smart` hit found the answer by
+  meaning, so the words you typed may appear nowhere in the code.
 - `snippet` is the first few lines only. Search returns lean rows on purpose.
 
 ## Two spaces, one table
@@ -132,4 +134,4 @@ Hits are lean on purpose. `flowspace3 get <address>` returns the whole element
 (or whole file), and `flowspace3 tree <address-or-path>` browses the structure
 around it: `flowspace3 docs get read`.
 
-Not in this version: text and regex modes, hybrid ranking.
+Regex mode remains out of scope; every ordinary search is fused lexical + semantic.

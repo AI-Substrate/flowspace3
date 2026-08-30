@@ -248,6 +248,7 @@ pub async fn drain(state: &AppState, workers: usize) -> Drained {
         total.absorb(general);
         total.absorb(ingest);
         if general.total() == 0 && ingest.total() == 0 {
+            report_progress(state, "idle").await;
             return total;
         }
     }
@@ -580,7 +581,6 @@ async fn drain_embed(state: &AppState, shutdown: &mut watch::Receiver<Shutdown>)
                     attempts.get(&bad.job_id).copied().unwrap_or(1),
                     true,
                 );
-                emit_queue(state).await;
             }
             Err(error) => {
                 tracing::error!(%error, id = bad.job_id, "cannot fail an unreadable embed job");
@@ -686,7 +686,6 @@ async fn drain_embed(state: &AppState, shutdown: &mut watch::Receiver<Shutdown>)
                                 left,
                             });
                         }
-                        emit_queue(state).await;
                     }
                     Err(error) => {
                         tracing::error!(%error, id, "cannot complete an embed job");
@@ -710,7 +709,6 @@ async fn drain_embed(state: &AppState, shutdown: &mut watch::Receiver<Shutdown>)
                         match fs3_store::park_job(&state.db, id, delay).await {
                             Ok(_) => {
                                 emit_failure(state, EMBED, subject, &message, attempt, false);
-                                emit_queue(state).await;
                             }
                             Err(error) => {
                                 tracing::error!(%error, id, "cannot park an embed job");
@@ -724,7 +722,6 @@ async fn drain_embed(state: &AppState, shutdown: &mut watch::Receiver<Shutdown>)
                         {
                             Ok(()) => {
                                 emit_failure(state, EMBED, subject, &message, attempt, false);
-                                emit_queue(state).await;
                             }
                             Err(error) => {
                                 tracing::error!(%error, id, "cannot settle a failed embed job");
@@ -738,7 +735,6 @@ async fn drain_embed(state: &AppState, shutdown: &mut watch::Receiver<Shutdown>)
                         {
                             Ok(()) => {
                                 emit_failure(state, EMBED, subject, &message, attempt, true);
-                                emit_queue(state).await;
                             }
                             Err(error) => {
                                 tracing::error!(%error, id, "cannot settle a failed embed job");
@@ -805,13 +801,6 @@ async fn report_progress(state: &AppState, phase: &str) {
         failed,
         "progress"
     );
-}
-
-/// Publish the queue's current shape after a settlement changes it.
-async fn emit_queue(state: &AppState) {
-    let Ok(rows) = fs3_store::queue_depth(&state.db).await else {
-        return;
-    };
     state.emit(EventKind::Queue {
         rows: rows
             .into_iter()
@@ -887,7 +876,6 @@ async fn settle(state: &AppState, job: Job) -> Drained {
                         left,
                     });
                 }
-                emit_queue(state).await;
             }
             Drained {
                 completed: 1,
@@ -919,7 +907,6 @@ async fn settle(state: &AppState, job: Job) -> Drained {
                     match fs3_store::park_job(&state.db, id, delay).await {
                         Ok(_) => {
                             emit_failure(state, &kind, &subject, &message, attempts, false);
-                            emit_queue(state).await;
                         }
                         Err(error) => tracing::error!(%error, id, "cannot park a job"),
                     }
@@ -937,7 +924,6 @@ async fn settle(state: &AppState, job: Job) -> Drained {
                     match fs3_store::retry_job(&state.db, id, backoff(attempts), &message).await {
                         Ok(()) => {
                             emit_failure(state, &kind, &subject, &message, attempts, false);
-                            emit_queue(state).await;
                         }
                         Err(error) => {
                             tracing::error!(%error, id, "cannot settle a failed job");
@@ -960,7 +946,6 @@ async fn settle(state: &AppState, job: Job) -> Drained {
                     match fs3_store::fail_job(&state.db, id, &message, !failure.retryable).await {
                         Ok(()) => {
                             emit_failure(state, &kind, &subject, &message, attempts, true);
-                            emit_queue(state).await;
                         }
                         Err(error) => {
                             tracing::error!(%error, id, "cannot settle a failed job");
