@@ -541,7 +541,7 @@ pub async fn search_elements(
                                    WHERE t.blob_sha = admitted.blob_sha
                                      AND ($6::text IS NULL OR c.repo_identity = $6)
                                      AND ($7::text IS NULL OR c.worktree LIKE $7)
-                                     AND ($9::text IS NULL OR c.worktree = $9))))
+                                     AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9))))
               ORDER BY vector <=> $1
               LIMIT $3
          )
@@ -599,7 +599,7 @@ pub async fn search_elements(
                                       WHERE t.blob_sha = choice.blob_sha
                                         AND ($6::text IS NULL OR c.repo_identity = $6)
                                         AND ($7::text IS NULL OR c.worktree LIKE $7)
-                                        AND ($9::text IS NULL OR c.worktree = $9))))
+                                        AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9))))
                  ORDER BY sc.created_at, sc.model_key, sc.raw_hash
                  LIMIT 1
            ) s ON TRUE
@@ -650,7 +650,7 @@ pub async fn search_elements(
                               WHERE t.blob_sha = el.blob_sha
                                 AND ($6::text IS NULL OR c.repo_identity = $6)
                                 AND ($7::text IS NULL OR c.worktree LIKE $7)
-                                AND ($9::text IS NULL OR c.worktree = $9)))
+                                AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)))
                  ORDER BY el.id
                  LIMIT 1
            ) e ON TRUE
@@ -673,7 +673,7 @@ pub async fn search_elements(
                  WHERE t.blob_sha = e.blob_sha
                    AND ($6::text IS NULL OR c.repo_identity = $6)
                    AND ($7::text IS NULL OR c.worktree LIKE $7)
-                   AND ($9::text IS NULL OR c.worktree = $9)
+                   AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)
                  ORDER BY c.repo_identity, c.worktree
                  LIMIT 1
            ) anchored ON TRUE
@@ -723,9 +723,9 @@ pub async fn search_elements(
 /// empty result cannot become a false "repository is not indexed" diagnosis
 /// when a new predicate is added.
 ///
-/// Raw vectors and live paths only, which is what makes it cheap and excludes
-/// conversations: a turn reaches its repository through its conversation's
-/// anchor and has no `worktree_files` row at all.
+/// Raw vectors whose element is reachable through either a live file or a
+/// conversation anchor. The ownership legs mirror search admission; otherwise
+/// mixed default search could diagnose a conversation-only repository as empty.
 ///
 /// # Errors
 /// [`StoreError::Query`] on failure.
@@ -739,15 +739,26 @@ pub async fn anchor_has_vectors(
         "SELECT EXISTS (
              SELECT 1
                FROM embeddings_1024 e
-               JOIN elements el       ON el.raw_hash = e.source_hash
-               JOIN worktree_files f  ON f.blob_sha = el.blob_sha
-               JOIN worktrees w       ON w.id = f.worktree_id
-               JOIN repos r           ON r.id = w.repo_id
+               JOIN elements el ON el.raw_hash = e.source_hash
               WHERE e.model_key = $1
                 AND e.source_kind = 'raw'
-                AND ($2::text IS NULL OR r.identity = $2)
-                AND ($3::text IS NULL OR f.path LIKE $3)
-                AND ($4::text IS NULL OR w.root_path = $4)
+                AND (EXISTS (
+                     SELECT 1
+                       FROM worktree_files f
+                       JOIN worktrees w ON w.id = f.worktree_id
+                       JOIN repos r ON r.id = w.repo_id
+                      WHERE f.blob_sha = el.blob_sha
+                        AND ($2::text IS NULL OR r.identity = $2)
+                        AND ($3::text IS NULL OR f.path LIKE $3)
+                        AND ($4::text IS NULL OR w.root_path = $4))
+                     OR EXISTS (
+                     SELECT 1
+                       FROM turns t
+                       JOIN conversations c ON c.guid = t.conversation_id
+                      WHERE t.blob_sha = el.blob_sha
+                        AND ($2::text IS NULL OR c.repo_identity = $2)
+                        AND ($3::text IS NULL OR c.worktree LIKE $3)
+                        AND ($4::text IS NULL OR c.worktree IS NULL OR c.worktree = $4)))
                 )",
     )
     .bind(model_key)

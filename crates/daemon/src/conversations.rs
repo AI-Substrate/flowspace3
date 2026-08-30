@@ -311,14 +311,14 @@ pub fn next_after_intake(report: &IntakeReport) -> String {
     if report.accepted == 0 {
         format!(
             "nothing new in this batch — all {} turns were already stored. \
-             `flowspace3 search \"<question>\" --source conversation` searches what is there.",
+             `flowspace3 search \"<question>\"` searches them with the rest of this repository.",
             report.already_stored
         )
     } else {
         format!(
             "{} turn(s) stored and queued for enrichment. \
              `flowspace3 status` watches the queue drain; then \
-             `flowspace3 search \"<question>\" --source conversation`.",
+             `flowspace3 search \"<question>\"` searches every content source together.",
             report.accepted
         )
     }
@@ -522,5 +522,15 @@ mod tests {
                 .key()
                 .starts_with(fs3_core::address::CONVERSATION_SCHEME)
         );
+    }
+
+    #[test]
+    fn intake_steer_teaches_bare_mixed_search() {
+        let next = next_after_intake(&IntakeReport {
+            accepted: 1,
+            ..IntakeReport::default()
+        });
+        assert!(next.contains("search \"<question>\""));
+        assert!(!next.contains("--source conversation"));
     }
 }

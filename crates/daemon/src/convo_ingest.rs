@@ -236,8 +236,8 @@ pub async fn run(state: &AppState, payload: serde_json::Value) -> Result<(), Fai
 pub fn next_after_submit(accepted: &IngestAccepted) -> String {
     format!(
         "queued {} for ingest. `flowspace3 status` watches the queue drain; then \
-         `flowspace3 search \"<question>\" --source conversation`. Repeat firings of this \
-         address collapse into one job while it is still pending.",
+         `flowspace3 search \"<question>\"` searches every content source together. Repeat \
+         firings of this address collapse into one job while it is still pending.",
         accepted.address
     )
 }
@@ -682,7 +682,7 @@ pub fn next_after_ingest(report: &IngestReport) -> String {
     format!(
         "read {}, appended {}, deduped {} across {} session file(s) under {}. \
          `flowspace3 status` watches the queue drain; then \
-         `flowspace3 search \"<question>\" --source conversation`.",
+         `flowspace3 search \"<question>\"` searches every content source together.",
         report.records_read,
         report.turns_new,
         report.deduped,

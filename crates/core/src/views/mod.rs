@@ -108,6 +108,7 @@ mod tests {
             head_sha: None,
             at: "2026-08-28T03:00:00Z".to_string(),
             body: "hello".to_string(),
+            body_empty_reason: None,
             items: Vec::new(),
         });
         round_trip!(remove::RemoveReport {
@@ -141,7 +142,8 @@ mod tests {
             removed: 0,
         });
         round_trip!(search::SearchResults {
-            results: Vec::new()
+            results: Vec::new(),
+            composition: search::SearchComposition::default(),
         });
         round_trip!(status::StatusReport {
             roots: Vec::new(),

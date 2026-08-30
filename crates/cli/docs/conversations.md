@@ -29,13 +29,13 @@ flowspace3 tree conv:<guid>
 `conversation list` shows what is indexed; `conversation remove <guid>` forgets
 one.
 
-## Conversations are opt-in
+## Conversations in the default search
 
-`--source conversation` is required. The default search returns code and only
-code, and that is deliberate: **conversations are opinions at a point in time,
-code is current truth.** Blending them would answer "how does auth work" with
-somebody's guess about it from three weeks ago. Turns also lean on recency more
-than code does, for the same reason.
+The default search ranks code, documents, and conversation turns together.
+Conversation rows appear only when they earn their score; `data.composition`
+still reports threshold-matching conversation totals below the returned top-k.
+Use `--source conversation` when the question asks only for prior discussion,
+or `--source code` when only current implementation may answer.
 
 ## The transcript format
 

@@ -22,7 +22,7 @@ because the terminal probe otherwise looks human.
 | `--path <glob>` | paths matching a glob (`crates/store/*`) |
 | `--limit N` | how many hits (1–100, default 10) |
 | `--min-score S` | similarity floor, 0.0–1.0 |
-| `--source raw\|smart\|all` | which vector space to search |
+| `--source code\|doc\|conversation\|all` | narrow the content corpus; absent/`all` searches every source |
 
 Filters narrow candidates **in SQL**, beside the index — not after the fact. A
 filter that matches nothing returns nothing rather than a padded list.
@@ -51,16 +51,16 @@ filter that matches nothing returns nothing rather than a padded list.
   meaning, so the words you typed may appear nowhere in the code.
 - `snippet` is the first few lines only. Search returns lean rows on purpose.
 
-## Two spaces, one table
+## Every source, one ranking
 
-Every element gets a vector of its own text (`raw`). Elements above the summary
-line floor also get an LLM summary, and that summary gets its own vector
-(`smart`). Both compete in the same ranking and `match_field` reports which
-won.
+The default corpus includes code declarations, document sections/rows, and
+conversation turns. Relevance remains the guard: all sources compete in the
+same lexical/semantic ranking and only rows meeting `--min-score` count.
+`--source code`, `--source doc`, and `--source conversation` narrow that corpus;
+`--source all` is the explicit spelling of the default.
 
-`--source smart` searches only summaries — good for conceptual questions.
-`--source raw` searches only code — good when you know roughly what the code
-says.
+Every element may have a vector of its own text (`raw`) and an LLM-summary
+vector (`smart`). Both compete internally, and `match_field` reports which won.
 
 ## Things that surprise people
 
@@ -69,9 +69,10 @@ says.
   any question about that file. Files with no parsed children (prose, unknown
   languages) do get one.
 - **The result cap is measured, not implied.** `meta.truncation` reports the
-  requested `limit` and whether at least one additional hit existed. Search
-  fetches one extra candidate only to establish that fact; `data.results`
-  still contains at most the requested limit.
+  requested `limit` and whether the scored set held more. `data.composition`
+  counts code, document, and conversation rows from that same thresholded set
+  before the display limit, so a top-k containing only files does not hide a
+  relevant conversation below it.
 - **A weak match teaches without changing the answer.** When results exist but
   the best score is below the named confidence floor, `meta.hint` and
   `next_action` say: "Weak match: describe the component in its own vocabulary

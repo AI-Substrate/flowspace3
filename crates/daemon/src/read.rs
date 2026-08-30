@@ -152,7 +152,7 @@ pub async fn get(
 
     let (parts, path, whole_file, is_ddoc) = match address {
         Address::Conversation(conversation) => {
-            let window = conversation_window(state, &conversation, request).await?;
+            let window = conversation_window(state, &conversation, request, scope).await?;
             return Ok((
                 GetPayload::Conversation(window),
                 CONVERSATION_SOURCE.to_string(),
@@ -796,6 +796,7 @@ async fn conversation_window(
     state: &AppState,
     address: &ConversationAddress,
     request: &GetRequest,
+    scope: &Scope,
 ) -> Result<ConversationWindow, Failure> {
     let guid = ConversationId::new(address.guid.clone()).map_err(|error| {
         Failure::new(&catalog::QUERY_INVALID_ADDRESS, error.to_string())
@@ -816,6 +817,7 @@ async fn conversation_window(
     .await
     .map_err(fail)?
     .pop()
+    .filter(|summary| conversation_in_scope(summary, scope))
     .ok_or_else(|| unknown_conversation(&guid))?;
 
     let turns = fs3_store::window(&state.db, &guid, around, before, after)
@@ -849,18 +851,45 @@ async fn conversation_window(
         around,
         window: turns
             .into_iter()
-            .map(|turn| TurnView {
-                address: guid.turn_address(turn.turn_no),
-                turn_no: turn.turn_no,
-                role: turn.role.as_str().to_string(),
-                source: turn.source.as_str().to_string(),
-                head_sha: turn.head_sha,
-                at: turn.at,
-                body: turn.body,
-                items: turn.items,
+            .map(|turn| {
+                let body_empty_reason = if turn.body.trim().is_empty() {
+                    Some(
+                        if turn.items.is_empty() {
+                            "the stored turn has no prose or typed items"
+                        } else {
+                            "the stored turn contains typed items but no prose"
+                        }
+                        .to_string(),
+                    )
+                } else {
+                    None
+                };
+                TurnView {
+                    address: guid.turn_address(turn.turn_no),
+                    turn_no: turn.turn_no,
+                    role: turn.role.as_str().to_string(),
+                    source: turn.source.as_str().to_string(),
+                    head_sha: turn.head_sha,
+                    at: turn.at,
+                    body: turn.body,
+                    body_empty_reason,
+                    items: turn.items,
+                }
             })
             .collect(),
     })
+}
+
+fn conversation_in_scope(summary: &fs3_store::ConversationSummary, scope: &Scope) -> bool {
+    let repo_matches = scope
+        .repo
+        .as_deref()
+        .is_none_or(|repo| summary.repo_identity.as_deref() == Some(repo));
+    let worktree_matches = match (scope.worktree.as_deref(), summary.worktree.as_deref()) {
+        (Some(expected), Some(actual)) => expected == actual,
+        _ => true,
+    };
+    repo_matches && worktree_matches
 }
 
 /// Validate one half of a window against the ceiling.
