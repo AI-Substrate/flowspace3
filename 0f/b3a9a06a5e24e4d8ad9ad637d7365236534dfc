@@ -1,0 +1,47 @@
+crates/cli/src/render/surfaces/status.rs
+  s_59d749bfeff5de::t_dfed847f970be4 97-108
+crates/cli/src/tui.rs
+  s_59d749bfeff5de::t_51b2b3e25c7b3d 144-145,577,599,622,841-849,1453,1472,1478-1494
+crates/core/src/views/read.rs
+  s_59d749bfeff5de::t_437e93fc85914b 36-38,131-133
+crates/core/src/views/status.rs
+  s_59d749bfeff5de::t_c43993e820e3fa 15-17,27-39
+crates/daemon/src/read.rs
+  s_59d749bfeff5de::t_a1e201b455dce4 131,224,337,374,387,403,462,467,515-525,545,560,562-571,573-609,994
+crates/daemon/src/scan.rs
+  s_15d888f4b629c1::t_02991a80017c05 97-108,127,199
+crates/daemon/src/status.rs
+  s_59d749bfeff5de::t_768433f71e5037 12,47-58,63
+crates/store/migrations/0020_one_file_root_per_blob.sql
+  s_59d749bfeff5de::t_dd88e669d5b1ba 1-54
+crates/store/src/lib.rs
+  s_59d749bfeff5de::t_a13373ffbbb52d 51-54
+docs/services/store-schema.md
+  s_59d749bfeff5de::t_305f479a6da6ba 89-92,94-102
+crates/daemon/src/http.rs
+  s_15d888f4b629c1::t_ae7145c86f94c3 495-497
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0fb3a9a06a5e24e4d8ad9ad637d7365236534dfc",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_59d749bfeff5de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae4199d-c737-4ac3-a856-7e69531e4bab",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
