@@ -1,0 +1,73 @@
+{
+  "dd": {
+    "schema": "pij-team/impl-guide"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Implementation guide — embed-split",
+        "plan": "docs/plans/009-embed-split/plan.dd.json",
+        "mode": "build",
+        "updated": "2026-08-30"
+      }
+    },
+    {
+      "name": "architecture",
+      "value": "Doctrine: .agents/skills/pij-team/TENETS.md. The pipeline stays exactly where it is — store (crates/store/src/embeddings.rs) owns the vector key, enrich (crates/daemon/src/enrich.rs) owns mint + text preparation, batch (crates/daemon/src/batch.rs) owns call planning, search read path owns dedupe. The plan changes each layer's CONTRACT minimally and freezes the seams before fan-out: (S1) VECTOR KEY becomes (source_hash, source_kind, chunk_no, model_key) with chunk_no smallint DEFAULT 0 — one migration, existing rows read back as chunk 0, no backfill. (S2) CHUNK PLAN is a pure function chunk_plan(text, window_tokens, overlap_tokens) -> Vec<ChunkText{chunk_no, text}> living in enrich; window sized just under the model cap (target ~7500 tokens estimated by the repo's bytes/3 convention), overlap ~200 tokens; single-chunk inputs return exactly one chunk_no=0 entry so the common path is unchanged. (S3) HYGIENE is two predicates: minted-side (a turn/element whose prepared text is empty-or-whitespace mints NO embed job — WARN once at mint naming the source) and assembly-side (batch planner drops any empty text it is handed with a WARN naming source_hash, and the call proceeds for the rest — defense in depth, mutation-checked separately). (S4) READ dedupe: search's existing collapse of multiple vectors (raw+smart) per element generalizes to N chunks — group by element, keep best score; the seam is WHERE that grouping happens today, do not move it. Known constraint: the batch planner's token-budget splitting and retry-travels-alone semantics are FROZEN — chunks are just more inputs to the same planner. fs2 prior art (ChunkItem with chunk_index + line spans, content-type-aware sizes) is the reference, not the spec: v1 is one window size, spans deferred."
+    },
+    {
+      "name": "fan_out",
+      "value": "Fan out: YES, three units, one wave each of u1/u2 in parallel then u3 (u3 consumes u1's migrated schema + u2's chunk plan through frozen seams S1/S2; in practice u3 can start against the FROZEN CONTRACTS immediately and integration-test after u1/u2 land on the plan branch). PM composes on the plan branch 009-embed-split; units work in the PLAN worktree on unit branches cut FROM 009-embed-split (small, adjacent surfaces — full worktree-per-coder isolation is overkill here; the collision surface is one file per seam pair and the PM owns merge order u1 -> u2 -> u3)."
+    },
+    {
+      "name": "units",
+      "value": [
+        {
+          "id": "u1",
+          "title": "store: chunked vector key + poison heal",
+          "surface": "crates/store/migrations/00XX_embed_chunks.sql (next free ordinal — CHECK, lexical took 0018, claim-index 0019), crates/store/src/embeddings.rs, one heal statement path",
+          "contract": "PK gains chunk_no smallint NOT NULL DEFAULT 0; upsert/read APIs take/return chunk_no; existing rows are chunk 0 (schema test proves shape + grandfather read); heal: UPDATE existing failed embed jobs whose payload text is empty -> terminal state the boot sweep ignores, returning the count (receipt in tests via fixture rows).",
+          "done_when": "schema-shape test + grandfather test + heal test green; store suite green; no daemon code touched."
+        },
+        {
+          "id": "u2",
+          "title": "enrich: hygiene at mint + chunk windowing at prepare",
+          "surface": "crates/daemon/src/enrich.rs (mint sites + the cap-WARN prepare site), crates/daemon/src/batch.rs (assembly-side drop only)",
+          "contract": "chunk_plan() pure function per S2 (unit-tested standalone: cap-1, cap, cap+1, 3x-cap, overlap continuity); prepare emits N inputs tagged chunk_no instead of truncating (the truncated=true write path dies); mint-side empty predicate per S3 (turn/element empty-or-whitespace -> no job + one WARN); assembly-side drop per S3 with batch survival proven (a planted empty input does not reject its batchmates).",
+          "done_when": "chunk_plan unit tests + both hygiene mutation checks green (removing the mint filter fails one test; removing the assembly drop fails the other); daemon enrich suite green."
+        },
+        {
+          "id": "u3",
+          "title": "search read + end-to-end proof",
+          "surface": "crates/daemon/src/search.rs (or wherever the element-collapse lives — find it, do not move it), integration fixtures",
+          "contract": "N-chunk matches collapse to one element row, best score (ac-0003 fixture); the TAIL-retrieval anchor (ac-0002, mutation-checked against chunking-off); the live isolated-daemon conversation fixture (ac-0006: 25KB turn fully searchable, empty turn zero provider traffic, clean log).",
+          "done_when": "ac-0002/0003/0006 fixtures green; full harness checks green on the composed plan branch."
+        }
+      ]
+    },
+    {
+      "name": "isolation",
+      "value": "All units in the plan worktree /Users/jordanknight/substrate/flowspace/fs3-embed-split on unit branches cut from 009-embed-split (u1-store, u2-enrich, u3-read); per-seat CARGO_TARGET_DIR under the worktree (target-u1 etc.); the gate mints per-run test DBs (post-#70) with base FS3_TEST_DATABASE_URL as server selector; NEVER prod :7373 — the ac-0006 live proof runs an isolated daemon on an ephemeral port + disposable DB, torn down after. Read-only dogfood search/ask against prod is allowed and encouraged."
+    },
+    {
+      "name": "composition",
+      "value": "PM merges u1 -> u2 -> u3 onto 009-embed-split (serial, re-gating after each), runs the composed harness checks + the ac-0006 live fixture itself (composition is where emergent defects appear — tenet 15), then opens ONE PR from 009-embed-split into main. Migration ordinal collisions with concurrently-merging packets are the known hazard (claim-index had to renumber): check origin/main's migrations immediately before the PR and renumber if taken."
+    },
+    {
+      "name": "review",
+      "value": "Cross-model reviewer (gpt-5.6-sol high) after composition per packet-reviewer: plan fidelity against ac-0001..0007, the two mutation checks actually mutate (open the diffs), the frozen seams held (no batch-planner or ranking-algorithm drift), and the heal is terminal (boot sweep proof read, not assumed). Read-only; verdict to PM; PM relays with the packet's own judgment attached."
+    },
+    {
+      "name": "risks",
+      "value": [
+        "Migration ordinal race with in-flight packets — check latest origin/main migrations at PR time; renumber cleanly (precedent: claim-index 0018->0019).",
+        "Token-estimate drift: window sizing uses bytes/3 estimation; a pathological input could still exceed the true tokenizer cap — keep the existing cap-WARN as the LAST-RESORT guard (it should now never fire in practice; its firing post-merge is a regression signal krill's monitor will catch).",
+        "Dedupe key semantics: embed job dedupe is per (identity, source) — chunking must not change JOB identity (chunks are inputs within one job, never N jobs), or the queue inflates.",
+        "The empty-hash e3b0c442 (sha256 of empty string) is shared by EVERY empty body — the mint filter must key on content emptiness, not on having seen the hash fail before.",
+        "u3 must find the existing element-collapse and extend it in place — moving it would silently change lexical-channel (#74) fusion behaviour; the reviewer checks for this drift explicitly."
+      ]
+    }
+  ],
+  "references": []
+}
