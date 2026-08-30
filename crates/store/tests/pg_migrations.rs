@@ -282,10 +282,10 @@ async fn embedding_chunks_have_the_exact_key_and_defaulted_smallint_column() {
 }
 
 #[tokio::test]
-async fn migration_0021_grandfathers_vectors_without_minting_embed_jobs() {
+async fn migration_0022_grandfathers_vectors_without_minting_embed_jobs() {
     let database = FreshDatabase::create().await;
     let pool = database.pool().await;
-    apply_migrations(&pool, 1..=20).await;
+    apply_migrations(&pool, 1..=21).await;
 
     sqlx::query(
         "INSERT INTO embeddings_1024
@@ -301,7 +301,7 @@ async fn migration_0021_grandfathers_vectors_without_minting_embed_jobs() {
         .await
         .expect("count pre-migration embed jobs");
 
-    apply_migrations(&pool, 21..=21).await;
+    apply_migrations(&pool, 22..=22).await;
 
     let grandfathered: (i16, bool) = sqlx::query_as(
         "SELECT chunk_no, truncated
