@@ -1003,3 +1003,14 @@ leaving this file should name where it went.
     The one-field fix both sides want: ingest's job/envelope reports the
     STORE PATH actually resolved. That field alone kills the isolation
     trap for every rig user.
+
+105-CLOSED-NO-DISPATCH (2026-08-30): u2 traced the chain with line
+    evidence — Turn::canonical renders trimmed body PLUS every item block
+    (core/conversation.rs:233-244,:294-303) and that canonical text is
+    what elements/embeds consume; u2's predicate keys on
+    Element.raw_text after canonical rendering, so item-bearing
+    body-empty turns are RETAINED. The measured poison jobs were
+    genuinely contentless. 009's contract sufficient; dajeil's concern
+    answered with evidence, not assertion. (Had the predicate keyed on
+    body, it would have been silent content-loss wearing a hygiene fix's
+    clothes — the verify was worth mandating.)
