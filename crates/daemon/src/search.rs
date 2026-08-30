@@ -40,14 +40,14 @@
 
 use fs3_core::catalog;
 use fs3_core::envelope::Failure;
-use fs3_core::{DdocMeta, ElementKind};
-use fs3_store::{SearchFilters, SearchHit, SourceKind};
+use fs3_core::{DdocMeta, Element, ElementKind};
+use fs3_store::{LexicalHit, SearchFilters, SearchHit, SourceKind};
 use serde::{Deserialize, Serialize};
 
 use crate::runner::fail;
 use crate::scope::Scope;
 use crate::wiring::AppState;
-use fs3_core::views::search::{DdocHit, Hit};
+use fs3_core::views::search::{DdocHit, Hit, SearchChannel};
 
 /// What a caller asks for.
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
@@ -291,16 +291,24 @@ pub async fn search(
 
     apply_ddoc_filters(&mut filters, request);
 
-    let mut hits = fs3_store::search_elements(&state.db, &model_key, &vector, &filters)
-        .await
-        .map_err(fail)?;
+    let (mut hits, mut lexical_hits) = if source == Some(SourceKind::Smart) {
+        (
+            fs3_store::search_elements(&state.db, &model_key, &vector, &filters)
+                .await
+                .map_err(fail)?,
+            Vec::new(),
+        )
+    } else {
+        tokio::try_join!(
+            fs3_store::search_elements(&state.db, &model_key, &vector, &filters),
+            fs3_store::search_lexical(&state.db, query, &filters),
+        )
+        .map_err(fail)?
+    };
 
-    // The store scopes both candidate eligibility and representative
-    // resolution. If a future query shape defeats that invariant, never emit a
-    // repo-less address for a scoped search: drop it loudly so the missing
-    // provenance is diagnosable rather than becoming another checkout leak.
-    // This legitimacy guard runs after #44 widens retrieval, but before every
-    // early return: breadth first, legitimacy second.
+    // Both store legs scope candidate eligibility and representative
+    // resolution. This final legitimacy guard is deliberately shared: a future
+    // SQL change may not emit a repo-less address from a scoped search.
     let scoped = scope.repo.is_some() || scope.worktree.is_some() || request.path.is_some();
     hits.retain(|hit| {
         let resolved = hit.identity.is_some() || hit.root_path.is_some() || hit.path.is_some();
@@ -310,16 +318,34 @@ pub async fn search(
                 repo = ?scope.repo,
                 path = ?request.path,
                 worktree = ?scope.worktree,
-                "scoped search representative resolved without live provenance; dropping hit"
+                "scoped semantic representative resolved without live provenance; dropping hit"
+            );
+        }
+        !scoped || resolved
+    });
+    lexical_hits.retain(|hit| {
+        let resolved = hit.identity.is_some() || hit.root_path.is_some() || hit.path.is_some();
+        if scoped && !resolved {
+            tracing::warn!(
+                raw_hash = %hit.element.raw_hash(),
+                repo = ?scope.repo,
+                path = ?request.path,
+                worktree = ?scope.worktree,
+                "scoped lexical representative resolved without live provenance; dropping hit"
             );
         }
         !scoped || resolved
     });
 
-    let truncated = hits.len() > limit as usize;
-    if !hits.is_empty() {
+    let mut ranked = fuse(
+        lexical_hits.iter().map(render_lexical),
+        hits.iter().map(render),
+    );
+    let truncated = ranked.len() > limit as usize;
+    if !ranked.is_empty() {
+        ranked.truncate(limit as usize);
         return Ok(SearchOutcome {
-            results: hits.iter().take(limit as usize).map(render).collect(),
+            results: ranked,
             empty_because: None,
             limit,
             truncated,
@@ -611,6 +637,7 @@ fn render(hit: &SearchHit) -> Hit {
         address: address_of(hit),
         // Cosine distance to score, once, at the boundary.
         score: 1.0 - hit.similar.distance,
+        channel: SearchChannel::Semantic,
         match_field: hit.similar.source_kind.as_str().to_string(),
         kind: element.kind.as_str().to_string(),
         subkind: element.subkind.clone(),
@@ -629,6 +656,59 @@ fn render(hit: &SearchHit) -> Hit {
         worktree: hit.root_path.clone(),
         ddoc: element.ddoc.as_deref().map(ddoc_hit),
     }
+}
+
+fn render_lexical(hit: &LexicalHit) -> Hit {
+    let element = &hit.element;
+    Hit {
+        address: address_of_element(element, hit.identity.as_deref()),
+        // Exact substring identity is the lexical score; this is not cosine.
+        score: 1.0,
+        channel: SearchChannel::Lexical,
+        match_field: format!("exact_{}", hit.matched.as_str()),
+        kind: element.kind.as_str().to_string(),
+        subkind: element.subkind.clone(),
+        name: element.name.clone(),
+        span: [element.span.start_line, element.span.end_line],
+        snippet: snippet(&element.raw_text),
+        smart: None,
+        tags: Vec::new(),
+        repo: hit.identity.clone(),
+        path: hit.path.clone(),
+        worktree: hit.root_path.clone(),
+        ddoc: element.ddoc.as_deref().map(ddoc_hit),
+    }
+}
+
+/// Lexical order is authoritative. A semantic duplicate changes only the
+/// channel label; it never changes lexical placement or manufactures a score.
+fn fuse(
+    lexical: impl IntoIterator<Item = Hit>,
+    semantic: impl IntoIterator<Item = Hit>,
+) -> Vec<Hit> {
+    let mut fused: Vec<Hit> = Vec::new();
+    for hit in lexical {
+        if !fused.iter().any(|existing| same_hit(existing, &hit)) {
+            fused.push(hit);
+        }
+    }
+    for hit in semantic {
+        if let Some(existing) = fused.iter_mut().find(|existing| same_hit(existing, &hit)) {
+            if existing.channel == SearchChannel::Lexical {
+                existing.channel = SearchChannel::Both;
+            }
+        } else {
+            fused.push(hit);
+        }
+    }
+    fused
+}
+
+fn same_hit(left: &Hit, right: &Hit) -> bool {
+    left.address == right.address
+        && left.worktree == right.worktree
+        && left.path == right.path
+        && left.span == right.span
 }
 
 /// Map stored ddoc metadata into the consumer-owned search view.
@@ -664,11 +744,14 @@ fn ddoc_hit(meta: &DdocMeta) -> DdocHit {
 /// content is real even when the checkout that held it is gone, and inventing a
 /// repository for it would be a lie.
 fn address_of(hit: &SearchHit) -> String {
-    let element = &hit.similar.element;
+    address_of_element(&hit.similar.element, hit.identity.as_deref())
+}
+
+fn address_of_element(element: &Element, identity: Option<&str>) -> String {
     if element.kind == ElementKind::Turn || element.kind == ElementKind::Row {
         return element.address.clone();
     }
-    fs3_core::element_address(hit.identity.as_deref(), &element.address)
+    fs3_core::element_address(identity, &element.address)
 }
 
 /// Apply only ddoc-specific predicates, preserving the gate's three states.
@@ -765,6 +848,60 @@ mod tests {
         assert!((score(1.0) - 0.0).abs() < f64::EPSILON);
         // and a min_score of 0.7 must become a distance ceiling of 0.3
         assert!((1.0 - 0.7 - 0.3f64).abs() < 1e-9);
+    }
+
+    fn ranked(address: &str, channel: SearchChannel, score: f64) -> Hit {
+        Hit {
+            address: address.to_string(),
+            score,
+            channel,
+            match_field: match channel {
+                SearchChannel::Lexical | SearchChannel::Both => "exact_text",
+                SearchChannel::Semantic => "raw",
+            }
+            .to_string(),
+            kind: "function".to_string(),
+            subkind: "function_item".to_string(),
+            name: address.to_string(),
+            span: [1, 1],
+            snippet: String::new(),
+            smart: None,
+            tags: Vec::new(),
+            repo: None,
+            path: None,
+            worktree: None,
+            ddoc: None,
+        }
+    }
+
+    #[test]
+    fn fusion_keeps_lexical_placement_and_score_for_both() {
+        let hits = fuse(
+            [ranked("exact", SearchChannel::Lexical, 1.0)],
+            [
+                ranked("semantic-first", SearchChannel::Semantic, 0.99),
+                ranked("exact", SearchChannel::Semantic, 0.25),
+            ],
+        );
+        assert_eq!(hits[0].address, "exact");
+        assert_eq!(hits[0].channel, SearchChannel::Both);
+        assert_eq!(hits[0].score, 1.0);
+        assert_eq!(hits[1].address, "semantic-first");
+    }
+
+    #[test]
+    fn either_leg_is_visible_when_the_other_is_empty() {
+        let lexical = fuse(
+            [ranked("lexical", SearchChannel::Lexical, 1.0)],
+            std::iter::empty(),
+        );
+        assert_eq!(lexical[0].channel, SearchChannel::Lexical);
+
+        let semantic = fuse(
+            std::iter::empty(),
+            [ranked("semantic", SearchChannel::Semantic, 0.75)],
+        );
+        assert_eq!(semantic[0].channel, SearchChannel::Semantic);
     }
 
     fn hit(element: fs3_core::Element) -> SearchHit {

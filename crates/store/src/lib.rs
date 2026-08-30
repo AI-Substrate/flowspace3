@@ -29,6 +29,7 @@ pub mod elements;
 pub mod embeddings;
 pub mod ingest_cursors;
 pub mod jobs;
+pub mod lexical;
 pub mod messages;
 pub mod read;
 pub mod refs;
@@ -58,6 +59,7 @@ pub use jobs::{
     claim_jobs, complete_job, enqueue_job, enqueue_job_with_priority, fail_job, jobs_remaining,
     last_failure, park_job, queue_depth, requeue_failed, requeue_running, retry_job,
 };
+pub use lexical::{LexicalHit, LexicalMatch, search_lexical};
 pub use messages::{ack_message, live_messages, sync_messages};
 pub use read::{
     IndexedFile, count_files_under, files_at_path, files_under, latest_summary,
