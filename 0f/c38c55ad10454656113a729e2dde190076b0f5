@@ -1,0 +1,14 @@
+records/retro/2026-08-31/001-embed-split-day-drain.md
+  h_9e71e8b09f7cf2 1-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0fc38c55ad10454656113a729e2dde190076b0f5",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
