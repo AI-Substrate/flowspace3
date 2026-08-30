@@ -666,4 +666,89 @@ we hand the pattern to pij and the harness. Also `harness observe` each one.
   (2) THE DECLINED LIST: an allowlist grant should also name the crates that
   were CONSIDERED AND REJECTED (with the source that rejected them), so no
   coder re-litigates a settled choice mid-unit. Both from packet set e06894b.
+- 2026-08-30 (owl's 009 fan-out — THE IMPL-GUIDE IS A CLAIM, NOT A GIVEN;
+  verify it before you spawn anyone): three read-only recon agents were run
+  against the impl-guide's named seams BEFORE any coder packet was authored,
+  and they found TWO defects in a prime-authored, ratified guide. (1) Seam S4
+  said "generalize the EXISTING collapse of multiple vectors per element" —
+  no such collapse existed anywhere; the one-row-per-element invariant held
+  by ACCIDENT of the 1-vector-per-(hash,kind) key. A coder would have spent
+  hours hunting a mechanism that was never built. Worse, the LIMIT applied to
+  VECTORS before element resolution, so the plan's own chunking would have let
+  one whale element crowd every other element out of top-k — a ranking
+  regression created by the plan's success, invisible to every unit's tests.
+  (2) The isolation section put three concurrent seats on three branches in
+  ONE worktree, which cannot exist (one HEAD) and contradicted the repo's own
+  worktree-per-coder policy. Both were ratified as corrections in minutes.
+  THE ENCODING: an impl-guide's every "the existing X" claim must carry a
+  file:line citation AT AUTHORING TIME. An unanchored "the existing" is an
+  unverified premise with a coder's afternoon attached to it. And a mechanical
+  check is available for the second: if unit count > 1 and every unit names the
+  SAME worktree with DIFFERENT branches, refuse the guide — decidable without
+  judgement.
+
+- 2026-08-30 (owl/009 — "CONSUMES TYPES FROM" IS INEXPRESSIBLE IN THE UNITS
+  TABLE, WHICH IS WHY THE DEPENDENCY SURVIVED AUTHORING): the guide called u1
+  and u2 parallel. They were, at the FILE level — disjoint fences, zero
+  collision. But u2's final line constructed a struct u1 was adding a field to,
+  so u2's branch could not compile green until u1 landed. The units table has
+  `depends_on`, and everyone reads it as ordering; nothing in the template asks
+  "what TYPES does this unit consume that another unit owns". Tenet 10 already
+  says waves must respect build dependencies — the template just gives the
+  author nowhere to write one down. PROPOSED COLUMN: `consumes_types_from`.
+  Named in the packet up front, it cost nothing; discovered at hour three it
+  is a mystery red in a coder's gate.
+
+- 2026-08-30 (owl/009 — A TRIPWIRE MUST NAME AN INVARIANT, NEVER THE BEHAVIOUR
+  THE PLAN REPLACES): the PM's packet froze crates/daemon/tests/oversize.rs
+  with "a red here means STOP". That file encoded the OLD "truncate now, split
+  later" ruling this very plan kills, so obeying the tripwire literally made
+  the unit impossible. The coder stopped and asked instead of coding around it
+  — the packet working exactly as designed, against the packet's own error.
+  THE ENCODING: the template should force the author to state WHY each tripwire
+  suite cannot legitimately go red. An author who cannot answer that sentence
+  is freezing a fixture, not an invariant.
+
+- 2026-08-30 (owl/009 — TENET 17, CAUGHT LIVE, IN NINETEEN SECONDS): u1 shipped
+  `retire_empty_embed_jobs` green, unit-tested, control-legged, and completely
+  unreachable — never re-exported, never called. Every test of the MECHANISM
+  passed. The composition gate caught it with E0425 in 19s because the PM wired
+  it as a checklist item rather than a hope. Then the PM mutation-checked its
+  OWN wiring: swapping the retire/requeue order makes the poison return as
+  ("pending", false) and reds both trigger tests — a bug every assertion about
+  the retirement itself would have missed, because the retirement was fine and
+  the SEQUENCE was wrong. The trigger test also carries a control job with real
+  text that IS revived; without it, a recovery that silently did nothing would
+  pass every assertion about the poison staying dead. GLUE THE COMPOSER WRITES
+  IS THE LEAST-REVIEWED CODE IN THE PLAN — mutation-check your own composition.
+
+- 2026-08-30 (owl/009 — "THE FROZEN FILE CHANGED" IS A FALSE FINDING WHEN A
+  MERGE SITS BETWEEN YOU AND YOUR BASELINE): the reviewer's headline drift
+  check was "search.rs must show no diff". `git diff --stat 50aeeb7..HEAD`
+  showed 153 changed lines in it — the exact shape of the drift finding, and
+  wrong: those lines came from main's #80/#84, pulled in by a merge-forward.
+  Against the correct base (`b53428f..HEAD`) the diff is empty. ALWAYS DIFF A
+  FROZEN SEAM AGAINST THE SHA THE UNIT BRANCHED FROM, never against a
+  pre-merge baseline. This is how a false drift finding gets filed against an
+  innocent coder.
+
+- 2026-08-30 (owl/009 — MUTATION RECEIPTS PROVE THE AUTHOR'S WORKTREE, NOT THE
+  ARTIFACT): ac-0004 promised TWO independently mutation-checked hygiene
+  layers. The coder's receipts were real and honest — and they only ever ran in
+  the coder's own tree, before composition. The PM re-derived both on the
+  MERGED tree: neutering the mint predicate reds exactly one test while the
+  assembly tests stay green; deleting the assembly drop reds exactly the other
+  two while the mint test stays green. Only then is "two layers, two reasons"
+  a property of the shipped artifact rather than of a branch that no longer
+  exists. FOR ANY AC PHRASED "BOTH LAYERS" OR "INDEPENDENTLY", THE COMPOSER
+  RE-RUNS THE MUTATION AFTER THE MERGE.
+
+- 2026-08-30 (owl/009 — the grandfather test that would have gone SILENTLY
+  FALSE-GREEN): a migration renumbered 0021 -> 0022 mid-run when another
+  packet took the ordinal. The grandfather test applied `1..=20` then `21..=21`
+  by VERSION, so the renumber broke it loudly and it was fixed. Had it asserted
+  a RANGE or "the latest migration", it would have kept passing while testing
+  the wrong transition entirely. PIN MIGRATION PROOFS TO EXPLICIT VERSIONS —
+  the ordinal race is a known recurring hazard in this repo, and a version-
+  pinned test is the only kind that notices it.
 - (add as they arise)
