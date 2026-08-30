@@ -1,0 +1,14 @@
+docs/plans/009-embed-split/assets/composition-checklist.md
+  h_9e71e8b09f7cf2 1-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3b7db794e774a1d19e21d2efbe915580d9234eef",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
