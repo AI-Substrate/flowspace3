@@ -970,3 +970,16 @@ leaving this file should name where it went.
     to see the named container first; four seat-hits today across the
     family. Also recurring: cargo multi-filter misuse x3 -> encoding is a
     harness focused-test verb accepting multiple names.
+
+106. **harness CLI E100 — duplicate 'convo' command kills ALL harness
+    verbs, including daemon bounce** (lynx, 2026-08-30, during #84 train).
+    "cannot add command 'convo' as already have command 'convo'" — the
+    global CLI now ships a convo verb (meadowlark's harness convo sync?)
+    colliding with a same-named registration in this repo's extensions;
+    the collision aborts the whole CLI, so the #84 bounce silently never
+    ran and prod sat on a stale binary until manually bounced via pane %50
+    (fresh pid 22889 verified by lstart). Misleading-success adjacent: the
+    train printed 'bounce: error E100' but health 401 from the OLD process
+    looked healthy. Fix: namespace or dedupe the registration; report to
+    meadowlark; ALSO the train script should fail loudly when bounce
+    errors rather than trusting a 401 that may be the old process.
