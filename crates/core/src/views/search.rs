@@ -84,9 +84,23 @@ pub struct Hit {
     pub ddoc: Option<DdocHit>,
 }
 
+/// Counts from the scored set before the caller's display limit is applied.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SearchComposition {
+    /// Source-code declarations and containers.
+    pub code: u64,
+    /// Prose sections and deterministic-document rows.
+    pub doc: u64,
+    /// Conversation turns.
+    pub conversation: u64,
+}
+
 /// What `GET /search` answers with.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SearchResults {
     /// Ranked hits, best first.
     pub results: Vec<Hit>,
+    /// Source totals within the active score threshold, before top-k truncation.
+    #[serde(default)]
+    pub composition: SearchComposition,
 }

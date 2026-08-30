@@ -449,7 +449,7 @@ fn doctor_obeys_the_matrix_without_touching_a_real_container_engine() {
 fn a_human_mode_usage_error_still_writes_nothing_to_stdout() {
     let config = tempfile::tempdir().unwrap();
     let output = command(config.path())
-        .args(["search", "anything", "--source", "code", "--human"])
+        .args(["search", "anything", "--source", "raw", "--human"])
         .output()
         .unwrap();
     assert_eq!(output.status.code(), Some(2));

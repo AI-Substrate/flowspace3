@@ -222,7 +222,10 @@ impl<'a> IndexTools<'a> {
                 .get("path")
                 .and_then(Value::as_str)
                 .map(str::to_string),
-            source: None,
+            source: arguments
+                .get("source")
+                .and_then(Value::as_str)
+                .map(str::to_string),
             min_score: None,
             limit: Some({
                 let limit = arguments
@@ -339,10 +342,10 @@ impl ToolBox for IndexTools<'_> {
             ToolSchema {
                 name: "search".into(),
                 description: format!(
-                    "Semantic search over the code index. Returns hits with an `address` to pass \
-                     to `get`. Ask meaning-shaped questions, not identifiers. Current {}. Pass \
-                     repo=\"all\" to search every indexed repository when the answer may live \
-                     outside the current one.",
+                    "Semantic search over the complete code, document, and conversation index. \
+                     Returns hits with an `address` to pass to `get`. Ask meaning-shaped questions, \
+                     not identifiers. Current {}. Pass repo=\"all\" to search every indexed \
+                     repository, or source=\"code\"|\"doc\"|\"conversation\" to narrow the corpus.",
                     Self::scope_line(&self.scope)
                 ),
                 parameters: json!({
@@ -351,6 +354,7 @@ impl ToolBox for IndexTools<'_> {
                         "query": {"type": "string", "description": "A short, meaning-shaped question or phrase."},
                         "repo": {"type": "string", "description": "A repository identity, or \"all\" to widen to every indexed repository."},
                         "path": {"type": "string", "description": "Optional glob to restrict paths, e.g. \"crates/daemon/**\"."},
+                        "source": {"type": "string", "enum": ["all", "code", "doc", "conversation"], "description": "Content corpus; absent or all searches every source."},
                         "limit": {"type": "integer", "description": "How many hits (1-15, default 6)."}
                     },
                     "required": ["query"]
@@ -358,9 +362,10 @@ impl ToolBox for IndexTools<'_> {
             },
             ToolSchema {
                 name: "get".into(),
-                description: "Read one address in full — an element with its children, or a whole \
-                              file. Use the `address` exactly as `search` returned it."
-                    .into(),
+                description:
+                    "Read one address in full — a code/document element or a conversation \
+                              turn window. Use the `address` exactly as `search` returned it."
+                        .into(),
                 parameters: json!({
                     "type": "object",
                     "properties": {

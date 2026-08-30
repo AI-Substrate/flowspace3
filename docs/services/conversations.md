@@ -60,12 +60,12 @@ error.
 sequence, so a line floor cannot tell a five-word "ship it" from the same turn
 carrying a 4KB tool result. `indexing.turn_summary_min_bytes`, default 256.
 
-**`--source conversation` is a CONTENT-TYPE filter, not a vector space.** This
-resolves workshop 003's open question 1. `raw` and `smart` are the vector-space
-axis — a column on `embeddings_1024` with a check constraint — and a turn has
-both, exactly like a function does. What makes a turn a turn is its element
-KIND, so the one user-facing `--source` axis maps onto two orthogonal filters
-that compose rather than compete.
+**Conversation is a content-source filter, not a vector space.** Default search
+ranks code, document, and conversation elements together. `--source code`,
+`doc`, or `conversation` narrows by element KIND; `all` is the explicit default.
+Raw and smart remain internal vector spaces, and `match_field` says which won.
+The pre-limit scored set also produces `composition`, so threshold-matching
+turns remain visible as a count when file hits occupy the returned top-k.
 
 ## Gotchas discovered
 

@@ -41,13 +41,13 @@
 use fs3_core::catalog;
 use fs3_core::envelope::Failure;
 use fs3_core::{DdocMeta, Element, ElementKind};
-use fs3_store::{LexicalHit, SearchFilters, SearchHit, SourceKind};
+use fs3_store::{LexicalHit, SearchFilters, SearchHit};
 use serde::{Deserialize, Serialize};
 
 use crate::runner::fail;
 use crate::scope::Scope;
 use crate::wiring::AppState;
-use fs3_core::views::search::{DdocHit, Hit, SearchChannel};
+use fs3_core::views::search::{DdocHit, Hit, SearchChannel, SearchComposition};
 
 /// What a caller asks for.
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
@@ -65,7 +65,7 @@ pub struct SearchRequest {
     /// Restrict to paths matching this glob.
     #[serde(default)]
     pub path: Option<String>,
-    /// `raw`, `smart`, or absent for both.
+    /// Content source: `code`, `doc`, `conversation`, or `all` (the default).
     #[serde(default)]
     pub source: Option<String>,
     /// Similarity floor, 0.0–1.0.
@@ -116,17 +116,20 @@ pub const MAX_LIMIT: i64 = 100;
 /// below the current band moves this floor down, never up by taste.
 pub const WEAK_MATCH_SCORE_FLOOR: f64 = 0.50;
 
-/// The element kinds that answer a CODE search.
-///
-/// Named exhaustively rather than as "everything except a turn", so that adding
-/// a content type is a decision someone makes here rather than an accident that
-/// silently starts blending it into code results.
-const CODE_KINDS: [ElementKind; 5] = [
+/// Closed source groups. New element kinds require an explicit placement.
+const CODE_KINDS: [ElementKind; 3] = [
+    ElementKind::File,
+    ElementKind::Container,
+    ElementKind::Function,
+];
+const DOC_KINDS: [ElementKind; 2] = [ElementKind::Section, ElementKind::Row];
+const ALL_KINDS: [ElementKind; 6] = [
     ElementKind::File,
     ElementKind::Container,
     ElementKind::Function,
     ElementKind::Section,
     ElementKind::Row,
+    ElementKind::Turn,
 ];
 
 fn weak_match_score(best: Option<f64>) -> bool {
@@ -163,6 +166,8 @@ pub struct EmptyBecause {
 pub struct SearchOutcome {
     /// The ranked hits, best first.
     pub results: Vec<Hit>,
+    /// Counts from the same thresholded scored set, before display truncation.
+    pub composition: SearchComposition,
     /// Present only when `results` is empty AND the emptiness has a knowable
     /// cause. `None` alongside an empty list means the index really was asked
     /// and really had nothing nearer to offer.
@@ -211,39 +216,20 @@ pub async fn search(
         ));
     }
 
-    // Workshop 003's ONE user-facing `--source` axis, resolved into the two
-    // axes it is really made of (its open question 1). `raw` and `smart` are
-    // the VECTOR SPACE — a column on `embeddings_1024` with a check
-    // constraint. `conversation` is not a third value there and could not be:
-    // a turn has a raw vector and a smart vector exactly like a function does.
-    // What makes a turn a turn is its element KIND, so this maps to the
-    // content-type filter instead, and the two compose rather than competing.
-    //
-    // `all` and the absent default mean all CODE spaces. Conversations stay
-    // opt-in, as 003 D3 reserved and workshop 005 kept: conversations are
-    // opinions at a point in time and code is current truth, so blending them
-    // by default would answer "how does auth work" with somebody's guess about
-    // it from three weeks ago.
-    //
-    // `code` rides along because the emptiness diagnostics below are only
-    // entitled to speak about file content: they reason from raw vectors
-    // reachable through `worktree_files`, and a turn has no row there. Telling
-    // a conversation search that its repository "has content indexed" would be
-    // true and irrelevant, which is the kind of confident irrelevance this
-    // whole change exists to remove.
-    let (source, kinds, code) = match request.source.as_deref() {
-        None | Some("all") => (None, Some(CODE_KINDS.to_vec()), true),
-        Some("raw") => (Some(SourceKind::Raw), Some(CODE_KINDS.to_vec()), true),
-        Some("smart") => (Some(SourceKind::Smart), Some(CODE_KINDS.to_vec()), true),
-        Some("conversation") => (None, Some(vec![ElementKind::Turn]), false),
+    // `source` is the content corpus. The absent/default and `all` search the
+    // complete corpus; narrower values keep ranking identical while selecting
+    // one stable source group before the scored-set limit.
+    let (kinds, file_backed) = match request.source.as_deref() {
+        None | Some("all") => (Some(ALL_KINDS.to_vec()), true),
+        Some("code") => (Some(CODE_KINDS.to_vec()), true),
+        Some("doc") => (Some(DOC_KINDS.to_vec()), true),
+        Some("conversation") => (Some(vec![ElementKind::Turn]), false),
         Some(other) => {
             return Err(Failure::new(
                 &catalog::QUERY_INVALID,
-                format!("--source must be raw, smart, conversation or all, got {other:?}"),
+                format!("--source must be code, doc, conversation or all, got {other:?}"),
             )
-            .with_fix(
-                "use `--source conversation` to search indexed turns, or omit it to search code",
-            ));
+            .with_fix("use `--source conversation` to search only indexed turns, or omit it to search every source"));
         }
     };
 
@@ -282,29 +268,20 @@ pub async fn search(
         repo: scope.repo.clone(),
         worktree: scope.worktree.clone(),
         path: request.path.as_deref().map(glob_to_like),
-        source,
+        source: None,
         kinds,
         max_distance,
-        limit: limit + 1,
+        limit: MAX_LIMIT + 1,
         ..SearchFilters::default()
     };
 
     apply_ddoc_filters(&mut filters, request);
 
-    let (mut hits, mut lexical_hits) = if source == Some(SourceKind::Smart) {
-        (
-            fs3_store::search_elements(&state.db, &model_key, &vector, &filters)
-                .await
-                .map_err(fail)?,
-            Vec::new(),
-        )
-    } else {
-        tokio::try_join!(
-            fs3_store::search_elements(&state.db, &model_key, &vector, &filters),
-            fs3_store::search_lexical(&state.db, query, &filters),
-        )
-        .map_err(fail)?
-    };
+    let (mut hits, mut lexical_hits) = tokio::try_join!(
+        fs3_store::search_elements(&state.db, &model_key, &vector, &filters),
+        fs3_store::search_lexical(&state.db, query, &filters),
+    )
+    .map_err(fail)?;
 
     // Both store legs scope candidate eligibility and representative
     // resolution. This final legitimacy guard is deliberately shared: a future
@@ -341,20 +318,23 @@ pub async fn search(
         lexical_hits.iter().map(render_lexical),
         hits.iter().map(render),
     );
+    let composition = composition(&ranked);
     let truncated = ranked.len() > limit as usize;
     if !ranked.is_empty() {
         ranked.truncate(limit as usize);
         return Ok(SearchOutcome {
             results: ranked,
+            composition,
             empty_because: None,
             limit,
             truncated,
         });
     }
 
-    if let Some(reason) = path_unmatched(state, request, &filters, code).await {
+    if let Some(reason) = path_unmatched(state, request, &filters, file_backed).await {
         return Ok(SearchOutcome {
             results: Vec::new(),
+            composition: SearchComposition::default(),
             empty_because: Some(reason),
             limit,
             truncated: false,
@@ -367,16 +347,29 @@ pub async fn search(
     // content", and "genuinely no match" all look identical, and only the last
     // one is an answer. Returning the empty list for all five makes the other
     // four into confident lies.
-    if let Some(failure) = nothing_to_search(state, &model_key, &filters, code).await {
+    if let Some(failure) = nothing_to_search(state, &model_key, &filters, file_backed).await {
         return Err(failure);
     }
 
     Ok(SearchOutcome {
         results: Vec::new(),
-        empty_because: empty_because(&filters, code),
+        composition: SearchComposition::default(),
+        empty_because: empty_because(&filters, file_backed),
         limit,
         truncated: false,
     })
+}
+
+fn composition(hits: &[Hit]) -> SearchComposition {
+    let mut counts = SearchComposition::default();
+    for hit in hits {
+        match hit.kind.as_str() {
+            "turn" => counts.conversation += 1,
+            "section" | "row" => counts.doc += 1,
+            _ => counts.code += 1,
+        }
+    }
+    counts
 }
 
 /// The true statement about an empty answer — and `None` when there is none.
@@ -814,6 +807,7 @@ fn glob_to_like(glob: &str) -> String {
 mod tests {
     use super::*;
     use fs3_core::DerivedState;
+    use fs3_store::SourceKind;
 
     #[test]
     fn a_glob_becomes_a_like_pattern_with_its_metacharacters_escaped() {

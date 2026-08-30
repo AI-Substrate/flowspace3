@@ -269,7 +269,7 @@ async fn conversation_list(
                     .to_string()
             } else {
                 "`flowspace3 tree <address>` outlines any of them; \
-                 `flowspace3 search \"<question>\" --source conversation` searches their turns"
+                 `flowspace3 search \"<question>\"` searches their turns with every source"
                     .to_string()
             };
             ok(&state, COMMAND, list)
@@ -561,6 +561,7 @@ async fn search(
             }
             let results = SearchResults {
                 results: outcome.results,
+                composition: outcome.composition,
             };
             let next = crate::scope::steer(&scope, &next);
             let next = if crate::ask_hint::looks_like_question(&request.q) {

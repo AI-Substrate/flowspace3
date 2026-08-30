@@ -74,7 +74,12 @@ matching nothing returns nothing, not a padded list:
 | `--path <glob>` | paths matching a glob (`crates/store/*`) |
 | `--limit N` | how many hits (1–100, default 10) |
 | `--min-score S` | similarity floor, 0.0–1.0 |
-| `--source raw\|smart\|all` | which vector space: code text / LLM summaries / both |
+| `--source code\|doc\|conversation\|all` | narrow the corpus; absent/`all` searches every source |
+
+Default search ranks code, document, and conversation rows together. The
+`data.composition` counts come from the same `--min-score`-filtered scored set
+before top-k truncation, so a conversation below the returned limit is still
+visible without changing ranking. Narrow only when the question requires it.
 
 A real answer, trimmed:
 
@@ -208,8 +213,8 @@ to the same filters `search` exposes — so a question phrased with real nouns
 
 - **The index** answers meaning-shaped questions — "where do we handle X", "how does
   Y work" — and unfamiliar codebases where you cannot name the identifiers yet.
-  `--source smart` for conceptual questions; `--source raw` when you know roughly
-  what the code says.
+  Use `--source code`, `doc`, or `conversation` only when the question requires one
+  corpus; absent/`all` lets relevance rank every source together.
 - **Your own grep/ripgrep** answers exact-identifier lookups: a symbol, an error
   string, a literal. Exact text matching is grep's job; do not ask the index to do it.
 - **`ask`** answers questions that need assembling — "how does X work", "why is Y

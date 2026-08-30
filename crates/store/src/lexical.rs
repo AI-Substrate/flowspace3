@@ -108,7 +108,7 @@ pub async fn search_lexical(
                            WHERE t.blob_sha = el.blob_sha
                              AND ($3::text IS NULL OR c.repo_identity = $3)
                              AND ($4::text IS NULL OR c.worktree LIKE $4)
-                             AND ($6::text IS NULL OR c.worktree = $6)))
+                             AND ($6::text IS NULL OR c.worktree IS NULL OR c.worktree = $6)))
               ORDER BY name_match DESC, length(el.raw_text), el.id
               LIMIT $2
          )
@@ -136,7 +136,7 @@ pub async fn search_lexical(
                  WHERE t.blob_sha = candidate.blob_sha
                    AND ($3::text IS NULL OR c.repo_identity = $3)
                    AND ($4::text IS NULL OR c.worktree LIKE $4)
-                   AND ($6::text IS NULL OR c.worktree = $6)
+                   AND ($6::text IS NULL OR c.worktree IS NULL OR c.worktree = $6)
                  ORDER BY c.repo_identity, c.worktree
                  LIMIT 1
            ) anchored ON TRUE
