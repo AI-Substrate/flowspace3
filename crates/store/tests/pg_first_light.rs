@@ -13,11 +13,11 @@ use std::time::Duration;
 
 use fs3_core::{BlobRef, Element, ElementKind, Embedder, RepoIdentity, Span, Summary};
 use fs3_store::{
-    EMBEDDING_DIMENSIONS, NewEmbedding, PgPool, SearchFilters, SourceKind, StoreError, claim_job,
-    complete_job, create_database, database_exists, enqueue_job, find_worktree, list_worktrees,
-    maintenance_url, put_embeddings, put_smart_content, queue_depth, register_worktree, retry_job,
-    schema_current, search_elements, sync_worktree_files, upsert_element_tree,
-    worktree_paths_for_blob,
+    EMBEDDING_DIMENSIONS, JOB_PRIORITY_NEW_WORKTREE_SCAN, NewEmbedding, PgPool, SearchFilters,
+    SourceKind, StoreError, claim_job, complete_job, create_database, database_exists, enqueue_job,
+    enqueue_job_with_priority, find_worktree, list_worktrees, maintenance_url, put_embeddings,
+    put_smart_content, queue_depth, register_worktree, retry_job, schema_current, search_elements,
+    sync_worktree_files, upsert_element_tree, worktree_paths_for_blob,
 };
 use fs3_testkit::fakes::FakeEmbedder;
 use support::{FreshDatabase, PARSER_VERSION, unique_blob, unique_seed};
@@ -392,6 +392,46 @@ async fn a_fresh_job_claims_ahead_of_an_old_equal_priority_backlog() {
     assert!(
         ready.dedupe_key.starts_with("scan:old:"),
         "a newer id whose not_before is in the future must remain deferred"
+    );
+
+    database.destroy(pool).await;
+}
+
+/// Priority is global across eligible kinds. A kind-leading access path may
+/// narrow a lane, but it must never turn the caller's kind order or a newer id
+/// into a stronger signal than the queue's declared priority.
+#[tokio::test]
+async fn priority_beats_recency_across_job_kinds() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    enqueue_job_with_priority(
+        &pool,
+        "scan_file",
+        "scan:promoted",
+        &serde_json::json!({}),
+        Duration::ZERO,
+        JOB_PRIORITY_NEW_WORKTREE_SCAN,
+    )
+    .await
+    .unwrap();
+    enqueue_job(
+        &pool,
+        "summarize",
+        "summarize:newer-default",
+        &serde_json::json!({}),
+        Duration::ZERO,
+    )
+    .await
+    .unwrap();
+
+    let claimed = claim_job(&pool, &["summarize", "scan_file"])
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        claimed.dedupe_key, "scan:promoted",
+        "priority must win across kinds before kind-list order or newer id"
     );
 
     database.destroy(pool).await;
