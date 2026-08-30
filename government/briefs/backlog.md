@@ -694,3 +694,25 @@ leaving this file should name where it went.
     enrichment queue. RECEIPT of the day: 14,575 turns, 29ms submit,
     ZERO deadlocks — the same burst shape that stormed at 7.4k pre-#72/73;
     the settlement+microbatch fixes measurably cured row 78.
+
+87. **oversize embed caps are BACK in volume — conversation turns hit the
+    truncate-now path constantly** (Jordan's log paste, 2026-08-30): the
+    WARNs are the 2026-08-27 ruling working as designed (truncate to the
+    8192-token cap rather than fail forever; 'split later' explicitly
+    deferred) — but whale conversation turns (20KB+ tool dumps) hit it
+    at a rate code elements never did, and each one's TAIL is
+    semantically unsearchable. The deferred future is now due: chunk
+    oversize turns into multiple vectors (the design-note slot was left
+    in the embed path by w-embed-oversize). Conversation-shaped fix, not
+    a revert of the ruling.
+
+88. **archived docs outrank live source for mechanism queries — now a
+    DEFECT, not an anecdote** (meadowlark x4 + independent cold-context
+    coder seat pij-changing-vulture; two observers, six instances,
+    2026-08-30): semantic search for 'how does X work' returns archived
+    plan/README prose top and unrelated source after — agents decline
+    the results as evidence (correctly). Candidates: rank-time source
+    weighting (source code > docs > archived docs for mechanism-shaped
+    queries), an archived: flag/downweight on docs/plans/archive/**, or
+    kind-aware boosts in the fused ranking (#74 opened the fusion seam).
+    Distinct from row 84 (dot-dir exclusion).
