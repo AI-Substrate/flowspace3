@@ -16,13 +16,16 @@ costing hundreds of tokens instead of scrollback archaeology.
 # 1. Store a transcript. Re-run it as the file grows — only new turns land.
 flowspace3 conversation import ./session.jsonl
 
-# 2. Find the moment.
+# 2. Ask one transcript directly. Short/full guids and conv: addresses work.
+flowspace3 ask "what did we decide about the foreign key" --conversation <guid>
+
+# 3. Or search discussion broadly across the repository.
 flowspace3 search "why did we drop the foreign key" --source conversation
 
-# 3. Read around the hit. You choose how much you pay for.
+# 4. Read around a search hit. You choose how much you pay for.
 flowspace3 get conv:<guid>#t42 --before 10 --after 20
 
-# 4. Or browse the whole thing first.
+# 5. Or browse the whole thing first.
 flowspace3 tree conv:<guid>
 ```
 
@@ -36,6 +39,12 @@ Conversation rows appear only when they earn their score; `data.composition`
 still reports threshold-matching conversation totals below the returned top-k.
 Use `--source conversation` when the question asks only for prior discussion,
 or `--source code` when only current implementation may answer.
+
+`ask` accepts the same `--source code|doc|conversation|all` axis. Add
+`--conversation <guid-or-conv:address>` when the question is about one session:
+every retrieval and citation is then hard-bound to that transcript, and the
+coverage envelope names its stored turn count. An unknown guid is refused before
+the chat model runs; `conversation list` is the authoritative way to choose one.
 
 ## The transcript format
 

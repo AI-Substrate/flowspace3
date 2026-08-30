@@ -256,6 +256,14 @@ enum Command {
         /// one repo asks a question whose answer lives in another.
         #[arg(long, value_name = "IDENTITY")]
         repo: Option<String>,
+        /// Content source; absent or `all` searches code, docs, and conversations.
+        #[arg(long, value_name = "SOURCE", value_parser = ["code", "doc", "conversation", "all"])]
+        source: Option<String>,
+        /// Pin every retrieval and citation to one indexed transcript.
+        ///
+        /// Accepts a full guid, its short prefix, or a `conv:<guid>` address.
+        #[arg(long, value_name = "GUID")]
+        conversation: Option<String>,
         /// Override the daemon URL from configuration.
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
@@ -624,11 +632,15 @@ async fn run(command: Command) -> Result<ExitCode> {
         Command::Ask {
             question,
             repo,
+            source,
+            conversation,
             daemon_url,
         } => {
             let client = client_for(daemon_url)?;
             let mut params = vec![("question".to_string(), question)];
             push(&mut params, "repo", repo);
+            push(&mut params, "source", source);
+            push(&mut params, "conversation", conversation);
             push(&mut params, "cwd", here());
             emit(&client.ask(&params).await)
         }
@@ -1093,6 +1105,35 @@ mod tests {
             ])
             .is_err(),
             "open and closed are mutually exclusive"
+        );
+    }
+
+    #[test]
+    fn ask_accepts_source_and_conversation_scope() {
+        let cli = Cli::try_parse_from([
+            "flowspace3",
+            "ask",
+            "what did we decide?",
+            "--source",
+            "conversation",
+            "--conversation",
+            "6ba7b810",
+        ])
+        .expect("ask scope flags parse");
+        let Command::Ask {
+            source,
+            conversation,
+            ..
+        } = cli.command
+        else {
+            panic!("ask command");
+        };
+        assert_eq!(source.as_deref(), Some("conversation"));
+        assert_eq!(conversation.as_deref(), Some("6ba7b810"));
+
+        assert!(
+            Cli::try_parse_from(["flowspace3", "ask", "question", "--source", "unknown"]).is_err(),
+            "ask and search accept the same closed source set"
         );
     }
 

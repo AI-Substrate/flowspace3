@@ -167,6 +167,20 @@ async fn ask(
         crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
     let meta = serde_json::json!({ "scope": scope });
 
+    // Request filters are resolved before checking or invoking the chat port.
+    // An unknown transcript is a bad request, not a model-generated empty
+    // answer, and must cost zero model turns.
+    let corpus = match crate::ask::resolve_corpus(&state, &request, &scope).await {
+        Ok(corpus) => corpus,
+        Err(failure) => {
+            return failed(&state, COMMAND, failure)
+                .await
+                .0
+                .with_meta(meta)
+                .into();
+        }
+    };
+
     // The verdict rides the ENVELOPE, not the prose. A daemon wired to the
     // offline fake is healthy and cannot answer anything, and it used to say
     // so only in `grounded` and a next_action — while `ok` stayed true, which
@@ -185,7 +199,7 @@ async fn ask(
         return failed(&state, COMMAND, failure).await;
     }
 
-    match crate::ask::ask(&state, &request, scope.clone()).await {
+    match crate::ask::ask(&state, &request, scope.clone(), corpus).await {
         Ok(report)
             if report.stopped == "answered"
                 && report
@@ -297,15 +311,7 @@ async fn conversation_list(
     }
     match crate::conversations::list(&state, &request).await {
         Ok(list) => {
-            let next = if list.conversations.is_empty() {
-                "nothing is indexed yet — `flowspace3 conversation import <file>` stores a \
-                 transcript"
-                    .to_string()
-            } else {
-                "`flowspace3 tree <address>` outlines any of them; \
-                 `flowspace3 search \"<question>\"` searches their turns with every source"
-                    .to_string()
-            };
+            let next = crate::conversations::next_after_list(&list);
             ok(&state, COMMAND, list)
                 .await
                 .0

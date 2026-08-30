@@ -40,7 +40,7 @@
 
 use fs3_core::catalog;
 use fs3_core::envelope::Failure;
-use fs3_core::{DdocMeta, Element, ElementKind};
+use fs3_core::{ConversationId, DdocMeta, Element, ElementKind};
 use fs3_store::{LexicalHit, SearchFilters, SearchHit};
 use serde::{Deserialize, Serialize};
 
@@ -185,6 +185,26 @@ impl SearchOutcome {
         weak_match_score(self.results.first().map(|hit| hit.score))
     }
 }
+
+/// Resolve the shared `--source` corpus contract used by search and ask.
+///
+/// Keeping validation here means the two verbs cannot accept different source
+/// spellings or classify a turn differently.
+pub(crate) fn source_filter(
+    source: Option<&str>,
+) -> Result<(Option<Vec<ElementKind>>, bool), Failure> {
+    match source {
+        None | Some("all") => Ok((Some(ALL_KINDS.to_vec()), true)),
+        Some("code") => Ok((Some(CODE_KINDS.to_vec()), true)),
+        Some("doc") => Ok((Some(DOC_KINDS.to_vec()), true)),
+        Some("conversation") => Ok((Some(vec![ElementKind::Turn]), false)),
+        Some(other) => Err(Failure::new(
+            &catalog::QUERY_INVALID,
+            format!("--source must be code, doc, conversation or all, got {other:?}"),
+        )
+        .with_fix("use `--source conversation` to search only indexed turns, or omit it to search every source")),
+    }
+}
 /// How many lines of an element's text a hit carries.
 const SNIPPET_LINES: usize = 5;
 
@@ -198,6 +218,28 @@ pub async fn search(
     state: &AppState,
     request: &SearchRequest,
     scope: &Scope,
+) -> Result<SearchOutcome, Failure> {
+    search_filtered(state, request, scope, None).await
+}
+
+/// Answer one search pinned to a single transcript.
+///
+/// Kept separate from [`SearchRequest`] so the public search endpoint does not
+/// accidentally acquire a second spelling for ask's `--conversation` scope.
+pub(crate) async fn search_in_conversation(
+    state: &AppState,
+    request: &SearchRequest,
+    scope: &Scope,
+    conversation: &ConversationId,
+) -> Result<SearchOutcome, Failure> {
+    search_filtered(state, request, scope, Some(conversation)).await
+}
+
+async fn search_filtered(
+    state: &AppState,
+    request: &SearchRequest,
+    scope: &Scope,
+    conversation: Option<&ConversationId>,
 ) -> Result<SearchOutcome, Failure> {
     let query = request.q.trim();
     if query.is_empty() {
@@ -219,19 +261,7 @@ pub async fn search(
     // `source` is the content corpus. The absent/default and `all` search the
     // complete corpus; narrower values keep ranking identical while selecting
     // one stable source group before the scored-set limit.
-    let (kinds, file_backed) = match request.source.as_deref() {
-        None | Some("all") => (Some(ALL_KINDS.to_vec()), true),
-        Some("code") => (Some(CODE_KINDS.to_vec()), true),
-        Some("doc") => (Some(DOC_KINDS.to_vec()), true),
-        Some("conversation") => (Some(vec![ElementKind::Turn]), false),
-        Some(other) => {
-            return Err(Failure::new(
-                &catalog::QUERY_INVALID,
-                format!("--source must be code, doc, conversation or all, got {other:?}"),
-            )
-            .with_fix("use `--source conversation` to search only indexed turns, or omit it to search every source"));
-        }
-    };
+    let (kinds, file_backed) = source_filter(request.source.as_deref())?;
 
     let max_distance = match request.min_score {
         None => None,
@@ -267,6 +297,7 @@ pub async fn search(
     let mut filters = SearchFilters {
         repo: scope.repo.clone(),
         worktree: scope.worktree.clone(),
+        conversation: conversation.map(|guid| guid.as_str().to_string()),
         path: request.path.as_deref().map(glob_to_like),
         source: None,
         kinds,

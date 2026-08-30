@@ -104,9 +104,9 @@ pub struct AnchorFilter<'a> {
     pub repo: Option<&'a str>,
     /// Only conversations whose anchor worktree starts with this path.
     pub path_prefix: Option<&'a str>,
-    /// Only the conversation with this guid — the "read one header" case,
-    /// spelled as a filter so there is one listing query rather than two that
-    /// can disagree about what a conversation row looks like.
+    /// Only conversations whose guid begins with this text. A full guid is the
+    /// exact-match case; a copied short guid can therefore share this one query
+    /// without a second row-shaping path.
     pub guid: Option<&'a str>,
 }
 
@@ -446,11 +446,10 @@ pub async fn outline(
 /// reason [`crate::refs::list_worktrees`] gives: a cached counter is one more
 /// thing that can be wrong.
 ///
-/// `path_prefix` is a true prefix test (`strpos(... ) = 1`), not a `LIKE`
-/// pattern. An anchor is a filesystem path and a path is allowed to contain
-/// `_`, which `LIKE` would silently read as "any character" — a filter that
-/// quietly matches more than it was asked to is worse than one that matches
-/// nothing.
+/// `path_prefix` and `guid` are true prefix tests (`strpos(... ) = 1`), not
+/// `LIKE` patterns. Paths may contain `_`, and a guid selector is caller text;
+/// `LIKE` would silently treat metacharacters as filters. A filter that quietly
+/// matches more than requested is worse than one that matches nothing.
 ///
 /// # Errors
 /// [`StoreError::Query`] when the read fails; [`StoreError::Corrupt`] when a
@@ -467,7 +466,7 @@ pub async fn list_conversations(
            FROM conversations c
           WHERE ($1::text IS NULL OR c.repo_identity = $1)
             AND ($2::text IS NULL OR strpos(coalesce(c.worktree, ''), $2) = 1)
-            AND ($3::text IS NULL OR c.guid = $3::uuid)
+            AND ($3::text IS NULL OR strpos(c.guid::text, $3) = 1)
           ORDER BY c.started_at DESC, c.guid"
     ))
     .bind(filter.repo)

@@ -36,6 +36,7 @@ the hit came from. `flowspace3 docs get read` is the detail.
 ```bash
 flowspace3 conversation import ./session.jsonl        # turns become content
 flowspace3 search "why did we drop it" --source conversation
+flowspace3 ask "what did we decide?" --conversation <guid> # one transcript only
 flowspace3 get conv:<guid>#t42 --before 10 --after 20 # read around the hit
 ```
 

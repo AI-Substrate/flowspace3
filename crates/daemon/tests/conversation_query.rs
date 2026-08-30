@@ -13,7 +13,9 @@
 mod support;
 
 use fs3_core::views::read::GetPayload;
-use fs3_core::{Config, DatabaseConfig, ToolBox, ToolInput, Turn, TurnItem, TurnRole, TurnSource};
+use fs3_core::{
+    Config, DatabaseConfig, ElementKind, ToolBox, ToolInput, Turn, TurnItem, TurnRole, TurnSource,
+};
 use fs3_daemon::conversations::{IntakeRequest, intake};
 use fs3_daemon::read::{GetRequest, TreeRequest};
 use fs3_daemon::scope::Scope;
@@ -384,6 +386,47 @@ async fn legacy_repo_identity_remains_gettable_and_searchable() {
     .expect("unscoped search reads the legacy-anchored conversation");
     assert_eq!(unscoped_hits.results.len(), 1);
     assert_eq!(unscoped_hits.results[0].address, format!("conv:{GUID}#t1"));
+
+    database.destroy(state.db).await;
+}
+
+#[tokio::test]
+async fn store_search_filters_make_the_conversation_pin_meaningful() {
+    let (database, state) = stack("conv-query-hard-pin").await;
+    for guid in [GUID, OTHER] {
+        store_at(
+            &state,
+            guid,
+            Some(ANCHOR),
+            None,
+            vec![turn(1, "shared pinned transcript fact")],
+        )
+        .await;
+    }
+
+    let base = fs3_store::SearchFilters {
+        kinds: Some(vec![ElementKind::Turn]),
+        limit: 10,
+        ..fs3_store::SearchFilters::default()
+    };
+    let broad = fs3_store::search_lexical(&state.db, "shared pinned transcript fact", &base)
+        .await
+        .expect("unpinned lexical search");
+    assert_eq!(broad.len(), 2, "absence of the pin keeps both transcripts");
+
+    let pinned = fs3_store::SearchFilters {
+        conversation: Some(GUID.to_string()),
+        ..base.clone()
+    };
+    let lexical = fs3_store::search_lexical(&state.db, "shared pinned transcript fact", &pinned)
+        .await
+        .expect("pinned lexical search");
+    assert_eq!(lexical.len(), 1);
+    assert_eq!(lexical[0].element.address, format!("conv:{GUID}#t1"));
+
+    // The exact-text leg is sufficient for the mutation: both transcripts hold
+    // one shared content hash, and the chosen element address must still name
+    // the pinned transcript.
 
     database.destroy(state.db).await;
 }

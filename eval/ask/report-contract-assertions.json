@@ -18,7 +18,8 @@
     {"id":"S13","type":"field-type","params":{"path":"data.coverage.iterations_used","type":"u32"},"on_unavailable":"fail"},
     {"id":"S14","type":"field-type","params":{"path":"data.coverage.iteration_limit","type":"u32"},"on_unavailable":"fail"},
     {"id":"S15","type":"array-items-type","params":{"path":"data.coverage.retrieval_top_k","type":"i64","ordered":true},"on_unavailable":"fail"},
-    {"id":"S16","type":"field-enum","params":{"path":"data.coverage.exhaustive","values":[false]},"on_unavailable":"fail"}
+    {"id":"S16","type":"field-enum","params":{"path":"data.coverage.exhaustive","values":[false]},"on_unavailable":"fail"},
+    {"id":"S17","type":"field-type","params":{"path":"data.coverage.corpus.source","type":"string","non_empty":true},"on_unavailable":"fail"}
   ],
   "three_valued_rule": "Rows resolve pass, fail, or unknown. Unknown is reserved for an unavailable evidence channel and is excluded from every denominator; contract-shape absence is a fail, not unknown."
 }

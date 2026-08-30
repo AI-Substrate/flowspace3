@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "slug": "answerable-conversation-pinned",
+  "title": "One transcript records the ask conversation-scope decision",
+  "lane": "answerable-conversation",
+  "request": {
+    "question": "Before row 85 was dispatched, what limitation of flowspace3 ask was identified, and what exact fix was chosen?",
+    "cwd": null,
+    "repo": "all",
+    "source": "conversation",
+    "conversation": "f3a6f4d9"
+  },
+  "assertions": "assertions.json",
+  "ground_truth": {
+    "verified_at": "2026-08-30",
+    "conversation": "f3a6f4d9-f037-864a-a824-c436aa5febb2",
+    "turns": 7933,
+    "addresses": [
+      "conv:f3a6f4d9-f037-864a-a824-c436aa5febb2#t7794"
+    ],
+    "resolution": "The address returned ok=true through flowspace3 get; turn 7794 states both the missing surface and the chosen row-85 fix.",
+    "source_facts": [
+      "Ask accepted only --repo and could not target one transcript.",
+      "The chosen fix adds search-style source filters and --conversation <guid> pinning retrieval and citations to one transcript."
+    ]
+  }
+}
