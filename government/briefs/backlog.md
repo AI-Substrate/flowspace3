@@ -1045,3 +1045,23 @@ leaving this file should name where it went.
     listening. EVIDENCE PRESERVED: the 3 failed jobs stay in the prod
     queue as the live repro until this dispatches (dajeil instructed
     not to clear; queue hygiene is o-prime-owned).
+
+108. **TENETS adoption candidates from the harness-eng compare-notes
+    close-out** (meadowlark, 2026-08-30; Jordan concurred close-by-
+    summary; their retro: harness-engineering prime-governance
+    records/retro/2026-08-30-plan-091-and-the-first-fleet-day.md).
+    Graduate into pij-team TENETS at next skill revision: (a) the
+    packet's law (one rule, not five rows — escalating people -> tool ->
+    structure -> adjacent product); (b) the fixture rule (one level above
+    probe-sees-opposite; pairs with our Trap 4 note on row 99); (c)
+    dajeil's read-the-producer's-log; plus dajeil's accept-law from row
+    107. Their honest still-hurts list to steal fixes from: canary/ack
+    ritual text under-specifies (two corrections in one day);
+    effort requested-never-observed (pij#306); fast/full test-scope
+    split letting three truths coexist — scope-aware done-bar is the
+    real fix. Standing cross-government agreements: row 98 <->
+    commit-service:496 symmetry pact; daemon-key acceptance pattern;
+    their row 22 (--verify). UNRULED — quiet-window item, pairs with
+    row 81. Day totals for the product ledger: six observers, two
+    repos, ~12 rows, "the cost structure was the complaint, never the
+    capability."
