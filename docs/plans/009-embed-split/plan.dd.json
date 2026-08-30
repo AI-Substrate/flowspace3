@@ -6,7 +6,7 @@
     {
       "name": "meta",
       "value": {
-        "title": "embed-split — chunked embeddings + input hygiene",
+        "title": "embed-split \u2014 chunked embeddings + input hygiene",
         "slug": "embed-split",
         "ordinal": 9,
         "status": "draft",
@@ -15,14 +15,14 @@
     },
     {
       "name": "summary",
-      "value": "Two defects, one pipeline, measured in prod on 2026-08-30 under conversation-ingest load. (1) TRUNCATION: the 2026-08-27 ruling ('truncate now, split later') embeds only a prefix of any input over the model's per-input cap (8192 tokens); conversation turns (20KB+ tool dumps) hit this constantly, so each such turn's TAIL is semantically unsearchable. 'Later' is now: split oversize inputs into overlapping chunks, each with its own vector, grandfathering every existing vector as chunk 0. (2) POISON BATCHES: empty-bodied turns (raw_hash e3b0c442... — the empty-string sha) become embed jobs whose empty text reaches Azure and rejects the WHOLE merged call — measured: one empty turn rejected 530 innocent texts; three poison turns cost 9 rejected calls / 1,639 texts collateral in one wave, and the failed rows revive at every boot sweep (we now bounce on every merge). Filter at mint AND at batch assembly. Prior art both sides: fs2's content-type-aware chunker (ChunkItem(node_id, chunk_index, text), code=400/docs=800/smart=8000 token targets, line-span tracking) and fs3's own dedupe-by-element ranking which ALREADY collapses multiple vectors (raw+smart) per element — chunks widen 2 to N with no ranking redesign."
+      "value": "Two defects, one pipeline, measured in prod on 2026-08-30 under conversation-ingest load. (1) TRUNCATION: the 2026-08-27 ruling ('truncate now, split later') embeds only a prefix of any input over the model's per-input cap (8192 tokens); conversation turns (20KB+ tool dumps) hit this constantly, so each such turn's TAIL is semantically unsearchable. 'Later' is now: split oversize inputs into overlapping chunks, each with its own vector, grandfathering every existing vector as chunk 0. (2) POISON BATCHES: empty-bodied turns (raw_hash e3b0c442... \u2014 the empty-string sha) become embed jobs whose empty text reaches Azure and rejects the WHOLE merged call \u2014 measured: one empty turn rejected 530 innocent texts; three poison turns cost 9 rejected calls / 1,639 texts collateral in one wave, and the failed rows revive at every boot sweep (we now bounce on every merge). Filter at mint AND at batch assembly. Prior art both sides: fs2's content-type-aware chunker (ChunkItem(node_id, chunk_index, text), code=400/docs=800/smart=8000 token targets, line-span tracking) and fs3's own dedupe-by-element ranking which ALREADY collapses multiple vectors (raw+smart) per element \u2014 chunks widen 2 to N with no ranking redesign."
     },
     {
       "name": "goals",
       "value": [
         "Every byte of an oversize input is semantically searchable: N overlapping chunk vectors per (source_hash, kind), not a truncated prefix.",
         "No empty or whitespace-only input ever reaches a provider: filtered at job mint (turn/element enrichment enqueue) AND asserted at batch assembly (defense in depth).",
-        "Existing vectors are grandfathered as chunk_no=0 — zero re-embedding, zero backfill cost on migration.",
+        "Existing vectors are grandfathered as chunk_no=0 \u2014 zero re-embedding, zero backfill cost on migration.",
         "Existing poison rows are healed: empty-input embed jobs are terminally retired (not boot-sweep-revived), with a receipt of how many.",
         "Search behaviour is unchanged for single-chunk content and strictly better for chunked content (the tail can now match); ranking still returns ONE row per element via the existing dedupe."
       ]
@@ -34,7 +34,7 @@
         "No content-type-aware chunk SIZING in v1 (fs2's code=400/docs=800 refinement is a named future; v1 uses one near-cap window size + overlap for all kinds).",
         "No re-embedding of existing truncated rows (the truncated=true inventory is a cheap later backfill, explicitly deferred).",
         "No summarize-lane changes; no ranking algorithm changes beyond consuming N chunk rows through the existing element dedupe.",
-        "No queue/lane redesign — this rides the existing embed lane, batch planner, and token-budget splitting untouched."
+        "No queue/lane redesign \u2014 this rides the existing embed lane, batch planner, and token-budget splitting untouched."
       ]
     },
     {
@@ -47,7 +47,7 @@
         },
         {
           "id": "ac-0002",
-          "claim": "A phrase living ONLY in the tail (beyond the old truncation point) of an oversize document/turn is retrieved by semantic search and resolves to the owning element/turn — mutation-checked: with chunking disabled the same fixture fails.",
+          "claim": "A phrase living ONLY in the tail (beyond the old truncation point) of an oversize document/turn is retrieved by semantic search and resolves to the owning element/turn \u2014 mutation-checked: with chunking disabled the same fixture fails.",
           "state": "unchecked"
         },
         {
@@ -57,7 +57,7 @@
         },
         {
           "id": "ac-0004",
-          "claim": "An empty or whitespace-only turn/element body mints NO embed job (proven at the enqueue layer), and a hand-inserted empty job is dropped at batch assembly with a WARN naming the source_hash — the provider call proceeds for the rest of the batch (no collateral rejection). Mutation-checked both layers.",
+          "claim": "An empty or whitespace-only turn/element body mints NO embed job (proven at the enqueue layer), and a hand-inserted empty job is dropped at batch assembly with a WARN naming the source_hash \u2014 the provider call proceeds for the rest of the batch (no collateral rejection). Mutation-checked both layers.",
           "state": "unchecked"
         },
         {
@@ -67,7 +67,7 @@
         },
         {
           "id": "ac-0006",
-          "claim": "Live proof on an isolated daemon: ingest a fixture conversation containing (a) a 25KB turn and (b) an empty agent/system turn — the whale turn is fully searchable including its tail, the empty turn costs zero provider traffic, and the run log shows zero 'input cannot be an empty string' and zero per-input-cap WARNs.",
+          "claim": "Live proof on an isolated daemon: ingest a fixture conversation containing (a) a 25KB turn and (b) an empty agent/system turn \u2014 the whale turn is fully searchable including its tail, the empty turn costs zero provider traffic, and the run log shows zero 'input cannot be an empty string' and zero per-input-cap WARNs.",
           "state": "unchecked"
         },
         {
@@ -83,7 +83,7 @@
         {
           "id": "ph-fed3",
           "title": "Phase 1: chunked embeddings + input hygiene",
-          "brief": "Single-phase plan, three composable units per the impl-guide: (u1) store/migration — chunk_no in the vector key, grandfather existing rows, heal empty-poison jobs; (u2) enrich/writer — hygiene filter at mint + batch assembly, chunk windowing with overlap replacing prefix truncation; (u3) search/read — N-chunk dedupe generalization + fixtures incl. the tail-retrieval anchor. Composition + review per packet-reviewer.",
+          "brief": "Single-phase plan, three composable units per the impl-guide: (u1) store/migration \u2014 chunk_no in the vector key, grandfather existing rows, heal empty-poison jobs; (u2) enrich/writer \u2014 hygiene filter at mint + batch assembly, chunk windowing with overlap replacing prefix truncation; (u3) search/read \u2014 N-chunk dedupe generalization + fixtures incl. the tail-retrieval anchor. Composition + review per packet-reviewer.",
           "state": "unchecked",
           "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
         }
@@ -91,11 +91,29 @@
     }
   ],
   "references": [
-    "government/briefs/backlog.md rows 68, 87 (fs3-governance branch)",
-    "fs3-governance/scratch/queue-waste-audit.md (krill: live poison receipts, 530/442/667-text rejections, boot-sweep revival)",
-    "fs2 prior art: flow_squared src/fs2/core/services/embedding/embedding_service.py (ChunkItem, content-type-aware sizes, line spans)",
-    "w-embed-oversize brief (2026-08-27 truncate-now ruling this plan supersedes by design)",
-    "crates/store/src/embeddings.rs (PK (source_hash, source_kind, model_key) + truncated flag)",
-    "crates/daemon/src/enrich.rs (cap WARN site, mint sites), crates/daemon/src/batch.rs (planner, token-budget splitting)"
+    {
+      "title": "government/briefs/backlog.md rows 68, 87",
+      "path": "government/briefs/backlog.md rows 68, 87 (fs3-governance branch)"
+    },
+    {
+      "title": "fs3-governance/scratch/queue-waste-audit.md",
+      "path": "fs3-governance/scratch/queue-waste-audit.md (krill: live poison receipts, 530/442/667-text rejections, boot-sweep revival)"
+    },
+    {
+      "title": "fs2 prior art: flow_squared src/fs2/core/services/embedding/embedding_service.py",
+      "path": "fs2 prior art: flow_squared src/fs2/core/services/embedding/embedding_service.py (ChunkItem, content-type-aware sizes, line spans)"
+    },
+    {
+      "title": "w-embed-oversize brief",
+      "path": "w-embed-oversize brief (2026-08-27 truncate-now ruling this plan supersedes by design)"
+    },
+    {
+      "title": "crates/store/src/embeddings.rs",
+      "path": "crates/store/src/embeddings.rs (PK (source_hash, source_kind, model_key) + truncated flag)"
+    },
+    {
+      "title": "crates/daemon/src/enrich.rs",
+      "path": "crates/daemon/src/enrich.rs (cap WARN site, mint sites), crates/daemon/src/batch.rs (planner, token-budget splitting)"
+    }
   ]
 }
