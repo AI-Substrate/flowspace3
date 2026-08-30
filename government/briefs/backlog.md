@@ -755,3 +755,14 @@ leaving this file should name where it went.
     trace in the envelope (retrieval / tool loop / synthesis), surface a
     partial answer + citations on timeout instead of a bare death, and make
     the timeout configurable. Pairs naturally with row 89.
+
+92. **pre-existing semantic duplicate-hit defect — nearest CTE constrains
+    model_key but NOT source_kind** (owl PM recon, 2026-08-30, line-anchored:
+    embeddings.rs:469-563). A raw row and a smart row for the same content
+    can both survive one nearest-k call and both resolve to the same element,
+    emitting duplicate semantic hits that `fuse` cannot merge (it compares
+    lexical-vs-semantic only, search.rs:685-715). ac-0003 "one row per
+    element" was never actually true. STATUS: being closed INCIDENTALLY by
+    plan 009 u3's element collapse (o-prime-ratified amended S4 — collapse
+    inside the nearest CTE, LIMIT over elements). Row exists so the ledger
+    is honest about the defect predating 009; verify closed at 009 review.
