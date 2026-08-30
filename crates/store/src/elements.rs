@@ -28,21 +28,37 @@ use sqlx::postgres::PgRow;
 use sqlx::types::Json;
 
 use crate::{PgPool, StoreError};
+/// Outcome of writing a parsed tree.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ElementTreeWrite {
+    /// This path owns the shared tree, either newly inserted or refreshed.
+    Stored,
+    /// Another path already owns the tree for these exact bytes and parser.
+    Reused { stored_path: String },
+}
+
+/// A root-count inconsistency found while reading a parsed tree.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ElementTreeInconsistency {
+    pub blob_sha: String,
+    pub parser_version: String,
+    pub paths: Vec<String>,
+}
+
+/// A tree read that preserves dirty-data evidence instead of failing on it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ElementTreeRead {
+    pub tree: Option<Element>,
+    pub inconsistency: Option<ElementTreeInconsistency>,
+}
 
 /// Write a whole element tree for one blob, atomically.
 ///
-/// `enrich` is the scanner's injected policy (decision D5): the store records
-/// the verdict, it does not compute it. Passing the policy rather than a
-/// pre-marked tree keeps the flag's single source of truth in the scanner's
-/// settings, where the D5 discussion put it.
-///
-/// The write is one transaction because a half-written tree is worse than no
-/// tree: [`get_elements`] would report the blob as parsed and hand back a
-/// truncated shape, and the scan flow's skip would make that permanent.
-///
-/// Parent links are assigned as the walk descends — a child is inserted only
-/// after the row it hangs from has an id, which is why this is a pre-order walk
-/// and not a batch insert.
+/// The first file path to store a `(blob, parser_version)` owns its shared
+/// element tree. A concurrent writer for another path converges on that tree
+/// and returns [`ElementTreeWrite::Reused`] instead of failing the scan. The
+/// path itself remains in `worktree_files`; only the duplicate content tree is
+/// collapsed.
 ///
 /// # Errors
 /// [`StoreError::Query`] when the transaction fails; nothing is written.
@@ -52,13 +68,92 @@ pub async fn upsert_element_tree(
     parser_version: &str,
     root: &Element,
     enrich: impl Fn(&Element) -> bool,
-) -> Result<(), StoreError> {
+) -> Result<ElementTreeWrite, StoreError> {
     let mut tx = pool.begin().await?;
+    let inserted: Option<i64> = sqlx::query_scalar(
+        "INSERT INTO elements
+           (blob_sha, parser_version, parent_id, kind, subkind, name, address,
+            span_start, span_end, sibling_order, raw_text, raw_hash, enrich, ddoc)
+         VALUES ($1, $2, NULL, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+         ON CONFLICT DO NOTHING
+         RETURNING id",
+    )
+    .bind(blob.as_str())
+    .bind(parser_version)
+    .bind(root.kind.as_str())
+    .bind(&root.subkind)
+    .bind(&root.name)
+    .bind(&root.address)
+    .bind(root.span.start_line as i32)
+    .bind(root.span.end_line as i32)
+    .bind(root.sibling_order as i32)
+    .bind(&root.raw_text)
+    .bind(root.raw_hash())
+    .bind(enrich(root))
+    .bind(root.ddoc.as_deref().map(Json))
+    .fetch_optional(&mut *tx)
+    .await?;
+
+    let root_id = match inserted {
+        Some(id) => id,
+        None => {
+            let row = sqlx::query(
+                "SELECT id, address
+                   FROM elements
+                  WHERE blob_sha = $1 AND parser_version = $2
+                    AND parent_id IS NULL
+                    AND ((address = $3 AND span_start = $4)
+                         OR ($5 = 'file' AND kind = 'file'))
+                  ORDER BY CASE WHEN address = $3 AND span_start = $4 THEN 0 ELSE 1 END, id
+                  LIMIT 1
+                  FOR UPDATE",
+            )
+            .bind(blob.as_str())
+            .bind(parser_version)
+            .bind(&root.address)
+            .bind(root.span.start_line as i32)
+            .bind(root.kind.as_str())
+            .fetch_one(&mut *tx)
+            .await?;
+            let stored_path: String = row.try_get("address")?;
+            if stored_path != root.address {
+                tx.commit().await?;
+                return Ok(ElementTreeWrite::Reused { stored_path });
+            }
+
+            let id: i64 = row.try_get("id")?;
+            sqlx::query(
+                "UPDATE elements
+                    SET subkind = $2, name = $3, span_start = $4, span_end = $5,
+                        sibling_order = $6, raw_text = $7, raw_hash = $8,
+                        enrich = $9, ddoc = $10
+                  WHERE id = $1",
+            )
+            .bind(id)
+            .bind(&root.subkind)
+            .bind(&root.name)
+            .bind(root.span.start_line as i32)
+            .bind(root.span.end_line as i32)
+            .bind(root.sibling_order as i32)
+            .bind(&root.raw_text)
+            .bind(root.raw_hash())
+            .bind(enrich(root))
+            .bind(root.ddoc.as_deref().map(Json))
+            .execute(&mut *tx)
+            .await?;
+            id
+        }
+    };
 
     // Explicit stack rather than recursion: an async fn cannot recurse without
-    // boxing every level, and a file's tree is exactly the shape a Vec handles
-    // for free.
-    let mut pending: Vec<(&Element, Option<i64>)> = vec![(root, None)];
+    // boxing every level. The root is handled above because its partial unique
+    // index is also the concurrent-writer convergence point.
+    let mut pending: Vec<(&Element, i64)> = root
+        .children
+        .iter()
+        .rev()
+        .map(|child| (child, root_id))
+        .collect();
     while let Some((element, parent_id)) = pending.pop() {
         let id: i64 = sqlx::query_scalar(
             "INSERT INTO elements
@@ -66,16 +161,11 @@ pub async fn upsert_element_tree(
                 span_start, span_end, sibling_order, raw_text, raw_hash, enrich, ddoc)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
              ON CONFLICT (blob_sha, parser_version, address, span_start) DO UPDATE SET
-               parent_id     = EXCLUDED.parent_id,
-               kind          = EXCLUDED.kind,
-               subkind       = EXCLUDED.subkind,
-               name          = EXCLUDED.name,
-               span_end      = EXCLUDED.span_end,
-               sibling_order = EXCLUDED.sibling_order,
-               raw_text      = EXCLUDED.raw_text,
-               raw_hash      = EXCLUDED.raw_hash,
-               enrich        = EXCLUDED.enrich,
-               ddoc          = EXCLUDED.ddoc
+               parent_id = EXCLUDED.parent_id, kind = EXCLUDED.kind,
+               subkind = EXCLUDED.subkind, name = EXCLUDED.name,
+               span_end = EXCLUDED.span_end, sibling_order = EXCLUDED.sibling_order,
+               raw_text = EXCLUDED.raw_text, raw_hash = EXCLUDED.raw_hash,
+               enrich = EXCLUDED.enrich, ddoc = EXCLUDED.ddoc
              RETURNING id",
         )
         .bind(blob.as_str())
@@ -95,13 +185,11 @@ pub async fn upsert_element_tree(
         .fetch_one(&mut *tx)
         .await?;
 
-        // Reversed so the first child is popped first: the walk then reads in
-        // source order, which makes the assigned ids readable in a dump.
-        pending.extend(element.children.iter().rev().map(|child| (child, Some(id))));
+        pending.extend(element.children.iter().rev().map(|child| (child, id)));
     }
 
     tx.commit().await?;
-    Ok(())
+    Ok(ElementTreeWrite::Stored)
 }
 
 /// The requested blobs that have been parsed by `parser_version`.
@@ -137,19 +225,20 @@ pub async fn blobs_with_parser_version(
         .collect()
 }
 
-/// The file element for one blob, with its descendants nested, or `None` when
-/// this blob has not been parsed by this parser.
+/// Read one shared element tree and preserve any root-count inconsistency.
 ///
-/// `None` is the scan flow's signal to do the work; `Some` is the skip.
+/// Dirty historical data is still readable: the lowest-id file root is the
+/// deterministic survivor, while `inconsistency` names every stored root path.
+/// No root produces `tree: None` plus the same report instead of a hard error.
 ///
 /// # Errors
-/// [`StoreError::Query`] on failure; [`StoreError::Corrupt`] when the stored
-/// rows do not form one tree — an unknown kind, no root, or more than one.
+/// [`StoreError::Query`] on failure; [`StoreError::Corrupt`] when a row cannot
+/// be represented by the element model.
 pub async fn get_elements(
     pool: &PgPool,
     blob: &BlobRef,
     parser_version: &str,
-) -> Result<Option<Element>, StoreError> {
+) -> Result<ElementTreeRead, StoreError> {
     let rows = sqlx::query(
         "SELECT id, parent_id, kind, subkind, name, address,
                 span_start, span_end, sibling_order, raw_text, ddoc
@@ -163,12 +252,13 @@ pub async fn get_elements(
     .await?;
 
     if rows.is_empty() {
-        return Ok(None);
+        return Ok(ElementTreeRead {
+            tree: None,
+            inconsistency: None,
+        });
     }
 
     let mut nodes: HashMap<i64, Element> = HashMap::with_capacity(rows.len());
-    // Insertion order within a parent is the query's `sibling_order` ordering,
-    // so these lists are already in source order.
     let mut children: HashMap<i64, Vec<i64>> = HashMap::new();
     let mut roots: Vec<i64> = Vec::new();
 
@@ -181,17 +271,67 @@ pub async fn get_elements(
         nodes.insert(id, element_from_row(row)?);
     }
 
-    let [root] = roots.as_slice() else {
-        return Err(StoreError::Corrupt(fs3_core::Error::InvalidConfig(
-            format!(
-                "blob {} at parser_version {parser_version} has {} file roots, expected exactly one",
-                blob.as_str(),
-                roots.len()
-            ),
-        )));
-    };
+    let paths = roots
+        .iter()
+        .filter_map(|id| nodes.get(id).map(|node| node.address.clone()))
+        .collect::<Vec<_>>();
+    let inconsistency = (roots.len() != 1).then(|| ElementTreeInconsistency {
+        blob_sha: blob.as_str().to_string(),
+        parser_version: parser_version.to_string(),
+        paths,
+    });
+    let survivor = roots
+        .iter()
+        .find(|id| {
+            nodes
+                .get(id)
+                .is_some_and(|node| node.kind == ElementKind::File)
+        })
+        .copied();
+    let tree = survivor
+        .map(|id| assemble(id, &mut nodes, &children))
+        .transpose()?;
 
-    assemble(*root, &mut nodes, &children).map(Some)
+    Ok(ElementTreeRead {
+        tree,
+        inconsistency,
+    })
+}
+
+/// List every `(blob, parser_version)` whose stored rows do not have one root.
+pub async fn element_tree_inconsistencies(
+    pool: &PgPool,
+) -> Result<Vec<ElementTreeInconsistency>, StoreError> {
+    let rows = sqlx::query(
+        "WITH file_groups AS (
+             SELECT DISTINCT blob_sha, parser_version
+               FROM elements
+              WHERE kind = 'file'
+         )
+         SELECT groups.blob_sha, groups.parser_version,
+                array_agg(elements.address ORDER BY elements.id)
+                    FILTER (WHERE elements.parent_id IS NULL) AS paths,
+                count(elements.id) FILTER (WHERE elements.parent_id IS NULL) AS roots
+           FROM file_groups groups
+           JOIN elements USING (blob_sha, parser_version)
+          GROUP BY groups.blob_sha, groups.parser_version
+         HAVING count(elements.id) FILTER (WHERE elements.parent_id IS NULL) <> 1
+          ORDER BY groups.blob_sha, groups.parser_version",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    rows.into_iter()
+        .map(|row| {
+            Ok(ElementTreeInconsistency {
+                blob_sha: row.try_get("blob_sha")?,
+                parser_version: row.try_get("parser_version")?,
+                paths: row
+                    .try_get::<Option<Vec<String>>, _>("paths")?
+                    .unwrap_or_default(),
+            })
+        })
+        .collect()
 }
 
 /// Hang every descendant of `id` beneath it, depth-first.

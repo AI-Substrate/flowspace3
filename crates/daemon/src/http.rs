@@ -492,7 +492,9 @@ async fn status(State(state): State<AppState>) -> Answer<StatusReport> {
     }
     match crate::status::report(&state).await {
         Ok(report) => {
-            let next = if report.queue.iter().any(|row| row.state == "pending") {
+            let next = if !report.inconsistencies.is_empty() {
+                "element-tree inconsistencies were reported — follow each row's `next_action` before trusting affected reads"
+            } else if report.queue.iter().any(|row| row.state == "pending") {
                 "work is still queued — re-run `flowspace3 status` until it is empty, then search"
             } else {
                 "the queue is empty — `flowspace3 search \"<question>\"` will answer from the index"
