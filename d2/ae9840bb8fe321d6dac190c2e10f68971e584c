@@ -1,0 +1,19 @@
+crates/daemon/tests/search_scope_starvation.rs
+  s_59d749bfeff5de::t_5e82fb300f2949 31,40-55,119-120,126,133-137,407-479
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d2ae9840bb8fe321d6dac190c2e10f68971e584c",
+  "prompts": {},
+  "sessions": {
+    "s_59d749bfeff5de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae4199d-c737-4ac3-a856-7e69531e4bab",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
