@@ -18,7 +18,7 @@
     },
     {
       "name": "fan_out",
-      "value": "Fan out: YES, three units, one wave each of u1/u2 in parallel then u3 (u3 consumes u1's migrated schema + u2's chunk plan through frozen seams S1/S2; in practice u3 can start against the FROZEN CONTRACTS immediately and integration-test after u1/u2 land on the plan branch). PM composes on the plan branch 009-embed-split; units work in the PLAN worktree on unit branches cut FROM 009-embed-split (small, adjacent surfaces — full worktree-per-coder isolation is overkill here; the collision surface is one file per seam pair and the PM owns merge order u1 -> u2 -> u3)."
+      "value": "Fan out: YES, three units, all starting concurrently against the frozen seams. [AMENDED 2026-08-30 per o-prime ruling on PM stop-and-ask #2: the original shared-worktree shape was impossible — one worktree has one HEAD — and contradicted AGENTS.md worktree-per-coder policy.] Each coder gets its OWN worktree: ../fs3-embed-split-u1/-u2/-u3 on branches u1-store/u2-enrich/u3-read cut from 009-embed-split; per-seat CARGO_TARGET_DIR falls out per-worktree. KNOWN TYPE-LEVEL DEPENDENCY (named, not discovered at hour three): u2's final NewEmbedding construction (enrich.rs:714-723) needs u1's chunk_no field (embeddings.rs:84-98) — u2/u3 do their independent bodies first (chunk_plan + hygiene predicates + tests; collapse SQL + fixtures), u1 lands first on 009-embed-split, then u2/u3 each merge origin/009-embed-split into their OWN branch and gate for real. Merge order to the plan branch stays u1 -> u2 -> u3, PM composes and re-gates after each."
     },
     {
       "name": "units",
@@ -48,7 +48,7 @@
     },
     {
       "name": "isolation",
-      "value": "All units in the plan worktree /Users/jordanknight/substrate/flowspace/fs3-embed-split on unit branches cut from 009-embed-split (u1-store, u2-enrich, u3-read); per-seat CARGO_TARGET_DIR under the worktree (target-u1 etc.); the gate mints per-run test DBs (post-#70) with base FS3_TEST_DATABASE_URL as server selector; NEVER prod :7373 — the ac-0006 live proof runs an isolated daemon on an ephemeral port + disposable DB, torn down after. Read-only dogfood search/ask against prod is allowed and encouraged."
+      "value": "Worktree-per-coder [amended with fan_out, 2026-08-30]: ../fs3-embed-split-u1/-u2/-u3, branches u1-store/u2-enrich/u3-read cut from 009-embed-split, each with its own CARGO_TARGET_DIR; the gate mints per-run test DBs (post-#70) with base FS3_TEST_DATABASE_URL as server selector; NEVER prod :7373 — the ac-0006 live proof runs an isolated daemon on an ephemeral port + disposable DB, torn down after. Read-only dogfood search/ask against prod is allowed and encouraged."
     },
     {
       "name": "composition",
