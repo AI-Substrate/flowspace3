@@ -1,0 +1,21 @@
+government/briefs/backlog.md
+  s_15d888f4b629c1::t_7b44a3290efc00 733-743
+scratch/queue-waste-audit.md
+  s_15d888f4b629c1::t_894dd928fc0e19 3,256-270
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b8ab3bdf7c6b6663f8508f9f9eade96b10af1e52",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
