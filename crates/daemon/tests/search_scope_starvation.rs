@@ -28,7 +28,7 @@ use fs3_core::{BlobRef, Config, DatabaseConfig, Element, ElementKind, RepoIdenti
 use fs3_daemon::scope::Scope;
 use fs3_daemon::search::{SearchRequest, search};
 use fs3_daemon::wiring::AppState;
-use fs3_store::{NewEmbedding, SourceKind};
+use fs3_store::{NewEmbedding, SearchFilters, SourceKind};
 use fs3_testkit::fakes::FakeEmbedder;
 
 /// The vector width the store holds.
@@ -36,6 +36,22 @@ const DIMS: usize = fs3_store::EMBEDDING_DIMENSIONS;
 
 /// The question every test here asks.
 const QUESTION: &str = "how does the watcher decide what to ignore";
+
+/// The exact report table, including controls that never exhibited the empty result.
+const LLM_REPRO_QUERIES: [&str; 12] = [
+    "llm",
+    "LLM",
+    "llms",
+    "lllm",
+    "mll",
+    "llm ",
+    " llm",
+    "LLM provider",
+    "x",
+    "gc",
+    "watcher",
+    "qqqzzzword provider",
+];
 
 /// How many vectors the decoy repository crowds around the question.
 ///
@@ -100,22 +116,23 @@ async fn stack(label: &str, extra: &[&str]) -> (support::FreshDatabase, AppState
     (database, state)
 }
 
-/// The vector the daemon will embed [`QUESTION`] into.
-///
-/// Taken from the same fake the state is wired with, so the fixture's geometry
-/// is expressed relative to the actual query rather than to an assumption
-/// about it.
-async fn question_vector() -> Vec<f32> {
+/// Embed one query through the same fake the daemon uses.
+async fn query_vector(query: &str) -> Vec<f32> {
     use fs3_core::Embedder;
     FakeEmbedder {
         dimensions: DIMS,
         ..FakeEmbedder::default()
     }
-    .embed(&[QUESTION.to_string()])
+    .embed(&[query.to_string()])
     .await
     .expect("the fake embeds")
     .pop()
     .expect("one vector")
+}
+
+/// The vector the daemon will embed [`QUESTION`] into.
+async fn question_vector() -> Vec<f32> {
+    query_vector(QUESTION).await
 }
 
 /// A unit vector at cosine distance `distance` from `base`, varied by `seed`.
@@ -383,6 +400,79 @@ async fn a_scoped_search_is_not_starved_by_a_crowded_neighbour_repository() {
         outcome.empty_because.is_none(),
         "an answered search carries no explanation for being empty"
     );
+
+    database.destroy(state.db).await;
+}
+
+/// The original `llm` report table through the SEMANTIC leg alone.
+///
+/// Each query gets its own crowded pair so its geometry is deterministic: 64
+/// foreign vectors are nearer than the 10 scoped vectors. Calling
+/// [`fs3_store::search_elements`] directly keeps #74's lexical channel entirely
+/// out of the proof; lexical text cannot rescue a starved ANN scan here.
+#[tokio::test]
+async fn llm_repro_queries_return_scoped_hits_without_the_lexical_leg() {
+    let (database, state) = stack("search-starvation-llm-table", &[]).await;
+    let mut cases = Vec::with_capacity(LLM_REPRO_QUERIES.len());
+
+    for (case, query) in LLM_REPRO_QUERIES.iter().enumerate() {
+        let vector = query_vector(query.trim()).await;
+        let decoy_root = format!("{DECOY_REPO}/{case}");
+        let target_root = format!("{TARGET_REPO}/{case}");
+        let (_, decoy_tree) = repo(&state, &decoy_root).await;
+        let (target_identity, target_tree) = repo(&state, &target_root).await;
+        seed(
+            &state,
+            decoy_tree,
+            &format!("llm_decoy_{case}"),
+            64,
+            0.05,
+            &vector,
+        )
+        .await;
+        seed(
+            &state,
+            target_tree,
+            &format!("llm_target_{case}"),
+            10,
+            0.6,
+            &vector,
+        )
+        .await;
+        cases.push((*query, target_identity.to_string(), vector));
+    }
+
+    pin_to_the_index_plan(&state).await;
+    let model_key = state.embedder_key("");
+    for (query, identity, vector) in cases {
+        let hits = fs3_store::search_elements(
+            &state.db,
+            &model_key,
+            &vector,
+            &SearchFilters {
+                repo: Some(identity.clone()),
+                source: Some(SourceKind::Raw),
+                kinds: Some(vec![ElementKind::Function]),
+                max_distance: Some(1.0),
+                limit: 10,
+                ..SearchFilters::default()
+            },
+        )
+        .await
+        .unwrap_or_else(|error| panic!("semantic search for {query:?}: {error}"));
+
+        assert_eq!(
+            hits.len(),
+            10,
+            "semantic-only search for {query:?} must fill the scoped limit"
+        );
+        assert!(
+            hits.iter()
+                .all(|hit| hit.identity.as_deref() == Some(&identity)
+                    && hit.similar.source_kind == SourceKind::Raw),
+            "semantic-only search for {query:?} leaked or changed vector spaces: {hits:?}"
+        );
+    }
 
     database.destroy(state.db).await;
 }

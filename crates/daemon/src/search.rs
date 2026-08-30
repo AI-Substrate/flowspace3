@@ -361,7 +361,6 @@ pub async fn search(
         });
     }
 
-
     // An empty result is the most misread signal we have: "not indexed yet",
     // "indexed under a model this search cannot see", "indexed, but not in the
     // repository you are standing in", "the ranking never reached your
