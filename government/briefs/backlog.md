@@ -672,3 +672,12 @@ leaving this file should name where it went.
     facing CODE) while keeping noisy dot-dirs (temp, buffers) out; walker
     skip-list becomes explicit config, not an accident of dot-prefixing.
 
+85. **ask cannot be scoped to a single conversation** (Jordan's ask,
+    2026-08-30): ask takes only --repo; there is no --conversation <guid>
+    / --source filter, so "ask this question of THAT conversation" (e.g.
+    'what did we decide about X in yesterday's session?') is not
+    expressible — after #80 the mixed default may surface conv turns, but
+    nothing pins retrieval to one transcript. Fix: ask gains the same
+    source/scope filters search has, plus --conversation <guid> pinning
+    retrieval (and citations) to that transcript's turns. Natural
+    follow-on to #80.
