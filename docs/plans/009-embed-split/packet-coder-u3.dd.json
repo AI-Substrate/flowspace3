@@ -1,0 +1,184 @@
+{
+  "dd": {
+    "schema": "pij-team/packet"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Coder packet — u3 search read + end-to-end proof (009-embed-split)",
+        "role": "coder",
+        "plan": "docs/plans/009-embed-split/plan.dd.json",
+        "seat": "<filled at canary>",
+        "updated": "2026-08-30"
+      }
+    },
+    {
+      "name": "mission",
+      "value": "You build ONE unit of plan 009-embed-split: u3 — search read + end-to-end proof. You ADD the element-level collapse to the vector read path so N chunk vectors of one element return as ONE best-scored row without a whale element crowding everything else out of the result set, and you own the three fixtures that prove the WHOLE plan true end to end. Your unit is where the plan stops being a set of mechanisms and becomes a demonstrated product behaviour. You report to the PM (pij-associated-owl), not to prime."
+    },
+    {
+      "name": "instructions",
+      "value": [
+        {
+          "id": "i1",
+          "text": "Orient FIRST: read your unit row in /Users/jordanknight/substrate/flowspace/fs3-embed-split/docs/plans/009-embed-split/impl-guide.dd.md, the plan at /Users/jordanknight/substrate/flowspace/fs3-embed-split/docs/plans/009-embed-split/plan.dd.md (acceptance criteria ac-0001..0007), and .agents/skills/pij-team/TENETS.md (the doctrine — cited, not restated here). Run `harness instructions` and `harness boot --json` before changing anything. The compose Postgres is ALREADY UP on host port 5433 (container flowspace3-db) — the PM started it; if boot reports compose degraded for a different service, report it, do not fix it."
+        },
+        {
+          "id": "i1b",
+          "text": "DOGFOOD FLOWSPACE — not optional in this repo. Run `flowspace3 search \"<question>\"` for every meaning-shaped question before you grep (exact identifiers may still grep). Read-only search/ask against the running index is allowed and encouraged. NEVER touch the production daemon on port 7373 — do not restart it, do not point it anywhere, do not `flowspace3 add` this worktree. Report every search miss or confusing envelope as friction via `harness observe`, and mention it to the PM."
+        },
+        {
+          "id": "i2",
+          "text": "ACK FIRST, BEFORE ANY CODE: reply to the PM seat pij-associated-owl via `pij send pij-associated-owl \"<text>\"` with (a) the output of `pij whoami` quoted verbatim as your identity, (b) your OMP FOOTER model line quoted verbatim, (c) `git branch --show-current` and `echo $CARGO_TARGET_DIR $FS3_TEST_DATABASE_URL` output, and (d) your read of this unit plus a NUMBERED implementation plan. Then WAIT for the PM to rule your plan by number. Corrections to this packet are WELCOME and outrank it — bring evidence (file:line quotes), and raise them at ack rather than coding around them."
+        },
+        {
+          "id": "i20",
+          "text": "YOUR ENVIRONMENT — export these in every shell you gate from, and quote them back at ack (i2c):\n  export CARGO_TARGET_DIR=/Users/jordanknight/substrate/flowspace/fs3-embed-split-u3/target\n  export FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5433/flowspace3_test_u3\nWhy each: the per-worktree target dir stops cargo's package/artifact locks serialising your build behind your two siblings' (measured on a previous run: 145s of queueing for a 0.01s test). The per-seat database base is a SERVER SELECTOR — the gate mints per-run disposable databases beside it via FreshDatabase (crates/testkit/src/fresh_database.rs), so concurrent seats cannot share one database by accident (w-test-db-isolation, backlog row 58). FS3_TEST_DATABASE_URL has NO default and the testkit REFUSES rather than guessing (crates/testkit/src/database.rs:29-48 explains why: the shipped default is the REAL store on a developer machine, and `doctor` MIGRATES what it reads — three correct behaviours once composed into a production write). The compose Postgres is already running on host port 5433 (container flowspace3-db, docker-compose.yml:21-22, deliberately off 5432). BOTH of these are torn down with you at stand-down — the PM removes your worktree (which takes the target dir with it) and drops the database; duplicated build dirs were a named contributor to a disk-full incident (DL-043)."
+        },
+        {
+          "id": "i21",
+          "text": "CURRENT STATE — assembled by three independent read-only recon agents on 2026-08-30 and RATIFIED BY O-PRIME as a plan amendment (commit aa165aa on this branch). Written to be FALSIFIABLE in one read; every line carries file:line. If a quote does not match what you find, that is a FINDING — tell the PM immediately.\nREAD THIS FIRST — THE PLAN WAS WRONG AND HAS BEEN CORRECTED: the impl-guide originally said you would 'generalize the existing collapse of multiple vectors per element'. THERE IS NO SUCH COLLAPSE. Three agents independently confirmed its absence and o-prime amended S4, the u3 unit row, and ac-0003 accordingly. You are ADDING the collapse, not extending one. Read the AMENDED S4 in impl-guide.dd.md before anything else.\nTHE READ PATH AS IT ACTUALLY IS: crates/store/src/embeddings.rs:469-563 `search_elements` opens `WITH nearest AS ( SELECT source_hash, source_kind, vector <=> $1 AS distance FROM embeddings_1024 e WHERE model_key = $2 AND ($4::text IS NULL OR source_kind = $4) AND ($5::float8 IS NULL OR (vector <=> $1) <= $5) ... AND EXISTS (...) ORDER BY vector <=> $1 LIMIT $3 )`. There is NO DISTINCT, NO DISTINCT ON, NO GROUP BY, and NO window function anywhere in that query — verified verbatim across the full :469-676 span. The continuation :548-638 does a LEFT JOIN LATERAL for smart_content and a JOIN LATERAL for the element resolver `WHERE el.raw_hash = COALESCE(s.raw_hash, n.source_hash) ... ORDER BY el.id LIMIT 1` (:650-673), then provenance laterals :675-707, then `ORDER BY n.distance` (:674-676). Those two `LIMIT 1`s are INSIDE the lateral resolvers — they pick one representative element PER VECTOR ROW. They are not a collapse. `query_embeddings` (:278-310) has the identical shape.\nROW MAPPING: :708-714 maps one `SearchHit` per SQL row. Types: `SimilarElement { element, blob_sha, parser_version, source_kind, smart, distance }` (:221-234) and `SearchHit { similar, identity, root_path, path }` (:411-424). NOTE: the SELECT at :539-548 returns `n.source_kind, n.distance` — it does NOT select source_hash or model_key, and model_key is a bind parameter only. Neither reaches any downstream point. Whatever you group by must be available where you group.\nDOWNSTREAM, AND WHY NOTHING MOVES: crates/daemon/src/search.rs:294-305 calls `search_elements`, :340-355 does `let mut ranked = fuse(lexical_hits.iter().map(render_lexical), hits.iter().map(render)); ... ranked.truncate(limit as usize);`. `fuse` (:685-706) walks lexical then semantic and merges via `same_hit` (:707-712) comparing address/worktree/path/span — it merges LEXICAL-vs-SEMANTIC only and never groups two semantic rows. Moving the collapse here would silently change lexical-channel (#74) fusion behaviour; the reviewer checks for exactly that drift. Your change goes in the store SQL.\nKNOWN PRE-EXISTING DEFECT, RECORDED AS BACKLOG ROW 92 — DO NOT CLAIM IT AS SCOPE: because `nearest` constrains model_key but NOT source_kind, a raw row and a smart row for the same content can both survive and both resolve to the same element TODAY, emitting duplicate semantic hits before any chunking exists. Your collapse incidentally closes this. Name it as a side-benefit in your done report; do not widen the packet around it.\nTEST IDIOM: end-to-end search is crates/daemon/tests/first_light.rs:289-292 (`let fixture = Fixture::create(\"e2e\"); let stack = Stack::create(\"e2e\").await;`, add through `/roots`, `stack.drain()`, then `GET /search?q=...&limit=5` and assert path/address/span/match_field) — the real router and real runner with testkit fake providers. Vector-level assertions live in crates/store/tests/pg_store_flows.rs:679-742 and :759-789, both seeding exactly ONE vector per element; there is no multi-vector-per-element fixture in the repo. Turn fixtures: crates/daemon/tests/conversation_query.rs:25-60 defines `turn(turn_no, body) -> Turn` and `store(..., turns)` building an IntakeRequest, with `drain` at :68-76 — that is how you build a 25KB turn and an empty turn.\nISOLATED DAEMON FOR ac-0006 — THE HELPER DOES NOT EXIST, YOU ASSEMBLE IT: crates/testkit/src/spawn.rs:196-242 is only `pub fn sealed(binary: &Path, config_dir: &Path, database: TestDatabase) -> Command`, which scrubs inherited FS3_* and pins config/database but neither allocates a port nor starts a process. The working pattern to copy is crates/daemon/tests/health.rs:93-154: `free_port() -> u16` at :93-100 plus `fs3_testkit::sealed(..., TestDatabase::Scratch).arg(\"daemon\").spawn()` at :128-154. Recon found NO existing helper combining isolated daemon + ephemeral port + disposable DB + conversation ingest + search; assembling that fixture is part of your unit."
+        },
+        {
+          "id": "i22",
+          "text": "YOUR CONTRACT (fill it, never widen it — TENETS tenet 2). The amended S4 is binding:\n1. ADD the element-level collapse INSIDE the store's nearest CTE at the admission point (crates/store/src/embeddings.rs, `search_elements` and `query_embeddings`): group by RESOLVED ELEMENT, keep the best (lowest distance) chunk, and apply the caller's LIMIT to ELEMENTS, not to vectors. Nothing moves to daemon `fuse` — lexical fusion (#74) stays untouched.\n2. THE LIMIT SEMANTICS ARE THE HARD PART, NOT THE DEDUPE. Today `LIMIT $3` truncates VECTORS before element resolution, so once chunking ships, one 25KB whale turn contributes N chunk vectors that compete for the same top-k slots and can crowd every other element out of the result set. Collapsing after the LIMIT does not fix that — the other elements were already discarded. Your grouping has to happen such that k means k ELEMENTS. Expect to over-fetch candidates and then collapse, or to group before truncating; the shape is your call, the OBSERVABLE is not.\n3. PRESERVE the existing WHERE/admission predicates in `nearest` exactly — model_key, the source_kind filter, the distance threshold, the EXISTS clause. They are the scope and correctness guards; a rewrite that drops one is a regression the tests may not catch. Keep the collapse in the same place the query already lives; do not relocate the resolver laterals.\n4. WATCH THE PROJECTION: the SELECT at :539-548 currently does not carry source_hash, and the element identity you group by is produced by a LATERAL further down. Grouping by 'the resolved element' requires that identity to be available at the point you group — this is the part of the job most likely to force a query restructure. Design it before you type it, and put the shape in your ack.\n5. PERFORMANCE IS PART OF CORRECTNESS HERE: `nearest` is the pgvector ANN scan and its LIMIT is what keeps it cheap. If your approach over-fetches, bound the over-fetch by a named constant with a comment justifying it — do not remove the LIMIT and sort the table.\n6. FIXTURES ARE YOURS, AND THEY ARE THE PLAN'S PROOF. You own ac-0002 (tail retrieval), ac-0003 (both legs), and ac-0006 (live isolated daemon). These are the tests that prove the whole plan true; u1 and u2 prove only their own halves."
+        },
+        {
+          "id": "i23",
+          "text": "TESTS YOU OWE (each must FAIL if its subject is removed):\n- ac-0003 LEG (a), one row per element / best score: an element with N matching chunk vectors returns exactly ONE result row, and its reported score is the BEST chunk's, not the first or the last. Assert the score, not just the count.\n- ac-0003 LEG (b), WHALE CROWD-OUT — the leg the original plan did not know it needed: with a whale element contributing N matching chunks plus several other distinct matching elements, a query with LIMIT k still returns k ELEMENTS. Removing the collapse must reduce the count of OTHER elements. This is the leg that proves the LIMIT applies to elements.\n- BOTH legs mutation-checked: with the collapse removed, (a) returns N rows and (b) loses its non-whale results. Actually delete the collapse locally, watch both go red, restore, and report the observation in your done report — the reviewer opens these diffs.\n- ac-0002 TAIL RETRIEVAL ANCHOR: a phrase living ONLY in the tail of an oversize document or turn — beyond the old truncation point — is retrieved by semantic search and resolves to the owning element/turn. MUTATION-CHECKED AGAINST CHUNKING-OFF: with chunking disabled the same fixture must FAIL. A tail test that passes with chunking off is measuring nothing (tenet 14 — a probe needs a control that proves the instrument works). State how you disable chunking for the control leg in your ack.\n- ac-0006 LIVE ISOLATED DAEMON: ingest a fixture conversation containing (a) a ~25KB turn and (b) an empty agent/system turn, on a daemon you spawned on an ephemeral port against a disposable database, torn down after. Prove three things: the whale turn is fully searchable INCLUDING ITS TAIL; the empty turn costs ZERO provider traffic (assert on the fake provider's recorded calls, not on the absence of an error); and the run log shows ZERO 'input cannot be an empty string' and ZERO per-input-cap WARNs. Assert on the actual surface — what the provider RECEIVED — rather than on a return value.\n- NEVER PROD: the production daemon on :7373 is untouchable. Your isolated daemon gets its own port and its own disposable database, and it is torn down when the test ends, pass or fail."
+        },
+        {
+          "id": "i10",
+          "text": "TRIPWIRE: `cargo test -p fs3-daemon --test first_light` and `cargo test -p fs3-store --test pg_store_flows` — the end-to-end search test at first_light.rs:289-292ff and the similarity/resolution tests at pg_store_flows.rs:679-789. Those encode the search behaviour the plan promises is UNCHANGED for single-chunk content. A red one means your collapse changed results for content that has exactly one vector — a regression, not a trade. STOP and report to the PM."
+        },
+        {
+          "id": "i11",
+          "text": "READS DECLARATION — what you CONSUME but do not OWN: (1) the chunked vector rows produced by u1's schema (chunk_no) and u2's prepare-time chunking — you consume the DATA, not their code. Your fixtures must seed multi-chunk rows themselves rather than waiting on u2's pipeline where possible, so leg (a) and leg (b) of ac-0003 can be proven from store-level fixtures independently. (2) crates/daemon/src/search.rs `fuse`/`same_hit` at :685-715 — you READ it to prove you did NOT change it; it is explicitly frozen and the reviewer checks for drift. (3) crates/daemon/tests/conversation_query.rs:25-76 turn/store/drain helpers and crates/daemon/tests/health.rs:93-154 spawn pattern — you copy the IDIOM, you do not edit those tests. NOTE your fence includes crates/store/src/embeddings.rs read-path SQL, which is the same FILE u1 edits (different functions: u1 owns NewEmbedding/put_embeddings/the heal, you own query_embeddings/search_elements). The PM merges u1 BEFORE you and will resolve any textual conflict; keep your edits confined to the read-path functions so the conflict stays trivial."
+        },
+        {
+          "id": "i3",
+          "text": "Implement using the /builder implement discipline: work in order, keep the execution log honest, tests alongside code. Your unit's test suite must prove the interface contract WITHOUT the other units present."
+        },
+        {
+          "id": "i4",
+          "text": "Stay inside your fence (scope below). If the work forces you outside it, STOP and ask the PM (pij-associated-owl) — that is a composition concern, not yours to solve unilaterally. Fill contracts, never widen them: a third port is a stop-and-ask (TENETS tenet 2)."
+        },
+        {
+          "id": "i5",
+          "text": "Commit with `harness commit \"<conventional subject>\" -- <paths>` (conventional commits are BINDING — release-please reads them). Status card at start and end of each unit of work: `pij report now \"<did>\" \"<next>\"`."
+        },
+        {
+          "id": "i6",
+          "text": "Done = `harness checks` green with YOUR env exports (below) + your unit's tests proving the contract. Report done to the PM with evidence, then HOLD for composition questions — do not merge anything, do not open a PR, do not touch another unit's branch."
+        },
+        {
+          "id": "i7",
+          "text": "Capture friction with `harness observe \"<what>\" --kind difficulty|confusion` the moment it bites. LIST, never CLEAR — the buffer is shared across every agent in this tree and the drain is o-prime-owned."
+        },
+        {
+          "id": "i8",
+          "text": "OMP seat: use your LSP (go-to-definition, find-references, rename, diagnostics) for symbol-level questions and refactors instead of text search, and structured edit surfaces over raw shell. If the Rust LSP is not configured in your seat, report it as friction AT ACK TIME rather than silently grepping for the whole packet."
+        },
+        {
+          "id": "i13",
+          "text": "ABSOLUTE PATHS ALWAYS for every file tool (read/edit/write), rooted at /Users/jordanknight/substrate/flowspace/fs3-embed-split. Never a relative path — OMP edit resolves relatives against a session root fixed at spawn, and if that root is wrong your edits land in ANOTHER TREE while reporting success (DL-044/DL-007/DL-008). State your worktree root once at ack and prefix every path with it. Do NOT `flowspace3 add` this worktree even if a next_action suggests it."
+        },
+        {
+          "id": "i14",
+          "text": "SHARED TREE — this is the one rule whose breach is invisible to you. You share /Users/jordanknight/substrate/flowspace/fs3-embed-split with the PM and two sibling coders, each on its own branch. Touch ONLY the files in your fence. Never `git checkout`/`switch`/`stash`/`rebase`/`merge` — branch switching in a shared tree yanks the floor out from under your siblings mid-edit. Your branch is already checked out via git worktree by the PM if applicable; if `git branch --show-current` does not show YOUR branch at ack time, STOP and ask the PM rather than switching it yourself."
+        }
+      ]
+    },
+    {
+      "name": "working_with",
+      "value": [
+        {
+          "id": "w1",
+          "text": "The PM (pij-associated-owl) is your ONLY interface: acks, questions, done reports. You never message prime or Jordan directly unless the PM's seat is dead. One question per message, one sentence of context plus one sentence of ask."
+        },
+        {
+          "id": "w2",
+          "text": "DEFER to the PM: interface changes (they affect sibling units), dependency additions, schema/migration changes outside your own migration, anything outside your fence, and any disagreement between this packet and the impl-guide."
+        },
+        {
+          "id": "w3",
+          "text": "YOUR EVIDENCE OUTRANKS THIS PACKET. The current-state section below was assembled by read-only recon and is written to be FALSIFIABLE in one read: if a line:number quote in it does not match what you find, say so immediately — that is a finding, not an inconvenience. The PM has already had to correct the impl-guide once this run on exactly this basis."
+        },
+        {
+          "id": "w4",
+          "text": "Your siblings: u1-store (store schema + heal), u2-enrich (chunk plan + hygiene), u3-read (search collapse + end-to-end proof). All three run CONCURRENTLY against the frozen seams. You do not read or write their branches; if you need something they own, that is a stop-and-ask to the PM."
+        }
+      ]
+    },
+    {
+      "name": "scope",
+      "value": {
+        "worktree": "/Users/jordanknight/substrate/flowspace/fs3-embed-split (SHARED with the PM and two sibling coders — see i14)",
+        "branch": "u3-read",
+        "fence": "crates/store/src/embeddings.rs READ PATH ONLY (query_embeddings, search_elements, and the row/struct types they return), crates/daemon/tests/** (your ac-0002/0003/0006 fixtures), crates/testkit/** ONLY if the isolated-daemon fixture genuinely needs a shared helper — and say so at ack first. NO enrich.rs, NO batch.rs, NO search.rs fuse.",
+        "forbidden_note": "Never touch another unit's paths, .harness/government/**, or the plan's flow state. Never merge, rebase, or open a PR — the PM composes u1 -> u2 -> u3. Never `git checkout`/`switch`/`stash` in this shared tree. Never touch the production daemon on port 7373. ABSOLUTE PATHS FOR EVERY FILE READ AND EDIT, ALWAYS. Do NOT edit crates/daemon/src/search.rs `fuse`/`same_hit` — moving the collapse there is the exact drift the reviewer checks for. Do NOT edit enrich.rs or batch.rs. Do NOT edit the write-path functions in embeddings.rs — u1 owns them."
+      }
+    },
+    {
+      "name": "done_bar",
+      "value": [
+        {
+          "id": "d1",
+          "text": "The element collapse lives inside the store's nearest CTE; the caller's LIMIT demonstrably applies to ELEMENTS; the existing admission predicates (model_key, source_kind filter, distance threshold, EXISTS) are all still present and still enforced."
+        },
+        {
+          "id": "d2",
+          "text": "ac-0003 both legs green and both mutation-checked (collapse removed -> (a) N rows, (b) non-whale results lost), ac-0002 tail anchor green and mutation-checked against chunking-off, ac-0006 live isolated-daemon fixture green on an ephemeral port and disposable database, torn down after."
+        },
+        {
+          "id": "d3",
+          "text": "crates/daemon/src/search.rs is UNCHANGED — prove it (`git diff --stat` naming no search.rs) so the reviewer's #74 fusion-drift check passes on evidence rather than assertion."
+        },
+        {
+          "id": "d4",
+          "text": "`harness checks` green in YOUR worktree with YOUR env exports once u1 and u2 have landed on 009-embed-split and you have merged it forward into your own branch. Prove the change is in the tree you built. Report which sha of 009-embed-split you gated against."
+        },
+        {
+          "id": "d5",
+          "text": "Done report to the PM including an explicit ASSUMPTIONS section: what you assumed about how many chunks a whale produces, about chunk score distribution, about whether your fixtures seed chunk rows directly vs through the real pipeline, and about what the empty-turn leg of ac-0006 actually observes (the provider's recorded calls, not the absence of an error). Also state plainly whether backlog row 92 (raw+smart duplicate) is closed by your change, as an observation, not a claim of scope."
+        }
+      ]
+    },
+    {
+      "name": "refs",
+      "value": [
+        {
+          "id": "r0",
+          "path": ".agents/skills/pij-team/TENETS.md",
+          "note": "the doctrine — esp. tenets 2-6 (fill contracts never widen; ship the snap-in recipe; mechanical done) and tenet 14 (a predicate must REFUSE when its preconditions fail)"
+        },
+        {
+          "id": "r1",
+          "path": "docs/plans/009-embed-split/impl-guide.dd.md",
+          "note": "your unit row + the frozen seams S1-S4 + composition contract"
+        },
+        {
+          "id": "r2",
+          "path": "docs/plans/009-embed-split/plan.dd.md",
+          "note": "the promises: ac-0001..0007, goals, and NON-GOALS (read the non-goals — they fence you as hard as the goals)"
+        },
+        {
+          "id": "r3",
+          "path": "AGENTS.md",
+          "note": "dogfooding duty + `harness commit` rules (a chained `git commit` can silently lose attribution)"
+        },
+        {
+          "id": "r4",
+          "path": ".harness/government/briefs/w-embed-oversize.md",
+          "note": "the 2026-08-27 'truncate now, split later' ruling this plan supersedes — 'later' is now"
+        },
+        {
+          "id": "r5",
+          "path": "docs/plans/009-embed-split/impl-guide.dd.md",
+          "note": "AMENDED TWICE on 2026-08-30 (commits aa165aa + 50aeeb7) after PM recon found two defects in it — read the CURRENT version, not a cached memory of it"
+        }
+      ]
+    }
+  ]
+}

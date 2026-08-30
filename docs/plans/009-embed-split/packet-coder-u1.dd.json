@@ -1,0 +1,184 @@
+{
+  "dd": {
+    "schema": "pij-team/packet"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Coder packet — u1 store: chunked vector key + poison heal (009-embed-split)",
+        "role": "coder",
+        "plan": "docs/plans/009-embed-split/plan.dd.json",
+        "seat": "<filled at canary>",
+        "updated": "2026-08-30"
+      }
+    },
+    {
+      "name": "mission",
+      "value": "You build ONE unit of plan 009-embed-split: u1 — store: chunked vector key + poison heal. The embeddings table's key gains chunk_no so one source can own N overlapping chunk vectors instead of a single truncated prefix, every existing row grandfathers in as chunk 0 with no backfill, and the empty-input embed jobs that have been poisoning provider batches are terminally retired with a count receipt. You are the FIRST unit to land — your siblings' work depends on your store types, so land clean and land early. You report to the PM (pij-associated-owl), not to prime."
+    },
+    {
+      "name": "instructions",
+      "value": [
+        {
+          "id": "i1",
+          "text": "Orient FIRST: read your unit row in /Users/jordanknight/substrate/flowspace/fs3-embed-split/docs/plans/009-embed-split/impl-guide.dd.md, the plan at /Users/jordanknight/substrate/flowspace/fs3-embed-split/docs/plans/009-embed-split/plan.dd.md (acceptance criteria ac-0001..0007), and .agents/skills/pij-team/TENETS.md (the doctrine — cited, not restated here). Run `harness instructions` and `harness boot --json` before changing anything. The compose Postgres is ALREADY UP on host port 5433 (container flowspace3-db) — the PM started it; if boot reports compose degraded for a different service, report it, do not fix it."
+        },
+        {
+          "id": "i1b",
+          "text": "DOGFOOD FLOWSPACE — not optional in this repo. Run `flowspace3 search \"<question>\"` for every meaning-shaped question before you grep (exact identifiers may still grep). Read-only search/ask against the running index is allowed and encouraged. NEVER touch the production daemon on port 7373 — do not restart it, do not point it anywhere, do not `flowspace3 add` this worktree. Report every search miss or confusing envelope as friction via `harness observe`, and mention it to the PM."
+        },
+        {
+          "id": "i2",
+          "text": "ACK FIRST, BEFORE ANY CODE: reply to the PM seat pij-associated-owl via `pij send pij-associated-owl \"<text>\"` with (a) the output of `pij whoami` quoted verbatim as your identity, (b) your OMP FOOTER model line quoted verbatim, (c) `git branch --show-current` and `echo $CARGO_TARGET_DIR $FS3_TEST_DATABASE_URL` output, and (d) your read of this unit plus a NUMBERED implementation plan. Then WAIT for the PM to rule your plan by number. Corrections to this packet are WELCOME and outrank it — bring evidence (file:line quotes), and raise them at ack rather than coding around them."
+        },
+        {
+          "id": "i20",
+          "text": "YOUR ENVIRONMENT — export these in every shell you gate from, and quote them back at ack (i2c):\n  export CARGO_TARGET_DIR=/Users/jordanknight/substrate/flowspace/fs3-embed-split-u1/target\n  export FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5433/flowspace3_test_u1\nWhy each: the per-worktree target dir stops cargo's package/artifact locks serialising your build behind your two siblings' (measured on a previous run: 145s of queueing for a 0.01s test). The per-seat database base is a SERVER SELECTOR — the gate mints per-run disposable databases beside it via FreshDatabase (crates/testkit/src/fresh_database.rs), so concurrent seats cannot share one database by accident (w-test-db-isolation, backlog row 58). FS3_TEST_DATABASE_URL has NO default and the testkit REFUSES rather than guessing (crates/testkit/src/database.rs:29-48 explains why: the shipped default is the REAL store on a developer machine, and `doctor` MIGRATES what it reads — three correct behaviours once composed into a production write). The compose Postgres is already running on host port 5433 (container flowspace3-db, docker-compose.yml:21-22, deliberately off 5432). BOTH of these are torn down with you at stand-down — the PM removes your worktree (which takes the target dir with it) and drops the database; duplicated build dirs were a named contributor to a disk-full incident (DL-043)."
+        },
+        {
+          "id": "i21",
+          "text": "CURRENT STATE — assembled by three independent read-only recon agents on 2026-08-30, written to be FALSIFIABLE in one read. Every line carries file:line. If a quote does not match what you find, that is a FINDING — tell the PM immediately.\nSCHEMA: crates/store/migrations/0004_content_layer.sql:131-149 creates `embeddings_1024(source_hash TEXT NOT NULL, source_kind TEXT NOT NULL, model_key TEXT NOT NULL, vector vector(1024), created_at, PRIMARY KEY (source_hash, source_kind, model_key))` with a CHECK constraining source_kind to 'raw'/'smart'. crates/store/migrations/0010_embedding_truncation.sql:29-30 adds `truncated BOOLEAN NOT NULL DEFAULT false`, and :32-48 states explicitly that the key STAYS that triple — 0010's comment is the thing this plan supersedes.\nMIGRATION MECHANICS: the next free ordinal is 0021 (crates/store/migrations/0020_one_file_root_per_blob.sql already exists on this branch — the impl-guide's '00XX after 0019' predates it). Registration is compile-time: crates/store/src/lib.rs:92-93 `pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!(\"./migrations\");` and :232-238 `migrate()` runs `MIGRATOR.run(pool)`, so dropping 0021_embed_chunks.sql into crates/store/migrations is sufficient — there is NO list to also edit.\nSTORE API: crates/store/src/embeddings.rs:84-98 `NewEmbedding { source_hash, source_kind, vector, truncated }`. :187-219 `put_embeddings` INSERTs columns `(source_hash, source_kind, model_key, vector, truncated)` with `ON CONFLICT (source_hash, source_kind, model_key) DO UPDATE`. :120-146 `existing_embedding_hashes(pool, model_key, source_kind, hashes) -> HashSet<String>` whose SQL at :133-140 selects source_hash only via `ANY($3)`. crates/store/src/lib.rs:55-58 re-exports query_embeddings/search_elements/NewEmbedding.\nHEAL MACHINERY ALREADY EXISTS — INVENT NOTHING: the jobs state CHECK is `state IN ('pending','running','done','failed')` (crates/store/migrations/0005_job_backlog.sql:31-34) — there is NO terminal STATE. `terminal BOOLEAN NOT NULL DEFAULT false` is a SEPARATE column added by crates/store/migrations/0011_job_terminal.sql:24-46, with partial index `jobs_revivable_idx ON jobs(kind) WHERE state='failed' AND NOT terminal` at :48-51. The boot sweep is crates/store/src/jobs.rs:431-452: `UPDATE jobs SET state='pending', attempts=0, parks=0, not_before=now(), last_error='requeued at daemon boot: this failed before a fix that may cover it', updated_at=now() WHERE state='failed' AND NOT terminal AND kind=ANY($1) AND NOT EXISTS (SELECT 1 FROM jobs live WHERE live.dedupe_key=jobs.dedupe_key AND live.state IN ('pending','running'))`, called from crates/daemon/src/boot.rs:462-477 over [SUMMARIZE, EMBED]. So 'a terminal state the boot sweep ignores' means SET terminal = true. Nothing else.\nPAYLOAD SHAPE FOR THE HEAL: jobs.payload is JSONB (0005_job_backlog.sql:17-29). The embed payload is `EmbedJob { identity, source, items: Vec<(String, String)> }` (crates/daemon/src/enrich.rs:82-90) — the text rides inside `payload->'items'` as a JSON array of [source_hash, text] pairs. There is NO dedicated text column; your predicate must read the JSON.\nTEST IDIOM: crates/store/tests/pg_migrations.rs:18-30 derives applied versions dynamically from MIGRATOR and :59-98 asserts bootstrap table/index existence — that is the idiom your schema-shape test follows. crates/store/tests/pg_store_flows.rs:679-742 `similarity_ranks_nearest_first_and_resolves_back_to_elements` seeds exactly ONE raw vector per child; :759-789 seeds one smart vector. There is currently NO embedding PK-shape assertion and no multi-vector-per-element fixture anywhere — you are writing the first."
+        },
+        {
+          "id": "i22",
+          "text": "YOUR CONTRACT (fill it, never widen it — TENETS tenet 2):\n1. MIGRATION crates/store/migrations/0021_embed_chunks.sql: add `chunk_no SMALLINT NOT NULL DEFAULT 0` to embeddings_1024 and move the PRIMARY KEY to `(source_hash, source_kind, chunk_no, model_key)`. Every existing row therefore reads back as chunk 0 with NO backfill and NO re-embedding — that grandfathering is the whole point of the DEFAULT. Follow the commentary style of the neighbouring migrations (they explain WHY; 0010 is a good model).\n2. DO NOT DROP the `truncated` column. The plan's non-goals keep it as the cheap inventory for a deferred backfill of already-truncated rows. Its WRITE path dies in u2's unit, not yours; the column and its data stay. (Its only production reader is a test helper at crates/daemon/tests/oversize.rs:96-101 — recon found no production read site.)\n3. STORE API: `NewEmbedding` gains `chunk_no`; `put_embeddings` writes it and its `ON CONFLICT` target becomes the 4-column key. Pick the Rust integer type that matches SMALLINT under sqlx (i16) rather than fighting the driver.\n4. ATOMICITY — think about this before you write it and put your answer in your ack: after chunking, ONE source_hash owns N rows, and `existing_embedding_hashes` (:120-146) answers 'does this hash have an embedding' by presence of ANY row. If a multi-chunk write can be observed half-finished, that precheck will report a partially-embedded hash as done and the tail is silently lost forever. Make one `put_embeddings` call write all of its rows atomically (single multi-row statement or one transaction) so a partial state is unobservable, and say in your done report which mechanism you used. This is the seam u2 depends on and neither of your test suites can see it from the inside.\n5. HEAL: add a store function (suggested `retire_empty_embed_jobs(pool) -> Result<u64>`) that sets `terminal = true` on failed embed jobs whose payload items are ALL empty-or-whitespace text, and RETURNS THE COUNT. It must narrow exactly the candidate set that jobs.rs:431-452 would otherwise revive. Whitespace counts as empty — the mint filter u2 writes uses the same predicate, and the two must agree.\n6. KEY THE HEAL ON CONTENT, NOT ON A HASH VALUE. The impl-guide names this: e3b0c442... is sha256 of the empty string and is shared by EVERY empty body, so a hash-based predicate is a coincidence, not a rule. Read the text out of payload->'items' and test IT.\n7. SHIP THE SNAP-IN RECIPE, DO NOT WIRE IT (tenet 4). The heal's call site is crates/daemon/src/boot.rs:462-477, immediately BEFORE `requeue_failed` — that file is outside every unit's fence and the PM wires it at composition. Ship the exact call, in order, with its log line, as a doc comment on your function. A heal that nothing invokes is unshipped (tenet 17); the PM has it on the composition checklist, and your recipe is what makes that verification rather than re-derivation."
+        },
+        {
+          "id": "i23",
+          "text": "TESTS YOU OWE (each must FAIL if its subject is removed — a test that cannot fail is not a proof):\n- SCHEMA SHAPE: the primary key of embeddings_1024 is exactly (source_hash, source_kind, chunk_no, model_key) and chunk_no is smallint NOT NULL DEFAULT 0. Assert the shape from the catalog, following the pg_migrations.rs:59-98 idiom.\n- GRANDFATHER: a row written under the OLD triple key reads back as chunk_no = 0 after 0021 applies, and no re-embed job is minted. Build it by migrating to the pre-0021 state, inserting, then applying 0021 — FreshDatabase exists precisely so you can do this (crates/testkit/src/fresh_database.rs; note `create_unmigrated_from` and that the schema-skew tests keep migration explicit for exactly this reason).\n- MULTI-CHUNK ROUND TRIP: N rows sharing (source_hash, source_kind, model_key) with distinct chunk_no all persist and read back; the same tuple with the SAME chunk_no upserts rather than duplicating.\n- HEAL, WITH ITS CONTROL LEG (tenet 14 — a predicate must refuse when its preconditions fail, and a probe needs a control that proves the instrument works): fixture rows for (a) a failed embed job whose items are all empty/whitespace -> retired, terminal=true, counted; (b) a failed embed job with REAL text -> NOT retired and still revived by `requeue_failed`. Leg (b) is what stops the heal from quietly retiring the whole queue. Assert the returned count, not just the row state.\n- BOOT-SWEEP PROOF READ, NOT ASSUMED: after the heal, call `requeue_failed` for real and assert the retired job is still failed and still terminal. The reviewer is instructed to check that this proof was READ rather than asserted by reasoning."
+        },
+        {
+          "id": "i10",
+          "text": "TRIPWIRE: `cargo test -p fs3-store` — specifically crates/store/tests/pg_migrations.rs (bootstrap/idempotency) and crates/store/tests/pg_store_flows.rs (similarity + resolution). A red there means your migration changed the schema contract in a way the repo already depends on. That is a STOP-and-report to the PM, never something to investigate away, fix around, or 're-run until green'. Rerun-until-green is forbidden in this repo by standing ruling."
+        },
+        {
+          "id": "i11",
+          "text": "READS DECLARATION — what you CONSUME but do not OWN (consumption is where fences actually collide): (1) the embed job PAYLOAD SHAPE `EmbedJob { identity, source, items: Vec<(String,String)> }` at crates/daemon/src/enrich.rs:82-90 — u2 OWNS that file; you read the JSON shape to write your heal predicate and you must NOT edit enrich.rs. If u2's shape were to change your heal breaks, so the PM has frozen it: chunking happens at prepare time, the payload shape does NOT change this plan. (2) crates/daemon/src/boot.rs:462-477 — you READ it to write your snap-in recipe; nobody's fence includes it and the PM wires it. Anything else you find yourself needing to read outside crates/store is a STOP-AND-ASK, not a widening."
+        },
+        {
+          "id": "i3",
+          "text": "Implement using the /builder implement discipline: work in order, keep the execution log honest, tests alongside code. Your unit's test suite must prove the interface contract WITHOUT the other units present."
+        },
+        {
+          "id": "i4",
+          "text": "Stay inside your fence (scope below). If the work forces you outside it, STOP and ask the PM (pij-associated-owl) — that is a composition concern, not yours to solve unilaterally. Fill contracts, never widen them: a third port is a stop-and-ask (TENETS tenet 2)."
+        },
+        {
+          "id": "i5",
+          "text": "Commit with `harness commit \"<conventional subject>\" -- <paths>` (conventional commits are BINDING — release-please reads them). Status card at start and end of each unit of work: `pij report now \"<did>\" \"<next>\"`."
+        },
+        {
+          "id": "i6",
+          "text": "Done = `harness checks` green with YOUR env exports (below) + your unit's tests proving the contract. Report done to the PM with evidence, then HOLD for composition questions — do not merge anything, do not open a PR, do not touch another unit's branch."
+        },
+        {
+          "id": "i7",
+          "text": "Capture friction with `harness observe \"<what>\" --kind difficulty|confusion` the moment it bites. LIST, never CLEAR — the buffer is shared across every agent in this tree and the drain is o-prime-owned."
+        },
+        {
+          "id": "i8",
+          "text": "OMP seat: use your LSP (go-to-definition, find-references, rename, diagnostics) for symbol-level questions and refactors instead of text search, and structured edit surfaces over raw shell. If the Rust LSP is not configured in your seat, report it as friction AT ACK TIME rather than silently grepping for the whole packet."
+        },
+        {
+          "id": "i13",
+          "text": "ABSOLUTE PATHS ALWAYS for every file tool (read/edit/write), rooted at /Users/jordanknight/substrate/flowspace/fs3-embed-split. Never a relative path — OMP edit resolves relatives against a session root fixed at spawn, and if that root is wrong your edits land in ANOTHER TREE while reporting success (DL-044/DL-007/DL-008). State your worktree root once at ack and prefix every path with it. Do NOT `flowspace3 add` this worktree even if a next_action suggests it."
+        },
+        {
+          "id": "i14",
+          "text": "SHARED TREE — this is the one rule whose breach is invisible to you. You share /Users/jordanknight/substrate/flowspace/fs3-embed-split with the PM and two sibling coders, each on its own branch. Touch ONLY the files in your fence. Never `git checkout`/`switch`/`stash`/`rebase`/`merge` — branch switching in a shared tree yanks the floor out from under your siblings mid-edit. Your branch is already checked out via git worktree by the PM if applicable; if `git branch --show-current` does not show YOUR branch at ack time, STOP and ask the PM rather than switching it yourself."
+        }
+      ]
+    },
+    {
+      "name": "working_with",
+      "value": [
+        {
+          "id": "w1",
+          "text": "The PM (pij-associated-owl) is your ONLY interface: acks, questions, done reports. You never message prime or Jordan directly unless the PM's seat is dead. One question per message, one sentence of context plus one sentence of ask."
+        },
+        {
+          "id": "w2",
+          "text": "DEFER to the PM: interface changes (they affect sibling units), dependency additions, schema/migration changes outside your own migration, anything outside your fence, and any disagreement between this packet and the impl-guide."
+        },
+        {
+          "id": "w3",
+          "text": "YOUR EVIDENCE OUTRANKS THIS PACKET. The current-state section below was assembled by read-only recon and is written to be FALSIFIABLE in one read: if a line:number quote in it does not match what you find, say so immediately — that is a finding, not an inconvenience. The PM has already had to correct the impl-guide once this run on exactly this basis."
+        },
+        {
+          "id": "w4",
+          "text": "Your siblings: u1-store (store schema + heal), u2-enrich (chunk plan + hygiene), u3-read (search collapse + end-to-end proof). All three run CONCURRENTLY against the frozen seams. You do not read or write their branches; if you need something they own, that is a stop-and-ask to the PM."
+        }
+      ]
+    },
+    {
+      "name": "scope",
+      "value": {
+        "worktree": "/Users/jordanknight/substrate/flowspace/fs3-embed-split (SHARED with the PM and two sibling coders — see i14)",
+        "branch": "u1-store",
+        "fence": "crates/store/migrations/0021_embed_chunks.sql (new), crates/store/src/embeddings.rs (NewEmbedding + put_embeddings + existing_embedding_hashes ONLY — NOT the query_embeddings/search_elements read path, which is u3's), crates/store/src/jobs.rs (the new heal fn), crates/store/tests/**. NO daemon code at all.",
+        "forbidden_note": "Never touch another unit's paths, .harness/government/**, or the plan's flow state. Never merge, rebase, or open a PR — the PM composes u1 -> u2 -> u3. Never `git checkout`/`switch`/`stash` in this shared tree. Never touch the production daemon on port 7373. ABSOLUTE PATHS FOR EVERY FILE READ AND EDIT, ALWAYS. Do NOT edit crates/store/src/embeddings.rs read-path functions (query_embeddings/search_elements) — u3 owns those in the same file. Do NOT wire the heal into boot.rs; ship the recipe."
+      }
+    },
+    {
+      "name": "done_bar",
+      "value": [
+        {
+          "id": "d1",
+          "text": "Migration 0021_embed_chunks.sql applies cleanly on a fresh database AND on a database already at 0020; the PK is exactly (source_hash, source_kind, chunk_no, model_key) and chunk_no is smallint NOT NULL DEFAULT 0."
+        },
+        {
+          "id": "d2",
+          "text": "Schema-shape, grandfather, multi-chunk round-trip, and heal tests (WITH the control leg) all pass standalone against your own FS3_TEST_DATABASE_URL, and each one FAILS when its subject is removed."
+        },
+        {
+          "id": "d3",
+          "text": "`harness checks` green in YOUR worktree with YOUR env exports — and prove the change is IN THE TREE YOU BUILT, not merely that the build exited 0: cite tree-resident evidence (git status/mtime showing your migration file, the catalog query in your own test output). An exit code is honest about what it built and silent about what it did not."
+        },
+        {
+          "id": "d4",
+          "text": "The heal SNAP-IN RECIPE ships as a doc comment on your heal function: the exact call, its position relative to `requeue_failed` in crates/daemon/src/boot.rs:462-477, and the log line to emit with the count. The PM pastes it verbatim at composition."
+        },
+        {
+          "id": "d5",
+          "text": "Done report to the PM including an explicit ASSUMPTIONS section: everything you assumed about the composition you do not own — who calls put_embeddings and in what order, what is already in the store, whether chunk rows for one hash can be observed half-written (contract item 4 — answer this one explicitly), and what your heal assumes about payload shape. A green gate proves your unit against YOUR assumptions; naming them is what lets the composer test them."
+        }
+      ]
+    },
+    {
+      "name": "refs",
+      "value": [
+        {
+          "id": "r0",
+          "path": ".agents/skills/pij-team/TENETS.md",
+          "note": "the doctrine — esp. tenets 2-6 (fill contracts never widen; ship the snap-in recipe; mechanical done) and tenet 14 (a predicate must REFUSE when its preconditions fail)"
+        },
+        {
+          "id": "r1",
+          "path": "docs/plans/009-embed-split/impl-guide.dd.md",
+          "note": "your unit row + the frozen seams S1-S4 + composition contract"
+        },
+        {
+          "id": "r2",
+          "path": "docs/plans/009-embed-split/plan.dd.md",
+          "note": "the promises: ac-0001..0007, goals, and NON-GOALS (read the non-goals — they fence you as hard as the goals)"
+        },
+        {
+          "id": "r3",
+          "path": "AGENTS.md",
+          "note": "dogfooding duty + `harness commit` rules (a chained `git commit` can silently lose attribution)"
+        },
+        {
+          "id": "r4",
+          "path": ".harness/government/briefs/w-embed-oversize.md",
+          "note": "the 2026-08-27 'truncate now, split later' ruling this plan supersedes — 'later' is now"
+        },
+        {
+          "id": "r5",
+          "path": "docs/plans/009-embed-split/impl-guide.dd.md",
+          "note": "AMENDED TWICE on 2026-08-30 (commits aa165aa + 50aeeb7) after PM recon found two defects in it — read the CURRENT version, not a cached memory of it"
+        }
+      ]
+    }
+  ]
+}
