@@ -1028,3 +1028,20 @@ leaving this file should name where it went.
     verified' is exactly honest, not underselling. The upgrade (optional
     --verify doing the read-back, raising the claim to DELIVERED; seams
     stay fire-and-forget) is theirs as harness-eng backlog 22.
+
+107. **ingest accepts a NONEXISTENT session ok:true — failure surfaces
+    only to a status reader** (dajeil, 2026-08-30, live repro on prod:
+    invented guid accepted with dedupe_key + 'queued for ingest'
+    next_action; drain leaves ingest_session state=failed x3; index
+    stays clean — no bogus conversation created). Third instance THIS
+    WEEK of one shape across three systems (conv store accepted-listed-
+    unreadable row 100; convo-sync ok while dead child row 106/s095;
+    now this): THE WRITER GETS A SUCCESS SIGNAL ONLY A READER CAN
+    FALSIFY. Dajeil's law, doctrine-grade: "an accept is a statement
+    about the request, never about the thing requested — and every one
+    of these surfaces phrases it as though it were about the thing."
+    Cheap fix (same argument as #83): validate the session store entry
+    EXISTS at accept time and refuse while the caller is still
+    listening. EVIDENCE PRESERVED: the 3 failed jobs stay in the prod
+    queue as the live repro until this dispatches (dajeil instructed
+    not to clear; queue hygiene is o-prime-owned).
