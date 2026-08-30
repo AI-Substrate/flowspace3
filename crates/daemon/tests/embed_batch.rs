@@ -11,7 +11,7 @@ mod support;
 use std::sync::Arc;
 
 use fs3_core::{Config, DatabaseConfig, Element, ElementKind, Span};
-use fs3_daemon::enrich::{SUMMARIZE, SummarizeJob};
+use fs3_daemon::enrich::{EmbedJob, SUMMARIZE, SummarizeJob};
 use fs3_daemon::runner;
 use fs3_daemon::wiring::AppState;
 use fs3_testkit::fakes::{FakeEmbedder, FakeSummarizer};
@@ -104,6 +104,48 @@ async fn states(state: &AppState) -> Vec<(String, i32)> {
             )
         })
         .collect()
+}
+
+#[tokio::test]
+async fn whitespace_turn_mints_no_embed_item_while_its_batchmate_does() {
+    let (database, state, _embedder) = stack("blank_turn_mint", working()).await;
+    let blank = Element::new(
+        ElementKind::Turn,
+        "conversation_turn",
+        "agent",
+        "conv:test#t1",
+        Span::new(1, 1),
+        " \n\t",
+    );
+    let valid = Element::new(
+        ElementKind::Turn,
+        "conversation_turn",
+        "human",
+        "conv:test#t2",
+        Span::new(2, 2),
+        "keep this turn",
+    );
+    let valid_hash = valid.raw_hash().to_string();
+
+    let summarized =
+        fs3_daemon::enrich::enqueue_for_turns(&state, IDENTITY, &[blank, valid], usize::MAX)
+            .await
+            .expect("mints the nonblank turn");
+
+    assert_eq!(summarized, 0);
+    let payload: serde_json::Value =
+        sqlx::query_scalar("SELECT payload FROM jobs WHERE kind = 'embed'")
+            .fetch_one(&state.db)
+            .await
+            .expect("one embed job");
+    let job: EmbedJob = serde_json::from_value(payload).expect("embed payload");
+    assert_eq!(
+        job.items,
+        vec![(valid_hash, "keep this turn".to_string())],
+        "the whitespace turn must not enter the minted job"
+    );
+
+    database.destroy(state.db.clone()).await;
 }
 
 /// Eight jobs, one call, eight completed rows.

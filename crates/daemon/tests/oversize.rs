@@ -26,7 +26,6 @@ use fs3_core::{BlobRef, Config, DatabaseConfig, Element, ElementKind, Span};
 use fs3_daemon::scan::PARSER_VERSION;
 use fs3_daemon::wiring::AppState;
 use fs3_daemon::{enrich, runner};
-use fs3_store::SourceKind;
 use fs3_testkit::fakes::{FakeEmbedder, FakeSummarizer};
 use serde_json::json;
 
@@ -56,42 +55,61 @@ async fn stack(label: &str) -> (support::FreshDatabase, AppState, Arc<FakeEmbedd
     (database, state, embedder)
 }
 
-/// A text far over the cap: ~120k bytes is ~40k tokens by fs3's own estimate,
-/// five times what any current embedding model accepts.
+/// A text far over the cap with position-bearing lines, so coverage checks can
+/// locate every overlapping chunk unambiguously in the original.
 fn oversized() -> String {
-    "fn handler(request: Request) -> Response { dispatch(request) }\n".repeat(2_000)
+    (0..2_000)
+        .map(|n| {
+            format!("fn handler_{n:04}(request: Request) -> Response {{ dispatch(request) }}\n")
+        })
+        .collect()
 }
 
 /// An embed payload for `items`, with a root registered that HOLDS them.
-///
-/// The hold is not scenery. The embed handler refuses to pay for content no
-/// registered root maps, so a payload built from bare hashes never reaches the
-/// provider at all — every assertion in this file about what ARRIVED there
-/// would then be asserting on an empty call list, and the cap guard would look
-/// broken when it is the precondition that is missing. Holding here rather
-/// than in each test means a new test cannot forget it.
 async fn payload(state: &AppState, items: &[(String, String)]) -> serde_json::Value {
     support::hold(state, "oversize", items).await;
     json!({ "identity": IDENTITY, "source": "raw", "items": items })
 }
 
-/// Read the stored marker for one vector.
-async fn truncated_flag(state: &AppState, hash: &str) -> Option<bool> {
-    sqlx::query_scalar::<_, bool>("SELECT truncated FROM embeddings_1024 WHERE source_hash = $1")
-        .bind(hash)
-        .fetch_optional(&state.db)
-        .await
-        .expect("reading the marker")
+async fn stored_chunks(state: &AppState, hash: &str) -> Vec<(i16, bool)> {
+    sqlx::query_as(
+        "SELECT chunk_no, truncated FROM embeddings_1024
+          WHERE source_hash = $1 ORDER BY chunk_no",
+    )
+    .bind(hash)
+    .fetch_all(&state.db)
+    .await
+    .expect("reading stored chunks")
 }
 
-/// THE defect, as a test: an input over the cap must reach the provider
-/// shortened, and must reach it at all.
-///
-/// Mutation check: delete the guard in `enrich::embed_items` and this fails on
-/// the `expect` — the fake refuses the call with the provider's own message,
-/// which is precisely what happened 59 times on the live index.
+fn assert_lossless_coverage(original: &str, chunks: &[String]) {
+    assert!(chunks.len() > 1, "the fixture must actually split");
+    let mut prior_start = 0;
+    let mut prior_end = chunks[0].len();
+    assert!(original.starts_with(&chunks[0]), "chunk zero is the head");
+
+    for chunk in &chunks[1..] {
+        let relative = original[prior_start + 1..]
+            .find(chunk)
+            .expect("every provider chunk comes from the original text");
+        let start = prior_start + 1 + relative;
+        assert!(
+            start < prior_end,
+            "adjacent chunks must overlap: prior ended at {prior_end}, next starts at {start}"
+        );
+        prior_start = start;
+        prior_end = start + chunk.len();
+    }
+
+    assert_eq!(
+        prior_end,
+        original.len(),
+        "the final chunk reaches the tail"
+    );
+}
+
 #[tokio::test]
-async fn an_oversized_input_arrives_at_the_provider_under_the_cap() {
+async fn an_oversized_input_arrives_as_lossless_under_cap_chunks() {
     let (database, state, embedder) = stack("oversize_under_cap").await;
     let text = oversized();
     let hash = fs3_core::content_hash(text.as_bytes());
@@ -104,73 +122,30 @@ async fn an_oversized_input_arrives_at_the_provider_under_the_cap() {
     .expect("an oversized element must still be embeddable");
 
     let received = embedder.received();
-    assert_eq!(received.len(), 1, "one text was sent");
+    assert_lossless_coverage(&text, &received);
     assert!(
-        fs3_core::estimate_tokens(&received[0]) <= CAP,
-        "what arrived must fit the model: {} estimated tokens against a cap of {CAP}",
-        fs3_core::estimate_tokens(&received[0])
-    );
-    assert!(
-        text.starts_with(&received[0]),
-        "the guard keeps a PREFIX; anything else is a different text with the same hash"
-    );
-    assert!(
-        received[0].len() < text.len(),
-        "and it must actually have been shortened"
+        received
+            .iter()
+            .all(|chunk| fs3_core::estimate_tokens(chunk) <= CAP),
+        "every provider input must fit the model cap"
     );
 
-    let pool = state.db.clone();
-    database.destroy(pool).await;
-}
-
-/// The vector is keyed by the ORIGINAL content hash, and says it covers only
-/// part of it.
-///
-/// Both halves matter. Re-keying on the prefix would make the dedupe
-/// pre-check answer "not embedded" for ever and re-buy the same vector on
-/// every scan; leaving the marker off would make a partial vector
-/// indistinguishable from a complete one, in the store and in search results.
-#[tokio::test]
-async fn a_truncated_vector_is_stored_under_the_original_hash_and_marked() {
-    let (database, state, _embedder) = stack("oversize_marked").await;
-    let text = oversized();
-    let hash = fs3_core::content_hash(text.as_bytes());
-
-    enrich::embed(&state, payload(&state, &[(hash.clone(), text)]).await)
-        .await
-        .expect("embeds");
-
+    let stored = stored_chunks(&state, &hash).await;
+    assert_eq!(stored.len(), received.len());
     assert_eq!(
-        truncated_flag(&state, &hash).await,
-        Some(true),
-        "the row must exist under the original hash AND be marked truncated"
+        stored
+            .iter()
+            .map(|(chunk_no, _)| *chunk_no)
+            .collect::<Vec<_>>(),
+        (0..stored.len() as i16).collect::<Vec<_>>()
     );
+    assert!(stored.iter().all(|(_, truncated)| !truncated));
 
-    // The dedupe pre-check must now consider this content done, or every scan
-    // would buy it again for ever.
-    let stored = fs3_store::existing_embedding_hashes(
-        &state.db,
-        &state.embedder_key(IDENTITY),
-        SourceKind::Raw,
-        &[hash.as_str()],
-    )
-    .await
-    .expect("reads");
-    assert!(
-        stored.contains(&hash),
-        "a truncated embedding is THE embedding for that content"
-    );
-
-    let pool = state.db.clone();
-    database.destroy(pool).await;
+    database.destroy(state.db.clone()).await;
 }
 
-/// An element that fits is not marked, and is not touched.
-///
-/// Without this, a guard that truncated everything — or a marker hard-wired to
-/// `true` — would pass every other test in this file.
 #[tokio::test]
-async fn an_element_within_the_cap_is_neither_shortened_nor_marked() {
+async fn an_element_within_the_cap_is_sent_verbatim_as_chunk_zero() {
     let (database, state, embedder) = stack("oversize_within").await;
     let text = "fn small() -> u8 { 7 }".to_string();
     let hash = fs3_core::content_hash(text.as_bytes());
@@ -182,22 +157,14 @@ async fn an_element_within_the_cap_is_neither_shortened_nor_marked() {
     .await
     .expect("embeds");
 
-    assert_eq!(embedder.received(), vec![text], "sent verbatim");
-    assert_eq!(truncated_flag(&state, &hash).await, Some(false));
+    assert_eq!(embedder.received(), vec![text], "sent byte-identically");
+    assert_eq!(stored_chunks(&state, &hash).await, vec![(0, false)]);
 
-    let pool = state.db.clone();
-    database.destroy(pool).await;
+    database.destroy(state.db.clone()).await;
 }
 
-/// One huge element among several small ones, in ONE claim set.
-///
-/// This is the shape the live failure actually had: the planner merges claimed
-/// jobs into one call, and a single over-cap member fails the WHOLE request —
-/// so before the guard, one huge element could take its innocent batchmates
-/// down with it on the first attempt. The batch must go out whole, with only
-/// the oversized member shortened.
 #[tokio::test]
-async fn one_huge_element_rides_with_small_ones_and_only_it_is_shortened() {
+async fn one_huge_element_and_its_small_batchmates_all_land() {
     let (database, state, embedder) = stack("oversize_batchmates").await;
 
     let huge = oversized();
@@ -209,7 +176,6 @@ async fn one_huge_element_rides_with_small_ones_and_only_it_is_shortened() {
         })
         .collect();
 
-    // Separate jobs, claimed together: exactly how the merged batch is formed.
     for (n, item) in std::iter::once(&(huge_hash.clone(), huge.clone()))
         .chain(small.iter())
         .enumerate()
@@ -228,35 +194,33 @@ async fn one_huge_element_rides_with_small_ones_and_only_it_is_shortened() {
     let drained = runner::drain(&state, 1).await;
     assert_eq!(drained.failed, 0, "no job may fail: {drained:?}");
     assert_eq!(drained.completed, 4, "all four settle: {drained:?}");
+    assert_eq!(embedder.call_count(), 1, "the claimed jobs still merge");
 
-    assert_eq!(
-        embedder.call_count(),
-        1,
-        "the four jobs merge into one provider call; the guard must not split the batch"
-    );
-
-    assert_eq!(truncated_flag(&state, &huge_hash).await, Some(true));
-    for (hash, _) in &small {
-        assert_eq!(
-            truncated_flag(&state, hash).await,
-            Some(false),
-            "a small element riding beside a huge one must be stored whole"
+    let received = embedder.received();
+    for (_, text) in &small {
+        assert!(
+            received.contains(text),
+            "small batchmate must arrive verbatim"
         );
     }
+    let huge_chunks: Vec<String> = received
+        .into_iter()
+        .filter(|text| !small.iter().any(|(_, small)| small == text))
+        .collect();
+    assert_lossless_coverage(&huge, &huge_chunks);
+    assert_eq!(
+        stored_chunks(&state, &huge_hash).await.len(),
+        huge_chunks.len()
+    );
+    for (hash, _) in &small {
+        assert_eq!(stored_chunks(&state, hash).await, vec![(0, false)]);
+    }
 
-    let pool = state.db.clone();
-    database.destroy(pool).await;
+    database.destroy(state.db.clone()).await;
 }
 
-/// The 59: a job that failed under the old behaviour comes back and lands,
-/// with no hand-written SQL.
-///
-/// The precondition is built exactly as the live index holds it — a `failed`
-/// embed row carrying the provider's own refusal, attempts spent, dedupe key
-/// released. The recovery is the sweep the daemon runs at boot before its
-/// runner starts.
 #[tokio::test]
-async fn a_job_that_failed_before_the_guard_is_requeued_and_lands() {
+async fn a_job_that_failed_before_chunking_is_requeued_and_lands_all_chunks() {
     let (database, state, embedder) = stack("oversize_recovery").await;
     let text = oversized();
     let hash = fs3_core::content_hash(text.as_bytes());
@@ -265,14 +229,12 @@ async fn a_job_that_failed_before_the_guard_is_requeued_and_lands() {
         &state.db,
         enrich::EMBED,
         "embed:oversize:recovered",
-        &payload(&state, &[(hash.clone(), text)]).await,
+        &payload(&state, &[(hash.clone(), text.clone())]).await,
         Duration::ZERO,
     )
     .await
     .expect("enqueues");
 
-    // Put the row in the state the defect left it in: claimed, then failed on
-    // a retryable provider refusal after the attempts ran out.
     let job = fs3_store::claim_job(&state.db, &[enrich::EMBED])
         .await
         .expect("claims")
@@ -286,18 +248,8 @@ async fn a_job_that_failed_before_the_guard_is_requeued_and_lands() {
     .await
     .expect("fails");
 
-    assert_eq!(
-        embedder.call_count(),
-        0,
-        "nothing has been embedded yet — this is the state the live index is in"
-    );
-    assert_eq!(
-        truncated_flag(&state, &hash).await,
-        None,
-        "and the content has no vector at all"
-    );
-
-    // The boot sweep.
+    assert_eq!(embedder.call_count(), 0);
+    assert!(stored_chunks(&state, &hash).await.is_empty());
     let swept = fs3_store::requeue_failed(&state.db, &[enrich::SUMMARIZE, enrich::EMBED])
         .await
         .expect("requeues");
@@ -305,14 +257,11 @@ async fn a_job_that_failed_before_the_guard_is_requeued_and_lands() {
 
     let drained = runner::drain(&state, 1).await;
     assert_eq!(drained.completed, 1, "and now it lands: {drained:?}");
-    assert_eq!(
-        truncated_flag(&state, &hash).await,
-        Some(true),
-        "the content that was unsearchable now has a vector, marked as partial"
-    );
+    let received = embedder.received();
+    assert_lossless_coverage(&text, &received);
+    assert_eq!(stored_chunks(&state, &hash).await.len(), received.len());
 
-    let pool = state.db.clone();
-    database.destroy(pool).await;
+    database.destroy(state.db.clone()).await;
 }
 
 /// A job that can never succeed is NOT requeued.
