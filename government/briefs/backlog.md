@@ -1120,3 +1120,14 @@ leaving this file should name where it went.
     incident; PM hand-killed). Reported to vicuna (pij platform): kill
     full process group + await before claiming cancelled. Same accept-law
     family as row 107.
+
+111. **squash-merge race silently strands late pushes** (owl, 2026-08-31,
+    verified by grepping the merged artifact: #87 merged at head 84118ef
+    while docs commit 14c6738d was landing — no error, no conflict, the
+    branch just keeps a commit main never sees). Silent-loss family,
+    beside the DEGRADED-attribution pattern (4x docs-only this session).
+    The tell: grep the merged artifact for a phrase you know you wrote.
+    Rescue precedent: cherry-pick onto a fresh branch from main (#88).
+    Encoding candidates: train re-reads PR head immediately before merge
+    and refuses if it moved since evidence was taken; or freeze-window
+    rule (PM declares branch frozen when handing to prime).
