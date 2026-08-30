@@ -1,0 +1,16 @@
+docs/plans/009-embed-split/packet-pm.dd.json
+  h_9e71e8b09f7cf2 9,11,13,18,25,29,33,37,41,49,53,57,61,65,93-94,108,124,134,138-139,149,155-163
+docs/plans/009-embed-split/packet-pm.dd.md
+  h_9e71e8b09f7cf2 2,12,14,16,22,59-60,84,88-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a6fb24a1c803d055765cda982cd99f27a046909a",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
