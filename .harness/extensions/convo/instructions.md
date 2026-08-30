@@ -1,6 +1,6 @@
 # convo — ingesting the conversations agents already had
 
-`harness convo <sub>` — every sub shells through to `flowspace3 conversation …`
+`harness fs3-convo <sub>` — every sub shells through to `flowspace3 conversation …`
 (the CLI is the single implementation; this verb is the discoverable surface).
 
 | sub | what it does |
@@ -31,8 +31,8 @@ Two routes, and they land the same conversation because both reduce to
 `(harness, session id)`:
 
 ```bash
-harness convo ingest -- --pij pij-appalling-slug        # by seat
-harness convo ingest -- --session <uuid> --harness omp  # by native session id
+harness fs3-convo ingest -- --pij pij-appalling-slug        # by seat
+harness fs3-convo ingest -- --session <uuid> --harness omp  # by native session id
 ```
 
 Arguments after `--` are forwarded VERBATIM to `flowspace3 conversation

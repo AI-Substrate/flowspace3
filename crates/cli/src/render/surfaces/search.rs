@@ -89,6 +89,31 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
             ]);
         }
         out.push_str(&theme::block(&table));
+        let shown_files = results
+            .results
+            .iter()
+            .filter(|hit| hit.kind != "turn")
+            .count() as u64;
+        let file_total = results.composition.code + results.composition.doc;
+        let total = file_total + results.composition.conversation;
+        let more_files = file_total.saturating_sub(shown_files);
+        let conversations = results.composition.conversation;
+        if total > count as u64 {
+            out.push_str(&format!(
+                "\n{}top {count} shown; {conversations} conversation{} and {more_files} more file match{} within threshold\n",
+                theme::GUTTER,
+                if conversations == 1 { "" } else { "s" },
+                if more_files == 1 { "" } else { "es" },
+            ));
+        } else if total > 0 {
+            out.push_str(&format!(
+                "\n{}composition: {} code · {} doc · {conversations} conversation{} within threshold\n",
+                theme::GUTTER,
+                results.composition.code,
+                results.composition.doc,
+                if conversations == 1 { "" } else { "s" },
+            ));
+        }
     }
     append_next(&mut out, envelope, width);
     Some(out)
@@ -105,6 +130,25 @@ fn append_next(out: &mut String, envelope: &Envelope<Value>, width: u16) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn composition_names_conversations_below_the_returned_limit() {
+        let envelope: Envelope<Value> = serde_json::from_str(
+            r#"{"ok":true,"command":"search","v":1,"data":{"results":[
+                {"address":"el:a/b.rs::needle","score":1.0,"channel":"lexical",
+                 "match_field":"exact_text","kind":"function","subkind":"function_item",
+                 "name":"needle","span":[1,1],"snippet":"fn needle() {}","smart":null,
+                 "tags":[],"repo":"git:a","path":"b.rs","worktree":"/a"}],
+                 "composition":{"code":4,"doc":2,"conversation":3}}}"#,
+        )
+        .unwrap();
+        let screen = anstream::adapter::strip_str(&render(&envelope, 120).unwrap()).to_string();
+        assert!(
+            screen
+                .contains("top 1 shown; 3 conversations and 5 more file matches within threshold"),
+            "{screen}"
+        );
+    }
 
     #[test]
     fn channel_and_exact_match_reason_are_visible() {

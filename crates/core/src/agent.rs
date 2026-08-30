@@ -172,6 +172,8 @@ pub enum StopReason {
     MaxIterations,
     /// [`AgentBounds::token_budget`] was exhausted first.
     TokenBudget,
+    /// The chat provider failed after the loop had already gathered evidence.
+    ProviderFailure,
 }
 
 /// One tool call as it happened, for the trace the user sees.
@@ -207,6 +209,10 @@ pub struct AgentAnswer {
     /// The model's prose. Absent only when the run hit a bound before
     /// answering — the caller must say so rather than invent an answer.
     pub answer: Option<String>,
+    /// The provider failure that ended the run, when [`Self::stopped`] is
+    /// [`StopReason::ProviderFailure`]. Kept separately from `answer` so an
+    /// error can never masquerade as synthesized prose.
+    pub failure: Option<String>,
     /// Every tool call, in order.
     pub trace: Vec<TraceEntry>,
     /// Turns taken.
@@ -259,7 +265,23 @@ pub async fn ask(
     let mut nudged = false;
 
     for iteration in 1..=bounds.max_iterations {
-        let turn: ChatTurn = chat.turn(&messages, &schemas).await?;
+        let turn: ChatTurn = match chat.turn(&messages, &schemas).await {
+            Ok(turn) => turn,
+            Err(error) if iteration == 1 => return Err(error),
+            Err(error) => {
+                return Ok(AgentAnswer {
+                    answer: None,
+                    failure: Some(error.to_string()),
+                    trace,
+                    iterations: iteration - 1,
+                    // A failed provider turn may have spent unreported tokens.
+                    // The previously measured sum is only a floor, so discard it.
+                    tokens_used: None,
+                    stopped: StopReason::ProviderFailure,
+                    grounded: false,
+                });
+            }
+        };
         // Unknown TAINTS the total. A run where four turns reported usage and
         // one did not has no known total — publishing the partial sum would
         // present a floor as if it were the figure, and a budget assertion
@@ -292,11 +314,12 @@ pub async fn ask(
             if !grounded && !nudged && over_budget {
                 return Ok(AgentAnswer {
                     answer: turn.content,
+                    failure: None,
                     trace,
                     iterations: iteration,
                     tokens_used,
                     stopped: StopReason::TokenBudget,
-                    grounded,
+                    grounded: false,
                 });
             }
 
@@ -321,8 +344,21 @@ pub async fn ask(
                 continue;
             }
 
+            let Some(answer) = turn.content.filter(|text| !text.trim().is_empty()) else {
+                return Ok(AgentAnswer {
+                    answer: None,
+                    failure: Some("the chat provider returned no answer text".to_string()),
+                    trace,
+                    iterations: iteration,
+                    tokens_used,
+                    stopped: StopReason::ProviderFailure,
+                    grounded: false,
+                });
+            };
+
             return Ok(AgentAnswer {
-                answer: turn.content,
+                answer: Some(answer),
+                failure: None,
                 trace,
                 iterations: iteration,
                 tokens_used,
@@ -335,14 +371,14 @@ pub async fn ask(
         // running them, because their results only matter if we can afford to
         // send them back to the model.
         if over_budget {
-            let grounded = read_something(&trace);
             return Ok(AgentAnswer {
                 answer: None,
+                failure: None,
                 trace,
                 iterations: iteration,
                 tokens_used,
                 stopped: StopReason::TokenBudget,
-                grounded,
+                grounded: false,
             });
         }
 
@@ -384,14 +420,14 @@ pub async fn ask(
         }
     }
 
-    let grounded = read_something(&trace);
     Ok(AgentAnswer {
         answer: None,
+        failure: None,
         trace,
         iterations: bounds.max_iterations,
         tokens_used,
         stopped: StopReason::MaxIterations,
-        grounded,
+        grounded: false,
     })
 }
 
@@ -421,6 +457,7 @@ fn truncate(text: String, max: usize) -> String {
 #[cfg(test)]
 mod tests {
     use std::sync::Mutex;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     use serde_json::json;
 
@@ -461,6 +498,30 @@ mod tests {
     struct ScriptedChat {
         turns: Mutex<std::collections::VecDeque<ChatTurn>>,
         seen: Mutex<Vec<Vec<ChatMessage>>>,
+    }
+
+    struct FailingChat {
+        first: ChatTurn,
+        calls: AtomicUsize,
+    }
+
+    #[async_trait]
+    impl ChatProvider for FailingChat {
+        async fn turn(&self, _messages: &[ChatMessage], _tools: &[ToolSchema]) -> Result<ChatTurn> {
+            if self.calls.fetch_add(1, Ordering::Relaxed) == 0 {
+                Ok(self.first.clone())
+            } else {
+                Err(crate::Error::Provider("provider disconnected".to_string()))
+            }
+        }
+
+        fn key(&self) -> String {
+            "failing@1".to_string()
+        }
+
+        fn max_input_tokens(&self) -> usize {
+            100_000
+        }
     }
 
     impl ScriptedChat {
@@ -838,6 +899,83 @@ mod tests {
         // could afford to send them back to the model.
         assert!(outcome.answer.is_none());
         assert!(outcome.trace.is_empty(), "no tools were bought either");
+    }
+
+    #[test]
+    fn budget_exhaustion_retains_prior_evidence_but_is_not_grounded() {
+        let address = "el:repo/src/lib.rs::answer";
+        let chat = ScriptedChat::new(vec![
+            calls(vec![call("read", "get", "{}")], 10),
+            calls(vec![call("again", "search", "{}")], 100),
+        ]);
+        let bounds = AgentBounds {
+            token_budget: 100,
+            ..AgentBounds::default()
+        };
+
+        let outcome = run(ask(
+            &chat,
+            &tools_with_references(address, &[address]),
+            bounds,
+            "q",
+        ));
+
+        assert_eq!(outcome.stopped, StopReason::TokenBudget);
+        assert!(outcome.answer.is_none());
+        assert!(
+            !outcome.grounded,
+            "partial evidence does not ground a null answer"
+        );
+        assert_eq!(outcome.trace[0].references, [address]);
+    }
+
+    #[test]
+    fn provider_failure_after_a_read_retains_the_completed_trace() {
+        let address = "el:repo/src/lib.rs::answer";
+        let chat = FailingChat {
+            first: calls(vec![call("read", "get", "{}")], 10),
+            calls: AtomicUsize::new(0),
+        };
+
+        let outcome = run(ask(
+            &chat,
+            &tools_with_references(address, &[address]),
+            AgentBounds::default(),
+            "q",
+        ));
+
+        assert_eq!(outcome.stopped, StopReason::ProviderFailure);
+        assert_eq!(
+            outcome.failure.as_deref(),
+            Some("provider failure: provider disconnected")
+        );
+        assert!(outcome.answer.is_none());
+        assert!(!outcome.grounded);
+        assert_eq!(outcome.iterations, 1);
+        assert_eq!(outcome.trace[0].references, [address]);
+        assert_eq!(outcome.tokens_used, None, "a failed paid turn taints usage");
+    }
+
+    #[test]
+    fn answered_always_carries_nonempty_answer_text() {
+        for content in [None, Some(String::new()), Some("   ".to_string())] {
+            let chat = ScriptedChat::new(vec![
+                ChatTurn {
+                    content: content.clone(),
+                    tool_calls: vec![],
+                    tokens_used: Some(1),
+                },
+                ChatTurn {
+                    content,
+                    tool_calls: vec![],
+                    tokens_used: Some(1),
+                },
+            ]);
+            let outcome = run(ask(&chat, &tools_ok("unused"), AgentBounds::default(), "q"));
+            assert_ne!(outcome.stopped, StopReason::Answered);
+            assert!(outcome.answer.is_none());
+            assert!(outcome.failure.is_some());
+        }
     }
 
     #[test]

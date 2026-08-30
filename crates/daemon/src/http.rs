@@ -167,6 +167,20 @@ async fn ask(
         crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
     let meta = serde_json::json!({ "scope": scope });
 
+    // Request filters are resolved before checking or invoking the chat port.
+    // An unknown transcript is a bad request, not a model-generated empty
+    // answer, and must cost zero model turns.
+    let corpus = match crate::ask::resolve_corpus(&state, &request, &scope).await {
+        Ok(corpus) => corpus,
+        Err(failure) => {
+            return failed(&state, COMMAND, failure)
+                .await
+                .0
+                .with_meta(meta)
+                .into();
+        }
+    };
+
     // The verdict rides the ENVELOPE, not the prose. A daemon wired to the
     // offline fake is healthy and cannot answer anything, and it used to say
     // so only in `grounded` and a next_action — while `ok` stayed true, which
@@ -185,32 +199,66 @@ async fn ask(
         return failed(&state, COMMAND, failure).await;
     }
 
-    match crate::ask::ask(&state, &request, scope.clone()).await {
-        Ok(report) => {
-            let next = match (
-                &report.answer,
-                report.grounded && !report.citations.is_empty(),
-            ) {
-                (None, _) => {
-                    "the loop hit a bound before answering — raise [agent] max_iterations or \
-                     token_budget, or ask a narrower question"
-                }
-                // `grounded: false` survived a pushback, so the model answered
-                // from memory on purpose. Say so first and plainly: this is the
-                // one outcome a reader must not mistake for an ordinary answer.
-                // No citations means no address to check, so pointing at `get`
-                // would send the reader after something that does not exist.
-                (Some(_), false) => {
-                    "TREAT WITH SUSPICION — this answer cites no address that was read in full, \
-                     so there is nothing to verify it against; re-ask more narrowly, or check \
-                     `flowspace3 status` in case the index is empty"
-                }
-                (Some(_), true) => {
-                    "verify any claim with `flowspace3 get <address>` on the citations, or ask a \
-                     follow-up question"
-                }
+    match crate::ask::ask(&state, &request, scope.clone(), corpus).await {
+        Ok(report)
+            if report.stopped == "answered"
+                && report
+                    .answer
+                    .as_deref()
+                    .is_some_and(|answer| !answer.trim().is_empty()) =>
+        {
+            let next = if report.grounded && !report.citations.is_empty() {
+                "verify any claim with `flowspace3 get <address>` on the citations, or ask a \
+                 follow-up question"
+            } else {
+                "TREAT WITH SUSPICION — this answer cites no address that was read in full, \
+                 so there is nothing to verify it against; re-ask more narrowly, or check \
+                 `flowspace3 status` in case the index is empty"
             };
             ok(&state, COMMAND, report)
+                .await
+                .0
+                .with_meta(meta)
+                .with_next_action(crate::scope::steer(&scope, next))
+                .into()
+        }
+        Ok(report) => {
+            let (code, message, next) = match report.stopped.as_str() {
+                "token_budget" => (
+                    &fs3_core::catalog::QUERY_ASK_TOKEN_BUDGET,
+                    "ask exhausted its token budget before synthesizing an answer".to_string(),
+                    "ask a narrower question or raise `[agent] token_budget`; partial evidence is \
+                     retained in error.details.evidence",
+                ),
+                "max_iterations" => (
+                    &fs3_core::catalog::QUERY_ASK_ITERATION_LIMIT,
+                    "ask reached its iteration limit before synthesizing an answer".to_string(),
+                    "ask a narrower question or raise `[agent] max_iterations`; partial evidence \
+                     is retained in error.details.evidence",
+                ),
+                "provider_failure" => (
+                    &fs3_core::catalog::PROVIDER_FAILED,
+                    report.failure.clone().unwrap_or_else(|| {
+                        "the chat provider failed before synthesizing an answer".to_string()
+                    }),
+                    "retry after checking the active chat provider; partial evidence is retained \
+                     in error.details.evidence",
+                ),
+                // Defence in depth for the fleet-observed impossible shape:
+                // `answered` without answer text is a failure, never success-shaped null.
+                _ => (
+                    &fs3_core::catalog::PROVIDER_FAILED,
+                    "ask stopped without producing answer text".to_string(),
+                    "retry after checking the active chat provider; no empty answer is accepted",
+                ),
+            };
+            let failure = fs3_core::envelope::Failure::new(code, message)
+                .with_detail("stopped", &report.stopped)
+                .with_detail("grounded", false)
+                .with_detail("iterations", report.iterations)
+                .with_detail("tokens_used", report.tokens_used)
+                .with_detail("evidence", report.partial_evidence());
+            failed(&state, COMMAND, failure)
                 .await
                 .0
                 .with_meta(meta)
@@ -263,15 +311,7 @@ async fn conversation_list(
     }
     match crate::conversations::list(&state, &request).await {
         Ok(list) => {
-            let next = if list.conversations.is_empty() {
-                "nothing is indexed yet — `flowspace3 conversation import <file>` stores a \
-                 transcript"
-                    .to_string()
-            } else {
-                "`flowspace3 tree <address>` outlines any of them; \
-                 `flowspace3 search \"<question>\" --source conversation` searches their turns"
-                    .to_string()
-            };
+            let next = crate::conversations::next_after_list(&list);
             ok(&state, COMMAND, list)
                 .await
                 .0
@@ -561,6 +601,7 @@ async fn search(
             }
             let results = SearchResults {
                 results: outcome.results,
+                composition: outcome.composition,
             };
             let next = crate::scope::steer(&scope, &next);
             let next = if crate::ask_hint::looks_like_question(&request.q) {

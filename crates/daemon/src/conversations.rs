@@ -36,11 +36,12 @@
 
 use fs3_core::conversation::earns_summary;
 use fs3_core::envelope::Failure;
-use fs3_core::{Conversation, ConversationId, Element, Turn, catalog};
+use fs3_core::{Address, Conversation, ConversationId, Element, Turn, catalog};
 use serde::{Deserialize, Serialize};
 
 use crate::enrich;
 use crate::runner::fail;
+use crate::scope::Scope;
 use crate::wiring::AppState;
 
 /// The identity a conversation with no repository anchor is enriched under.
@@ -266,6 +267,100 @@ pub async fn list(state: &AppState, request: &ListRequest) -> Result<Conversatio
     })
 }
 
+/// What a caller can do with the conversation catalogue.
+#[must_use]
+pub fn next_after_list(report: &ConversationList) -> String {
+    if report.conversations.is_empty() {
+        "nothing is indexed yet — `flowspace3 conversation import <file>` stores a transcript"
+            .to_string()
+    } else {
+        "`flowspace3 tree <address>` outlines any transcript; `flowspace3 ask \"<question>\" \
+         --conversation <guid>` answers from exactly one; bare `flowspace3 search \"<question>\"` \
+         searches their turns with every source"
+            .to_string()
+    }
+}
+
+/// Resolve a full guid, a conventional short guid, or a `conv:` address to one
+/// indexed conversation inside the caller's repository scope.
+///
+/// Resolution happens before the ask loop starts. A bad pin therefore cannot
+/// consume model turns and cannot degrade into an empty, plausibly answered
+/// search.
+pub(crate) async fn resolve_selector(
+    state: &AppState,
+    selector: &str,
+    scope: &Scope,
+) -> Result<fs3_store::ConversationSummary, Failure> {
+    let prefix = selector_prefix(selector)?;
+    let rows = fs3_store::list_conversations(
+        &state.db,
+        fs3_store::AnchorFilter {
+            repo: scope.repo.as_deref(),
+            path_prefix: None,
+            guid: Some(&prefix),
+        },
+    )
+    .await
+    .map_err(fail)?;
+
+    let mut matches = rows.into_iter().filter(|row| {
+        scope.worktree.as_deref().is_none_or(|worktree| {
+            row.worktree
+                .as_deref()
+                .is_none_or(|candidate| candidate == worktree)
+        })
+    });
+    let Some(found) = matches.next() else {
+        return Err(conversation_selector_failure(format!(
+            "no indexed conversation matches `{selector}` in this scope"
+        )));
+    };
+    if matches.next().is_some() {
+        return Err(conversation_selector_failure(format!(
+            "conversation selector `{selector}` matches more than one indexed transcript"
+        )));
+    }
+    Ok(found)
+}
+
+fn selector_prefix(selector: &str) -> Result<String, Failure> {
+    let selector = selector.trim();
+    let guid = if selector.starts_with(fs3_core::address::CONVERSATION_SCHEME) {
+        match Address::parse(selector) {
+            Ok(Address::Conversation(address)) => address.guid,
+            Ok(_) | Err(_) => {
+                return Err(conversation_selector_failure(format!(
+                    "`{selector}` is not a valid conversation address"
+                )));
+            }
+        }
+    } else {
+        selector.to_string()
+    };
+
+    let shape_is_valid = (8..=36).contains(&guid.len())
+        && guid.bytes().enumerate().all(|(index, byte)| {
+            if matches!(index, 8 | 13 | 18 | 23) {
+                byte == b'-'
+            } else {
+                byte.is_ascii_digit() || (byte.is_ascii_lowercase() && byte.is_ascii_hexdigit())
+            }
+        });
+    if !shape_is_valid {
+        return Err(conversation_selector_failure(format!(
+            "`{selector}` is not a canonical guid, short guid, or conv: address"
+        )));
+    }
+    Ok(guid)
+}
+
+fn conversation_selector_failure(message: String) -> Failure {
+    Failure::new(&catalog::QUERY_INVALID, message)
+        .with_fix("run `flowspace3 conversation list` and pass one listed guid to `--conversation`")
+        .retryable(false)
+}
+
 /// Forget one conversation, its turns and its turn elements.
 ///
 /// # Errors
@@ -311,14 +406,14 @@ pub fn next_after_intake(report: &IntakeReport) -> String {
     if report.accepted == 0 {
         format!(
             "nothing new in this batch — all {} turns were already stored. \
-             `flowspace3 search \"<question>\" --source conversation` searches what is there.",
+             `flowspace3 search \"<question>\"` searches them with the rest of this repository.",
             report.already_stored
         )
     } else {
         format!(
             "{} turn(s) stored and queued for enrichment. \
              `flowspace3 status` watches the queue drain; then \
-             `flowspace3 search \"<question>\" --source conversation`.",
+             `flowspace3 search \"<question>\"` searches every content source together.",
             report.accepted
         )
     }
@@ -522,5 +617,41 @@ mod tests {
                 .key()
                 .starts_with(fs3_core::address::CONVERSATION_SCHEME)
         );
+    }
+
+    #[test]
+    fn list_steer_teaches_pinned_ask() {
+        let next = next_after_list(&ConversationList {
+            conversations: vec![ConversationRow {
+                address: "conv:6ba7b810-9dad-11d1-80b4-00c04fd430c8".to_string(),
+                guid: "6ba7b810-9dad-11d1-80b4-00c04fd430c8".to_string(),
+                title: None,
+                repo: None,
+                worktree: None,
+                turns: 1,
+                started_at: "2026-08-30T00:00:00Z".to_string(),
+                parent: None,
+            }],
+        });
+        assert!(next.contains("ask \"<question>\" --conversation <guid>"));
+    }
+
+    #[test]
+    fn ask_conversation_selector_accepts_supported_spellings() {
+        let guid = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
+        assert_eq!(selector_prefix(guid).unwrap(), guid);
+        assert_eq!(selector_prefix("6ba7b810").unwrap(), "6ba7b810");
+        assert_eq!(selector_prefix(&format!("conv:{guid}#t17")).unwrap(), guid);
+        assert!(selector_prefix("not-a-guid").is_err());
+    }
+
+    #[test]
+    fn intake_steer_teaches_bare_mixed_search() {
+        let next = next_after_intake(&IntakeReport {
+            accepted: 1,
+            ..IntakeReport::default()
+        });
+        assert!(next.contains("search \"<question>\""));
+        assert!(!next.contains("--source conversation"));
     }
 }

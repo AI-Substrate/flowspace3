@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "fixture": "ask-token-budget-partial-evidence",
+  "setup": {
+    "token_budget": 30,
+    "completed_evidence_turns": 2,
+    "over_budget_turn": 3
+  },
+  "expected": {
+    "ok": false,
+    "data": "absent",
+    "error_code": "FS3-E-QUERY-ASK-TOKEN-BUDGET",
+    "stopped": "token_budget",
+    "grounded": false,
+    "evidence_label": "partial evidence — no answer was synthesized",
+    "minimum_citations": 1,
+    "findings": 3
+  },
+  "mutation_targets": [
+    "flip ok to true",
+    "return answer:null under stopped:answered",
+    "drop the gathered citation",
+    "mark the nonexistent answer grounded"
+  ]
+}

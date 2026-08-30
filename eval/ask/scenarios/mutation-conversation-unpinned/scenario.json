@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "slug": "mutation-conversation-unpinned",
+  "title": "Absent conversation pin leaves the multi-transcript corpus open",
+  "lane": "mutation-conversation",
+  "request": {
+    "question": "What recent discussions identified a need to constrain agent retrieval to one conversation?",
+    "cwd": null,
+    "repo": "all",
+    "source": "conversation"
+  },
+  "assertions": "assertions.json",
+  "ground_truth": {
+    "verified_at": "2026-08-30",
+    "preconditions": [
+      "conversation list contains more than one transcript",
+      "the request intentionally omits conversation"
+    ],
+    "mutation": "If the implementation accidentally defaults every ask to one transcript, the trace cannot surface conversation addresses from more than one guid and this fixture fails."
+  }
+}

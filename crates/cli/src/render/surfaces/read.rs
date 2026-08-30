@@ -60,8 +60,16 @@ pub fn get(envelope: &Envelope<Value>, width: u16) -> Option<String> {
                     turn.turn_no,
                     turn.at.bright_black()
                 ));
-                for line in theme::wrap(&turn.body, usize::from(width) - 4, 2).lines() {
-                    out.push_str(&format!("{}  {line}\n", theme::GUTTER));
+                if turn.body.trim().is_empty() {
+                    let reason = turn
+                        .body_empty_reason
+                        .as_deref()
+                        .unwrap_or("the stored turn contains no prose");
+                    out.push_str(&format!("{}  {}\n", theme::GUTTER, reason.bright_black()));
+                } else {
+                    for line in theme::wrap(&turn.body, usize::from(width) - 4, 2).lines() {
+                        out.push_str(&format!("{}  {line}\n", theme::GUTTER));
+                    }
                 }
             }
             out
@@ -120,5 +128,24 @@ fn append_next(out: &mut String, envelope: &Envelope<Value>, width: u16) {
         out.push('\n');
         out.push_str(&theme::next_action(next, usize::from(width)));
         out.push('\n');
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn body_less_turn_says_why_it_is_empty() {
+        let envelope: Envelope<Value> = serde_json::from_str(
+            r#"{"ok":true,"command":"get","v":1,"data":{"address":"conv:abc","repo":null,
+                "worktree":null,"base_sha":null,"title":null,"turns":1,"around":1,
+                "window":[{"address":"conv:abc#t1","turn_no":1,"role":"agent","source":"peer",
+                "head_sha":null,"at":"2026-08-30T00:00:00Z","body":"",
+                "body_empty_reason":"the stored turn contains typed items but no prose","items":[]}]}}"#,
+        )
+        .unwrap();
+        let screen = anstream::adapter::strip_str(&get(&envelope, 100).unwrap()).to_string();
+        assert!(screen.contains("typed items but no prose"), "{screen}");
     }
 }

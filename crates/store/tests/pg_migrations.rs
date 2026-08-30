@@ -485,3 +485,57 @@ async fn migration_0020_keeps_lowest_root_requeues_failures_and_enforces_uniquen
 
     database.destroy(pool).await;
 }
+
+#[tokio::test]
+async fn migration_0021_canonicalizes_registered_conversation_anchors_only() {
+    let database = FreshDatabase::create().await;
+    let pool = database.pool().await;
+    apply_migrations(&pool, 1..=20).await;
+
+    let repo_id: i64 = sqlx::query_scalar(
+        "INSERT INTO repos (identity)
+         VALUES ('git:github.com/fs3/anchored')
+         RETURNING id",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("seed canonical repository");
+    sqlx::query("INSERT INTO worktrees (repo_id, root_path) VALUES ($1, '/srv/anchored')")
+        .bind(repo_id)
+        .execute(&pool)
+        .await
+        .expect("seed registered worktree");
+
+    sqlx::query(
+        "INSERT INTO conversations (guid, repo_identity, worktree, started_at)
+         VALUES
+           ('6ba7b810-9dad-11d1-80b4-00c04fd430c8',
+            'https://github.com/fs3/anchored.git', '/srv/anchored', now()),
+           ('6ba7b810-9dad-11d1-80b4-00c04fd430c9',
+            NULL, '/srv/anchored', now()),
+           ('6ba7b810-9dad-11d1-80b4-00c04fd430ca',
+            'https://github.com/fs3/foreign.git', '/srv/foreign', now())",
+    )
+    .execute(&pool)
+    .await
+    .expect("seed pre-fix conversation anchors");
+
+    apply_migrations(&pool, 21..=21).await;
+
+    let anchors: Vec<Option<String>> =
+        sqlx::query_scalar("SELECT repo_identity FROM conversations ORDER BY guid")
+            .fetch_all(&pool)
+            .await
+            .expect("read repaired anchors");
+    assert_eq!(
+        anchors,
+        [
+            Some("git:github.com/fs3/anchored".to_string()),
+            None,
+            Some("https://github.com/fs3/foreign.git".to_string()),
+        ],
+        "registered raw anchors converge while null and foreign pointers survive"
+    );
+
+    database.destroy(pool).await;
+}

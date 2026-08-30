@@ -329,6 +329,12 @@ pub struct SearchFilters {
     pub repo: Option<String>,
     /// Only content held by this registered worktree root.
     pub worktree: Option<String>,
+    /// Only turns belonging to this exact conversation guid.
+    ///
+    /// This predicate is repeated at every chooser, like the ownership and
+    /// kind predicates: applying it only to admission can resolve a shared
+    /// raw hash through a different transcript.
+    pub conversation: Option<String>,
     /// Only content held by a live path matching this SQL `LIKE` pattern.
     pub path: Option<String>,
     /// Which element kinds may answer — the CONTENT-TYPE axis.
@@ -394,6 +400,7 @@ impl Default for SearchFilters {
         SearchFilters {
             repo: None,
             worktree: None,
+            conversation: None,
             path: None,
             source: None,
             max_distance: None,
@@ -480,8 +487,9 @@ pub async fn search_elements(
     // and could not be read as a single thing.
     // Bind map: $1 vector, $2 model, $3 limit, $4 source, $5 distance,
     // $6 repo, $7 path, $8 kinds, $9 worktree, $10 id_kinds,
-    // $11 gate_open, $12 ddoc_schema. Keep SQL and binds in this order: these
-    // types overlap, so a shifted parameter can compile and answer incorrectly.
+    // $11 gate_open, $12 ddoc_schema, $13 conversation. Keep SQL and binds in
+    // this order: these types overlap, so a shifted parameter can compile and
+    // answer incorrectly.
     let rows = sqlx::query(
         "WITH nearest AS (
              SELECT source_hash, source_kind, vector <=> $1 AS distance
@@ -521,6 +529,8 @@ pub async fn search_elements(
                                  END = NOT $11))
                         AND ($12::text IS NULL
                              OR admitted.ddoc->>'schema' = $12)
+                        AND ($13::text IS NULL
+                             OR strpos(admitted.address, 'conv:' || $13 || '#t') = 1)
                         -- The caller worktree belongs here, before LIMIT:
                         -- filtering a ranked page afterwards both under-fills
                         -- it and can leak a foreign version beyond the cap.
@@ -541,7 +551,7 @@ pub async fn search_elements(
                                    WHERE t.blob_sha = admitted.blob_sha
                                      AND ($6::text IS NULL OR c.repo_identity = $6)
                                      AND ($7::text IS NULL OR c.worktree LIKE $7)
-                                     AND ($9::text IS NULL OR c.worktree = $9))))
+                                     AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9))))
               ORDER BY vector <=> $1
               LIMIT $3
          )
@@ -582,6 +592,8 @@ pub async fn search_elements(
                                     END = NOT $11))
                            AND ($12::text IS NULL
                                 OR choice.ddoc->>'schema' = $12)
+                           AND ($13::text IS NULL
+                                OR strpos(choice.address, 'conv:' || $13 || '#t') = 1)
                            AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
                                 OR EXISTS (
                                      SELECT 1
@@ -599,7 +611,7 @@ pub async fn search_elements(
                                       WHERE t.blob_sha = choice.blob_sha
                                         AND ($6::text IS NULL OR c.repo_identity = $6)
                                         AND ($7::text IS NULL OR c.worktree LIKE $7)
-                                        AND ($9::text IS NULL OR c.worktree = $9))))
+                                        AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9))))
                  ORDER BY sc.created_at, sc.model_key, sc.raw_hash
                  LIMIT 1
            ) s ON TRUE
@@ -626,6 +638,8 @@ pub async fn search_elements(
                               ELSE (el.ddoc->>'gate_terminal')::boolean
                             END = NOT $11))
                    AND ($12::text IS NULL OR el.ddoc->>'schema' = $12)
+                   AND ($13::text IS NULL
+                        OR strpos(el.address, 'conv:' || $13 || '#t') = 1)
                    -- The candidate gate above proves that SOME element with
                    -- this raw hash is anchored in the caller scope. Without
                    -- repeating that anchor here, the global lowest-id element
@@ -650,7 +664,7 @@ pub async fn search_elements(
                               WHERE t.blob_sha = el.blob_sha
                                 AND ($6::text IS NULL OR c.repo_identity = $6)
                                 AND ($7::text IS NULL OR c.worktree LIKE $7)
-                                AND ($9::text IS NULL OR c.worktree = $9)))
+                                AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)))
                  ORDER BY el.id
                  LIMIT 1
            ) e ON TRUE
@@ -673,7 +687,8 @@ pub async fn search_elements(
                  WHERE t.blob_sha = e.blob_sha
                    AND ($6::text IS NULL OR c.repo_identity = $6)
                    AND ($7::text IS NULL OR c.worktree LIKE $7)
-                   AND ($9::text IS NULL OR c.worktree = $9)
+                   AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)
+                   AND ($13::text IS NULL OR c.guid = $13::uuid)
                  ORDER BY c.repo_identity, c.worktree
                  LIMIT 1
            ) anchored ON TRUE
@@ -696,6 +711,7 @@ pub async fn search_elements(
     .bind(filters.id_kinds.as_deref())
     .bind(filters.gate_open)
     .bind(filters.ddoc_schema.as_deref())
+    .bind(filters.conversation.as_deref())
     .fetch_all(&mut *tx)
     .await?;
 
@@ -723,9 +739,9 @@ pub async fn search_elements(
 /// empty result cannot become a false "repository is not indexed" diagnosis
 /// when a new predicate is added.
 ///
-/// Raw vectors and live paths only, which is what makes it cheap and excludes
-/// conversations: a turn reaches its repository through its conversation's
-/// anchor and has no `worktree_files` row at all.
+/// Raw vectors whose element is reachable through either a live file or a
+/// conversation anchor. The ownership legs mirror search admission; otherwise
+/// mixed default search could diagnose a conversation-only repository as empty.
 ///
 /// # Errors
 /// [`StoreError::Query`] on failure.
@@ -739,15 +755,26 @@ pub async fn anchor_has_vectors(
         "SELECT EXISTS (
              SELECT 1
                FROM embeddings_1024 e
-               JOIN elements el       ON el.raw_hash = e.source_hash
-               JOIN worktree_files f  ON f.blob_sha = el.blob_sha
-               JOIN worktrees w       ON w.id = f.worktree_id
-               JOIN repos r           ON r.id = w.repo_id
+               JOIN elements el ON el.raw_hash = e.source_hash
               WHERE e.model_key = $1
                 AND e.source_kind = 'raw'
-                AND ($2::text IS NULL OR r.identity = $2)
-                AND ($3::text IS NULL OR f.path LIKE $3)
-                AND ($4::text IS NULL OR w.root_path = $4)
+                AND (EXISTS (
+                     SELECT 1
+                       FROM worktree_files f
+                       JOIN worktrees w ON w.id = f.worktree_id
+                       JOIN repos r ON r.id = w.repo_id
+                      WHERE f.blob_sha = el.blob_sha
+                        AND ($2::text IS NULL OR r.identity = $2)
+                        AND ($3::text IS NULL OR f.path LIKE $3)
+                        AND ($4::text IS NULL OR w.root_path = $4))
+                     OR EXISTS (
+                     SELECT 1
+                       FROM turns t
+                       JOIN conversations c ON c.guid = t.conversation_id
+                      WHERE t.blob_sha = el.blob_sha
+                        AND ($2::text IS NULL OR c.repo_identity = $2)
+                        AND ($3::text IS NULL OR c.worktree LIKE $3)
+                        AND ($4::text IS NULL OR c.worktree IS NULL OR c.worktree = $4)))
                 )",
     )
     .bind(model_key)

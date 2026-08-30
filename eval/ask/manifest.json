@@ -6,33 +6,39 @@
   "subject_prompt": "prompts/subject.md",
   "responsiveness_rubric": "responsiveness-rubric.json",
   "report_shape_assertions": "report-contract-assertions.json",
+  "terminal_contract_fixture": "terminal-fixtures/token-budget.json",
   "request_variables": {
     "${REPO_ROOT:git:github.com/AI-Substrate/flowspace3}": "Resolve from `flowspace3 status`; fail setup rather than substituting another checkout."
   },
   "counts": {
-    "answerable": 5,
-    "negative": 3,
+    "answerable": 6,
+    "negative": 4,
     "scoped-zero": 1,
     "path-unmatched": 1,
-    "enumeration-honesty": 1
+    "enumeration-honesty": 1,
+    "conversation-scope": 3
   },
   "control_counts": {
-    "negative": 5,
-    "true-absence": 3,
+    "negative": 6,
+    "true-absence": 4,
     "scope-trap": 1,
-    "unsatisfiable-path-filter": 1
+    "unsatisfiable-path-filter": 1,
+    "scope-mutation": 1
   },
-  "mix_rationale": "Five answerables include one deliberately broad enumeration that must stay open-ended. Three true-absence negatives, one cross-repo scope trap, and one unsatisfiable path-filter control distinguish absence from a query that could not inspect the requested layout.",
+  "mix_rationale": "Six answerables include one transcript-pinned decision and one deliberately broad enumeration. Four true-absence negatives include an unknown conversation refused before chat; the cross-repo, path-filter, and unpinned multi-transcript controls distinguish a real pin from accidental global narrowing.",
   "scenarios": [
     "scenarios/answerable-flowspace3-claim-locking/scenario.json",
     "scenarios/answerable-harness-unknown/scenario.json",
     "scenarios/answerable-pij-revive-liveness/scenario.json",
     "scenarios/answerable-legacy-flowspace-practices/scenario.json",
+    "scenarios/answerable-conversation-pinned/scenario.json",
     "scenarios/negative-never-indexed-repo/scenario.json",
     "scenarios/negative-deleted-path/scenario.json",
     "scenarios/negative-explicit-scope/scenario.json",
+    "scenarios/negative-conversation-unknown/scenario.json",
     "scenarios/scoped-zero-widening/scenario.json",
     "scenarios/enumeration-bounded-findings/scenario.json",
-    "scenarios/path-filter-unmatched/scenario.json"
+    "scenarios/path-filter-unmatched/scenario.json",
+    "scenarios/mutation-conversation-unpinned/scenario.json"
   ]
 }

@@ -74,7 +74,12 @@ matching nothing returns nothing, not a padded list:
 | `--path <glob>` | paths matching a glob (`crates/store/*`) |
 | `--limit N` | how many hits (1–100, default 10) |
 | `--min-score S` | similarity floor, 0.0–1.0 |
-| `--source raw\|smart\|all` | which vector space: code text / LLM summaries / both |
+| `--source code\|doc\|conversation\|all` | narrow the corpus; absent/`all` searches every source |
+
+Default search ranks code, document, and conversation rows together. The
+`data.composition` counts come from the same `--min-score`-filtered scored set
+before top-k truncation, so a conversation below the returned limit is still
+visible without changing ranking. Narrow only when the question requires it.
 
 A real answer, trimmed:
 
@@ -189,9 +194,13 @@ to the same filters `search` exposes — so a question phrased with real nouns
 - **`grounded: false` means the answer rests on nothing the loop read.** The loop
   pushes back once and demands evidence before allowing it, so a `false` here is a
   model that insisted. Treat that answer as a guess.
-- **`stopped`** is `answered`, `max_iterations` or `token_budget`. Only `answered`
-  carries an answer; a bounded run returns `null` rather than inventing one, and the
-  fix is a narrower question or higher `[agent]` bounds.
+- **Only `ok: true` + `stopped: answered` carries an answer, and that answer is
+  always non-empty.** `max_iterations`, `token_budget`, and a provider failure
+  after useful reads are `ok: false` terminals with no success `data`. Their
+  `error.details.evidence` is explicitly labelled partial and preserves citations
+  plus one finding per completed iteration. Use it to narrow a follow-up; never
+  present it as the missing answer. For a bound, ask a narrower question or raise
+  the matching `[agent]` bound (`token_budget` defaults to 80,000 and is configurable).
 - **`coverage` names the probe's finite reach.** `retrieval_top_k` records each search
   cap and `exhaustive` is always false. Enumerations are findings from that bounded
   probe, never proof that the listed items are the only ones.
@@ -208,8 +217,8 @@ to the same filters `search` exposes — so a question phrased with real nouns
 
 - **The index** answers meaning-shaped questions — "where do we handle X", "how does
   Y work" — and unfamiliar codebases where you cannot name the identifiers yet.
-  `--source smart` for conceptual questions; `--source raw` when you know roughly
-  what the code says.
+  Use `--source code`, `doc`, or `conversation` only when the question requires one
+  corpus; absent/`all` lets relevance rank every source together.
 - **Your own grep/ripgrep** answers exact-identifier lookups: a symbol, an error
   string, a literal. Exact text matching is grep's job; do not ask the index to do it.
 - **`ask`** answers questions that need assembling — "how does X work", "why is Y
@@ -232,5 +241,5 @@ not a restatement of what went wrong. **Trust the fix field.**
 | Daemon down | `FS3-E-DAEMON-UNAVAILABLE` → `flowspace3 daemon &` (doctor diagnoses but never starts one) |
 | Repo not indexed | `status` shows no root for it → `flowspace3 add /abs/path` |
 | `ask` returned `grounded: false` | it answered without reading anything — treat it as a guess. Check `status` in case nothing is indexed here, then re-ask more narrowly |
-| `ask` stopped at a bound | `stopped` names which; ask a narrower question, or raise `[agent] max_iterations` / `token_budget` |
+| `ask` stopped at a bound | The envelope is `ok:false`; inspect labelled `error.details.evidence`, then ask a narrower question or raise the matching `[agent] max_iterations` / `token_budget` setting. |
 | Anything else | `ok: false` → run the `fix`; `retryable: false` means stop and fix something, do not loop |

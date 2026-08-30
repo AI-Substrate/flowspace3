@@ -64,7 +64,8 @@ pub async fn search_lexical(
     }
     let pattern = contains_pattern(query);
     // Bind map: $1 pattern, $2 limit, $3 repo, $4 path, $5 kinds,
-    // $6 worktree, $7 id_kinds, $8 gate_open, $9 ddoc_schema.
+    // $6 worktree, $7 id_kinds, $8 gate_open, $9 ddoc_schema,
+    // $10 conversation.
     let rows = sqlx::query(
         r#"WITH candidates AS (
              SELECT el.id, el.blob_sha, el.parser_version, el.kind, el.subkind,
@@ -87,6 +88,8 @@ pub async fn search_lexical(
                            ELSE (el.ddoc->>'gate_terminal')::boolean
                          END = NOT $8))
                 AND ($9::text IS NULL OR el.ddoc->>'schema' = $9)
+                AND ($10::text IS NULL
+                     OR strpos(el.address, 'conv:' || $10 || '#t') = 1)
                 -- Match semantic indexing: a file covered by child elements
                 -- is a container, not a duplicate answer for every child hit.
                 AND (el.kind <> 'file' OR NOT EXISTS (
@@ -108,7 +111,7 @@ pub async fn search_lexical(
                            WHERE t.blob_sha = el.blob_sha
                              AND ($3::text IS NULL OR c.repo_identity = $3)
                              AND ($4::text IS NULL OR c.worktree LIKE $4)
-                             AND ($6::text IS NULL OR c.worktree = $6)))
+                             AND ($6::text IS NULL OR c.worktree IS NULL OR c.worktree = $6)))
               ORDER BY name_match DESC, length(el.raw_text), el.id
               LIMIT $2
          )
@@ -136,7 +139,8 @@ pub async fn search_lexical(
                  WHERE t.blob_sha = candidate.blob_sha
                    AND ($3::text IS NULL OR c.repo_identity = $3)
                    AND ($4::text IS NULL OR c.worktree LIKE $4)
-                   AND ($6::text IS NULL OR c.worktree = $6)
+                   AND ($6::text IS NULL OR c.worktree IS NULL OR c.worktree = $6)
+                   AND ($10::text IS NULL OR c.guid = $10::uuid)
                  ORDER BY c.repo_identity, c.worktree
                  LIMIT 1
            ) anchored ON TRUE
@@ -156,6 +160,7 @@ pub async fn search_lexical(
     .bind(filters.id_kinds.as_deref())
     .bind(filters.gate_open)
     .bind(filters.ddoc_schema.as_deref())
+    .bind(filters.conversation.as_deref())
     .fetch_all(pool)
     .await?;
 
