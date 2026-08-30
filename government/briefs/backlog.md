@@ -983,3 +983,23 @@ leaving this file should name where it went.
     looked healthy. Fix: namespace or dedupe the registration; report to
     meadowlark; ALSO the train script should fail loudly when bounce
     errors rather than trusting a 401 that may be the old process.
+
+99-NOTE-2 (2026-08-30, rig delivered): coral's smoke rig lives at
+    /Users/jordanknight/substrate/s091-smoke-rig/ (run-smoke.sh +
+    example-settings.json + README). Properties: daemon-side isolation
+    baked in; fire-3 discriminator; structural gates never wall-time;
+    NO fixture data travels (regenerates from SMOKE_SOURCE/SMOKE_SESSION
+    you point at — a rig with live conversation content stapled on would
+    be a quiet leak). TRAP 4, learned from their s095 false-green: the
+    rig CANNOT catch registry-dependent dispatch bugs — synthetic HOME
+    removes the pij registry, i.e. a fixture that isolates by removing
+    things removes TRIGGERS too; a correct control still passed a broken
+    build. Any adopter of this rig must pair it with one non-synthetic
+    check that exercises the registry path.
+
+98-NOTE-2 (2026-08-30): cross-product confirmation — harness-engineering
+    commit-service:496 is the SAME intent-echo defect found the same day;
+    the daemon-key error is the agreed acceptance pattern for both repos.
+    The one-field fix both sides want: ingest's job/envelope reports the
+    STORE PATH actually resolved. That field alone kills the isolation
+    trap for every rig user.
