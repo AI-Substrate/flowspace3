@@ -52,7 +52,7 @@
         },
         {
           "id": "ac-0003",
-          "claim": "Search returns at most one result row per element regardless of how many of its chunk vectors matched, and the reported score is the best chunk's score (existing raw/smart dedupe generalized, proven by a multi-chunk-match fixture).",
+          "claim": "Search returns at most one result row per element regardless of how many of its chunk vectors matched, with the best chunk's score, AND a whale element with N matching chunks does not crowd other elements out of a k-limited result set (the caller's LIMIT applies to ELEMENTS, not vectors). Proven by a two-leg fixture: (a) one-row-per-element/best-score, (b) crowd-out — both legs mutation-checked against the collapse removed. [Amended 2026-08-30 by o-prime ruling on PM stop-and-ask: no prior element collapse exists in the read path — u3 ADDS it; the collapse incidentally also closes the pre-existing raw+smart duplicate-hit defect, noted as side-benefit, not claimed scope.]",
           "state": "unchecked"
         },
         {
