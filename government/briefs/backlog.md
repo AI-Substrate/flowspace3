@@ -793,3 +793,22 @@ leaving this file should name where it went.
     partial-progress line before the deadline separates the classes for
     free and delivers row 89's client-side half. The capture is the
     evidence; no rerun.
+
+94. **paginated, time-bucketed conversation timeline view** (raven via
+    vicuna, 2026-08-30, from the ermine-dossier exercise — dossier at
+    /Users/jordanknight/pi-hacking/pij/scratch/answers/raven-ermine-dossier.md).
+    Reconstructing a 23-day tenure meant hand-stitched get #t<n> windows
+    and tree bounds; the ask is a first-class timeline verb: bucket a
+    conversation by time/turn-range with decision/incident/delivery
+    clustering, paginated. Their what-worked list (quoted-literal search,
+    get windows 0.04-3.5s, tree for bounds, semantic-for-vocabulary-then-
+    literal) is the manual protocol this verb would encode.
+
+95. **supersession-aware ranking within conversations** (raven via vicuna,
+    2026-08-30). A claim that is later corrected/withdrawn/superseded in
+    the same conversation should have its TERMINAL version outrank the
+    retracted one; today both rank equally and a reader can retrieve the
+    withdrawn claim with no signal it was retracted. Sibling of row 88
+    (archive-over-source) — both are "staleness should demote" ranking
+    defects, likely one dispatch. Hard part: detecting the correction edge
+    (explicit retraction language vs silent revision).
