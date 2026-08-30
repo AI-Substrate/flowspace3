@@ -1,0 +1,505 @@
+{
+  "dd": {
+    "schema": "prd/requirements"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "fs3 — base PRD (requirements register)",
+        "status": "LIVING — iterating with Jordan",
+        "updated": "2026-08-26",
+        "source": "converted from base-prd.md prose 2026-08-26 (Jordan: 'convert the requests document into ddocs with a column for completed')"
+      }
+    },
+    {
+      "name": "requirements",
+      "value": [
+        {
+          "id": "req-0001",
+          "num": 1,
+          "title": "Semantic code search",
+          "requirement": "fs3 indexes a codebase into individual code elements and answers queries by meaning, text, or regex — finding the right code even when the query's words never appear in it.",
+          "state": "checked",
+          "note": "PROVEN live: first-light run (154 el/94 sum/204 vec, docs/plans/003-first-light/assets/first-light-run.md) + Jordan live semantic searches answering correctly 2026-08-26"
+        },
+        {
+          "id": "req-0002",
+          "num": 2,
+          "title": "Rust implementation",
+          "requirement": "The tool is a single Rust binary; tree-sitter is used directly (native bindings) for AST parsing across languages, with no per-language configuration.",
+          "state": "checked",
+          "note": "entire workspace is Rust; ships as one Rust binary flowspace3 (c2a16a6)"
+        },
+        {
+          "id": "req-0003",
+          "num": 3,
+          "title": "Element-level model",
+          "requirement": "A file is split into elements — functions, methods, classes/types, markdown sections — each with a stable address (kind, path, qualified name, line span) and a universal kind classification on top of the raw tree-sitter kind.",
+          "state": "checked",
+          "completed_evidence": "scanner landed 0962ba8: element tree w/ stable addresses, universal kind enum + subkind (crates/core, crates/parsers; docs/services/scanner.md)"
+        },
+        {
+          "id": "req-0004",
+          "num": 4,
+          "title": "Central Postgres + pgvector store",
+          "requirement": "All data — elements, summaries, embeddings, refs — lives in one central PG instance covering every repo, queryable in one place; no per-repo graph files, no pickle, no in-memory preload.",
+          "state": "checked",
+          "note": "pgvector/pg16 compose stack, migrations 0001-0006, embeddings_1024 + HNSW live (sylac; first-light)"
+        },
+        {
+          "id": "req-0005",
+          "num": 5,
+          "title": "Git-native incremental indexing",
+          "requirement": "Derived data is keyed by git blob SHA: indexing any branch, commit, or worktree diffs its git tree against the store and only new blobs pay parse/summarize/embed. Creating a worktree requires no copy and no rescan.",
+          "state": "checked",
+          "note": "components COMPLETE (fs3-git snapshots/diff + blob-keyed store + content-addressing); check at first-light e2e (idempotent-rescan proof)",
+          "completed_evidence": "blob-SHA incremental PROVEN: rescan of unchanged tree = 0 jobs, 0 calls; single-file edit re-indexes exactly that file — first-light live run + CI e2e (plan 003, transcript assets/first-light-run.md; o-prime verified 2026-08-26)"
+        },
+        {
+          "id": "req-0006",
+          "num": 6,
+          "title": "Dirty-file support",
+          "requirement": "Uncommitted working-tree changes index through the same mechanism (`git hash-object` of working content) — no special case, no stale results for the file you're editing.",
+          "state": "checked",
+          "note": "dirty = missing row (workshop 002 D6) + content-addressed skips with re-emission (9ce9fae); live watcher now feeds it (c41c6c6)"
+        },
+        {
+          "id": "req-0007",
+          "num": 7,
+          "title": "Enrichment: summarize + embed",
+          "requirement": "Each file and each significant element gets an LLM-generated summary; both raw content and summary are embedded, and semantic search scores against both.",
+          "state": "checked",
+          "completed_evidence": "summarize+embed both raw and smart (204 vectors = raw+smart legs), semantic search scores against both — first-light live run + CI e2e (plan 003, transcript assets/first-light-run.md; o-prime verified 2026-08-26)"
+        },
+        {
+          "id": "req-0008",
+          "num": 8,
+          "title": "Pluggable providers, online or local",
+          "requirement": "LLM summarization and embedding each work against online APIs or local models, selected by config; switching providers never corrupts existing data (derived rows are keyed by model/prompt version).",
+          "state": "checked",
+          "note": "providers landed: Azure (online, keyed-proven) + local ONNX (in-process, live contract) + fake; registry selects; model-keyed rows. Check when enrichment pipeline runs both paths (first light + one swap test)",
+          "completed_evidence": "pluggable providers proven BOTH ways: fake in CI, Azure live, local landed; registry-selected; model-keyed rows (deployment@version) — first-light live run + CI e2e (plan 003, transcript assets/first-light-run.md; o-prime verified 2026-08-26)"
+        },
+        {
+          "id": "req-0009",
+          "num": 9,
+          "title": "Parallel pipeline",
+          "requirement": "Parsing is CPU-parallel; summarize/embed are async with rate limiting and batching. Indexing a large repo saturates the machine and the API limits, not the developer's patience.",
+          "state": "checked",
+          "note": "parallel runner: FOR UPDATE SKIP LOCKED claims, batched embeds, concurrent LLM calls — 221 jobs, 0 failures in live run"
+        },
+        {
+          "id": "req-0010",
+          "num": 10,
+          "title": "No SCIP / no cross-file resolution toolchain",
+          "requirement": "fs3 ships no Sourcegraph/SCIP indexers and no call-graph engine; cross-file relationships are out of scope for the core.",
+          "state": "checked",
+          "note": "by construction: tree-sitter parsers only, no SCIP/LSIF anywhere (fs3-architecture.md)"
+        },
+        {
+          "id": "req-0011",
+          "num": 11,
+          "title": "Search modes and envelope",
+          "requirement": "`search` supports semantic, text, and regex modes and returns a structured JSON envelope with scores, snippets, pagination, and per-folder hit counts.",
+          "state": "unchecked",
+          "note": "semantic+auto LIVE; text/regex designed (workshop 003) not built — bundled docs say so honestly; skill §4/§5 + this row update together when they land"
+        },
+        {
+          "id": "req-0012",
+          "num": 12,
+          "title": "Multi-repo queries",
+          "requirement": "Because the store is central, a query can target one repo, several, or all of them — repo/branch is a filter, not a separate installation.",
+          "state": "checked",
+          "note": "repo column + --repo filter; two-repo divergence pinned by store e2e tests (first-light suite)"
+        },
+        {
+          "id": "req-0013",
+          "num": 13,
+          "title": "Fast cold start",
+          "requirement": "Any command answers directly from PG with no warm-up step; an agent invoking fs3 mid-task gets its answer in one fast round-trip.",
+          "state": "checked",
+          "note": "search answers in one round-trip from PG (live-proven); formal cold-start timing unmeasured",
+          "completed_evidence": "Live-proven: search answers directly from PG in one round-trip, no warm-up (first-light transcript; e2e add_scan_enrich_and_search)."
+        },
+        {
+          "id": "req-0014",
+          "num": 14,
+          "title": "CLI first, MCP-ready",
+          "requirement": "The v1 surface is the CLI (scan, search, get-node-style retrieval, tree/structure views); the data model and envelopes are designed so an MCP server is a thin layer over the same queries.",
+          "state": "unchecked",
+          "note": "CLI-first true and live; MCP surface not built (envelope JSON is the ready-path)"
+        },
+        {
+          "id": "req-0015",
+          "num": 15,
+          "title": "Per-machine daemon",
+          "requirement": "One daemon per machine (not per repo) owns watching and indexing for many folders/repos; folders are added and removed at runtime via the CLI, no restart.",
+          "state": "checked",
+          "note": "daemon landed, native-on-host ruling, now flowspace3 daemon subcommand (c2a16a6); proven in live run"
+        },
+        {
+          "id": "req-0016",
+          "num": 16,
+          "title": "Change-driven watcher, never rescans",
+          "requirement": "The watcher queues dirty/changed files as they happen and indexes just those changes; it never re-scans the world (fs2's rescan-everything watcher is the explicit anti-pattern).",
+          "state": "checked",
+          "note": "live watcher landed c41c6c6 + e2e f67204f: reconcile supervisor, debounce+max-age, dirty dir = re-list enclosing dir only — never whole-repo rescans; deletions deferred to full-walk backstop (docs/services/watcher.md)"
+        },
+        {
+          "id": "req-0017",
+          "num": 17,
+          "title": "CLI ↔ daemon over local-only HTTP",
+          "requirement": "The CLI talks to the daemon over HTTP bound to localhost — portable across macOS, Windows, and Linux with no named-pipe/unix-socket platform splits.",
+          "state": "checked",
+          "note": "loopback-only bind enforced at boot (daemon http); CLI talks local HTTP only (doctor is the one ruled pool exception)"
+        },
+        {
+          "id": "req-0018",
+          "num": 18,
+          "title": "Cross-repo batching",
+          "requirement": "Because one daemon serves many repos, changed files from different repos share the same batches to LLM and embedding providers — one queue, maximum batch efficiency.",
+          "state": "unchecked"
+        },
+        {
+          "id": "req-0019",
+          "num": 19,
+          "title": "Daemon web UI (later)",
+          "requirement": "The daemon may later serve a small local website showing index/graph status across repos; the HTTP surface from req 17 is designed so this is an addition, not a rework.",
+          "state": "unchecked"
+        },
+        {
+          "id": "req-0020",
+          "num": 20,
+          "title": "Everything through the daemon",
+          "requirement": "The daemon is the single PG writer and the single query path: indexing commands AND searches go through its local HTTP API, so the CLI (and later MCP/web) are thin clients of one service that owns the connection pool, queue, batching, and caching.",
+          "state": "checked",
+          "completed_evidence": "daemon is the single data-plane writer and single query path; CLI verbs are thin envelope clients (critic-verified: only doctor opens a pool) — first-light live run + CI e2e (plan 003, transcript assets/first-light-run.md; o-prime verified 2026-08-26)"
+        },
+        {
+          "id": "req-0021",
+          "num": 21,
+          "title": "Broad language coverage",
+          "requirement": "Like fs2, fs3 parses a very large set of file extensions via tree-sitter grammar packs — adding a language is adding a grammar, never writing per-language code.",
+          "state": "unchecked"
+        },
+        {
+          "id": "req-0022",
+          "num": 22,
+          "title": "First-class markdown",
+          "requirement": "Markdown files get special handling: split into heading sections as elements (nested structure preserved), each section summarized and embedded like code — docs are as searchable as source.",
+          "state": "checked",
+          "note": "markdown parsed to section elements — live search returns md sections with el: addresses (proven in Jordan session)"
+        },
+        {
+          "id": "req-0023",
+          "num": 23,
+          "title": "Non-git folders still index",
+          "requirement": "Plain folders without a git repo index through the same content-hash mechanism (hash the bytes directly); git is the optimization for diffing and worktrees, never a requirement to participate.",
+          "state": "unchecked",
+          "note": "path-fallback identity + bytes-hashing landed (fs3-git); check at e2e with a non-git root"
+        },
+        {
+          "id": "req-0024",
+          "num": 24,
+          "title": "Conversations are first-class content",
+          "requirement": "fs3 indexes agent↔human conversations alongside files: each conversation has a GUID and is anchored to a location (root path + worktree + commit base), and each turn (agent or human) is an element — summarized and embedded raw + summary, exactly like code. This is total-recall memory: everything is kept, and selective recall happens at query time, not storage time.",
+          "state": "checked",
+          "note": "SHIPPED in the conversations v1 plan (PRs #30, #31, #32-stack). Turns are elements: migration 0013's two ref-layer tables bridge into the EXISTING element/content layer by content hash, so a turn is summarised and embedded raw+summary exactly like code, through the same lanes, spend guard and collector. Anchor is repo identity + worktree + base_sha, stored as a POINTER (TEXT, no FK) so conversations outlive the repo. Evidence: docs/plans/conversations/assets/evidence/dogfood-exit-proof.md - a real fleet transcript imported against the real Azure providers, searched by meaning, and windowed."
+        },
+        {
+          "id": "req-0025",
+          "num": 25,
+          "title": "Flexible turn payloads",
+          "requirement": "A turn contains typed sub-items (tool calls today, other kinds tomorrow) stored generically — new item types slot in without schema migrations or hard-coded handling.",
+          "state": "checked",
+          "note": "SHIPPED. Typed sub-items ride in turns.items (JSONB), so a new item kind is a code change and never a migration. The payload policy is ENFORCED at intake, not trusted from the client: tool outputs cut to a 512-byte head with total_bytes and truncated, write-family inputs reduced to path + byte length (measured: the body is the very next commit). See crates/daemon/src/conversations.rs and its six shaping unit tests."
+        },
+        {
+          "id": "req-0026",
+          "num": 26,
+          "title": "Conversation search + windowed navigation",
+          "requirement": "Search can be scoped to conversations (e.g. `--in conversations`); hits are turns carrying `(conversation_id, turn_no)`, and the CLI fetches a contiguous window around any hit (`-10/+20` style) — sequence is the navigation shape, as hierarchy is for code and sections are for markdown.",
+          "state": "checked",
+          "note": "SHIPPED. turn_no is dense from 1 and is half the primary key, so a windowed read is a range scan on it: `get conv:<guid>#t<n> --before N --after M` returns the contiguous slice in order and is honest at both edges, and `tree conv:<guid>` returns the outline (role, source, timestamp, first line). Evidence: steps 4-5 of the dogfood proof."
+        },
+        {
+          "id": "req-0027",
+          "num": 27,
+          "title": "Harness submits conversation entries",
+          "requirement": "The engineering harness (git-ai hooks) integrates with fs3 to submit new conversation entries as they happen; the submission mechanism is deliberately deferred — the requirement is the ingestion surface exists and is append-friendly.",
+          "state": "checked",
+          "note": "SURFACE SHIPPED, CAPTURE DEFERRED (workshop 005 scope ruling). The append-friendly intake exists and is proven: POST /conversations is idempotent on (conversation_id, turn_no), so a conversation GROWS across many posts and a re-import enqueues only the delta - measured on real data at already_stored 14, accepted 1. The live git-ai/harness submitter against this same endpoint is a separate future packet."
+        },
+        {
+          "id": "req-0028",
+          "num": 28,
+          "title": "Machine-wide config; the CLI is `flowspace3`",
+          "requirement": "ALL configuration lives in `~/.config/flowspace3/` as files (machine-wide defaults + per-worktree override sections) — none in the DB; the DB holds data only. The CLI binary is named `flowspace3`.",
+          "state": "checked",
+          "note": "egret config system: global ~/.config/flowspace3/config.toml registry + actives; binary named flowspace3"
+        },
+        {
+          "id": "req-0029",
+          "num": 29,
+          "title": "Configurable debounce",
+          "requirement": "How long a dirty file must settle before processing is a config value, defaulting to 10 seconds.",
+          "state": "unchecked",
+          "note": "watcher landed with 10s debounce + max-age; per-config knob not yet verified — check with sailfish"
+        },
+        {
+          "id": "req-0030",
+          "num": 30,
+          "title": "Dirty-file work queue in PG",
+          "requirement": "Changed files land in a queue table; daemon workers pick rows up and process them through the pipeline — the queue is the single funnel for all indexing work.",
+          "state": "checked",
+          "note": "jobs table designed (workshop 002 D1); migration in flight (sylac)",
+          "completed_evidence": "PG jobs queue is the single funnel (221 rows, every provider call a queue row) — first-light live run + CI e2e (plan 003, transcript assets/first-light-run.md; o-prime verified 2026-08-26)"
+        },
+        {
+          "id": "req-0031",
+          "num": 31,
+          "title": "Scan = bulk enqueue",
+          "requirement": "`flowspace3 add path <folder>` (and any fresh scan) simply enqueues all the folder's files into the same queue the watcher feeds — initial indexing and live watching are one mechanism, not two code paths.",
+          "state": "checked",
+          "completed_evidence": "add path = bulk enqueue into the same queue (proven live) — first-light live run + CI e2e (plan 003, transcript assets/first-light-run.md; o-prime verified 2026-08-26)"
+        },
+        {
+          "id": "req-0032",
+          "num": 32,
+          "title": "Size-floor summaries",
+          "requirement": "Only elements above a configurable size threshold get their own LLM summary (code and markdown alike); smaller elements ride on their parent's summary while still getting raw-content embeddings, so everything stays searchable but tokens go where they add signal.",
+          "state": "checked",
+          "completed_evidence": "size-floor summaries live (94 of 154 elements summarized per policy; earns_raw_vector principled) — first-light live run + CI e2e (plan 003, transcript assets/first-light-run.md; o-prime verified 2026-08-26)"
+        },
+        {
+          "id": "req-0033",
+          "num": 33,
+          "title": "Docker-compose stack, host CLI",
+          "requirement": "~~The daemon, Postgres/pgvector, and any supporting services run in Docker via compose~~ **AMENDED (Jordan, 2026-08-26)**: the daemon runs NATIVELY on the host (file watching and runtime-addable folders are incompatible with container mounts; FSEvents don't propagate into VMs); Postgres/pgvector and supporting services run in Docker via compose; the build container handles cross-platform builds/CI. A containerized daemon remains a possible later server-mode profile. CLI on host, daemon over localhost HTTP (unchanged).",
+          "state": "checked",
+          "note": "AMENDED 2026-08-26: daemon native on host; compose = PG + build container",
+          "completed_evidence": "As amended: daemon native on host (proven live), PG/pgvector in compose (s001+s002), build container for cross-platform (full matrix proven 66bdefb), docker/ + harness extension landed (s002 phase 2). CLI on host over localhost HTTP (plan 003)."
+        },
+        {
+          "id": "req-0034",
+          "num": 34,
+          "title": "`flowspace3 doctor`",
+          "requirement": "A doctor command validates the whole stack — compose services up, PG reachable and schema current, daemon healthy, providers reachable — and says exactly what to fix when something isn't.",
+          "state": "checked",
+          "note": "doctor landed + proven: repairs engine→stack→db→schema (249ms cold build), daemon probe row + degraded verdict, providers row (d144722)"
+        },
+        {
+          "id": "req-0035",
+          "num": 35,
+          "title": "Repo identity = git remote URL, with fallback",
+          "requirement": "A repo is keyed by its git remote URL when it has one (so clones and worktrees of the same repo share an identity and content); repos without a remote — or plain non-git folders — fall back to a declared name/path key.",
+          "state": "checked",
+          "completed_evidence": "fs3-git landed c7670cd: remote-URL identity canonicalised, path: fallback for remoteless + plain folders, linked-worktree identity sharing proven (13 real-git fixture tests)"
+        },
+        {
+          "id": "req-0036",
+          "num": 36,
+          "title": "Summaries carry tags",
+          "requirement": "Every LLM summary run also generates 1–5 tags naming the element's most important concepts, stored alongside the summary — a cheap faceting/filter axis on top of vector search.",
+          "state": "checked",
+          "note": "Summary carries 1-5 tags (type-enforced, live-proven); tags column landed; check when enrichment writes them e2e (first light)",
+          "completed_evidence": "tags generated 1-5 on all 94 summaries (avg 4.0), stored — first-light live run + CI e2e (plan 003, transcript assets/first-light-run.md; o-prime verified 2026-08-26)"
+        },
+        {
+          "id": "req-0037",
+          "num": 37,
+          "title": "Fail fast, doctor heals",
+          "requirement": "When the CLI finds the daemon unreachable it fails fast and suggests `flowspace3 doctor`; doctor diagnoses and offers to fire the stack up — the CLI never silently auto-starts infrastructure.",
+          "state": "checked",
+          "note": "every db-touching command schema-checks and points at doctor (tk-0108, first-light)"
+        },
+        {
+          "id": "req-0038",
+          "num": 38,
+          "title": "Central model registry with per-worktree overrides",
+          "requirement": "Multiple embedding models and LLMs are configured centrally as named entries with machine-wide defaults; any worktree can override which models it uses (override sections in the config folder, keyed by worktree), and every derived row records which model produced it (so model changes coexist, as fs2's graph did).",
+          "state": "checked",
+          "note": "provider registry with multiple configured + active selection global AND per-repo overrides (egret; deployment policy in providers-roster.md)"
+        },
+        {
+          "id": "req-0039",
+          "num": 39,
+          "title": "Zero repo footprint",
+          "requirement": "fs3 never writes anything into the repos it indexes — no dotfolder, no config file, no artifacts (unlike fs2's `.fs2/`); all configuration (defaults + worktree overrides) lives in `~/.config/flowspace3/`, the DB holds data only.",
+          "state": "checked",
+          "note": "model caches at ~/.cache/flowspace3/models via explicit with_cache_dir; fs3 writes nothing into indexed repos (hummingbird)"
+        },
+        {
+          "id": "req-0040",
+          "num": 40,
+          "title": "Config hot-reload",
+          "requirement": "The daemon watches its own config folder and applies changes at runtime (it is a file-watcher by trade); precedence is simple and fixed: machine defaults < worktree override < explicit CLI flag.",
+          "state": "unchecked",
+          "note": "deferred: v1 config is load-at-boot; hot-reload later (matches fs2)"
+        },
+        {
+          "id": "req-0041",
+          "num": 41,
+          "title": "Filtered discovery, git-ignore-aware",
+          "requirement": "By default the scanner indexes files git does not ignore (tracked + untracked-but-not-ignored, so brand-new files index immediately without `git add`), restricted by an extension allow-list and a max-file-size ceiling — all three configurable. Per-repo config can force-include folders the defaults would miss (e.g. a gitignored folder you do want indexed). POC evidence: identical elements from 11% of the bytes, 13.8× faster.",
+          "state": "checked",
+          "note": "discovery walker in flight (cattle); POC evidence recorded",
+          "completed_evidence": "discovery walker landed ca27e63: gitignore/nested/.ignore honoured, force_include second-walk, size ceiling + binary sniff, 204x real-repo reduction; exact-set fixture tests"
+        },
+        {
+          "id": "req-0042",
+          "num": 42,
+          "title": "Elements are structure-checked, not name-matched",
+          "requirement": "A node only becomes an element if a small heuristic check confirms it's a genuine declaration (has a name, has a body, sits in a declaration position) — never on type-name pattern matching alone. POC evidence: fs2's name-matching invented elements (C++ file: 58 claimed vs 22 real).",
+          "state": "checked",
+          "completed_evidence": "scanner's declaration-shape gate + invents_nothing fixture negatives (0962ba8)"
+        },
+        {
+          "id": "req-0043",
+          "num": 43,
+          "title": "Config formats are excluded",
+          "requirement": "Data/config formats (YAML, JSON, TOML, HCL, and kin) are not indexed in v1 — they yield no code-shaped elements and carry PII/secrets risk (they'd otherwise be summarized and embedded into a central store); revisit how to handle configs later. Unsupported/no-grammar files must be an observable outcome (reported as skipped), never a silent gap.",
+          "state": "checked",
+          "completed_evidence": "discovery LanguageFamily::Config excluded by default (flag to enable) + every refusal in Discovery::skipped with SkipReason - skipped is observable, never silent (ca27e63)"
+        },
+        {
+          "id": "req-0044",
+          "num": 44,
+          "title": "Self-teaching CLI (harness-style agent affordances)",
+          "requirement": "`flowspace3 docs list` / `flowspace3 docs get <topic>` serve bundled offline documentation from the binary itself, and every command's JSON envelope carries agent guidance (`next_action` on success, the mandatory `fix` on errors — workshop 004), so an agent learns and steers the tool from the tool, the way the engineering-harness CLI does. *(Jordan, 2026-08-26.)*",
+          "state": "checked",
+          "note": "docs list / docs get bundled offline in the binary + doctor providers row (d144722); envelopes carry next_action/fix (workshop 004)"
+        },
+        {
+          "id": "req-0045",
+          "num": 45,
+          "title": "Agent getting-started guide",
+          "requirement": "An agent-facing README (getting-started guide for AI agents) ships alongside the main README — how an agent orients, which commands to run first, how envelopes/next_action steer, where the bundled docs live (req 44). (Jordan, 2026-08-26.)",
+          "state": "unchecked",
+          "note": "IN FLIGHT: dingo authoring .agents/skills/flowspace (unit 1) + agents docs topic landed via req-0044"
+        },
+        {
+          "id": "req-0046",
+          "num": 46,
+          "title": "Main README + curl quick-install",
+          "requirement": "The main README documents the project properly and carries a quick-install link: a one-line curl installer that detects the platform and installs the right binary. (Jordan, 2026-08-26.)",
+          "state": "checked",
+          "note": "SHIPPED: README is agent-first onboarding (install A/B, doctor-repairs-everything first run, add/status/search, troubleshooting, in-binary docs pointer), proven by a fresh-container walkthrough following it verbatim; curl|sh installer verified LIVE against the published v0.2.0 Release on mac + linux x86_64/aarch64."
+        },
+        {
+          "id": "req-0047",
+          "num": 47,
+          "title": "CI: cross-platform build + release",
+          "requirement": "CI builds all platform binaries (mac/linux/windows - the build container from plan 002) and releases via Google release-please: semantic versioning, a GitHub Release per version carrying each platform binary, and the install script (req 46) pulling from the latest release. (Jordan, 2026-08-26.)",
+          "state": "checked",
+          "note": "SHIPPED: v0.2.0 GitHub Release carries 3 target-triple binaries (aarch64-apple-darwin, aarch64/x86_64-unknown-linux-gnu), file(1)-verified; CI gate green on main pushes; release-please rolling PR proven end to end (PR #1 merged -> tag -> release). Matrix is 3 by ruling+evidence: Intel Macs unsupported (Jordan 2026-08-26); musl+windows-gnu impossible (ort-sys ships no prebuilt ONNX runtime)."
+        },
+        {
+          "id": "req-0048",
+          "num": 48,
+          "title": "Dependabot",
+          "requirement": "Dependabot is installed and running on the repo (cargo + github-actions ecosystems), keeping dependencies and workflow actions patched. (Jordan, 2026-08-26.)",
+          "state": "checked",
+          "note": "config accepted, first scan live: 8 PRs across cargo+actions (36c5c2b); alerts admin toggle = Jordan"
+        },
+        {
+          "id": "req-0049",
+          "num": 49,
+          "title": "OpenAI-compatible generic provider (local/private LLMs)",
+          "requirement": "A generic OpenAI-compatible Summarizer adapter (config kind openai-compat: base_url, optional key env, max_tokens, all registry-configured) supports local/LAN LLM servers (llama.cpp-class, reasoning models incl. reasoning_content handling) - selectable per repo/root via the registry so PRIVATE repos can be summarized entirely on-network. (Jordan, 2026-08-26.)",
+          "state": "checked",
+          "note": "openai_compat summarizer-only provider landed (kazimir): LAN endpoint, reasoning_content quirk, success-is-not-a-summary; docs/services/openai-compat.md"
+        },
+        {
+          "id": "req-0050",
+          "num": 50,
+          "title": "Human-readable CLI rendering (fast-follow)",
+          "requirement": "A human presentation layer renders the SAME envelopes as rich terminal output (python-rich-class aesthetics: tables, color, checklists) - a pure renderer over the frozen envelope contract, TTY-autodetected with --json always forcing the envelope; agents see no change. Prototyped ahead of need. (Jordan, 2026-08-26.)",
+          "state": "unchecked",
+          "note": "IN FLIGHT: skunk prototyping pocs/human-render; no report yet"
+        },
+        {
+          "id": "req-0051",
+          "num": 51,
+          "title": "Single binary: flowspace3 daemon subcommand",
+          "requirement": "The daemon ships INSIDE the flowspace3 binary as `flowspace3 daemon` (no separate fs3-daemon artifact) - one file to install, one version, req 2 literally true. (Jordan, 2026-08-26.)",
+          "state": "checked",
+          "note": "landed c2a16a6, verified: only [[bin]] in workspace = flowspace3; fs3-daemon lib-only; streaming logs 74bf8a7"
+        },
+        {
+          "id": "req-0052",
+          "num": 52,
+          "title": "Agent-facing flowspace skill (.agents/skills)",
+          "requirement": "A skill in .agents/skills teaches any agent to USE flowspace: detect whether it is installed, install it briefly if not (convenience script / README), read the bundled docs (flowspace3 docs get), search with it (semantic modes, filters, el: addresses), and why semantic search beats grep for meaning-shaped questions. (Jordan, 2026-08-26.)",
+          "state": "checked",
+          "note": "landed 55a9016: .agents/skills/flowspace/SKILL.md, every command verified against live CLI; teaches real surface (semantic + --source), routes exact-identifier lookups to grep; update §4/§5 when text/regex modes (req-0011) land"
+        },
+        {
+          "id": "req-0053",
+          "num": 53,
+          "title": "Skill distribution: bundled, doctor-aware, never auto-installed",
+          "requirement": "The agent skill ships INSIDE the flowspace3 binary; an explicit command (spelling ~ flowspace3 doctor install-skill) installs/updates it into ~/.agents/skills and ~/.claude/skills. Doctor gains an INFORMATIONAL row (not warn, not degraded): missing -> did-you-know + the install command; hash-stale vs bundled -> out-of-date + the same command. Never install silently or by force. (Jordan, 2026-08-26.)",
+          "state": "unchecked",
+          "note": "QUEUED: dingo unit 2 after skill content + sawfish doctor unit land"
+        },
+        {
+          "id": "req-0054",
+          "num": 54,
+          "title": "Auto-update: daemon self-updates, envelope steers restart",
+          "requirement": "AUTO-UPDATE IS ON BY DEFAULT with a config opt-out ([update] section). The daemon periodically checks GitHub Releases (quota-free HEAD/redirect probe), downloads the matching release asset, verifies integrity, and ATOMICALLY REPLACES the installed binary itself (temp-file-beside-target + rename; notify-only fallback when the install path is not writable). It records the swap; from then EVERY command envelope carries update-installed-restart-daemon steering. doctor explains; `flowspace3 doctor upgrade` remains as the force-it-now manual path. Phase 2 (separate, after this proves out): the daemon drains to a quiet point and exec()s its own path to self-restart. (Jordan, 2026-08-26; auto-on ruling + in-place restart 2026-08-27.)",
+          "state": "checked",
+          "note": "landed PR #13 (squash 9905ffe; packet shas fe18c43+92897e9+dcd6ac3, edeard): engine w/ quota-free probe, SHA256SUMS verify, atomic same-dir swap (swap-under-running-binary proven by test), notify-only fallback, doctor upgrade + row; phase-2 self-restart still open; NEXT release is the first updatable-to (first to publish SHA256SUMS)"
+        },
+        {
+          "id": "req-0055",
+          "num": 55,
+          "title": "agents-start-here verb",
+          "requirement": "flowspace3 agents-start-here prints the bundled agents guide (setup from scratch, doctor, provider/config creation, daemon, add, search) — the same harness/ddocs convention: an agent runs one obvious verb and is oriented; effectively a front door onto docs get agents with next_action steering. (Jordan, 2026-08-26.)",
+          "state": "checked",
+          "note": "landed e4533fc in v0.2.0; verified in the from-scratch Ubuntu acceptance (agent funnel README -> agents-start-here)"
+        },
+        {
+          "id": "req-0056",
+          "num": 56,
+          "title": "Instance profiles: many daemons, isolated stacks",
+          "requirement": "fs3 supports running MULTIPLE independent daemons on one machine (main / dev / demo) without interfering: a named profile (spelling ~ `flowspace3 --profile demo` or FS3_PROFILE) selects its own config dir, database (own PG database or port), HTTP port, and container names, so demo/dev work never registers roots or jobs into the main index. Motivated 2026-08-26: the docker demo ran with host network against the default config and polluted the real database with a /demo root the daemon then warned about forever. (Jordan, 2026-08-26.)",
+          "state": "unchecked",
+          "note": "ELEVATED by rulings/2026-08-27-production-database.md (second strike: local tests migrated the production DB): profiles are the first-class isolation this ruling requires; target 0.3.x"
+        },
+        {
+          "id": "req-0057",
+          "num": 57,
+          "title": "Root removal verb (remove/forget)",
+          "requirement": "A first-class verb (spelling ~ `flowspace3 remove <path>`) unregisters a root: deletes its repo/worktree/file rows and queued jobs, stops watching it, and reports what was removed; shared blob-keyed artifacts (elements/embeddings/smart_content) may remain for dedup. Motivated 2026-08-26: removing the stale /demo root required hand-written SQL inside the PG container. (Jordan, 2026-08-26.)",
+          "state": "unchecked",
+          "note": "surfaced by the /demo pollution incident; pairs with req-0056 but independently shippable"
+        },
+        {
+          "id": "req-0058",
+          "num": 58,
+          "title": "Complete config-option reference in docs/how",
+          "requirement": "docs/how/configuration.md (or a sibling reference page it links) documents EVERY config option the binary reads: table per section ([daemon], [database], [indexing], [scan], [update], provider registry, ports) with key, type, default, effect, and env-override name; kept current as options land. (Jordan, 2026-08-27.)",
+          "state": "checked",
+          "note": "landed PR #13 (135d5f2): docs/reference/configuration.md complete option table + drift test crates/core/tests/config_reference.rs so it cannot rot silently"
+        },
+        {
+          "id": "req-0059",
+          "num": 59,
+          "title": "User messages queue: centralized daemon-to-user messaging",
+          "requirement": "A centralized daemon-side USER MESSAGES QUEUE (Postgres-backed): any feature pushes a message (id, source, severity, text, next_action, clear-condition); the shared envelope builder carries the queue's live messages in EVERY CLI command's response; messages clear when their condition resolves, or by ack/expiry. No feature invents its own envelope side-channel. First producers: auto-update ('new version installed - restart the daemon'; and the locked/not-writable case: 'update not possible at <path>: <reason> - run flowspace3 doctor upgrade, or reinstall: <one-liner>'). (Jordan, 2026-08-27.)",
+          "state": "checked",
+          "note": "landed PR #13 (83a7783): migration 0008_user_messages, store/messages.rs, envelope carries live messages on every command; auto-update is first producer incl. locked/not-writable actionable message"
+        },
+        {
+          "id": "req-0060",
+          "num": 60,
+          "title": "Version truthfulness + update-loop guard",
+          "requirement": "The shipped binary's --version equals its release tag (release-please bumps workspace Cargo.toml via the x-release-please-version annotation; lock synced on the release branch; preflight leg B2 refuses a tag whose binary disagrees with the manifest). The updater execs the STAGED binary pre-swap and refuses any install whose reported version is not the version being installed - making the false-version infinite update loop structurally impossible. (Discovered by cheetah's baseline; Jordan 2026-08-27.)",
+          "state": "checked",
+          "note": "landed PR #16 (squash f6cf582, edeard): 67248bb stitch + preflight + pre-swap probe, 24c1519 ETXTBSY staging fix; option (b) release-type rust proven unusable on virtual workspaces by source read"
+        }
+      ]
+    }
+  ]
+}
