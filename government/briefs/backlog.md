@@ -1131,3 +1131,13 @@ leaving this file should name where it went.
     Encoding candidates: train re-reads PR head immediately before merge
     and refuses if it moved since evidence was taken; or freeze-window
     rule (PM declares branch frozen when handing to prime).
+
+92-CLOSED (2026-08-31): the 009 element collapse closes the raw+smart
+    duplicate-hit defect, CONFIRMED BY THE REVIEWER by execution
+    (removing both DISTINCT ON clauses reds the best-score leg 3-rows-vs-1)
+    — closed on reviewer confirmation per the side-benefit framing, not
+    author claim. Shipped in #87/888eeab.
+
+108-NOTE (2026-08-31): second tenet candidate added from owl's completion
+    report: "an isolation mechanism must ship with its reaper, and a
+    verdict command must never be able to lie."
