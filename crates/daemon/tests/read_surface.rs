@@ -341,6 +341,88 @@ fn data(envelope: &Envelope) -> &Value {
         .unwrap_or_else(|| panic!("expected data, got {:?}", envelope.error))
 }
 
+#[tokio::test]
+async fn dirty_duplicate_roots_are_reported_while_both_paths_remain_readable() {
+    let stack = Stack::create("duplicate_root_report").await;
+    sqlx::query("DROP INDEX elements_one_file_root_per_blob_parser_idx")
+        .execute(&stack.state.db)
+        .await
+        .expect("simulate pre-repair schema");
+    let source = br#"{
+        "dd": {"schema": "builder/plan"},
+        "sections": [{"name": "tasks", "value": [
+            {"id": "tk-0001", "title": "Same bytes", "state": "unchecked"}
+        ]}]
+    }"#;
+    let first_path = "docs/first.dd.json";
+    let second_path = "docs/second.dd.json";
+    let first = fs3_parsers::scan_ddoc(Path::new(first_path), source, None).unwrap();
+    let second = fs3_parsers::scan_ddoc(Path::new(second_path), source, None).unwrap();
+    assert_eq!(first.blob, second.blob);
+
+    let identity = fs3_core::RepoIdentity::from_path(Path::new("/srv/duplicate-root"));
+    let worktree = fs3_store::register_worktree(
+        &stack.state.db,
+        &identity,
+        "/srv/duplicate-root",
+        Some("main"),
+    )
+    .await
+    .unwrap();
+    fs3_store::sync_worktree_files(
+        &stack.state.db,
+        worktree,
+        &[
+            (first_path.to_string(), first.blob.clone()),
+            (second_path.to_string(), second.blob.clone()),
+        ],
+    )
+    .await
+    .unwrap();
+    fs3_store::upsert_element_tree(
+        &stack.state.db,
+        &first.blob,
+        fs3_daemon::scan::PARSER_VERSION,
+        &first.root,
+        |_| false,
+    )
+    .await
+    .unwrap();
+    fs3_store::upsert_element_tree(
+        &stack.state.db,
+        &second.blob,
+        fs3_daemon::scan::PARSER_VERSION,
+        &second.root,
+        |_| false,
+    )
+    .await
+    .unwrap();
+
+    let status = stack.call("GET", "/status", None, &[]).await;
+    assert!(status.ok, "status reports dirty data instead of failing");
+    let issue = &data(&status)["inconsistencies"][0];
+    assert_eq!(issue["blob_sha"], first.blob.as_str());
+    assert_eq!(issue["paths"], serde_json::json!([first_path, second_path]));
+    assert!(
+        issue["next_action"]
+            .as_str()
+            .unwrap()
+            .contains("repair migration")
+    );
+
+    let address = fs3_core::element_address(Some(identity.key()), second_path);
+    let get = stack.get(&[("address", &address)]).await;
+    assert!(get.ok, "the losing path still resolves through path->blob");
+    assert_eq!(data(&get)["path"], second_path);
+    assert_eq!(data(&get)["address"], address);
+    assert_eq!(
+        data(&get)["inconsistencies"][0]["blob_sha"],
+        first.blob.as_str()
+    );
+
+    stack.destroy().await;
+}
+
 fn code(envelope: &Envelope) -> String {
     envelope
         .error
@@ -551,6 +633,7 @@ async fn zero_match_ddoc_filter_does_not_claim_the_repo_is_unindexed() {
     )
     .await
     .expect("read stored ddoc")
+    .tree
     .expect("ddoc tree exists");
     let meta = tree.children[0].children[0]
         .ddoc

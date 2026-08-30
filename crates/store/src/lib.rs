@@ -48,7 +48,10 @@ pub use conversations::{
 pub use ddoc::{
     DdocCitation, DdocFileRef, FileRefOutcome, replace_file_refs, rows_citing, rows_referencing,
 };
-pub use elements::{blobs_with_parser_version, get_elements, upsert_element_tree};
+pub use elements::{
+    ElementTreeInconsistency, ElementTreeRead, ElementTreeWrite, blobs_with_parser_version,
+    element_tree_inconsistencies, get_elements, upsert_element_tree,
+};
 pub use embeddings::{
     AnchorScope, EMBEDDING_DIMENSIONS, NewEmbedding, PathFilterProbe, SearchFilters, SearchHit,
     SimilarElement, SourceKind, anchor_has_vectors, embedding_models, existing_embedding_hashes,

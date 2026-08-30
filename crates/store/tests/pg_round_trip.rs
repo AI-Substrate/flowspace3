@@ -22,7 +22,9 @@ mod support;
 use std::collections::BTreeSet;
 
 use fs3_core::{Element, ElementKind, Span};
-use fs3_store::{StoreError, get_elements, upsert_element_tree};
+use fs3_store::{
+    ElementTreeWrite, StoreError, element_tree_inconsistencies, get_elements, upsert_element_tree,
+};
 use support::{FreshDatabase, PARSER_VERSION, unique_blob};
 
 /// A file with a container that has two functions in it — the smallest tree
@@ -82,6 +84,7 @@ async fn migration_applies_and_an_element_tree_round_trips() {
     let read_back = get_elements(&pool, &blob, PARSER_VERSION)
         .await
         .expect("select")
+        .tree
         .expect("the blob was just written, so it has been parsed");
     assert_eq!(
         read_back, written,
@@ -103,8 +106,105 @@ async fn migration_applies_and_an_element_tree_round_trips() {
     let again = get_elements(&pool, &blob, PARSER_VERSION)
         .await
         .expect("select")
+        .tree
         .expect("still parsed");
     assert_eq!(again, written, "a second scan must not duplicate anything");
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn concurrent_paths_for_one_blob_converge_without_error() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+    let blob = unique_blob();
+    let left = tree("src/a.rs");
+    let right = tree("src/b.rs");
+
+    let (left_result, right_result) = tokio::join!(
+        upsert_element_tree(&pool, &blob, PARSER_VERSION, &left, |_| true),
+        upsert_element_tree(&pool, &blob, PARSER_VERSION, &right, |_| true),
+    );
+    let outcomes = [
+        left_result.expect("left writer converges"),
+        right_result.expect("right writer converges"),
+    ];
+    assert_eq!(
+        outcomes
+            .iter()
+            .filter(|outcome| matches!(outcome, ElementTreeWrite::Stored))
+            .count(),
+        1
+    );
+    assert_eq!(
+        outcomes
+            .iter()
+            .filter(|outcome| matches!(outcome, ElementTreeWrite::Reused { .. }))
+            .count(),
+        1,
+        "the losing writer reuses the winner instead of surfacing a constraint error"
+    );
+
+    let roots: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM elements
+          WHERE blob_sha = $1 AND parser_version = $2
+            AND parent_id IS NULL AND kind = 'file'",
+    )
+    .bind(blob.as_str())
+    .bind(PARSER_VERSION)
+    .fetch_one(&pool)
+    .await
+    .expect("count roots");
+    assert_eq!(roots, 1, "the database invariant permits one file root");
+
+    let read = get_elements(&pool, &blob, PARSER_VERSION)
+        .await
+        .expect("read converged tree");
+    assert!(read.tree.is_some());
+    assert_eq!(read.inconsistency, None);
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn duplicate_root_reader_reports_and_serves_lowest_id_survivor() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+    sqlx::query("DROP INDEX elements_one_file_root_per_blob_parser_idx")
+        .execute(&pool)
+        .await
+        .expect("simulate a pre-0020 database");
+    let blob = unique_blob();
+    let first = tree("src/first.rs");
+    let second = tree("src/second.rs");
+
+    assert_eq!(
+        upsert_element_tree(&pool, &blob, PARSER_VERSION, &first, |_| true)
+            .await
+            .expect("first pre-fix write"),
+        ElementTreeWrite::Stored
+    );
+    assert_eq!(
+        upsert_element_tree(&pool, &blob, PARSER_VERSION, &second, |_| true)
+            .await
+            .expect("second pre-fix write"),
+        ElementTreeWrite::Stored
+    );
+
+    let read = get_elements(&pool, &blob, PARSER_VERSION)
+        .await
+        .expect("dirty data is reported, not failed");
+    assert_eq!(
+        read.tree.as_ref().map(|tree| tree.address.as_str()),
+        Some("src/first.rs")
+    );
+    let issue = read.inconsistency.expect("duplicate roots are visible");
+    assert_eq!(issue.paths, ["src/first.rs", "src/second.rs"]);
+
+    let all = element_tree_inconsistencies(&pool)
+        .await
+        .expect("status integrity query completes");
+    assert_eq!(all, [issue]);
 
     database.destroy(pool).await;
 }
@@ -156,6 +256,7 @@ async fn two_elements_sharing_an_address_are_two_rows() {
     let read_back = get_elements(&pool, &blob, PARSER_VERSION)
         .await
         .expect("select")
+        .tree
         .expect("just written");
     assert_eq!(
         read_back, file,
@@ -186,6 +287,7 @@ async fn an_unparsed_blob_is_none_rather_than_empty() {
         get_elements(&pool, &blob, PARSER_VERSION)
             .await
             .expect("select")
+            .tree
             .is_none()
     );
 
@@ -198,6 +300,7 @@ async fn an_unparsed_blob_is_none_rather_than_empty() {
         get_elements(&pool, &blob, "test-parser@2")
             .await
             .expect("select")
+            .tree
             .is_none(),
         "a parser_version bump must not read the previous parser's rows"
     );
@@ -251,6 +354,7 @@ async fn every_tree_model_kind_is_a_legal_row() {
     let kinds: Vec<ElementKind> = get_elements(&pool, &blob, PARSER_VERSION)
         .await
         .expect("select")
+        .tree
         .expect("just written")
         .iter()
         .map(|element| element.kind)
@@ -330,6 +434,7 @@ async fn the_schema_refuses_an_impossible_span() {
         get_elements(&pool, &blob, PARSER_VERSION)
             .await
             .expect("select")
+            .tree
             .is_none(),
         "a refused tree must not leave a partial write"
     );

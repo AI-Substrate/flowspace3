@@ -12,6 +12,9 @@ pub struct StatusReport {
     /// The most recent failure, when there is one — so a status line can say
     /// what went wrong rather than only that something did.
     pub last_error: Option<LastError>,
+    /// Dirty element-tree shapes found without failing this read.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub inconsistencies: Vec<ElementTreeInconsistency>,
     /// Migrations the DATABASE has that this binary does not.
     ///
     /// Empty in the normal case. Non-empty means a newer daemon has migrated
@@ -19,6 +22,19 @@ pub struct StatusReport {
     /// nobody here expects, and it is the first thing to check when two daemons
     /// disagree.
     pub schema_ahead: Vec<i64>,
+}
+
+/// One shared blob whose parsed rows do not form exactly one file tree.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ElementTreeInconsistency {
+    /// Content-addressed file bytes affected by the inconsistency.
+    pub blob_sha: String,
+    /// Parser key whose rows are dirty.
+    pub parser_version: String,
+    /// Every stored root path, in deterministic survivor order.
+    pub paths: Vec<String>,
+    /// Concrete operator action that repairs the rows.
+    pub next_action: String,
 }
 
 /// One registered root.
