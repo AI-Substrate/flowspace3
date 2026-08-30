@@ -134,13 +134,16 @@ pub struct TurnOutline {
 /// Append-friendly by construction (req-0027): a conversation is posted many
 /// times as it grows, so this must be safe to call on every post.
 ///
-/// Two rules make a re-post harmless. Anchor fields and the title are
-/// COALESCED, so a later post that does not mention the title cannot erase one
-/// an earlier import derived — a growing conversation only ever learns more
-/// about itself. And `started_at` takes the EARLIEST of the two, because a
-/// conversation cannot begin later than it already began; a client re-posting
-/// with the timestamp of its latest batch would otherwise walk the start
-/// forward until the anchor was a lie.
+/// Three rules make a re-post harmless. Repository anchors are canonicalised
+/// against the registered worktree at this store boundary, so ingest may keep
+/// the raw remote spelling required by its source reader without leaking that
+/// spelling into query scope. Unknown and null anchors remain unchanged.
+/// Anchor fields and the title are COALESCED, so a later post that does not
+/// mention the title cannot erase one an earlier import derived — a growing
+/// conversation only ever learns more about itself. And `started_at` takes the
+/// EARLIEST of the two, because a conversation cannot begin later than it
+/// already began; a client re-posting with the timestamp of its latest batch
+/// would otherwise walk the start forward until the anchor was a lie.
 ///
 /// # Errors
 /// [`StoreError::Query`] when the statement fails.
@@ -149,10 +152,22 @@ pub async fn upsert_conversation(
     conversation: &Conversation,
 ) -> Result<(), StoreError> {
     sqlx::query(
-        "INSERT INTO conversations
+        "WITH canonical_anchor AS (
+             SELECT r.identity
+               FROM worktrees w
+               JOIN repos r ON r.id = w.repo_id
+              WHERE w.root_path = $3
+              ORDER BY w.id
+              LIMIT 1
+         )
+         INSERT INTO conversations
            (guid, repo_identity, worktree, base_sha, title, started_at,
             parent_conversation_id)
-         VALUES ($1::uuid, $2, $3, $4, $5, $6::timestamptz, $7::uuid)
+         VALUES ($1::uuid,
+                 CASE WHEN $2::text IS NULL THEN NULL
+                      ELSE COALESCE((SELECT identity FROM canonical_anchor), $2)
+                 END,
+                 $3, $4, $5, $6::timestamptz, $7::uuid)
          ON CONFLICT (guid) DO UPDATE SET
            repo_identity = COALESCE(EXCLUDED.repo_identity, conversations.repo_identity),
            worktree      = COALESCE(EXCLUDED.worktree,      conversations.worktree),
