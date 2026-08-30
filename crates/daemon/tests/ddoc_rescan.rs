@@ -158,6 +158,7 @@ async fn stored(fixture: &Fixture) -> fs3_core::Element {
     fs3_store::get_elements(&fixture.state.db, &fixture.blob, PARSER_VERSION)
         .await
         .expect("read stored tree")
+        .tree
         .expect("tree exists")
 }
 

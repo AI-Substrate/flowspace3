@@ -94,6 +94,18 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
         out.push('\n');
         out.push_str(&theme::block(&queue));
     }
+    for issue in &report.inconsistencies {
+        out.push_str(&format!(
+            "\n{}{} blob {} ({}) has roots: {}\n{}  {}\n",
+            theme::GUTTER,
+            "data inconsistency".bright_red(),
+            issue.blob_sha,
+            issue.parser_version,
+            issue.paths.join(", "),
+            theme::GUTTER,
+            issue.next_action.bright_black(),
+        ));
+    }
     if !report.schema_ahead.is_empty() {
         out.push_str(&format!(
             "\n{}{} database schema is ahead: {:?}\n",

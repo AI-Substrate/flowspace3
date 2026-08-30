@@ -387,6 +387,7 @@ async fn a_turn_element_is_invisible_to_a_code_scan_of_the_same_bytes() {
     let tree = get_elements(&pool, &blob, PARSER_VERSION)
         .await
         .expect("a code scan must not trip over turn rows")
+        .tree
         .expect("the file element is there");
     assert_eq!(tree.kind, ElementKind::File);
 

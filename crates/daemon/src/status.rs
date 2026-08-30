@@ -9,7 +9,7 @@ use fs3_core::envelope::Failure;
 
 use crate::answer::IntoFailure;
 use crate::wiring::AppState;
-use fs3_core::views::status::{LastError, QueueRow, Root, StatusReport};
+use fs3_core::views::status::{ElementTreeInconsistency, LastError, QueueRow, Root, StatusReport};
 
 /// Read the current state.
 ///
@@ -44,10 +44,23 @@ pub async fn report(state: &AppState) -> Result<StatusReport, Failure> {
         .map_err(IntoFailure::into_failure)?
         .map(|(job, error)| LastError { job, error });
 
+    let inconsistencies = fs3_store::element_tree_inconsistencies(&state.db)
+        .await
+        .map_err(IntoFailure::into_failure)?
+        .into_iter()
+        .map(|issue| ElementTreeInconsistency {
+            blob_sha: issue.blob_sha,
+            parser_version: issue.parser_version,
+            paths: issue.paths,
+            next_action: "restart the current flowspace3 daemon to apply the duplicate-root repair migration; if this remains, run `flowspace3 doctor`".to_string(),
+        })
+        .collect();
+
     Ok(StatusReport {
         roots,
         queue,
         last_error,
+        inconsistencies,
         schema_ahead: crate::schema::ahead_of_us(&state.db).await,
     })
 }

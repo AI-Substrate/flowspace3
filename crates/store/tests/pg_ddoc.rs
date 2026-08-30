@@ -212,6 +212,7 @@ async fn ddoc_meta_round_trips_byte_identically() {
     let read = get_elements(&pool, &blob, PARSER_VERSION)
         .await
         .expect("read ddoc tree")
+        .tree
         .expect("tree was stored");
 
     assert_eq!(read, written);
@@ -238,6 +239,7 @@ async fn code_element_round_trip_keeps_ddoc_null() {
     let read = get_elements(&pool, &blob, PARSER_VERSION)
         .await
         .expect("read code element")
+        .tree
         .expect("tree was stored");
     let stored_null: bool = sqlx::query_scalar(
         "SELECT ddoc IS NULL FROM elements WHERE blob_sha = $1 AND parser_version = $2",

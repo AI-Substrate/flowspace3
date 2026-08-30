@@ -33,6 +33,9 @@ pub struct GetResult {
     pub parents: Vec<Outline>,
     /// What is declared inside it, to the requested depth.
     pub children: Vec<Outline>,
+    /// Dirty element-tree shapes encountered while serving this result.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub inconsistencies: Vec<super::status::ElementTreeInconsistency>,
 }
 
 /// What `get` answers with — an element, or a window of turns.
@@ -125,6 +128,9 @@ pub struct TreeResult {
     pub showing: usize,
     /// The structure itself.
     pub entries: Vec<TreeEntry>,
+    /// Dirty element-tree shapes encountered while serving this result.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub inconsistencies: Vec<super::status::ElementTreeInconsistency>,
 }
 
 /// One row of structure.
