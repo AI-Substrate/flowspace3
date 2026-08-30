@@ -1021,3 +1021,10 @@ leaving this file should name where it went.
     bricked this way again); s095 (ef895a3c): convo-sync dispatch
     false-green fixed (argv + DOA detection + read-back delta). Our side
     (#85 rename) + their side both closed; row 106 fully resolved.
+
+106-CORRECTION (2026-08-30, meadowlark): s095's DOA check proves the
+    dispatch child SURVIVED, not that turns landed — every +delta receipt
+    today was measured out-of-band, so the envelope's 'delivery is not
+    verified' is exactly honest, not underselling. The upgrade (optional
+    --verify doing the read-back, raising the claim to DELIVERED; seams
+    stay fire-and-forget) is theirs as harness-eng backlog 22.
