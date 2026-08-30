@@ -1,7 +1,7 @@
 import { defineExtension } from '@ai-substrate/engineering-harness/contract';
 
 /**
- * Conversation ingest surface (plan 005): `harness convo <sub>`.
+ * Conversation ingest surface (plan 005): `harness fs3-convo <sub>`.
  *
  * THIN BY CONSTRUCTION. Every sub is a passthrough to `flowspace3 conversation
  * …` — the CLI is the single implementation and the daemon does the work; this
@@ -77,7 +77,7 @@ const subs = {
       if (argv.length === 0) {
         return c.error('E_ARGS', 'name a conversation to ingest', {
           details:
-            'harness convo ingest -- --pij <seat>\nharness convo ingest -- --session <id> --harness <claude|omp|pij|metrics-db>',
+            'harness fs3-convo ingest -- --pij <seat>\nharness fs3-convo ingest -- --session <id> --harness <claude|omp|pij|metrics-db>',
           next_action:
             'A session id alone does not say which store holds it: claude and copilot ids are both v4 uuids and live in different stores.',
         });
@@ -104,12 +104,12 @@ const subs = {
 
 export default defineExtension({
   kind: 'extension',
-  name: 'convo',
+  name: 'fs3-convo',
   summary:
     'Ingest agent conversations out of the native session stores (Claude Code, omp, the pij ledger, git-ai metrics) and list what is indexed.',
   verbs: {
-    convo: {
-      summary: 'Conversation ingest surface — `harness convo <ingest|list>`.',
+    'fs3-convo': {
+      summary: 'Conversation ingest surface — `harness fs3-convo <ingest|list>` (renamed from `convo`: core harness 0.13 ships a convo verb; collision bricked the CLI, backlog row 106).',
       sub: subs,
     },
   },
