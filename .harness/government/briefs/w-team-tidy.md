@@ -50,3 +50,12 @@ the doc note.
 
 claim · envelope samples · validation transcripts · PR number · observations
 (list, never clear). Ack with your read + numbered plan via pij send first.
+
+## Addendum 2026-08-29 (retro drain #2, DL-002)
+
+Tidy removed an ACTIVE seat's worktree and its next parallel shell init
+failed ENOENT despite a surviving explicit cwd (retry from the main clone
+succeeded). Requirement: before deleting a worktree, tidy detects a live
+process/seat whose cwd is inside it (joins row 46's "name the process
+holding it") and either refuses, relocates, or loudly warns — never a
+silent rug-pull. Backlog row 69.

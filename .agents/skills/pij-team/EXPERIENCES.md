@@ -624,6 +624,38 @@ we hand the pattern to pij and the harness. Also `harness observe` each one.
   provoke. Recording that (a) was legal and (b) was right, as doctrine:
   rules bound the space; they do not pick the point in it.
 
+- 2026-08-28 (leopon/006 close — nine runs for one measurement): the
+  breakdown IS the record: five runs died on an honest CLI refusal the
+  probe treated as a crash, one on a Postgres crash, two REFUSED CORRECTLY
+  on unmet preconditions (fake embedder; starved queue leaving the edit
+  unparsed), and the ninth measured. NOT ONE OF THE NINE REPORTED A NUMBER
+  IT COULD NOT DEFEND — that was the whole point, and it cost: every
+  hardening (ERR+set -E, envelopes-not-exit-codes, allow-listed embedder,
+  discriminated refusals, semantically-real stimulus) was purchased by a
+  failed run. Closing symmetry: the harness tool that refused the plan
+  while it was honestly incomplete rendered its PR body the moment it was
+  genuinely complete — back-pressure at plan scale, working.
+
+- 2026-08-28 (leopon's three lines to the next PM, kept whole): MEASURE
+  BEFORE YOU DECOMPOSE — it retired half the plan's planned work before a
+  coder existed. MAKE DONE A PREDICATE A HARNESS CAN RE-RUN — then done
+  is a re-run, not an opinion. BUILD THE INSTRUMENT TO REFUSE RATHER THAN
+  TO PASS — the nine runs that made the plan slow are the same nine runs
+  that make its receipt worth reading.
+
+- 2026-08-28 (nigel, 008's closing move — the day's thesis in one incident):
+  "MY EDIT BUILT, VALIDATED AS JSON, READ CORRECTLY, AND WAS WRONG." The
+  PM wrote state:"open" — perfectly readable, not in the enum — into the
+  close-out document describing what shipped unmet, and ddocs doctor
+  (E407, exact JSONPath, legal values listed) caught it thirty seconds
+  later: the tool the plan spent all day teaching the index to understand
+  caught its own PM's last edit. Deterministic checking over
+  looks-right, one final time. Beside it: two coders (boa, pigeon)
+  DECLINED to self-verify their done at day's end when nobody would have
+  noticed — "supervisory verification by the subject recreates the record
+  gap under a different label" — the verification axis staying
+  non-decorative under exactly the pressure row 66 describes.
+
 ## Template improvement ideas
 
 - 2026-08-28 (carp's 007 fan-out — two dispatch patterns worth template rank):
