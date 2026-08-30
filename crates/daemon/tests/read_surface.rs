@@ -266,6 +266,7 @@ impl Stack {
             &self.state.db,
             &self.state.embedder_key(repo),
             &[fs3_store::NewEmbedding {
+                chunk_no: 0,
                 source_hash: &fixture.raw_hash,
                 source_kind: fs3_store::SourceKind::Raw,
                 vector: &vector,
