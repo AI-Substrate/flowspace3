@@ -1,6 +1,6 @@
 # PROD queue waste audit — summarize + embed
 
-**Verdict: MIXED — 137,410 repeat summarize-key generations reached `done`, but the content cache makes their expected duplicate LLM charge $0. The number to remember is 137,410: real queue churn, not evidenced duplicate model spend.**
+**Verdict: MIXED — 137,410 repeat summarize-key generations reached `done` with $0 evidenced duplicate LLM charge, but live monitoring caught 3 new empty-string embed jobs poisoning 1,639 innocent texts across their merged first attempts. The number to remember is 137,410: real queue churn, not evidenced duplicate model spend.**
 
 Audit snapshots: 2026-08-30 04:41–04:46Z. Database: PROD `flowspace3` at `127.0.0.1:5433`, every query inside `BEGIN TRANSACTION [ISOLATION LEVEL REPEATABLE READ] READ ONLY`. Logs: live daemon tmux pane `%50` and `~/.local/state/flowspace3/logs/flowspace3.log{,.1,.2,.3,.4}`. No queue, daemon, root, or database mutation was performed.
 
@@ -253,3 +253,18 @@ Two additional empty inputs reached Azure. Their first attempts rejected merged 
 ```
 
 SQL traced all three to conversation `e30db99c-bf09-8e83-a803-9ac365bb6d4f`, turns **1866, 2761, 6548**: `role=agent`, `source=system`, `body_bytes=0`, `items=[]`, `raw_hash=e3b0c442…b855`. The identical empty hash occupied three different 16-item embed payloads, so batch-key dedupe did not collapse it.
+
+### 04:50–04:51Z — batching recovered; 13 conversations fully findable
+
+Across the live wave through 04:50:13Z, logs recorded **1,047 summarize completions with 0 retries/failures**. Successful provider batches:
+
+| source | calls | texts | texts/call | median | single-text calls | texts in calls >=16 |
+|---|---:|---:|---:|---:|---:|---:|
+| raw | 208 | 14,849 | 71.39 | 15 | 2 | 89.9% |
+| smart | 73 | 1,002 | 13.73 | 16 | 3 | 68.8% |
+
+Raw single-text calls occurred only while flushing the final tail after the burst; the sustained raw lane stayed wide. Once raw ingest drained, consecutive 15-second smart intervals carried 175/11, 173/11, 183/12, and 176/13 texts/calls (15.9, 15.7, 15.25, 13.54). No batch-collapse signature.
+
+At 04:51:11Z, the 21 post-04:47 conversations represented **13,986 unique turn hashes**, 11,004 summary-eligible hashes, 13,946 raw vectors ready, 1,499 summaries ready, and 1,484 smart vectors ready. **13 conversations were fully findable**; `duplicate_guid_groups=0`. Measured wall times included 28.161s for a 53-hash conversation and 144.357s for the 1,170-hash / 879-summary `pij` conversation. The other 11 completed conversations reached fully findable in 181–211s while competing with both whales under LIFO.
+
+At 04:51:51Z, the union of post-04:47 conversation content contained **10,978 unique summary-eligible hashes**. Only 20 were already cached before the wave; 1,879 had newly landed and 9,079 remained. Their queue history held 11,001 rows / 10,989 identity-qualified keys: just **12 repeat-key generations**, zero retries. This is the expected burst shape—one live key per new content hash, not one paid call per turn occurrence.

@@ -730,3 +730,14 @@ leaving this file should name where it went.
     surfaces: 'flowspace3 ask history / show <id>', retention policy,
     and it becomes eval-fixture MINING (real failed asks -> fixtures).
     Jordan's emphasis: tool use matters — the trace is the artifact.
+
+90. **daemon bounce verify times out during heavy boots** (first prod run
+    of the new verb, 2026-08-30): freshness/build/locate/drain all ok,
+    but boot ran migration 0020 + a big requeue sweep and exceeded the
+    120s verify bound — the verb reported E_DAEMON_BOUNCE_VERIFY_TIMEOUT
+    while the daemon was in fact healthily booting (it came up ~2min
+    later, fully healed). Fix: verify should distinguish 'no process /
+    no listener' from 'listener pending, boot log advancing' — poll the
+    pane/log for boot progress and extend the bound while progress is
+    visible, or take a --verify-timeout. The honest failure was correct
+    behaviour; it just needs a third verdict: BOOTING.
