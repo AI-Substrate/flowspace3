@@ -1171,3 +1171,24 @@ leaving this file should name where it went.
     assert a CLEAN worktree (git status empty) as a done-bar item, since
     "the review is recorded" and "the review record is committed" are
     different facts — same family as row 111's stranded commit.
+
+113. **CI ran rust-cache TWICE and printed a false error every run**
+    (found by vicuna's reviewer 2026-08-31 while adopting our ci.yml for
+    pij-rs, returned to us; confirmed by lynx in run 33339025078).
+    setup-rust-toolchain@v1 defaults cache:true and runs Swatinem/rust-cache
+    internally as its final step, doubling our explicit one. The duplicate's
+    POST-step runs `cargo metadata --all-features` after the toolchain tore
+    PATH down: every run printed "Error: Unable to locate executable file:
+    cargo" while the step reported outcome=SUCCESS. Verdict-cannot-lie
+    family AGAIN (fourth variant in two days, after row 111's stranded
+    commit, row 112's half-removed worktree + my absence-of-error parse,
+    and the PM's tail-exit-status green). Distinct sub-shape worth naming:
+    an error printed on a GREEN run is worse than a red — it trains
+    everyone to skim, so the real error is the one nobody reads. FIXED:
+    PR #90 (cache:false on the setup step, explicit rust-cache kept
+    because caching should be readable, not inherited).
+    CROSS-GOVERNMENT NOTE: they verified from the action's action.yml
+    SOURCE, not its README — the same read-the-producer's-log discipline
+    row 108 lists as a tenet candidate. Their reviewer also witnessed our
+    lesson #1 (metadata --locked first) catching a real undeclared dep in
+    their own review. The CI loan came back with interest.
