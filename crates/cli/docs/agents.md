@@ -22,6 +22,7 @@ flowspace3 daemon &                # the indexer; keep it running
 flowspace3 add /path/to/repo       # walk, hash, queue
 flowspace3 status                  # poll until the queue is empty
 flowspace3 search "how does X work"      # find an address
+flowspace3 ask "how does X work" --path "crates/store/**" # answer from one path corpus
 flowspace3 get <address>                 # read what is at it, in full
 flowspace3 tree <address-or-path>        # browse what is around it
 ```
@@ -150,6 +151,12 @@ Exit codes: `0` ok, `1` error, `2` usage.
 
 Useful filters: `--repo <identity>`, `--path <glob>`, `--limit N`,
 `--min-score 0.0-1.0`, `--source code|doc|conversation|all`.
+
+`ask --path <glob>` uses the same glob semantics and makes the path immutable for
+every model-issued search and read. Paths belong only to code and documents, so
+an absent/`all` source excludes conversations and says why in `coverage`; explicit
+`--source conversation` is refused. Use `--conversation <guid>` for one transcript
+or `--repo <identity>` for repository-scoped conversation questions.
 
 **A bare search is about the repository you are standing in** (the CLI sends
 your working directory). `meta.scope` reports which repository answered and

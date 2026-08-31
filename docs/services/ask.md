@@ -75,15 +75,27 @@ bounded operation, not the final progress experience.
 the caller's repository scope applied independently. A caller-selected source
 is immutable for the run; model tool calls cannot widen or replace it.
 
-`--conversation <guid-or-conv:address>` is the sharper boundary. It accepts a
-full guid, a unique short prefix, or a `conv:` address, resolves it before chat,
-and pins every semantic/lexical search and `get` to that transcript. Citations
-can therefore only be `conv:<resolved-guid>#t<n>`. `--source code` or `doc`
-contradicts a conversation pin and is rejected rather than broadened.
+`--path <glob>` uses the same spelling and glob-to-prefix semantics as search.
+It is a code/document boundary: every model-issued search inherits the caller's
+glob, every `get` is checked against the resolved element path, and an
+out-of-path payload is refused before it becomes evidence or a citation.
+Conversations have repository/worktree anchors but no file path. With an absent
+or `all` source they are excluded and `coverage.corpus.path.conversation_exclusion`
+says why; an explicit `--source code` or `doc` needs no exclusion note. Combining
+`--path` with `--source conversation` or `--conversation` is rejected before chat
+and points callers to `--conversation <guid>` or `--repo <identity>`.
 
-Unknown, malformed, and ambiguous selectors return `FS3-E-QUERY-INVALID` with
-`flowspace3 conversation list` as the repair. Resolution precedes the first
-chat turn, so this refusal spends zero model tokens.
+`--conversation <guid-or-conv:address>` is the sharper transcript boundary. It
+accepts a full guid, a unique short prefix, or a `conv:` address, resolves it
+before chat, and pins every semantic/lexical search and `get` to that transcript.
+Citations can therefore only be `conv:<resolved-guid>#t<n>`. `--source code` or
+`doc` contradicts a conversation pin and is rejected rather than broadened.
+
+Unknown, malformed, and ambiguous conversation selectors return
+`FS3-E-QUERY-INVALID` with `flowspace3 conversation list` as the repair. An
+unmatched path glob returns the same structured `path_unmatched` reason and
+indexed-layout hint as search. Both validations precede the first chat turn, so
+these refusals spend zero model tokens.
 
 ## The two properties that are the point
 
@@ -104,9 +116,12 @@ The response also carries `coverage`: `iterations_used`, `iteration_limit`,
 the `retrieval_top_k` used by each search, `corpus`, and `exhaustive: false`.
 `corpus.source` names the effective source axis. A pinned run additionally
 reports `corpus.conversation = { guid, count: 1, turns }`, making “one
-conversation of N turns” machine-visible and human-visible. `exhaustive` stays
-false: a bounded nearest-neighbour loop can report what it found, but cannot
-prove an enumeration complete. The standing synthesis prompt therefore
+conversation of N turns” machine-visible and human-visible. A path-scoped run
+reports `corpus.path = { glob, elements, conversation_exclusion? }`; the note is
+present only when the caller selected all sources. With no `--path`, the field is
+omitted entirely, preserving the previous serialized envelope. `exhaustive`
+stays false: a bounded nearest-neighbour loop can report what it found, but
+cannot prove an enumeration complete. The standing synthesis prompt therefore
 requires enumerations to be phrased as findings, never as “all” or “the only”
 paths.
 
@@ -135,11 +150,11 @@ reads do not establish an answer, it says **not found** rather than filling the
 gap from model memory. The citations are the proof boundary between an answer
 about this index and a plausible sentence about some other code.
 
-A path-filtered miss is likewise not code absence. When the glob matches zero
-indexed paths, search returns `empty_because.reason = "path_unmatched"` plus a
-hint listing indexed top-level entries. Ask passes that distinction to the
-model and tells it to correct the filter rather than infer that the code does
-not exist.
+A path-filtered miss is likewise not code absence. Ask validates the immutable
+glob before chat: when it matches zero indexed paths, the failure carries
+`details.empty_because.reason = "path_unmatched"` plus a hint listing indexed
+top-level entries. The caller corrects an impossible boundary without spending
+a model iteration or treating the miss as evidence that code does not exist.
 
 ## Bad tool calls are data, not loop failures
 

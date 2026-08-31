@@ -27,6 +27,11 @@ because the terminal probe otherwise looks human.
 Filters narrow candidates **in SQL**, beside the index — not after the fact. A
 filter that matches nothing returns nothing rather than a padded list.
 
+`ask` accepts the same `--path <glob>` spelling and matching rules, but binds the
+filter for the whole agent run: model tool calls cannot replace it, and citations
+outside it are refused. Conversations have no file path, so a path-scoped ask
+excludes them; `--path` with `--source conversation` is contradictory.
+
 ## Reading a hit
 
 ```json

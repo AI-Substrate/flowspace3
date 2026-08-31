@@ -87,43 +87,14 @@ async fn daemon_answering_with(
     (base, auth.key, database, pool)
 }
 
-/// Seed one searchable element and return the exact address search emits.
-async fn seed_search_hit(state: &AppState, question: &str) -> String {
+/// Seed searchable elements at the requested paths and return their exact addresses.
+async fn seed_search_hits(state: &AppState, question: &str, paths: &[&str]) -> Vec<String> {
     let root = "/srv/ask-trace";
     let identity = RepoIdentity::from_path(std::path::Path::new(root));
     let identity_text = identity.to_string();
     let worktree = fs3_store::register_worktree(&state.db, &identity, root, Some("main"))
         .await
         .expect("registers the fixture worktree");
-    let path = "src/watcher.rs";
-    let text = "watcher debounce returns only changed directories";
-    let child_address = format!("{path}::debounce");
-    let child = Element::new(
-        ElementKind::Function,
-        "function_item",
-        "debounce",
-        &child_address,
-        Span::new(1, 1),
-        text,
-    );
-    let file = Element::new(
-        ElementKind::File,
-        "source_file",
-        path,
-        path,
-        Span::new(1, 1),
-        "fixture file containing the watcher function",
-    )
-    .with_children(vec![child]);
-    let blob = BlobRef::new("1111111111111111111111111111111111111111").expect("a blob key");
-
-    fs3_store::upsert_element_tree(&state.db, &blob, "test-parser@1", &file, |_| false)
-        .await
-        .expect("stores the fixture element");
-    fs3_store::sync_worktree_files(&state.db, worktree, &[(path.to_string(), blob)])
-        .await
-        .expect("maps the fixture file");
-
     let vector = state
         .embedder_for(&identity_text)
         .embed(&[question.to_string()])
@@ -131,22 +102,64 @@ async fn seed_search_hit(state: &AppState, question: &str) -> String {
         .expect("the fake embeds")
         .pop()
         .expect("one vector");
-    let raw_hash = content_hash(text.as_bytes());
-    fs3_store::put_embeddings(
-        &state.db,
-        &state.embedder_key(&identity_text),
-        &[NewEmbedding {
-            chunk_no: 0,
-            source_hash: &raw_hash,
-            source_kind: SourceKind::Raw,
-            vector: &vector,
-            truncated: false,
-        }],
-    )
-    .await
-    .expect("stores the fixture vector");
 
-    element_address(Some(&identity_text), &child_address)
+    let mut mappings = Vec::with_capacity(paths.len());
+    let mut addresses = Vec::with_capacity(paths.len());
+    for (index, path) in paths.iter().enumerate() {
+        let text = format!("{question} at {path}");
+        let child_address = format!("{path}::answer");
+        let child = Element::new(
+            ElementKind::Function,
+            "function_item",
+            "answer",
+            &child_address,
+            Span::new(1, 1),
+            &text,
+        );
+        let file = Element::new(
+            ElementKind::File,
+            "source_file",
+            *path,
+            *path,
+            Span::new(1, 1),
+            format!("fixture file containing {path}"),
+        )
+        .with_children(vec![child]);
+        let blob_text = format!("{:040x}", index + 1);
+        let blob = BlobRef::new(&blob_text).expect("a blob key");
+
+        fs3_store::upsert_element_tree(&state.db, &blob, "test-parser@1", &file, |_| false)
+            .await
+            .expect("stores the fixture element");
+        let raw_hash = content_hash(text.as_bytes());
+        fs3_store::put_embeddings(
+            &state.db,
+            &state.embedder_key(&identity_text),
+            &[NewEmbedding {
+                chunk_no: 0,
+                source_hash: &raw_hash,
+                source_kind: SourceKind::Raw,
+                vector: &vector,
+                truncated: false,
+            }],
+        )
+        .await
+        .expect("stores the fixture vector");
+
+        mappings.push(((*path).to_string(), blob));
+        addresses.push(element_address(Some(&identity_text), &child_address));
+    }
+    fs3_store::sync_worktree_files(&state.db, worktree, &mappings)
+        .await
+        .expect("maps the fixture files");
+    addresses
+}
+
+async fn seed_search_hit(state: &AppState, question: &str) -> String {
+    seed_search_hits(state, question, &["src/watcher.rs"])
+        .await
+        .pop()
+        .expect("one fixture address")
 }
 
 async fn seed_conversation(state: &AppState, guid: &str, body: &str) {
@@ -563,6 +576,151 @@ async fn ask_source_overrides_a_model_attempt_to_change_the_corpus() {
     assert_eq!(data["trace"][0]["search_hits"], json!([address.clone()]));
     assert_eq!(data["citations"], json!([address]));
     assert_eq!(data["coverage"]["corpus"]["source"], "code");
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn path_scope_filters_every_search_read_citation_and_coverage() {
+    let question = "where is the path boundary enforced?";
+    let database = support::FreshDatabase::create("ask-path-pinned").await;
+    let config = Config {
+        database: DatabaseConfig {
+            url: database.url(),
+        },
+        ..Config::default()
+    };
+    let mut state = AppState::from_config(config).expect("the fake stack wires");
+    fs3_store::migrate(&state.db).await.expect("migrates");
+    let addresses = seed_search_hits(
+        &state,
+        question,
+        &["crates/store/src/lib.rs", "crates/daemon/src/lib.rs"],
+    )
+    .await;
+    let allowed = addresses[0].clone();
+    let foreign = addresses[1].clone();
+    let chat = Arc::new(FakeChatProvider::scripted(vec![
+        tool_call(
+            "search",
+            &json!({
+                "query": question,
+                "path": "crates/daemon/**",
+                "source": "conversation"
+            })
+            .to_string(),
+        ),
+        tool_call("get", &json!({"address": foreign}).to_string()),
+        tool_call("get", &json!({"address": allowed}).to_string()),
+        prose("the path boundary is enforced at search and get"),
+        tool_call("search", &json!({"query": question}).to_string()),
+        tool_call("get", &json!({"address": allowed}).to_string()),
+        prose("the code-only path boundary is enforced"),
+    ]));
+    state.agent = chat;
+    let pool = state.db.clone();
+    let auth = support::auth("ask-path-pinned");
+    let base = support::spawn(router(state, auth.auth)).await;
+
+    let envelope = post_ask_request(
+        &base,
+        &auth.key,
+        json!({"question": question, "path": "crates/store/**"}),
+    )
+    .await;
+    assert!(envelope.ok, "{envelope:?}");
+    let data = envelope.data.expect("ask report");
+    assert_eq!(data["trace"][0]["search_hits"], json!([allowed.clone()]));
+    assert_eq!(data["trace"][1]["failed"], true, "foreign get is refused");
+    assert_eq!(data["trace"][2]["evidence"], true);
+    assert_eq!(data["citations"], json!([allowed.clone()]));
+    assert_eq!(
+        data["coverage"]["corpus"]["path"]["glob"],
+        "crates/store/**"
+    );
+    assert_eq!(data["coverage"]["corpus"]["path"]["elements"], 2);
+    assert!(
+        data["coverage"]["corpus"]["path"]["conversation_exclusion"]
+            .as_str()
+            .is_some_and(|reason| reason.contains("conversations carry no file path"))
+    );
+
+    let code = post_ask_request(
+        &base,
+        &auth.key,
+        json!({
+            "question": question,
+            "path": "crates/store/**",
+            "source": "code"
+        }),
+    )
+    .await;
+    assert!(code.ok, "{code:?}");
+    let data = code.data.expect("code-scoped ask report");
+    assert_eq!(data["citations"], json!([allowed]));
+    assert!(
+        data["coverage"]["corpus"]["path"]["conversation_exclusion"].is_null(),
+        "an explicit code source excluded nothing the caller requested: {data:?}"
+    );
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn contradictory_and_unmatched_path_scopes_refuse_before_chat() {
+    let question = "where is the path boundary enforced?";
+    let database = support::FreshDatabase::create("ask-path-invalid").await;
+    let config = Config {
+        database: DatabaseConfig {
+            url: database.url(),
+        },
+        ..Config::default()
+    };
+    let mut state = AppState::from_config(config).expect("the fake stack wires");
+    fs3_store::migrate(&state.db).await.expect("migrates");
+    seed_search_hits(&state, question, &["crates/store/src/lib.rs"]).await;
+    let chat = Arc::new(FakeChatProvider::scripted(vec![prose("must not run")]));
+    state.agent = chat.clone();
+    let pool = state.db.clone();
+    let auth = support::auth("ask-path-invalid");
+    let base = support::spawn(router(state, auth.auth)).await;
+
+    let contradiction = post_ask_request(
+        &base,
+        &auth.key,
+        json!({
+            "question": question,
+            "path": "crates/store/**",
+            "source": "conversation"
+        }),
+    )
+    .await;
+    assert!(!contradiction.ok);
+    let failure = contradiction.error.expect("scope contradiction");
+    assert_eq!(failure.code, "FS3-E-QUERY-INVALID");
+    assert!(failure.message.contains("carry no file path"));
+    assert!(failure.fix.contains("--conversation <guid>"));
+    assert!(failure.fix.contains("--repo <identity>"));
+
+    let unmatched = post_ask_request(
+        &base,
+        &auth.key,
+        json!({"question": question, "path": "apps/**"}),
+    )
+    .await;
+    assert!(!unmatched.ok);
+    let failure = unmatched.error.expect("unmatched path failure");
+    assert_eq!(failure.code, "FS3-E-QUERY-INVALID");
+    assert_eq!(failure.details["empty_because"]["reason"], "path_unmatched");
+    assert!(failure.message.contains("matches zero indexed paths"));
+    assert!(
+        failure.fix.contains("crates"),
+        "actual layout is named: {failure:?}"
+    );
+    assert!(
+        chat.received_messages().is_empty(),
+        "refusals must cost zero chat turns"
+    );
 
     database.destroy(pool).await;
 }

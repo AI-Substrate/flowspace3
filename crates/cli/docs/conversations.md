@@ -46,6 +46,11 @@ every retrieval and citation is then hard-bound to that transcript, and the
 coverage envelope names its stored turn count. An unknown guid is refused before
 the chat model runs; `conversation list` is the authoritative way to choose one.
 
+Do not use `--path` for transcript questions: conversations carry repository and
+worktree anchors, not file paths. Use `--conversation <guid>` to pin one transcript
+or `--repo <identity>` to scope conversations by repository. `ask --path` with
+`--source conversation` is refused before the chat model runs.
+
 ## The transcript format
 
 JSONL. An optional header on the first line, then one turn per line:
