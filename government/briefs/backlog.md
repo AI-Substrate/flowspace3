@@ -1272,3 +1272,20 @@ leaving this file should name where it went.
     put the formality THERE. Their spine schema (spine beat row + state +
     superseded_by pointer + phases) comes to us when it validates, per
     the symmetry pact, schema file included.
+
+116. **`ask` has no --path/folder scope, though `search` does** (Jordan's
+    question 2026-08-31; he first asked this on 2026-08-30 — "were you
+    able to filter it to the path?" — and it was never dispatched: row 85
+    shipped conversation+source pinning, not path). MEASURED NOW:
+    `flowspace3 ask` accepts --repo, --source (code|doc|conversation|all)
+    and --conversation <guid>; `--path` is REJECTED ("unexpected argument
+    '--path'"), while `flowspace3 search` takes --path <GLOB>. The ask
+    AGENT can path-filter internally (its search tool takes globs — that
+    is what row 63 observed it doing), but the CALLER cannot pin a whole
+    run to a folder, so "answer this using only crates/store/**" is
+    unexpressible. Dispatch shape: add --path <GLOB> to ask with the SAME
+    hard-binding bovid built for --conversation (immutable filter bound
+    to the tools, every model-issued search inherits it, contradictory
+    scope refused not silently broadened, coverage facet names the
+    narrowed corpus), and reuse row 63's path_unmatched honesty so an
+    unsatisfiable glob says so instead of reading as absence.
