@@ -73,8 +73,25 @@ jobs:
 
       # Installs exactly what rust-toolchain.toml pins (channel=stable,
       # rustfmt+clippy) — same toolchain the repo's own convention selects.
+      # cache:false is LOAD-BEARING. setup-rust-toolchain defaults cache:true
+      # and runs Swatinem/rust-cache internally as its own final step, so
+      # leaving it on gives the job TWO rust-cache instances on one key. The
+      # duplicate's post-step then runs `cargo metadata` after the toolchain
+      # has already torn PATH down and prints
+      #   Error: Unable to locate executable file: cargo
+      # every single run — while still reporting outcome=success. A gate that
+      # always prints an error it does not mean teaches everyone to skim the
+      # log, which is how a real error gets missed.
+      #
+      # Found by pij-dominant-vicuna's reviewer (2026-08-31) while adopting
+      # this workflow for pij-rs, and confirmed here in run 33339025078.
+      # The explicit rust-cache step below is kept because it is VISIBLE:
+      # caching should be a line someone can read, not a default hidden in
+      # another action's action.yml.
       - name: Install pinned toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache: false
 
       - uses: Swatinem/rust-cache@v2
 
