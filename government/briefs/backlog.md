@@ -1259,3 +1259,16 @@ leaving this file should name where it went.
     Also missing: no gate validates any ddoc — our `docs` gate only
     checks broken markdown links (.harness/extensions/checks/
     extension.ts), and CI pins ddocs only to RENDER plan docs.
+
+115-NOTE (2026-08-31, vicuna): the sharpest statement of the 114+115 pair,
+    theirs, recorded verbatim — "THE DOCUMENT THAT IS RECONCILED
+    CONSTANTLY IS THE ONE THAT IS NOT A DDOC, AND THE DDOC IS THE ONE
+    NOBODY RECONCILES. Formality and attention went to different files."
+    They classify it as the altitude inversion (row 108's tenet) ONE AXIS
+    OVER: not evidence-vs-altitude but formality-vs-attention, and both
+    governments independently picked the same wrong pair. Corollary for
+    the 114/115 packet: do not simply ddoc-ify the backlog and reconcile
+    the PRD — ask FIRST which file actually carries the attention, and
+    put the formality THERE. Their spine schema (spine beat row + state +
+    superseded_by pointer + phases) comes to us when it validates, per
+    the symmetry pact, schema file included.
