@@ -308,7 +308,18 @@ pub async fn resolve_corpus(
             )
             .await
             .map_err(crate::runner::fail)?;
-            if let Some(reason) = crate::search::path_unmatched_reason(glob, probe.clone()) {
+            if !probe.matches {
+                let reason = crate::search::path_unmatched_reason(glob, probe.clone())
+                    .unwrap_or_else(|| crate::search::EmptyBecause {
+                        reason: "path_unmatched",
+                        detail: format!(
+                            "the --path filter {glob:?} matches zero indexed paths in this scope; no indexed file paths are available to answer from"
+                        ),
+                        hint: Some(
+                            "index the intended checkout with `flowspace3 add <path>`, or correct --repo/--path to a scope that contains files"
+                                .to_string(),
+                        ),
+                    });
                 let fix = reason
                     .hint
                     .clone()

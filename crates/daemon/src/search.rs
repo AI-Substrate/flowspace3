@@ -724,7 +724,7 @@ fn render(hit: &SearchHit) -> Hit {
 fn render_lexical(hit: &LexicalHit) -> Hit {
     let element = &hit.element;
     Hit {
-        address: address_of_element(element, hit.identity.as_deref()),
+        address: address_of_element(element, hit.identity.as_deref(), hit.path.as_deref()),
         // Exact substring identity is the lexical score; this is not cosine.
         score: 1.0,
         channel: SearchChannel::Lexical,
@@ -807,14 +807,29 @@ fn ddoc_hit(meta: &DdocMeta) -> DdocHit {
 /// content is real even when the checkout that held it is gone, and inventing a
 /// repository for it would be a lie.
 fn address_of(hit: &SearchHit) -> String {
-    address_of_element(&hit.similar.element, hit.identity.as_deref())
+    address_of_element(
+        &hit.similar.element,
+        hit.identity.as_deref(),
+        hit.path.as_deref(),
+    )
 }
 
-fn address_of_element(element: &Element, identity: Option<&str>) -> String {
+fn address_of_element(element: &Element, identity: Option<&str>, path: Option<&str>) -> String {
     if element.kind == ElementKind::Turn || element.kind == ElementKind::Row {
         return element.address.clone();
     }
-    fs3_core::element_address(identity, &element.address)
+    let rebased = path.and_then(|path| {
+        let suffix = element
+            .address
+            .find("::")
+            .map_or("", |index| &element.address[index..]);
+        let stored_path = element
+            .address
+            .strip_suffix(suffix)
+            .unwrap_or(&element.address);
+        (stored_path != path).then(|| format!("{path}{suffix}"))
+    });
+    fs3_core::element_address(identity, rebased.as_deref().unwrap_or(&element.address))
 }
 
 /// Apply only ddoc-specific predicates, preserving the gate's three states.
@@ -858,9 +873,9 @@ pub(crate) fn glob_to_like(glob: &str) -> String {
                 out.push('%');
             }
             '?' => out.push('_'),
-            // `%` and `_` are LIKE metacharacters; a literal one in a path must
-            // not become a wildcard.
-            '%' | '_' => {
+            // SQL LIKE treats backslash as its escape. Escape it alongside its
+            // metacharacters so search and the in-process get guard agree.
+            '\\' | '%' | '_' => {
                 out.push('\\');
                 out.push(ch);
             }
@@ -921,6 +936,7 @@ mod tests {
         assert_eq!(glob_to_like("my_file.rs"), "my\\_file.rs%");
         assert_eq!(glob_to_like("100%.md"), "100\\%.md%");
         assert_eq!(glob_to_like("100%"), "100\\%%");
+        assert_eq!(glob_to_like(r"a\b"), r"a\\b%");
     }
 
     #[test]
@@ -936,6 +952,8 @@ mod tests {
             "crates/store/**"
         ));
         assert!(!path_matches_glob("myXfile.rs", "my_file.rs"));
+        assert!(path_matches_glob(r"a\b/file.rs", r"a\b"));
+        assert!(!path_matches_glob("ab/file.rs", r"a\b"));
     }
 
     #[test]

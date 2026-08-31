@@ -667,6 +667,105 @@ async fn path_scope_filters_every_search_read_citation_and_coverage() {
 }
 
 #[tokio::test]
+async fn shared_blob_search_addresses_rebase_to_the_matching_path() {
+    let question = "where is shared content indexed?";
+    let database = support::FreshDatabase::create("ask-path-shared-blob").await;
+    let config = Config {
+        database: DatabaseConfig {
+            url: database.url(),
+        },
+        ..Config::default()
+    };
+    let mut state = AppState::from_config(config).expect("the fake stack wires");
+    fs3_store::migrate(&state.db).await.expect("migrates");
+    let owner = "crates/owner/src/lib.rs";
+    let visible = "crates/store/src/lib.rs";
+    seed_search_hits(&state, question, &[owner]).await;
+
+    let root = "/srv/ask-trace";
+    let identity = RepoIdentity::from_path(std::path::Path::new(root));
+    let identity_text = identity.to_string();
+    let worktree = fs3_store::register_worktree(&state.db, &identity, root, Some("main"))
+        .await
+        .expect("reuses the fixture worktree");
+    fs3_store::sync_worktree_files(
+        &state.db,
+        worktree,
+        &[
+            (
+                owner.to_string(),
+                BlobRef::new("0000000000000000000000000000000000000001").unwrap(),
+            ),
+            (
+                visible.to_string(),
+                BlobRef::new("0000000000000000000000000000000000000001").unwrap(),
+            ),
+        ],
+    )
+    .await
+    .expect("maps identical bytes at two paths");
+    let expected = element_address(Some(&identity_text), &format!("{visible}::answer"));
+    state.agent = Arc::new(FakeChatProvider::scripted(vec![
+        tool_call("search", &json!({"query": question}).to_string()),
+        tool_call("get", &json!({"address": expected}).to_string()),
+        prose("shared content is readable through its matching live path"),
+    ]));
+    let pool = state.db.clone();
+    let auth = support::auth("ask-path-shared-blob");
+    let base = support::spawn(router(state, auth.auth)).await;
+
+    let envelope = post_ask_request(
+        &base,
+        &auth.key,
+        json!({"question": question, "path": "crates/store/**"}),
+    )
+    .await;
+    assert!(envelope.ok, "{envelope:?}");
+    let data = envelope.data.expect("ask report");
+    assert_eq!(data["trace"][0]["search_hits"], json!([expected.clone()]));
+    assert_eq!(data["citations"], json!([expected]));
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn an_empty_path_scope_refuses_before_chat_without_layout_guessing() {
+    let database = support::FreshDatabase::create("ask-path-empty-scope").await;
+    let config = Config {
+        database: DatabaseConfig {
+            url: database.url(),
+        },
+        ..Config::default()
+    };
+    let mut state = AppState::from_config(config).expect("the fake stack wires");
+    fs3_store::migrate(&state.db).await.expect("migrates");
+    let chat = Arc::new(FakeChatProvider::scripted(vec![prose("must not run")]));
+    state.agent = chat.clone();
+    let pool = state.db.clone();
+    let auth = support::auth("ask-path-empty-scope");
+    let base = support::spawn(router(state, auth.auth)).await;
+
+    let envelope = post_ask_request(
+        &base,
+        &auth.key,
+        json!({"question": "what is indexed?", "path": "crates/store/**"}),
+    )
+    .await;
+    assert!(!envelope.ok);
+    let failure = envelope.error.expect("empty path scope failure");
+    assert_eq!(failure.code, "FS3-E-QUERY-INVALID");
+    assert_eq!(failure.details["empty_because"]["reason"], "path_unmatched");
+    assert!(failure.message.contains("no indexed file paths"));
+    assert!(failure.fix.contains("flowspace3 add"));
+    assert!(
+        chat.received_messages().is_empty(),
+        "chat cost must be zero"
+    );
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
 async fn contradictory_and_unmatched_path_scopes_refuse_before_chat() {
     let question = "where is the path boundary enforced?";
     let database = support::FreshDatabase::create("ask-path-invalid").await;
