@@ -1,0 +1,21 @@
+crates/daemon/src/search.rs
+  s_59d749bfeff5de::t_f7c7f1b99906f3 727,810-814,817,821-832,876-878,939,955-956
+crates/daemon/tests/ask.rs
+  s_59d749bfeff5de::t_134900f3e20c9f 669-767
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "11f54973da42133c37777707d1417764f237e3f0",
+  "prompts": {},
+  "sessions": {
+    "s_59d749bfeff5de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae4199d-c737-4ac3-a856-7e69531e4bab",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
