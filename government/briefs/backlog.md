@@ -1219,3 +1219,21 @@ leaving this file should name where it went.
     reconcile pass that flags any unchecked row whose note names a closed
     seat; (d) decide whether the PRD reconciles at merge or at plan
     close-out, and who owns it (currently: nobody, which is the defect).
+
+114-NOTE (2026-08-31, vicuna): CROSS-GOVERNMENT CONFIRMATION — pij's
+    store-native spine cannot answer "which rows did this unit advance"
+    either (124k events of mostly daemon chatter, no governance-shaped
+    query; three req rows hand-carried that night). So this is a SHARED
+    shape, not a flowspace3 defect: two governments with different
+    substrates (ddoc file vs event store) both check their top-level
+    spine by human judgment while their plan-level ACs carry receipts and
+    mutation proofs. Vicuna adopted our (a)/(b)/(d) and the rot detector
+    verbatim; strengthens the dispatch case for row 114.
+
+108-NOTE-2 (2026-08-31): third tenet candidate, NAMED by vicuna from our
+    exchange — "evidence standards INVERT with altitude": the higher the
+    governance altitude, the weaker the evidence we accept (plan ACs get
+    receipts + cross-model mutation proofs; PRD rows get a prose note from
+    one human). Stated as a defect to detect, not a law to accept. Now
+    three candidates on this row: the accept-law (dajeil), the
+    reaper/verdict line (owl), and this one.
