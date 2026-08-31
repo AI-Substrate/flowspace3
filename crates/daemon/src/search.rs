@@ -40,7 +40,7 @@
 
 use fs3_core::catalog;
 use fs3_core::envelope::Failure;
-use fs3_core::{ConversationId, DdocMeta, Element, ElementKind};
+use fs3_core::{ConversationId, DdocAddress, DdocMeta, Element, ElementKind};
 use fs3_store::{LexicalHit, PathFilterProbe, SearchFilters, SearchHit};
 use serde::{Deserialize, Serialize};
 
@@ -717,7 +717,10 @@ fn render(hit: &SearchHit) -> Hit {
         repo: hit.identity.clone(),
         path: hit.path.clone(),
         worktree: hit.root_path.clone(),
-        ddoc: element.ddoc.as_deref().map(ddoc_hit),
+        ddoc: element
+            .ddoc
+            .as_deref()
+            .map(|meta| ddoc_hit(meta, hit.path.as_deref())),
     }
 }
 
@@ -739,7 +742,10 @@ fn render_lexical(hit: &LexicalHit) -> Hit {
         repo: hit.identity.clone(),
         path: hit.path.clone(),
         worktree: hit.root_path.clone(),
-        ddoc: element.ddoc.as_deref().map(ddoc_hit),
+        ddoc: element
+            .ddoc
+            .as_deref()
+            .map(|meta| ddoc_hit(meta, hit.path.as_deref())),
     }
 }
 
@@ -775,9 +781,9 @@ fn same_hit(left: &Hit, right: &Hit) -> bool {
 }
 
 /// Map stored ddoc metadata into the consumer-owned search view.
-fn ddoc_hit(meta: &DdocMeta) -> DdocHit {
+fn ddoc_hit(meta: &DdocMeta, path: Option<&str>) -> DdocHit {
     DdocHit {
-        address: meta.address.clone(),
+        address: rebase_ddoc_address(&meta.address, path),
         schema: meta.schema.clone(),
         section: meta.section.clone(),
         id: meta.id.clone(),
@@ -815,8 +821,11 @@ fn address_of(hit: &SearchHit) -> String {
 }
 
 fn address_of_element(element: &Element, identity: Option<&str>, path: Option<&str>) -> String {
-    if element.kind == ElementKind::Turn || element.kind == ElementKind::Row {
+    if element.kind == ElementKind::Turn {
         return element.address.clone();
+    }
+    if element.kind == ElementKind::Row {
+        return rebase_ddoc_address(&element.address, path);
     }
     let rebased = path.and_then(|path| {
         let suffix = element
@@ -830,6 +839,19 @@ fn address_of_element(element: &Element, identity: Option<&str>, path: Option<&s
         (stored_path != path).then(|| format!("{path}{suffix}"))
     });
     fs3_core::element_address(identity, rebased.as_deref().unwrap_or(&element.address))
+}
+
+fn rebase_ddoc_address(address: &str, path: Option<&str>) -> String {
+    let Some(path) = path else {
+        return address.to_string();
+    };
+    DdocAddress::parse(address).map_or_else(
+        |_| address.to_string(),
+        |mut address| {
+            address.file = path.to_string();
+            address.render()
+        },
+    )
 }
 
 /// Apply only ddoc-specific predicates, preserving the gate's three states.
@@ -1051,7 +1073,7 @@ mod tests {
 
     #[test]
     fn ddoc_metadata_is_serialized_on_rows_and_the_key_is_absent_on_code() {
-        let address = "docs/plan.dd.json#acceptance_criteria/ac-0001";
+        let address = "docs/owner.dd.json#acceptance_criteria/ac-0001";
         let mut meta = DdocMeta::new(
             address,
             "builder/plan",
@@ -1074,7 +1096,14 @@ mod tests {
         )
         .with_ddoc(meta);
         let row = serde_json::to_value(render(&hit(row))).expect("row hit serializes");
-        assert_eq!(row["address"], address);
+        assert_eq!(
+            row["address"],
+            "docs/plan.dd.json#acceptance_criteria/ac-0001"
+        );
+        assert_eq!(
+            row["ddoc"]["address"],
+            "docs/plan.dd.json#acceptance_criteria/ac-0001"
+        );
         assert_eq!(row["ddoc"]["state_stored"], "checked");
         assert_eq!(row["ddoc"]["state_derived"]["complete"], false);
 
