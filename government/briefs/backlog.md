@@ -1289,3 +1289,13 @@ leaving this file should name where it went.
     scope refused not silently broadened, coverage facet names the
     narrowed corpus), and reuse row 63's path_unmatched honesty so an
     unsatisfiable glob says so instead of reading as absence.
+
+75-NOTE (2026-08-31): possibly the SAME ROOT as pij's pre-bind/registration
+    window. Vicuna logged our false-death-notice report as their req-0003
+    and spotted it is adjacent to their req-0002/B-1 — one window, two
+    faces: there a pre-bind row is never adopted (a stamped rpc_port
+    strands on a phantom row); here the spawn-id is tombstoned before
+    registration resolves. Our 75(b)/(c) — E-AMBIG "cannot detect a
+    current session" on a REGISTERED omp seat — smells like the third
+    face of the same window. If vicuna closes that window, re-test row 75
+    before dispatching anything for it; it may close for free.
