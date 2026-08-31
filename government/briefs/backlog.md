@@ -1192,3 +1192,9 @@ leaving this file should name where it went.
     row 108 lists as a tenet candidate. Their reviewer also witnessed our
     lesson #1 (metadata --locked first) catching a real undeclared dep in
     their own review. The CI loan came back with interest.
+
+113-CLOSED (2026-08-31): PR #90 merged. PROVEN by execution, not by the
+    merge status: in the fixed run (33354294996) rust-cache instances went
+    2 -> 1 and "Unable to locate executable file: cargo" occurrences went
+    from every-run -> 0. Gate time unchanged (~5-7min, within normal
+    variance). Credit: pij-dominant-vicuna's reviewer.
