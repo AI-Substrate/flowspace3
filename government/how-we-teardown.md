@@ -90,6 +90,17 @@ scout is the same shape: mandate-bound, not activity-bound.
   mid-`rm` stay registered until the rm finishes; removing a worktree out from
   under a live rm turns a slow cleanup into a corrupt one.
 
+## Credit must outlive the seat
+
+Seats are ephemeral and `git log --format='%an'` is a NULL signal here (every
+seat commits under Jordan's identity), so a finding credited only to a seat name
+evaporates when that seat is torn down. Put the credit where the EVIDENCE lives:
+the verdict file, the review ddoc, the backlog row, the roster. Learned from
+vicuna 2026-08-31 — its reviewer found a real defect in our CI, its seat was
+retired before we could thank it, and the credit went into that unit's evidence
+trail with our run number and counts attached. Teardown destroys seats; it must
+never destroy attribution.
+
 ## The three lessons that cost us today
 
 1. **An isolation mechanism must ship with its reaper.** Per-seat
