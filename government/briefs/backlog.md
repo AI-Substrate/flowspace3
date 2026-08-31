@@ -1237,3 +1237,25 @@ leaving this file should name where it went.
     one human). Stated as a defect to detect, not a law to accept. Now
     three candidates on this row: the accept-law (dajeil), the
     reaper/verdict line (owl), and this one.
+
+115. **our own backlog is PROSE, not a ddoc — the most load-bearing
+    governance file we have has no state column, no schema, no
+    validation** (surfaced 2026-08-31 by vicuna asking for our spine
+    TEMPLATE, after Jordan ruled THEIR spine must be a ddoc). This file
+    is 1,239 lines of numbered markdown prose. Consequences already felt
+    today: row state lives in ad-hoc suffixes I invented as I went
+    (-CLOSED, -NOTE, -CORRECTION, -RESHAPE, -CLOSED-NO-DISPATCH), so
+    "what is open" is un-queryable and I answer it from memory; there is
+    no supersession pointer, so a reshaped row (99) and a corrected row
+    (106) look identical to a reader; and nothing validates it.
+    Ironic pair with row 114: the PRD is a ddoc that nobody reconciles,
+    the backlog is reconciled constantly but is not a ddoc.
+    SHAPE TO ADOPT (composed from what we already have): reconstruct/
+    spine's beat row {id, ts, kind, title, detail, quote, evidence} —
+    chronological, kind already includes `ruling`, quote holds Jordan's
+    verbatim words, evidence holds pointers — PLUS prd/requirements'
+    state, PLUS a superseded_by pointer (a bare state says a row is
+    superseded but not BY WHAT, which is the question a reader has).
+    Also missing: no gate validates any ddoc — our `docs` gate only
+    checks broken markdown links (.harness/extensions/checks/
+    extension.ts), and CI pins ddocs only to RENDER plan docs.
