@@ -1198,3 +1198,24 @@ leaving this file should name where it went.
     2 -> 1 and "Unable to locate executable file: cargo" occurrences went
     from every-run -> 0. Gate time unchanged (~5-7min, within normal
     variance). Credit: pij-dominant-vicuna's reviewer.
+
+114. **OUR PRD SPINE IS STALE — nothing forces reconciliation** (surfaced
+    2026-08-31 by vicuna's interview about our spine; I went to describe it
+    and found it rotted). docs/prd/base-prd.dd.json (governance branch):
+    60 rows, 47 checked / 13 unchecked, and the file has ONE commit — the
+    governance import. At least three unchecked rows shipped days ago and
+    their notes still name retired seats in the present tense: req-0045
+    "IN FLIGHT: dingo authoring..." (shipped — .agents/skills/flowspace/
+    SKILL.md + crates/cli/docs/agents.md exist), req-0050 "skunk
+    prototyping, no report yet" (shipped — crates/cli/src/render/surfaces/),
+    req-0053 "QUEUED: dingo unit 2" (shipped in v0.2.0 per roster).
+    LINKAGE IS WEAKER STILL: only 2 of 10 plans reference any req id, and
+    plan 009 — the biggest of the day — references none. So the spine
+    neither knows what shipped nor what work served it.
+    FIXES (needs a packet + owner): (a) a plan's done-bar must include
+    "names the req rows it advances, and re-states them at close-out";
+    (b) a check must cite a RECEIPT (sha/test/run), never a note in prose
+    — today's AC-with-receipt discipline applied one level up; (c) a
+    reconcile pass that flags any unchecked row whose note names a closed
+    seat; (d) decide whether the PRD reconciles at merge or at plan
+    close-out, and who owns it (currently: nobody, which is the defect).
