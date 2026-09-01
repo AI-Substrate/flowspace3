@@ -1702,3 +1702,25 @@ PROCESS NOTE, 2026-09-02 (o-prime against itself): the plan 010 reviewer
     the command, not the prose) belongs in the reviewer packet's
     handover section too. Adding it to packet-reviewer's i4 in the
     pij-team templates at the next drain.
+
+ROW 119 / PLAN 011 REVIEW RECORD (2026-09-02): PR #93 REQUEST CHANGES at
+    3a7124ba (330c0077 docs-only) — three findings, all measured, all
+    ruled FIX in the PR. F-0001 MAJOR: `ask --conversation <guid>` now
+    resolves index-wide but `with_corpus` drops the resolved anchor and
+    `search_filtered` still binds cwd repo/worktree, so a foreign-repo
+    pin and an UNANCHORED pin (the default `conversation import` shape,
+    repo NULL) return ok:true + an answer + zero hits + a billed loop —
+    where pre-PR the same call refused loudly at zero tokens. A new
+    member of the verdict-cannot-lie family, introduced by the plan
+    meant to close one. F-0002 MAJOR: the new catalog code fell through
+    the suffix mapping to HTTP 500 — a correct negative indistinguishable
+    from a dead daemon for the delivery-prober consumer; one-word rename
+    to …-NOT-FOUND → 404. F-0003: the `payload_in_scope` guard (PR #84's
+    whole compensating control) was defended only through a Flag-scoped
+    test where it is never reached; reviewer neutered the guard and 36
+    tests stayed green. TRUE: ac-0001/2/4/5; mutation redder than
+    claimed; census complete; HTTP verify rejects ?repo/?cwd with 400.
+    LESSON for the template: "unscopable by construction" must be
+    tested on EVERY transport, and a 'resolves' change must be paired
+    with a 'retrieves' assertion — resolution without retrieval is the
+    silent-empty shape.
