@@ -219,6 +219,31 @@ async fn openai_cap_rejection_is_typed_with_input_index() {
 }
 
 #[tokio::test]
+async fn openai_cap_rejection_parses_reported_4096_limit() {
+    let detail =
+        r#"{"error":{"message":"Invalid 'input[0]': maximum input length is 4096 tokens"}}"#;
+    let stub = StubServer::answering(StatusCode::BAD_REQUEST, detail).await;
+    let embedder = OpenAiEmbedder::new(
+        "future-embedding-model",
+        Some(stub.endpoint.clone()),
+        "test-key",
+    );
+
+    let error = embedder
+        .embed(&["too dense".to_string()])
+        .await
+        .expect_err("the provider reports its own cap");
+    assert!(matches!(
+        error,
+        Error::InputTooLong {
+            input_index: Some(0),
+            max_tokens: 4096,
+            ..
+        }
+    ));
+}
+
+#[tokio::test]
 async fn openai_unrelated_400_is_not_a_cap_rejection() {
     let stub = StubServer::answering(
         StatusCode::BAD_REQUEST,

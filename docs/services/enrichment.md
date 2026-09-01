@@ -111,13 +111,14 @@ effective two bytes per token. `chunk_plan` uses that same helper, so its 7,500
 token window is 15,000 bytes, with 600 bytes of overlap. No tokenizer dependency
 is needed, and every byte remains represented by overlapping chunks.
 
-Content can still tokenize denser than the estimate. OpenAI and Azure classify
-only the 8192-token input-cap 400 as `Error::InputTooLong`. When the body names
-`input[N]`, the daemon re-splits that member. When the index is absent or
-invalid, it bisects the rejected call until the member is isolated. One bounded
-heal round tightens the member from the two-byte estimate to one byte per token,
-the provable floor. Exhaustion is terminal and names the source hash, original
-byte length, and final ratio.
+Content can still tokenize denser than the estimate. OpenAI, Azure, and
+OpenAI-compatible embedding adapters classify a 400 whose body reports
+`maximum input length is N` as `Error::InputTooLong`, carrying the reported cap.
+When the body names `input[N]`, the daemon re-splits that member. When the index
+is absent or invalid, it bisects the rejected call until the member is isolated.
+One bounded heal round tightens the member from the two-byte estimate to one
+byte per token, the provable floor. Exhaustion is terminal and names the source
+hash, original byte length, and the actual window-bytes/token-cap ratio.
 
 Provider calls write nothing incrementally. After every sub-call succeeds,
 chunks receive contiguous per-source numbers and the complete vector set is
@@ -132,8 +133,9 @@ model:
 | provider | cap | why |
 | --- | --- | --- |
 | OpenAI / Azure embeddings | 8192 | `text-embedding-3-*` input cap |
+| openai-compat embeddings | 8192 | current adapter declaration; provider rejection still carries its reported cap |
 | OpenAI / Azure chat | 32,000 | bounded share of the context window |
-| openai-compat | 6,000 | smallest supported self-hosted context |
+| openai-compat chat | 6,000 | smallest supported self-hosted context |
 | local (`fastembed`) | `usize::MAX` | tokenizer truncates internally instead of rejecting |
 
 Local truncation remains unmarked because `fastembed` does not expose the model

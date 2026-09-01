@@ -197,9 +197,11 @@ impl OpenAiCompatConfig {
         if !status.is_success() {
             let retry_after = retry::retry_after_of(&response);
             let detail = response.text().await.unwrap_or_default().trim().to_string();
+            let error = crate::openai::embedding_input_too_long(route, status, &detail)
+                .unwrap_or_else(|| Error::Provider(format!("POST {url}: {status}: {detail}")));
             return Err(PostFailure::Rejected(Rejection {
                 status,
-                error: Error::Provider(format!("POST {url}: {status}: {detail}")),
+                error,
                 detail,
                 retry_after,
             }));

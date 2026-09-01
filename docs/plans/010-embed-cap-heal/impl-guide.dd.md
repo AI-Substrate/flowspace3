@@ -11,7 +11,7 @@
 | --- | --- |
 | title | impl-guide — embed-cap-heal |
 | plan | docs/plans/010-embed-cap-heal/plan.dd.json |
-| mode | &lt;build \| investigate — investigate reinterprets the sections: a unit is a PROBE varying exactly one variable, its interface is the frozen EVIDENCE CONTRACT every probe returns, its done is the receipt (carrying observed toolchain versions), and composition is the decision matrix the composer assembles&gt; |
+| mode | build |
 | updated | 2026-09-02 |
 
 <a id="architecture"></a>
@@ -24,41 +24,55 @@ One seam, three touches. (1) PROVIDER ADAPTERS classify: the cap 400 becomes a d
 
 ## Fan out
 
-Fan out: NO. One unit, one coder, no PM — o-prime coordinates directly (Jordan, 2026-09-02). Sequential with plan 011: this plan first; 011 dispatches only after this coder's ack lands through pij.
+| Field | Value |
+| --- | --- |
+| decision | NO |
+| rationale | One unit, one coder, no PM; o-prime coordinates directly. Sequential with plan 011: plan 010 lands first. |
 
 <a id="units"></a>
 
 ## Units
 
-| id | name | paths | responsibility | interface | test_strategy | depends_on | wave | note | title | surface | contract | done_when |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| u1 | — | — | — | — | — | — | — | — | heal + align + classify | crates/core/src/tokens.rs, crates/daemon/src/enrich.rs, crates/providers/src/{openai,azure_openai}.rs (error classification only), their tests, crates/testkit fixtures you add | Cap rejection → distinct error; embed path re-splits bounded and fails named; chunk_plan honours FILL; measurements reported. | ac-0001–0004 by test in the worktree; ac-0005–0006 from prod with o-prime after the bounce. |
+| id | name | paths | responsibility | interface | test_strategy | depends_on | wave | note |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| u1 | heal + align + classify | crates/core/src/{tokens,error}.rs; crates/daemon/src/{enrich,answer}.rs; crates/providers/src/{openai,azure_openai,openai_compat}.rs; their tests; docs/services/enrichment.md | Classify hosted embedding-cap rejections, heal them by bounded re-splitting, align chunk planning with FILL, and report deterministic and production evidence. | A provider cap rejection becomes Error::InputTooLong with an optional input index and reported cap. The embed path re-splits the named member or bisects an unnamed rejection, writes chunks atomically, and fails terminally with source hash, original bytes, and final ratio at the bound. | AC-0001 through AC-0004 are proved in the worktree by chunk measurement, adapter stub, dense-provider heal, mutation, uniqueness, and terminal exhaustion tests. AC-0005 and AC-0006 are proved from production with o-prime after merge and bounce. | none | 1 | Single coder reports directly to o-prime. |
 
 <a id="isolation"></a>
 
 ## Isolation
 
-Worktree ../fs3-embed-cap-heal on branch 010-embed-cap-heal (scaffolded by harness team new). Per-seat CARGO_TARGET_DIR. Per-run test DBs; the FS3_TEST_DATABASE_URL guard is correct behaviour. NEVER test against prod :7373 — read-only `flowspace3 status` / search against prod is fine and required for ac-0005/0006. ABSOLUTE PATHS for every read and edit (spawn-dir vs worktree resolution, proven 2026-08-28). pij is unstable (government/pij-two-daemons.md on prime-governance; summary in your packet): if `pij send` fails twice, write .harness/temp/agent/embed-cap-heal-ack.md / -report.md in your worktree and STOP — o-prime polls. Never `pij adopt`.
+| Field | Value |
+| --- | --- |
+| mode | single worktree coder |
+| note | Worktree /Users/jordanknight/substrate/flowspace/fs3-embed-cap-heal on branch 010-embed-cap-heal, with a per-seat CARGO_TARGET_DIR and per-run test databases selected by FS3_TEST_DATABASE_URL. Production :7373 is read-only for status, search, and verification. Absolute paths are required for file reads and edits. The rs-resident coder reports through .harness/temp/agent files and never runs pij adopt. |
 
 <a id="composition"></a>
 
 ## Composition
 
-None — single unit. o-prime merges (squash), bounces prod, and runs the drain with the coder for ac-0005/0006.
+| Field | Value |
+| --- | --- |
+| composer | o-prime (pij-instant-lynx) |
+| steps | Single-unit branch opens PR into main; o-prime coordinates delta review, merge, duplicate-job repair, production bounce, and the post-bounce drain with the coder. |
+| integration_proof | Local harness checks and PR CI prove AC-0001 through AC-0004. Production status, five final job rows, and a search hit from recovered conversation c5a6be2d prove AC-0005 and AC-0006. |
 
 <a id="review"></a>
 
 ## Review
 
-Cross-model: Claude (github-copilot/claude-opus-5, effort high), spawned by o-prime only once the PR is up. Judges plan fidelity, the mutation claim (does the test really fail without the heal?), classification exactness, and that exhaustion cannot loop.
+| Field | Value |
+| --- | --- |
+| when | After PR opens and after each ruled fold-in SHA |
+| inputs | Plan fidelity, mutation behavior, exact classification across OpenAI, Azure OpenAI, and OpenAI-compatible embedders, bounded healing, atomic chunk numbering, and terminal exhaustion. |
+| model_override | github-copilot/claude-opus-5, high effort |
 
 <a id="risks"></a>
 
 ## Risks
 
-| id | text | risk | mitigation |
-| --- | --- | --- | --- |
-| — | — | The provider's error body does not name which input[N] overflowed for every adapter | bisect the batch (halve, re-issue) — bounded by the same round constant; state which path each adapter takes |
-| — | — | Re-issuing a re-split item double-embeds chunk_no collisions | chunk rows for the item are keyed (source_hash, kind, chunk_no, model); re-plan replaces the item's chunk set atomically or upserts — test asserts no duplicate rows |
-| — | — | FILL alignment over-splits everything and doubles embed cost | that is what ac-0001's measurement is for; if the delta is large, ship the heal alone and report — o-prime rules |
-| — | — | The five prod jobs have attempts=3 and may not be re-picked after deploy | coder states the exact mechanism that re-queues them (or the one-line requeue o-prime runs at bounce) BEFORE the PR, so the drain is planned not hoped |
+| id | text |
+| --- | --- |
+| risk-1 | A provider cap body may omit input[N]. Mitigation: keep the rejection typed with input_index=None and bisect the failed call until a singleton is isolated. |
+| risk-2 | Re-splitting can collide on chunk numbers. Mitigation: hold all vectors in memory, assign contiguous per-source numbers only after every call succeeds, and write once atomically. |
+| risk-3 | FILL alignment increases chunks on oversized content. Measurement is 41 to 62 on the ruled whale corpus; o-prime ruled alignment ships because ordinary inputs below 15,000 bytes are unchanged. |
+| risk-4 | The five production jobs exhausted attempts. Boot requeue covers non-terminal rows only after o-prime repairs the duplicate failed dedupe key that would collide on jobs_live_dedupe_idx. |

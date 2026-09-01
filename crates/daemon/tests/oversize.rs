@@ -490,7 +490,10 @@ async fn cap_rejection_exhaustion_is_terminal_and_named() {
         message.contains(&text.len().to_string()),
         "byte length missing: {message}"
     );
-    assert!(message.contains("1 byte/token"), "ratio missing: {message}");
+    assert!(
+        message.contains("7500 bytes/7500 tokens"),
+        "ratio missing: {message}"
+    );
 
     let swept = fs3_store::requeue_failed(&state.db, &[enrich::SUMMARIZE, enrich::EMBED])
         .await

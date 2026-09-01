@@ -56,13 +56,13 @@
           "id": "ac-0003",
           "state": "checked",
           "claim": "Bounded and named: with the re-split rounds exhausted (fake provider rejecting at every ratio), the job fails once with a message containing the item identity, byte length, and the final ratio; it is marked terminal so the boot sweep does not revive it. Asserted by test.",
-          "receipt": "cap_rejection_exhaustion_is_terminal_and_named passed: one failed job; message contains source hash, 20872 bytes, final ratio 1 byte/token; terminal=true; requeue_failed sweep affected 0"
+          "receipt": "cap_rejection_exhaustion_is_terminal_and_named passed: one failed job; message contains source hash, 20872 bytes, final ratio 7500 bytes/7500 tokens; terminal=true; requeue_failed sweep affected 0. Round-2 ratio test proves no integer truncation."
         },
         {
           "id": "ac-0004",
           "state": "checked",
           "claim": "Classification is exact: only the provider's cap rejection triggers the heal; a different 400 (e.g. bad request body) still fails as before. Asserted by test on both openai and azure_openai adapters.",
-          "receipt": "cargo test -p fs3-providers cap_rejection: 4 passed; OpenAI and Azure cap 400s map to Error::InputTooLong with input index; unrelated 400 controls remain Error::Provider"
+          "receipt": "cargo test -p fs3-providers cap_rejection -- --test-threads=2: 7 passed; OpenAI, Azure, and OpenAI-compatible cap 400s map to Error::InputTooLong; reported 4096 cap is parsed; unrelated 400 controls remain Error::Provider"
         },
         {
           "id": "ac-0005",

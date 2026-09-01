@@ -77,18 +77,13 @@ fn chunk_plan(text: &str, window_tokens: usize, overlap_tokens: usize) -> Vec<Ch
     );
 
     let window_bytes = fs3_core::tokens::input_budget_bytes(window_tokens).max(1);
-    let overlap_bytes = overlap_tokens
-        .saturating_mul(fs3_core::BYTES_PER_TOKEN)
-        .min(window_bytes.saturating_sub(1));
+    let overlap_bytes = overlap_tokens.saturating_mul(fs3_core::BYTES_PER_TOKEN);
     chunk_plan_bytes(text, window_bytes, overlap_bytes)
 }
 
 fn chunk_plan_bytes(text: &str, window_bytes: usize, overlap_bytes: usize) -> Vec<ChunkText> {
     assert!(window_bytes > 0, "a chunk window must be non-zero");
-    assert!(
-        overlap_bytes < window_bytes,
-        "chunk overlap must be smaller than its window"
-    );
+    let overlap_bytes = overlap_bytes.min(window_bytes.saturating_sub(1));
     if text.len() <= window_bytes {
         return vec![ChunkText {
             chunk_no: 0,
@@ -137,10 +132,22 @@ fn chunk_plan_bytes(text: &str, window_bytes: usize, overlap_bytes: usize) -> Ve
     chunks
 }
 
+fn heal_window_bytes(round: usize) -> usize {
+    fs3_core::tokens::input_budget_bytes(CHUNK_WINDOW_TOKENS)
+        .checked_shr(round as u32)
+        .unwrap_or(1)
+        .max(1)
+}
+
+fn heal_ratio(window_bytes: usize) -> String {
+    format!("{window_bytes} bytes/{CHUNK_WINDOW_TOKENS} tokens")
+}
+
 struct PreparedChunk<'a> {
     source_hash: &'a str,
     source_bytes: usize,
     heal_round: usize,
+    window_bytes: usize,
 }
 
 struct PreparedCall<'a> {
@@ -788,6 +795,7 @@ pub async fn embed_items(
     let cap = embedder.max_input_tokens();
     let mut prepared = Vec::with_capacity(items.len());
     let mut texts = Vec::with_capacity(items.len());
+    let initial_window_bytes = heal_window_bytes(0);
     for (hash, text) in &items {
         for chunk in chunk_plan(text, CHUNK_WINDOW_TOKENS, CHUNK_OVERLAP_TOKENS) {
             if fs3_core::estimate_tokens(&chunk.text) > cap {
@@ -803,6 +811,7 @@ pub async fn embed_items(
                 source_hash: hash,
                 source_bytes: text.len(),
                 heal_round: 0,
+                window_bytes: initial_window_bytes,
             });
             texts.push(chunk.text);
         }
@@ -875,29 +884,21 @@ pub async fn embed_items(
                 let chunk = call.chunks.remove(index);
                 let text = call.texts.remove(index);
                 if chunk.heal_round >= MAX_HEAL_ROUNDS {
-                    let ratio = fs3_core::tokens::input_budget_bytes(CHUNK_WINDOW_TOKENS)
-                        .checked_shr(chunk.heal_round as u32)
-                        .unwrap_or(1)
-                        .max(1)
-                        / CHUNK_WINDOW_TOKENS;
                     return Err(Failure::new(
                         &catalog::PROVIDER_FAILED,
                         format!(
-                            "input {} ({} bytes) still exceeds the provider cap after {} heal round(s); final ratio {} byte/token",
+                            "input {} ({} bytes) still exceeds the provider cap after {} heal round(s); final ratio {}",
                             chunk.source_hash,
                             chunk.source_bytes,
-                            MAX_HEAL_ROUNDS,
-                            ratio.max(1)
+                            chunk.heal_round,
+                            heal_ratio(chunk.window_bytes)
                         ),
                     )
                     .retryable(false));
                 }
 
                 let next_round = chunk.heal_round + 1;
-                let window_bytes = fs3_core::tokens::input_budget_bytes(CHUNK_WINDOW_TOKENS)
-                    .checked_shr(next_round as u32)
-                    .unwrap_or(1)
-                    .max(1);
+                let window_bytes = heal_window_bytes(next_round);
                 let overlap_bytes = CHUNK_OVERLAP_TOKENS * fs3_core::BYTES_PER_TOKEN;
                 let replacements = chunk_plan_bytes(&text, window_bytes, overlap_bytes);
                 for replacement in replacements.into_iter().rev() {
@@ -907,6 +908,7 @@ pub async fn embed_items(
                             source_hash: chunk.source_hash,
                             source_bytes: chunk.source_bytes,
                             heal_round: next_round,
+                            window_bytes,
                         },
                     );
                     call.texts.insert(index, replacement.text);
@@ -1098,6 +1100,20 @@ mod tests {
             wider_than_window
         );
         assert_eq!(tiny.len(), 2, "one wide character per progressing chunk");
+    }
+
+    #[test]
+    fn chunk_plan_bytes_clamps_overlap_below_tiny_window() {
+        let text = ascii_bytes(1_000);
+        let chunks = chunk_plan_bytes(&text, 468, 600);
+        assert!(chunks.iter().all(|chunk| chunk.text.len() <= 468));
+    }
+
+    #[test]
+    fn heal_ratio_reports_window_and_tokens_without_integer_truncation() {
+        let window_bytes = heal_window_bytes(2);
+        assert_eq!(window_bytes, 3_750);
+        assert_eq!(heal_ratio(window_bytes), "3750 bytes/7500 tokens");
     }
 
     #[test]

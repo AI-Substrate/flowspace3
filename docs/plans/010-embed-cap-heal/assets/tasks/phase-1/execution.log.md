@@ -52,3 +52,17 @@ Status: blocked pending o-prime's Jordan-approved duplicate repair and bounce.
 Pre-bounce evidence: embed failed=5. Jobs 1316706 and 1323215 share the `043365…` dedupe key; `jobs_live_dedupe_idx` means the automatic multi-row requeue can collide unless o-prime repairs the duplicate first. This pre-existing store defect is outside plan 010's fence; recorded as an AC-0005 precondition rather than changed here.
 
 
+
+## Review fold-ins
+
+Status: implementation complete; final gate pending.
+
+- OpenAI-compatible embeddings now use the same typed cap classifier as OpenAI and Azure. The positive stub failed before the fix and passes after; its unrelated-400 control remains generic.
+- The classifier parses the provider-reported cap. A 4096 fixture failed against the hardcoded 8192 matcher and passes after restoration.
+- `chunk_plan_bytes` owns overlap clamping, including the round-5 shape `(468, 600)`. Removing the clamp makes the dedicated test panic.
+- Terminal ratio text carries the actual window and token-cap numbers. Reverting to integer division makes the round-2 test report false `1 byte/token` and fail.
+- `impl-guide.dd.json` was migrated to the current object schema without dropping its architecture, unit, isolation, composition, review, or risk content. `harness plan validate` reports zero errors and warnings.
+- `docs/services/enrichment.md` now names OpenAI-compatible embedding classification and separates its 8192 embed cap from the 6000 chat cap.
+
+Focused receipts: provider cap-rejection tests 7/7; chunk-plan tests 7/7 with alignment counts unchanged; ratio test 1/1; oversize suite 12/12.
+

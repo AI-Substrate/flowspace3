@@ -8,7 +8,9 @@
 //! The stub is a fake service — see `tests/common/mod.rs`. No key, no network.
 
 use axum::http::StatusCode;
-use fs3_core::{ChatMessage, ChatProvider, Element, ElementKind, Embedder, Span, Summarizer};
+use fs3_core::{
+    ChatMessage, ChatProvider, Element, ElementKind, Embedder, Error, Span, Summarizer,
+};
 use fs3_providers::{
     DEFAULT_MAX_TOKENS, OpenAiCompatChatClient, OpenAiCompatConfig, OpenAiCompatEmbedder,
     OpenAiCompatSummarizer, OpenAiSummarizer, embeddings_unsupported,
@@ -310,6 +312,49 @@ async fn hosted_embeddings_refuse_a_width_other_than_the_configured_space() {
         message.contains("returned 2 dimensions, configured 3"),
         "{message}"
     );
+}
+
+#[tokio::test]
+async fn openai_compat_cap_rejection_is_typed_with_input_index() {
+    let detail =
+        r#"{"error":{"message":"Invalid 'input[1]': maximum input length is 8192 tokens"}}"#;
+    let stub = StubServer::answering(StatusCode::BAD_REQUEST, detail).await;
+    let embedder = OpenAiCompatEmbedder::new(
+        OpenAiCompatConfig::new(format!("{}/v1", stub.endpoint)).with_model("acme/embed"),
+    );
+
+    let error = embedder
+        .embed(&["alpha".to_string(), "too dense".to_string()])
+        .await
+        .expect_err("the provider rejects input[1]");
+    assert!(matches!(
+        error,
+        Error::InputTooLong {
+            input_index: Some(1),
+            max_tokens: 8192,
+            ..
+        }
+    ));
+}
+
+#[tokio::test]
+async fn openai_compat_unrelated_400_is_not_a_cap_rejection() {
+    let stub = StubServer::answering(
+        StatusCode::BAD_REQUEST,
+        r#"{"error":{"message":"request body is malformed"}}"#,
+    )
+    .await;
+    let embedder = OpenAiCompatEmbedder::new(
+        OpenAiCompatConfig::new(format!("{}/v1", stub.endpoint)).with_model("acme/embed"),
+    );
+
+    assert!(matches!(
+        embedder
+            .embed(&["alpha".to_string()])
+            .await
+            .expect_err("the body is rejected"),
+        Error::Provider(_)
+    ));
 }
 
 #[tokio::test]
