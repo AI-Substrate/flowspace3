@@ -1364,3 +1364,102 @@ DEGRADED-ATTRIBUTION TALLY (2026-09-01): now FIVE instances — four from
     collector probe and the note verification share ONE measured
     readiness state, or retain/replay commit events when a connected
     probe is followed by a bounded note miss. Route to the git-ai owners.
+
+119. **an explicit `conv:` address is silently WORKTREE-scoped, and the
+    miss claims global absence** (lynx, 2026-09-02, measured while
+    answering meadowlark's read-back question). `flowspace3 get
+    conv:<guid>#t1` resolves only conversations anchored to the worktree
+    you are standing in; anything else returns FS3-E-QUERY-NOT-FOUND
+    with the message "no conversation <guid> is indexed" — which is
+    FALSE, since `conversation list` shows that same guid one command
+    earlier. MEASURED: conv:8c285d65 (flowspace3 repo, anchor worktree
+    fs3-embed-split, since tidied) -> NOT-FOUND from the flowspace3 main
+    checkout; ok:true with `--repo all`. Also NOT-FOUND for any pij or
+    dd conversation until `--repo all` or the matching cwd. Two things
+    are wrong: (a) `get`'s own help says "from the INDEX, so it answers
+    for every registered repository, not only the one you are standing
+    in" — the shipped behaviour contradicts the documented contract; (b)
+    the error asserts global absence for what is a scope decision, and
+    does not name the flag that widens it. This is the verdict-cannot-lie
+    family (107/111/112/113): a probe that cannot distinguish "absent"
+    from "out of my scope" is a probe that reports data loss. It nearly
+    cost a peer government 250 wasted backfill dispatches — meadowlark's
+    `--verify` would have read "never delivered" for conversations
+    sitting in the index. ENCODING: an explicit `conv:<guid>` is
+    ADDRESS-AUTHORITATIVE (this is row 101, now with a measurement
+    behind it — my recommendation to Jordan is that a guid the caller
+    typed in full is not a search, and scope should not silently narrow
+    it); failing that, the miss must say "not in this scope" and print
+    the widening flag. Consider also a first-class `conversation verify
+    --harness <h> --session <id>` so the guid derivation lives on our
+    side of the wire instead of being reimplemented by every client.
+
+120. **`status` counts failed jobs and no verb will name them** (lynx,
+    2026-09-02, hit while sizing meadowlark's backfill). `flowspace3
+    status` reports `{kind: embed, state: failed, count: 5,
+    with_error: 5}` and `last_error` for ONE of them. There is no verb
+    that lists WHICH jobs failed, or their dedupe keys, or their
+    attempt counts. To answer "is the conversation corpus affected, or
+    only code?" I had to psql the prod database by hand and read
+    `select dedupe_key, attempts, terminal from jobs where
+    state='failed'`. An operator without database access cannot answer
+    that question at all, and an AGENT — our actual audience — certainly
+    cannot. A count without an identity is the same defect as a verdict
+    without a reason. ENCODING: `flowspace3 doctor jobs` (or `status
+    --failed`) listing failed/terminal jobs with dedupe key, kind,
+    attempts, and the truncated error. Cheap; unblocks every future
+    "what is stuck" question. Row 119's family.
+
+121. **P1 — fs3's OWN `--pij` seat route resolves through a legacy-only
+    door, so 250 of 252 live rs seats cannot be ingested** (lynx,
+    2026-09-02, measured after meadowlark's packet named the harness
+    half of it). pij has split into two daemons — legacy (TS, store
+    `~/.pij/<id>.json`) and rs (Rust, 127.0.0.1:7461, `~/.pij-rs/
+    pij.sqlite`), with one `pij` binary routing BY VERB. `flowspace3
+    conversation ingest --pij <SEAT>` resolves the seat by shelling out
+    to `pij sessions --json` (crates/daemon/src/convo_ingest.rs:773) —
+    and `sessions` is legacy-routed. MEASURED on this machine:
+    `pij sessions --json` = 1198 rows; `pij-rs list` = 252 seats; rs
+    seats resolvable through our join = **2 of 252**. Meadowlark
+    measured 245 of 248 unresolvable from the harness resolver's end
+    (`readPijRegistry`, `~/.pij` only). Same defect, two ends: both
+    readers are legacy-only views of a store that split underneath
+    them, and the failure is SILENT — the seam discards an unresolvable
+    identity by design, so nothing reaches intake and no error appears
+    anywhere. Their index result: 45 conversations, zero from any pij
+    worktree.
+    MY EXPOSURE: 1 rs-resident seat in a flowspace folder today, so my
+    corpus is healthy by luck, not design — the next omp boot or `pij
+    adopt` moves a worker of mine to rs and it silently stops ingesting.
+    ALSO EXPLAINS row 116's coder friction (CONF-001, DL-002, CONF-002,
+    DL-003 — two BLOCKING): `pij whoami` said E-AMBIG while `pij adopt`
+    refused claiming the seat was already reachable. I read that as a
+    registration papercut. It was rs answering for a legacy seat. A
+    contradictory recovery loop seen from a coder with no idea two
+    daemons exist.
+    RULING (o-prime, subject to Jordan): fs3 OWNS intake-side identity —
+    we already hold the seat route, so fixing it here gives every
+    harness client the fix for free and keeps store knowledge in one
+    place. CONDITION: fs3 must not learn a second private store layout
+    either. Preferred fix is a generation-agnostic identity contract
+    FROM PIJ (`pij sessions --json` unioning both stores), which makes
+    our change a version floor and a test; the fallback — unioning
+    `pij sessions` + `pij-rs list` inside the daemon — is strictly worse
+    because then two codebases encode the split. Meadowlark carries the
+    ask to pij o-prime (still-weasel); the answer decides the packet's
+    size. Their backfill of ~250 seats waits on this AND on row 117.
+
+ROW 117 ESCALATED (2026-09-02): now FIVE failed embed jobs, and the
+    fifth — `embed:conv:recovery:raw:c5a6be2d…`, dated 2026-09-01 — is a
+    CONVERSATION job, not code. So the estimation gap is live on the
+    exact content class a peer government is about to send us ~250 seats
+    of. Prod corpus for scale: 45 conversations / 55,144 turns /
+    embeddings table 3.9 GB / database 7.3 GB; meadowlark's backfill is
+    plausibly a 5x increase in the turn corpus, and every oversize turn
+    in it lands silently in the failed bucket (see row 120 — we cannot
+    even enumerate them without psql). Row 117 is therefore no longer a
+    named residual, it is BLOCKING A PEER GOVERNMENT'S WORK, and goes
+    to the front of the dispatch batch. Fix option (c) — treat the
+    provider's cap rejection as a signal and re-split automatically —
+    confirmed as the shape I want, because it survives the next
+    tokenizer change instead of re-tuning a constant.
