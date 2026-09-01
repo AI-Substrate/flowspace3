@@ -1613,3 +1613,25 @@ ROW 121 — CLAUDE RS SEATS NOW INGEST, PROVEN IN OUR INDEX (meadowlark,
     is the isolation the guard was pretending we had; until then, one
     DB-heavy job at a time (serialized gates, ruled today). Row 110/118
     family. Backend exit code 2 root cause not determinable from logs.
+
+125. **dot-directories are excluded at INDEX time, so `--path .pi/**`
+    (and any hidden tree) is unsearchable — and the honest
+    `path_unmatched` hides the real cause** (pij coder via weasel, plan
+    124 DL-002, 2026-09-02; characterised read-only by lynx). Measured
+    against the pij root: `worktree_files` rows with path LIKE '.pi/%'
+    = **0**, `tree .pi` → NOT-FOUND, while `.pi/extensions/` holds real
+    source on disk (file-watch-notify, image-see, minih-workbench…). So
+    the glob is not the defect — the scanner never indexed the tree.
+    `.pi/extensions` is pij's actual product surface for extensions;
+    `.harness/` (our governance + extensions), `.agents/skills/`,
+    `.github/workflows/` are the same class: dot-prefixed directories
+    that ARE the codebase. Blanket hidden-dir exclusion is wrong for
+    agent repos. ENCODING: (a) index dot-directories by default, keeping
+    an explicit deny-list (`.git`, `target`, `node_modules`, and
+    `.gitignore`-derived); (b) when a --path glob matches nothing, the
+    `path_unmatched` detail should say WHETHER the prefix exists on disk
+    but is excluded by an index rule — "not indexed (hidden dir rule)"
+    vs "no such path" — row 119's two-messages principle again; (c) a
+    `flowspace3 tree` row / doctor line listing what the index rules
+    skipped for this root. Detail file:
+    ~/pi-hacking/pij-worktrees/pij-governance/.harness/government/observations/2026-09-02-s124-hawk.md
