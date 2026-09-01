@@ -1,0 +1,19 @@
+government/rulings/2026-09-02-small-prod-repairs-are-oprimes.md
+  s_0ce02639c40511::t_5bc5b44f60c29f 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3a4139079ef967ce5fcc779bf437817d07aef057",
+  "prompts": {},
+  "sessions": {
+    "s_0ce02639c40511": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b95239d-d05a-44e7-ad9d-ecc36e15c1ca",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
