@@ -1463,3 +1463,50 @@ ROW 117 ESCALATED (2026-09-02): now FIVE failed embed jobs, and the
     provider's cap rejection as a signal and re-split automatically —
     confirmed as the shape I want, because it survives the next
     tokenizer change instead of re-tuning a constant.
+
+ROW 119 GAINS A NAMED CONSUMER AND A DELIVERABLE (2026-09-02, after
+    meadowlark carried A1/A2). `conversation verify --harness <h>
+    --session <id>` is now a REQUIRED part of row 119's packet, not an
+    optional addition. Contract agreed with the consumer, who will hold
+    us to it: exit 0 + `ok:true` => delivered; a DISTINCT not-indexed
+    error code => not delivered; and it must be **repo-unscoped by
+    construction** — row 119's `--repo all` trap must be impossible to
+    hit in this verb, not merely documented around. Rationale: the guid
+    derivation (convo_ingest.rs:342, with the forced version/variant
+    nibbles) belongs on OUR side of the wire; every client that
+    reimplements it is a client that can drift from it silently.
+    Meadowlark has committed to shipping NO `--verify` at all until this
+    exists, rather than ship one that can be held wrong — so this verb
+    is on a peer government's critical path, same as row 117.
+
+ROW 121 AMENDED — WE CANNOT FIX THIS ALONE TODAY, AND MUST NOT TRY
+    (2026-09-02, weasel's contract answer via meadowlark:
+    `pij/.harness/temp/weasel-identity-contract-answer.md`). Two facts
+    that change the packet:
+    1. **No generation-agnostic identity verb exists.** `pij whoami
+       --json` returns E-RS on every seat. The sanctioned surfaces are
+       `pij-rs list` (rs) and `pij state <id> --json` / `~/.pij/<id>.json`
+       (legacy).
+    2. **rs rows carry NO inner session id.** This is the decisive one.
+       My stated fallback — union `pij sessions` + `pij-rs list` inside
+       the daemon — WOULD NOT WORK EVEN IF I BUILT IT: an rs row cannot
+       be resolved to a native session at all right now. The fallback
+       was not merely "strictly worse", it was impossible, and I did not
+       know that when I offered it. Recording the correction because the
+       reasoning, not just the conclusion, is what a future seat needs.
+    Filed upstream as pij **req-0033**: rs rows gain `session`, and
+    whoami answers under rs. Meadowlark has sent the union ask in our
+    preferred shape — `pij sessions --json` returning legacy union rs
+    with `{id, harness, session, folder, generation}` — as req-0033's
+    concrete scope, and relays the answer when it arrives.
+    STANDING INSTRUCTION until then: **row 121 is a version floor in
+    waiting, not a packet.** Do not build a second store reader in fs3.
+    Any seat that picks this up should verify req-0033 has landed
+    before writing a line.
+    MEANWHILE the exposure is unchanged and unmitigated: an rs-resident
+    seat's conversation is silently not ingested. Meadowlark's resolver
+    routes around it for CLAUDE seats by reading the native session env
+    (`CLAUDE_CODE_SESSION_ID`, 16 rs seats resolvable today with no pij
+    dependency) and handing us `--session`/`--harness`, which our
+    existing native route already serves — so that path needs nothing
+    from us. pi/omp seats stay dark until req-0033.
