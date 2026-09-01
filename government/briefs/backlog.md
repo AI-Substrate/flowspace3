@@ -1739,3 +1739,26 @@ PLAN 010 DELTA REVIEW (2026-09-02): APPROVE at 3606c139,
     two measured numbers instead of a quotient. Reviewer also recorded a
     wrong first revert against itself. #92 to merge train; bounce HELD on
     Jordan's row-123 GO.
+
+PLAN 011 DELTA REVIEW (2026-09-02): APPROVE at a80e9a5. All three
+    fixes defended by their own tests; f-0002 needed TWO mutations
+    because the code-string assertion fires before — and masks — the
+    wire-status assertion the finding was about (lesson: assert the
+    thing the finding names, in the order it can be masked). The seam
+    the f-0001 fix CREATES (pinned mode now runs with the tool scope
+    wide open, leaving `guard_address` as the sole confinement) was
+    hunted unprompted and holds: foreign turn and bare foreign
+    conversation refused, pinned transcript readable. Explicit --repo
+    mismatch still refuses loudly.
+
+127. **`meta.scope` on a pinned ask reports the PRE-widening scope**
+    (reviewer top-sloth f-0014, 2026-09-02, explicitly non-blocking).
+    After #93, a pinned `ask --conversation` widens its retrieval scope to
+    the resolved transcript, but `http.rs` builds `meta` before widening
+    (:167-169, attached :222), so the envelope can say `scope.repo =
+    <cwd repo>, source = cwd` for a run that read index-wide inside a
+    foreign transcript. Model-facing `scope_line` is correct;
+    `coverage.corpus.conversation.guid` names the true corpus. scope.rs's
+    own doc says the field exists "so the scope is never something a
+    consumer has to infer". Cheap: build `meta` from the widened scope,
+    or omit `scope.repo` when a pin widened it. Row 119 family.
