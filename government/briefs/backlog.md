@@ -1341,3 +1341,26 @@ leaving this file should name where it went.
       risk, fired 4 times on one source. Named, measured, not hidden.
     The plan's headline promise holds for everything except inputs whose
     real token density beats the bytes/3 estimate; row 117 closes that.
+
+118. **doctor_daemon CLI tests race CREATE DATABASE under concurrent
+    suite processes** (ask-path-scope coder DL-006, 2026-08-31). With an
+    isolated FS3_TEST_DATABASE_URL, `cargo test -p fs3-cli` runs its
+    integration binaries concurrently and five doctor_daemon cases raced
+    on pg_database_datname_index; the same binary passed 7/7 with
+    --test-threads=1. So the DEFAULT proof command is not race-free —
+    an innocent seat gets a red it must reason its way out of, same
+    family as row 109's flaky gate. Encoding: make doctor test-DB
+    creation idempotent under concurrent processes, or pave the CLI
+    suite with the serialization it needs so the default command is
+    trustworthy. Row 110 family (test-DB provisioning).
+
+DEGRADED-ATTRIBUTION TALLY (2026-09-01): now FIVE instances — four from
+    the 009 PM (all docs-only) and one from the ask-path-scope coder
+    (DL-007: connected ingress probe, no refs/notes/ai entry within the
+    bound, telemetry-nudge found no buffer to replay). Consistent shape:
+    the probe says connected and the note never lands, so the commit is
+    made but authorship is unrecorded and git-ai may later attest those
+    lines as human. Its encoding is the best stated yet: make the
+    collector probe and the note verification share ONE measured
+    readiness state, or retain/replay commit events when a connected
+    probe is followed by a bounded note miss. Route to the git-ai owners.
