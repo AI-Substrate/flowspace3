@@ -1,0 +1,16 @@
+docs/plans/011-conv-verify/impl-guide.dd.json
+  h_9e71e8b09f7cf2 9,11,17,21-24,31-37,43-46,50-54,58-62,68-69,72-73,76-77,80-81,86
+docs/plans/011-conv-verify/impl-guide.dd.md
+  h_9e71e8b09f7cf2 14,21,27-30,36-38,44-47,53-57,63-67,73-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "330c0077d4269bd880b290beed65779b0ae98a8a",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
