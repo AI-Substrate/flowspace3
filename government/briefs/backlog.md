@@ -1635,3 +1635,14 @@ ROW 121 — CLAUDE RS SEATS NOW INGEST, PROVEN IN OUR INDEX (meadowlark,
     `flowspace3 tree` row / doctor line listing what the index rules
     skipped for this root. Detail file:
     ~/pi-hacking/pij-worktrees/pij-governance/.harness/government/observations/2026-09-02-s124-hawk.md
+    ROW 125 POINTER (lynx, same hour): this is an EXISTING knob, default
+    off — `[scan] include_hidden = false` (crates/core/src/config.rs:1123,
+    :1138) feeding `discovery.rs:827 .hidden(!settings.include_hidden)`.
+    So the packet is small: (a) flip the default to true with the
+    explicit deny-list above, or expose it per-root on `add`; (b) the
+    path_unmatched honesty line "prefix exists on disk, excluded by
+    include_hidden=false" — the knob's name in the message is the fix
+    for the next person; (c) a config-show line so a root's scan rules
+    are readable. Until then, operators can set include_hidden = true
+    and rescan; the daemon-side effect on prod (a full rescan of every
+    root's dot-trees) needs Jordan's GO because it is load.
