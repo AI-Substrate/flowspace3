@@ -97,6 +97,16 @@ pub struct ConversationSummary {
     pub parent: Option<ConversationId>,
 }
 
+/// The index-wide facts needed to decide whether one derived conversation was delivered.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ConversationDelivery {
+    pub guid: ConversationId,
+    pub repo_identity: Option<String>,
+    pub worktree: Option<String>,
+    pub turns: i64,
+    pub last_turn_at: Option<String>,
+}
+
 /// Which conversations to list.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct AnchorFilter<'a> {
@@ -493,6 +503,39 @@ pub async fn list_conversations(
             })
         })
         .collect()
+}
+
+/// Read one exact conversation and aggregate its delivery facts in one statement.
+///
+/// A header with zero turns is returned with `turns = 0` and no last turn so the
+/// caller can distinguish an empty delivery from a wholly absent conversation.
+pub async fn conversation_delivery(
+    pool: &PgPool,
+    guid: &ConversationId,
+) -> Result<Option<ConversationDelivery>, StoreError> {
+    let row = sqlx::query(&format!(
+        "SELECT c.guid::text AS guid, c.repo_identity, c.worktree,
+                count(t.turn_no) AS turns,
+                to_char(max(t.at) AT TIME ZONE 'UTC', {AS_TEXT}) AS last_turn_at
+           FROM conversations c
+           LEFT JOIN turns t ON t.conversation_id = c.guid
+          WHERE c.guid = $1::uuid
+          GROUP BY c.guid"
+    ))
+    .bind(guid.as_str())
+    .fetch_optional(pool)
+    .await?;
+
+    row.map(|row| {
+        Ok(ConversationDelivery {
+            guid: ConversationId::new(row.try_get::<String, _>("guid")?).map_err(corrupt)?,
+            repo_identity: row.try_get("repo_identity")?,
+            worktree: row.try_get("worktree")?,
+            turns: row.try_get("turns")?,
+            last_turn_at: row.try_get("last_turn_at")?,
+        })
+    })
+    .transpose()
 }
 
 /// Remove a conversation, its turns and its turn elements.

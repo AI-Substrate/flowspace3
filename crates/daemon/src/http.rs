@@ -135,6 +135,7 @@ pub fn router(state: AppState, auth: Auth) -> Router {
         .route("/conversations", post(conversations).get(conversation_list))
         .route("/conversations/remove", post(conversation_remove))
         .route("/conversations/ingest", post(conversation_ingest))
+        .route("/conversations/verify", get(conversation_verify))
         .route("/ask", post(ask))
         .route("/search", get(search))
         .route("/get", get(get_address))
@@ -378,6 +379,27 @@ async fn conversation_ingest(
     match crate::convo_ingest::submit(&state, &request).await {
         Ok(report) => {
             let next = crate::convo_ingest::next_after_submit(&report);
+            ok(&state, COMMAND, report)
+                .await
+                .0
+                .with_next_action(next)
+                .into()
+        }
+        Err(failure) => failed(&state, COMMAND, failure).await,
+    }
+}
+
+async fn conversation_verify(
+    State(state): State<AppState>,
+    Query(request): Query<crate::convo_ingest::VerifyRequest>,
+) -> Answer<crate::convo_ingest::VerifyReport> {
+    const COMMAND: &str = "conversation verify";
+    if let Err(failure) = crate::schema::guard(&state.db).await {
+        return failed(&state, COMMAND, failure).await;
+    }
+    match crate::convo_ingest::verify(&state, &request).await {
+        Ok(report) => {
+            let next = crate::convo_ingest::next_after_verify(&report);
             ok(&state, COMMAND, report)
                 .await
                 .0

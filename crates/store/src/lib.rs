@@ -42,8 +42,9 @@ pub use admin::{
     drop_database, is_missing_database, maintenance_url, schema_current,
 };
 pub use conversations::{
-    AnchorFilter, Appended, ConversationSummary, Removed, TurnOutline, append_turns,
-    delete_conversation, list_conversations, outline, upsert_conversation, window,
+    AnchorFilter, Appended, ConversationDelivery, ConversationSummary, Removed, TurnOutline,
+    append_turns, conversation_delivery, delete_conversation, list_conversations, outline,
+    upsert_conversation, window,
 };
 pub use ddoc::{
     DdocCitation, DdocFileRef, FileRefOutcome, replace_file_refs, rows_citing, rows_referencing,

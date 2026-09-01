@@ -22,33 +22,36 @@
         {
           "id": "tk-0101",
           "title": "Daemon: resolve an explicit conv:<guid> index-wide (crates/daemon/src/conversations.rs + http.rs); split the miss into 'not in index' vs 'exists outside requested scope' with distinct messages/details",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0101",
           "success": "cross-worktree get test green; red on revert; both messages asserted",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001",
             "../../../plan.dd.json#acceptance_criteria/ac-0002"
-          ]
+          ],
+          "receipt": "RED: get_conv_cross_worktree failed with FS3-E-QUERY-NOT-FOUND before source change (/Users/jordanknight/.omp/agent/sessions/-substrate-flowspace-fs3-conv-verify/2026-09-01T22-08-30-887Z_01a05f04-46a7-7000-8104-f671db92b77d/42.bash-original.log). GREEN: get_conv_cross_worktree, conv_not_found_messages, exact_conversation_pins_ignore_cwd_but_honor_explicit_repo_scope, and ask_tools_search_and_get_conversations_under_the_same_scope each passed with FS3_TEST_DATABASE_URL on :5433."
         },
         {
           "id": "tk-0102",
           "title": "CLI: `conversation verify --harness <h> --session <id>` and `--pij <seat>`; derive the guid via conversation_guid(); return {guid,address,turns,repo,worktree,last_turn_at}; distinct not-indexed code; NO --repo/--path flags; pij-miss message names the legacy-only join and req-0033",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0102",
           "success": "verify tests green; clap rejects scope flags",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003",
             "../../../plan.dd.json#acceptance_criteria/ac-0004",
             "../../../plan.dd.json#acceptance_criteria/ac-0005"
-          ]
+          ],
+          "receipt": "GREEN: fs3-store delivery_probe_is_exact_and_reports_the_last_turn_without_loading_turns; fs3-daemon conversation_verify_contract including HTTP envelope, absent GUID, and zero-turn distinction; verify_pij_uses_the_legacy_join_and_names_an_rs_miss; fs3-cli conversation_verify parse/unscopable test. Dedicated code: FS3-E-QUERY-CONVERSATION-NOT-INDEXED."
         },
         {
           "id": "tk-0103",
           "title": "Docs + help: crates/cli/docs for get and conversation; `get --help` promise matches behaviour; verify documented with its contract",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0103",
           "success": "docs updated in the same PR",
-          "satisfies": []
+          "satisfies": [],
+          "receipt": "Updated get help, crates/cli/docs/read.md, crates/cli/docs/conversations.md, plan summary pointer, and generated docs/reference/error-codes.md. cargo test -p fs3-cli --test docs_bundle: 5 passed. get/verify help smoke passed. harness checks: status ok at 2026-09-01T22:55:25.077Z."
         },
         {
           "id": "tk-0104",
@@ -78,13 +81,13 @@
           {
             "id": "dw-1001",
             "assertion": "get conv from a foreign worktree/repo returns ok:true; test red with the change reverted (mutation in PR)",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0001"
           },
           {
             "id": "dw-1002",
             "assertion": "the two not-found strings are asserted distinct and neither claims 'is indexed' falsely",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0002"
           }
         ],
@@ -92,19 +95,19 @@
           {
             "id": "dw-1003",
             "assertion": "positive and distinct-negative verify tests green",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0003"
           },
           {
             "id": "dw-1004",
             "assertion": "clap test proves no scope flag exists",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0004"
           },
           {
             "id": "dw-1005",
             "assertion": "fake-join test proves the pij miss message",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0005"
           }
         ],
@@ -112,7 +115,7 @@
           {
             "id": "dw-1006",
             "assertion": "harness checks green; docs files in the diff",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0008"
           }
         ],
@@ -127,7 +130,7 @@
         "tk-0105": [
           {
             "id": "dw-1008",
-            "assertion": "three prod envelopes: flagless get ok:true, verify ok:true with guid 8c285d65\u2026, made-up session \u2192 distinct code",
+            "assertion": "three prod envelopes: flagless get ok:true, verify ok:true with guid 8c285d65…, made-up session → distinct code",
             "state": "unchecked",
             "pressure": "../../backpressure.dd.json#rows/bp-0006"
           },
@@ -140,6 +143,5 @@
         ]
       }
     }
-  ],
-  "references": []
+  ]
 }

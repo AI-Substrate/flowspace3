@@ -46,7 +46,7 @@ use serde::Deserialize;
 
 use crate::runner::fail;
 use crate::scan::PARSER_VERSION;
-use crate::scope::Scope;
+use crate::scope::{Scope, ScopeSource};
 use crate::wiring::AppState;
 use fs3_core::views::read::{
     ConversationWindow, GetPayload, GetResult, Outline, TreeEntry, TreeResult, TurnView,
@@ -94,7 +94,10 @@ pub struct GetRequest {
     /// How many after it.
     #[serde(default)]
     pub after: Option<u32>,
-    /// Restrict a repo-less address to one repository identity, or `all`.
+    /// Explicitly restrict a repo-less element or conversation anchor.
+    ///
+    /// A `conv:` address ignores scope derived only from `cwd`; this field is
+    /// what makes an explicit repository filter remain authoritative.
     #[serde(default)]
     pub repo: Option<String>,
     /// The caller's working directory (workshop 003 D6).
@@ -838,12 +841,12 @@ const DEFAULT_AFTER: u32 = 20;
 /// control rather than accidentally pay.
 const MAX_WINDOW: u32 = 200;
 
-/// Read a window of turns around one ordinal.
+/// Read a window of turns around one authoritative conversation address.
 ///
-/// A bare `conv:<guid>` with no ordinal is not an error: it is "show me the
-/// start", so the window centres on turn 1 and reaches forward. Refusing it
-/// would make the address workshop 003 defines for a whole conversation the one
-/// address `get` cannot take.
+/// A bare `conv:<guid>` with no ordinal means "show me the start", so the
+/// window centres on turn 1 and reaches forward. Cwd-derived scope never turns
+/// this explicit address into a false absence; only an explicit repository
+/// flag remains a filter.
 async fn conversation_window(
     state: &AppState,
     address: &ConversationAddress,
@@ -869,8 +872,10 @@ async fn conversation_window(
     .await
     .map_err(fail)?
     .pop()
-    .filter(|summary| conversation_in_scope(summary, scope))
     .ok_or_else(|| unknown_conversation(&guid))?;
+    if scope.source == ScopeSource::Flag && !conversation_in_scope(&summary, scope) {
+        return Err(conversation_outside_scope(&guid, &summary, scope));
+    }
 
     let turns = fs3_store::window(&state.db, &guid, around, before, after)
         .await
@@ -942,6 +947,24 @@ fn conversation_in_scope(summary: &fs3_store::ConversationSummary, scope: &Scope
         _ => true,
     };
     repo_matches && worktree_matches
+}
+
+fn conversation_outside_scope(
+    guid: &ConversationId,
+    summary: &fs3_store::ConversationSummary,
+    scope: &Scope,
+) -> Failure {
+    Failure::new(
+        &catalog::QUERY_NOT_FOUND,
+        format!(
+            "conversation {guid} exists in the index but is outside the explicitly requested scope"
+        ),
+    )
+    .with_fix("remove `--repo` or pass `--repo all` to resolve this explicit address index-wide")
+    .with_detail("guid", guid.as_str())
+    .with_detail("requested_repo", scope.repo.as_deref())
+    .with_detail("indexed_repo", summary.repo_identity.as_deref())
+    .with_detail("indexed_worktree", summary.worktree.as_deref())
 }
 
 /// Validate one half of a window against the ceiling.

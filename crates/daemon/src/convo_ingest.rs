@@ -36,7 +36,8 @@ use std::path::{Path, PathBuf};
 use fs3_core::conversation_source::{ConversationSource, Harness, IngestInput, SessionKind};
 use fs3_core::envelope::Failure;
 use fs3_core::{
-    Conversation, ConversationId, Element, catalog, content_hash, earns_summary, prepare_batch,
+    Conversation, ConversationId, Element, SessionRow, catalog, content_hash, earns_summary,
+    prepare_batch,
 };
 use fs3_providers::conversation_sources::{
     claude::ClaudeSource, metrics_db::MetricsDbSource, metrics_db::RepoScope, omp::OmpSource,
@@ -66,6 +67,135 @@ pub struct IngestRequest {
     /// route, to the git directory pij recorded for that seat.
     #[serde(default)]
     pub folder: Option<String>,
+}
+
+/// One exact delivery check, addressed by native session or legacy pij seat.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct VerifyRequest {
+    #[serde(default)]
+    pub pij_id: Option<String>,
+    #[serde(default)]
+    pub session_id: Option<String>,
+    #[serde(default)]
+    pub harness: Option<String>,
+}
+
+/// Evidence that at least one turn from the derived conversation reached the index.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct VerifyReport {
+    pub guid: String,
+    pub address: String,
+    pub turns: i64,
+    pub repo: Option<String>,
+    pub worktree: Option<String>,
+    pub last_turn_at: String,
+}
+
+/// Resolve the consumer's identity and report whether that exact conversation delivered turns.
+///
+/// # Snap-in recipe
+///
+/// Route `GET /conversations/verify` with [`VerifyRequest`] query parameters to
+/// `convo_ingest::verify(&state, &request)`, return [`VerifyReport`] in the
+/// standard envelope, and have the CLI client send only `pij_id` or the
+/// `session_id` + `harness` pair. No cwd, repository, or path enters this call.
+pub async fn verify(state: &AppState, request: &VerifyRequest) -> Result<VerifyReport, Failure> {
+    let (harness, session_id) = verification_identity(request).await?;
+    let guid = conversation_guid(harness, &session_id);
+    let delivery = fs3_store::conversation_delivery(&state.db, &guid)
+        .await
+        .map_err(fail)?;
+    let Some(delivery) = delivery else {
+        return Err(not_delivered(&guid, None));
+    };
+    if delivery.turns == 0 {
+        return Err(not_delivered(&guid, Some(0)));
+    }
+    let Some(last_turn_at) = delivery.last_turn_at else {
+        return Err(not_delivered(&guid, Some(delivery.turns)));
+    };
+
+    Ok(VerifyReport {
+        guid: delivery.guid.as_str().to_string(),
+        address: delivery.guid.address(),
+        turns: delivery.turns,
+        repo: delivery.repo_identity,
+        worktree: delivery.worktree,
+        last_turn_at,
+    })
+}
+
+#[must_use]
+pub fn next_after_verify(report: &VerifyReport) -> String {
+    format!(
+        "delivery confirmed through turn {} at {}; `flowspace3 get {}#t{}` reads the last turn",
+        report.turns, report.last_turn_at, report.address, report.turns
+    )
+}
+
+async fn verification_identity(request: &VerifyRequest) -> Result<(Harness, String), Failure> {
+    match (&request.pij_id, &request.session_id, &request.harness) {
+        (Some(seat), None, None) => {
+            let rows = tokio::task::spawn_blocking(pij_sessions)
+                .await
+                .map_err(|error| join_failure(&error))??;
+            verify_seat(&rows, seat)
+        }
+        (None, Some(session_id), Some(harness)) => {
+            let harness: Harness = harness.parse().map_err(|error: fs3_core::Error| {
+                Failure::new(&catalog::QUERY_INVALID, error.to_string()).retryable(false)
+            })?;
+            Ok((harness, session_id.clone()))
+        }
+        _ => Err(Failure::new(
+            &catalog::QUERY_INVALID,
+            "verify a conversation either by seat (--pij) or by session (--session with --harness), never both and never neither",
+        )
+        .retryable(false)),
+    }
+}
+
+fn verify_seat(rows: &[SessionRow], seat: &str) -> Result<(Harness, String), Failure> {
+    if !rows.iter().any(|row| row.pij_id == seat) {
+        return Err(Failure::new(
+            &catalog::QUERY_INVALID,
+            format!(
+                "`pij sessions` is a legacy-only join and does not know seat {seat:?}; rs seats cannot be verified until pij req-0033"
+            ),
+        )
+        .with_fix(
+            "pass the native identity with `--session <id> --harness <name>` when it is available",
+        )
+        .with_detail("pij", seat)
+        .with_detail("join", "legacy-only")
+        .with_detail("upstream", "pij req-0033")
+        .retryable(false));
+    }
+    let bound = fs3_core::resolve_seat(rows, seat).map_err(|error| {
+        Failure::new(&catalog::QUERY_INVALID, error.to_string())
+            .with_fix("check `pij sessions` for the seat binding")
+            .retryable(false)
+    })?;
+    Ok((bound.harness, bound.session_id))
+}
+
+fn not_delivered(guid: &ConversationId, turns: Option<i64>) -> Failure {
+    let message = match turns {
+        None => format!("conversation {guid} is not indexed"),
+        Some(0) => {
+            format!("conversation {guid} is indexed but has zero turns, so nothing was delivered")
+        }
+        Some(turns) => format!(
+            "conversation {guid} has {turns} turn(s) but no last-turn timestamp, so delivery cannot be verified"
+        ),
+    };
+    let failure = Failure::new(&catalog::QUERY_CONVERSATION_NOT_INDEXED, message)
+        .with_detail("guid", guid.as_str());
+    match turns {
+        Some(turns) => failure.with_detail("turns", turns),
+        None => failure,
+    }
 }
 
 /// What one session file contributed.
@@ -882,6 +1012,24 @@ mod tests {
         assert_eq!(&text[19..20], "a", "RFC 4122 variant");
         // Round-trips through the validator the intake surface uses.
         ConversationId::new(text.to_string()).expect("re-parses");
+    }
+
+    #[test]
+    fn verify_pij_uses_the_legacy_join_and_names_an_rs_miss() {
+        let rows = [SessionRow {
+            pij_id: "pij-legacy-seat".to_string(),
+            harness: "pi".to_string(),
+            harness_session_id: Some("01a045f4-edc2-7000-8dc7-47d6d5677147".to_string()),
+            git_common_dir: None,
+        }];
+        let (harness, session) = verify_seat(&rows, "pij-legacy-seat").expect("the join resolves");
+        assert_eq!(harness, Harness::Omp);
+        assert_eq!(session, "01a045f4-edc2-7000-8dc7-47d6d5677147");
+
+        let failure = verify_seat(&rows, "pij-rs-only-seat").expect_err("the fake join misses");
+        assert!(failure.message.contains("legacy-only"));
+        assert!(failure.message.contains("req-0033"));
+        assert_eq!(failure.details["pij"], "pij-rs-only-seat");
     }
 
     #[test]

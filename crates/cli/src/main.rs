@@ -161,13 +161,13 @@ enum Command {
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
     },
-    /// Read one address in full: an element with its children, or a whole file.
+    /// Read one address in full: an element, file, conversation, or turn window.
     ///
-    /// The other half of the query surface (workshop 003). `search` finds an
-    /// address; this reads what is at it — from the INDEX, so it answers for
-    /// every registered repository, not only the one you are standing in.
+    /// `search` finds an address; this reads what is at it from the index.
+    /// Explicit `el:` and `conv:` addresses are authoritative across registered
+    /// repositories; cwd scopes only repo-less element addresses.
     Get {
-        /// `el:<repo>/<path>::<name>`, as printed by every search hit.
+        /// `el:<repo>/<path>::<name>` or `conv:<guid>[#t<turn>]`, as printed by search hits.
         address: String,
         /// How many levels of children to outline. Default 1.
         #[arg(long, value_name = "N")]
@@ -185,7 +185,7 @@ enum Command {
         /// the reader wanted.
         #[arg(long, value_name = "N")]
         after: Option<u32>,
-        /// Resolve a repo-less address in this repository, or `all`.
+        /// Resolve a repo-less element here, or explicitly filter a conversation anchor.
         #[arg(long, value_name = "IDENTITY")]
         repo: Option<String>,
         /// Override the daemon URL from configuration.
@@ -372,6 +372,31 @@ enum ConversationCommand {
         /// are standing, or to the git directory pij recorded for the seat.
         #[arg(long, value_name = "PATH")]
         folder: Option<String>,
+        /// Override the daemon URL from configuration.
+        #[arg(long, value_name = "URL")]
+        daemon_url: Option<String>,
+    },
+    /// Confirm that one native session has delivered at least one turn to the index.
+    Verify {
+        /// A legacy pij seat resolved through the `pij sessions` join.
+        #[arg(
+            long,
+            value_name = "SEAT",
+            conflicts_with_all = ["session", "harness"],
+            required_unless_present = "session"
+        )]
+        pij: Option<String>,
+        /// The harness's native session id.
+        #[arg(
+            long,
+            value_name = "ID",
+            requires = "harness",
+            required_unless_present = "pij"
+        )]
+        session: Option<String>,
+        /// Which native store owns the session id: claude, omp, pij or metrics-db.
+        #[arg(long, value_name = "HARNESS", requires = "session")]
+        harness: Option<String>,
         /// Override the daemon URL from configuration.
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
@@ -728,6 +753,22 @@ async fn run(command: Command) -> Result<ExitCode> {
         }
         Command::Conversation {
             command:
+                ConversationCommand::Verify {
+                    pij,
+                    session,
+                    harness,
+                    daemon_url,
+                },
+        } => {
+            let client = client_for(daemon_url)?;
+            let mut params = Vec::new();
+            push(&mut params, "pij_id", pij);
+            push(&mut params, "session_id", session);
+            push(&mut params, "harness", harness);
+            emit(&client.conversation_verify(&params).await)
+        }
+        Command::Conversation {
+            command:
                 ConversationCommand::List {
                     repo,
                     path,
@@ -1038,7 +1079,7 @@ async fn ping(override_url: Option<String>) -> Result<ExitCode> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Cli, Command, push_ddoc_search_filters};
+    use super::{Cli, Command, ConversationCommand, push_ddoc_search_filters};
     use clap::Parser as _;
 
     #[test]
@@ -1143,6 +1184,63 @@ mod tests {
         assert!(
             Cli::try_parse_from(["flowspace3", "ask", "question", "--source", "unknown"]).is_err(),
             "ask and search accept the same closed source set"
+        );
+    }
+
+    #[test]
+    fn conversation_verify_identity_is_required_and_unscopable() {
+        let native = Cli::try_parse_from([
+            "flowspace3",
+            "conversation",
+            "verify",
+            "--harness",
+            "omp",
+            "--session",
+            "01a051b7-3b2c-7000-8987-3e66b28db4b6",
+        ])
+        .expect("native identity parses");
+        assert!(matches!(
+            native.command,
+            Command::Conversation {
+                command: ConversationCommand::Verify { .. }
+            }
+        ));
+
+        let seat = Cli::try_parse_from([
+            "flowspace3",
+            "conversation",
+            "verify",
+            "--pij",
+            "pij-legacy-seat",
+        ])
+        .expect("legacy seat identity parses");
+        assert!(matches!(
+            seat.command,
+            Command::Conversation {
+                command: ConversationCommand::Verify { .. }
+            }
+        ));
+
+        for forbidden in ["--repo", "--path"] {
+            assert!(
+                Cli::try_parse_from([
+                    "flowspace3",
+                    "conversation",
+                    "verify",
+                    "--harness",
+                    "omp",
+                    "--session",
+                    "a-session",
+                    forbidden,
+                    "anything",
+                ])
+                .is_err(),
+                "{forbidden} must not exist on verify"
+            );
+        }
+        assert!(
+            Cli::try_parse_from(["flowspace3", "conversation", "verify"]).is_err(),
+            "one identity form is required"
         );
     }
 

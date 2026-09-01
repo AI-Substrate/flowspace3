@@ -35,7 +35,7 @@ use fs3_core::{
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::scope::Scope;
+use crate::scope::{Scope, ScopeSource};
 use crate::search::SearchRequest;
 use crate::wiring::AppState;
 
@@ -420,21 +420,29 @@ impl<'a> IndexTools<'a> {
 
     /// How the immutable scope should be described to the model, every time.
     fn scope_line(&self, scope: &Scope) -> String {
-        let repository = match &scope.repo {
-            Some(repo) => format!("repository `{repo}` only"),
-            None => "every indexed repository".to_string(),
-        };
         let path = self
             .path
             .as_ref()
             .map(|path| format!("; paths matching `{path}` only"))
             .unwrap_or_default();
         if let Some(conversation) = &self.conversation {
+            let repository = if scope.source == ScopeSource::Flag {
+                scope.repo.as_ref().map_or_else(
+                    || "every indexed repository".to_string(),
+                    |repo| format!("repository `{repo}` only"),
+                )
+            } else {
+                "every indexed repository".to_string()
+            };
             return format!(
                 "scope: {repository}; corpus: one conversation `conv:{}` only",
                 conversation.as_str()
             );
         }
+        let repository = match &scope.repo {
+            Some(repo) => format!("repository `{repo}` only"),
+            None => "every indexed repository".to_string(),
+        };
         match self.source.as_deref() {
             Some(source) => format!("scope: {repository}{path}; source: {source} only"),
             None => {
@@ -610,6 +618,25 @@ impl<'a> IndexTools<'a> {
         }
     }
 
+    fn payload_in_scope(&self, payload: &GetPayload) -> bool {
+        if self.conversation.is_some() {
+            return true;
+        }
+        let GetPayload::Conversation(window) = payload else {
+            return true;
+        };
+        let repo_matches = self
+            .scope
+            .repo
+            .as_deref()
+            .is_none_or(|repo| window.repo.as_deref() == Some(repo));
+        let worktree_matches = match (self.scope.worktree.as_deref(), window.worktree.as_deref()) {
+            (Some(expected), Some(actual)) => expected == actual,
+            _ => true,
+        };
+        repo_matches && worktree_matches
+    }
+
     fn payload_in_source(&self, payload: &GetPayload) -> bool {
         match (self.source.as_deref(), payload) {
             (None | Some("all"), _) => true,
@@ -648,6 +675,11 @@ impl<'a> IndexTools<'a> {
         let (payload, _source) = crate::read::get(self.state, &request, &self.scope)
             .await
             .map_err(|failure| provider_error(&failure.message))?;
+        if !self.payload_in_scope(&payload) {
+            return Err(provider_error(
+                "get resolved outside the caller's immutable repository scope",
+            ));
+        }
         if !self.payload_in_source(&payload) {
             return Err(provider_error(
                 "get resolved outside the caller's immutable --source scope",

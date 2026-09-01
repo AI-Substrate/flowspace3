@@ -11,6 +11,7 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
         "docs" => docs(envelope, width),
         "agents-start-here" => agents(envelope, width),
         "conversation list" => conversations(envelope, width),
+        "conversation verify" => conversation_verify(envelope, width),
         _ => None,
     }
 }
@@ -93,10 +94,76 @@ fn conversations(envelope: &Envelope<Value>, width: u16) -> Option<String> {
     Some(out)
 }
 
+fn conversation_verify(envelope: &Envelope<Value>, width: u16) -> Option<String> {
+    let report = envelope.data.as_ref()?;
+    let turns = report.get("turns")?.as_i64()?;
+    let mut out = theme::title(
+        "conversation verify",
+        &format!(
+            "{} · {turns} turn{}",
+            "delivered".bright_green().bold(),
+            if turns == 1 { "" } else { "s" }
+        ),
+    );
+    out.push_str("\n\n");
+    let mut facts = theme::plain_table(width);
+    for (label, value) in [
+        ("guid", report.get("guid")?.as_str()?.to_string()),
+        ("address", report.get("address")?.as_str()?.to_string()),
+        (
+            "repo",
+            report
+                .get("repo")?
+                .as_str()
+                .unwrap_or("unanchored")
+                .to_string(),
+        ),
+        (
+            "worktree",
+            report
+                .get("worktree")?
+                .as_str()
+                .unwrap_or("unanchored")
+                .to_string(),
+        ),
+        (
+            "last turn",
+            report.get("last_turn_at")?.as_str()?.to_string(),
+        ),
+    ] {
+        facts.add_row([Cell::new(label), Cell::new(value)]);
+    }
+    out.push_str(&theme::block(&facts));
+    append_next(&mut out, envelope, width);
+    Some(out)
+}
+
 fn append_next(out: &mut String, envelope: &Envelope<Value>, width: u16) {
     if let Some(next) = &envelope.next_action {
         out.push('\n');
         out.push_str(&theme::next_action(next, usize::from(width)));
         out.push('\n');
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn conversation_verify_view_carries_the_consumer_contract() {
+        let envelope = serde_json::from_str(
+            r#"{"ok":true,"command":"conversation verify","v":1,"data":{"guid":"abc","address":"conv:abc","turns":2,"repo":"git:example/repo","worktree":"/srv/repo","last_turn_at":"2026-09-02T00:00:00Z"}}"#,
+        )
+        .unwrap();
+        let screen = render(&envelope, 100).expect("verify has a human view");
+        for expected in [
+            "delivered",
+            "conv:abc",
+            "git:example/repo",
+            "2026-09-02T00:00:00Z",
+        ] {
+            assert!(screen.contains(expected), "missing {expected}: {screen}");
+        }
     }
 }

@@ -35,9 +35,9 @@ Work top to bottom. Stop-and-ask o-prime on anything that reverses a ruling or l
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tk-0101 | Daemon: resolve an explicit conv:&lt;guid&gt; index-wide (crates/daemon/src/conversations.rs + http.rs); split the miss into 'not in index' vs 'exists outside requested scope' with distinct messages/details | — | — | [ ] unchecked | — | — | [ ] 0/2 [tk-0101](#tk-0101) | cross-worktree get test green; red on revert; both messages asserted | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0002](../../../plan.dd.md#acceptance-criteria) |
-| tk-0102 | CLI: `conversation verify --harness &lt;h&gt; --session &lt;id&gt;` and `--pij &lt;seat&gt;`; derive the guid via conversation_guid(); return {guid,address,turns,repo,worktree,last_turn_at}; distinct not-indexed code; NO --repo/--path flags; pij-miss message names the legacy-only join and req-0033 | — | — | [ ] unchecked | — | — | [ ] 0/3 [tk-0102](#tk-0102) | verify tests green; clap rejects scope flags | — | [ac-0003](../../../plan.dd.md#acceptance-criteria), [ac-0004](../../../plan.dd.md#acceptance-criteria), [ac-0005](../../../plan.dd.md#acceptance-criteria) |
-| tk-0103 | Docs + help: crates/cli/docs for get and conversation; `get --help` promise matches behaviour; verify documented with its contract | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0103](#tk-0103) | docs updated in the same PR | — |  |
+| tk-0101 | Daemon: resolve an explicit conv:&lt;guid&gt; index-wide (crates/daemon/src/conversations.rs + http.rs); split the miss into 'not in index' vs 'exists outside requested scope' with distinct messages/details | — | — | [x] checked | — | RED: get_conv_cross_worktree failed with FS3-E-QUERY-NOT-FOUND before source change (/Users/jordanknight/.omp/agent/sessions/-substrate-flowspace-fs3-conv-verify/2026-09-01T22-08-30-887Z_01a05f04-46a7-7000-8104-f671db92b77d/42.bash-original.log). GREEN: get_conv_cross_worktree, conv_not_found_messages, exact_conversation_pins_ignore_cwd_but_honor_explicit_repo_scope, and ask_tools_search_and_get_conversations_under_the_same_scope each passed with FS3_TEST_DATABASE_URL on :5433. | [x] 2/2 [tk-0101](#tk-0101) | cross-worktree get test green; red on revert; both messages asserted | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0002](../../../plan.dd.md#acceptance-criteria) |
+| tk-0102 | CLI: `conversation verify --harness &lt;h&gt; --session &lt;id&gt;` and `--pij &lt;seat&gt;`; derive the guid via conversation_guid(); return {guid,address,turns,repo,worktree,last_turn_at}; distinct not-indexed code; NO --repo/--path flags; pij-miss message names the legacy-only join and req-0033 | — | — | [x] checked | — | GREEN: fs3-store delivery_probe_is_exact_and_reports_the_last_turn_without_loading_turns; fs3-daemon conversation_verify_contract including HTTP envelope, absent GUID, and zero-turn distinction; verify_pij_uses_the_legacy_join_and_names_an_rs_miss; fs3-cli conversation_verify parse/unscopable test. Dedicated code: FS3-E-QUERY-CONVERSATION-NOT-INDEXED. | [x] 3/3 [tk-0102](#tk-0102) | verify tests green; clap rejects scope flags | — | [ac-0003](../../../plan.dd.md#acceptance-criteria), [ac-0004](../../../plan.dd.md#acceptance-criteria), [ac-0005](../../../plan.dd.md#acceptance-criteria) |
+| tk-0103 | Docs + help: crates/cli/docs for get and conversation; `get --help` promise matches behaviour; verify documented with its contract | — | — | [x] checked | — | Updated get help, crates/cli/docs/read.md, crates/cli/docs/conversations.md, plan summary pointer, and generated docs/reference/error-codes.md. cargo test -p fs3-cli --test docs_bundle: 5 passed. get/verify help smoke passed. harness checks: status ok at 2026-09-01T22:55:25.077Z. | [x] 1/1 [tk-0103](#tk-0103) | docs updated in the same PR | — |  |
 | tk-0104 | Gate and PR: harness checks green in the worktree; feat: commits via harness commit; PR into main stating the mutation | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0104](#tk-0104) | PR open, CI green | — |  |
 | tk-0105 | After o-prime's bounce: run the three prod envelopes from the main checkout and write ac-0006's receipt; o-prime asks meadowlark for the consumer read-back (ac-0007) | — | — | [ ] unchecked | — | — | [ ] 0/2 [tk-0105](#tk-0105) | ac-0006 receipt from prod; ac-0007 receipt from the consumer | — | [ac-0006](../../../plan.dd.md#acceptance-criteria), [ac-0007](../../../plan.dd.md#acceptance-criteria) |
 
@@ -49,22 +49,22 @@ Work top to bottom. Stop-and-ask o-prime on anything that reverses a ruling or l
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-1001 | get conv from a foreign worktree/repo returns ok:true; test red with the change reverted (mutation in PR) | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
-| dw-1002 | the two not-found strings are asserted distinct and neither claims 'is indexed' falsely | [ ] unchecked | [bp-0002](../../backpressure.dd.md#rows) |
+| dw-1001 | get conv from a foreign worktree/repo returns ok:true; test red with the change reverted (mutation in PR) | [x] checked | [bp-0001](../../backpressure.dd.md#rows) |
+| dw-1002 | the two not-found strings are asserted distinct and neither claims 'is indexed' falsely | [x] checked | [bp-0002](../../backpressure.dd.md#rows) |
 
 ### tk-0102
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-1003 | positive and distinct-negative verify tests green | [ ] unchecked | [bp-0003](../../backpressure.dd.md#rows) |
-| dw-1004 | clap test proves no scope flag exists | [ ] unchecked | [bp-0004](../../backpressure.dd.md#rows) |
-| dw-1005 | fake-join test proves the pij miss message | [ ] unchecked | [bp-0005](../../backpressure.dd.md#rows) |
+| dw-1003 | positive and distinct-negative verify tests green | [x] checked | [bp-0003](../../backpressure.dd.md#rows) |
+| dw-1004 | clap test proves no scope flag exists | [x] checked | [bp-0004](../../backpressure.dd.md#rows) |
+| dw-1005 | fake-join test proves the pij miss message | [x] checked | [bp-0005](../../backpressure.dd.md#rows) |
 
 ### tk-0103
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-1006 | harness checks green; docs files in the diff | [ ] unchecked | [bp-0008](../../backpressure.dd.md#rows) |
+| dw-1006 | harness checks green; docs files in the diff | [x] checked | [bp-0008](../../backpressure.dd.md#rows) |
 
 ### tk-0104
 
