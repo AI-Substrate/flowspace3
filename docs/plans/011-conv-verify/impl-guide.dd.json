@@ -31,7 +31,7 @@
           "name": "authoritative conv address + verify verb",
           "paths": "crates/cli/**; crates/core/src/catalog.rs; crates/daemon/src/{read,ask,conversations,http,convo_ingest}.rs and tests; crates/store/src/conversations.rs and tests; generated error-code docs; testkit fixtures",
           "responsibility": "Make explicit conversation addresses authoritative, classify misses honestly, and add the unscopable delivery-verification verb.",
-          "interface": "Canonical full GUID and conv: selectors ignore cwd scope but honor explicit repository flags; verify returns {guid,address,turns,repo,worktree,last_turn_at}; missing delivery uses FS3-E-QUERY-CONVERSATION-NOT-INDEXED; rs pij misses name the legacy-only join and req-0033.",
+          "interface": "Canonical full GUID and conv: selectors ignore cwd scope but honor explicit repository flags; verify returns {guid,address,turns,repo,worktree,last_turn_at}; missing delivery uses FS3-E-QUERY-CONVERSATION-NOT-FOUND with HTTP 404; rs pij misses name the legacy-only join and req-0033.",
           "test_strategy": "FreshDatabase integration tests cover cross-scope reads, miss shapes, exact delivery aggregation, zero-turn and absent verification, HTTP routing, ask corpus containment, clap flags, and fake pij join rows. Production and consumer read-backs close ac-0006 and ac-0007.",
           "wave": 1,
           "note": "ac-0001 through ac-0005 are worktree tests; ac-0006 follows the production bounce; ac-0007 is the consumer read-back."

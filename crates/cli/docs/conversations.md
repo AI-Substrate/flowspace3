@@ -51,7 +51,7 @@ flowspace3 conversation verify --pij <legacy-seat>
 Success is exit 0 with `ok: true` and
 `data {guid,address,turns,repo,worktree,last_turn_at}`. A missing conversation or
 a header with zero turns exits non-zero with
-`FS3-E-QUERY-CONVERSATION-NOT-INDEXED`; the latter also carries
+`FS3-E-QUERY-CONVERSATION-NOT-FOUND`; the latter also carries
 `details.turns: 0`. The command has no `--repo` or `--path` flag, so a consumer
 cannot accidentally turn "outside my cwd" into "not delivered".
 
@@ -71,10 +71,11 @@ or `--source code` when only current implementation may answer.
 `--conversation <guid-or-conv:address>` when the question is about one session:
 every retrieval and citation is then hard-bound to that transcript, and the
 coverage envelope names its stored turn count. A canonical full guid or `conv:`
-address resolves index-wide regardless of cwd; an explicit `--repo` still
-filters it, and a short prefix remains scoped for disambiguation. An unknown
-guid is refused before the chat model runs; `conversation list` is the
-authoritative way to choose one.
+address resolves index-wide regardless of cwd, and the tool search/read scope
+follows that resolved transcript even when it is foreign or unanchored. An
+explicit `--repo` still filters it, while a short prefix remains scoped for
+disambiguation. An unknown guid is refused before the chat model runs;
+`conversation list` is the authoritative way to choose one.
 
 Do not use `--path` for transcript questions: conversations carry repository and
 worktree anchors, not file paths. Use `--conversation <guid>` to pin one transcript

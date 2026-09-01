@@ -42,7 +42,7 @@
             "../../../plan.dd.json#acceptance_criteria/ac-0004",
             "../../../plan.dd.json#acceptance_criteria/ac-0005"
           ],
-          "receipt": "GREEN: fs3-store delivery_probe_is_exact_and_reports_the_last_turn_without_loading_turns; fs3-daemon conversation_verify_contract including HTTP envelope, absent GUID, and zero-turn distinction; verify_pij_uses_the_legacy_join_and_names_an_rs_miss; fs3-cli conversation_verify parse/unscopable test. Dedicated code: FS3-E-QUERY-CONVERSATION-NOT-INDEXED."
+          "receipt": "GREEN: fs3-store delivery aggregate; fs3-daemon conversation_verify_contract including HTTP envelope, absent GUID, zero-turn distinction, and HTTP 404; fake legacy pij join; fs3-cli parse/unscopable test. Dedicated code: FS3-E-QUERY-CONVERSATION-NOT-FOUND."
         },
         {
           "id": "tk-0103",

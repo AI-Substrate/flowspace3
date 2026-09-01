@@ -368,7 +368,11 @@ impl<'a> IndexTools<'a> {
         Self::with_filters(state, scope, None, None, None)
     }
 
-    fn with_corpus(state: &'a AppState, scope: Scope, corpus: &AskCorpus) -> Self {
+    fn with_corpus(state: &'a AppState, mut scope: Scope, corpus: &AskCorpus) -> Self {
+        if corpus.conversation.is_some() && scope.source != ScopeSource::Flag {
+            scope.repo = None;
+            scope.worktree = None;
+        }
         Self::with_filters(
             state,
             scope,

@@ -495,6 +495,73 @@ async fn exact_conversation_pins_ignore_cwd_but_honor_explicit_repo_scope() {
 }
 
 #[tokio::test]
+async fn exact_pins_retrieve_foreign_and_unanchored_conversations_under_cwd_scope() {
+    let database = support::FreshDatabase::create("ask-conversation-foreign-pin").await;
+    let config = Config {
+        database: DatabaseConfig {
+            url: database.url(),
+        },
+        ..Config::default()
+    };
+    let mut state = AppState::from_config(config).expect("the fake stack wires");
+    fs3_store::migrate(&state.db).await.expect("migrates");
+
+    let caller_root = "/srv/caller";
+    let caller_identity = RepoIdentity::from_path(std::path::Path::new(caller_root));
+    fs3_store::register_worktree(&state.db, &caller_identity, caller_root, Some("main"))
+        .await
+        .expect("registers the caller worktree");
+    seed_conversation_at(
+        &state,
+        CONVERSATION,
+        "foreign pinned evidence",
+        Some("git:github.com/fs3/anchored"),
+        Some("/srv/anchored"),
+    )
+    .await;
+    seed_conversation(&state, OTHER_CONVERSATION, "unanchored pinned evidence").await;
+
+    state.agent = Arc::new(FakeChatProvider::scripted(vec![
+        tool_call("search", r#"{"query":"foreign pinned evidence"}"#),
+        prose("foreign pin answered"),
+        tool_call("search", r#"{"query":"unanchored pinned evidence"}"#),
+        prose("unanchored pin answered"),
+    ]));
+    let pool = state.db.clone();
+    let auth = support::auth("ask-conversation-foreign-pin");
+    let base = support::spawn(router(state, auth.auth)).await;
+
+    for (guid, question) in [
+        (CONVERSATION, "foreign pinned evidence"),
+        (OTHER_CONVERSATION, "unanchored pinned evidence"),
+    ] {
+        let envelope = post_ask_request(
+            &base,
+            &auth.key,
+            json!({
+                "question": question,
+                "source": "conversation",
+                "conversation": guid,
+                "cwd": caller_root
+            }),
+        )
+        .await;
+        assert!(
+            envelope.ok,
+            "exact pin must answer from its transcript: {envelope:?}"
+        );
+        let data = envelope.data.expect("ask report");
+        assert_eq!(
+            data["trace"][0]["search_hits"],
+            json!([format!("conv:{guid}#t1")])
+        );
+        assert_eq!(data["trace"][0]["evidence"], true);
+    }
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
 async fn conversation_pin_filters_every_search_read_citation_and_coverage() {
     let database = support::FreshDatabase::create("ask-conversation-pinned").await;
     let config = Config {

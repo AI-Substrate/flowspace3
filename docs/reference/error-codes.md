@@ -211,7 +211,7 @@ No embeddings exist for the active model, so a semantic search has nothing to ra
 | retryable | status |
 | --- | --- |
 | false | 500 |
-### `FS3-E-QUERY-CONVERSATION-NOT-INDEXED`
+### `FS3-E-QUERY-CONVERSATION-NOT-FOUND`
 
 The derived conversation is absent from the index or has not delivered any turns.
 
@@ -219,7 +219,7 @@ The derived conversation is absent from the index or has not delivered any turns
 
 | retryable | status |
 | --- | --- |
-| false | 500 |
+| false | 404 |
 ### `FS3-E-QUERY-NOT-FOUND`
 
 No repository, file or element in the index answers to the address that was asked for.

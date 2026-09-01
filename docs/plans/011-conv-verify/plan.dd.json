@@ -55,7 +55,7 @@
           "id": "ac-0003",
           "state": "checked",
           "claim": "verify contract: for an ingested (harness, session) run from a foreign cwd, `conversation verify` exits 0 with ok:true and data {guid, address, turns, repo, worktree, last_turn_at}; for a never-ingested pair it exits non-zero with a distinct code (not the generic NOT-FOUND) and details naming the derived guid. Both by test.",
-          "receipt": "conversation_verify_contract passed direct and HTTP paths with exact success shape, dedicated absent code, derived guid details, and zero-turn distinction."
+          "receipt": "conversation_verify_contract passed direct and HTTP paths with exact success shape. Missing and zero-turn deliveries use FS3-E-QUERY-CONVERSATION-NOT-FOUND; the negative HTTP response is 404 and details carry the derived guid."
         },
         {
           "id": "ac-0004",

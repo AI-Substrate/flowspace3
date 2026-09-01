@@ -13,7 +13,7 @@ Discovery — Noteworthy: `ScopeSource` already records whether scope came from 
 
 ## tk-0102 — conversation verify contract
 
-Added an exact-GUID delivery aggregate in `fs3-store`, the dedicated `FS3-E-QUERY-CONVERSATION-NOT-INDEXED` catalog code, daemon verification for native session and legacy pij identities, an authenticated read-only HTTP route, and the unscopable CLI subcommand. Success requires at least one turn and carries `guid`, `address`, `turns`, `repo`, `worktree`, and `last_turn_at`; a zero-turn header is a distinct not-delivered message with `details.turns = 0`.
+Added an exact-GUID delivery aggregate in `fs3-store`, the dedicated `FS3-E-QUERY-CONVERSATION-NOT-FOUND` catalog code, daemon verification for native session and legacy pij identities, an authenticated read-only HTTP route, and the unscopable CLI subcommand. Success requires at least one turn and carries `guid`, `address`, `turns`, `repo`, `worktree`, and `last_turn_at`; a zero-turn header is a distinct not-delivered message with `details.turns = 0`.
 
 Evidence:
 - `delivery_probe_is_exact_and_reports_the_last_turn_without_loading_turns` passed.
@@ -42,3 +42,9 @@ Evidence:
 - Local `harness checks` — green.
 - PR: `https://github.com/AI-Substrate/flowspace3/pull/93`.
 - Flowspace dogfood search returned both `conversation_verify_contract` and `convo_ingest::verify` from this worktree.
+
+## Review fixes — F-0001 through F-0003
+
+- Pinned exact conversations now clear cwd-derived repo/worktree filters before tool search/read, so foreign and unanchored transcripts retrieve the conversation already accepted by corpus resolution. Exact end-to-end test was red with zero hits before the fix and green after.
+- Verify's dedicated negative is `FS3-E-QUERY-CONVERSATION-NOT-FOUND`; the HTTP leg asserts 404 rather than 500, and catalog/reference/plan/docs strings agree.
+- The ask escape test now includes a `ScopeSource::Cwd` branch and asserts the compensating guard's own `outside the caller's immutable repository scope` message.

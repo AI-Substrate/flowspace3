@@ -489,6 +489,27 @@ async fn ask_tools_search_and_get_conversations_under_the_same_scope() {
         "an unpinned model-proposed address must not escape the ask corpus"
     );
 
+    let cwd_tools = fs3_daemon::ask::IndexTools::new(
+        &state,
+        Scope {
+            repo: Some(ANCHOR.to_string()),
+            source: ScopeSource::Cwd,
+            cwd: Some("/srv/current-checkout".to_string()),
+            worktree: Some("/srv/current-checkout".to_string()),
+            warnings: Vec::new(),
+        },
+    );
+    let error = cwd_tools
+        .call("get", &format!(r#"{{"address":"conv:{OTHER}#t1"}}"#))
+        .await
+        .expect_err("the post-resolution guard rejects a cwd-scoped escape");
+    assert!(
+        error
+            .to_string()
+            .contains("outside the caller's immutable repository scope"),
+        "the compensating guard itself must fire: {error}"
+    );
+
     database.destroy(state.db).await;
 }
 
@@ -659,7 +680,7 @@ async fn conversation_verify_contract() {
     )
     .await
     .expect_err("a never-indexed session is not delivered");
-    assert_eq!(absent.code, "FS3-E-QUERY-CONVERSATION-NOT-INDEXED");
+    assert_eq!(absent.code, "FS3-E-QUERY-CONVERSATION-NOT-FOUND");
     assert_eq!(absent.details["guid"], absent_guid.as_str());
     assert!(!absent.details.contains_key("turns"));
 
@@ -676,7 +697,7 @@ async fn conversation_verify_contract() {
     )
     .await
     .expect_err("a zero-turn row delivered nothing");
-    assert_eq!(empty.code, "FS3-E-QUERY-CONVERSATION-NOT-INDEXED");
+    assert_eq!(empty.code, "FS3-E-QUERY-CONVERSATION-NOT-FOUND");
     assert_eq!(empty.details["guid"], empty_guid.as_str());
     assert_eq!(empty.details["turns"], 0);
     assert!(empty.message.contains("zero turns"));
@@ -687,7 +708,7 @@ async fn conversation_verify_contract() {
         .get(format!(
             "{base}/conversations/verify?session_id={session}&harness=omp"
         ))
-        .bearer_auth(auth.key)
+        .bearer_auth(&auth.key)
         .send()
         .await
         .expect("verify route answers")
@@ -698,6 +719,24 @@ async fn conversation_verify_contract() {
     assert_eq!(envelope["command"], "conversation verify");
     assert_eq!(envelope["data"]["guid"], guid.as_str());
     assert_eq!(envelope["data"]["last_turn_at"], "2026-08-27T09:00:00Z");
+
+    let response = reqwest::Client::new()
+        .get(format!(
+            "{base}/conversations/verify?session_id={absent_session}&harness=omp"
+        ))
+        .bearer_auth(&auth.key)
+        .send()
+        .await
+        .expect("negative verify route answers");
+    assert_eq!(response.status(), reqwest::StatusCode::NOT_FOUND);
+    let negative: serde_json::Value = response
+        .json()
+        .await
+        .expect("negative verify returns an envelope");
+    assert_eq!(
+        negative["error"]["code"],
+        "FS3-E-QUERY-CONVERSATION-NOT-FOUND"
+    );
 
     database.destroy(state.db).await;
 }

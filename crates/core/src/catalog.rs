@@ -417,8 +417,8 @@ pub const QUERY_NO_INDEX: Code = Code::new(
 );
 
 /// A derived conversation identity has no delivered turns in the index.
-pub const QUERY_CONVERSATION_NOT_INDEXED: Code = Code::new(
-    "FS3-E-QUERY-CONVERSATION-NOT-INDEXED",
+pub const QUERY_CONVERSATION_NOT_FOUND: Code = Code::new(
+    "FS3-E-QUERY-CONVERSATION-NOT-FOUND",
     Area::Query,
     "The derived conversation is absent from the index or has not delivered any turns.",
     "run `flowspace3 conversation ingest` for the session, then wait for the queue to drain and verify again.",
@@ -563,7 +563,7 @@ pub const ALL: &[Code] = &[
     QUERY_ASK_ITERATION_LIMIT,
     QUERY_ASK_TOKEN_BUDGET,
     QUERY_NO_INDEX,
-    QUERY_CONVERSATION_NOT_INDEXED,
+    QUERY_CONVERSATION_NOT_FOUND,
     QUERY_NOT_FOUND,
     QUERY_INVALID_ADDRESS,
     QUERY_INVALID_AMBIGUOUS,

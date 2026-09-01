@@ -190,7 +190,7 @@ fn not_delivered(guid: &ConversationId, turns: Option<i64>) -> Failure {
             "conversation {guid} has {turns} turn(s) but no last-turn timestamp, so delivery cannot be verified"
         ),
     };
-    let failure = Failure::new(&catalog::QUERY_CONVERSATION_NOT_INDEXED, message)
+    let failure = Failure::new(&catalog::QUERY_CONVERSATION_NOT_FOUND, message)
         .with_detail("guid", guid.as_str());
     match turns {
         Some(turns) => failure.with_detail("turns", turns),
