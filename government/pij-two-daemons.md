@@ -50,6 +50,14 @@ That is backlog row 121, and it is mine to fix.
 Until it lands: if your work matters and your seat is rs-resident, say so in
 your report — do not assume the index caught it.
 
+**Worse than it first looked (2026-09-02, pij o-prime's contract answer):** rs
+rows carry **no inner session id at all**, so an rs seat cannot currently be
+resolved to a native session by anyone, from either side. Filed upstream as pij
+req-0033. If your harness is claude, `CLAUDE_CODE_SESSION_ID` is in your shell
+and `flowspace3 conversation ingest --session <that> --harness claude` works
+today with no pij dependency — use it. pi/omp seats have no such escape hatch
+until req-0033 lands.
+
 ## If you hit any of this
 
 `harness observe` it AND tell o-prime. Four of the `ask --path` coder's
