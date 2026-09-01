@@ -1,0 +1,45 @@
+docs/plans/011-conv-verify/assets/backpressure.dd.json
+  s_15d888f4b629c1::t_7933d2f83a6212 1-126
+docs/plans/011-conv-verify/assets/backpressure.dd.md
+  s_15d888f4b629c1::t_36c1e80b0b8eab 1-41
+docs/plans/011-conv-verify/assets/inputs/pij-two-daemons.md
+  s_15d888f4b629c1::t_c8ccc31e17f5e4 1-83
+docs/plans/011-conv-verify/assets/tasks/phase-1/tasks.dd.json
+  s_15d888f4b629c1::t_38542b5c649145 1-145
+docs/plans/011-conv-verify/assets/tasks/phase-1/tasks.dd.md
+  s_15d888f4b629c1::t_937459f94914b1 1-80
+docs/plans/011-conv-verify/impl-guide.dd.json
+  s_15d888f4b629c1::t_3c2f13e15058b8 1-69
+docs/plans/011-conv-verify/impl-guide.dd.md
+  s_15d888f4b629c1::t_c910d23f2636bd 1-64
+docs/plans/011-conv-verify/packet-coder.dd.json
+  s_15d888f4b629c1::t_a61069a740ce85 1-174
+docs/plans/011-conv-verify/packet-pm.dd.json
+  s_15d888f4b629c1::t_a24c8ab6838bb2 1-159
+docs/plans/011-conv-verify/packet-pm.dd.md
+  s_15d888f4b629c1::t_4932e021586efe 1-87
+docs/plans/011-conv-verify/packet-reviewer.dd.json
+  s_15d888f4b629c1::t_a924478e348107 1-65
+docs/plans/011-conv-verify/packet-reviewer.dd.md
+  s_15d888f4b629c1::t_622a9fa4b1da6d 1-76
+docs/plans/011-conv-verify/plan.dd.json
+  s_15d888f4b629c1::t_0109528e640229 1-93
+docs/plans/011-conv-verify/plan.dd.md
+  s_15d888f4b629c1::t_fc21f6ecea2e1f 1-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2aca5fda8d27247f20fbcc6d5fae1f8d0b6e6d25",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
