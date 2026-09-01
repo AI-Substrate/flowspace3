@@ -1684,3 +1684,21 @@ ROW 117 / PLAN 010 REVIEW RECORD (2026-09-02): PR #92 APPROVE WITH NOTES
     the heal's proof. Pre-bounce evidence captured to
     scratch/plan-010-drain/ (five keys with original last_error, status
     envelope) because `requeue_failed` overwrites last_error at boot.
+
+PROCESS NOTE, 2026-09-02 (o-prime against itself): the plan 010 reviewer
+    handed the coder a "trap" — "openai_compat.rs has TWO try_post
+    implementations; if in doubt patch both" — and I relayed it to the
+    coder APPROVINGLY, calling it the line that justified the file.
+    There is exactly one `try_post`; the second rejection site is the
+    chat path, and "patch both" would have mis-classified chat errors.
+    The reviewer caught it by re-grepping its own handover before
+    standing down and retracted by file; the retraction reached the
+    coder BEFORE it edited that file (verified: its diff had not touched
+    openai_compat.rs). Two lessons, both encodable: (1) verify-then-relay
+    applies to REVIEWER text, not only coder claims — a plausible trap
+    that reads well is precisely the shape that survives a relay; I
+    should have grepped `fn try_post` (one command) before forwarding;
+    (2) the receipt discipline the packet imposes on the author (cite
+    the command, not the prose) belongs in the reviewer packet's
+    handover section too. Adding it to packet-reviewer's i4 in the
+    pij-team templates at the next drain.
