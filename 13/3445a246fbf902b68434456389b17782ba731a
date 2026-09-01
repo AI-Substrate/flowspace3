@@ -1,0 +1,21 @@
+docs/plans/010-embed-cap-heal/packet-coder.dd.json
+  s_15d888f4b629c1::t_4a68750c7d54be 104
+docs/plans/010-embed-cap-heal/packet-coder.dd.md
+  s_15d888f4b629c1::t_fc06b7781bc153 64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "133445a246fbf902b68434456389b17782ba731a",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
