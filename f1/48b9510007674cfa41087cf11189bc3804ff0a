@@ -1,0 +1,23 @@
+government/briefs/backlog.md
+  s_15d888f4b629c1::t_db3e0c82b97930 1649-1686
+scratch/plan-010-drain/pre-bounce-failed-embed-jobs.txt
+  s_15d888f4b629c1::t_7382788e4a49be 1-45
+scratch/plan-010-drain/pre-bounce-status.json
+  s_15d888f4b629c1::t_6d0e72e7ddcc18 1-479
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f148b9510007674cfa41087cf11189bc3804ff0a",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
