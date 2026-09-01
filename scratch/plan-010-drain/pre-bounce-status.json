@@ -1,0 +1,479 @@
+{
+  "ok": true,
+  "command": "status",
+  "v": 1,
+  "data": {
+    "last_error": {
+      "error": "FS3-E-PROVIDER-FAILED provider failure: POST https://oaijodoaustralia.openai.azure.com/openai/deployments/text-embedding-3-small-no-rate/embeddings?api-version=2024-02-01: 400 Bad Request: {\n  \"error\": {\n    \"message\": \"Invalid 'input[0]': maximum input length is 8192 tokens.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": null,\n    \"code\": null\n  }\n} — see the response body",
+      "job": "embed:conv:recovery:raw:c5a6be2d9ece36c51e1096c16d4522e62cee52e6e67caeecb85998ac39005da7"
+    },
+    "queue": [
+      {
+        "count": 491707,
+        "kind": "embed",
+        "state": "done",
+        "with_error": 0
+      },
+      {
+        "count": 5,
+        "kind": "embed",
+        "state": "failed",
+        "with_error": 5
+      },
+      {
+        "count": 38,
+        "kind": "ingest_session",
+        "state": "done",
+        "with_error": 0
+      },
+      {
+        "count": 3,
+        "kind": "ingest_session",
+        "state": "failed",
+        "with_error": 3
+      },
+      {
+        "count": 109881,
+        "kind": "scan_file",
+        "state": "done",
+        "with_error": 0
+      },
+      {
+        "count": 1,
+        "kind": "scan_file",
+        "state": "running",
+        "with_error": 0
+      },
+      {
+        "count": 344096,
+        "kind": "summarize",
+        "state": "done",
+        "with_error": 0
+      }
+    ],
+    "roots": [
+      {
+        "files": 3596,
+        "identity": "git:github.com/AI-Substrate/chainglass",
+        "root_path": "/Users/jordanknight/substrate/078-mobile-experience"
+      },
+      {
+        "files": 3665,
+        "identity": "git:github.com/AI-Substrate/chainglass",
+        "root_path": "/Users/jordanknight/substrate/083-md-editor"
+      },
+      {
+        "files": 4184,
+        "identity": "git:github.com/AI-Substrate/chainglass",
+        "root_path": "/Users/jordanknight/substrate/chainglass"
+      },
+      {
+        "files": 2515,
+        "identity": "git:github.com/AI-Substrate/chainglass",
+        "root_path": "/Users/jordanknight/substrate/chainglass-048"
+      },
+      {
+        "files": 296,
+        "identity": "git:github.com/AI-Substrate/dd",
+        "root_path": "/Users/jordanknight/substrate/dd"
+      },
+      {
+        "files": 288,
+        "identity": "git:github.com/AI-Substrate/dd",
+        "root_path": "/Users/jordanknight/substrate/dd-worktrees/agents-start-here"
+      },
+      {
+        "files": 277,
+        "identity": "git:github.com/AI-Substrate/dd",
+        "root_path": "/Users/jordanknight/substrate/dd-worktrees/binary-rename"
+      },
+      {
+        "files": 303,
+        "identity": "git:github.com/AI-Substrate/dd",
+        "root_path": "/Users/jordanknight/substrate/dd-worktrees/derive-verb"
+      },
+      {
+        "files": 301,
+        "identity": "git:github.com/AI-Substrate/dd",
+        "root_path": "/Users/jordanknight/substrate/dd-worktrees/file-links"
+      },
+      {
+        "files": 274,
+        "identity": "git:github.com/AI-Substrate/dd",
+        "root_path": "/Users/jordanknight/substrate/dd-worktrees/s002-sdk-build"
+      },
+      {
+        "files": 286,
+        "identity": "git:github.com/AI-Substrate/dd",
+        "root_path": "/Users/jordanknight/substrate/dd-worktrees/tally-absent"
+      },
+      {
+        "files": 278,
+        "identity": "git:github.com/AI-Substrate/dd",
+        "root_path": "/Users/jordanknight/substrate/dd-worktrees/tally-columns"
+      },
+      {
+        "files": 786,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/Users/jordanknight/substrate/flowspace/flowspace3"
+      },
+      {
+        "files": 806,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/Users/jordanknight/substrate/flowspace/fs3-conv-verify"
+      },
+      {
+        "files": 806,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/Users/jordanknight/substrate/flowspace/fs3-embed-cap-heal"
+      },
+      {
+        "files": 123,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/Users/jordanknight/substrate/flowspace/fs3-governance"
+      },
+      {
+        "files": 807,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/Users/jordanknight/substrate/flowspace/fs3-review-010"
+      },
+      {
+        "files": 806,
+        "identity": "git:github.com/AI-Substrate/flowspace3",
+        "root_path": "/Users/jordanknight/substrate/flowspace/fs3-review-011"
+      },
+      {
+        "files": 773,
+        "identity": "git:github.com/AI-Substrate/flow_squared",
+        "root_path": "/Users/jordanknight/substrate/fs2/028-server-mode"
+      },
+      {
+        "files": 675,
+        "identity": "git:github.com/AI-Substrate/flow_squared",
+        "root_path": "/Users/jordanknight/substrate/fs2/029-scanner-ignore-problem"
+      },
+      {
+        "files": 686,
+        "identity": "git:github.com/AI-Substrate/flow_squared",
+        "root_path": "/Users/jordanknight/substrate/fs2/030-better-node-parsing"
+      },
+      {
+        "files": 887,
+        "identity": "git:github.com/AI-Substrate/flow_squared",
+        "root_path": "/Users/jordanknight/substrate/fs2/031-cross-file-rels-take-2"
+      },
+      {
+        "files": 906,
+        "identity": "git:github.com/AI-Substrate/flow_squared",
+        "root_path": "/Users/jordanknight/substrate/fs2/045-windows-compat"
+      },
+      {
+        "files": 962,
+        "identity": "git:github.com/AI-Substrate/flow_squared",
+        "root_path": "/Users/jordanknight/substrate/fs2/048-better-documentation"
+      },
+      {
+        "files": 675,
+        "identity": "git:github.com/AI-Substrate/flow_squared",
+        "root_path": "/Users/jordanknight/substrate/fs2/chore-azure-identity-default"
+      },
+      {
+        "files": 675,
+        "identity": "git:github.com/AI-Substrate/flow_squared",
+        "root_path": "/Users/jordanknight/substrate/fs2/fix-get-node-external-graphs"
+      },
+      {
+        "files": 675,
+        "identity": "git:github.com/AI-Substrate/flow_squared",
+        "root_path": "/Users/jordanknight/substrate/fs2/fix-uv-upgrade-with-flag"
+      },
+      {
+        "files": 959,
+        "identity": "git:github.com/AI-Substrate/flow_squared",
+        "root_path": "/Users/jordanknight/substrate/fs2/flow_squared"
+      },
+      {
+        "files": 1794,
+        "identity": "git:github.com/AI-Substrate/harness-engineering",
+        "root_path": "/Users/jordanknight/substrate/harness-engineering"
+      },
+      {
+        "files": 9,
+        "identity": "git:github.com/AI-Substrate/harness-engineering",
+        "root_path": "/Users/jordanknight/substrate/harness-engineering-worktrees/governance"
+      },
+      {
+        "files": 1804,
+        "identity": "git:github.com/AI-Substrate/harness-engineering",
+        "root_path": "/Users/jordanknight/substrate/harness-engineering-worktrees/mac-validation"
+      },
+      {
+        "files": 1854,
+        "identity": "git:github.com/AI-Substrate/harness-engineering",
+        "root_path": "/Users/jordanknight/substrate/harness-engineering-worktrees/p086-hooks-repair"
+      },
+      {
+        "files": 1493,
+        "identity": "git:github.com/AI-Substrate/harness-engineering",
+        "root_path": "/Users/jordanknight/substrate/harness-engineering-worktrees/s065-deterministic-documents"
+      },
+      {
+        "files": 1848,
+        "identity": "git:github.com/AI-Substrate/harness-engineering",
+        "root_path": "/Users/jordanknight/substrate/harness-engineering-worktrees/s083-evidence"
+      },
+      {
+        "files": 1771,
+        "identity": "git:github.com/AI-Substrate/harness-engineering",
+        "root_path": "/Users/jordanknight/substrate/harness-engineering-worktrees/s090-telemetry-remediation"
+      },
+      {
+        "files": 1716,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/private/tmp/claude-501/-Users-jordanknight-pi-hacking-pij/5ae4199d-c737-4ac3-a856-7e69531e4bab/scratchpad/wt-evidence"
+      },
+      {
+        "files": 1817,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/fs3-claude-inbound-accept-global"
+      },
+      {
+        "files": 1817,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/fs3-omp-event-reattach"
+      },
+      {
+        "files": 1809,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/fs3-omp-statusline-name"
+      },
+      {
+        "files": 1806,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij"
+      },
+      {
+        "files": 1446,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/docs-fleet-live-findings"
+      },
+      {
+        "files": 1717,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/gov-repoint"
+      },
+      {
+        "files": 1717,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/pij-governance"
+      },
+      {
+        "files": 921,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/pr14-windows-reconcile"
+      },
+      {
+        "files": 1773,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/relander-114"
+      },
+      {
+        "files": 1751,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/revert-336"
+      },
+      {
+        "files": 1041,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s001-s072-reboot-rehydrate"
+      },
+      {
+        "files": 777,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s045-copilot-5-6-effort-levels"
+      },
+      {
+        "files": 956,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s050-focus-agents"
+      },
+      {
+        "files": 956,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s050-focus-sqlite-fix"
+      },
+      {
+        "files": 1020,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s051-pij-identity-integrity"
+      },
+      {
+        "files": 1250,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s082-chore-primitive"
+      },
+      {
+        "files": 1453,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s102-stall-notice-discriminator"
+      },
+      {
+        "files": 1367,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s103-1f916-comms-study"
+      },
+      {
+        "files": 1356,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s104-busy-steer-head-truncation"
+      },
+      {
+        "files": 1366,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s105-claude-socket-transport"
+      },
+      {
+        "files": 1360,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s106-model-catalog-parity"
+      },
+      {
+        "files": 1357,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s107-harness-checks-latency"
+      },
+      {
+        "files": 1625,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s108-r4"
+      },
+      {
+        "files": 1631,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s108-review-sidecars"
+      },
+      {
+        "files": 1634,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s108-rust-port"
+      },
+      {
+        "files": 1696,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s109-review-spawn-rpc-port"
+      },
+      {
+        "files": 1658,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s109-rev-ts"
+      },
+      {
+        "files": 1653,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s109-rust-ci"
+      },
+      {
+        "files": 1728,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s110-claude-delivery"
+      },
+      {
+        "files": 1727,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s110-review"
+      },
+      {
+        "files": 1722,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s110-u-adopt"
+      },
+      {
+        "files": 1731,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s111-anti-step-on"
+      },
+      {
+        "files": 1361,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s111-lean-ctx-eradication"
+      },
+      {
+        "files": 1730,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s111-review"
+      },
+      {
+        "files": 1725,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s111-u-gate"
+      },
+      {
+        "files": 1728,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s111-u-observer"
+      },
+      {
+        "files": 1720,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s112-verb-usage"
+      },
+      {
+        "files": 1733,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s113-claude-bind"
+      },
+      {
+        "files": 1773,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s114-ready-on-rs"
+      },
+      {
+        "files": 1750,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s115-name-corpus"
+      },
+      {
+        "files": 1751,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s116-consent-default"
+      },
+      {
+        "files": 1782,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s117-delivery-repro"
+      },
+      {
+        "files": 1777,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s118-framing"
+      },
+      {
+        "files": 1806,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s121-adopt-is-consent"
+      },
+      {
+        "files": 1799,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s122-tmux-full-body"
+      },
+      {
+        "files": 1795,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/s123-one-message-one-delivery"
+      },
+      {
+        "files": 1363,
+        "identity": "git:github.com/AI-Substrate/pij",
+        "root_path": "/Users/jordanknight/pi-hacking/pij-worktrees/ts-bounce-recipe"
+      },
+      {
+        "files": 1291,
+        "identity": "git:github.com/jakkaj/home-improvement",
+        "root_path": "/Users/jordanknight/github/home-improvement"
+      }
+    ],
+    "schema_ahead": []
+  },
+  "next_action": "the queue is empty — `flowspace3 search \"<question>\"` will answer from the index"
+}

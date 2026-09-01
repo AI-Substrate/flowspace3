@@ -1,0 +1,45 @@
+1314967 | embed:git:github.com/AI-Substrate/pij:raw:8ecdedc6d073e221d0ebfecb61950417c120114ee98067b78178c410e3c6c560 | attempts=3 terminal=false updated=2026-08-31 09:12:35.701186+00 | last_error=
+FS3-E-PROVIDER-FAILED provider failure: POST https://oaijodoaustralia.openai.azure.com/openai/deployments/text-embedding-3-small-no-rate/embeddings?api-version=2024-02-01: 400 Bad Request: {
+  "error": {
+    "message": "Invalid 'input[0]': maximum input length is 8192 tokens.",
+    "type": "invalid_request_error",
+    "param": null,
+    "code": null
+  }
+} — see the response body
+1315244 | embed:git:github.com/AI-Substrate/pij:raw:9dce3968beeb4c5ba9d19ac287d25d957e1374819c1f95d6fba39cc227946650 | attempts=3 terminal=false updated=2026-08-31 09:15:27.800043+00 | last_error=
+FS3-E-PROVIDER-FAILED provider failure: POST https://oaijodoaustralia.openai.azure.com/openai/deployments/text-embedding-3-small-no-rate/embeddings?api-version=2024-02-01: 400 Bad Request: {
+  "error": {
+    "message": "Invalid 'input[0]': maximum input length is 8192 tokens.",
+    "type": "invalid_request_error",
+    "param": null,
+    "code": null
+  }
+} — see the response body
+1316706 | embed:git:github.com/AI-Substrate/pij:raw:043365681f0eb07897f17377016f1d2ac4a4de541de7ea34bb45b5f9eeb7590f | attempts=3 terminal=false updated=2026-08-31 09:27:30.363549+00 | last_error=
+FS3-E-PROVIDER-FAILED provider failure: POST https://oaijodoaustralia.openai.azure.com/openai/deployments/text-embedding-3-small-no-rate/embeddings?api-version=2024-02-01: 400 Bad Request: {
+  "error": {
+    "message": "Invalid 'input[0]': maximum input length is 8192 tokens.",
+    "type": "invalid_request_error",
+    "param": null,
+    "code": null
+  }
+} — see the response body
+1323215 | embed:git:github.com/AI-Substrate/pij:raw:043365681f0eb07897f17377016f1d2ac4a4de541de7ea34bb45b5f9eeb7590f | attempts=3 terminal=false updated=2026-08-31 11:43:30.23055+00 | last_error=
+FS3-E-PROVIDER-FAILED provider failure: POST https://oaijodoaustralia.openai.azure.com/openai/deployments/text-embedding-3-small-no-rate/embeddings?api-version=2024-02-01: 400 Bad Request: {
+  "error": {
+    "message": "Invalid 'input[0]': maximum input length is 8192 tokens.",
+    "type": "invalid_request_error",
+    "param": null,
+    "code": null
+  }
+} — see the response body
+1344012 | embed:conv:recovery:raw:c5a6be2d9ece36c51e1096c16d4522e62cee52e6e67caeecb85998ac39005da7 | attempts=3 terminal=false updated=2026-09-01 07:44:23.224835+00 | last_error=
+FS3-E-PROVIDER-FAILED provider failure: POST https://oaijodoaustralia.openai.azure.com/openai/deployments/text-embedding-3-small-no-rate/embeddings?api-version=2024-02-01: 400 Bad Request: {
+  "error": {
+    "message": "Invalid 'input[0]': maximum input length is 8192 tokens.",
+    "type": "invalid_request_error",
+    "param": null,
+    "code": null
+  }
+} — see the response body

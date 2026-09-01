@@ -1646,3 +1646,41 @@ ROW 121 — CLAUDE RS SEATS NOW INGEST, PROVEN IN OUR INDEX (meadowlark,
     are readable. Until then, operators can set include_hidden = true
     and rescan; the daemon-side effect on prod (a full rescan of every
     root's dot-trees) needs Jordan's GO because it is load.
+
+ROW 124 ROOT CAUSE (from the plan 010 reviewer, pij-fiscal-tick, who
+    disclosed it unasked): the crash at 22:48:35 followed ITS OWN
+    `cargo test -p fs3-daemon --test oversize` — 12 `#[tokio::test]`s,
+    each `FreshDatabase` issuing `CREATE DATABASE`, so ~12 concurrent
+    CREATE DATABASE hit the shared postmaster mid-checkpoint on a host
+    at load 124. Same crash shape is in the container history FOUR
+    times: 2026-08-27 10:03 (signal 6 during `CREATE DATABASE
+    fs3_migrations_…`), 2026-08-28 07:09 and 07:12 (exit code 2), and
+    tonight. So it is not the load alone — it is our own test helper.
+    The reviewer ran the remaining suite at --test-threads=2 and it was
+    clean. Row 126 carries the fix.
+
+126. **FreshDatabase can take down the fleet's database: concurrent
+    CREATE/DROP DATABASE from one test binary crashes the shared
+    postmaster** (reviewer fiscal-tick DL-001, 2026-09-02; four
+    occurrences on record — see row 124). FIX, in `crates/testkit`:
+    (a) serialise CREATE/DROP DATABASE behind a process-wide lock (or a
+    small semaphore) inside FreshDatabase — a helper must not be able to
+    do this by default; (b) `fresh_database.rs:46`'s panic advice
+    "Start it with: docker compose up -d" must distinguish "server
+    closed the connection / in recovery" from "no server configured" —
+    today it sends the agent straight into the container-name collision
+    (row 110). (c) longer-term: a separate test postmaster (row 124b).
+    Small, self-contained, high leverage: every coder's gate touches it.
+
+ROW 117 / PLAN 010 REVIEW RECORD (2026-09-02): PR #92 APPROVE WITH NOTES
+    at 6377a1fe — three findings, all ruled FOLD-IN: f-0001 MAJOR
+    (`OpenAiCompatEmbedder` — the `openai_compat` and `github_copilot`
+    kinds — shares the 8192 cap but never classifies it, so the heal
+    never runs there; one line); f-0002 (latent release-assert panic
+    and a false ratio print if MAX_HEAL_ROUNDS is ever tuned); f-0003
+    (the cap number baked into the matched string). Also ruled: alignment
+    SHIPS (risk #3 gate, explicit); a clean prod drain does NOT exercise
+    the heal (the prod item splits by alignment alone) — the fixtures are
+    the heal's proof. Pre-bounce evidence captured to
+    scratch/plan-010-drain/ (five keys with original last_error, status
+    envelope) because `requeue_failed` overwrites last_error at boot.
