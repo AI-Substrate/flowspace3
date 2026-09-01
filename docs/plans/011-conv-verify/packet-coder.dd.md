@@ -61,7 +61,7 @@ You build the ONE unit of plan 011-conv-verify: authoritative conv address + ver
 | worktree | /Users/jordanknight/substrate/flowspace/fs3-conv-verify |
 | branch | 011-conv-verify |
 | fence | crates/cli (get + conversation verbs, docs), crates/daemon/src/{conversations,http,convo_ingest}.rs, their tests, testkit fixtures you add |
-| forbidden_note | Never touch another unit's paths, .harness/government/**, or the plan's flow state. Never merge or open PRs — o-prime merges. ABSOLUTE PATHS FOR EVERY FILE READ AND EDIT, ALWAYS: a spawned seat's file tools may resolve relative paths against the SPAWN directory (the main clone) while your shell resolves against your worktree — the same relative path then addresses two different files, the tool reports success either way, and your build goes green against a tree missing your change (proven 2026-08-28, three seats, DL-007/008). State your worktree root once at ack and prefix every path with it. |
+| forbidden_note | Never touch another unit's paths, .harness/government/**, or the plan's flow state. Open the PR yourself when the done-bar is met (tk-0104); NEVER merge it — o-prime merges. ABSOLUTE PATHS FOR EVERY FILE READ AND EDIT, ALWAYS: a spawned seat's file tools may resolve relative paths against the SPAWN directory (the main clone) while your shell resolves against your worktree — the same relative path then addresses two different files, the tool reports success either way, and your build goes green against a tree missing your change (proven 2026-08-28, three seats, DL-007/008). State your worktree root once at ack and prefix every path with it. |
 
 <a id="done-bar"></a>
 
