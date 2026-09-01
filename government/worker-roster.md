@@ -64,3 +64,8 @@ All revivable. "CLOSED" = pane killed, descriptor dissolved, work fully landed o
 | pij-light-bovid | w-ask-conv-scope row 85 (fs3-ask-conv-scope): enforced --conversation/--source pinning; rebases after mollusk | ACTIVE |
 | pij-cloudy-krill | standing read-only queue/ingest-efficiency monitor (Jordan-ordered); audit + live alerts in scratch/queue-waste-audit.md | STANDING |
 | pij-double-halibut | w-daemon-bounce #77 (bounce verb) — merged; observations rescued to main .harness/temp/agent/daemon-bounce-observations.md (row 93) | CLOSED 2026-08-30 |
+
+## 2026-09-02 seats (sol codes, Claude reviews — ruling 2026-09-02; generation recorded per how-we-work 2b)
+| seat | packet | generation | status |
+|---|---|---|---|
+| pij-general-limpet | plan 010 embed-cap-heal (fs3-embed-cap-heal, branch 010-embed-cap-heal); omp / gpt-5.6-sol-fast-1m / high; spawnId s1788300029005-71257; pane %2428 | **rs** — omp boot self-registered into rs; cannot `pij send` a legacy prime (E-RS, no fallback); channel = `.harness/temp/agent/embed-cap-heal-*.md` + `pij-rs send` from o-prime; transcript will NOT ingest (omp, no session env, req-0033) — accepted knowingly | ACTIVE — canary verified by pane + file 2026-09-02; released to ack (prime-reply-001) |
