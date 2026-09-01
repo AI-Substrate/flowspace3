@@ -93,136 +93,92 @@ which is a logging decision, not an enrichment one.
 
 ## The size cliffs, and the guard
 
-There are two independent limits and they are NOT the same thing:
+There are two independent limits:
 
-| limit | what it bounds | what breaks it |
+| limit | what it bounds | response |
 | --- | --- | --- |
-| `batch::TOKEN_BUDGET` (200k) | the SUM of one request | fixed by splitting the batch |
-| `Embedder::max_input_tokens` (8192) | the largest SINGLE input | **cannot** be fixed by splitting |
+| `batch::TOKEN_BUDGET` (200k) | the sum of one request | split the provider call |
+| `Embedder::max_input_tokens` (8192 hosted) | one input | chunk first; heal a typed cap rejection |
 
-fs3 had the first and not the second until 2026-08-27. The consequence, measured
-on a live index: **59 of ~4,000 elements were permanently unsearchable.** Each
-exceeded the embedding model's per-input cap, Azure answered
-`400 Invalid 'input[0]': maximum input length is 8192 tokens`, the runner
-retried three times into the same answer, and the job failed for good. Worse
-than the loss was the silence — the queue recorded the work as finished
-business, and nothing in the index said those elements had no vector.
+The original defect was measured on a live index: 59 of roughly 4,000 elements
+exceeded the hosted model's per-input cap. Azure returned
+`400 Invalid 'input[0]': maximum input length is 8192 tokens`; retrying identical
+bytes exhausted the job and left the content unsearchable.
 
-The batch planner made this reachable on purpose: `split_to_budget` lets an item
-bigger than the whole budget ride ALONE rather than dropping it, on the
-reasoning that "one oversized request the provider may well accept" beats a
-silent hole. That reasoning was right about the hole and wrong about the
-acceptance.
+`fs3_core::tokens` owns the byte estimate and its safety margin. The estimate is
+bytes ÷ 3, while `input_budget_bytes` fills two thirds of a declared cap: an
+effective two bytes per token. `chunk_plan` uses that same helper, so its 7,500
+token window is 15,000 bytes, with 600 bytes of overlap. No tokenizer dependency
+is needed, and every byte remains represented by overlapping chunks.
 
-**The ruling (Jordan, 2026-08-27): truncate now, split later.** An oversized
-input is shortened to fit rather than skipped — the head of a large element is
-most of what a search wants from it, and a vector of the head beats no vector at
-all. Splitting one element into several vectors is the better answer and is
-deliberately not built; it slots in at the same loop in `enrich::embed_items`,
-and it changes what a `source_hash` addresses, which is why it is its own
-packet.
+Content can still tokenize denser than the estimate. OpenAI, Azure, and
+OpenAI-compatible embedding adapters classify a 400 whose body reports
+`maximum input length is N` as `Error::InputTooLong`, carrying the reported cap.
+When the body names `input[N]`, the daemon re-splits that member. When the index
+is absent or invalid, it bisects the rejected call until the member is isolated.
+One bounded heal round tightens the member from the two-byte estimate to one
+byte per token, the provable floor. Exhaustion is terminal and names the source
+hash, original byte length, and the actual window-bytes/token-cap ratio.
 
-### How much gets kept
-
-`fs3_core::tokens` is the ONE place fs3 counts tokens — the batch budget and the
-per-input guard read the same function, deliberately.
-
-- `estimate_tokens` = bytes ÷ 3. Pessimistic on purpose: code tokenizes worse
-  than prose.
-- `fit_to_cap` fills only **two thirds** of the declared cap, i.e. it assumes
-  **2 bytes per token**. That is the same headroom `TOKEN_BUDGET` takes against
-  Azure's 300k request ceiling, and for the same reason: the number is an
-  estimate, and overshooting costs a whole call.
-- No tokenizer dependency. `cl100k_base` would be exact for Azure and OpenAI and
-  wrong for the local embedder (`fastembed`, WordPiece), so "exact" would mean
-  two counting mechanisms — one of them applied to models it does not describe.
-
-**The honest limit**: content denser than 2 bytes per token — minified bundles,
-base64 blobs, punctuation soup — can still exceed the cap. It fails visibly in
-the queue, exactly as it does today. Buying safety against it means truncating
-at 1 byte per token (the only provable bound: a token is never fewer than one
-byte), which would throw away three quarters of what every ordinary element
-could contribute.
+Provider calls write nothing incrementally. After every sub-call succeeds,
+chunks receive contiguous per-source numbers and the complete vector set is
+stored in one transaction; a failed or re-planned call cannot leave duplicate or
+partial rows.
 
 ### The caps each provider declares
 
-`max_input_tokens` is a **declaration**, like `concurrency_ceiling`: required,
-no default, because only the provider knows which model is deployed behind it.
+`max_input_tokens` is required because only the provider knows the deployed
+model:
 
 | provider | cap | why |
 | --- | --- | --- |
-| OpenAI / Azure embeddings | 8192 | the `text-embedding-3-*` family's real cap |
-| OpenAI / Azure chat (summaries) | 32,000 | a quarter of a 128k window: the reply shares it, and not every deployment has 128k |
-| openai-compat (self-hosted) | 6,000 | must fit the SMALLEST plausible box (8k context) — the endpoint reports a model id, never a window |
-| local (`fastembed`) | `usize::MAX` | see below |
+| OpenAI / Azure embeddings | 8192 | `text-embedding-3-*` input cap |
+| openai-compat embeddings | 8192 | current adapter declaration; provider rejection still carries its reported cap |
+| OpenAI / Azure chat | 32,000 | bounded share of the context window |
+| openai-compat chat | 6,000 | smallest supported self-hosted context |
+| local (`fastembed`) | `usize::MAX` | tokenizer truncates internally instead of rejecting |
 
-The local embedder declares no cap **because it never rejects**: `fastembed`
-configures its tokenizer with `TruncationParams`, so an over-long text is
-silently cut at load time. Declaring a smaller number would make the caller cut
-BELOW what the model would have read, trading real content for a marker — and
-the number would be a guess, since `fastembed`'s catalogue reports a model's
-width and its files but never its context window. **Consequence, stated
-plainly: a local index does not mark its truncations.** Fixing that needs the
-window, which needs `fastembed` to expose it or this adapter to read
-`tokenizer_config.json` itself.
+Local truncation remains unmarked because `fastembed` does not expose the model
+window through this adapter.
 
-## Honesty: how a partial vector says so
+## How vector coverage is represented
 
-- **Vectors**: `embeddings_1024.truncated` (migration 0010). A column rather
-  than JSONB because it must be aggregable — "how many of my vectors are
-  partial" is `count(*) FILTER (WHERE truncated)`.
-- **Summaries**: `smart_content.extras.truncated_input`, the staging area
-  migration 0006 created for facts that have not earned a column.
-- Both are logged at WARN the moment they happen, naming the hash or address
-  and the before/after size.
-
-The row stays keyed by the **original** hash. A truncated embedding IS the
-embedding for that content: re-keying on the prefix would make the dedupe
-pre-check answer "not embedded" for ever and re-buy the same vector on every
-scan. The consequence is that raising the cap does not automatically re-embed
-what was truncated under the old one — which is what the column is for; the rows
-to redo are exactly `WHERE truncated`.
-
-```sql
--- what is partial, by model
-SELECT model_key, count(*) FILTER (WHERE truncated) AS partial, count(*) AS total
-  FROM embeddings_1024 GROUP BY model_key;
-```
+An oversized source keeps its original `source_hash`; `chunk_no` distinguishes
+its overlapping vectors. Hosted-provider chunks are stored with
+`truncated=false` because splitting preserves the complete source. The legacy
+`embeddings_1024.truncated` column remains queryable for rows produced by the
+older prefix guard. Summary truncation remains
+`smart_content.extras.truncated_input`.
 
 ## The path back for work that already died
 
-A failed enrichment job had no way back. `summarize` and `embed` jobs are minted
-by a scan, and `add_root` enqueues nothing for a file whose blob is unchanged —
-so a failed one is the end of the line for that element. `fail_job`'s own
-documentation pointed at the decision-D6 reconciler sweep, which does not exist.
+`jobs.terminal` distinguishes a defect that cannot succeed from work that merely
+ran out of attempts. At daemon boot, `recover_enrichment_jobs` calls
+`requeue_failed` for non-terminal `summarize` and `embed` rows before the runner
+starts. The update resets attempts and parks, schedules the rows immediately,
+and skips a dedupe key already held by a live job.
 
-Two pieces now close that:
+This is the recovery mechanism for cap failures created by older binaries: the
+bounce that installs the fix also returns them to `pending`; no repair SQL is
+required. A heal that reaches the one-byte floor returns a non-retryable failure,
+so its job is terminal and the same boot sweep does not revive it.
 
-1. **`jobs.terminal`** (migration 0011) records WHICH kind of ending a failure
-   was. `true` = no run will ever succeed (unreadable payload, unknown kind,
-   wrong vector width). `false` = the attempts simply ran out. The runner
-   already knows this — a `Failure` carries `retryable`.
-2. **`requeue_failed`**, called at daemon boot before the runner starts, returns
-   non-terminal failed `summarize`/`embed` rows to `pending`. Rows whose dedupe
-   key is held by a live job are skipped (the live-dedupe index is unique over
-   `pending`/`running`, so waking a duplicate would abort the statement).
-
-So the fix arriving as a new binary is enough: no repair command to discover, no
-SQL to write. It is cheap by construction — a requeued job whose vectors already
-exist settles on its own pre-check without a provider call.
-
-`scan_file` is deliberately NOT swept: a failed scan has an ordinary way back,
-because the file is on disk and touching it enqueues a new job.
+`scan_file` is deliberately not swept: touching or rescanning its file is the
+ordinary recovery path.
 
 ## How to verify it works
 
 ```bash
-# the guard, the marker, the batch interaction, and the recovery
+# chunking, dense-token healing, terminal exhaustion, and boot recovery
 FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5433/flowspace3_test \
   cargo test -p fs3-daemon --test oversize
 
-# the counting convention itself (no database needed)
+# exact hosted-adapter classification and unrelated-400 controls
+cargo test -p fs3-providers cap_rejection
+
+# token budgeting and the ruled alignment measurement
 cargo test -p fs3-core --lib tokens
+cargo test -p fs3-daemon chunk_plan -- --nocapture
 
 # the reference guard: unheld content never reaches the provider
 FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5433/flowspace3_test \
@@ -233,18 +189,18 @@ FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5433/flowspace3
   cargo test -p fs3-daemon --test streaming
 ```
 
-The tests assert on what ARRIVED at the provider (`FakeEmbedder::received`),
-not on what the caller believed it sent — `FakeEmbedder::capped` and
-`FakeSummarizer::capped` refuse an oversized input the way a hosted API does, so
-a missing guard is a failing test rather than a hopeful comment.
+The oversize tests assert on provider inputs and stored chunks. Their dense fake
+counts at one byte per token, so deleting the heal arm reproduces the permanent
+cap failure instead of merely checking the caller's plan.
 
 ## Code pointers
 
-- `crates/core/src/tokens.rs` — the counting convention and `fit_to_cap`
+- `crates/core/src/tokens.rs` — the estimate and shared FILL-aligned byte budget
+- `crates/core/src/error.rs` — the typed `InputTooLong` signal
 - `crates/core/src/ports.rs` — `max_input_tokens` on both ports
-- `crates/daemon/src/enrich.rs` — all four guards, at the two points of spend:
-  dedupe and reference before the buy, `fit_to_cap` and the prompt budget
-  inside it
+- `crates/providers/src/{openai,azure_openai}.rs` — exact cap-400 classification
+- `crates/daemon/src/enrich.rs` — chunk planning, call budgeting, bounded healing,
+  and atomic vector storage
 - `crates/store/src/roots.rs` — `held_by_a_live_root!`,
   `raw_hash_is_referenced`, `referenced_source_hashes`
 - `crates/daemon/src/batch.rs` — the request budget and the merge rules

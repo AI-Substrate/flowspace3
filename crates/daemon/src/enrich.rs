@@ -24,6 +24,8 @@
 //! semaphore here — the queue IS the semaphore, and its width is one config
 //! value rather than two that can disagree.
 
+use std::collections::{HashMap, VecDeque};
+
 use fs3_core::envelope::Failure;
 use fs3_core::{Element, catalog};
 use fs3_store::{NewEmbedding, SourceKind};
@@ -51,6 +53,8 @@ const CHUNK_WINDOW_TOKENS: usize = 7_500;
 /// Two hundred tokens preserve meaning that straddles a window boundary while
 /// adding little request overhead compared with a 7,500-token window.
 const CHUNK_OVERLAP_TOKENS: usize = 200;
+/// One tightening reaches the one-byte-per-token lower bound.
+const MAX_HEAL_ROUNDS: usize = 1;
 // A prepared chunk must always be splittable into a legal request by itself.
 const _: () = assert!(CHUNK_WINDOW_TOKENS <= crate::batch::TOKEN_BUDGET);
 
@@ -72,7 +76,14 @@ fn chunk_plan(text: &str, window_tokens: usize, overlap_tokens: usize) -> Vec<Ch
         "chunk overlap must be smaller than its window"
     );
 
-    let window_bytes = window_tokens.saturating_mul(fs3_core::BYTES_PER_TOKEN);
+    let window_bytes = fs3_core::tokens::input_budget_bytes(window_tokens).max(1);
+    let overlap_bytes = overlap_tokens.saturating_mul(fs3_core::BYTES_PER_TOKEN);
+    chunk_plan_bytes(text, window_bytes, overlap_bytes)
+}
+
+fn chunk_plan_bytes(text: &str, window_bytes: usize, overlap_bytes: usize) -> Vec<ChunkText> {
+    assert!(window_bytes > 0, "a chunk window must be non-zero");
+    let overlap_bytes = overlap_bytes.min(window_bytes.saturating_sub(1));
     if text.len() <= window_bytes {
         return vec![ChunkText {
             chunk_no: 0,
@@ -80,7 +91,6 @@ fn chunk_plan(text: &str, window_tokens: usize, overlap_tokens: usize) -> Vec<Ch
         }];
     }
 
-    let overlap_bytes = overlap_tokens.saturating_mul(fs3_core::BYTES_PER_TOKEN);
     let mut chunks = Vec::new();
     let mut start = 0;
 
@@ -120,6 +130,64 @@ fn chunk_plan(text: &str, window_tokens: usize, overlap_tokens: usize) -> Vec<Ch
     }
 
     chunks
+}
+
+fn heal_window_bytes(round: usize) -> usize {
+    fs3_core::tokens::input_budget_bytes(CHUNK_WINDOW_TOKENS)
+        .checked_shr(round as u32)
+        .unwrap_or(1)
+        .max(1)
+}
+
+fn heal_ratio(window_bytes: usize) -> String {
+    format!("{window_bytes} bytes/{CHUNK_WINDOW_TOKENS} tokens")
+}
+
+struct PreparedChunk<'a> {
+    source_hash: &'a str,
+    source_bytes: usize,
+    heal_round: usize,
+    window_bytes: usize,
+}
+
+struct PreparedCall<'a> {
+    chunks: Vec<PreparedChunk<'a>>,
+    texts: Vec<String>,
+    estimated_tokens: usize,
+}
+
+fn budget_prepared<'a>(
+    chunks: Vec<PreparedChunk<'a>>,
+    texts: Vec<String>,
+) -> VecDeque<PreparedCall<'a>> {
+    debug_assert_eq!(chunks.len(), texts.len());
+    let mut calls = VecDeque::new();
+    let mut current = PreparedCall {
+        chunks: Vec::new(),
+        texts: Vec::new(),
+        estimated_tokens: 0,
+    };
+
+    for (chunk, text) in chunks.into_iter().zip(texts) {
+        let cost = fs3_core::estimate_tokens(&text);
+        debug_assert!(cost <= crate::batch::TOKEN_BUDGET);
+        if !current.texts.is_empty() && current.estimated_tokens + cost > crate::batch::TOKEN_BUDGET
+        {
+            calls.push_back(current);
+            current = PreparedCall {
+                chunks: Vec::new(),
+                texts: Vec::new(),
+                estimated_tokens: 0,
+            };
+        }
+        current.estimated_tokens += cost;
+        current.chunks.push(chunk);
+        current.texts.push(text);
+    }
+    if !current.texts.is_empty() {
+        calls.push_back(current);
+    }
+    calls
 }
 
 fn embedding_text_is_nonblank(source_hash: &str, source_kind: SourceKind, text: &str) -> bool {
@@ -721,129 +789,178 @@ pub async fn embed_items(
     // THE PER-INPUT GUARD.
     //
     // The batch planner budgets the SUM of a request; this prepares each
-    // individual member. Oversized content becomes overlapping inputs under
-    // one source hash, so every byte is represented without changing job
-    // identity or provider wire shape.
-    struct PreparedChunk<'a> {
-        source_hash: &'a str,
-        chunk_no: i16,
-    }
-
+    // individual member. A provider can still count denser than our estimate.
+    // Its typed cap rejection becomes a bounded request to split only the
+    // offending member more tightly, never a retry of identical bytes.
     let cap = embedder.max_input_tokens();
     let mut prepared = Vec::with_capacity(items.len());
     let mut texts = Vec::with_capacity(items.len());
+    let initial_window_bytes = heal_window_bytes(0);
     for (hash, text) in &items {
         for chunk in chunk_plan(text, CHUNK_WINDOW_TOKENS, CHUNK_OVERLAP_TOKENS) {
-            let chunk_no = i16::try_from(chunk.chunk_no).map_err(|_| {
-                Failure::new(
-                    &catalog::PROVIDER_FAILED,
-                    format!("input {hash} needs more chunks than the store can address"),
-                )
-                .retryable(false)
-            })?;
             if fs3_core::estimate_tokens(&chunk.text) > cap {
-                // This should be unreachable for current hosted models because
-                // the chosen window is below their cap. Keep it loud: a future
-                // smaller model or denser tokenizer must not fail invisibly.
                 tracing::warn!(
                     source_hash = %hash,
                     kind = source_kind.as_str(),
                     cap,
-                    chunk_no,
                     bytes = chunk.text.len(),
                     "input exceeds the model's per-input cap after chunking"
                 );
             }
             prepared.push(PreparedChunk {
                 source_hash: hash,
-                chunk_no,
+                source_bytes: text.len(),
+                heal_round: 0,
+                window_bytes: initial_window_bytes,
             });
             texts.push(chunk.text);
         }
     }
 
-    // Chunk expansion can increase the request sum through overlap, and a
-    // formerly ride-alone source can expand far beyond one request. Re-budget
-    // the ACTUAL provider inputs here. A single chunk cannot exceed this budget:
-    // CHUNK_WINDOW_TOKENS is far below TOKEN_BUDGET, so every split advances.
-    let mut vectors = Vec::with_capacity(texts.len());
-    let mut first = 0;
-    while first < texts.len() {
-        let mut last = first;
-        let mut spent = 0;
-        while last < texts.len() {
-            let cost = fs3_core::estimate_tokens(&texts[last]);
-            debug_assert!(cost <= crate::batch::TOKEN_BUDGET);
-            if last > first && spent + cost > crate::batch::TOKEN_BUDGET {
-                break;
-            }
-            spent += cost;
-            last += 1;
-        }
-
-        let call = &texts[first..last];
+    let mut pending = budget_prepared(prepared, texts);
+    let mut completed = Vec::new();
+    let mut vectors = Vec::new();
+    while let Some(mut call) = pending.pop_front() {
         let started = std::time::Instant::now();
-        let returned = match embedder.embed(call).await {
+        match embedder.embed(&call.texts).await {
             Ok(returned) => {
                 tracing::info!(
                     kind = EMBED,
                     source = source_kind.as_str(),
-                    items = call.len(),
-                    tokens = spent,
+                    items = call.texts.len(),
+                    tokens = call.estimated_tokens,
                     outcome = "ok",
                     ms = started.elapsed().as_millis() as u64,
                     "embed: sent batch of {} texts",
-                    call.len()
+                    call.texts.len()
                 );
-                returned
+                if returned.len() != call.texts.len() {
+                    return Err(Failure::new(
+                        &catalog::PROVIDER_FAILED,
+                        format!(
+                            "embedder returned {} vectors for {} texts; the batch cannot be aligned",
+                            returned.len(),
+                            call.texts.len()
+                        ),
+                    )
+                    .retryable(false));
+                }
+                completed.extend(call.chunks);
+                vectors.extend(returned);
+            }
+            Err(fs3_core::Error::InputTooLong { input_index, .. }) => {
+                tracing::info!(
+                    kind = EMBED,
+                    source = source_kind.as_str(),
+                    items = call.texts.len(),
+                    tokens = call.estimated_tokens,
+                    outcome = "re-split",
+                    ms = started.elapsed().as_millis() as u64,
+                    "embed: provider cap rejection"
+                );
+
+                let index = match input_index.filter(|index| *index < call.texts.len()) {
+                    Some(index) => index,
+                    None if call.texts.len() > 1 => {
+                        let at = call.texts.len() / 2;
+                        let right = PreparedCall {
+                            chunks: call.chunks.split_off(at),
+                            texts: call.texts.split_off(at),
+                            estimated_tokens: 0,
+                        };
+                        let mut halves = budget_prepared(call.chunks, call.texts);
+                        let mut right = budget_prepared(right.chunks, right.texts);
+                        while let Some(part) = right.pop_back() {
+                            pending.push_front(part);
+                        }
+                        while let Some(part) = halves.pop_back() {
+                            pending.push_front(part);
+                        }
+                        continue;
+                    }
+                    None => 0,
+                };
+
+                let chunk = call.chunks.remove(index);
+                let text = call.texts.remove(index);
+                if chunk.heal_round >= MAX_HEAL_ROUNDS {
+                    return Err(Failure::new(
+                        &catalog::PROVIDER_FAILED,
+                        format!(
+                            "input {} ({} bytes) still exceeds the provider cap after {} heal round(s); final ratio {}",
+                            chunk.source_hash,
+                            chunk.source_bytes,
+                            chunk.heal_round,
+                            heal_ratio(chunk.window_bytes)
+                        ),
+                    )
+                    .retryable(false));
+                }
+
+                let next_round = chunk.heal_round + 1;
+                let window_bytes = heal_window_bytes(next_round);
+                let overlap_bytes = CHUNK_OVERLAP_TOKENS * fs3_core::BYTES_PER_TOKEN;
+                let replacements = chunk_plan_bytes(&text, window_bytes, overlap_bytes);
+                for replacement in replacements.into_iter().rev() {
+                    call.chunks.insert(
+                        index,
+                        PreparedChunk {
+                            source_hash: chunk.source_hash,
+                            source_bytes: chunk.source_bytes,
+                            heal_round: next_round,
+                            window_bytes,
+                        },
+                    );
+                    call.texts.insert(index, replacement.text);
+                }
+                let mut retry = budget_prepared(call.chunks, call.texts);
+                while let Some(part) = retry.pop_back() {
+                    pending.push_front(part);
+                }
             }
             Err(error) => {
                 tracing::info!(
                     kind = EMBED,
                     source = source_kind.as_str(),
-                    items = call.len(),
-                    tokens = spent,
+                    items = call.texts.len(),
+                    tokens = call.estimated_tokens,
                     outcome = "error",
                     ms = started.elapsed().as_millis() as u64,
                     error = %error,
                     "embed: sent batch of {} texts",
-                    call.len()
+                    call.texts.len()
                 );
                 return Err(fail(error));
             }
-        };
-
-        if returned.len() != call.len() {
-            return Err(Failure::new(
-                &catalog::PROVIDER_FAILED,
-                format!(
-                    "embedder returned {} vectors for {} texts; the batch cannot be aligned",
-                    returned.len(),
-                    call.len()
-                ),
-            )
-            .retryable(false));
         }
-        vectors.extend(returned);
-        first = last;
     }
 
-    // No rows are written until EVERY sub-call succeeds and aligns. The one
-    // put_embeddings call below therefore retains the store's all-chunks-in-one
-    // transaction guarantee even when buying the vectors takes several calls.
-    debug_assert_eq!(vectors.len(), prepared.len());
-
-    let rows: Vec<NewEmbedding<'_>> = prepared
-        .iter()
-        .zip(&vectors)
-        .map(|(chunk, vector)| NewEmbedding {
+    // No rows are written until EVERY sub-call succeeds and aligns. Re-splits
+    // are numbered only after all calls complete, so replacing one input cannot
+    // collide with a sibling chunk number.
+    debug_assert_eq!(vectors.len(), completed.len());
+    let mut next_chunk = HashMap::<&str, i16>::new();
+    let mut rows = Vec::with_capacity(completed.len());
+    for (chunk, vector) in completed.iter().zip(&vectors) {
+        let chunk_no = next_chunk.entry(chunk.source_hash).or_insert(0);
+        rows.push(NewEmbedding {
             source_hash: chunk.source_hash,
             source_kind,
-            chunk_no: chunk.chunk_no,
+            chunk_no: *chunk_no,
             vector,
             truncated: false,
-        })
-        .collect();
+        });
+        *chunk_no = chunk_no.checked_add(1).ok_or_else(|| {
+            Failure::new(
+                &catalog::PROVIDER_FAILED,
+                format!(
+                    "input {} needs more chunks than the store can address",
+                    chunk.source_hash
+                ),
+            )
+            .retryable(false)
+        })?;
+    }
 
     fs3_store::put_embeddings(&state.db, &model_key, &rows)
         .await
@@ -903,8 +1020,40 @@ fn subject(address: &str) -> Element {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn token_bytes(tokens: usize) -> String {
-        "x".repeat(tokens * fs3_core::BYTES_PER_TOKEN)
+    fn ascii_bytes(bytes: usize) -> String {
+        "x".repeat(bytes)
+    }
+    #[test]
+    fn chunk_plan_keeps_cap_minus_one_and_exactly_cap_whole() {
+        let window_bytes = fs3_core::tokens::input_budget_bytes(4);
+        for bytes in [window_bytes - 1, window_bytes] {
+            let text = ascii_bytes(bytes);
+            assert_eq!(
+                chunk_plan(&text, 4, 1),
+                vec![ChunkText { chunk_no: 0, text }]
+            );
+        }
+    }
+    #[test]
+    fn chunk_plan_splits_one_byte_over_cap() {
+        let window_bytes = fs3_core::tokens::input_budget_bytes(4);
+        let chunks = chunk_plan(&ascii_bytes(window_bytes + 1), 4, 1);
+        assert_eq!(chunks.len(), 2);
+        assert_eq!(chunks[0].chunk_no, 0);
+        assert_eq!(chunks[1].chunk_no, 1);
+    }
+    #[test]
+    fn chunk_plan_uses_the_overlap_step_for_three_windows_of_input() {
+        // 12 bytes per window, 3 bytes overlap: 1 + ceil((36 - 12) / 9) = 4.
+        let chunks = chunk_plan(&ascii_bytes(36), 6, 1);
+        assert_eq!(chunks.len(), 4);
+        assert_eq!(
+            chunks
+                .iter()
+                .map(|chunk| chunk.chunk_no)
+                .collect::<Vec<_>>(),
+            vec![0, 1, 2, 3]
+        );
     }
 
     fn reassemble_overlaps(chunks: &[ChunkText]) -> String {
@@ -924,42 +1073,9 @@ mod tests {
     }
 
     #[test]
-    fn chunk_plan_keeps_cap_minus_one_and_exactly_cap_whole() {
-        for tokens in [3, 4] {
-            let text = token_bytes(tokens);
-            assert_eq!(
-                chunk_plan(&text, 4, 1),
-                vec![ChunkText { chunk_no: 0, text }]
-            );
-        }
-    }
-
-    #[test]
-    fn chunk_plan_splits_one_token_over_cap() {
-        let chunks = chunk_plan(&token_bytes(5), 4, 1);
-        assert_eq!(chunks.len(), 2);
-        assert_eq!(chunks[0].chunk_no, 0);
-        assert_eq!(chunks[1].chunk_no, 1);
-    }
-
-    #[test]
-    fn chunk_plan_uses_the_overlap_step_for_three_windows_of_input() {
-        // 12 bytes per window, 3 bytes overlap: 1 + ceil((36 - 12) / 9) = 4.
-        let chunks = chunk_plan(&token_bytes(12), 4, 1);
-        assert_eq!(chunks.len(), 4);
-        assert_eq!(
-            chunks
-                .iter()
-                .map(|chunk| chunk.chunk_no)
-                .collect::<Vec<_>>(),
-            vec![0, 1, 2, 3]
-        );
-    }
-
-    #[test]
     fn chunk_plan_preserves_a_phrase_crossing_the_window_boundary() {
         let text = "123456789needleTAIL";
-        let chunks = chunk_plan(text, 4, 2);
+        let chunks = chunk_plan(text, 6, 2);
         assert!(
             chunks.iter().any(|chunk| chunk.text.contains("needle")),
             "the overlap must keep a boundary-spanning phrase intact: {chunks:?}"
@@ -984,6 +1100,81 @@ mod tests {
             wider_than_window
         );
         assert_eq!(tiny.len(), 2, "one wide character per progressing chunk");
+    }
+
+    #[test]
+    fn chunk_plan_bytes_clamps_overlap_below_tiny_window() {
+        let text = ascii_bytes(1_000);
+        let chunks = chunk_plan_bytes(&text, 468, 600);
+        assert!(chunks.iter().all(|chunk| chunk.text.len() <= 468));
+    }
+
+    #[test]
+    fn heal_ratio_reports_window_and_tokens_without_integer_truncation() {
+        let window_bytes = heal_window_bytes(2);
+        assert_eq!(window_bytes, 3_750);
+        assert_eq!(heal_ratio(window_bytes), "3750 bytes/7500 tokens");
+    }
+
+    #[test]
+    fn chunk_plan_alignment_measurement_for_ruled_corpus() {
+        let oversized: String = (0..2_000)
+            .map(|n| {
+                format!("fn handler_{n:04}(request: Request) -> Response {{ dispatch(request) }}\n")
+            })
+            .collect();
+        let request_whale: String = (0..10_000)
+            .map(|n| {
+                format!(
+                    "fn request_whale_{n:05}(input: Request) -> Response {{ dispatch(input) }}\n"
+                )
+            })
+            .collect();
+        let prod_case = ascii_bytes(20_872);
+        let corpus = [
+            ("oversized", oversized),
+            ("request_whale", request_whale),
+            ("prod_20_872", prod_case),
+        ];
+
+        let old_window = CHUNK_WINDOW_TOKENS * fs3_core::BYTES_PER_TOKEN;
+        let overlap = CHUNK_OVERLAP_TOKENS * fs3_core::BYTES_PER_TOKEN;
+        let old_count = |bytes: usize| {
+            if bytes <= old_window {
+                1
+            } else {
+                1 + (bytes - old_window).div_ceil(old_window - overlap)
+            }
+        };
+        let before: Vec<usize> = corpus
+            .iter()
+            .map(|(_, text)| old_count(text.len()))
+            .collect();
+        let after: Vec<usize> = corpus
+            .iter()
+            .map(|(_, text)| chunk_plan(text, CHUNK_WINDOW_TOKENS, CHUNK_OVERLAP_TOKENS).len())
+            .collect();
+
+        println!(
+            "chunk_plan ruled corpus: oversized {}→{}, request_whale {}→{}, prod_20_872 {}→{}, total {}→{}",
+            before[0],
+            after[0],
+            before[1],
+            after[1],
+            before[2],
+            after[2],
+            before.iter().sum::<usize>(),
+            after.iter().sum::<usize>()
+        );
+        assert_eq!(
+            corpus
+                .iter()
+                .map(|(_, text)| text.len())
+                .collect::<Vec<_>>(),
+            vec![136_000, 710_000, 20_872]
+        );
+        assert_eq!(before, vec![7, 33, 1]);
+        assert_eq!(after, vec![10, 50, 2]);
     }
 
     /// Keyed by CONTENT, so forty branches holding one body enqueue one job —

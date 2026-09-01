@@ -25,6 +25,21 @@ pub enum Error {
     #[error("provider failure: {0}")]
     Provider(String),
 
+    /// A provider rejected one input because it exceeds the model's token cap.
+    ///
+    /// Distinct from [`Error::Provider`] because an embedding caller can split
+    /// the offending input and retry it. Some providers name the input index;
+    /// callers must handle the absent-index form by isolating the failing work.
+    #[error("provider input exceeds the {max_tokens}-token maximum: {detail}")]
+    InputTooLong {
+        /// The provider request member named by the rejection, when present.
+        input_index: Option<usize>,
+        /// The maximum input length reported by the provider.
+        max_tokens: usize,
+        /// The response body retained for diagnostics.
+        detail: String,
+    },
+
     /// A provider refused the work because we are asking too fast, and kept
     /// refusing after the adapter had retried its own way out.
     ///

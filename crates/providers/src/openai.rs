@@ -88,9 +88,11 @@ impl OpenAiClient {
             let retry_after = retry::retry_after_of(&response);
             let detail = response.text().await.unwrap_or_default();
             let detail = detail.trim().to_string();
+            let error = embedding_input_too_long(route, status, &detail)
+                .unwrap_or_else(|| Error::Provider(format!("POST {url}: {status}: {detail}")));
             return Err(PostFailure::Rejected(Rejection {
                 status,
-                error: Error::Provider(format!("POST {url}: {status}: {detail}")),
+                error,
                 detail,
                 retry_after,
             }));
@@ -139,6 +141,32 @@ impl OpenAiEmbedder {
             model: model.into(),
         }
     }
+}
+
+/// Classify only the hosted embeddings cap rejection the daemon can heal.
+pub(crate) fn embedding_input_too_long(
+    route: &str,
+    status: reqwest::StatusCode,
+    detail: &str,
+) -> Option<Error> {
+    if route != "embeddings" || status != reqwest::StatusCode::BAD_REQUEST {
+        return None;
+    }
+
+    let (_, cap_tail) = detail.split_once("maximum input length is ")?;
+    let digits = cap_tail
+        .find(|character: char| !character.is_ascii_digit())
+        .map_or(cap_tail, |end| &cap_tail[..end]);
+    let max_tokens = digits.parse().ok()?;
+    let input_index = detail
+        .split_once("input[")
+        .and_then(|(_, tail)| tail.split_once(']'))
+        .and_then(|(index, _)| index.parse().ok());
+    Some(Error::InputTooLong {
+        input_index,
+        max_tokens,
+        detail: detail.to_string(),
+    })
 }
 
 #[derive(Serialize)]

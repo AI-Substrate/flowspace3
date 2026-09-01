@@ -1,0 +1,87 @@
+{
+  "dd": {
+    "schema": "pij-team/impl-guide"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "impl-guide — embed-cap-heal",
+        "plan": "docs/plans/010-embed-cap-heal/plan.dd.json",
+        "mode": "build",
+        "updated": "2026-09-02"
+      }
+    },
+    {
+      "name": "architecture",
+      "value": "One seam, three touches. (1) PROVIDER ADAPTERS classify: the cap 400 becomes a distinct error the caller can match on; nothing else about the wire changes. (2) EMBED PATH heals: the f-001 sub-batch loop in crates/daemon/src/enrich.rs catches that variant, isolates the offending item, calls chunk_plan again with a tighter ratio (halve chars/token, or bisect the item), and re-issues — a bounded loop with a named constant; exhaustion is a NAMED terminal failure (item, bytes, ratio) that the boot sweep will not revive (the jobs.terminal column 009 introduced). (3) TOKENS aligns: chunk_plan's window honours FILL exactly as fit_to_cap does, so the heal path is the exception, not the rule. Evidence altitude: unit tests with a fake provider that counts denser than bytes/3; then PROD — the five stuck jobs are the acceptance fixture nobody had to write."
+    },
+    {
+      "name": "fan_out",
+      "value": {
+        "decision": "NO",
+        "rationale": "One unit, one coder, no PM; o-prime coordinates directly. Sequential with plan 011: plan 010 lands first."
+      }
+    },
+    {
+      "name": "units",
+      "value": [
+        {
+          "id": "u1",
+          "name": "heal + align + classify",
+          "paths": "crates/core/src/{tokens,error}.rs; crates/daemon/src/{enrich,answer}.rs; crates/providers/src/{openai,azure_openai,openai_compat}.rs; their tests; docs/services/enrichment.md",
+          "responsibility": "Classify hosted embedding-cap rejections, heal them by bounded re-splitting, align chunk planning with FILL, and report deterministic and production evidence.",
+          "interface": "A provider cap rejection becomes Error::InputTooLong with an optional input index and reported cap. The embed path re-splits the named member or bisects an unnamed rejection, writes chunks atomically, and fails terminally with source hash, original bytes, and final ratio at the bound.",
+          "test_strategy": "AC-0001 through AC-0004 are proved in the worktree by chunk measurement, adapter stub, dense-provider heal, mutation, uniqueness, and terminal exhaustion tests. AC-0005 and AC-0006 are proved from production with o-prime after merge and bounce.",
+          "depends_on": "none",
+          "wave": 1,
+          "note": "Single coder reports directly to o-prime."
+        }
+      ]
+    },
+    {
+      "name": "isolation",
+      "value": {
+        "mode": "single worktree coder",
+        "note": "Worktree /Users/jordanknight/substrate/flowspace/fs3-embed-cap-heal on branch 010-embed-cap-heal, with a per-seat CARGO_TARGET_DIR and per-run test databases selected by FS3_TEST_DATABASE_URL. Production :7373 is read-only for status, search, and verification. Absolute paths are required for file reads and edits. The rs-resident coder reports through .harness/temp/agent files and never runs pij adopt."
+      }
+    },
+    {
+      "name": "composition",
+      "value": {
+        "composer": "o-prime (pij-instant-lynx)",
+        "steps": "Single-unit branch opens PR into main; o-prime coordinates delta review, merge, duplicate-job repair, production bounce, and the post-bounce drain with the coder.",
+        "integration_proof": "Local harness checks and PR CI prove AC-0001 through AC-0004. Production status, five final job rows, and a search hit from recovered conversation c5a6be2d prove AC-0005 and AC-0006."
+      }
+    },
+    {
+      "name": "review",
+      "value": {
+        "when": "After PR opens and after each ruled fold-in SHA",
+        "inputs": "Plan fidelity, mutation behavior, exact classification across OpenAI, Azure OpenAI, and OpenAI-compatible embedders, bounded healing, atomic chunk numbering, and terminal exhaustion.",
+        "model_override": "github-copilot/claude-opus-5, high effort"
+      }
+    },
+    {
+      "name": "risks",
+      "value": [
+        {
+          "id": "risk-1",
+          "text": "A provider cap body may omit input[N]. Mitigation: keep the rejection typed with input_index=None and bisect the failed call until a singleton is isolated."
+        },
+        {
+          "id": "risk-2",
+          "text": "Re-splitting can collide on chunk numbers. Mitigation: hold all vectors in memory, assign contiguous per-source numbers only after every call succeeds, and write once atomically."
+        },
+        {
+          "id": "risk-3",
+          "text": "FILL alignment increases chunks on oversized content. Measurement is 41 to 62 on the ruled whale corpus; o-prime ruled alignment ships because ordinary inputs below 15,000 bytes are unchanged."
+        },
+        {
+          "id": "risk-4",
+          "text": "The five production jobs exhausted attempts. Boot requeue covers non-terminal rows only after o-prime repairs the duplicate failed dedupe key that would collide on jobs_live_dedupe_idx."
+        }
+      ]
+    }
+  ]
+}

@@ -59,13 +59,17 @@ pub fn estimate_tokens(text: &str) -> usize {
     text.len().div_ceil(BYTES_PER_TOKEN)
 }
 
-/// The byte budget one input gets against a cap of `cap_tokens`.
+/// The conservative byte budget one input gets against `cap_tokens`.
+///
+/// This is the shared translation from a provider token cap to bytes. Callers
+/// that split inputs must use it rather than multiplying by [`BYTES_PER_TOKEN`]
+/// directly, or they silently discard the [`FILL`] safety margin.
 ///
 /// Saturating, because a provider that truncates internally rather than
 /// rejecting declares [`usize::MAX`] — a real value the port defines, not an
 /// overflow waiting to panic in a debug build.
 #[must_use]
-fn budget_bytes(cap_tokens: usize) -> usize {
+pub fn input_budget_bytes(cap_tokens: usize) -> usize {
     cap_tokens
         .saturating_mul(FILL.0)
         .saturating_div(FILL.1)
@@ -85,7 +89,7 @@ fn budget_bytes(cap_tokens: usize) -> usize {
 /// providers reject it outright.
 #[must_use]
 pub fn fit_to_cap(text: &str, cap_tokens: usize) -> Option<&str> {
-    let budget = budget_bytes(cap_tokens);
+    let budget = input_budget_bytes(cap_tokens);
     if text.len() <= budget {
         return None;
     }
@@ -113,7 +117,7 @@ mod tests {
 
     #[test]
     fn a_text_within_the_budget_is_left_alone() {
-        let text = "x".repeat(budget_bytes(CAP));
+        let text = "x".repeat(input_budget_bytes(CAP));
         assert_eq!(fit_to_cap(&text, CAP), None);
     }
 
