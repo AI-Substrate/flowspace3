@@ -11,54 +11,68 @@
 | --- | --- |
 | title | impl-guide — conv-verify |
 | plan | docs/plans/011-conv-verify/plan.dd.json |
-| mode | &lt;build \| investigate — investigate reinterprets the sections: a unit is a PROBE varying exactly one variable, its interface is the frozen EVIDENCE CONTRACT every probe returns, its done is the receipt (carrying observed toolchain versions), and composition is the decision matrix the composer assembles&gt; |
+| mode | build |
 | updated | 2026-09-02 |
 
 <a id="architecture"></a>
 
 ## Architecture
 
-Two touches on one surface. DAEMON: the conversation resolver (conversations.rs, reached via http.rs) takes an explicit guid as authoritative — the scope the CLI sends is applied only when the address is NOT explicit (search-shaped selectors); a miss is classified before it is worded: guid absent from the index vs guid present but outside a scope the caller explicitly requested. CLI: `get conv:` sends the guid without narrowing; `conversation verify` is a new subcommand that derives the guid with conversation_guid() (never a copy of its layout), asks the daemon for that exact guid, and renders the consumer's contract — it has no scope flags at all, so it cannot be narrowed by anyone. `--pij` reuses the existing pij-sessions join and, on a miss, says the join is legacy-only (row 121 / req-0033) rather than 'not found'. Evidence altitude: tests with FreshDatabase for the daemon; a clap test for unscopability; then PROD from the main checkout with the exact guid that failed on 2026-09-02; then the CONSUMER reading it back from their own seat.
+Two touches on one surface. DAEMON: read.rs resolves explicit conversation addresses globally, then applies only an explicitly flagged repository scope; conversations.rs applies the same policy to exact ask pins while short selectors remain scoped. A miss is classified before it is worded: guid absent from the index versus guid present but outside a scope the caller explicitly requested. CLI: get conv: sends the address without narrowing; conversation verify asks the daemon to derive the guid with conversation_guid(), never a copied layout, and renders the consumer contract. It has no scope flags. --pij reuses the legacy pij-sessions join and names row 121 / req-0033 on an rs miss. Evidence altitude: FreshDatabase integration tests, clap unscopability, production envelopes after bounce, then consumer read-back.
 
 <a id="fan-out"></a>
 
 ## Fan out
 
-Fan out: NO. One unit, one coder, no PM — o-prime coordinates directly (Jordan, 2026-09-02). Dispatched only after plan 010's coder has acked through pij (sequential under an unstable pij).
+| Field | Value |
+| --- | --- |
+| decision | no |
+| rationale | One unit, one coder, no PM; o-prime coordinates directly. Dispatch followed plan 010's coder acknowledgement because pij was unstable. |
 
 <a id="units"></a>
 
 ## Units
 
-| id | name | paths | responsibility | interface | test_strategy | depends_on | wave | note | title | surface | contract | done_when |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| u1 | — | — | — | — | — | — | — | — | authoritative conv address + verify verb | crates/cli (get + conversation verbs, docs), crates/daemon/src/{conversations,http,convo_ingest}.rs, their tests, testkit fixtures you add | explicit conv guid resolves index-wide; two-message miss; verify per the consumer contract, unscopable; pij miss names the legacy-only join. | ac-0001–0005 by test in the worktree; ac-0006 from prod after the bounce; ac-0007 from the consumer. |
+| id | name | paths | responsibility | interface | test_strategy | depends_on | wave | note |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| u1 | authoritative conv address + verify verb | crates/cli/**; crates/core/src/catalog.rs; crates/daemon/src/{read,ask,conversations,http,convo_ingest}.rs and tests; crates/store/src/conversations.rs and tests; generated error-code docs; testkit fixtures | Make explicit conversation addresses authoritative, classify misses honestly, and add the unscopable delivery-verification verb. | Canonical full GUID and conv: selectors ignore cwd scope but honor explicit repository flags; verify returns {guid,address,turns,repo,worktree,last_turn_at}; missing delivery uses FS3-E-QUERY-CONVERSATION-NOT-INDEXED; rs pij misses name the legacy-only join and req-0033. | FreshDatabase integration tests cover cross-scope reads, miss shapes, exact delivery aggregation, zero-turn and absent verification, HTTP routing, ask corpus containment, clap flags, and fake pij join rows. Production and consumer read-backs close ac-0006 and ac-0007. | — | 1 | ac-0001 through ac-0005 are worktree tests; ac-0006 follows the production bounce; ac-0007 is the consumer read-back. |
 
 <a id="isolation"></a>
 
 ## Isolation
 
-Worktree ../fs3-conv-verify on branch 011-conv-verify (scaffolded by harness team new). Per-seat CARGO_TARGET_DIR. Per-run test DBs; the FS3_TEST_DATABASE_URL guard is correct behaviour. NEVER test against prod :7373 — read-only get/list/verify against prod is fine and REQUIRED for ac-0006. ABSOLUTE PATHS for every read and edit. pij is unstable (summary in your packet): if `pij send` fails twice, write .harness/temp/agent/conv-verify-ack.md / -report.md in your worktree and STOP — o-prime polls. Never `pij adopt`.
+| Field | Value |
+| --- | --- |
+| mode | worktree |
+| note | Use /Users/jordanknight/substrate/flowspace/fs3-conv-verify on branch 011-conv-verify with per-run databases and explicit FS3_TEST_DATABASE_URL. Never test writes against prod :7373; only read-only get/list/verify acceptance probes may use it. Use absolute file paths and file-based o-prime communication; never pij adopt. |
 
 <a id="composition"></a>
 
 ## Composition
 
-None — single unit. o-prime merges (squash), bounces prod, runs ac-0006 with the coder, and requests ac-0007 from meadowlark.
+| Field | Value |
+| --- | --- |
+| composer | o-prime |
+| steps | Single-unit PR: o-prime reviews and merges, bounces production, runs ac-0006 with the coder, then requests ac-0007 from meadowlark. |
+| integration_proof | Local harness checks and PR CI gate are green; after merge, three production envelopes prove get/verify positive and verify negative, then meadowlark quotes a consumer-side verify envelope. |
 
 <a id="review"></a>
 
 ## Review
 
-Cross-model: Claude (github-copilot/claude-opus-5, effort high), spawned by o-prime once the PR is up. Judges: is the guid truly authoritative (no hidden scope path left)? are the two miss messages actually distinct in code, not just in a test string? can verify be narrowed by any route? does the mutation claim hold?
+| Field | Value |
+| --- | --- |
+| when | PR open and CI green |
+| inputs | Judge whether exact GUIDs are truly authoritative with no hidden scope path, the two miss shapes differ in production code, verify is structurally unscopable, the ask corpus remains contained, and the mutation claim holds. |
+| model_override | github-copilot/claude-opus-5, effort high |
 
 <a id="risks"></a>
 
 ## Risks
 
-| id | text | risk | mitigation |
-| --- | --- | --- | --- |
-| — | — | Some caller relies on conv get being cwd-scoped (e.g. ask's --conversation pin) | grep every conv: resolution path at ack; --conversation pins by explicit guid too and should already be authoritative — state what you found |
-| — | — | The daemon has no 'exists outside scope' signal, only a filtered query | resolve by guid first, then apply scope only if the caller asked for one; the classification falls out of that order |
-| — | — | verify's data shape drifts from what meadowlark consumes | the contract in ac-0003 is verbatim from the consumer; ac-0007 is the read-back that closes it |
-| — | — | Jordan overrides o-prime on row 101 toward keeping scope | the two-message miss (tk-0101 second half) is the fallback and is built regardless; only the authoritative resolution would be flipped |
+| id | text |
+| --- | --- |
+| r1 | A caller may rely on cwd-scoped conversation reads. Mitigation: census every conv: path; preserve explicit repository filters and unpinned ask corpus containment while making exact addresses authoritative. |
+| r2 | A filtered query cannot distinguish absent from outside scope. Mitigation: resolve exact GUID globally first, then apply only explicitly requested scope. |
+| r3 | Verify data may drift from meadowlark's consumer. Mitigation: keep ac-0003's exact shape under integration test and close with ac-0007 read-back. |
+| r4 | Backlog row 101 could retain cwd scope. Ruling: o-prime reply 002 approved authoritative exact addresses; explicit --repo still supplies the scoped miss. |
