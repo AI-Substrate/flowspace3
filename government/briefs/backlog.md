@@ -1521,3 +1521,15 @@ ROW 121 — SECOND UPSTREAM ROW (2026-09-02): pij **req-0034** minted by
     file + poll for child→prime, `pij-rs send` (with --msg-id) for
     prime→child; NOT adopting o-prime's own pane into rs (identity split,
     cuts off legacy peers). Encoded in government/pij-two-daemons.md.
+
+ROW 121 — CLAUDE RS SEATS NOW INGEST, PROVEN IN OUR INDEX (meadowlark,
+    2026-09-02, harness-engineering #190 merged at 74017086): an rs
+    claude seat with no ~/.pij descriptor ran harness commit in a
+    consenting worktree; `conversation list --path <worktree>` went
+    0 -> 1 (session 06e6dd44…, 3 turns), canary phrase present in all
+    three turns via `get --repo all`. Negative control: a commit with no
+    resolvable identity printed the ONE stderr line, exit 0, envelope
+    untouched. So the dark-fleet class is now: pi/omp rs seats only,
+    until pij req-0033. (Their omp negative control never ran — an
+    `pij-rs spawn` from a main checkout died before binding, proc null,
+    pane gone — reported to weasel by them.)
