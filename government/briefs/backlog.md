@@ -1583,3 +1583,33 @@ ROW 121 — CLAUDE RS SEATS NOW INGEST, PROVEN IN OUR INDEX (meadowlark,
     plan 010 drain (ac-0005) has this as a NAMED PRECONDITION; the repair
     at the bounce is o-prime's on Jordan's GO. Row 120's family (no
     verb can even show this without psql).
+
+124. **INCIDENT 2026-09-02 22:48Z — prod postgres backend crash + 20s
+    recovery during a coder's gate; the gate's prod tripwire reported
+    "absent" for what was UNREACHABLE** (lynx, characterised read-only).
+    Sequence from the container log: heavy per-run test-DB churn
+    (`checkpoint starting: immediate force wait` bursts = CREATE/DROP
+    DATABASE from concurrent suites) under host load ~124; at 22:48:35
+    `server process (PID 3147563) exited with exit code 2` → postmaster
+    `terminating any other active server processes` → crash recovery
+    (`Consistent recovery state has not been yet reached`, WAL redo of
+    two test-DB drops) → `ready to accept connections` at 22:48:55. The
+    container never restarted (RestartCount 0). Prod data INTACT after:
+    22 migrations, 52 conversations, 237,058 elements, 289,459
+    embeddings, daemon health ok, search ok. The daemon's queue kept
+    working. Zealot's `harness checks` tripwire, probing inside the
+    window, printed `a test run changed the PRODUCTION database
+    (version=22 -> absent)` and STOPped — the coder did exactly right and
+    lost a gate to it. TWO DEFECTS: (a) the tripwire cannot tell
+    "dropped" from "unreachable" — a guard that asserts data loss on a
+    connection failure is the verdict-cannot-lie family (107/111/112/
+    113/119) at its most expensive: it will train seats to distrust a
+    guard we NEED them to trust; fix: probe must distinguish connection
+    error from a successful read of 0 rows, and say which; (b) per-run
+    test DBs on the PROD container — every coder's suite creates and
+    drops databases on the same postmaster that serves :7373, so test
+    churn under load can (and did) take prod down for 20s. Fix: a
+    separate test postmaster (compose service `db-test` on another port)
+    is the isolation the guard was pretending we had; until then, one
+    DB-heavy job at a time (serialized gates, ruled today). Row 110/118
+    family. Backend exit code 2 root cause not determinable from logs.
