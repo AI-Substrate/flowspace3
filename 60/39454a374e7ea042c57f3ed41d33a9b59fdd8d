@@ -1,0 +1,23 @@
+government/briefs/w-conv-verify.md
+  s_15d888f4b629c1::t_31b6c6a1130d6b 1-75
+government/briefs/w-embed-cap-heal.md
+  s_15d888f4b629c1::t_55aec431e99fe0 1-70
+government/rulings/2026-09-02-sol-codes-claude-reviews.md
+  s_15d888f4b629c1::t_5659149620fd38 1-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6039454a374e7ea042c57f3ed41d33a9b59fdd8d",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
