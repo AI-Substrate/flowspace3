@@ -1,0 +1,21 @@
+government/briefs/backlog.md
+  s_15d888f4b629c1::t_1761ca9f0e2100 1513-1523
+government/pij-two-daemons.md
+  s_15d888f4b629c1::t_672c1628f38df8 84-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "04bd711a701d8cfcf73ac5aa44f8dd4247f39385",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
