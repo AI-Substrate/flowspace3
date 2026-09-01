@@ -56,10 +56,11 @@
         {
           "id": "tk-0104",
           "title": "Gate and PR: harness checks green in the worktree; feat: commits via harness commit; PR into main stating the mutation",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0104",
           "success": "PR open, CI green",
-          "satisfies": []
+          "satisfies": [],
+          "receipt": "harness checks green at 2026-09-01T22:55:25.077Z. Commit 4c82eeae915ddecd00d2d2530b4afd22667c7663 via harness commit. PR #93 opened; GitHub gate passed in 5m8s on the feature commit."
         },
         {
           "id": "tk-0105",
@@ -123,7 +124,7 @@
           {
             "id": "dw-1007",
             "assertion": "CI green on the PR head sha",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0008"
           }
         ],

@@ -33,3 +33,12 @@ Evidence:
 - Solo `harness checks` — green at `2026-09-01T22:55:25.077Z`.
 
 Discovery — Noteworthy: the first corrected gate sampled production Postgres during crash recovery and reported schema `absent`; o-prime verified all production counts intact and cleared the solo rerun. Harness row 124 tracks the guard defect.
+
+## tk-0104 — gate and pull request
+
+Committed the implementation with `harness commit` as `4c82eeae915ddecd00d2d2530b4afd22667c7663`, opened PR #93, and watched the GitHub `gate` check pass in 5m8s. The PR body carries the mutation statement, focused-test receipts, contract decisions, and assumptions.
+
+Evidence:
+- Local `harness checks` — green.
+- PR: `https://github.com/AI-Substrate/flowspace3/pull/93`.
+- Flowspace dogfood search returned both `conversation_verify_contract` and `convo_ingest::verify` from this worktree.
