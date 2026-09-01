@@ -81,3 +81,26 @@ through `pij spawn` or accept the loss knowingly and say so in the row.
 observations (two BLOCKING) were this defect seen from a seat that had no idea
 two daemons existed. It cost that seat its ability to report at all — it left
 its ACK plan in a file for me to find. You should never have to do that twice.
+
+
+## Reaching your seats across the split (weasel, 2026-09-02, checked against daemon source — req-0034)
+
+**Legacy prime → rs child — WORKS:**
+
+    pij-rs send --from pij-instant-lynx --to <child-id> --msg-id "$(uuidgen)" --body "<text or file path>"
+
+rs does not validate `--from`; `--msg-id` is mandatory or it prints usage and
+sends NOTHING (req-0032). Long bodies: write a file, send the path.
+
+**rs child → legacy prime — NO pij path exists.** o-prime's standing choice is
+**file + poll**: the child writes `.harness/temp/agent/<packet>-ack.md` /
+`-report.md` / stop-and-asks in its worktree and STOPS; o-prime reads them and
+replies with `pij-rs send` + numbered `-prime-reply-NNN.md`. o-prime declined
+the alternative (adopting its own pane into rs for a second identity) — that
+splits the prime's name across two stores and cuts off legacy peers. Workers
+write files only; **never type into a prime's pane.**
+
+`pij spawn --bin omp` ALWAYS lands the child in rs today — expect this on every
+sol coder, not as a fluke. Filed upstream as pij **req-0034** (spawn must
+register the child where its parent is or refuse; E-RS must name the route,
+never say "adopt").

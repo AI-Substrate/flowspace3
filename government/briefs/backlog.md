@@ -1510,3 +1510,14 @@ ROW 121 AMENDED — WE CANNOT FIX THIS ALONE TODAY, AND MUST NOT TRY
     dependency) and handing us `--session`/`--harness`, which our
     existing native route already serves — so that path needs nothing
     from us. pi/omp seats stay dark until req-0033.
+
+
+ROW 121 — SECOND UPSTREAM ROW (2026-09-02): pij **req-0034** minted by
+    weasel for the spawn half — `pij spawn --bin omp` from a legacy prime
+    mints an rs child that cannot message its parent, and E-RS tells the
+    child its parent "never registered" and to `pij adopt`. Hit live by
+    the plan 010 coder (pij-general-limpet) on its canary; it followed the
+    packet's file fallback and stopped cleanly. Interim ruling (o-prime):
+    file + poll for child→prime, `pij-rs send` (with --msg-id) for
+    prime→child; NOT adopting o-prime's own pane into rs (identity split,
+    cuts off legacy peers). Encoded in government/pij-two-daemons.md.
