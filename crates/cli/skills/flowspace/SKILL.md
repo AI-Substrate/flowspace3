@@ -164,14 +164,19 @@ That default is usually right and always cheap.
 | *(none)* | the repository you are standing in |
 | `--repo <identity>` | one named repository |
 | `--repo all` | EVERY indexed repository — more searching, more tokens, slower |
+| `--path <glob>` | hard-bound code/document paths for every search, read, and citation |
+| `--source code\|doc\|conversation\|all` | one content source; absent/`all` is the default |
+| `--conversation <guid>` | exactly one transcript; incompatible with `--path` |
 
 Use `--repo all` deliberately, when the answer genuinely crosses repositories
 ("compare how A and B each do X"), not as a default. Widening multiplies the work on
 a many-repo index, and a question whose answer is local gets no better for it.
 
-The loop narrows further on its own — it passes path globs and its own repo argument
-to the same filters `search` exposes — so a question phrased with real nouns
-("the daemon's job queue", not "the queue") scopes itself.
+Use `--path` when the answer must come from one code/document subtree. The caller's
+glob overrides every model-supplied path for the whole run, and `get` refuses any
+resolved element outside it before recording a citation. Conversations carry no
+file path: absent/`all` excludes them with an explicit coverage reason, while
+`--source conversation` is refused. Use `--conversation` or `--repo` for discussion.
 
 ### Reading the report
 
@@ -202,8 +207,11 @@ to the same filters `search` exposes — so a question phrased with real nouns
   present it as the missing answer. For a bound, ask a narrower question or raise
   the matching `[agent]` bound (`token_budget` defaults to 80,000 and is configurable).
 - **`coverage` names the probe's finite reach.** `retrieval_top_k` records each search
-  cap and `exhaustive` is always false. Enumerations are findings from that bounded
-  probe, never proof that the listed items are the only ones.
+  cap and `exhaustive` is always false. A path-scoped run adds the immutable glob,
+  matching element count, and—only for absent/`all` source—the reason conversations
+  were excluded. No `--path` means no path field, preserving the old envelope.
+  Enumerations are findings from that bounded probe, never proof that the listed
+  items are the only ones.
 - **`trace[].evidence`** distinguishes a call that WORKED AND FOUND NOTHING
   (`failed: false, evidence: false`) from one that BROKE (`failed: true`). Both are
   survivable — bad tool calls are fed back to the model, which corrects itself.

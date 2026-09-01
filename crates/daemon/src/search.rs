@@ -40,8 +40,8 @@
 
 use fs3_core::catalog;
 use fs3_core::envelope::Failure;
-use fs3_core::{ConversationId, DdocMeta, Element, ElementKind};
-use fs3_store::{LexicalHit, SearchFilters, SearchHit};
+use fs3_core::{ConversationId, DdocAddress, DdocMeta, Element, ElementKind};
+use fs3_store::{LexicalHit, PathFilterProbe, SearchFilters, SearchHit};
 use serde::{Deserialize, Serialize};
 
 use crate::runner::fail;
@@ -123,6 +123,13 @@ const CODE_KINDS: [ElementKind; 3] = [
     ElementKind::Function,
 ];
 const DOC_KINDS: [ElementKind; 2] = [ElementKind::Section, ElementKind::Row];
+const FILE_KINDS: [ElementKind; 5] = [
+    ElementKind::File,
+    ElementKind::Container,
+    ElementKind::Function,
+    ElementKind::Section,
+    ElementKind::Row,
+];
 const ALL_KINDS: [ElementKind; 6] = [
     ElementKind::File,
     ElementKind::Container,
@@ -205,6 +212,26 @@ pub(crate) fn source_filter(
         .with_fix("use `--source conversation` to search only indexed turns, or omit it to search every source")),
     }
 }
+
+/// Element kinds reachable through a file path filter.
+pub(crate) fn path_source_filter(source: Option<&str>) -> Result<Vec<ElementKind>, Failure> {
+    match source {
+        None | Some("all") => Ok(FILE_KINDS.to_vec()),
+        Some("code") => Ok(CODE_KINDS.to_vec()),
+        Some("doc") => Ok(DOC_KINDS.to_vec()),
+        Some("conversation") => Err(Failure::new(
+            &catalog::QUERY_INVALID,
+            "--path conflicts with --source conversation because conversations carry no file path",
+        )
+        .with_fix(
+            "remove --path and use --repo to scope conversations, or select --source code or doc",
+        )),
+        Some(other) => Err(Failure::new(
+            &catalog::QUERY_INVALID,
+            format!("--source must be code, doc, conversation or all, got {other:?}"),
+        )),
+    }
+}
 /// How many lines of an element's text a hit carries.
 const SNIPPET_LINES: usize = 5;
 
@@ -261,7 +288,10 @@ async fn search_filtered(
     // `source` is the content corpus. The absent/default and `all` search the
     // complete corpus; narrower values keep ranking identical while selecting
     // one stable source group before the scored-set limit.
-    let (kinds, file_backed) = source_filter(request.source.as_deref())?;
+    let (mut kinds, file_backed) = source_filter(request.source.as_deref())?;
+    if request.path.is_some() {
+        kinds = Some(path_source_filter(request.source.as_deref())?);
+    }
 
     let max_distance = match request.min_score {
         None => None,
@@ -500,9 +530,18 @@ async fn path_unmatched(
         filters.repo.as_deref(),
         filters.worktree.as_deref(),
         pattern,
+        filters.kinds.as_deref(),
     )
     .await
     .ok()?;
+    path_unmatched_reason(requested, probe)
+}
+
+/// Explain why a path glob cannot reach any indexed file in its ownership scope.
+pub(crate) fn path_unmatched_reason(
+    requested: &str,
+    probe: PathFilterProbe,
+) -> Option<EmptyBecause> {
     if probe.matches || probe.top_level_entries.is_empty() {
         return None;
     }
@@ -678,14 +717,17 @@ fn render(hit: &SearchHit) -> Hit {
         repo: hit.identity.clone(),
         path: hit.path.clone(),
         worktree: hit.root_path.clone(),
-        ddoc: element.ddoc.as_deref().map(ddoc_hit),
+        ddoc: element
+            .ddoc
+            .as_deref()
+            .map(|meta| ddoc_hit(meta, hit.path.as_deref())),
     }
 }
 
 fn render_lexical(hit: &LexicalHit) -> Hit {
     let element = &hit.element;
     Hit {
-        address: address_of_element(element, hit.identity.as_deref()),
+        address: address_of_element(element, hit.identity.as_deref(), hit.path.as_deref()),
         // Exact substring identity is the lexical score; this is not cosine.
         score: 1.0,
         channel: SearchChannel::Lexical,
@@ -700,7 +742,10 @@ fn render_lexical(hit: &LexicalHit) -> Hit {
         repo: hit.identity.clone(),
         path: hit.path.clone(),
         worktree: hit.root_path.clone(),
-        ddoc: element.ddoc.as_deref().map(ddoc_hit),
+        ddoc: element
+            .ddoc
+            .as_deref()
+            .map(|meta| ddoc_hit(meta, hit.path.as_deref())),
     }
 }
 
@@ -736,9 +781,9 @@ fn same_hit(left: &Hit, right: &Hit) -> bool {
 }
 
 /// Map stored ddoc metadata into the consumer-owned search view.
-fn ddoc_hit(meta: &DdocMeta) -> DdocHit {
+fn ddoc_hit(meta: &DdocMeta, path: Option<&str>) -> DdocHit {
     DdocHit {
-        address: meta.address.clone(),
+        address: rebase_ddoc_address(&meta.address, path),
         schema: meta.schema.clone(),
         section: meta.section.clone(),
         id: meta.id.clone(),
@@ -768,14 +813,45 @@ fn ddoc_hit(meta: &DdocMeta) -> DdocHit {
 /// content is real even when the checkout that held it is gone, and inventing a
 /// repository for it would be a lie.
 fn address_of(hit: &SearchHit) -> String {
-    address_of_element(&hit.similar.element, hit.identity.as_deref())
+    address_of_element(
+        &hit.similar.element,
+        hit.identity.as_deref(),
+        hit.path.as_deref(),
+    )
 }
 
-fn address_of_element(element: &Element, identity: Option<&str>) -> String {
-    if element.kind == ElementKind::Turn || element.kind == ElementKind::Row {
+fn address_of_element(element: &Element, identity: Option<&str>, path: Option<&str>) -> String {
+    if element.kind == ElementKind::Turn {
         return element.address.clone();
     }
-    fs3_core::element_address(identity, &element.address)
+    if element.kind == ElementKind::Row {
+        return rebase_ddoc_address(&element.address, path);
+    }
+    let rebased = path.and_then(|path| {
+        let suffix = element
+            .address
+            .find("::")
+            .map_or("", |index| &element.address[index..]);
+        let stored_path = element
+            .address
+            .strip_suffix(suffix)
+            .unwrap_or(&element.address);
+        (stored_path != path).then(|| format!("{path}{suffix}"))
+    });
+    fs3_core::element_address(identity, rebased.as_deref().unwrap_or(&element.address))
+}
+
+fn rebase_ddoc_address(address: &str, path: Option<&str>) -> String {
+    let Some(path) = path else {
+        return address.to_string();
+    };
+    DdocAddress::parse(address).map_or_else(
+        |_| address.to_string(),
+        |mut address| {
+            address.file = path.to_string();
+            address.render()
+        },
+    )
 }
 
 /// Apply only ddoc-specific predicates, preserving the gate's three states.
@@ -806,7 +882,8 @@ fn snippet(raw_text: &str) -> String {
 /// better than pretending: `crates/*/src` matching across segments returns a
 /// superset, which a reader can narrow, while the reverse would silently hide
 /// files.
-fn glob_to_like(glob: &str) -> String {
+pub(crate) fn glob_to_like(glob: &str) -> String {
+    let ends_with_wildcard = glob.ends_with('*');
     let mut out = String::with_capacity(glob.len() + 2);
     let mut chars = glob.chars().peekable();
     while let Some(ch) = chars.next() {
@@ -818,9 +895,9 @@ fn glob_to_like(glob: &str) -> String {
                 out.push('%');
             }
             '?' => out.push('_'),
-            // `%` and `_` are LIKE metacharacters; a literal one in a path must
-            // not become a wildcard.
-            '%' | '_' => {
+            // SQL LIKE treats backslash as its escape. Escape it alongside its
+            // metacharacters so search and the in-process get guard agree.
+            '\\' | '%' | '_' => {
                 out.push('\\');
                 out.push(ch);
             }
@@ -828,10 +905,40 @@ fn glob_to_like(glob: &str) -> String {
         }
     }
     // A bare prefix behaves the way a person expects a path filter to.
-    if !out.ends_with('%') {
+    if !ends_with_wildcard {
         out.push('%');
     }
     out
+}
+
+/// Match one resolved repository-relative path with search's glob semantics.
+pub(crate) fn path_matches_glob(path: &str, glob: &str) -> bool {
+    let text: Vec<char> = path.chars().collect();
+    let mut pattern: Vec<char> = glob.chars().collect();
+    if pattern.last() != Some(&'*') {
+        pattern.push('*');
+    }
+
+    let mut previous = vec![false; text.len() + 1];
+    let mut current = vec![false; text.len() + 1];
+    previous[0] = true;
+
+    for token in pattern {
+        current.fill(false);
+        if token == '*' {
+            current[0] = previous[0];
+        }
+        for index in 1..=text.len() {
+            current[index] = if token == '*' {
+                previous[index] || current[index - 1]
+            } else {
+                previous[index - 1] && (token == '?' || token == text[index - 1])
+            };
+        }
+        std::mem::swap(&mut previous, &mut current);
+    }
+
+    previous[text.len()]
 }
 
 #[cfg(test)]
@@ -850,6 +957,25 @@ mod tests {
         // wildcard in LIKE, so `my_file` would have matched `myXfile`.
         assert_eq!(glob_to_like("my_file.rs"), "my\\_file.rs%");
         assert_eq!(glob_to_like("100%.md"), "100\\%.md%");
+        assert_eq!(glob_to_like("100%"), "100\\%%");
+        assert_eq!(glob_to_like(r"a\b"), r"a\\b%");
+    }
+
+    #[test]
+    fn resolved_paths_use_the_same_prefix_wildcard_semantics_as_search() {
+        assert!(path_matches_glob(
+            "crates/store/src/lib.rs",
+            "crates/store/**"
+        ));
+        assert!(path_matches_glob("crates/store/src/lib.rs", "crates/store"));
+        assert!(path_matches_glob("crates/λ.rs", "crates/?.rs"));
+        assert!(!path_matches_glob(
+            "crates/daemon/src/lib.rs",
+            "crates/store/**"
+        ));
+        assert!(!path_matches_glob("myXfile.rs", "my_file.rs"));
+        assert!(path_matches_glob(r"a\b/file.rs", r"a\b"));
+        assert!(!path_matches_glob("ab/file.rs", r"a\b"));
     }
 
     #[test]
@@ -947,7 +1073,7 @@ mod tests {
 
     #[test]
     fn ddoc_metadata_is_serialized_on_rows_and_the_key_is_absent_on_code() {
-        let address = "docs/plan.dd.json#acceptance_criteria/ac-0001";
+        let address = "docs/owner.dd.json#acceptance_criteria/ac-0001";
         let mut meta = DdocMeta::new(
             address,
             "builder/plan",
@@ -970,7 +1096,14 @@ mod tests {
         )
         .with_ddoc(meta);
         let row = serde_json::to_value(render(&hit(row))).expect("row hit serializes");
-        assert_eq!(row["address"], address);
+        assert_eq!(
+            row["address"],
+            "docs/plan.dd.json#acceptance_criteria/ac-0001"
+        );
+        assert_eq!(
+            row["ddoc"]["address"],
+            "docs/plan.dd.json#acceptance_criteria/ac-0001"
+        );
         assert_eq!(row["ddoc"]["state_stored"], "checked");
         assert_eq!(row["ddoc"]["state_derived"]["complete"], false);
 

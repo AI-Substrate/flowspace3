@@ -51,6 +51,9 @@ pub struct AskRequest {
     /// Restrict to one repository identity, or `all` to search every one.
     #[serde(default)]
     pub repo: Option<String>,
+    /// Restrict code and document retrieval to paths matching this glob.
+    #[serde(default)]
+    pub path: Option<String>,
     /// Content source: `code`, `doc`, `conversation`, or `all` (the default).
     #[serde(default)]
     pub source: Option<String>,
@@ -105,6 +108,18 @@ pub struct AskConversationCoverage {
     pub turns: i64,
 }
 
+/// One immutable path boundary and its measured file-backed corpus.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct AskPathCoverage {
+    /// The caller's glob, verbatim.
+    pub glob: String,
+    /// Live elements reachable through matching paths and the selected source.
+    pub elements: i64,
+    /// Why conversations are absent when the caller selected every source.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub conversation_exclusion: Option<String>,
+}
+
 /// The content corpus the loop was actually allowed to inspect.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct AskCorpusCoverage {
@@ -113,6 +128,9 @@ pub struct AskCorpusCoverage {
     /// Present only when retrieval was pinned to exactly one conversation.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub conversation: Option<AskConversationCoverage>,
+    /// Present only when the caller supplied `--path`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<AskPathCoverage>,
 }
 
 /// The finite probe behind an answer, stated separately from its prose.
@@ -221,6 +239,7 @@ impl AskReport {
 pub struct AskCorpus {
     source: Option<String>,
     conversation: Option<fs3_store::ConversationSummary>,
+    path: Option<AskPathCoverage>,
 }
 
 impl AskCorpus {
@@ -239,6 +258,7 @@ impl AskCorpus {
                     count: 1,
                     turns: conversation.turns,
                 }),
+            path: self.path.clone(),
         }
     }
 }
@@ -250,6 +270,18 @@ pub async fn resolve_corpus(
     scope: &Scope,
 ) -> Result<AskCorpus, Failure> {
     crate::search::source_filter(request.source.as_deref())?;
+    if request.path.is_some()
+        && (request.conversation.is_some()
+            || matches!(request.source.as_deref(), Some("conversation")))
+    {
+        return Err(Failure::new(
+            &catalog::QUERY_INVALID,
+            "--path cannot scope conversations because conversation turns carry no file path",
+        )
+        .with_fix(
+            "use `--conversation <guid>` to pin one transcript or `--repo <identity>` to scope conversations by repository",
+        ));
+    }
     if request.conversation.is_some() && matches!(request.source.as_deref(), Some("code" | "doc")) {
         return Err(Failure::new(
             &catalog::QUERY_INVALID,
@@ -263,9 +295,54 @@ pub async fn resolve_corpus(
         }
         None => None,
     };
+    let path = match request.path.as_deref() {
+        Some(glob) => {
+            let pattern = crate::search::glob_to_like(glob);
+            let kinds = crate::search::path_source_filter(request.source.as_deref())?;
+            let probe = fs3_store::path_filter_probe(
+                &state.db,
+                scope.repo.as_deref(),
+                scope.worktree.as_deref(),
+                &pattern,
+                Some(&kinds),
+            )
+            .await
+            .map_err(crate::runner::fail)?;
+            if !probe.matches {
+                let reason = crate::search::path_unmatched_reason(glob, probe.clone())
+                    .unwrap_or_else(|| crate::search::EmptyBecause {
+                        reason: "path_unmatched",
+                        detail: format!(
+                            "the --path filter {glob:?} matches zero indexed paths in this scope; no indexed file paths are available to answer from"
+                        ),
+                        hint: Some(
+                            "index the intended checkout with `flowspace3 add <path>`, or correct --repo/--path to a scope that contains files"
+                                .to_string(),
+                        ),
+                    });
+                let fix = reason
+                    .hint
+                    .clone()
+                    .unwrap_or_else(|| "correct the --path filter".to_string());
+                return Err(Failure::new(&catalog::QUERY_INVALID, reason.detail.clone())
+                    .with_fix(fix)
+                    .with_detail("empty_because", reason));
+            }
+            Some(AskPathCoverage {
+                glob: glob.to_string(),
+                elements: probe.matching_elements,
+                conversation_exclusion: matches!(request.source.as_deref(), None | Some("all"))
+                    .then(|| {
+                        "conversations carry no file path, so --path excludes them".to_string()
+                    }),
+            })
+        }
+        None => None,
+    };
     Ok(AskCorpus {
         source: request.source.clone(),
         conversation,
+        path,
     })
 }
 
@@ -277,6 +354,8 @@ pub struct IndexTools<'a> {
     source: Option<String>,
     /// Canonical conversation pin, immutable across searches and reads.
     conversation: Option<ConversationId>,
+    /// Caller-selected path glob, immutable across searches and reads.
+    path: Option<String>,
     /// Addresses actually read, in call order — the citation record.
     read: std::sync::Mutex<Vec<String>>,
     /// Top-k used by each valid search call, in call order.
@@ -286,7 +365,7 @@ pub struct IndexTools<'a> {
 impl<'a> IndexTools<'a> {
     /// Bind the toolbox to the state and the scope this request resolved to.
     pub fn new(state: &'a AppState, scope: Scope) -> Self {
-        Self::with_filters(state, scope, None, None)
+        Self::with_filters(state, scope, None, None, None)
     }
 
     fn with_corpus(state: &'a AppState, scope: Scope, corpus: &AskCorpus) -> Self {
@@ -298,6 +377,7 @@ impl<'a> IndexTools<'a> {
                 .conversation
                 .as_ref()
                 .map(|conversation| conversation.guid.clone()),
+            corpus.path.as_ref().map(|path| path.glob.clone()),
         )
     }
 
@@ -306,12 +386,14 @@ impl<'a> IndexTools<'a> {
         scope: Scope,
         source: Option<String>,
         conversation: Option<ConversationId>,
+        path: Option<String>,
     ) -> Self {
         Self {
             state,
             scope,
             source,
             conversation,
+            path,
             read: std::sync::Mutex::new(Vec::new()),
             search_limits: std::sync::Mutex::new(Vec::new()),
         }
@@ -342,6 +424,11 @@ impl<'a> IndexTools<'a> {
             Some(repo) => format!("repository `{repo}` only"),
             None => "every indexed repository".to_string(),
         };
+        let path = self
+            .path
+            .as_ref()
+            .map(|path| format!("; paths matching `{path}` only"))
+            .unwrap_or_default();
         if let Some(conversation) = &self.conversation {
             return format!(
                 "scope: {repository}; corpus: one conversation `conv:{}` only",
@@ -349,8 +436,10 @@ impl<'a> IndexTools<'a> {
             );
         }
         match self.source.as_deref() {
-            Some(source) => format!("scope: {repository}; source: {source} only"),
-            None => format!("scope: {repository}; source: model-selectable within all sources"),
+            Some(source) => format!("scope: {repository}{path}; source: {source} only"),
+            None => {
+                format!("scope: {repository}{path}; source: model-selectable within all sources")
+            }
         }
     }
 
@@ -380,12 +469,16 @@ impl<'a> IndexTools<'a> {
             q: query.to_string(),
             repo: asked.map(str::to_string).or_else(|| scope.repo.clone()),
             cwd: scope.cwd.clone(),
-            path: arguments
-                .get("path")
-                .and_then(Value::as_str)
-                .map(str::to_string),
+            path: self.path.clone().or_else(|| {
+                arguments
+                    .get("path")
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+            }),
             source: if self.conversation.is_some() {
                 Some("conversation".to_string())
+            } else if self.path.is_some() {
+                Some(self.source.clone().unwrap_or_else(|| "all".to_string()))
             } else {
                 self.source.clone().or_else(|| {
                     arguments
@@ -484,6 +577,11 @@ impl<'a> IndexTools<'a> {
     fn guard_address(&self, address: &str) -> CoreResult<()> {
         let parsed = Address::parse(address)
             .map_err(|error| provider_error(&format!("get address is invalid: {error}")))?;
+        if self.path.is_some() && matches!(&parsed, Address::Conversation(_)) {
+            return Err(provider_error(
+                "get is outside the caller's immutable --path scope; conversations carry no file path",
+            ));
+        }
         if let Some(conversation) = &self.conversation {
             return match parsed {
                 Address::Conversation(candidate)
@@ -526,6 +624,16 @@ impl<'a> IndexTools<'a> {
         }
     }
 
+    fn payload_in_path(&self, payload: &GetPayload) -> bool {
+        match (self.path.as_deref(), payload) {
+            (None, _) => true,
+            (Some(glob), GetPayload::Element(element)) => {
+                crate::search::path_matches_glob(&element.path, glob)
+            }
+            (Some(_), GetPayload::Conversation(_)) => false,
+        }
+    }
+
     async fn run_get(&self, arguments: &Value) -> CoreResult<ToolOutcome> {
         let address = arguments
             .get("address")
@@ -543,6 +651,11 @@ impl<'a> IndexTools<'a> {
         if !self.payload_in_source(&payload) {
             return Err(provider_error(
                 "get resolved outside the caller's immutable --source scope",
+            ));
+        }
+        if !self.payload_in_path(&payload) {
+            return Err(provider_error(
+                "get resolved outside the caller's immutable --path scope",
             ));
         }
 
@@ -697,4 +810,36 @@ pub async fn ask(
         .to_string(),
         model: chat.key(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Serialize)]
+    struct LegacyAskCorpusCoverage<'a> {
+        source: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        conversation: Option<&'a AskConversationCoverage>,
+    }
+
+    #[test]
+    fn absent_path_preserves_legacy_corpus_serialization_bytes() {
+        let current = AskCorpus {
+            source: None,
+            conversation: None,
+            path: None,
+        }
+        .coverage();
+        let legacy = LegacyAskCorpusCoverage {
+            source: "all",
+            conversation: None,
+        };
+
+        assert_eq!(
+            serde_json::to_vec(&current).unwrap(),
+            serde_json::to_vec(&legacy).unwrap(),
+            "adding --path must add no envelope bytes when the flag is absent"
+        );
+    }
 }

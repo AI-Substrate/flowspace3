@@ -452,6 +452,8 @@ pub struct PathFilterProbe {
     pub matches: bool,
     /// Distinct first path segments available in the same scope, sorted.
     pub top_level_entries: Vec<String>,
+    /// Live file-backed elements reachable through matching paths.
+    pub matching_elements: i64,
 }
 
 impl Default for SearchFilters {
@@ -887,6 +889,7 @@ pub async fn path_filter_probe(
     repo: Option<&str>,
     worktree: Option<&str>,
     path: &str,
+    kinds: Option<&[ElementKind]>,
 ) -> Result<PathFilterProbe, StoreError> {
     let row = sqlx::query(
         "SELECT COALESCE(bool_or(f.path LIKE $3), false) AS matches,
@@ -895,22 +898,34 @@ pub async fn path_filter_probe(
                               ORDER BY split_part(f.path, '/', 1))
                         FILTER (WHERE f.path <> ''),
                     ARRAY[]::text[]
-                ) AS top_level_entries
+                ) AS top_level_entries,
+                count(el.id) FILTER (
+                    WHERE f.path LIKE $3
+                      AND ($4::text[] IS NULL OR el.kind = ANY($4))
+                )::bigint AS matching_elements
            FROM worktree_files f
            JOIN worktrees w ON w.id = f.worktree_id
            JOIN repos r     ON r.id = w.repo_id
+           LEFT JOIN elements el ON el.blob_sha = f.blob_sha
           WHERE ($1::text IS NULL OR r.identity = $1)
             AND ($2::text IS NULL OR w.root_path = $2)",
     )
     .bind(repo)
     .bind(worktree)
     .bind(path)
+    .bind(kinds.map(|kinds| {
+        kinds
+            .iter()
+            .map(|kind| (*kind).as_str())
+            .collect::<Vec<_>>()
+    }))
     .fetch_one(pool)
     .await?;
 
     Ok(PathFilterProbe {
         matches: row.try_get("matches")?,
         top_level_entries: row.try_get("top_level_entries")?,
+        matching_elements: row.try_get("matching_elements")?,
     })
 }
 fn similar_from_row(row: &sqlx::postgres::PgRow) -> Result<SimilarElement, StoreError> {

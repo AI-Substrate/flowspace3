@@ -32,6 +32,7 @@ struct CorpusCoverage {
     #[serde(default)]
     source: String,
     conversation: Option<ConversationCoverage>,
+    path: Option<PathCoverage>,
 }
 
 #[derive(Deserialize)]
@@ -40,12 +41,36 @@ struct ConversationCoverage {
     turns: i64,
 }
 
+#[derive(Deserialize)]
+struct PathCoverage {
+    glob: String,
+    elements: i64,
+    conversation_exclusion: Option<String>,
+}
+
 impl CorpusCoverage {
     fn summary(&self) -> Option<String> {
         if let Some(conversation) = &self.conversation {
             return Some(format!(
                 "one conversation of {} turns (conv:{})",
                 conversation.turns, conversation.guid
+            ));
+        }
+        if let Some(path) = &self.path {
+            let source = match self.source.as_str() {
+                "" | "all" => String::new(),
+                source => format!("{source} source only · "),
+            };
+            let suffix = path
+                .conversation_exclusion
+                .as_ref()
+                .map(|reason| format!(" · {reason}"))
+                .unwrap_or_default();
+            return Some(format!(
+                "{source}paths matching {:?} · {} element{}{suffix}",
+                path.glob,
+                path.elements,
+                if path.elements == 1 { "" } else { "s" }
             ));
         }
         match self.source.as_str() {
@@ -322,5 +347,40 @@ mod tests {
         let screen = plain(&render(&envelope(report), 100).unwrap());
         assert!(screen.contains("one conversation of 42 turns"), "{screen}");
         assert!(screen.contains("conv:11111111-1111-4111-8111-111111111111"));
+    }
+
+    #[test]
+    fn path_coverage_names_the_boundary_and_only_relevant_exclusion() {
+        let mut report = answered(true, json!(420));
+        report["coverage"] = json!({
+            "corpus": {
+                "source": "all",
+                "path": {
+                    "glob": "crates/store/**",
+                    "elements": 42,
+                    "conversation_exclusion": "conversations carry no file path, so --path excludes them"
+                }
+            }
+        });
+        let screen = plain(&render(&envelope(report), 120).unwrap());
+        assert!(
+            screen.contains("paths matching \"crates/store/**\" · 42 elements"),
+            "{screen}"
+        );
+        assert!(
+            screen.contains("conversations carry no file path"),
+            "{screen}"
+        );
+
+        let mut code = answered(true, json!(420));
+        code["coverage"] = json!({
+            "corpus": {
+                "source": "code",
+                "path": { "glob": "src/**", "elements": 1 }
+            }
+        });
+        let screen = plain(&render(&envelope(code), 100).unwrap());
+        assert!(screen.contains("code source only · paths matching \"src/**\" · 1 element"));
+        assert!(!screen.contains("conversations carry no file path"));
     }
 }

@@ -256,6 +256,9 @@ enum Command {
         /// one repo asks a question whose answer lives in another.
         #[arg(long, value_name = "IDENTITY")]
         repo: Option<String>,
+        /// Restrict code and document retrieval to paths matching this glob.
+        #[arg(long, value_name = "GLOB")]
+        path: Option<String>,
         /// Content source; absent or `all` searches code, docs, and conversations.
         #[arg(long, value_name = "SOURCE", value_parser = ["code", "doc", "conversation", "all"])]
         source: Option<String>,
@@ -632,6 +635,7 @@ async fn run(command: Command) -> Result<ExitCode> {
         Command::Ask {
             question,
             repo,
+            path,
             source,
             conversation,
             daemon_url,
@@ -639,6 +643,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             let client = client_for(daemon_url)?;
             let mut params = vec![("question".to_string(), question)];
             push(&mut params, "repo", repo);
+            push(&mut params, "path", path);
             push(&mut params, "source", source);
             push(&mut params, "conversation", conversation);
             push(&mut params, "cwd", here());
@@ -1109,11 +1114,13 @@ mod tests {
     }
 
     #[test]
-    fn ask_accepts_source_and_conversation_scope() {
+    fn ask_accepts_source_conversation_and_path_scope() {
         let cli = Cli::try_parse_from([
             "flowspace3",
             "ask",
             "what did we decide?",
+            "--path",
+            "crates/store/**",
             "--source",
             "conversation",
             "--conversation",
@@ -1121,6 +1128,7 @@ mod tests {
         ])
         .expect("ask scope flags parse");
         let Command::Ask {
+            path,
             source,
             conversation,
             ..
@@ -1128,6 +1136,7 @@ mod tests {
         else {
             panic!("ask command");
         };
+        assert_eq!(path.as_deref(), Some("crates/store/**"));
         assert_eq!(source.as_deref(), Some("conversation"));
         assert_eq!(conversation.as_deref(), Some("6ba7b810"));
 
