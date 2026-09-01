@@ -1299,3 +1299,29 @@ leaving this file should name where it went.
     current session" on a REGISTERED omp seat — smells like the third
     face of the same window. If vicuna closes that window, re-test row 75
     before dispatching anything for it; it may close for free.
+
+117. **009's PREDICTED RISK FIRED IN PROD: bytes/3 token estimation
+    under-counts, so an unchunked input still exceeds the 8192 cap**
+    (lynx, 2026-09-01, discharging ac-0007's observation leg myself after
+    krill died). The impl-guide's risk #2 said exactly this — "a
+    pathological input could still exceed the true tokenizer cap; keep
+    the cap-WARN as the LAST-RESORT guard, its firing post-merge is a
+    regression signal" — and it fired.
+    MEASURED: 4 failed embed jobs, all 2026-08-31 09:12-11:43, i.e. AFTER
+    the 009 deploy (08-30 19:18Z). ONE distinct source, retried 4x, 44
+    items. Provider says "Invalid 'input[0]': maximum input length is
+    8192 tokens". Max item = 20,872 CHARS -> bytes/3 estimates ~6,957
+    tokens, UNDER the ~7,500 window, so chunk_plan never split it — but
+    the real tokenizer counts >8,192. Implied true ratio for this content
+    is <2.55 chars/token vs the assumed 3.0. Source is pij repo raw code.
+    FIX OPTIONS (needs a packet): (a) lower the assumed chars/token to a
+    conservative floor (cheap, costs some chunk efficiency everywhere);
+    (b) measure real tokens with a tokenizer for inputs near the bound
+    (accurate, adds a dependency); (c) treat the provider's cap rejection
+    as a SIGNAL and re-split that input automatically instead of failing
+    it (self-healing, and the only option that survives a future
+    tokenizer change). (c) plus a conservative (a) is my recommendation.
+    CONTEXT, so this is not read as 009 failing: in the same window
+    470,520 embed jobs completed with ZERO errors and ZERO empty-string
+    rejections — the hygiene half of 009 is working exactly as designed.
+    This is one residual estimation gap on one source, not a regression.
