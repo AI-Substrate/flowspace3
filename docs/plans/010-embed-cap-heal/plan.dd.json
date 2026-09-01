@@ -6,7 +6,7 @@
     {
       "name": "meta",
       "value": {
-        "title": "embed-cap-heal \u2014 the provider's cap rejection becomes a re-split signal",
+        "title": "embed-cap-heal — the provider's cap rejection becomes a re-split signal",
         "slug": "embed-cap-heal",
         "ordinal": 10,
         "status": "ready",
@@ -16,13 +16,13 @@
     },
     {
       "name": "summary",
-      "value": "Plan 009 shipped chunked embeddings and predicted this residual (impl-guide risk #2): estimate_tokens() is bytes/3, so content denser than ~2.55 chars/token \u2014 punctuation-heavy code, tool dumps, base64 \u2014 sits under the ~7,500-token window unsplit and the provider rejects it: `400 Invalid 'input[0]': maximum input length is 8192 tokens`. A retry re-sends the same bytes, so it fails forever. MEASURED IN PROD 2026-09-01/02: five embed jobs state=failed attempts=3 terminal=false \u2014 four `embed:git:github.com/AI-Substrate/pij:raw:\u2026`, one `embed:conv:recovery:raw:c5a6be2d\u2026` (a CONVERSATION turn). Largest observed item 20,872 chars \u2192 bytes/3 says ~6,957 tokens, real >8,192. A peer government (harness-engineering) is holding a ~250-seat conversation backfill until this lands, because every oversize turn in it would land silently in the same failed bucket. HYPOTHESIS TO VERIFY FIRST (not a fact): crates/core/src/tokens.rs already defines FILL=(2,3) so fit_to_cap effectively assumes 2 bytes/token, but 009's chunk_plan() (crates/daemon/src/enrich.rs) appears to size its window from estimate_tokens (3 bytes/token) without the FILL margin \u2014 if so, 20,872 chars would have been split by the margin alone, and aligning the window is the cheap half of the fix. The self-heal is the half that survives content denser than any constant."
+      "value": "Plan 009 shipped chunked embeddings and predicted this residual (impl-guide risk #2): estimate_tokens() is bytes/3, so content denser than ~2.55 chars/token — punctuation-heavy code, tool dumps, base64 — sits under the ~7,500-token window unsplit and the provider rejects it: `400 Invalid 'input[0]': maximum input length is 8192 tokens`. A retry re-sends the same bytes, so it fails forever. MEASURED IN PROD 2026-09-01/02: five embed jobs state=failed attempts=3 terminal=false — four `embed:git:github.com/AI-Substrate/pij:raw:…`, one `embed:conv:recovery:raw:c5a6be2d…` (a CONVERSATION turn). Largest observed item 20,872 chars → bytes/3 says ~6,957 tokens, real >8,192. A peer government (harness-engineering) is holding a ~250-seat conversation backfill until this lands, because every oversize turn in it would land silently in the same failed bucket. HYPOTHESIS TO VERIFY FIRST (not a fact): crates/core/src/tokens.rs already defines FILL=(2,3) so fit_to_cap effectively assumes 2 bytes/token, but 009's chunk_plan() (crates/daemon/src/enrich.rs) appears to size its window from estimate_tokens (3 bytes/token) without the FILL margin — if so, 20,872 chars would have been split by the margin alone, and aligning the window is the cheap half of the fix. The self-heal is the half that survives content denser than any constant."
     },
     {
       "name": "goals",
       "value": [
         "A provider cap rejection never becomes a permanent failure for a splittable input: the offending item is identified, re-split tighter, and re-issued, bounded by a fixed number of rounds.",
-        "When the bound is exhausted, the job fails with a message naming the item, its byte length, and the ratio reached \u2014 never a bare provider echo.",
+        "When the bound is exhausted, the job fails with a message naming the item, its byte length, and the ratio reached — never a bare provider echo.",
         "chunk_plan's window honours the same FILL margin as fit_to_cap, so the common dense case never reaches the heal path; the chunk-count cost of that alignment is MEASURED on the fixture corpus and reported, not guessed.",
         "The five jobs stuck in prod complete (or fail with a named reason) after deploy, with before/after evidence read from `flowspace3 status` and the jobs table.",
         "Search over previously-failed content works: a turn from the recovered conversation job is findable by `flowspace3 search`."
@@ -31,10 +31,10 @@
     {
       "name": "non_goals",
       "value": [
-        "No tokenizer dependency (option b of row 117) \u2014 the module's own rationale for an estimate stands.",
+        "No tokenizer dependency (option b of row 117) — the module's own rationale for an estimate stands.",
         "No change to TOKEN_BUDGET, batch sizing, or the sub-batching f-001 added, beyond what re-issuing a re-split item needs.",
         "No CLI changes; no conversation-ingest changes; nothing in crates/cli.",
-        "No change to the 8192 cap constants or the provider adapters' wire shapes \u2014 only their error CLASSIFICATION (cap-rejection must be distinguishable from other 400s)."
+        "No change to the 8192 cap constants or the provider adapters' wire shapes — only their error CLASSIFICATION (cap-rejection must be distinguishable from other 400s)."
       ]
     },
     {
@@ -42,23 +42,27 @@
       "value": [
         {
           "id": "ac-0001",
-          "state": "unchecked",
-          "claim": "Alignment measured: the coder reports, from the fixture corpus, the chunk count before and after chunk_plan honours FILL, and states whether the 20,872-char prod item would have been split by alignment alone. This is a measurement, not a pass/fail \u2014 its receipt is the two numbers."
+          "state": "checked",
+          "claim": "Alignment measured: the coder reports, from the fixture corpus, the chunk count before and after chunk_plan honours FILL, and states whether the 20,872-char prod item would have been split by alignment alone. This is a measurement, not a pass/fail — its receipt is the two numbers.",
+          "receipt": "cargo test -p fs3-daemon chunk_plan -- --nocapture: ruled corpus 7→10, 33→50, 1→2; total 41→62; 20,872-byte item splits by alignment alone"
         },
         {
           "id": "ac-0002",
-          "state": "unchecked",
-          "claim": "Self-heal, mutation-checked: a fixture input whose real token count exceeds the cap at the assumed ratio (a fake provider that counts tokens denser than bytes/3 and rejects with the cap error) is re-split and embedded as N>1 chunks; the SAME test fails without the heal (job reaches permanent failure). The PR body states the mutation."
+          "state": "checked",
+          "claim": "Self-heal, mutation-checked: a fixture input whose real token count exceeds the cap at the assumed ratio (a fake provider that counts tokens denser than bytes/3 and rejects with the cap error) is re-split and embedded as N>1 chunks; the SAME test fails without the heal (job reaches permanent failure). The PR body states the mutation.",
+          "receipt": "cap_rejection_heals_dense_input_into_unique_chunks passed; removing the Error::InputTooLong heal arm made the same test fail 0/1 with the original cap rejection; arm restored and full cap_rejection_ set passed 3/3"
         },
         {
           "id": "ac-0003",
-          "state": "unchecked",
-          "claim": "Bounded and named: with the re-split rounds exhausted (fake provider rejecting at every ratio), the job fails once with a message containing the item identity, byte length, and the final ratio; it is marked terminal so the boot sweep does not revive it. Asserted by test."
+          "state": "checked",
+          "claim": "Bounded and named: with the re-split rounds exhausted (fake provider rejecting at every ratio), the job fails once with a message containing the item identity, byte length, and the final ratio; it is marked terminal so the boot sweep does not revive it. Asserted by test.",
+          "receipt": "cap_rejection_exhaustion_is_terminal_and_named passed: one failed job; message contains source hash, 20872 bytes, final ratio 1 byte/token; terminal=true; requeue_failed sweep affected 0"
         },
         {
           "id": "ac-0004",
-          "state": "unchecked",
-          "claim": "Classification is exact: only the provider's cap rejection triggers the heal; a different 400 (e.g. bad request body) still fails as before. Asserted by test on both openai and azure_openai adapters."
+          "state": "checked",
+          "claim": "Classification is exact: only the provider's cap rejection triggers the heal; a different 400 (e.g. bad request body) still fails as before. Asserted by test on both openai and azure_openai adapters.",
+          "receipt": "cargo test -p fs3-providers cap_rejection: 4 passed; OpenAI and Azure cap 400s map to Error::InputTooLong with input index; unrelated 400 controls remain Error::Provider"
         },
         {
           "id": "ac-0005",
@@ -84,6 +88,5 @@
         }
       ]
     }
-  ],
-  "references": []
+  ]
 }

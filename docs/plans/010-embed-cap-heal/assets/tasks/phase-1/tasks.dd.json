@@ -22,33 +22,36 @@
         {
           "id": "tk-0101",
           "title": "Verify the FILL-alignment hypothesis and measure it: read tokens.rs (FILL, fit_to_cap) and chunk_plan in enrich.rs; state at ack whether chunk_plan applies FILL; print chunk counts on the fixture corpus with/without alignment and whether 20,872 chars would split",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0101",
           "success": "chunk_plan window honours FILL (or the ack states why not) and both counts are recorded",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001"
-          ]
+          ],
+          "receipt": "cargo test -p fs3-daemon chunk_plan -- --nocapture: 6 passed; ruled corpus 7→10, 33→50, 1→2, total 41→62"
         },
         {
           "id": "tk-0102",
           "title": "Classify the cap rejection as a distinct error in crates/providers/src/{openai,azure_openai}.rs; other 400s unchanged",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0102",
           "success": "both adapters map the 8192-cap 400 to one variant; tests on both",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0004"
-          ]
+          ],
+          "receipt": "cargo test -p fs3-providers cap_rejection: 4 passed; OpenAI and Azure typed cap 400 plus unrelated-400 controls"
         },
         {
           "id": "tk-0103",
           "title": "Re-split on rejection, bounded: in the f-001 sub-batch loop, catch the variant, isolate the item (input[N] from the body, else bisect), re-plan tighter, re-issue; MAX_HEAL_ROUNDS constant; exhaustion = one named failure + jobs.terminal",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0103",
           "success": "mutation-checked heal test + exhaustion test green; no duplicate chunk rows",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0002",
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
-          ]
+          ],
+          "receipt": "cap_rejection_ tests: 3 passed; oversize suite: 12 passed; mutation with typed heal arm removed: same heal test failed 0/1, restored then passed; exhaustion asserted hash/20872 bytes/final 1 byte-token ratio/terminal=true and boot sweep=0"
         },
         {
           "id": "tk-0104",
@@ -78,7 +81,7 @@
           {
             "id": "dw-1001",
             "assertion": "fixture-corpus chunk counts before/after alignment printed by a test, and the 20,872-char answer stated",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0001"
           }
         ],
@@ -86,7 +89,7 @@
           {
             "id": "dw-1002",
             "assertion": "tests prove the cap 400 maps to the variant and a different 400 does not, on both adapters",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0004"
           }
         ],
@@ -94,13 +97,13 @@
           {
             "id": "dw-1003",
             "assertion": "heal test green; same test red with the heal arm removed (mutation stated in PR)",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0002"
           },
           {
             "id": "dw-1004",
             "assertion": "exhaustion test asserts item/bytes/ratio in the message and terminal=true",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0003"
           }
         ],
@@ -128,6 +131,5 @@
         ]
       }
     }
-  ],
-  "references": []
+  ]
 }

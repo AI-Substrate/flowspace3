@@ -19,10 +19,11 @@
 
 mod support;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use fs3_core::{BlobRef, Config, DatabaseConfig, Element, ElementKind, Span};
+use async_trait::async_trait;
+use fs3_core::{BlobRef, Config, DatabaseConfig, Element, ElementKind, Embedder, Error, Span};
 use fs3_daemon::scan::PARSER_VERSION;
 use fs3_daemon::wiring::AppState;
 use fs3_daemon::{enrich, runner};
@@ -36,7 +37,10 @@ const CAP: usize = 8192;
 
 /// A stack whose embedder refuses oversized inputs exactly as a hosted API
 /// does, so a missing guard is a failing test rather than a hopeful comment.
-async fn stack(label: &str) -> (support::FreshDatabase, AppState, Arc<FakeEmbedder>) {
+async fn stack_using(
+    label: &str,
+    embedder: Arc<dyn Embedder>,
+) -> (support::FreshDatabase, AppState) {
     let database = support::FreshDatabase::create(label).await;
     let config = Config {
         database: DatabaseConfig {
@@ -46,13 +50,97 @@ async fn stack(label: &str) -> (support::FreshDatabase, AppState, Arc<FakeEmbedd
     };
     let mut state = AppState::from_config(config).expect("the fake stack wires");
     fs3_store::migrate(&state.db).await.expect("migrates");
+    state.embedder = embedder;
+    (database, state)
+}
 
+async fn stack(label: &str) -> (support::FreshDatabase, AppState, Arc<FakeEmbedder>) {
     let embedder = Arc::new(FakeEmbedder {
         dimensions: fs3_store::EMBEDDING_DIMENSIONS,
         ..FakeEmbedder::capped(CAP)
     });
-    state.embedder = embedder.clone();
+    let (database, state) = stack_using(label, embedder.clone()).await;
     (database, state, embedder)
+}
+
+#[derive(Debug)]
+struct DenseCapEmbedder {
+    calls: Mutex<Vec<Vec<String>>>,
+    accepted: Mutex<Vec<String>>,
+    bytes_per_token: usize,
+    include_index: bool,
+    always_reject: bool,
+}
+
+impl DenseCapEmbedder {
+    fn new(bytes_per_token: usize, include_index: bool, always_reject: bool) -> Self {
+        Self {
+            calls: Mutex::new(Vec::new()),
+            accepted: Mutex::new(Vec::new()),
+            bytes_per_token,
+            include_index,
+            always_reject,
+        }
+    }
+
+    fn accepted(&self) -> Vec<String> {
+        self.accepted.lock().expect("accepted lock").clone()
+    }
+}
+
+#[async_trait]
+impl Embedder for DenseCapEmbedder {
+    async fn embed(&self, texts: &[String]) -> fs3_core::Result<Vec<Vec<f32>>> {
+        self.calls.lock().expect("calls lock").push(texts.to_vec());
+        let rejected = if self.always_reject {
+            texts.first().map(|text| (0, text))
+        } else {
+            texts.iter().enumerate().find(|(_, text)| {
+                text.len().div_ceil(self.bytes_per_token) > self.max_input_tokens()
+            })
+        };
+        if let Some((index, _)) = rejected {
+            let detail = if self.include_index {
+                format!(
+                    "Invalid 'input[{index}]': maximum input length is {} tokens",
+                    self.max_input_tokens()
+                )
+            } else {
+                format!("maximum input length is {} tokens", self.max_input_tokens())
+            };
+            return Err(Error::InputTooLong {
+                input_index: self.include_index.then_some(index),
+                max_tokens: self.max_input_tokens(),
+                detail,
+            });
+        }
+
+        self.accepted
+            .lock()
+            .expect("accepted lock")
+            .extend_from_slice(texts);
+        Ok(texts
+            .iter()
+            .enumerate()
+            .map(|(index, _)| {
+                let mut vector = vec![0.0; fs3_store::EMBEDDING_DIMENSIONS];
+                vector[index % fs3_store::EMBEDDING_DIMENSIONS] = 1.0;
+                vector
+            })
+            .collect())
+    }
+
+    fn key(&self) -> String {
+        format!("dense-cap@{}", self.bytes_per_token)
+    }
+
+    fn concurrency_ceiling(&self) -> usize {
+        1
+    }
+
+    fn max_input_tokens(&self) -> usize {
+        CAP
+    }
 }
 
 /// A text far over the cap with position-bearing lines, so coverage checks can
@@ -307,6 +395,107 @@ async fn one_huge_element_and_its_small_batchmates_all_land() {
     for (hash, _) in &small {
         assert_eq!(stored_chunks(&state, hash).await, vec![(0, false)]);
     }
+
+    database.destroy(state.db.clone()).await;
+}
+
+#[tokio::test]
+async fn cap_rejection_heals_dense_input_into_unique_chunks() {
+    let embedder = Arc::new(DenseCapEmbedder::new(1, true, false));
+    let (database, state) = stack_using("cap_heal", embedder.clone()).await;
+    let text = oversized()[..20_872].to_string();
+    let hash = fs3_core::content_hash(text.as_bytes());
+
+    enrich::embed(
+        &state,
+        payload(&state, &[(hash.clone(), text.clone())]).await,
+    )
+    .await
+    .expect("the dense input is re-split and accepted");
+
+    let accepted = embedder.accepted();
+    assert_lossless_coverage(&text, &accepted);
+    assert!(
+        accepted.iter().all(|chunk| chunk.len() <= CAP),
+        "one-byte-per-token provider must receive only under-cap chunks"
+    );
+    let stored = stored_chunks(&state, &hash).await;
+    assert_eq!(stored.len(), accepted.len());
+    assert_eq!(
+        stored
+            .iter()
+            .map(|(chunk_no, _)| *chunk_no)
+            .collect::<Vec<_>>(),
+        (0..stored.len() as i16).collect::<Vec<_>>()
+    );
+
+    database.destroy(state.db.clone()).await;
+}
+
+#[tokio::test]
+async fn cap_rejection_without_index_bisects_before_healing() {
+    let embedder = Arc::new(DenseCapEmbedder::new(1, false, false));
+    let (database, state) = stack_using("cap_heal_bisect", embedder.clone()).await;
+    let small = "small input".to_string();
+    let dense = "!".repeat(20_872);
+    let small_hash = fs3_core::content_hash(small.as_bytes());
+    let dense_hash = fs3_core::content_hash(dense.as_bytes());
+    let items = vec![(small_hash.clone(), small), (dense_hash.clone(), dense)];
+
+    enrich::embed(&state, payload(&state, &items).await)
+        .await
+        .expect("bisection isolates the unnamed oversized input");
+
+    assert_eq!(stored_chunks(&state, &small_hash).await.len(), 1);
+    assert!(stored_chunks(&state, &dense_hash).await.len() > 1);
+    assert!(
+        embedder.calls.lock().expect("calls lock").len() >= 4,
+        "the unnamed rejection must narrow the call before healing"
+    );
+
+    database.destroy(state.db.clone()).await;
+}
+
+#[tokio::test]
+async fn cap_rejection_exhaustion_is_terminal_and_named() {
+    let embedder = Arc::new(DenseCapEmbedder::new(1, true, true));
+    let (database, state) = stack_using("cap_heal_exhausted", embedder).await;
+    let text = "!".repeat(20_872);
+    let hash = fs3_core::content_hash(text.as_bytes());
+    let dedupe_key = "embed:oversize:cap-heal-exhausted";
+
+    fs3_store::enqueue_job(
+        &state.db,
+        enrich::EMBED,
+        dedupe_key,
+        &payload(&state, &[(hash.clone(), text.clone())]).await,
+        Duration::ZERO,
+    )
+    .await
+    .expect("enqueues");
+
+    let drained = runner::drain(&state, 1).await;
+    assert_eq!(drained.failed, 1, "exhaustion fails once: {drained:?}");
+    let (job_state, terminal, message): (String, bool, Option<String>) =
+        sqlx::query_as("SELECT state, terminal, last_error FROM jobs WHERE dedupe_key = $1")
+            .bind(dedupe_key)
+            .fetch_one(&state.db)
+            .await
+            .expect("reads failed job");
+    assert_eq!(job_state, "failed");
+    assert!(terminal, "heal exhaustion cannot become boot-loop work");
+    let message = message.expect("failure is named");
+    assert!(message.contains(&hash), "item identity missing: {message}");
+    assert!(
+        message.contains(&text.len().to_string()),
+        "byte length missing: {message}"
+    );
+    assert!(message.contains("1 byte/token"), "ratio missing: {message}");
+
+    let swept = fs3_store::requeue_failed(&state.db, &[enrich::SUMMARIZE, enrich::EMBED])
+        .await
+        .expect("runs boot sweep");
+    assert_eq!(swept, 0, "terminal exhaustion must stay failed");
 
     database.destroy(state.db.clone()).await;
 }

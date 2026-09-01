@@ -20,7 +20,7 @@ use azure_core::{
     credentials::{AccessToken, TokenCredential, TokenRequestOptions},
     time::OffsetDateTime,
 };
-use fs3_core::{Element, ElementKind, Embedder, Span, Summarizer};
+use fs3_core::{Element, ElementKind, Embedder, Error, Span, Summarizer};
 use fs3_providers::{
     AzureCredential, AzureOpenAiConfig, AzureOpenAiEmbedder, AzureOpenAiSummarizer,
     COGNITIVE_SERVICES_SCOPE, OpenAiSummarizer,
@@ -344,6 +344,55 @@ async fn a_rejected_credential_names_both_ways_to_fix_it() {
 
     assert!(message.contains("api-key"), "{message}");
     assert!(message.contains("az login"), "{message}");
+}
+
+#[tokio::test]
+async fn azure_cap_rejection_is_typed_with_input_index() {
+    let detail =
+        r#"{"error":{"message":"Invalid 'input[1]': maximum input length is 8192 tokens"}}"#;
+    let stub = StubServer::answering(StatusCode::BAD_REQUEST, detail).await;
+    let embedder = AzureOpenAiEmbedder::new(
+        config(&stub.endpoint, "d", AzureCredential::api_key("k")),
+        None,
+    );
+
+    let error = embedder
+        .embed(&texts())
+        .await
+        .expect_err("the provider rejects input[1]");
+
+    let Error::InputTooLong {
+        input_index,
+        max_tokens,
+        detail: returned,
+    } = error
+    else {
+        panic!("cap rejection must stay typed");
+    };
+    assert_eq!(input_index, Some(1));
+    assert_eq!(max_tokens, 8192);
+    assert_eq!(returned, detail);
+}
+
+#[tokio::test]
+async fn azure_unrelated_400_is_not_a_cap_rejection() {
+    let stub = StubServer::answering(
+        StatusCode::BAD_REQUEST,
+        r#"{"error":{"message":"request body is malformed"}}"#,
+    )
+    .await;
+    let embedder = AzureOpenAiEmbedder::new(
+        config(&stub.endpoint, "d", AzureCredential::api_key("k")),
+        None,
+    );
+
+    assert!(matches!(
+        embedder
+            .embed(&texts())
+            .await
+            .expect_err("the body is rejected"),
+        Error::Provider(_)
+    ));
 }
 
 /// A credential that cannot produce a token must fail with an instruction, not

@@ -98,7 +98,7 @@ impl IntoFailure for StoreError {
 impl IntoFailure for fs3_core::Error {
     fn into_failure(self) -> Failure {
         match &self {
-            fs3_core::Error::Provider(_) => {
+            fs3_core::Error::Provider(_) | fs3_core::Error::InputTooLong { .. } => {
                 Failure::new(&catalog::PROVIDER_FAILED, self.to_string())
             }
             // Congestion, not failure. The details carry what the SERVICE

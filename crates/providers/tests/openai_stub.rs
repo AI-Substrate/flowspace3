@@ -8,7 +8,7 @@
 //! The stub is a fake service — see `tests/common/mod.rs`. No key, no network.
 
 use axum::http::StatusCode;
-use fs3_core::{Element, ElementKind, Embedder, Span, Summarizer};
+use fs3_core::{Element, ElementKind, Embedder, Error, Span, Summarizer};
 use fs3_providers::{OpenAiEmbedder, OpenAiSummarizer};
 
 mod common;
@@ -187,4 +187,55 @@ fn the_summarizer_keys_by_model_and_prompt_version() {
 fn the_embedder_keys_by_model_alone() {
     let embedder = OpenAiEmbedder::new("text-embedding-3-small", None, "k");
     assert_eq!(embedder.key(), "text-embedding-3-small");
+}
+
+#[tokio::test]
+async fn openai_cap_rejection_is_typed_with_input_index() {
+    let detail =
+        r#"{"error":{"message":"Invalid 'input[1]': maximum input length is 8192 tokens"}}"#;
+    let stub = StubServer::answering(StatusCode::BAD_REQUEST, detail).await;
+    let embedder = OpenAiEmbedder::new(
+        "text-embedding-3-small",
+        Some(stub.endpoint.clone()),
+        "test-key",
+    );
+
+    let error = embedder
+        .embed(&["alpha".to_string(), "too dense".to_string()])
+        .await
+        .expect_err("the provider rejects input[1]");
+
+    let Error::InputTooLong {
+        input_index,
+        max_tokens,
+        detail: returned,
+    } = error
+    else {
+        panic!("cap rejection must stay typed");
+    };
+    assert_eq!(input_index, Some(1));
+    assert_eq!(max_tokens, 8192);
+    assert_eq!(returned, detail);
+}
+
+#[tokio::test]
+async fn openai_unrelated_400_is_not_a_cap_rejection() {
+    let stub = StubServer::answering(
+        StatusCode::BAD_REQUEST,
+        r#"{"error":{"message":"request body is malformed"}}"#,
+    )
+    .await;
+    let embedder = OpenAiEmbedder::new(
+        "text-embedding-3-small",
+        Some(stub.endpoint.clone()),
+        "test-key",
+    );
+
+    assert!(matches!(
+        embedder
+            .embed(&["alpha".to_string()])
+            .await
+            .expect_err("the body is rejected"),
+        Error::Provider(_)
+    ));
 }

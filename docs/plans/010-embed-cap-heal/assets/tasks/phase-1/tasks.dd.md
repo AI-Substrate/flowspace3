@@ -35,9 +35,9 @@ Work top to bottom; each task names its evidence. Stop-and-ask o-prime on anythi
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tk-0101 | Verify the FILL-alignment hypothesis and measure it: read tokens.rs (FILL, fit_to_cap) and chunk_plan in enrich.rs; state at ack whether chunk_plan applies FILL; print chunk counts on the fixture corpus with/without alignment and whether 20,872 chars would split | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0101](#tk-0101) | chunk_plan window honours FILL (or the ack states why not) and both counts are recorded | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
-| tk-0102 | Classify the cap rejection as a distinct error in crates/providers/src/{openai,azure_openai}.rs; other 400s unchanged | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0102](#tk-0102) | both adapters map the 8192-cap 400 to one variant; tests on both | — | [ac-0004](../../../plan.dd.md#acceptance-criteria) |
-| tk-0103 | Re-split on rejection, bounded: in the f-001 sub-batch loop, catch the variant, isolate the item (input[N] from the body, else bisect), re-plan tighter, re-issue; MAX_HEAL_ROUNDS constant; exhaustion = one named failure + jobs.terminal | — | — | [ ] unchecked | — | — | [ ] 0/2 [tk-0103](#tk-0103) | mutation-checked heal test + exhaustion test green; no duplicate chunk rows | — | [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0003](../../../plan.dd.md#acceptance-criteria) |
+| tk-0101 | Verify the FILL-alignment hypothesis and measure it: read tokens.rs (FILL, fit_to_cap) and chunk_plan in enrich.rs; state at ack whether chunk_plan applies FILL; print chunk counts on the fixture corpus with/without alignment and whether 20,872 chars would split | — | — | [x] checked | — | cargo test -p fs3-daemon chunk_plan -- --nocapture: 6 passed; ruled corpus 7→10, 33→50, 1→2, total 41→62 | [x] 1/1 [tk-0101](#tk-0101) | chunk_plan window honours FILL (or the ack states why not) and both counts are recorded | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
+| tk-0102 | Classify the cap rejection as a distinct error in crates/providers/src/{openai,azure_openai}.rs; other 400s unchanged | — | — | [x] checked | — | cargo test -p fs3-providers cap_rejection: 4 passed; OpenAI and Azure typed cap 400 plus unrelated-400 controls | [x] 1/1 [tk-0102](#tk-0102) | both adapters map the 8192-cap 400 to one variant; tests on both | — | [ac-0004](../../../plan.dd.md#acceptance-criteria) |
+| tk-0103 | Re-split on rejection, bounded: in the f-001 sub-batch loop, catch the variant, isolate the item (input[N] from the body, else bisect), re-plan tighter, re-issue; MAX_HEAL_ROUNDS constant; exhaustion = one named failure + jobs.terminal | — | — | [x] checked | — | cap_rejection_ tests: 3 passed; oversize suite: 12 passed; mutation with typed heal arm removed: same heal test failed 0/1, restored then passed; exhaustion asserted hash/20872 bytes/final 1 byte-token ratio/terminal=true and boot sweep=0 | [x] 2/2 [tk-0103](#tk-0103) | mutation-checked heal test + exhaustion test green; no duplicate chunk rows | — | [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0003](../../../plan.dd.md#acceptance-criteria) |
 | tk-0104 | Gate and PR: harness checks green in the worktree; fix: commits via harness commit; PR into main with the mutation and the two measurements in the body | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0104](#tk-0104) | PR open, CI green | — |  |
 | tk-0105 | Prod drain with o-prime: hand over the before-status envelope and the five dedupe keys + the exact re-queue mechanism; after o-prime's bounce read back status, key states, and one real search over the recovered conversation; write receipts into ac-0005/0006 | — | — | [ ] unchecked | — | — | [ ] 0/2 [tk-0105](#tk-0105) | five keys done or terminal-with-reason; search hit in the recovered conversation | — | [ac-0005](../../../plan.dd.md#acceptance-criteria), [ac-0006](../../../plan.dd.md#acceptance-criteria) |
 
@@ -49,20 +49,20 @@ Work top to bottom; each task names its evidence. Stop-and-ask o-prime on anythi
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-1001 | fixture-corpus chunk counts before/after alignment printed by a test, and the 20,872-char answer stated | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
+| dw-1001 | fixture-corpus chunk counts before/after alignment printed by a test, and the 20,872-char answer stated | [x] checked | [bp-0001](../../backpressure.dd.md#rows) |
 
 ### tk-0102
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-1002 | tests prove the cap 400 maps to the variant and a different 400 does not, on both adapters | [ ] unchecked | [bp-0004](../../backpressure.dd.md#rows) |
+| dw-1002 | tests prove the cap 400 maps to the variant and a different 400 does not, on both adapters | [x] checked | [bp-0004](../../backpressure.dd.md#rows) |
 
 ### tk-0103
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-1003 | heal test green; same test red with the heal arm removed (mutation stated in PR) | [ ] unchecked | [bp-0002](../../backpressure.dd.md#rows) |
-| dw-1004 | exhaustion test asserts item/bytes/ratio in the message and terminal=true | [ ] unchecked | [bp-0003](../../backpressure.dd.md#rows) |
+| dw-1003 | heal test green; same test red with the heal arm removed (mutation stated in PR) | [x] checked | [bp-0002](../../backpressure.dd.md#rows) |
+| dw-1004 | exhaustion test asserts item/bytes/ratio in the message and terminal=true | [x] checked | [bp-0003](../../backpressure.dd.md#rows) |
 
 ### tk-0104
 
