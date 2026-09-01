@@ -1,0 +1,126 @@
+{
+  "dd": {
+    "schema": "builder/backpressure"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Backpressure - conv-verify",
+        "plan": "../plan.dd.json#meta",
+        "certainty": "Confident"
+      }
+    },
+    {
+      "name": "rows",
+      "value": [
+        {
+          "id": "bp-0001",
+          "criterion": "conv get resolves index-wide; red with the fix reverted",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN: cargo test <get_conv_cross_worktree>; revert the daemon change and re-run to show red",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0002",
+          "criterion": "two misses, two messages",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN: cargo test <conv_not_found_messages>",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0003",
+          "criterion": "verify contract (positive + distinct negative)",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN: cargo test -p fs3-cli conversation_verify",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0004",
+          "criterion": "verify is unscopable (no --repo/--path)",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN: clap assertion test; `flowspace3 conversation verify --repo x` is a usage error",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0005",
+          "criterion": "verify --pij names the legacy-only join on a miss",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN: cargo test with a fake pij-sessions join",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0006",
+          "criterion": "PROD: get + verify for conv:8c285d65 from the main checkout, flagless",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN (read-only, prod, after bounce): the three envelopes in ac-0006",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0007",
+          "criterion": "CONSUMER: meadowlark confirms the contract from their seat",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "human-judgement",
+          "proof": "pij message from pij-massive-meadowlark quoting a verify envelope for one of their sessions",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0008",
+          "criterion": "gate",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN: harness checks in the worktree; CI green on the PR head",
+          "state": "unchecked"
+        }
+      ]
+    },
+    {
+      "name": "sensors",
+      "value": [
+        {
+          "id": "sn-0001",
+          "name": "harness checks",
+          "command": "harness checks",
+          "dimension": "correctness",
+          "found_in": "repo harness"
+        },
+        {
+          "id": "sn-0002",
+          "name": "conv get (prod, read-only)",
+          "command": "flowspace3 get \"conv:<guid>#t1\" --json",
+          "dimension": "behaviour",
+          "found_in": "flowspace3 CLI"
+        },
+        {
+          "id": "sn-0003",
+          "name": "conversation verify (prod, read-only)",
+          "command": "flowspace3 conversation verify --harness <h> --session <id> --json",
+          "dimension": "behaviour",
+          "found_in": "flowspace3 CLI (this plan ships it)"
+        },
+        {
+          "id": "sn-0004",
+          "name": "conversation list",
+          "command": "flowspace3 conversation list --json",
+          "dimension": "behaviour",
+          "found_in": "flowspace3 CLI"
+        }
+      ]
+    }
+  ],
+  "references": []
+}

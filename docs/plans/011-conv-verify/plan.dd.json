@@ -1,0 +1,93 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "conv-verify \u2014 address-authoritative conv: get + conversation verify",
+        "slug": "conv-verify",
+        "ordinal": 11,
+        "status": "ready",
+        "summary": "Close backlog row 119: an explicit conv:<guid> address resolves index-wide instead of silently narrowing to the cwd worktree; a not-found never claims global absence for a scope decision; and a first-class `conversation verify --harness <h> --session <id>` puts the guid derivation on our side of the wire under a contract a peer government will consume.",
+        "backpressure": "assets/backpressure.dd.json#rows"
+      }
+    },
+    {
+      "name": "summary",
+      "value": "MEASURED 2026-09-02: `flowspace3 get conv:<guid>#t1` succeeds only when the conversation's anchor worktree equals the cwd's. From the flowspace3 main checkout, conv:8c285d65 (same repo, anchored to a since-tidied worktree) returns FS3-E-QUERY-NOT-FOUND with the message 'no conversation 8c285d65\u2026 is indexed' \u2014 false; `conversation list` shows it one command earlier; `--repo all` returns ok:true. Every pij and dd conversation behaves the same. `get`'s own help promises the opposite: 'from the INDEX, so it answers for every registered repository, not only the one you are standing in.' This is the verdict-cannot-lie family: a probe that cannot distinguish 'absent' from 'outside my scope' reports data loss. It nearly cost harness-engineering 250 wasted backfill dispatches \u2014 their planned --verify would have read 'never delivered' for conversations sitting in the index. They are now holding --verify entirely until this plan ships a verb that cannot be held wrong. The guid is derived, not minted (crates/daemon/src/convo_ingest.rs:341 \u2014 sha256 of fs3-convo-v1:{harness}/{session_id}, first 32 hex laid out 8-4-4-4-12 with FORCED version nibble 8 and variant nibble a; positions 12 and 16 of the digest are DROPPED). Every client that reimplements that layout can drift from it silently; the verb exists so none has to. Daemon-side message around crates/daemon/src/conversations.rs:274-358; HTTP in crates/daemon/src/http.rs:304-346. Ruling context: backlog row 101 asked whether an explicit conv: address should be address-authoritative \u2014 this measurement is the evidence; o-prime rules YES, subject to Jordan."
+    },
+    {
+      "name": "goals",
+      "value": [
+        "An explicit conv:<guid> address is address-authoritative: `get` resolves it index-wide regardless of cwd, with no flag.",
+        "No not-found on a conv address ever claims global absence for a scope decision: the two cases carry two messages and two `details` shapes.",
+        "`flowspace3 conversation verify --harness <h> --session <id>` (and `--pij <seat>` via the existing join) answers delivered-or-not under the consumer's contract: exit 0 + ok:true with guid/address/turns/repo/worktree/last-turn \u21d2 delivered; a DISTINCT not-indexed code \u21d2 not; repo-unscoped by construction \u2014 no flag can narrow it.",
+        "Docs and help text describe the shipped behaviour, so `get --help`'s promise is true again."
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "No change to el: address resolution (they carry their repo).",
+        "No identity union across pij generations (row 121 \u2014 waits on pij req-0033); `verify --pij` on an rs seat fails with a message that SAYS the join is legacy-only, nothing more.",
+        "No change to the embed path, ingest cursors, or ranking.",
+        "No `--verify` on the harness side \u2014 that is the consumer's, built after this ships."
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-0001",
+          "state": "unchecked",
+          "claim": "Address-authoritative, mutation-checked: an integration test ingests a conversation anchored to worktree A and runs `get conv:<guid>#t1` with the CLI's scope resolving to worktree B (same repo) and to a different repo; both return ok:true. With the fix reverted the same test returns NOT-FOUND. Mutation stated in the PR body."
+        },
+        {
+          "id": "ac-0002",
+          "state": "unchecked",
+          "claim": "Two misses, two messages: a guid that is in the index but outside the (now only explicitly requested) scope and a guid that is nowhere produce different messages and different `details`; neither says 'is indexed' about something that is. Asserted by test on both strings."
+        },
+        {
+          "id": "ac-0003",
+          "state": "unchecked",
+          "claim": "verify contract: for an ingested (harness, session) run from a foreign cwd, `conversation verify` exits 0 with ok:true and data {guid, address, turns, repo, worktree, last_turn_at}; for a never-ingested pair it exits non-zero with a distinct code (not the generic NOT-FOUND) and details naming the derived guid. Both by test."
+        },
+        {
+          "id": "ac-0004",
+          "state": "unchecked",
+          "claim": "Unscopable by construction: `conversation verify` accepts no --repo/--path flag; passing one is a clap error. A test asserts the flag set."
+        },
+        {
+          "id": "ac-0005",
+          "state": "unchecked",
+          "claim": "verify --pij <seat> resolves through the existing pij-sessions join; for a seat absent from the join the error says the join is legacy-only and names req-0033 \u2014 asserted by test with a fake join."
+        },
+        {
+          "id": "ac-0006",
+          "state": "unchecked",
+          "claim": "REAL USAGE, PROD, after o-prime's bounce: from the flowspace3 main checkout, `flowspace3 get conv:8c285d65-600e-8ced-ab5d-fb9c85f595ae#t1 --json` returns ok:true with NO flag; `flowspace3 conversation verify --harness omp --session 01a051b7-3b2c-7000-8987-3e66b28db4b6 --json` returns ok:true with guid 8c285d65\u2026; a made-up session returns the distinct code. Receipt = the three envelopes."
+        },
+        {
+          "id": "ac-0007",
+          "state": "unchecked",
+          "claim": "CONSUMER READ-BACK: harness-engineering (meadowlark) runs `conversation verify` against one of their own sessions and confirms the contract holds from their side. Receipt = their pij message quoting the envelope."
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-e7a3",
+          "title": "Phase 1: authoritative address + verify verb",
+          "brief": "Single unit, single coder, no PM, dispatched after plan 010's coder acks through pij. (1) daemon: conv resolution index-wide + two-message miss; (2) CLI: get behaviour + `conversation verify` (session and pij routes), unscopable; (3) tests incl. mutation; (4) docs; (5) PR; (6) prod + consumer read-back.",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+        }
+      ]
+    }
+  ],
+  "references": []
+}

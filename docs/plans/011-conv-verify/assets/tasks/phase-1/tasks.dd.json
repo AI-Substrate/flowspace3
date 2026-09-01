@@ -1,0 +1,145 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: authoritative address + verify verb",
+        "slug": "phase-1",
+        "status": "ready",
+        "summary": "One coder, tasks in order, every assertion pinned to a backpressure row."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Work top to bottom. Stop-and-ask o-prime on anything that reverses a ruling or leaves the fence."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-0101",
+          "title": "Daemon: resolve an explicit conv:<guid> index-wide (crates/daemon/src/conversations.rs + http.rs); split the miss into 'not in index' vs 'exists outside requested scope' with distinct messages/details",
+          "state": "unchecked",
+          "done": "#done_when/tk-0101",
+          "success": "cross-worktree get test green; red on revert; both messages asserted",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0002"
+          ]
+        },
+        {
+          "id": "tk-0102",
+          "title": "CLI: `conversation verify --harness <h> --session <id>` and `--pij <seat>`; derive the guid via conversation_guid(); return {guid,address,turns,repo,worktree,last_turn_at}; distinct not-indexed code; NO --repo/--path flags; pij-miss message names the legacy-only join and req-0033",
+          "state": "unchecked",
+          "done": "#done_when/tk-0102",
+          "success": "verify tests green; clap rejects scope flags",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003",
+            "../../../plan.dd.json#acceptance_criteria/ac-0004",
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        },
+        {
+          "id": "tk-0103",
+          "title": "Docs + help: crates/cli/docs for get and conversation; `get --help` promise matches behaviour; verify documented with its contract",
+          "state": "unchecked",
+          "done": "#done_when/tk-0103",
+          "success": "docs updated in the same PR",
+          "satisfies": []
+        },
+        {
+          "id": "tk-0104",
+          "title": "Gate and PR: harness checks green in the worktree; feat: commits via harness commit; PR into main stating the mutation",
+          "state": "unchecked",
+          "done": "#done_when/tk-0104",
+          "success": "PR open, CI green",
+          "satisfies": []
+        },
+        {
+          "id": "tk-0105",
+          "title": "After o-prime's bounce: run the three prod envelopes from the main checkout and write ac-0006's receipt; o-prime asks meadowlark for the consumer read-back (ac-0007)",
+          "state": "unchecked",
+          "done": "#done_when/tk-0105",
+          "success": "ac-0006 receipt from prod; ac-0007 receipt from the consumer",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0006",
+            "../../../plan.dd.json#acceptance_criteria/ac-0007"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {
+        "tk-0101": [
+          {
+            "id": "dw-1001",
+            "assertion": "get conv from a foreign worktree/repo returns ok:true; test red with the change reverted (mutation in PR)",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          },
+          {
+            "id": "dw-1002",
+            "assertion": "the two not-found strings are asserted distinct and neither claims 'is indexed' falsely",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          }
+        ],
+        "tk-0102": [
+          {
+            "id": "dw-1003",
+            "assertion": "positive and distinct-negative verify tests green",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          },
+          {
+            "id": "dw-1004",
+            "assertion": "clap test proves no scope flag exists",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+          },
+          {
+            "id": "dw-1005",
+            "assertion": "fake-join test proves the pij miss message",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+          }
+        ],
+        "tk-0103": [
+          {
+            "id": "dw-1006",
+            "assertion": "harness checks green; docs files in the diff",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0008"
+          }
+        ],
+        "tk-0104": [
+          {
+            "id": "dw-1007",
+            "assertion": "CI green on the PR head sha",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0008"
+          }
+        ],
+        "tk-0105": [
+          {
+            "id": "dw-1008",
+            "assertion": "three prod envelopes: flagless get ok:true, verify ok:true with guid 8c285d65\u2026, made-up session \u2192 distinct code",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0006"
+          },
+          {
+            "id": "dw-1009",
+            "assertion": "meadowlark's message quoting a verify envelope for one of their sessions",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0007"
+          }
+        ]
+      }
+    }
+  ],
+  "references": []
+}
