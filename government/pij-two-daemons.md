@@ -55,8 +55,25 @@ rows carry **no inner session id at all**, so an rs seat cannot currently be
 resolved to a native session by anyone, from either side. Filed upstream as pij
 req-0033. If your harness is claude, `CLAUDE_CODE_SESSION_ID` is in your shell
 and `flowspace3 conversation ingest --session <that> --harness claude` works
-today with no pij dependency — use it. pi/omp seats have no such escape hatch
-until req-0033 lands.
+today with no pij dependency — use it.
+
+**pi/omp seats have NO equivalent env var** (confirmed by pij o-prime,
+2026-09-02) and therefore no escape hatch at all until req-0033 lands. That is
+OUR fleet: our standing spawn shape is `--harness pi --bin omp`. So for us the
+mitigation is not a fallback, it is knowing which store a seat landed in.
+
+## The one check to run at canary time
+
+Right after the canary, before you trust a seat with work:
+
+    pij sessions --json | grep -c '"pijId":"<seat-id>"'    # 1 = legacy, ingesting
+    pij-rs list | grep -c '"id":"<seat-id>"'               # 1 = rs, NOT ingesting
+
+`pij spawn` is legacy-routed, so a spawned seat is normally fine. A seat that
+booted through the **omp extension**, or that ran `pij adopt`, lands in **rs** —
+and for pi/omp that means its whole conversation is lost to the index with no
+error. Record the generation in the roster row. If it is rs, either respawn it
+through `pij spawn` or accept the loss knowingly and say so in the row.
 
 ## If you hit any of this
 
