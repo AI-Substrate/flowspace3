@@ -1,0 +1,29 @@
+crates/core/src/tokens.rs
+  s_0ce02639c40511::t_ad2cf853a30cec 62-66,72,92,120
+crates/providers/src/azure_openai.rs
+  s_9c0898dc4cddc0::t_cfc45b6d45c6af 299-300,303
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6377a1fe4b14bc27b7894bd3a997724a87763b7f",
+  "prompts": {},
+  "sessions": {
+    "s_0ce02639c40511": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b95239d-d05a-44e7-ad9d-ecc36e15c1ca",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_9c0898dc4cddc0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "07ad283e-837b-4abf-80d8-b49d29024e5a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
