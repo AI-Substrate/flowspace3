@@ -1325,3 +1325,19 @@ leaving this file should name where it went.
     470,520 embed jobs completed with ZERO errors and ZERO empty-string
     rejections — the hygiene half of 009 is working exactly as designed.
     This is one residual estimation gap on one source, not a regression.
+
+009-ac-0007 DISCHARGED (2026-09-01, lynx — krill died before reporting, so
+    o-prime ran the leg per the original ruling that this leg is mine).
+    VERDICT: PASS WITH ONE NAMED RESIDUAL.
+    - Hygiene (ac-0004/0005): PASS. 470,520 embed jobs done with ZERO
+      errors; ZERO "input cannot be an empty string" rejections in the
+      post-deploy window; krill's pre-death baseline additionally
+      observed an OLD empty payload dropped at batch assembly with its
+      call completing — the second layer meeting real pre-existing poison
+      and surviving it.
+    - Budget (f-001 fix): PASS. No call over the 200k budget observed;
+      max 29,256 tokens in krill's sample.
+    - Cap (chunking): RESIDUAL — row 117, the impl-guide's own predicted
+      risk, fired 4 times on one source. Named, measured, not hidden.
+    The plan's headline promise holds for everything except inputs whose
+    real token density beats the bytes/3 estimate; row 117 closes that.
