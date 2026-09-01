@@ -1724,3 +1724,18 @@ ROW 119 / PLAN 011 REVIEW RECORD (2026-09-02): PR #93 REQUEST CHANGES at
     tested on EVERY transport, and a 'resolves' change must be paired
     with a 'retrieves' assertion — resolution without retrieval is the
     silent-empty shape.
+
+PLAN 010 DELTA REVIEW (2026-09-02): APPROVE at 3606c139,
+    no_material_findings. Reviewer reverted each of the three fold-ins
+    individually and confirmed its own new test — and only it — went red
+    (compat classification; overlap clamp → panic; ratio → the false
+    "1 byte/token" reproduced verbatim; parsed cap → 4096 test red); the
+    heal-arm mutation re-performed on the rewritten arm still red 3/3;
+    cap_rejection 4→7; alignment numbers unchanged; impl-guide 17→0
+    errors; enrichment.md's two gaps closed. Two of the coder's fixes were
+    BETTER than the reviewer's prescription and are recorded as
+    deliberate: the overlap clamp lives inside chunk_plan_bytes (so no
+    caller can violate the invariant), and the exhaustion message states
+    two measured numbers instead of a quotient. Reviewer also recorded a
+    wrong first revert against itself. #92 to merge train; bounce HELD on
+    Jordan's row-123 GO.
