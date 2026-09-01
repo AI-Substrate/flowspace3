@@ -1561,3 +1561,25 @@ ROW 121 — CLAUDE RS SEATS NOW INGEST, PROVEN IN OUR INDEX (meadowlark,
     host, or the client. Baseline needed: was 13s the pre-009 number?
     Nobody measured it (that absence is row 110's family: no latency
     sensor). Blocks nothing that is dispatched but degrades every seat.
+
+123. **jobs table holds DUPLICATE failed rows under one dedupe key, and
+    boot's requeue would collide on them** (found by the plan 010 coder
+    limpet while planning the ac-0005 drain, 2026-09-02; verified by
+    o-prime read-only). `jobs_live_dedupe_idx` is UNIQUE only WHERE
+    state IN ('pending','running'), so two rows with the same key can
+    both sit in `failed` — jobs 1316706 and 1323215 both carry
+    `embed:git:github.com/AI-Substrate/pij:raw:043365681f…` (attempts 3,
+    terminal false, 2026-08-31 09:27 and 11:43). `requeue_failed`
+    (jobs.rs:506-534) updates every non-terminal failed row to pending
+    and "skips live duplicates" — but when BOTH rows of a pair qualify in
+    one statement the second insert into the live index collides, and
+    the boot sweep fails or half-applies. Two duplicate keys among
+    non-done jobs today. How a second failed row was minted under a key
+    that already had one is the real question (mint path does not check
+    failed rows?) — that is the store fix. ENCODING: (a) requeue picks
+    ONE row per key (DISTINCT ON / MIN(id)) and marks the rest terminal
+    with a reason; (b) mint refuses/absorbs when a failed row already
+    exists for the key; (c) a doctor row that counts duplicate keys. The
+    plan 010 drain (ac-0005) has this as a NAMED PRECONDITION; the repair
+    at the bounce is o-prime's on Jordan's GO. Row 120's family (no
+    verb can even show this without psql).
