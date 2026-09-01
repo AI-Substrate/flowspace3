@@ -1,0 +1,47 @@
+docs/plans/010-embed-cap-heal/assets/backpressure.dd.json
+  s_15d888f4b629c1::t_d40ba789ddad2e 1-117
+docs/plans/010-embed-cap-heal/assets/backpressure.dd.md
+  s_15d888f4b629c1::t_bfafecf9361677 1-40
+docs/plans/010-embed-cap-heal/assets/inputs/pij-two-daemons.md
+  s_15d888f4b629c1::t_9cd5a9557d47d7 1-83
+docs/plans/010-embed-cap-heal/assets/tasks/phase-1/tasks.dd.json
+  s_15d888f4b629c1::t_7cd59c11dc5bb8 1-133
+docs/plans/010-embed-cap-heal/assets/tasks/phase-1/tasks.dd.md
+  s_15d888f4b629c1::t_0729b9937a7cf8 1-78
+docs/plans/010-embed-cap-heal/impl-guide.dd.json
+  s_15d888f4b629c1::t_748df395e6de6a 1-69
+docs/plans/010-embed-cap-heal/impl-guide.dd.md
+  s_15d888f4b629c1::t_966b9c783ef35b 1-64
+docs/plans/010-embed-cap-heal/packet-coder.dd.json
+  s_15d888f4b629c1::t_098e46732266ef 1-170
+docs/plans/010-embed-cap-heal/packet-coder.dd.md
+  s_15d888f4b629c1::t_31e7fddd586723 1-91
+docs/plans/010-embed-cap-heal/packet-pm.dd.json
+  s_15d888f4b629c1::t_95534615a48440 1-159
+docs/plans/010-embed-cap-heal/packet-pm.dd.md
+  s_15d888f4b629c1::t_d4ee155e1b19ea 1-87
+docs/plans/010-embed-cap-heal/packet-reviewer.dd.json
+  s_15d888f4b629c1::t_22bfeb45ab6aa2 1-65
+docs/plans/010-embed-cap-heal/packet-reviewer.dd.md
+  s_15d888f4b629c1::t_25b7eefcd48994 1-76
+docs/plans/010-embed-cap-heal/plan.dd.json
+  s_15d888f4b629c1::t_91e0ed6ce8c333 1-89
+docs/plans/010-embed-cap-heal/plan.dd.md
+  s_15d888f4b629c1::t_811bcb80057c6f 1-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7329e75960497c00dbe8ff31f5f9f47c847e5533",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
