@@ -1,0 +1,18 @@
+docs/plans/011-conv-verify/assets/tasks/phase-1/execution.log.md
+  h_9e71e8b09f7cf2 36-44
+docs/plans/011-conv-verify/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 59,62-63,127
+docs/plans/011-conv-verify/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 41,73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3a7124babc7e7974f54555bc8dcd3f1b4be4bfa8",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
