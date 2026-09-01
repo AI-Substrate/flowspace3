@@ -1,0 +1,69 @@
+{
+  "dd": {
+    "schema": "pij-team/impl-guide"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "impl-guide \u2014 embed-cap-heal",
+        "plan": "docs/plans/010-embed-cap-heal/plan.dd.json",
+        "mode": "<build | investigate \u2014 investigate reinterprets the sections: a unit is a PROBE varying exactly one variable, its interface is the frozen EVIDENCE CONTRACT every probe returns, its done is the receipt (carrying observed toolchain versions), and composition is the decision matrix the composer assembles>",
+        "updated": "2026-09-02"
+      }
+    },
+    {
+      "name": "architecture",
+      "value": "One seam, three touches. (1) PROVIDER ADAPTERS classify: the cap 400 becomes a distinct error the caller can match on; nothing else about the wire changes. (2) EMBED PATH heals: the f-001 sub-batch loop in crates/daemon/src/enrich.rs catches that variant, isolates the offending item, calls chunk_plan again with a tighter ratio (halve chars/token, or bisect the item), and re-issues \u2014 a bounded loop with a named constant; exhaustion is a NAMED terminal failure (item, bytes, ratio) that the boot sweep will not revive (the jobs.terminal column 009 introduced). (3) TOKENS aligns: chunk_plan's window honours FILL exactly as fit_to_cap does, so the heal path is the exception, not the rule. Evidence altitude: unit tests with a fake provider that counts denser than bytes/3; then PROD \u2014 the five stuck jobs are the acceptance fixture nobody had to write."
+    },
+    {
+      "name": "fan_out",
+      "value": "Fan out: NO. One unit, one coder, no PM \u2014 o-prime coordinates directly (Jordan, 2026-09-02). Sequential with plan 011: this plan first; 011 dispatches only after this coder's ack lands through pij."
+    },
+    {
+      "name": "units",
+      "value": [
+        {
+          "id": "u1",
+          "title": "heal + align + classify",
+          "surface": "crates/core/src/tokens.rs, crates/daemon/src/enrich.rs, crates/providers/src/{openai,azure_openai}.rs (error classification only), their tests, crates/testkit fixtures you add",
+          "contract": "Cap rejection \u2192 distinct error; embed path re-splits bounded and fails named; chunk_plan honours FILL; measurements reported.",
+          "done_when": "ac-0001\u20130004 by test in the worktree; ac-0005\u20130006 from prod with o-prime after the bounce."
+        }
+      ]
+    },
+    {
+      "name": "isolation",
+      "value": "Worktree ../fs3-embed-cap-heal on branch 010-embed-cap-heal (scaffolded by harness team new). Per-seat CARGO_TARGET_DIR. Per-run test DBs; the FS3_TEST_DATABASE_URL guard is correct behaviour. NEVER test against prod :7373 \u2014 read-only `flowspace3 status` / search against prod is fine and required for ac-0005/0006. ABSOLUTE PATHS for every read and edit (spawn-dir vs worktree resolution, proven 2026-08-28). pij is unstable (government/pij-two-daemons.md on prime-governance; summary in your packet): if `pij send` fails twice, write .harness/temp/agent/embed-cap-heal-ack.md / -report.md in your worktree and STOP \u2014 o-prime polls. Never `pij adopt`."
+    },
+    {
+      "name": "composition",
+      "value": "None \u2014 single unit. o-prime merges (squash), bounces prod, and runs the drain with the coder for ac-0005/0006."
+    },
+    {
+      "name": "review",
+      "value": "Cross-model: Claude (github-copilot/claude-opus-5, effort high), spawned by o-prime only once the PR is up. Judges plan fidelity, the mutation claim (does the test really fail without the heal?), classification exactness, and that exhaustion cannot loop."
+    },
+    {
+      "name": "risks",
+      "value": [
+        {
+          "risk": "The provider's error body does not name which input[N] overflowed for every adapter",
+          "mitigation": "bisect the batch (halve, re-issue) \u2014 bounded by the same round constant; state which path each adapter takes"
+        },
+        {
+          "risk": "Re-issuing a re-split item double-embeds chunk_no collisions",
+          "mitigation": "chunk rows for the item are keyed (source_hash, kind, chunk_no, model); re-plan replaces the item's chunk set atomically or upserts \u2014 test asserts no duplicate rows"
+        },
+        {
+          "risk": "FILL alignment over-splits everything and doubles embed cost",
+          "mitigation": "that is what ac-0001's measurement is for; if the delta is large, ship the heal alone and report \u2014 o-prime rules"
+        },
+        {
+          "risk": "The five prod jobs have attempts=3 and may not be re-picked after deploy",
+          "mitigation": "coder states the exact mechanism that re-queues them (or the one-line requeue o-prime runs at bounce) BEFORE the PR, so the drain is planned not hoped"
+        }
+      ]
+    }
+  ]
+}

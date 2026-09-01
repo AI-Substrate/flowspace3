@@ -1,0 +1,133 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: heal + align + drain",
+        "slug": "phase-1",
+        "status": "ready",
+        "summary": "One coder, tasks in order, every assertion pinned to a backpressure row."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Work top to bottom; each task names its evidence. Stop-and-ask o-prime on anything that reverses a ruling or leaves the fence."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-0101",
+          "title": "Verify the FILL-alignment hypothesis and measure it: read tokens.rs (FILL, fit_to_cap) and chunk_plan in enrich.rs; state at ack whether chunk_plan applies FILL; print chunk counts on the fixture corpus with/without alignment and whether 20,872 chars would split",
+          "state": "unchecked",
+          "done": "#done_when/tk-0101",
+          "success": "chunk_plan window honours FILL (or the ack states why not) and both counts are recorded",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ]
+        },
+        {
+          "id": "tk-0102",
+          "title": "Classify the cap rejection as a distinct error in crates/providers/src/{openai,azure_openai}.rs; other 400s unchanged",
+          "state": "unchecked",
+          "done": "#done_when/tk-0102",
+          "success": "both adapters map the 8192-cap 400 to one variant; tests on both",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ]
+        },
+        {
+          "id": "tk-0103",
+          "title": "Re-split on rejection, bounded: in the f-001 sub-batch loop, catch the variant, isolate the item (input[N] from the body, else bisect), re-plan tighter, re-issue; MAX_HEAL_ROUNDS constant; exhaustion = one named failure + jobs.terminal",
+          "state": "unchecked",
+          "done": "#done_when/tk-0103",
+          "success": "mutation-checked heal test + exhaustion test green; no duplicate chunk rows",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002",
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
+        },
+        {
+          "id": "tk-0104",
+          "title": "Gate and PR: harness checks green in the worktree; fix: commits via harness commit; PR into main with the mutation and the two measurements in the body",
+          "state": "unchecked",
+          "done": "#done_when/tk-0104",
+          "success": "PR open, CI green",
+          "satisfies": []
+        },
+        {
+          "id": "tk-0105",
+          "title": "Prod drain with o-prime: hand over the before-status envelope and the five dedupe keys + the exact re-queue mechanism; after o-prime's bounce read back status, key states, and one real search over the recovered conversation; write receipts into ac-0005/0006",
+          "state": "unchecked",
+          "done": "#done_when/tk-0105",
+          "success": "five keys done or terminal-with-reason; search hit in the recovered conversation",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005",
+            "../../../plan.dd.json#acceptance_criteria/ac-0006"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {
+        "tk-0101": [
+          {
+            "id": "dw-1001",
+            "assertion": "fixture-corpus chunk counts before/after alignment printed by a test, and the 20,872-char answer stated",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          }
+        ],
+        "tk-0102": [
+          {
+            "id": "dw-1002",
+            "assertion": "tests prove the cap 400 maps to the variant and a different 400 does not, on both adapters",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+          }
+        ],
+        "tk-0103": [
+          {
+            "id": "dw-1003",
+            "assertion": "heal test green; same test red with the heal arm removed (mutation stated in PR)",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          },
+          {
+            "id": "dw-1004",
+            "assertion": "exhaustion test asserts item/bytes/ratio in the message and terminal=true",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          }
+        ],
+        "tk-0104": [
+          {
+            "id": "dw-1005",
+            "assertion": "harness checks green locally and CI green on the PR head sha",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0007"
+          }
+        ],
+        "tk-0105": [
+          {
+            "id": "dw-1006",
+            "assertion": "before/after flowspace3 status envelopes + the five keys' final states, read from prod",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+          },
+          {
+            "id": "dw-1007",
+            "assertion": "a flowspace3 search hit whose address is inside the recovered conversation",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0006"
+          }
+        ]
+      }
+    }
+  ],
+  "references": []
+}

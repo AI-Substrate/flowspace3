@@ -1,0 +1,89 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "embed-cap-heal \u2014 the provider's cap rejection becomes a re-split signal",
+        "slug": "embed-cap-heal",
+        "ordinal": 10,
+        "status": "ready",
+        "summary": "Close backlog row 117: inputs denser than the bytes/3 estimate slip under the chunk window unsplit and are rejected by the provider at 8192 tokens, then retried into permanent failure. Make the rejection a SIGNAL that re-splits the offending input, align chunk_plan's window with the FILL margin fit_to_cap already honours, and drain the five jobs stuck in prod.",
+        "backpressure": "assets/backpressure.dd.json#rows"
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Plan 009 shipped chunked embeddings and predicted this residual (impl-guide risk #2): estimate_tokens() is bytes/3, so content denser than ~2.55 chars/token \u2014 punctuation-heavy code, tool dumps, base64 \u2014 sits under the ~7,500-token window unsplit and the provider rejects it: `400 Invalid 'input[0]': maximum input length is 8192 tokens`. A retry re-sends the same bytes, so it fails forever. MEASURED IN PROD 2026-09-01/02: five embed jobs state=failed attempts=3 terminal=false \u2014 four `embed:git:github.com/AI-Substrate/pij:raw:\u2026`, one `embed:conv:recovery:raw:c5a6be2d\u2026` (a CONVERSATION turn). Largest observed item 20,872 chars \u2192 bytes/3 says ~6,957 tokens, real >8,192. A peer government (harness-engineering) is holding a ~250-seat conversation backfill until this lands, because every oversize turn in it would land silently in the same failed bucket. HYPOTHESIS TO VERIFY FIRST (not a fact): crates/core/src/tokens.rs already defines FILL=(2,3) so fit_to_cap effectively assumes 2 bytes/token, but 009's chunk_plan() (crates/daemon/src/enrich.rs) appears to size its window from estimate_tokens (3 bytes/token) without the FILL margin \u2014 if so, 20,872 chars would have been split by the margin alone, and aligning the window is the cheap half of the fix. The self-heal is the half that survives content denser than any constant."
+    },
+    {
+      "name": "goals",
+      "value": [
+        "A provider cap rejection never becomes a permanent failure for a splittable input: the offending item is identified, re-split tighter, and re-issued, bounded by a fixed number of rounds.",
+        "When the bound is exhausted, the job fails with a message naming the item, its byte length, and the ratio reached \u2014 never a bare provider echo.",
+        "chunk_plan's window honours the same FILL margin as fit_to_cap, so the common dense case never reaches the heal path; the chunk-count cost of that alignment is MEASURED on the fixture corpus and reported, not guessed.",
+        "The five jobs stuck in prod complete (or fail with a named reason) after deploy, with before/after evidence read from `flowspace3 status` and the jobs table.",
+        "Search over previously-failed content works: a turn from the recovered conversation job is findable by `flowspace3 search`."
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "No tokenizer dependency (option b of row 117) \u2014 the module's own rationale for an estimate stands.",
+        "No change to TOKEN_BUDGET, batch sizing, or the sub-batching f-001 added, beyond what re-issuing a re-split item needs.",
+        "No CLI changes; no conversation-ingest changes; nothing in crates/cli.",
+        "No change to the 8192 cap constants or the provider adapters' wire shapes \u2014 only their error CLASSIFICATION (cap-rejection must be distinguishable from other 400s)."
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-0001",
+          "state": "unchecked",
+          "claim": "Alignment measured: the coder reports, from the fixture corpus, the chunk count before and after chunk_plan honours FILL, and states whether the 20,872-char prod item would have been split by alignment alone. This is a measurement, not a pass/fail \u2014 its receipt is the two numbers."
+        },
+        {
+          "id": "ac-0002",
+          "state": "unchecked",
+          "claim": "Self-heal, mutation-checked: a fixture input whose real token count exceeds the cap at the assumed ratio (a fake provider that counts tokens denser than bytes/3 and rejects with the cap error) is re-split and embedded as N>1 chunks; the SAME test fails without the heal (job reaches permanent failure). The PR body states the mutation."
+        },
+        {
+          "id": "ac-0003",
+          "state": "unchecked",
+          "claim": "Bounded and named: with the re-split rounds exhausted (fake provider rejecting at every ratio), the job fails once with a message containing the item identity, byte length, and the final ratio; it is marked terminal so the boot sweep does not revive it. Asserted by test."
+        },
+        {
+          "id": "ac-0004",
+          "state": "unchecked",
+          "claim": "Classification is exact: only the provider's cap rejection triggers the heal; a different 400 (e.g. bad request body) still fails as before. Asserted by test on both openai and azure_openai adapters."
+        },
+        {
+          "id": "ac-0005",
+          "state": "unchecked",
+          "claim": "PROD DRAIN (o-prime applies the bounce; coder provides the queries and reads them back with o-prime): before deploy `flowspace3 status --json` shows embed failed count=5; after deploy + bounce the five dedupe_keys (recorded in the receipt) are done or terminal-with-reason; `flowspace3 status` shows embed failed=0 or the named residue. Receipt = both status envelopes and the five keys' final states."
+        },
+        {
+          "id": "ac-0006",
+          "state": "unchecked",
+          "claim": "REAL USAGE: after the drain, `flowspace3 search --source conversation \"<a phrase from the recovered turn>\"` returns a hit from conv job c5a6be2d's conversation, proving the healed content is searchable, not just stored. Receipt = the search envelope with the hit address."
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-14a4",
+          "title": "Phase 1: heal + align + drain",
+          "brief": "Single unit, single coder, no PM: (1) verify the FILL-alignment hypothesis and measure it; (2) classify cap rejection in both provider adapters; (3) re-split-on-rejection with a bounded round count and a named terminal failure; (4) tests incl. the mutation check; (5) PR; (6) drain evidence after o-prime's bounce.",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+        }
+      ]
+    }
+  ],
+  "references": []
+}

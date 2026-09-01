@@ -1,0 +1,117 @@
+{
+  "dd": {
+    "schema": "builder/backpressure"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Backpressure - embed-cap-heal",
+        "plan": "../plan.dd.json#meta",
+        "certainty": "Confident"
+      }
+    },
+    {
+      "name": "rows",
+      "value": [
+        {
+          "id": "bp-0001",
+          "criterion": "alignment measured on the fixture corpus (chunk counts before/after; would 20,872 chars split?)",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN: cargo test -p fs3-daemon chunk_plan -- --nocapture prints both counts; numbers copied into ac-0001 receipt",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0002",
+          "criterion": "self-heal re-splits on cap rejection; the test FAILS with the heal removed",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN: cargo test <heal test>; then comment out the heal arm and re-run to show red (mutation stated in PR body)",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0003",
+          "criterion": "exhaustion fails once, named (item, bytes, ratio), terminal",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN: cargo test <exhaustion test> asserting message fields and jobs.terminal=true",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0004",
+          "criterion": "only the cap 400 classifies as heal-able; other 400s unchanged, both adapters",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN: cargo test -p fs3-providers cap_rejection",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0005",
+          "criterion": "PROD: the five stuck jobs drain after bounce",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN (read-only, prod): flowspace3 status --json before and after; docker exec flowspace3-db psql ... select dedupe_key,state,terminal from jobs where dedupe_key in (<five>)",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0006",
+          "criterion": "PROD: recovered conversation content is searchable",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN (read-only, prod): flowspace3 search --source conversation \"<phrase from the recovered turn>\" --json returns a hit in that conversation",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0007",
+          "criterion": "gate",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "RUN: harness checks in the worktree; CI green on the PR head",
+          "state": "unchecked"
+        }
+      ]
+    },
+    {
+      "name": "sensors",
+      "value": [
+        {
+          "id": "sn-0001",
+          "name": "harness checks",
+          "command": "harness checks",
+          "dimension": "correctness",
+          "found_in": "repo harness"
+        },
+        {
+          "id": "sn-0002",
+          "name": "prod queue",
+          "command": "flowspace3 status --json",
+          "dimension": "behaviour",
+          "found_in": "flowspace3 CLI against :7373 (read-only)"
+        },
+        {
+          "id": "sn-0003",
+          "name": "jobs table",
+          "command": "docker exec flowspace3-db psql -U flowspace3 -d flowspace3 -tAc \"select dedupe_key,state,attempts,terminal from jobs where state='failed'\"",
+          "dimension": "behaviour",
+          "found_in": "prod db, read-only"
+        },
+        {
+          "id": "sn-0004",
+          "name": "search",
+          "command": "flowspace3 search --source conversation \"<phrase>\" --json",
+          "dimension": "behaviour",
+          "found_in": "flowspace3 CLI"
+        }
+      ]
+    }
+  ],
+  "references": []
+}
