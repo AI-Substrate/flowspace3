@@ -67,7 +67,8 @@
         {
           "id": "ac-0005",
           "state": "unchecked",
-          "claim": "PROD DRAIN (o-prime applies the bounce; coder provides the queries and reads them back with o-prime): before deploy `flowspace3 status --json` shows embed failed count=5; after deploy + bounce the five dedupe_keys (recorded in the receipt) are done or terminal-with-reason; `flowspace3 status` shows embed failed=0 or the named residue. Receipt = both status envelopes and the five keys' final states."
+          "claim": "PROD DRAIN (o-prime applies the bounce; coder provides the queries and reads them back with o-prime): before deploy `flowspace3 status --json` shows embed failed count=5; after deploy + bounce the five dedupe_keys (recorded in the receipt) are done or terminal-with-reason; `flowspace3 status` shows embed failed=0 or the named residue. Receipt = both status envelopes and the five keys' final states.",
+          "receipt": "PRE-BOUNCE: flowspace3 status --json embed failed=5. Rows: 1314967=8ecded…, 1315244=9dce39…, 1316706=043365…, 1323215=043365… duplicate, 1344012=conv c5a6be2d; all failed attempts=3 terminal=false. NAMED PRECONDITION: requeue_failed collides on jobs_live_dedupe_idx unless duplicate jobs 1316706/1323215 are repaired first. O-prime owns the Jordan-approved prod repair at bounce. Automatic mechanism after repair: boot.rs:176-194 -> jobs.rs:506-534."
         },
         {
           "id": "ac-0006",
