@@ -1,0 +1,18 @@
+docs/plans/010-embed-cap-heal/assets/tasks/phase-1/execution.log.md
+  h_9e71e8b09f7cf2 44-54
+docs/plans/010-embed-cap-heal/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 59,62-63,115
+docs/plans/010-embed-cap-heal/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 41,71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b07d23e46781437d771bb903457a35156740af2e",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
