@@ -1533,3 +1533,31 @@ ROW 121 — CLAUDE RS SEATS NOW INGEST, PROVEN IN OUR INDEX (meadowlark,
     until pij req-0033. (Their omp negative control never ran — an
     `pij-rs spawn` from a main checkout died before binding, proc null,
     pane gone — reported to weasel by them.)
+
+122. **P1 — search is DB-bound and the database is running on POSTGRES
+    DEFAULTS: shared_buffers 128MB against a 2.3GB HNSW index** (lynx,
+    2026-09-02, from two coders' frictions: `flowspace3 search` hitting
+    the 60s client timeout; my own reproduction 120s from a worktree
+    cwd). MEASURED, idle-ish host: one search = 13.4s wall, of which
+    >=10s is ONE postgres statement — `WITH candidate_vectors AS
+    MATERIALIZED (SELECT source_hash, source_kind, chunk_no, vector …`
+    (the 009 nearest CTE). Container: `shared_buffers=128MB`,
+    `work_mem=4MB`, `effective_cache_size=4GB`, resident 432MB of a
+    31GB limit; `embeddings_1024_vector_idx` = 2,286MB, 283k rows. The
+    index cannot live in 128MB of buffers, so every query walks it from
+    disk through the OS cache — and under host load (load avg 38-53:
+    OrbStack 197%, Defender/DLP ~70%, a `bfs` at 90%) that becomes
+    60-120s. The daemon process itself sat at 0.2% CPU throughout: this
+    is not a daemon bug and the client timeout misattributes it as one.
+    Two fixes, both cheap, in order: (a) INFRA — tune the compose
+    postgres (shared_buffers ~4GB, work_mem 64MB, maintenance_work_mem
+    for index builds) and prove the delta with the same query; (b)
+    QUERY — the MATERIALIZED candidate CTE pulls 1024-float vectors
+    into a temp set before the collapse; check whether the collapse can
+    run on (source_hash, chunk_no, distance) and fetch vectors never —
+    009 u3's own review said search.rs showed no diff, so this is the
+    store CTE. (c) HONESTY — the search envelope should carry
+    daemon-side timing so a slow answer is attributable to the DB, the
+    host, or the client. Baseline needed: was 13s the pre-009 number?
+    Nobody measured it (that absence is row 110's family: no latency
+    sensor). Blocks nothing that is dispatched but degrades every seat.
