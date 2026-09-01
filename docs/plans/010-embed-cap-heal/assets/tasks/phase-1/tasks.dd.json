@@ -56,10 +56,11 @@
         {
           "id": "tk-0104",
           "title": "Gate and PR: harness checks green in the worktree; fix: commits via harness commit; PR into main with the mutation and the two measurements in the body",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0104",
           "success": "PR open, CI green",
-          "satisfies": []
+          "satisfies": [],
+          "receipt": "harness checks status=ok; PR https://github.com/AI-Substrate/flowspace3/pull/92; GitHub gate passed in 5m14s on head 24e67b881eed5804eb9efd4d59d535ebcd0dbf36"
         },
         {
           "id": "tk-0105",
@@ -111,7 +112,7 @@
           {
             "id": "dw-1005",
             "assertion": "harness checks green locally and CI green on the PR head sha",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0007"
           }
         ],
