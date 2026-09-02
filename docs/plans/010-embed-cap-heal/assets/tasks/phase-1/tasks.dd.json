@@ -8,7 +8,7 @@
       "value": {
         "title": "Phase 1: heal + align + drain",
         "slug": "phase-1",
-        "status": "ready",
+        "status": "shipped",
         "summary": "One coder, tasks in order, every assertion pinned to a backpressure row."
       }
     },
@@ -28,7 +28,7 @@
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001"
           ],
-          "receipt": "cargo test -p fs3-daemon chunk_plan -- --nocapture: 6 passed; ruled corpus 7→10, 33→50, 1→2, total 41→62"
+          "receipt": "cargo test -p fs3-daemon chunk_plan -- --nocapture: 6 passed; ruled corpus 7\u219210, 33\u219250, 1\u21922, total 41\u219262"
         },
         {
           "id": "tk-0102",

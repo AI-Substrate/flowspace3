@@ -12,7 +12,7 @@
 | title | Phase 1: heal + align + drain |
 | slug | phase-1 |
 | ordinal | — |
-| status | ready |
+| status | shipped |
 | complexity | — |
 | summary | One coder, tasks in order, every assertion pinned to a backpressure row. |
 | backpressure | — |

@@ -12,7 +12,7 @@
 | title | Phase 1: authoritative address + verify verb |
 | slug | phase-1 |
 | ordinal | — |
-| status | ready |
+| status | shipped |
 | complexity | — |
 | summary | One coder, tasks in order, every assertion pinned to a backpressure row. |
 | backpressure | — |
@@ -39,7 +39,7 @@ Work top to bottom. Stop-and-ask o-prime on anything that reverses a ruling or l
 | tk-0102 | CLI: `conversation verify --harness &lt;h&gt; --session &lt;id&gt;` and `--pij &lt;seat&gt;`; derive the guid via conversation_guid(); return {guid,address,turns,repo,worktree,last_turn_at}; distinct not-indexed code; NO --repo/--path flags; pij-miss message names the legacy-only join and req-0033 | — | — | [x] checked | — | GREEN: fs3-store delivery aggregate; fs3-daemon conversation_verify_contract including HTTP envelope, absent GUID, zero-turn distinction, and HTTP 404; fake legacy pij join; fs3-cli parse/unscopable test. Dedicated code: FS3-E-QUERY-CONVERSATION-NOT-FOUND. | [x] 3/3 [tk-0102](#tk-0102) | verify tests green; clap rejects scope flags | — | [ac-0003](../../../plan.dd.md#acceptance-criteria), [ac-0004](../../../plan.dd.md#acceptance-criteria), [ac-0005](../../../plan.dd.md#acceptance-criteria) |
 | tk-0103 | Docs + help: crates/cli/docs for get and conversation; `get --help` promise matches behaviour; verify documented with its contract | — | — | [x] checked | — | Updated get help, crates/cli/docs/read.md, crates/cli/docs/conversations.md, plan summary pointer, and generated docs/reference/error-codes.md. cargo test -p fs3-cli --test docs_bundle: 5 passed. get/verify help smoke passed. harness checks: status ok at 2026-09-01T22:55:25.077Z. | [x] 1/1 [tk-0103](#tk-0103) | docs updated in the same PR | — |  |
 | tk-0104 | Gate and PR: harness checks green in the worktree; feat: commits via harness commit; PR into main stating the mutation | — | — | [x] checked | — | harness checks green at 2026-09-01T22:55:25.077Z. Commit 4c82eeae915ddecd00d2d2530b4afd22667c7663 via harness commit. PR #93 opened; GitHub gate passed in 5m8s on the feature commit. | [x] 1/1 [tk-0104](#tk-0104) | PR open, CI green | — |  |
-| tk-0105 | After o-prime's bounce: run the three prod envelopes from the main checkout and write ac-0006's receipt; o-prime asks meadowlark for the consumer read-back (ac-0007) | — | — | [ ] unchecked | — | — | [ ] 0/2 [tk-0105](#tk-0105) | ac-0006 receipt from prod; ac-0007 receipt from the consumer | — | [ac-0006](../../../plan.dd.md#acceptance-criteria), [ac-0007](../../../plan.dd.md#acceptance-criteria) |
+| tk-0105 | After o-prime's bounce: run the three prod envelopes from the main checkout and write ac-0006's receipt; o-prime asks meadowlark for the consumer read-back (ac-0007) | — | — | [x] checked | — | o-prime: merged #93 (4788c9d), bounced 10:01Z; ac-0006 three prod envelopes + ac-0007 consumer read-back both PASS (receipts on the ACs). | [x] 2/2 [tk-0105](#tk-0105) | ac-0006 receipt from prod; ac-0007 receipt from the consumer | — | [ac-0006](../../../plan.dd.md#acceptance-criteria), [ac-0007](../../../plan.dd.md#acceptance-criteria) |
 
 <a id="done-when"></a>
 
@@ -74,7 +74,7 @@ Work top to bottom. Stop-and-ask o-prime on anything that reverses a ruling or l
 
 ### tk-0105
 
-| id | assertion | state | pressure |
-| --- | --- | --- | --- |
-| dw-1008 | three prod envelopes: flagless get ok:true, verify ok:true with guid 8c285d65…, made-up session → distinct code | [ ] unchecked | [bp-0006](../../backpressure.dd.md#rows) |
-| dw-1009 | meadowlark's message quoting a verify envelope for one of their sessions | [ ] unchecked | [bp-0007](../../backpressure.dd.md#rows) |
+| id | assertion | state | pressure | receipt |
+| --- | --- | --- | --- | --- |
+| dw-1008 | three prod envelopes: flagless get ok:true, verify ok:true with guid 8c285d65…, made-up session → distinct code | [x] checked | [bp-0006](../../backpressure.dd.md#rows) | o-prime: merged #93 (4788c9d), bounced 10:01Z; ac-0006 three prod envelopes + ac-0007 consumer read-back both PASS (receipts on the ACs). |
+| dw-1009 | meadowlark's message quoting a verify envelope for one of their sessions | [x] checked | [bp-0007](../../backpressure.dd.md#rows) | o-prime: merged #93 (4788c9d), bounced 10:01Z; ac-0006 three prod envelopes + ac-0007 consumer read-back both PASS (receipts on the ACs). |
