@@ -1,0 +1,25 @@
+scratch/review-013/_prod_explain.out
+  s_15d888f4b629c1::t_df33c10e601119 1-2727
+scratch/review-013/cross-model-review-round2.dd.json
+  s_15d888f4b629c1::t_53a7db631a8b40 172,174,193-201,204,206
+scratch/review-013/review-013-ac0004-prod-receipt.md
+  s_15d888f4b629c1::t_bab2dd665f978c 1-52
+scratch/review-013/session-buffer.md
+  s_15d888f4b629c1::t_086cf0e6e16352 37-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "479bbc3c3de2d58e41b4c93f531ef0ea4e506013",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
