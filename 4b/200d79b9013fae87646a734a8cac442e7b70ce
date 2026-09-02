@@ -1,0 +1,19 @@
+scratch/db-cpu-profile/buffer-cheetah.md
+  s_15d888f4b629c1::t_c89bc657c4aa8a 37-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4b200d79b9013fae87646a734a8cac442e7b70ce",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
