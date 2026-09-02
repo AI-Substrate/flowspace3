@@ -2569,3 +2569,12 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     row at parks=20 could never park again (runner.rs:1035) and would burn
     attempts against a provider asking us to slow down. Relayed to the coder
     with the two extra pins (running preserved; second row minted).
+    ROW 152 — CORRECTED (dajeil not-reproduced; o-prime measured on disk):
+    `ddocs build` does NOT truncate — the reviewer packet's .dd.md carries
+    1024/533/643-char values whole (line lengths 1060/557/672, tails
+    intact) and the review record renders a 2748-char cell in full
+    (ddocs 0.1.0). The 768-char cut is on the READER side; the reviewer is
+    asked which tool showed it. Withdrawn against dd; re-owned once the
+    reader is named (candidates: omp file-view cap, fs3 read path).
+    Lesson (again): a symptom seen through a viewer is not a defect in the
+    writer until the file on disk is measured.
