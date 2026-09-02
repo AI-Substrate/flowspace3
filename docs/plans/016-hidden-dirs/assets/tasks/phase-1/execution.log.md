@@ -95,3 +95,7 @@ Pull request: https://github.com/AI-Substrate/flowspace3/pull/107 (`f9b6d0780cd9
 `f-16a2`: file tree policy now comes from the selected `IndexedFile.root_path`; unresolved repository/directory targets remain `None` rather than borrowing cwd state. The delta test registers two roots with opposite policies and proves cross-root element addresses symmetrically, plus plain-cwd, absolute-path, and explicit-other-repo controls. Renderer tests cover `hidden yes`, `hidden no`, and honest absence. Mutation restored cwd-based lookup; the cross-root test failed with `left: true, right: false`, then passed after restoration.
 
 Targeted proof: full `discovery_standard_ignores` integration suite (14 passed), daemon hidden add-envelope test, daemon cross-root tree test, CLI tree-title test, `cargo fmt --all --check`, and `ddocs validate` on the committed review record all passed. Full harness gate intentionally not run: another seat holds the exclusive slot.
+
+## Review-delta full gate
+
+Exclusive `harness checks` on review-fix head `aa1abb61d9d427a1138fd8ce3622834d5b4468b1` completed `status=ok` at `2026-09-02T08:20:07.988Z`: docs, lock metadata, dedicated test DB, harness contracts, formatting, clippy, and the full test suite passed.
