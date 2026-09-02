@@ -3191,3 +3191,9 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     search paths is out". Encode (pij-team impl-guide/packet): fences name
     responsibilities + the seam files found by `flowspace3 search`, never a
     memory-written list; four asks in 30 min were the cost.
+    PLAN 013 — FINAL COMMIT 8d04a77 (amistad): f-3b7e (&& !candidate_scan_
+    exhausted + the reviewer's unit case: completed scan → false, ceiling
+    → true), f-5c92 (envelope publishes scan_incomplete + passes only),
+    plan prose once-per-page + explicit loops ≤ candidate_limit; clippy
+    green. crates/ diff: http.rs, search.rs, search_scope_starvation.rs,
+    embeddings.rs. CI running; carp's one-line check; then merge + bounce.
