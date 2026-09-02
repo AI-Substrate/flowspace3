@@ -2067,3 +2067,31 @@ DEGRADED-ATTRIBUTION TALLY: SEVEN (2026-09-02, plan 012 coder mad-crocodile,
     docs receipt commit 05d7d87c — connected ingress, refs/notes/ai note
     missing after 5 s). Six of seven are docs-only commits from rs-resident
     omp seats. Still routed to the git-ai owners; the shape has not changed.
+
+PLAN 012 REVIEW RECORD (2026-09-02): PR #95 CHANGES REQUESTED at 5c7f7bdb
+    (05d7d87c docs-only) — 1 HIGH, 3 MEDIUM, every one executed not read.
+    f-1a01 HIGH: `cargo test -p fs3-store` still issues unserialised
+    CREATE/DROP through 107 sites in a duplicate helper
+    (crates/store/tests/support/mod.rs) the lock never reaches —
+    measured 25 forced checkpoints in a 38 s store run vs 2 in oversize;
+    fix = move the semaphore into fs3_store::{create,drop}_database.
+    f-1a03 MEDIUM: the widened sweep now force-drops any aged
+    fs3_<label> DB including a LIVE sandbox — the reviewer refused to run
+    `harness checks` for that reason (correct); fix = numbackends=0.
+    f-1a02: auth-refused told "wait and retry". f-1a04: the concurrency
+    test asserts the primitive not the create path. ac-0005 cannot be
+    run as specified: list_orphans_from has zero callers → an examples
+    binary. SCOPE TRUTH recorded: the semaphore is per PROCESS; N seats
+    each gating against one postmaster still produce N concurrent
+    creates — row 126 is REDUCED by this plan, not closed; the fix that
+    closes it is row 124b (separate test postmaster), promoted to its
+    own packet next. All four ruled FOLD IN.
+
+124b. **A separate test postmaster** (promoted from the 124/126/141
+    family, 2026-09-02): compose service `db-test` on another port
+    (5434) with its own volume; FS3_TEST_DATABASE_URL defaults to it;
+    `harness checks` and every coder gate point there; prod's postmaster
+    never sees a CREATE/DROP DATABASE again — removes rows 141's 917
+    forced checkpoints/6 h and the row-124 crash class entirely, and
+    makes the row-110 orphan sweep a test-server concern. Compose + one
+    config default + docs; no prod restart.
