@@ -2493,3 +2493,7 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     list_orphans printed exactly the first. METHOD for future reviews:
     an empty listing is proved only against a seeded positive AND
     negatives. Only the 16 → 1 re-measure on the successor's sha remains.
+150. **LSP litter: `.serena/` appears untracked in seat worktrees** (junglefowl,
+    plus three siblings). Small repair applied: `.serena/` added to the common-dir
+    `info/exclude` (local, not committed). Encode: add `.serena/` to `.gitignore`
+    in the next packet that touches the root, so fresh clones inherit it.
