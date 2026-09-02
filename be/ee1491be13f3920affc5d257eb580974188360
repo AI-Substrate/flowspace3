@@ -1,0 +1,19 @@
+crates/store/src/embeddings.rs
+  s_9e036f908b3c9e::t_81459d5ee2bca9 933,936,944-945,985-997,1267-1273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "beee1491be13f3920affc5d257eb580974188360",
+  "prompts": {},
+  "sessions": {
+    "s_9e036f908b3c9e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c80c5019-0a09-4924-8778-c737f7dafff1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
