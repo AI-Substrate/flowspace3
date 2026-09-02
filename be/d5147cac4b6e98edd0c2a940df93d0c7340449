@@ -1,0 +1,16 @@
+government/briefs/backlog.md
+  h_9e71e8b09f7cf2 3403-3410
+government/worker-roster.md
+  h_9e71e8b09f7cf2 87,93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "bed5147cac4b6e98edd0c2a940df93d0c7340449",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
