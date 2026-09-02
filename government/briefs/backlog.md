@@ -3363,3 +3363,11 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     server side is ac-0004's 35 ms). DL-004 (two daemons, one key) in the
     reviewer buffer → vendored. Docs PR for both records opening; then
     tidy amistad + carp.
+    PLAN 013 — ac-0005 taken TWICE (carp): 16 runs in two load regimes —
+    load1 18–20: min 0.45 / max 0.75 / mean 0.629 s; load1 12.9, queue 0:
+    min 0.49 / max 0.77 / mean 0.580 s; 16/16 ok=true, 10 results,
+    scan_incomplete=false, passes=1. HEADLINE: the load coupling is gone
+    (means 7.8 % apart, ranges overlapping) — the quadratic term was
+    removed, not shrunk; the bracketing protocol exists because search
+    used to swing 156 s → 6 s with queue load. Caveat: sampled range only
+    (load1 ≥ 12.9). Record final (PR #105 updated).
