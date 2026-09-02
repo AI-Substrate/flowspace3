@@ -2779,3 +2779,9 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     valid page. Reviewer reported the 768-char cut again — its viewer (row 152).
     PLAN 015 — fox ack GO; the pushed GO turn did not land while the seat
     was mid-turn (delivered_at stayed 04:42:26) — pane-pasted 04:47.
+    PLAN 015 — t1 PROVEN (fox, 04:50): tree-sitter-typescript 0.23.2
+    resolves and compiles against workspace tree-sitter 0.26; Language::
+    {TypeScript,Tsx} + extensions + discovery family wired; `cargo test -p
+    fs3-parsers --lib` 29 passed. Only stop condition hit was the newly
+    exhaustive LanguageFamily match (mapped to Source). Continuing to
+    fixtures/goldens (t2) and the value-shape + namespace rules (t3).
