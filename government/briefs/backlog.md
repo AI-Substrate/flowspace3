@@ -3618,3 +3618,29 @@ reason this was caught in seconds rather than by a user).
 **Also observed, and it is row 177 in prod:** the relaunched prod daemon took ~21 s from
 "store schema is current" to listening — the pre-serve ddoc probe over prod's registered
 roots. Prod pays that on every bounce, and no gate we run can see it.
+
+## 182 — `flowspace3 ping --json` cannot surface a 401's structured detail
+Review 017 f-17a2 (MEDIUM, pre-existing, `client.rs` not in that diff). `DaemonClient::health()`
+flattens the envelope to `anyhow!(failure.render())` at `client.rs:186-188`, so the
+`key_newer_than_daemon` field plan 017 added — and any other structured 401 detail — cannot reach
+a `ping --json` consumer. The daemon's raw 401 carries it correctly and the human-readable fix
+text survives (ac-0003 holds), and every non-ping verb is fine. But `ping` is the verb an agent
+reaches for when something is wrong, and it is the one that throws the structure away.
+**Encode:** `health()` preserves the failure envelope instead of rendering it to a string.
+
+## 183 — a boot test asserts a second path that does not exist
+Review 017 f-17b1 (MINOR). `--json` is a global clap flag; `Command::Daemon` branches on
+`sandbox` alone, so the "normal vs --json" boot test is two copies of one path. The real second
+path is `--sandbox` (own tempdir, binds before serve, safe by construction).
+**Encode:** point the test at `--sandbox`, or delete the duplicate and say in the record that the
+second path is met by reading.
+
+## 184 — a reviewer seat has NO usable semantic-search surface
+Review 017, hyena's DL-001. The flowspace MCP reports "MCP server not connected", and the only
+other index is the prod daemon on :7373 — which every reviewer fence forbids. So CLAUDE.md's
+dogfooding mandate ("search with it first") is **unsatisfiable from a review worktree**, and the
+reviewer correctly fell back to grep/lsp. This is the product's own best test being skipped by the
+seats most likely to find defects, for a structural reason rather than a lazy one.
+**Encode:** a scratch-daemon search recipe in the reviewer packet (per-run DB on :5434, index the
+worktree, drop it at close-out), or a per-worktree index behind an auto-reconnecting MCP. Until
+one exists, the dogfood mandate should say plainly that it does not bind reviewers.
