@@ -2979,3 +2979,17 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     unless 015 bumps parser_version or the re-ingest forces a re-scan of
     known blobs, the new grammar never touches the 3,785 existing blobs.
     Asked the coder.
+    ROW 147 / PLAN 015 — o-prime found the receipt would have been empty:
+    PARSER_VERSION is fs3-parsers@2 on main AND on the 015 branch, and the
+    content-addressed skip (scan.rs, "the same answer by construction")
+    keys on (blob, parser_version) — so the 3,785 stored TypeScript blobs
+    would never be re-parsed after the merge. RULED: bump to @3 in the
+    same commit + add "bump PARSER_VERSION" to the add-language recipe
+    (lib.rs doc comment + docs/services/scanner.md); the reviewer
+    delta-checks it. Consequence: every known blob re-parses on its next
+    enqueue (embeddings stay content-keyed, so the embed cost is only the
+    NEW elements). Prod receipt path: bounce → `flowspace3 remove` +
+    `add` ~/pi-hacking/pij → search a named extension function.
+    Encode: the add-language skill's contract gains the version-bump step
+    (a grammar addition that does not bump it is a no-op for existing
+    blobs).
