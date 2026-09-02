@@ -2856,3 +2856,11 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     means no database code. Slot re-granted 05:20. Encode: the coder
     packet template carries the test URL line for EVERY packet (not only
     DB ones), and `fs3-test-db-check`'s refusal names the URL to set.
+162. **`fs3-test-suite` exit 124 (timeout) after 735 s with no assertion
+    failure, and the gate names neither the timed-out command nor a
+    targeted rerun** (fox, plan 015, load avg 30–40; ask-003). Same family as
+    row 131. Encode: the runner prints the suite it was in when the timeout
+    fired, the timeout value, and the exact `cargo test -p … --test …` to
+    rerun; `harness checks` exposes the timeout (env or flag). RULED for 015:
+    release the slot, PR, CI on the exact sha is the gate; no local retry on
+    a loaded box.
