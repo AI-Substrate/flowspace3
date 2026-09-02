@@ -37,7 +37,7 @@ MEASURED ON PROD 2026-09-02 (assets/inputs/db-cpu-profile-report.md §5, §8 cau
 - EXPLAIN (ANALYZE, BUFFERS) of the shipped query on prod's corpus shows the smart_content probe with loops < 1,000 and total shared buffer hits under 100,000 for limit=40 / candidate_limit=160 (was 962,792 loops / 3.85M hits).
 - Ranking parity: the existing search fixtures and the 009 chunk-collapse tests pass unchanged; a new parity test asserts the same top-N addresses and scores (within float tolerance) for the fixture corpus before and after.
 - Search wall time on prod for the profile's reference query drops from 1.65 s (single pass) to under 300 ms, and a bare `flowspace3 search` from the main checkout completes under 1 s at idle load. Measured, not estimated.
-- The CTE carries (source_hash, source_kind, chunk_no, distance) only; no vector column is materialised into a temp set (row 122(b)). JIT no longer triggers on this query (cost estimate sane), or is explicitly disabled for it with a stated reason.
+- The candidate_vectors CTE already carries (source_hash, source_kind, chunk_no, distance) only; the EXPLAIN-shape test now asserts that its target list has no vector column. JIT no longer triggers on this query (cost estimate sane), or is explicitly disabled for it with a stated reason.
 
 <a id="non-goals"></a>
 
@@ -54,7 +54,7 @@ MEASURED ON PROD 2026-09-02 (assets/inputs/db-cpu-profile-report.md §5, §8 cau
 
 | id | claim | state | note | receipt | pressure | proven_by |
 | --- | --- | --- | --- | --- | --- | --- |
-| ac-0001 | Loops bound, mutation-checked: an integration test runs EXPLAIN (ANALYZE, FORMAT JSON) on the shipped query against a seeded corpus with ≥50k elements and ≥10k smart_content rows and asserts the smart_content node's loops ≤ candidate_limit and no Materialize-over-Seq-Scan-on-elements node exists; the SAME test fails against the old query (keep it under a cfg/feature or a golden-SQL comparison so the mutation is one-line). Mutation stated in the PR body. | [ ] unchecked | — | — | — | — |
+| ac-0001 | Loops bound, mutation-checked: an integration test runs EXPLAIN (ANALYZE, FORMAT JSON) on the shipped query against a seeded corpus with ≥50k elements and ≥10k smart_content rows and asserts the smart_content node's loops ≤ candidate_limit, no Materialize-over-Seq-Scan-on-elements node exists, the candidate_vectors CTE target list carries no vector column, and JIT is not triggered (or is disabled for this statement with the reason stated); the SAME test fails against the old query (keep it under a cfg/feature or a golden-SQL comparison so the mutation is one-line). Mutation stated in the PR body. | [ ] unchecked | — | — | — | — |
 | ac-0002 | Ranking parity: for the fixture corpus, top-N addresses and scores match the pre-change output within 1e-6 (golden file committed with the OLD query's output), for limit ∈ {10, 40} and with each filter kind (repo, path glob, source, kind, conversation) exercised once. | [ ] unchecked | — | — | — | — |
 | ac-0003 | All existing crates/store and crates/daemon search tests pass unchanged (009's collapse fixtures included). | [ ] unchecked | — | — | — | — |
 | ac-0004 | PROD, after o-prime's bounce, read-only: EXPLAIN (ANALYZE, BUFFERS) of the profile's reference query (dbprof/explain160.out binds) shows loops &lt; 1,000 on smart_content and &lt; 100,000 shared hits; execution time &lt; 300 ms. Receipt = the plan text before/after. | [ ] unchecked | — | — | — | — |

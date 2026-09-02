@@ -35,8 +35,8 @@ Work top to bottom; stop-and-ask o-prime on anything outside the fence.
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tk-0101 | Golden: capture the OLD query's top-N output (addresses + scores) on the fixture corpus for limit 10/40 and each filter kind; commit as a golden file + the old SQL as a string for the mutation | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0101](#tk-0101) | golden committed | — |  |
-| tk-0102 | Rewrite candidate_vectors: CTE smart_map AS (SELECT text_hash, raw_hash FROM smart_content …) hash-joined once; admitted elements resolved once with the same filter predicates; candidate admitted via semi-join on raw_hash; CTE selects (source_hash, source_kind, chunk_no, distance) only | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0102](#tk-0102) | EXPLAIN shape test green; red with old SQL | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0005](../../../plan.dd.md#acceptance-criteria) |
+| tk-0101 | Golden: capture the OLD query's top-N output (addresses + scores) on the fixture corpus for limit 10/40 and each filter kind; commit as a golden file + the old SQL as a string for the mutation | — | — | [x] checked | In progress: seed shared-raw-hash and shared-summary multiplicity cases before capturing old-query golden. | PASS: cargo test -p fs3-store --test search_admission search_parity -- --nocapture (1 passed). Golden covers limits 10/40 × repo, path, raw source, smart source, kind, conversation; fixture contains raw hashes shared by 3 elements and summary hashes shared by 2 raw bodies in both code and conversation scopes. Old admission fragment saved at crates/store/tests/fixtures/search_admission_old.sql. | [x] 1/1 [tk-0101](#tk-0101) | golden committed | — |  |
+| tk-0102 | Rewrite candidate_vectors: CTE smart_map AS (SELECT text_hash, raw_hash FROM smart_content …) hash-joined once; admitted elements resolved once with the same filter predicates; candidate admitted via semi-join on raw_hash; CTE selects (source_hash, source_kind, chunk_no, distance) only | — | — | [ ] unchecked | In progress: extract the shipped SQL for private plan testing, add the prod-shaped EXPLAIN mutation check, then replace correlated admission with deduplicated one-time sets. | — | [ ] 0/1 [tk-0102](#tk-0102) | EXPLAIN shape test green; red with old SQL | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0005](../../../plan.dd.md#acceptance-criteria) |
 | tk-0103 | Parity + regression: search_parity test against the golden; existing suites | — | — | [ ] unchecked | — | — | [ ] 0/2 [tk-0103](#tk-0103) | all green | — | [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0003](../../../plan.dd.md#acceptance-criteria) |
 | tk-0104 | Gate + PR with the mutation and the EXPLAIN before/after in the body | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0104](#tk-0104) | PR open, CI green | — |  |
 | tk-0105 | After o-prime's bounce: prod EXPLAIN + the wall-time runs; receipts into the ACs | — | — | [ ] unchecked | — | — | [ ] 0/2 [tk-0105](#tk-0105) | ac-0004/0005 receipts | — | [ac-0004](../../../plan.dd.md#acceptance-criteria), [ac-0005](../../../plan.dd.md#acceptance-criteria) |
@@ -49,7 +49,7 @@ Work top to bottom; stop-and-ask o-prime on anything outside the fence.
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-30d1 | golden file exists and the parity test reads it | [ ] unchecked | [bp-0002](../../backpressure.dd.md#rows) |
+| dw-30d1 | golden file exists and the parity test reads it | [x] checked | [bp-0002](../../backpressure.dd.md#rows) |
 
 ### tk-0102
 

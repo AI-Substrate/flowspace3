@@ -22,21 +22,24 @@
         {
           "id": "tk-0101",
           "title": "Golden: capture the OLD query's top-N output (addresses + scores) on the fixture corpus for limit 10/40 and each filter kind; commit as a golden file + the old SQL as a string for the mutation",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0101",
           "success": "golden committed",
-          "satisfies": []
+          "satisfies": [],
+          "note": "In progress: seed shared-raw-hash and shared-summary multiplicity cases before capturing old-query golden.",
+          "receipt": "PASS: cargo test -p fs3-store --test search_admission search_parity -- --nocapture (1 passed). Golden covers limits 10/40 × repo, path, raw source, smart source, kind, conversation; fixture contains raw hashes shared by 3 elements and summary hashes shared by 2 raw bodies in both code and conversation scopes. Old admission fragment saved at crates/store/tests/fixtures/search_admission_old.sql."
         },
         {
           "id": "tk-0102",
-          "title": "Rewrite candidate_vectors: CTE smart_map AS (SELECT text_hash, raw_hash FROM smart_content \u2026) hash-joined once; admitted elements resolved once with the same filter predicates; candidate admitted via semi-join on raw_hash; CTE selects (source_hash, source_kind, chunk_no, distance) only",
+          "title": "Rewrite candidate_vectors: CTE smart_map AS (SELECT text_hash, raw_hash FROM smart_content …) hash-joined once; admitted elements resolved once with the same filter predicates; candidate admitted via semi-join on raw_hash; CTE selects (source_hash, source_kind, chunk_no, distance) only",
           "state": "unchecked",
           "done": "#done_when/tk-0102",
           "success": "EXPLAIN shape test green; red with old SQL",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001",
             "../../../plan.dd.json#acceptance_criteria/ac-0005"
-          ]
+          ],
+          "note": "In progress: extract the shipped SQL for private plan testing, add the prod-shaped EXPLAIN mutation check, then replace correlated admission with deduplicated one-time sets."
         },
         {
           "id": "tk-0103",
@@ -77,14 +80,14 @@
           {
             "id": "dw-30d1",
             "assertion": "golden file exists and the parity test reads it",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0002"
           }
         ],
         "tk-0102": [
           {
             "id": "dw-30d2",
-            "assertion": "loops \u2264 candidate_limit; no Materialize/SeqScan(elements) node; mutation red",
+            "assertion": "loops ≤ candidate_limit; no Materialize/SeqScan(elements) node; mutation red",
             "state": "unchecked",
             "pressure": "../../backpressure.dd.json#rows/bp-0001"
           }
@@ -127,6 +130,5 @@
         ]
       }
     }
-  ],
-  "references": []
+  ]
 }
