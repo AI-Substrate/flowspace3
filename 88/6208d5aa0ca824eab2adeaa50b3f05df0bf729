@@ -1,0 +1,14 @@
+scratch/db-cpu-profile/ac-0001-ddl-probe.sh
+  h_9e71e8b09f7cf2 1-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "886208d5aa0ca824eab2adeaa50b3f05df0bf729",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
