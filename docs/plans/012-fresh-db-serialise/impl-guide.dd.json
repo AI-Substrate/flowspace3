@@ -6,7 +6,7 @@
     {
       "name": "meta",
       "value": {
-        "title": "impl-guide \u2014 fresh-db-serialise",
+        "title": "impl-guide — fresh-db-serialise",
         "plan": "docs/plans/012-fresh-db-serialise/plan.dd.json",
         "mode": "single-coder",
         "updated": "2026-09-02"
@@ -14,7 +14,7 @@
     },
     {
       "name": "architecture",
-      "value": "One file, three touches, all in crates/testkit/src/fresh_database.rs. (1) LOCK: create_unmigrated_from and cleanup take a process-wide permit before calling fs3_store::create_database / drop_database \u2014 a `static` tokio Semaphore sized from FS3_TEST_DB_CONCURRENCY (default 1). It lives in the helper, not in a test-threads convention, so no caller can violate it. (2) ADVICE: create()'s panic classifies the StoreError \u2014 connection refused \u2192 'no server at <url>; start one'; connected-then-closed / SQLSTATE 57P03 'the database system is in recovery mode' \u2192 'server at <url> is up but recovering; wait and retry' \u2014 and never prints COMPOSE_UP when a server answered. (3) SWEEP: sweep_orphans_at parses both minted shapes; a list-only variant returns candidates. Evidence altitude: unit/integration tests with a mutation for the lock; then REAL USAGE \u2014 the 12-test oversize binary at default parallelism with the postgres log clean, and the prod server's ~55 orphans listed then swept on o-prime's GO."
+      "value": "The shared DDL boundary is crates/store/src/admin.rs: create_database, drop_database, and drop_database_if_idle take one process-wide tokio semaphore sized from FS3_DB_MUTATION_CONCURRENCY (default 1, max 2), so testkit, store integration support, doctor, and sandbox callers using the API cannot bypass it. FreshDatabase delegates without a second permit. Its create panic distinguishes no listener, authentication/permission rejection, and connected-then-closed/recovery. Orphan listing parses both minted shapes, selects only pg_stat_database rows with numbackends=0, and each sweep drop rechecks liveness under the permit and uses unforced DROP to fail safe on a race. crates/testkit/examples/list_orphans.rs is the read-only production listing seam."
     },
     {
       "name": "fan_out",
@@ -29,13 +29,13 @@
         {
           "id": "u1",
           "name": "fresh-db-serialise",
-          "paths": "crates/testkit/src/fresh_database.rs and its tests; fs3_store::{create_database,drop_database} untouched unless the lock needs a hook",
-          "responsibility": "FreshDatabase cannot issue concurrent CREATE/DROP; its advice is truthful; its sweep matches its own names.",
-          "interface": "FreshDatabase public API unchanged; new env knob FS3_TEST_DB_CONCURRENCY (default 1); sweep_orphans_from unchanged in signature, plus a list-only fn.",
-          "test_strategy": "concurrency test with an in-flight counter (mutation: remove the permit \u2192 >1 observed); advice tests via a listening-but-closing socket and a refused port; sweep test with past-epoch names for both shapes; real usage per ac-0004/0005.",
+          "paths": "crates/store/src/admin.rs, crates/store/tests/support/mod.rs, crates/store/Cargo.toml, crates/testkit/src/fresh_database.rs, crates/testkit/src/lib.rs, crates/testkit/examples/list_orphans.rs, and their tests",
+          "responsibility": "fs3_store serialises every API-mediated CREATE/DROP process-wide; FreshDatabase advice is truthful across absent, auth, and recovery cases; orphan listing and sweep match minted names while preserving active databases.",
+          "interface": "FreshDatabase existing signatures remain; FS3_DB_MUTATION_CONCURRENCY controls store-level DDL concurrency (default 1, max 2); list_orphans_from returns idle candidates; list_orphans example prints them read-only; fs3_store adds idle_database_names_with_prefix and drop_database_if_idle.",
+          "test_strategy": "N=8 real create_database calls with an in-flight counter, red when the create-path permit is removed; advice tests for refused port, bad password, and listening-close; sweep test with two idle old names, one live old name, and one fresh name, red without numbackends filter plus a no-hang timeout; listing example before/after count; real store-suite and oversize checkpoint/log windows.",
           "depends_on": "none",
           "wave": 1,
-          "note": "ac-0001\u20130004 by test/real usage in the worktree; ac-0005 with o-prime on the prod server."
+          "note": "ac-0001–0004 by test/real usage in the worktree; ac-0005 with o-prime on the prod server."
         }
       ]
     },
@@ -43,14 +43,14 @@
       "name": "isolation",
       "value": {
         "mode": "worktree-per-coder",
-        "note": "../fs3-fresh-db-serialise on branch 012-fresh-db-serialise (scaffolded by harness team new). Per-seat CARGO_TARGET_DIR. Per-run test DBs on the shared compose container (:5433) \u2014 you are changing the helper that makes them; run the concurrency test with a SMALL N against your own scratch database name prefix. NEVER :7373; the prod-server sweep (ac-0005) is o-prime-run, read-only until GO. ABSOLUTE PATHS. pij is unstable (assets/inputs/pij-two-daemons.md): your seat will be rs; channel is FILES in .harness/temp/agent/ (fresh-db-serialise-ack.md / -ask-NNN.md / -report.md); o-prime replies by pij-rs send. Never pij adopt."
+        "note": "../fs3-fresh-db-serialise on branch 012-fresh-db-serialise (scaffolded by harness team new). Per-seat CARGO_TARGET_DIR. Per-run test DBs on the shared compose container (:5433) — you are changing the helper that makes them; run the concurrency test with a SMALL N against your own scratch database name prefix. NEVER :7373; the prod-server sweep (ac-0005) is o-prime-run, read-only until GO. ABSOLUTE PATHS. pij is unstable (assets/inputs/pij-two-daemons.md): your seat will be rs; channel is FILES in .harness/temp/agent/ (fresh-db-serialise-ack.md / -ask-NNN.md / -report.md); o-prime replies by pij-rs send. Never pij adopt."
       }
     },
     {
       "name": "composition",
       "value": {
         "composer": "o-prime",
-        "steps": "None \u2014 single unit. o-prime squash-merges; no bounce needed (testkit only, no daemon binary change).",
+        "steps": "None — single unit. o-prime squash-merges; no bounce needed (testkit only, no daemon binary change).",
         "integration_proof": "ac-0004 (oversize suite at default parallelism, postgres log clean) and ac-0005 (prod-server orphan listing then sweep on GO), both real usage."
       }
     },
@@ -67,15 +67,15 @@
       "value": [
         {
           "id": "risk-1",
-          "text": "A process-wide static Semaphore across multiple tokio runtimes (each #[tokio::test] builds its own) \u2014 a tokio Semaphore in a static is runtime-agnostic, but verify; std::sync::Mutex held across .await is the trap"
+          "text": "A process-wide static Semaphore across multiple tokio runtimes (each #[tokio::test] builds its own) — a tokio Semaphore in a static is runtime-agnostic, but verify; std::sync::Mutex held across .await is the trap"
         },
         {
           "id": "risk-2",
-          "text": "Serialising creates slows suites that mint many DBs \u2014 measure the oversize suite before/after and report; N knob exists for that reason"
+          "text": "Serialising creates slows suites that mint many DBs — measure the oversize suite before/after and report; N knob exists for that reason"
         },
         {
           "id": "risk-3",
-          "text": "The sweep parser matching too broadly and dropping a non-test database \u2014 the shape requires `<epoch>_<32hex>` tail; assert prod-like names (flowspace3, flowspace3_test) are never candidates"
+          "text": "The sweep parser matching too broadly and dropping a non-test database — the shape requires `<epoch>_<32hex>` tail; assert prod-like names (flowspace3, flowspace3_test) are never candidates"
         }
       ]
     }

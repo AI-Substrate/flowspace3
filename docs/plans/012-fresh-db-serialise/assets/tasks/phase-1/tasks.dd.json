@@ -21,14 +21,14 @@
       "value": [
         {
           "id": "tk-0101",
-          "title": "Serialise create/drop: a process-wide async lock (tokio::sync::Semaphore(N) or Mutex) around fs3_store::create_database / drop_database calls inside FreshDatabase; N from an env knob defaulting to 1; document why in the module doc",
+          "title": "Serialise create/drop in fs3_store with one process-wide tokio Semaphore; N from FS3_DB_MUTATION_CONCURRENCY defaulting to 1, max 2; route duplicate test helpers through the primitives and remove testkit wrappers",
           "state": "checked",
           "done": "#done_when/tk-0101",
           "success": "concurrency test green; red with the lock removed",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001"
           ],
-          "receipt": "cargo test -p fs3-testkit serialis: 1 passed (artifact://25); mutation removing permit: FAILED, observed more than 1 concurrent database mutations (artifact://27); guard restored at fresh_database.rs:42-48"
+          "receipt": "Store-level FS3_DB_MUTATION_CONCURRENCY semaphore guards create_database, drop_database, and drop_database_if_idle; store helper routes through primitives; N=8 create-path test passed (artifact://117) and failed with 8 in flight when permit removed; default-parallel fs3-store suite passed 137 tests in 4m15s (artifact://161) with 0 recovery lines; 83 forced-checkpoint lines and pg_stat_bgwriter +128 are reported, not gated, because each DROP forces one and serialization removes overlap/coalescence"
         },
         {
           "id": "tk-0102",
@@ -39,7 +39,7 @@
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0002"
           ],
-          "receipt": "cargo test -p fs3-testkit advice: 2 passed (artifact://36); refused port says No server and includes compose command; listening-close server says recovery/wait-and-retry and excludes compose command"
+          "receipt": "cargo test -p fs3-testkit advice: 3 passed for refused, bad-password, and accept-then-close cases (artifact://123); auth reports fix credentials with no compose or recovery advice; disabling the auth branch failed the bad-password test while close/recovery cases remained (artifact://125)"
         },
         {
           "id": "tk-0103",
@@ -50,7 +50,7 @@
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
           ],
-          "receipt": "FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5433/flowspace3_test cargo test -p fs3-testkit sweep: 2 passed (artifact://45); list-only reported both epoch-1 minted shapes, sweep dropped those two, fresh remained; prod-like names rejected"
+          "receipt": "Shared :5433 sweep tests passed with two idle old names dropped, one live-at-list old name excluded, and one database connected after listing preserved with connection usable (artifact://154); replacing per-drop numbackends recheck plus unforced DROP with FORCE killed the racing database and failed (artifact://152); removing list numbackends predicate also failed (artifact://106)"
         },
         {
           "id": "tk-0104",

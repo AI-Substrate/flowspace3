@@ -2,7 +2,7 @@
 
 ## tk-0101 — serialise create/drop
 
-- Added one process-wide `tokio::sync::Semaphore`, initialized once from `FS3_TEST_DB_CONCURRENCY` (`1` by default; accepted range `1..=2`).
+- Initial implementation placed a process-wide semaphore in testkit; review delta f-1a01 superseded that placement with the store-level `FS3_DB_MUTATION_CONCURRENCY` boundary.
 - Guarded every `fs3_store::create_database` / `drop_database` call made by `FreshDatabase`, including orphan sweep and cleanup.
 - Proof: `cargo test -p fs3-testkit serialis` passed (`artifact://25`). Removing the permit made the test fail with `observed more than 1 concurrent database mutations` (`artifact://27`); the guard was restored and read back at `fresh_database.rs:42-48`.
 - The test uses independent current-thread Tokio runtimes, proving the static semaphore coordinates across runtimes rather than relying on one test runtime.
@@ -31,3 +31,40 @@
 - `harness checks` passed every mandated gate at `2026-09-02T01:05:54Z`.
 - `harness commit` created verified commit `5c7f7bdb069cdb79de3bcf2203d57f934a75c22c`; its `refs/notes/ai` attribution landed.
 - PR #95 opened against `main`, with the lock-removal mutation and all behavioral receipts in the body. GitHub gate run `33578074863` passed in 5m5s.
+
+## Review delta f-1a03 — live database safety
+
+- Added `idle_database_names_with_prefix`, filtering `pg_stat_database.numbackends = 0`, and `drop_database_if_idle`, which rechecks liveness then uses an unforced drop so a racing connection preserves the database.
+- The sweep test holds a real pool open on an aged `fs3_sweeplive_…` database: list-only excludes it, direct idle-drop returns false, sweep removes both idle names, and the live database remains.
+- Proof: sweep tests green (`artifact://113`). Removing the catalog liveness predicate made the live name enter the candidate list and failed the test (`artifact://106`); the predicate was restored. Failed-mutation scratch databases were explicitly removed.
+- Refined proof for the post-list race: a candidate is listed idle, then connected before the shared drop loop. Per-drop liveness recheck under the store permit skips it, unforced DROP preserves the session, and the connection remains usable (`artifact://154`). Replacing that path with forced drop killed the racing database and failed (`artifact://152`).
+
+## Review delta f-1a01/f-1a04 — store-level lock and create-path proof
+
+- Moved the process-wide semaphore into `fs3_store` and renamed its clean-cutover setting to `FS3_DB_MUTATION_CONCURRENCY` (default 1, accepted range 1–2). Store create, forced drop, and idle drop each acquire exactly once.
+- Removed all testkit-side wrappers in the same change to avoid N=1 self-deadlock. The store integration helper now routes its raw CREATE/DROP through the shared primitives.
+- Added an N=8 real `create_database` test with a test-build in-flight counter after permit acquisition. Green: one maximum (`artifact://117`). Removing the permit from the create path produced eight concurrent CREATE operations and failed; all databases were cleaned before the assertion.
+- Added a 10-second timeout around the multi-drop sweep; it passed after the one-layer cutover (`artifact://120`).
+
+## Review delta f-1a02 — permanent authentication failures
+
+- Added an authentication/permission branch ahead of recovery advice, recognizing PostgreSQL invalid-password/insufficient-privilege codes and messages.
+- A real bad-password URL now says to fix credentials, without compose or wait/recovery advice; the refused-port and accept-then-close behavior remains unchanged.
+- Proof: three advice tests green (`artifact://123`). Disabling the auth branch made only the bad-password contract fail and reproduced the misleading recovery advice (`artifact://125`); the branch was restored.
+
+## Review delta ac-0005 seam — read-only listing example
+
+- Added `cargo run -p fs3-testkit --example list_orphans -- <base-url>`, which calls only `FreshDatabase::list_orphans_from` and prints one candidate name per line.
+- Against the shared `:5433` test server, the example completed successfully; `fs3_%` database count was 48 before and 48 after, proving the invocation was non-destructive. It printed no currently eligible idle candidates.
+- The first pre-count coincided with o-prime's ruled row-140 PostgreSQL restart and correctly triggered stop-and-ask 001. After reply 005 confirmed the server healthy, the proof resumed once and passed.
+
+## Review delta — scope correction
+
+- Plan and implementation-guide summaries now state the real boundary: serialization is per process and covers callers using `fs3_store` primitives. Separate seats can still issue concurrent DDL against the shared postmaster.
+- Backlog row 126 is therefore REDUCED, not closed. The separate test postmaster in row 124b remains its own packet.
+
+## Review delta — corrected checkpoint proof
+
+- Default-parallel `cargo test -p fs3-store` passed 137 tests, 4 ignored, in the `2026-09-02T01:48:52Z..01:53:07Z` window (`artifact://161`); recovery/termination signatures were zero.
+- Report-only measurements: 83 `immediate force wait` log starts and `pg_stat_bgwriter.checkpoints_req` 1171→1299 (+128), versus the reviewer's 25 over 38 seconds.
+- Stop-and-ask 002 correctly halted on the then-binding reduction target. Reply 007 ruled that target invalid: every DROP forces a checkpoint; serial execution removes overlap and therefore can reduce coalescing and increase line count. The gate is zero recovery plus the mutation-checked N=8 concurrency bound; checkpoint counts remain context, not verdict.

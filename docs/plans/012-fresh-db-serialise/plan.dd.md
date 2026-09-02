@@ -14,7 +14,7 @@
 | ordinal | 12 |
 | status | ready |
 | complexity | — |
-| summary | Close backlog row 126 and the sweep half of row 110: FreshDatabase serialises CREATE/DROP DATABASE process-wide, its failure advice distinguishes 'server in recovery' from 'no server', and the orphan sweep matches the names the helper actually mints. |
+| summary | Reduce backlog row 126 and close the sweep half of row 110: fs3_store serialises CREATE/DROP DATABASE process-wide, FreshDatabase gives truthful failure advice, and orphan sweep matches minted names while preserving live databases. The semaphore is per process, so separate seats can still issue concurrent DDL against one postmaster: row 126 is REDUCED, not closed; the separate test postmaster in row 124b remains its own packet. |
 | backpressure | [rows](assets/backpressure.dd.md#rows) |
 | log | — |
 | mode | — |
@@ -33,10 +33,10 @@ crates/testkit/src/fresh_database.rs mints one database per test (`fs3_<label>_<
 
 ## Goals
 
-- No test binary can issue more than ONE CREATE DATABASE or DROP DATABASE at a time against the shared server: a process-wide lock (or a small semaphore, N<=2) inside FreshDatabase, not a test-threads convention.
-- The failure advice names the real next action: 'server closed the connection / in recovery — wait and retry' vs 'no server at <url> — start one', and never suggests `docker compose up` when a server is listening.
-- The orphan sweep matches the names the helper mints (label-prefixed, epoch, 32-hex) with the same age threshold, so per-run leftovers age out; the whole-suite `fs3_test_` shape keeps working.
-- Proof by real usage: the oversize suite (12 concurrent tests) runs at default parallelism against the shared container WITHOUT a postmaster restart in the log; and a sweep run against prod's 55 orphans (read-only listing first, then the drop on o-prime's GO) reports what it swept by name.
+- No test binary can issue more than ONE CREATE DATABASE or DROP DATABASE at a time through fs3_store against the shared server: a process-wide store-level semaphore (N<=2), not a test-threads convention. Separate processes remain independent, so row 126 is reduced rather than closed.
+- Failure advice names the real next action for no listener, rejected authentication or permission, and connected-then-closed or recovering servers; compose startup is suggested only when no server is listening.
+- The orphan sweep matches names the helper mints, keeps the age threshold, selects only idle databases, and rechecks liveness under the mutation permit before an unforced drop; whole-suite fs3_test_ names keep working.
+- Proof by real usage: N=8 store create calls stay within the bound and fail under mutation; store and oversize suites run at default parallelism without recovery; the read-only listing example reports candidates before any o-prime-owned production drop.
 
 <a id="non-goals"></a>
 
@@ -52,9 +52,9 @@ crates/testkit/src/fresh_database.rs mints one database per test (`fs3_<label>_<
 
 | id | claim | state | note | receipt | pressure | proven_by |
 | --- | --- | --- | --- | --- | --- | --- |
-| ac-0001 | Serialised, mutation-checked: a test spawns N=8 FreshDatabase::create concurrently against the test server and asserts, via pg_stat_activity sampled during the run (or an injected counter on the create path), that at most 1 (or the configured N) CREATE DATABASE is in flight at once; with the lock removed the same test observes &gt;1. Mutation stated in the PR body. | [ ] unchecked | — | — | — | — |
-| ac-0002 | Advice is truthful: with the server reachable but refusing (simulate: a URL to a port that accepts then closes, or the real 'in recovery mode' SQLSTATE 57P03), create() panics with the recovery wording and NO compose suggestion; with nothing listening it panics with the 'no server' wording. Both by test. | [ ] unchecked | — | — | — | — |
-| ac-0003 | Sweep matches minted names: a test mints two databases with an old epoch in the name (via database_name_at with a past SystemTime) and one fresh, runs sweep_orphans_at, and asserts exactly the two old ones are swept — for BOTH shapes (fs3_test_… and fs3_&lt;label&gt;_…). Red without the fix. | [ ] unchecked | — | — | — | — |
+| ac-0001 | Serialised, mutation-checked: N=8 real fs3_store::create_database calls against the test server observe at most the configured concurrency after permit acquisition; removing the permit from the store create path observes &gt;N. The store integration helper routes CREATE/DROP through those primitives, testkit has no nested wrapper, and the mutation is stated in the PR body. | [ ] unchecked | — | — | — | — |
+| ac-0002 | Advice is truthful: nothing listening produces no-server/start wording; a bad password produces fix-credentials wording; a listening-then-closing or SQLSTATE 57P03 server produces recovery/wait wording. Compose advice appears only in the no-listener case. All three are proved by test. | [ ] unchecked | — | — | — | — |
+| ac-0003 | Sweep matches both minted name shapes and the age threshold, lists only databases with numbackends=0, rechecks liveness under the mutation permit before each unforced drop, and preserves both a database live during listing and one connected after listing while its connection remains usable. Mutating either candidate liveness or the fail-safe drop path makes the test red. | [ ] unchecked | — | — | — | — |
 | ac-0004 | REAL USAGE: `cargo test -p fs3-daemon --test oversize` at DEFAULT parallelism against the shared compose container completes green and `docker logs flowspace3-db` shows no 'terminating any other active server processes' / recovery lines in that window. Receipt = the test exit and the log grep count (0). | [ ] unchecked | — | — | — | — |
 | ac-0005 | REAL USAGE, PROD SERVER, o-prime-run: the sweep's read-only listing names the current orphans (expected ~55 fs3_&lt;label&gt;_… older than the threshold); after o-prime's GO the sweep drops them and reports the names; `select count(*) from pg_database where datname like 'fs3_%'` drops accordingly. Receipt = both envelopes. | [ ] unchecked | — | — | — | — |
 
