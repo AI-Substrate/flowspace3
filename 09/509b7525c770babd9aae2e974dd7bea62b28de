@@ -1,0 +1,30 @@
+crates/daemon/tests/support/mod.rs
+  h_9e71e8b09f7cf2 110
+crates/store/src/admin.rs
+  h_9e71e8b09f7cf2 46-76,281-287,311,337,612,640,647-711
+crates/store/src/lib.rs
+  h_9e71e8b09f7cf2 41-43
+crates/store/tests/pg_first_light.rs
+  h_9e71e8b09f7cf2 628
+crates/testkit/arch-allowlist.toml
+  h_9e71e8b09f7cf2 125-127,134
+crates/testkit/src/fresh_database.rs
+  h_9e71e8b09f7cf2 36-45,49,121,123,367-381,394-401,438-477,501-502,513-516,569-576,586-587,597-613,626-635
+docs/plans/012-fresh-db-serialise/assets/tasks/phase-1/execution.log.md
+  h_9e71e8b09f7cf2 71-81
+docs/plans/012-fresh-db-serialise/plan.dd.json
+  h_9e71e8b09f7cf2 43,53,58
+docs/plans/012-fresh-db-serialise/plan.dd.md
+  h_9e71e8b09f7cf2 54,56-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "09509b7525c770babd9aae2e974dd7bea62b28de",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
