@@ -2836,3 +2836,9 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     them works. For the pij government: spawn-time subscription after
     the v2 daemon restart. fs3 workaround: every ruling to a post-cutover
     seat is pasted, not sent; delivered_at is the liveness signal.
+    PLAN 015 — t2 DONE (fox, 05:06): fixtures sample.ts/sample.tsx with
+    nested declarations, a namespace, six function-valued bindings, the
+    `const x = 1` / `const cfg = {}` negatives and grep traps; goldens
+    check kind/subkind/address/parent/sibling/span + no-empty-name
+    invariant; 13 run, 11 pass, exactly the 2 t3-mechanism goldens RED
+    (internal_module + value-shape bindings). Allow-list line in. On to t3.
