@@ -2416,3 +2416,18 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     CARGO_TARGET_DIR per repo (+ sccache) and a cargo-sweep reaper on
     worktree teardown — a full workspace build is ~8–17 GB and today
     there were 25 copies.
+    ROW 143 — DISK AGENT FINISHED (pij-partial-coral): 39 dangling
+    non-pgdata volumes removed (listed in the report), builder prune
+    4.97 GB, image prune 9.9 GB — docker accounting 128.7 → 30.3 GB
+    volumes, 13.4 → 3.5 GB images, ~113 GB reclaimed INSIDE the VM; host
+    df rose only +14 GiB because OrbStack's sparse data.img.raw (142 →
+    128 G) returns freed btrfs space to APFS on trim or the next VM
+    restart — the one thing left to watch: if host free does not rise
+    ~99 GB after OrbStack's next restart, the image needs an explicit
+    reclaim. Protected throughout: every *pgdata* volume (prod 9.96 GB,
+    LINKS 1; test). Held back deliberately (stateful, 0.5 GB total):
+    jk-claw_caddy_*, minih-otel_lgtm-data, 028-server-mode_uploads.
+    Three observations captured (du 512-byte blocks; two reapers on the
+    same paths with no claim primitive; btrfs trim lag makes a correct
+    prune look failed) — rescued to scratch/db-cpu-profile/buffer-coral.md.
+    Free space at close: ~714 GB.

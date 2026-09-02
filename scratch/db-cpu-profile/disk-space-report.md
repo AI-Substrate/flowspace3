@@ -165,32 +165,89 @@ Nominal total **38.8 GB**. Several of these raced with o-prime deleting the same
 | 3.7 GB | `~/.cache/uv` (verified gone) | `rm -rf` |
 | 1.34 GB | `~/Library/Developer/Xcode/DerivedData` (verified 0) | `rm -rf …/*` |
 | 1.8 GB | `~/Library/Caches/*.ShipIt` app-updater leftovers | `rm -rf` |
+| 4.3 GB | Homebrew cache (verified 4.0 GB → 42 MB) | `brew cleanup -s --prune=all` |
 
-**~23.3 GB**, all verified by re-measuring the paths. `brew cleanup -s --prune=all`
-(≈4.0 GB in `~/Library/Caches/Homebrew`) was still running when this report was written.
+**~27.6 GB**, every line verified by re-measuring the path afterwards.
 
-Avail at time of writing: **689 GiB** — but that number is dominated by Jordan purging
-personal media, not by my reaping.
+### Step (c) — docker volume / image / build-cache prune, 03:2xZ
+
+Run on o-prime's explicit GO, after OrbStack was already back up (o-prime started it;
+I did not start, stop, or reset OrbStack or any container).
+
+Host `df` Avail: **689 GiB → 703 GiB (+14 GiB)**.
+
+Docker's own accounting, before → after:
+
+| | Before | After | Reclaimed |
+|---|---|---|---|
+| Local Volumes | 56 vols / 128.7 GB | 17 vols / 30.32 GB | **98.4 GB** |
+| Images | 16 / 13.39 GB | 5 / 3.479 GB | **9.91 GB** |
+| Build Cache | 12 / 4.967 GB | 0 / 0 B | **4.97 GB** |
+| **Total inside the VM** | | | **≈113 GB** |
+
+Selection: `docker volume ls -q --filter dangling=true` (i.e. `LINKS 0`, referenced by no
+container), then `grep -v pgdata`, then a manual hold-back of four stateful volumes.
+**39 volumes removed**, all confirmed by docker echoing each name:
+
+```
+chainglass_dot_next                         chainglass_node_modules
+chainglass_dot_next_066-wf-real-agents      chainglass_node_modules_066-wf-real-agents
+chainglass_dot_next_073-file-icons          chainglass_node_modules_073-file-icons
+chainglass_dot_next_074-actaul-real-agents  chainglass_node_modules_074-actaul-real-agents
+chainglass_dot_next_077-random-enhance…-2   chainglass_node_modules_077-random-enhance…-2
+chainglass_dot_next_078-mobile-experience   chainglass_node_modules_078-mobile-experience
+chainglass_dot_next_083-md-editor           chainglass_node_modules_083-md-editor
+chainglass_dot_next_dev                     chainglass_node_modules_dev
+chainglass_dot_next_plan074p4-C5ziHF        chainglass_node_modules_plan074p4-C5ziHF
+dind-storage                                vscode
+dind-var-lib-docker-0br8682vuckpjveetv3l7elusrqg3ve4q3k90fr2jm30p31kfqco
+dind-var-lib-docker-0ioib8rvnb71skvaj9etqjddcpqq8r76sht0c7cfj8e9si04rrv7
+dind-var-lib-docker-1avkd8s7dqlabfhendu2vqmv8v5lof5ho19qig8vnk6jhj57udm8
+dind-var-lib-docker-1q1hicaj6knsdndlrn0utohf3pthei3ttam5umja8pd4hcm9elop
+dind-var-lib-docker-1tv2n4d3t1pvgfd1dmjeiiana30i5ug3ooosedad6o3om2io95c8
+dind-var-lib-docker-04th6hg8s48ula5efcbtu2l9b02f2bau01ko54dp6q5pchrlu8ts
+dind-var-lib-docker-09sn6q98id94ju695q6vd9qre9hno86js5nqdm22613es2o6gl3u
+dind-var-lib-docker-15fngofv6gc8fnfb2ucq8b8tuomui0e41rjbukk9ccve5lpc8hju
+dind-var-lib-docker-09467vebg2b93irfvv2bece7upbq0ul3qongfg4kgsjq0bhv4124
+dind-var-lib-docker-10940c8eqolt8rludqphg50l6q50iojgq57fb3mc840c8p0836q3
+fs3-bin              fs3-cargo-registry     fs3-cargo-target
+fs3-poc-bin          fs3-poc-cargo-registry fs3-poc-cargo-target
+fs3-rustup           fs3-rustup-arm64       fs3-rustup-x64
+```
+
+Then `docker builder prune -af` (4.967 GB) and `docker image prune -af` (9.906 GB).
+
+**Protected — never passed to `rm`.** Every volume whose name contains `pgdata`:
+
+```
+flowspace3_flowspace3-pgdata          ← PROD, 9.96 GB, still LINKS 1
+flowspace3_flowspace3-pgdata-test     ← test DB, still LINKS 1
+fs3-conv-verify_flowspace3-pgdata     fs3-embed-cap-heal_flowspace3-pgdata
+fs3-embed-split_flowspace3-pgdata     fs3-search-admission_flowspace3-pgdata
+fs3-poc-pgdata   028-server-mode_pgdata   subspace-relay_pgdata
+```
+
+**Held back deliberately** — dangling and non-pgdata, but stateful rather than cache, and
+worth only 0.5 GB between them: `jk-claw_caddy_data`, `jk-claw_caddy_config` (Caddy TLS
+material), `minih-otel_lgtm-data` (Grafana/Loki history), `028-server-mode_uploads`.
+
+**The host has not yet seen most of the 113 GB, exactly as predicted.**
+`data.img.raw` went 142 G → **128 G**; the other ~99 GB is now free *inside* the btrfs
+filesystem but not yet returned to APFS. OrbStack reclaims it by trimming the sparse image
+in the background, and materialises the rest on the next VM restart. I did not restart the
+VM — OrbStack is o-prime's to operate. **Expect ~99 GB more host space to appear once
+OrbStack next trims or restarts.**
+
+Avail at time of writing: **703 GiB** — dominated by Jordan purging personal media, not by
+my reaping.
 
 ## What I would delete next, on a GO
 
-1. **Non-pgdata docker volumes — ~100 GB, the single biggest remaining item.**
-   Volumes with `LINKS 0` and no `pgdata` in the name. Largest first:
-   `fs3-cargo-target` 21.18 GB · `dind-var-lib-docker-0ioib8rv…` 12.67 GB ·
-   `vscode` 11.54 GB · `dind-var-lib-docker-09467veb…` 10.38 GB ·
-   `dind-storage` 3.26 GB · `dind-var-lib-docker-1avkd8s7…` 3.25 GB ·
-   `dind-var-lib-docker-1q1hicaj…` 3.25 GB · `fs3-rustup` 3.15 GB ·
-   `chainglass_dot_next_078-mobile-experience` 3.09 GB ·
-   `dind-var-lib-docker-15fngofv…` 2.23 GB · `fs3-rustup-arm64` 1.87 GB ·
-   `fs3-rustup-x64` 1.74 GB · plus ~20 `chainglass_*` node_modules/dot_next at 1.2–1.9 GB.
-   **Excluded unconditionally:** `flowspace3_flowspace3-pgdata` (9.96 GB, PROD),
-   `flowspace3_flowspace3-pgdata-test`, and every `*_flowspace3-pgdata`.
-   Also excluded because `LINKS ≥ 1`: `buildx_buildkit_openflightbag-builder0_state`,
-   `chainglass_dot_next_084-…`, `chainglass_node_modules_084-…`, `fs3-linuxtest-dockerlib`.
-   Plus `docker builder prune` for 4.97 GB of build cache and 9.8 GB of dangling images.
-   **Caveat that matters:** removing volumes frees space *inside* the btrfs image;
-   `data.img.raw` only shrinks on the host if OrbStack trims. Expect the host `df` gain to
-   lag, and possibly to need an OrbStack restart to materialise.
+1. ~~Non-pgdata docker volumes~~ — **DONE**, see Step (c). 113 GB reclaimed inside the VM;
+   ~99 GB of that is still waiting on an OrbStack trim/restart to reach the host `df`.
+   **This is the one thing left worth watching:** if host free space has not risen by
+   ~99 GB after OrbStack's next restart, the sparse image needs an explicit reclaim
+   (OrbStack settings → disk, or `orb` restart) — an o-prime action, not mine.
 2. `~/Library/Developer/CoreSimulator` — 22 GB of simulator runtimes/devices. Regenerable
    but a slow re-download; not touched without a GO.
 3. `~/Library/Caches/Microsoft` 3.9 GB, `~/Library/Caches/com.spotify.client` 1.6 GB,
