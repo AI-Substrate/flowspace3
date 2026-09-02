@@ -3441,3 +3441,12 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     the same port, so its bind succeeds, it publishes its key, and never
     serves the clients that connect to 127.0.0.1. Interim; the red test
     names it.
+171. **A branch's scratch daemon migrated the SHARED test database
+    (:5434/flowspace3_test) to an unmerged migration (0024 from plan 016),
+    so any daemon on main (0023) now refuses to boot against it** — hit
+    by plan 017's t1 (daemon A exited pre-bind; DL-002). O-prime's 016
+    packet said ":5434 + a free port" without "a per-run database". Coder
+    017 switched to a per-run FreshDatabase. Self-heals when #107 merges
+    (main → 0024). Encode: scratch daemons ALWAYS get a per-run database
+    (`harness db scratch`, retro 003 #3); the shared flowspace3_test is
+    an admin/anchor DB, never a daemon target; packet template line.
