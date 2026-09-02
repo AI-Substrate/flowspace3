@@ -1,0 +1,83 @@
+{
+  "dd": {
+    "schema": "pij-team/impl-guide"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "impl-guide \u2014 hidden-dirs",
+        "plan": "docs/plans/016-hidden-dirs/plan.dd.json",
+        "mode": "single-coder",
+        "updated": "2026-09-02"
+      }
+    },
+    {
+      "name": "architecture",
+      "value": "Discovery already supports hidden files (`DiscoverySettings.include_hidden` \u2192 `.hidden(!include_hidden)` on the walker). The gap is plumbing: the setting is built once from the global config at two call sites (roots.rs:178 scan/re-add; watch.rs:275 watcher rescan). This packet adds one persisted boolean per root (worktrees table), carries it from the CLI flag through the /roots body into RootReport and the store, and makes both call sites compute `include_hidden = config.scan.include_hidden || worktree.include_hidden`. The skip ledger gains a `hidden` reason so a default add explains itself. No change to the content-addressed skip, parser versions, embeddings or search."
+    },
+    {
+      "name": "fan_out",
+      "value": {
+        "decision": "NO",
+        "rationale": "One unit, one coder, no PM; o-prime coordinates directly (Jordan, 2026-09-02: dispatch the performance work to agents)."
+      }
+    },
+    {
+      "name": "units",
+      "value": [
+        {
+          "id": "u1",
+          "name": "hidden-dirs",
+          "paths": "crates/store/migrations/0024_*.sql; crates/store/src/worktrees.rs; crates/daemon/src/roots.rs; crates/daemon/src/watch.rs; crates/daemon/src/http.rs; crates/daemon/src/status.rs; crates/cli/src/**; crates/parsers/src/discovery.rs (ledger reason only); crates/daemon/tests/**; crates/store/tests/**; docs/plans/016-hidden-dirs/**",
+          "responsibility": "per-root include_hidden: persisted, threaded into both discovery call sites, surfaced in status/tree and the skip ledger, proven on the test daemon with the pij extensions",
+          "interface": "CLI `add --include-hidden|--no-include-hidden`; POST /roots body gains `include_hidden: Option<bool>`; RootReport + status/tree JSON gain `include_hidden: bool`; store `worktrees.include_hidden`; discovery ledger reason `hidden`. Additive envelope changes only.",
+          "test_strategy": "store round-trip test; daemon fixture-root tests for scan/re-add/watch in both modes with a .git control; ledger + status/tree JSON assertions; one mutation receipt per rule; the test-daemon real-usage transcript",
+          "depends_on": "none",
+          "wave": 1,
+          "note": "Tests ONLY on the dedicated test postmaster :5434 (FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5434/flowspace3_test, container flowspace3-db-test). The real-usage receipt runs a SCRATCH daemon bound to :5434 and a free port \u2014 NEVER :7373 / :5433. Migration 0024 is new (never edit 0023)."
+        }
+      ]
+    },
+    {
+      "name": "isolation",
+      "value": {
+        "mode": "worktree-per-coder",
+        "note": "Your worktree is fs3-hidden-dirs on branch 016-hidden-dirs. No prod. A scratch daemon for the receipt uses the :5434 database and a port you choose; kill it when done."
+      }
+    },
+    {
+      "name": "composition",
+      "value": {
+        "composer": "o-prime",
+        "steps": "None \u2014 single unit. o-prime squash-merges and bounces prod (daemon/store binary changes).",
+        "integration_proof": "the real-usage criteria in the plan, measured on prod after the bounce"
+      }
+    },
+    {
+      "name": "review",
+      "value": {
+        "when": "spawned by o-prime once the PR is up",
+        "inputs": "re-add without the flag must not reset a stored true; both call sites (roots.rs:178 AND watch.rs:275) honour the per-root flag \u2014 a watcher rescan is the one people forget; the .git refusal survives include_hidden; the ledger `hidden` count is real (mutation), not decoration; the receipt counts are reproducible from the PR body on the test daemon",
+        "model_override": "github-copilot/claude-opus-5 (Claude reviews; ruling 2026-09-02)"
+      }
+    },
+    {
+      "name": "risks",
+      "value": [
+        {
+          "id": "risk-1",
+          "text": "the watcher builds its settings once per worktree at startup \u2014 a flag flipped by re-add must reach the running watcher (re-read per rescan or restart the watcher for that root)"
+        },
+        {
+          "id": "risk-2",
+          "text": "hidden directories bring large trees (.venv, .cache) \u2014 the deny list must still prune them under include_hidden; assert node_modules/.venv stay skipped"
+        },
+        {
+          "id": "risk-3",
+          "text": "migration 0024 on prod runs at the next bounce; keep it a single nullable-free ALTER with a default so it is instant"
+        }
+      ]
+    }
+  ]
+}

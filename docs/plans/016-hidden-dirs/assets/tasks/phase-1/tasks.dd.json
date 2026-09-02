@@ -1,0 +1,121 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: per-root hidden-directory opt-in",
+        "slug": "phase-1",
+        "status": "ready",
+        "summary": "One coder, tasks in order, every assertion pinned to a backpressure row."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Work top to bottom; stop-and-ask o-prime on anything outside the fence."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "t1",
+          "title": "Persist the opt-in: migration 0024 (worktrees.include_hidden boolean not null default false), store read/write, /roots body + RootReport field, CLI `add --include-hidden/--no-include-hidden`",
+          "state": "unchecked",
+          "done": "#done_when/t1",
+          "success": "flag round-trips through CLI \u2192 daemon \u2192 store \u2192 envelope; re-add without the flag keeps the stored value",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ]
+        },
+        {
+          "id": "t2",
+          "title": "Thread the flag into discovery at roots.rs:178 and watch.rs:275 (`global OR per-root`); keep the .git refusal",
+          "state": "unchecked",
+          "done": "#done_when/t2",
+          "success": "opted-in root discovers dot-directory files on scan, re-add and watcher rescan; default root does not; .git never",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002"
+          ]
+        },
+        {
+          "id": "t3",
+          "title": "Skip ledger `hidden` reason + status/tree surfacing",
+          "state": "unchecked",
+          "done": "#done_when/t3",
+          "success": "default add of a root with dot-dirs reports hidden=N; status --json and tree show include_hidden per root",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
+        },
+        {
+          "id": "t4",
+          "title": "Regression + gate",
+          "state": "unchecked",
+          "done": "#done_when/t4",
+          "success": "parsers/daemon/store tests green; clippy clean; CI green on the PR sha",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ]
+        },
+        {
+          "id": "t5",
+          "title": "Real-usage receipt on the TEST daemon + PR",
+          "state": "unchecked",
+          "done": "#done_when/t5",
+          "success": "scratch daemon on :5434; pij added with the flag; \u2265500 .pi/ .ts files scanned; named-function search returns the element; default add does not; transcript in the PR body with the exact commands o-prime runs on prod after merge",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {
+        "t1": [
+          {
+            "id": "dw-3101",
+            "assertion": "add with flag \u2192 true; add without \u2192 unchanged; --no-include-hidden \u2192 false; column-write mutation red",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          }
+        ],
+        "t2": [
+          {
+            "id": "dw-3102",
+            "assertion": "fixture root both modes; call-site mutations red",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          }
+        ],
+        "t3": [
+          {
+            "id": "dw-3103",
+            "assertion": "ledger + JSON assertions; reason-removed mutation red",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          }
+        ],
+        "t4": [
+          {
+            "id": "dw-3104",
+            "assertion": "suite green; CI green",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+          }
+        ],
+        "t5": [
+          {
+            "id": "dw-3105",
+            "assertion": "counts + search receipt in the PR body",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+          }
+        ]
+      }
+    }
+  ],
+  "references": []
+}

@@ -1,0 +1,84 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "016 \u2014 hidden directories per root (row 125)",
+        "slug": "hidden-dirs",
+        "ordinal": 16,
+        "status": "ready",
+        "summary": "Make hidden directories indexable per root. Discovery already has `DiscoverySettings.include_hidden` (default false, honoured at discovery.rs:829) but it is only ever built from the GLOBAL daemon config (`state.config.scan`, roots.rs:178 and watch.rs:275), so nothing an operator runs can index a rep",
+        "backpressure": "assets/backpressure.dd.json#rows"
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Make hidden directories indexable per root. Discovery already has `DiscoverySettings.include_hidden` (default false, honoured at discovery.rs:829) but it is only ever built from the GLOBAL daemon config (`state.config.scan`, roots.rs:178 and watch.rs:275), so nothing an operator runs can index a repo whose code lives under a dot-directory. The pij repo keeps 563 of its 667 TypeScript files under `.pi/extensions/` \u2014 invisible to search on prod today (backlog row 125 / row 147 receipt). This packet adds `flowspace3 add --include-hidden`, persists the flag per root, threads it into every scan and watch of that root, surfaces it in status/tree, and proves it by indexing the pij extensions on the test daemon and finding an extension function by search."
+    },
+    {
+      "name": "goals",
+      "value": [
+        "`flowspace3 add <root> --include-hidden` (and the daemon `/roots` body) records the opt-in per root; re-running `add` with the flag on an existing root flips it and enqueues the newly discovered files",
+        "every discovery for that root (initial scan, re-add, the watcher's rescans) uses `include_hidden = global OR per-root`; `.git` stays refused regardless",
+        "`flowspace3 status --json` and `tree` show `include_hidden` per root so an agent can see why a hidden path is or is not indexed",
+        "the skip ledger names hidden-directory skips as a reason (`hidden`) so `add` output explains what a default add left out",
+        "real usage: on the test daemon, `add ~/pi-hacking/pij --include-hidden` indexes the `.pi/extensions/pij/**/*.ts` files and a search for a named extension function returns its element"
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "changing the global default (hidden stays off by default)",
+        "indexing `.git`, `node_modules` or anything the deny list refuses",
+        "a per-directory allow-list; the flag is per root only",
+        "prod re-ingest \u2014 o-prime does that after merge and takes the receipt"
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-0001",
+          "state": "unchecked",
+          "claim": "`flowspace3 add <root> --include-hidden` persists the flag (new nullable-false column on `worktrees`, migration 0024) and the envelope's `data.include_hidden` reflects it; `add` without the flag on an already-opted-in root does NOT silently reset it (explicit `--no-include-hidden` does)"
+        },
+        {
+          "id": "ac-0002",
+          "state": "unchecked",
+          "claim": "the initial scan, a re-add, and the watcher's rescans of an opted-in root all discover files under dot-directories (fixture root with `.hidden/a.ts` and `src/b.ts`): elements exist for both; a non-opted-in root yields only `src/b.ts`; `.git` contents are never discovered in either mode"
+        },
+        {
+          "id": "ac-0003",
+          "state": "unchecked",
+          "claim": "the skip ledger reports `hidden` as a reason with a count for a default add of a root that has dot-directories, and `status --json` / `tree` expose `include_hidden` per root"
+        },
+        {
+          "id": "ac-0004",
+          "state": "unchecked",
+          "claim": "no regression: discovery fixtures, roots and watch tests green; clippy clean; CI gate green on the exact PR sha (or the local exclusive gate)"
+        },
+        {
+          "id": "ac-0005",
+          "state": "unchecked",
+          "claim": "real usage on the TEST daemon (never prod): `flowspace3 add ~/pi-hacking/pij --include-hidden` \u2192 \u2265 500 TypeScript files under `.pi/` scanned; `flowspace3 search \"<first line of a named function in .pi/extensions/pij>\"` returns that function element; the same search on a default add returns nothing from `.pi/`"
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-8c14",
+          "title": "Phase 1: per-root hidden-directory opt-in",
+          "brief": "One coder. Persist first (migration + store + /roots body + CLI flag), then thread the flag into DiscoverySettings at both call sites, then the ledger reason and status/tree surfacing, then fixtures + tests, then the test-daemon real-usage receipt with the pij extensions.",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+        }
+      ]
+    }
+  ],
+  "references": []
+}
