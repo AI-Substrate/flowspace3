@@ -2316,3 +2316,39 @@ DEGRADED-ATTRIBUTION TALLY: EIGHT (plan 012 delta commit f3aec311, 2026-09-02).
     failing run during the pg_hba gap still showed 15 concurrent
     unguarded DDL. Post-fix number next, taken in place (no second
     worktree — no second target dir).
+
+146. **P1 — `ask` has no wall-clock deadline: 180 s unscoped / 100 s
+    repo-scoped with NO envelope, killed by the caller** (alpaca,
+    post-restore dogfood, 2026-09-02). Search on the same words returns
+    in 17 s, so retrieval is not the cost; the loop after retrieval
+    never returns and the iteration/token budgets (8 / 80k) do not bound
+    wall time when each iteration's search takes 15–100 s. A verb with
+    no deadline is a verdict that cannot arrive. ENCODE: `ask` gets a
+    wall-clock budget (config, default ~120 s) and on expiry returns
+    the SAME partial-evidence envelope the iteration limit returns
+    (`FS3-E-QUERY-ASK-DEADLINE`, citations so far, iteration ledger,
+    the knob). Row 71 family. Raw: scratch/dogfood-alpaca-post-restore.md.
+
+147. **P1 — TypeScript symbol extraction produces NOTHING repo-wide:
+    every .ts file is a bare file element with `children: []`** (alpaca,
+    same batch; VERIFIED by o-prime read-only on prod: elements joined
+    to .ts paths — chainglass 11,286 file elements / 0 non-file;
+    harness-engineering 7,237 / 0; pij 5,893 / 0). Consequences, all
+    silent: `tree <file.ts>` → 48 s to return an honest-looking
+    `entries: [], total: 0`; `refs <symbol>` → 0 for symbols with 5+
+    references; and this is the real mechanism behind antelope's
+    finding 1 ("doc-heavy repo: unscoped search never surfaces the
+    source file") — TS code has no element granularity, so document
+    sections dominate the candidate pool. Either the TS grammar is not
+    wired in the parser set, or extraction regressed; either way three
+    TypeScript repos in the index have no code symbols. ENCODE: (a) fix
+    extraction (tree-sitter-typescript exists; the add-language skill is
+    the recipe); (b) `tree`/`refs`/`get` on a file with zero children
+    must say "no symbols extracted for .ts (no parser / parser error)"
+    — row 136(a) generalised; (c) a doctor row: languages present in
+    the index by file count vs languages with a parser. Row 136 family;
+    supersedes it in priority.
+
+    Also from the batch (goods): verify 0.02 s honest negative; `get
+    conv:#t --repo all` reliable throughout the backfill; 101
+    conversations survived the outage intact.
