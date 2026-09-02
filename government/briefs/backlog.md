@@ -3262,3 +3262,11 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     fs3; removing another government's root is not a small repair) —
     noted for weasel. 013 bounce running via receipt-013-bounce.sh (bash,
     exit-code and new-pid asserted this time).
+167. **`bin/daemon-restart` crashed with "Bus error: 10" (rc 138) right
+    AFTER sending Ctrl-C to the prod daemon and before relaunching** (013
+    bounce, 06:55Z) — the script's kill half ran, its launch half never
+    did; prod was down until o-prime relaunched manually. Second
+    daemon-restart failure today (row 164). Encode: the restart must be
+    launch-before-kill safe (start the new binary on a probe port, or
+    trap/guard so a crash after Ctrl-C still relaunches), and o-prime's
+    receipt script must relaunch itself on a non-zero restart.
