@@ -1,0 +1,18 @@
+docs/plans/014-jobs-retention/assets/tasks/phase-1/execution.log.md
+  h_9e71e8b09f7cf2 38
+docs/plans/014-jobs-retention/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 60,63-64,115
+docs/plans/014-jobs-retention/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 41,71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d04ae3e98d8f0f1651c3b7ccbb2a3ea0d7c310e4",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
