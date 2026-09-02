@@ -2681,3 +2681,6 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     "confirmed" path promised a landed `refs/notes/ai` note or a named miss;
     it named the miss — good — but the cause (collector accepted, note never
     written) is the harness prime's to chase. For meadowlark.
+    ROW 124b — **#97 MERGED** c53a911 (docker-compose: db-test on :5434,
+    already live). Row CLOSED. Open PRs now: #98 (014, fix sha c5242ea
+    under delta review, CI in progress); 013's PR pending amistad's gate.
