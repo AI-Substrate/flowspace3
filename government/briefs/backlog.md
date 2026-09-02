@@ -3410,3 +3410,10 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     fixture).
     PIJ-TEAM — **#106 MERGED** a33a8f3 (retro-003 experiences); docs
     worktree removed. Worktrees now: main, governance, 016, 017.
+    PLAN 016 — PR #107 open at f9b6d07 (feat: per-root hidden directory
+    indexing; scratch-daemon receipt on :5434 port 63624, tracked-set
+    bar); review worktree fs3-review-016 detached at that sha with the
+    packet filled (owed lists: watcher path, re-add semantics, deny list
+    under opt-in, ledger count real, status/tree for every root, migration
+    0024 idempotence, receipt reproduction); Claude reviewer HAND-STARTED
+    in window 016-reviewer 07:27 per the spawn-bind rule.
