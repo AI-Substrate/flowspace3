@@ -1,0 +1,137 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: lock + advice + sweep",
+        "slug": "phase-1",
+        "status": "ready",
+        "summary": "One coder, tasks in order, every assertion pinned to a backpressure row."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Work top to bottom; stop-and-ask o-prime on anything outside the fence."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-0101",
+          "title": "Serialise create/drop: a process-wide async lock (tokio::sync::Semaphore(N) or Mutex) around fs3_store::create_database / drop_database calls inside FreshDatabase; N from an env knob defaulting to 1; document why in the module doc",
+          "state": "unchecked",
+          "done": "#done_when/tk-0101",
+          "success": "concurrency test green; red with the lock removed",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ]
+        },
+        {
+          "id": "tk-0102",
+          "title": "Truthful advice: classify the connect error (refused vs closed/recovering \u2014 SQLSTATE 57P03 or an EOF after connect) and word the panic accordingly; drop the compose suggestion when a server is listening",
+          "state": "unchecked",
+          "done": "#done_when/tk-0102",
+          "success": "two advice tests green",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002"
+          ]
+        },
+        {
+          "id": "tk-0103",
+          "title": "Sweep matches minted names: parse both `fs3_test_<epoch>_<hex>` and `fs3_<label>_<epoch>_<hex>`; keep the age threshold; add a list-only mode that returns candidates without dropping",
+          "state": "unchecked",
+          "done": "#done_when/tk-0103",
+          "success": "sweep test green for both shapes; red without",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
+        },
+        {
+          "id": "tk-0104",
+          "title": "Real usage on the shared container: run the oversize suite at default parallelism; grep the postgres log for recovery lines in that window; record counts",
+          "state": "unchecked",
+          "done": "#done_when/tk-0104",
+          "success": "oversize green; 0 recovery lines",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ]
+        },
+        {
+          "id": "tk-0105",
+          "title": "Gate and PR: harness checks green; fix: commits via harness commit; PR into main with the mutation stated",
+          "state": "unchecked",
+          "done": "#done_when/tk-0105",
+          "success": "PR open, CI green",
+          "satisfies": []
+        },
+        {
+          "id": "tk-0106",
+          "title": "With o-prime: sweep list mode against the prod server (read-only) naming the orphans; after GO, the drop; before/after counts into the receipt",
+          "state": "unchecked",
+          "done": "#done_when/tk-0106",
+          "success": "ac-0005 receipt from prod",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {
+        "tk-0101": [
+          {
+            "id": "dw-2001",
+            "assertion": "at most N in flight observed; >1 with the lock removed (mutation in PR)",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          }
+        ],
+        "tk-0102": [
+          {
+            "id": "dw-2002",
+            "assertion": "recovery wording and no-server wording each asserted; no compose text when listening",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          }
+        ],
+        "tk-0103": [
+          {
+            "id": "dw-2003",
+            "assertion": "two old minted names swept, one fresh kept, both shapes",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          }
+        ],
+        "tk-0104": [
+          {
+            "id": "dw-2004",
+            "assertion": "test exit 0 and log grep count 0, with the time window stated",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+          }
+        ],
+        "tk-0105": [
+          {
+            "id": "dw-2005",
+            "assertion": "harness checks green; CI green on the PR head",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0006"
+          }
+        ],
+        "tk-0106": [
+          {
+            "id": "dw-2006",
+            "assertion": "listing + drop + counts, o-prime-run",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+          }
+        ]
+      }
+    }
+  ],
+  "references": []
+}

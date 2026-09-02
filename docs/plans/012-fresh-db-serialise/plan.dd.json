@@ -1,0 +1,82 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "fresh-db-serialise \u2014 a test helper must not be able to take down the shared database",
+        "slug": "fresh-db-serialise",
+        "ordinal": 12,
+        "status": "ready",
+        "summary": "Close backlog row 126 and the sweep half of row 110: FreshDatabase serialises CREATE/DROP DATABASE process-wide, its failure advice distinguishes 'server in recovery' from 'no server', and the orphan sweep matches the names the helper actually mints.",
+        "backpressure": "assets/backpressure.dd.json#rows"
+      }
+    },
+    {
+      "name": "summary",
+      "value": "crates/testkit/src/fresh_database.rs mints one database per test (`fs3_<label>_<epoch>_<32hex>`) via `create_unmigrated_from` \u2192 `fs3_store::create_database`, with no coordination: a 12-test tokio binary issues ~12 concurrent CREATE DATABASE at the shared postmaster that ALSO serves prod :7373. MEASURED 2026-09-02 22:48Z: that crashed the postmaster (`server process exited with exit code 2` \u2192 all backends terminated \u2192 20s crash recovery); the container log shows the same shape three times before (08-27 signal 6 during CREATE DATABASE fs3_migrations_\u2026, 08-28 exit 2 \u00d72). A sibling gate's prod tripwire then read 'absent' (row 124). 43 source files use FreshDatabase; every coder's gate touches it. Second defect in the same file: the failure advice on `create()` says 'Start it with: docker compose up -d' \u2014 wrong when the server is up-and-recovering (the case that actually happens), and on this box `docker compose up` is the known container-name collision (row 110). Third, same file: `sweep_orphans_at` filters on TEST_DATABASE_PREFIX = 'fs3_test_' but `database_name_at` mints 'fs3_<label>_\u2026' \u2014 the sweep never matches a per-run database, which is why 55 orphans re-accumulated in two days (row 110's 'sweep spec written against a prefix the code never mints', now located)."
+    },
+    {
+      "name": "goals",
+      "value": [
+        "No test binary can issue more than ONE CREATE DATABASE or DROP DATABASE at a time against the shared server: a process-wide lock (or a small semaphore, N<=2) inside FreshDatabase, not a test-threads convention.",
+        "The failure advice names the real next action: 'server closed the connection / in recovery \u2014 wait and retry' vs 'no server at <url> \u2014 start one', and never suggests `docker compose up` when a server is listening.",
+        "The orphan sweep matches the names the helper mints (label-prefixed, epoch, 32-hex) with the same age threshold, so per-run leftovers age out; the whole-suite `fs3_test_` shape keeps working.",
+        "Proof by real usage: the oversize suite (12 concurrent tests) runs at default parallelism against the shared container WITHOUT a postmaster restart in the log; and a sweep run against prod's 55 orphans (read-only listing first, then the drop on o-prime's GO) reports what it swept by name."
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "No separate test postmaster (row 124b \u2014 a compose change, its own packet).",
+        "No change to how `harness checks` invokes cargo test.",
+        "No change to migrations or to fs3_store::create_database itself beyond what the lock needs."
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-0001",
+          "state": "unchecked",
+          "claim": "Serialised, mutation-checked: a test spawns N=8 FreshDatabase::create concurrently against the test server and asserts, via pg_stat_activity sampled during the run (or an injected counter on the create path), that at most 1 (or the configured N) CREATE DATABASE is in flight at once; with the lock removed the same test observes >1. Mutation stated in the PR body."
+        },
+        {
+          "id": "ac-0002",
+          "state": "unchecked",
+          "claim": "Advice is truthful: with the server reachable but refusing (simulate: a URL to a port that accepts then closes, or the real 'in recovery mode' SQLSTATE 57P03), create() panics with the recovery wording and NO compose suggestion; with nothing listening it panics with the 'no server' wording. Both by test."
+        },
+        {
+          "id": "ac-0003",
+          "state": "unchecked",
+          "claim": "Sweep matches minted names: a test mints two databases with an old epoch in the name (via database_name_at with a past SystemTime) and one fresh, runs sweep_orphans_at, and asserts exactly the two old ones are swept \u2014 for BOTH shapes (fs3_test_\u2026 and fs3_<label>_\u2026). Red without the fix."
+        },
+        {
+          "id": "ac-0004",
+          "state": "unchecked",
+          "claim": "REAL USAGE: `cargo test -p fs3-daemon --test oversize` at DEFAULT parallelism against the shared compose container completes green and `docker logs flowspace3-db` shows no 'terminating any other active server processes' / recovery lines in that window. Receipt = the test exit and the log grep count (0)."
+        },
+        {
+          "id": "ac-0005",
+          "state": "unchecked",
+          "claim": "REAL USAGE, PROD SERVER, o-prime-run: the sweep's read-only listing names the current orphans (expected ~55 fs3_<label>_\u2026 older than the threshold); after o-prime's GO the sweep drops them and reports the names; `select count(*) from pg_database where datname like 'fs3_%'` drops accordingly. Receipt = both envelopes."
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-c1ee",
+          "title": "Phase 1: lock + advice + sweep",
+          "brief": "Single unit, single coder, no PM: (1) process-wide create/drop serialisation in FreshDatabase; (2) truthful failure advice; (3) sweep matches minted names; (4) tests incl. mutation; (5) PR; (6) real-usage proofs on the shared container and (with o-prime) the prod server's orphans.",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+        }
+      ]
+    }
+  ],
+  "references": []
+}
