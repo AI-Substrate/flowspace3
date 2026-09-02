@@ -3513,7 +3513,9 @@ the actual omission is 379 tracked `.pi` TS files. The count is honest (it match
 pruned dir list exactly) — it just counts a different noun from its neighbours in the
 same table, so an agent reads "14 files skipped". Those dirs are already named with a
 fix in the `pruned` table. **Encode:** either count the files under the pruned dirs, or
-label the row as directories.
+label the row as directories. **Re-measure against `aa1abb6` or later, not `f9b6d07`:** the
+f-16a1 reorder incidentally drops the skipped-hidden count (3 → 1 on the reviewer's fixture),
+so the original numbers no longer describe the code (knobbler, delta verdict).
 
 ## 175 — the manual hidden check narrows the `ignore` filter it replaced
 Review 016 f-16b2. Plan 016 replaced `.hidden(true)` with `.hidden(false)` plus a manual
