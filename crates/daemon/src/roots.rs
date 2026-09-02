@@ -103,6 +103,9 @@ impl ScanProgress {
 pub struct RootRequest {
     /// The directory to register or re-scan.
     pub path: String,
+    /// Explicit per-root hidden-directory choice; absent preserves stored state.
+    #[serde(default)]
+    pub include_hidden: Option<bool>,
 }
 
 /// What one `scan_file` job needs to do its work.
@@ -147,8 +150,19 @@ impl ScanFileJob {
 /// # Errors
 /// Discovery failures (an unreadable root, an uncompilable glob), git failures,
 /// and store failures, each mapped to its own catalog code by the caller.
-pub async fn add_root(state: &AppState, root: &Path) -> Result<RootReport, RootError> {
-    scan_root(state, root, "added", fs3_store::JOB_PRIORITY_DEFAULT).await
+pub async fn add_root(
+    state: &AppState,
+    root: &Path,
+    include_hidden: Option<bool>,
+) -> Result<RootReport, RootError> {
+    scan_root(
+        state,
+        root,
+        include_hidden,
+        "added",
+        fs3_store::JOB_PRIORITY_DEFAULT,
+    )
+    .await
 }
 
 /// Register a newly discovered root and promote its initial scan work.
@@ -160,12 +174,13 @@ pub(crate) async fn add_root_with_priority(
     root: &Path,
     priority: fs3_store::JobPriority,
 ) -> Result<RootReport, RootError> {
-    scan_root(state, root, "added", priority).await
+    scan_root(state, root, None, "added", priority).await
 }
 
 async fn scan_root(
     state: &AppState,
     root: &Path,
+    requested_include_hidden: Option<bool>,
     change: &'static str,
     priority: fs3_store::JobPriority,
 ) -> Result<RootReport, RootError> {
@@ -173,18 +188,24 @@ async fn scan_root(
     let identity = fs3_git::repo_identity(&root)?;
     let root_path = root.to_string_lossy().to_string();
     let identity_key = identity.key().to_string();
+    let existing = fs3_store::find_worktree(&state.db, &root_path).await?;
+    let root_include_hidden = requested_include_hidden
+        .or_else(|| existing.as_ref().map(|worktree| worktree.include_hidden))
+        .unwrap_or(false);
 
     // Discovery decides what is worth indexing; git decides what the bytes are.
-    let settings = DiscoverySettings::from(&state.config.scan);
+    let mut settings = DiscoverySettings::from(&state.config.scan);
+    settings.include_hidden |= root_include_hidden;
     let discovery = discovery::discover(&root, &settings)?;
     let mut progress = ScanProgress::new(identity_key.clone(), root_path.clone());
 
-    let is_new_worktree = fs3_store::find_worktree(&state.db, &root_path)
-        .await?
-        .is_none();
+    let is_new_worktree = existing.is_none();
     let worktree_id =
         fs3_store::register_worktree(&state.db, &identity, &root_path, ref_name(&root).as_deref())
             .await?;
+    if let Some(include_hidden) = requested_include_hidden {
+        fs3_store::set_worktree_include_hidden(&state.db, worktree_id, include_hidden).await?;
+    }
 
     // Hash every accepted file, then write the map in one call. Hashing first
     // means a file that vanishes mid-walk is simply absent from the map rather
@@ -257,6 +278,7 @@ async fn scan_root(
         },
         root_path: root_path.clone(),
         worktree_id,
+        include_hidden: root_include_hidden,
         files: files.len(),
         skipped: skip_counts(&discovery),
         pruned: pruned_rows(&discovery),
@@ -289,7 +311,14 @@ pub async fn rescan_root(state: &AppState, root: &Path) -> Result<RootReport, Ro
     if fs3_store::find_worktree(&state.db, &path).await?.is_none() {
         return Err(RootError::NotRegistered(path));
     }
-    scan_root(state, &root, "rescanned", fs3_store::JOB_PRIORITY_DEFAULT).await
+    scan_root(
+        state,
+        &root,
+        None,
+        "rescanned",
+        fs3_store::JOB_PRIORITY_DEFAULT,
+    )
+    .await
 }
 
 /// The path→blob map the store already holds for this worktree.
@@ -330,6 +359,11 @@ fn skip_counts(discovery: &discovery::Discovery) -> Vec<SkipCount> {
     for skipped in &discovery.skipped {
         *counts.entry(skipped.reason.as_str()).or_default() += 1;
     }
+    for pruned in &discovery.pruned {
+        if pruned.reason == discovery::PruneReason::Hidden {
+            *counts.entry(pruned.reason.as_str()).or_default() += 1;
+        }
+    }
     counts
         .into_iter()
         .map(|(reason, count)| SkipCount {
@@ -353,7 +387,7 @@ fn pruned_rows(discovery: &discovery::Discovery) -> Vec<PrunedDirectoryRow> {
         .map(|pruned| PrunedDirectoryRow {
             path: pruned.path.clone(),
             reason: pruned.reason.as_str().to_string(),
-            fix: "index it anyway with `[scan] standard_ignores = false`".to_string(),
+            fix: pruned.reason.fix().to_string(),
         })
         .collect()
 }

@@ -329,6 +329,199 @@ async fn status_retention_is_receipted_and_history_is_explicit() {
     stack.destroy().await;
 }
 
+/// The add request is tri-state: absence preserves the worktree policy while
+/// explicit true and false both persist and are returned in the envelope.
+#[tokio::test]
+async fn add_hidden_policy_round_trips_and_absence_does_not_reset_it() {
+    let fixture = Fixture::create("hidden-policy");
+    let stack = Stack::create("hidden-policy").await;
+    let path = fixture.path().to_string_lossy().to_string();
+
+    let enabled = call(
+        &stack.state,
+        "POST",
+        "/roots",
+        Some(serde_json::json!({ "path": path, "include_hidden": true })),
+    )
+    .await;
+    assert!(
+        enabled.ok,
+        "enabling hidden discovery failed: {:?}",
+        enabled.error
+    );
+    assert_eq!(enabled.data.as_ref().unwrap()["include_hidden"], true);
+    let stored_path = enabled.data.as_ref().unwrap()["root_path"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let preserved = call(
+        &stack.state,
+        "POST",
+        "/roots",
+        Some(serde_json::json!({ "path": path })),
+    )
+    .await;
+    assert!(preserved.ok, "re-add failed: {:?}", preserved.error);
+    assert_eq!(preserved.data.as_ref().unwrap()["include_hidden"], true);
+    assert!(
+        fs3_store::find_worktree(&stack.state.db, &stored_path)
+            .await
+            .unwrap()
+            .unwrap()
+            .include_hidden
+    );
+
+    let disabled = call(
+        &stack.state,
+        "POST",
+        "/roots",
+        Some(serde_json::json!({ "path": path, "include_hidden": false })),
+    )
+    .await;
+    assert!(
+        disabled.ok,
+        "disabling hidden discovery failed: {:?}",
+        disabled.error
+    );
+    assert_eq!(disabled.data.as_ref().unwrap()["include_hidden"], false);
+    assert!(
+        !fs3_store::find_worktree(&stack.state.db, &stored_path)
+            .await
+            .unwrap()
+            .unwrap()
+            .include_hidden
+    );
+
+    stack.destroy().await;
+}
+
+/// A per-root opt-in opens dot-directories without weakening the permanent
+/// directory deny list.
+#[tokio::test]
+async fn hidden_files_are_discovered_only_for_an_opted_in_root() {
+    let root = support::temp_dir("hidden-discovery");
+    Fixture::write(
+        &root,
+        "src/b.ts",
+        "export function visible() { return 1; }\n",
+    );
+    Fixture::write(
+        &root,
+        ".hidden/a.ts",
+        "export function hidden() { return 2; }\n",
+    );
+    Fixture::write(
+        &root,
+        ".git/never.ts",
+        "export function gitInternal() { return 3; }\n",
+    );
+    Fixture::write(
+        &root,
+        "node_modules/pkg/never.ts",
+        "export function dependency() { return 4; }\n",
+    );
+    Fixture::write(
+        &root,
+        ".venv/site/never.py",
+        "def dependency():\n    return 5\n",
+    );
+    Fixture::write(
+        &root,
+        ".cache/warm.ts",
+        "export function cached() { return 6; }\n",
+    );
+    Fixture::write(
+        &root,
+        ".next/server.ts",
+        "export function generated() { return 7; }\n",
+    );
+    let stack = Stack::create("hidden-discovery").await;
+    let path = root.to_string_lossy().to_string();
+
+    let default = call(
+        &stack.state,
+        "POST",
+        "/roots",
+        Some(serde_json::json!({ "path": path })),
+    )
+    .await;
+    assert!(default.ok, "default add failed: {:?}", default.error);
+    let default_data = default.data.as_ref().unwrap();
+    assert_eq!(default_data["include_hidden"], false);
+    assert_eq!(
+        default_data["files"], 1,
+        "default mode accepts only src/b.ts"
+    );
+    let hidden = default_data["skipped"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["reason"] == "hidden")
+        .expect("default discovery must explain hidden-directory pruning");
+    assert_eq!(hidden["count"], 1, "only plain .hidden uses hidden policy");
+    for denied in [".cache", ".next", ".venv"] {
+        let pruned = default_data["pruned"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["path"] == denied)
+            .unwrap_or_else(|| panic!("{denied} was not named: {default_data:#}"));
+        assert_eq!(pruned["reason"], "standard-ignore");
+        assert_eq!(
+            pruned["fix"],
+            "index it anyway with `[scan] standard_ignores = false`"
+        );
+    }
+
+    let enabled = call(
+        &stack.state,
+        "POST",
+        "/roots",
+        Some(serde_json::json!({ "path": path, "include_hidden": true })),
+    )
+    .await;
+    assert!(enabled.ok, "opted-in add failed: {:?}", enabled.error);
+    let enabled_data = enabled.data.as_ref().unwrap();
+    assert_eq!(enabled_data["include_hidden"], true);
+    assert_eq!(
+        enabled_data["files"], 2,
+        "hidden opt-in adds .hidden/a.ts but never .git, node_modules, or .venv"
+    );
+    for denied in [".cache", ".next", ".venv"] {
+        let pruned = enabled_data["pruned"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["path"] == denied)
+            .unwrap_or_else(|| panic!("{denied} was not named: {enabled_data:#}"));
+        assert_eq!(pruned["reason"], "standard-ignore");
+        assert_eq!(
+            pruned["fix"],
+            "index it anyway with `[scan] standard_ignores = false`"
+        );
+    }
+
+    let status = call(&stack.state, "GET", "/status", None).await;
+    let roots = status.data.as_ref().unwrap()["roots"].as_array().unwrap();
+    let status_root = roots
+        .iter()
+        .find(|root| root["root_path"] == enabled_data["root_path"])
+        .expect("the opted-in root is visible in status");
+    assert_eq!(status_root["include_hidden"], true);
+
+    let worktree_id = enabled_data["worktree_id"].as_i64().unwrap();
+    let mut paths: Vec<_> = fs3_store::worktree_file_map(&stack.state.db, worktree_id)
+        .await
+        .unwrap()
+        .into_keys()
+        .collect();
+    paths.sort();
+    assert_eq!(paths, [".hidden/a.ts", "src/b.ts"]);
+
+    stack.destroy().await;
+    std::fs::remove_dir_all(root).unwrap();
+}
 // ---------------------------------------------------------------------------
 // ac-0001 + ac-0002 + ac-0003: the whole path
 

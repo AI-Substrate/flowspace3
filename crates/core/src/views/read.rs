@@ -122,6 +122,9 @@ pub struct TreeResult {
     pub target: String,
     /// The repository browsed, when the target named or implied one.
     pub repo: Option<String>,
+    /// Hidden-directory policy when this tree resolves to one concrete root.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub include_hidden: Option<bool>,
     /// `index`, `repository`, `directory` or `file` — what the target turned
     /// out to be.
     pub kind: String,

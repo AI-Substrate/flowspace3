@@ -59,6 +59,12 @@ enum Command {
     Add {
         /// The directory to index.
         path: PathBuf,
+        /// Include dot-prefixed directories for this root.
+        #[arg(long, conflicts_with = "no_include_hidden")]
+        include_hidden: bool,
+        /// Disable dot-prefixed directories for this root.
+        #[arg(long, conflicts_with = "include_hidden")]
+        no_include_hidden: bool,
         /// Override the daemon URL from configuration.
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
@@ -575,14 +581,31 @@ fn boot() -> Result<Command> {
 async fn run(command: Command) -> Result<ExitCode> {
     match command {
         Command::Ping { daemon_url: url } => ping(url).await,
-        Command::Add { path, daemon_url } => {
+        Command::Add {
+            path,
+            include_hidden,
+            no_include_hidden,
+            daemon_url,
+        } => {
             let client = client_for(daemon_url)?;
             let path = display(&path);
+            let include_hidden = if include_hidden {
+                Some(true)
+            } else if no_include_hidden {
+                Some(false)
+            } else {
+                None
+            };
             let envelope = match output_mode() {
                 OutputMode::Human => {
-                    render::progress::while_pending(&client, &path, client.add(&path)).await
+                    render::progress::while_pending(
+                        &client,
+                        &path,
+                        client.add(&path, include_hidden),
+                    )
+                    .await
                 }
-                OutputMode::Json => client.add(&path).await,
+                OutputMode::Json => client.add(&path, include_hidden).await,
             };
             emit(&envelope)
         }
@@ -1106,6 +1129,52 @@ mod tests {
         assert!(
             Cli::try_parse_from(["flowspace3", "status", "--history", "--watch"]).is_err(),
             "history is a bounded snapshot, never a repeated full-table watch"
+        );
+    }
+
+    #[test]
+    fn add_hidden_flags_are_explicit_and_mutually_exclusive() {
+        let plain = Cli::try_parse_from(["flowspace3", "add", "/srv/api"]).unwrap();
+        let Command::Add {
+            include_hidden,
+            no_include_hidden,
+            ..
+        } = plain.command
+        else {
+            panic!("add command");
+        };
+        assert!(!include_hidden && !no_include_hidden);
+
+        let included =
+            Cli::try_parse_from(["flowspace3", "add", "/srv/api", "--include-hidden"]).unwrap();
+        assert!(matches!(
+            included.command,
+            Command::Add {
+                include_hidden: true,
+                no_include_hidden: false,
+                ..
+            }
+        ));
+
+        let excluded =
+            Cli::try_parse_from(["flowspace3", "add", "/srv/api", "--no-include-hidden"]).unwrap();
+        assert!(matches!(
+            excluded.command,
+            Command::Add {
+                include_hidden: false,
+                no_include_hidden: true,
+                ..
+            }
+        ));
+        assert!(
+            Cli::try_parse_from([
+                "flowspace3",
+                "add",
+                "/srv/api",
+                "--include-hidden",
+                "--no-include-hidden",
+            ])
+            .is_err()
         );
     }
 

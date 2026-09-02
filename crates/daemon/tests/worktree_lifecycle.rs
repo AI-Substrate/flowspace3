@@ -78,7 +78,7 @@ async fn linked_worktrees_reuse_current_blobs_and_scan_only_divergence() {
     );
     std::fs::write(divergent.join("lib.rs"), "pub fn divergent_version() {}\n").unwrap();
 
-    roots::add_root(&state, &main)
+    roots::add_root(&state, &main, None)
         .await
         .expect("main root registers");
     runner::drain(&state, 2).await;

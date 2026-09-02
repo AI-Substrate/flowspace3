@@ -134,6 +134,7 @@ mod tests {
             identity_source: "remote".to_string(),
             root_path: "/srv/api".to_string(),
             worktree_id: 1,
+            include_hidden: false,
             files: 0,
             skipped: Vec::new(),
             pruned: Vec::new(),

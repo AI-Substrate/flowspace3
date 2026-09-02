@@ -273,6 +273,7 @@ pub async fn tree(
         .as_deref()
         .map(str::trim)
         .filter(|value| !value.is_empty());
+    let include_hidden = tree_hidden_policy(state, raw, scope).await?;
 
     let (repo, prefix) = match raw {
         None => (scope.repo.clone(), String::new()),
@@ -329,6 +330,7 @@ pub async fn tree(
     Ok(TreeResult {
         target: target_label(repo.as_deref(), &prefix),
         repo,
+        include_hidden,
         kind: if prefix.is_empty() {
             "repository".to_string()
         } else {
@@ -339,6 +341,27 @@ pub async fn tree(
         entries,
         inconsistencies: Vec::new(),
     })
+}
+
+async fn tree_hidden_policy(
+    state: &AppState,
+    raw: Option<&str>,
+    scope: &Scope,
+) -> Result<Option<bool>, Failure> {
+    let path = match raw {
+        None => scope.worktree.as_deref(),
+        Some(target) if target.starts_with('/') || target.starts_with("\\\\") => {
+            Some(target.trim_end_matches('/'))
+        }
+        Some(_) => None,
+    };
+    let Some(path) = path else {
+        return Ok(None);
+    };
+    Ok(fs3_store::worktree_containing(&state.db, path)
+        .await
+        .map_err(fail)?
+        .map(|worktree| worktree.include_hidden))
 }
 
 /// Every repository in the index, with how much of each is indexed.
@@ -370,6 +393,7 @@ async fn index_tree(state: &AppState, limit: i64) -> Result<TreeResult, Failure>
     Ok(TreeResult {
         target: "index".to_string(),
         repo: None,
+        include_hidden: None,
         kind: "index".to_string(),
         total,
         showing: entries.len(),
@@ -387,6 +411,10 @@ async fn file_tree(
     scope: &Scope,
 ) -> Result<TreeResult, Failure> {
     let file = choose_file(files, path, scope)?;
+    let include_hidden = fs3_store::find_worktree(&state.db, &file.root_path)
+        .await
+        .map_err(fail)?
+        .map(|worktree| worktree.include_hidden);
     let (_, root, inconsistencies) = parse_tree(state, &file).await?;
 
     let entries: Vec<TreeEntry> = root
@@ -399,6 +427,7 @@ async fn file_tree(
     Ok(TreeResult {
         target: fs3_core::element_address(Some(&file.identity), path),
         repo: Some(file.identity),
+        include_hidden,
         kind: "file".to_string(),
         total,
         showing: entries.len(),
@@ -1023,6 +1052,7 @@ async fn conversation_outline(
     Ok(TreeResult {
         target: summary.title.clone().unwrap_or_else(|| guid.address()),
         repo: summary.repo_identity,
+        include_hidden: None,
         kind: "conversation".to_string(),
         total: summary.turns,
         showing: rows.len(),

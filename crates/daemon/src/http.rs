@@ -513,7 +513,13 @@ async fn add_root(
     if let Err(failure) = crate::schema::guard(&state.db).await {
         return failed(&state, COMMAND, failure).await;
     }
-    match crate::roots::add_root(&state, std::path::Path::new(&request.path)).await {
+    match crate::roots::add_root(
+        &state,
+        std::path::Path::new(&request.path),
+        request.include_hidden,
+    )
+    .await
+    {
         Ok(report) => {
             let next = next_after_scan(&report);
             ok(&state, COMMAND, report)

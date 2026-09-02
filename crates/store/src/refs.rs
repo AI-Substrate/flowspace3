@@ -38,6 +38,8 @@ pub struct RegisteredWorktree {
     pub root_path: String,
     /// Branch or ref when known.
     pub ref_name: Option<String>,
+    /// Whether discovery includes dot-prefixed directories for this root.
+    pub include_hidden: bool,
     /// How many files this worktree currently maps.
     pub file_count: i64,
 }
@@ -100,6 +102,42 @@ pub async fn register_worktree(
 
     tx.commit().await?;
     Ok(worktree_id)
+}
+
+/// Set whether discovery includes dot-prefixed directories for a worktree.
+///
+/// Re-registration deliberately does not call this: an absent `add` flag must
+/// preserve the operator's stored choice rather than silently resetting it.
+///
+/// # Errors
+/// [`StoreError::Query`] when the update fails.
+pub async fn set_worktree_include_hidden(
+    pool: &PgPool,
+    worktree_id: i64,
+    include_hidden: bool,
+) -> Result<(), StoreError> {
+    sqlx::query("UPDATE worktrees SET include_hidden = $2 WHERE id = $1")
+        .bind(worktree_id)
+        .bind(include_hidden)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+/// Read one worktree's hidden-directory policy without loading every root.
+///
+/// # Errors
+/// [`StoreError::Query`] when the read fails.
+pub async fn worktree_include_hidden(
+    pool: &PgPool,
+    worktree_id: i64,
+) -> Result<Option<bool>, StoreError> {
+    Ok(
+        sqlx::query_scalar("SELECT include_hidden FROM worktrees WHERE id = $1")
+            .bind(worktree_id)
+            .fetch_optional(pool)
+            .await?,
+    )
 }
 
 /// Replace a worktree's path→blob map with `files`, returning how many paths
@@ -231,7 +269,7 @@ pub async fn worktree_paths_for_blob(
 /// [`StoreError::Query`] when the read fails.
 pub async fn list_worktrees(pool: &PgPool) -> Result<Vec<RegisteredWorktree>, StoreError> {
     let rows = sqlx::query(
-        "SELECT w.id, r.identity, w.root_path, w.ref_name,
+        "SELECT w.id, r.identity, w.root_path, w.ref_name, w.include_hidden,
                 (SELECT count(*) FROM worktree_files f WHERE f.worktree_id = w.id) AS file_count
            FROM worktrees w
            JOIN repos r ON r.id = w.repo_id
@@ -247,6 +285,7 @@ pub async fn list_worktrees(pool: &PgPool) -> Result<Vec<RegisteredWorktree>, St
                 identity: row.try_get("identity")?,
                 root_path: row.try_get("root_path")?,
                 ref_name: row.try_get("ref_name")?,
+                include_hidden: row.try_get("include_hidden")?,
                 file_count: row.try_get("file_count")?,
             })
         })
