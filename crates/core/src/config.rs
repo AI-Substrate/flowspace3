@@ -341,6 +341,11 @@ impl Config {
 pub struct DaemonConfig {
     /// Base URL the daemon serves and the CLI calls.
     pub url: String,
+    /// Filesystem root allowed to own the shipped production database.
+    ///
+    /// A daemon started outside this tree must opt in explicitly with
+    /// `FS3_PROD_OWNER=1`; `None` designates no working directory.
+    pub owner_root: Option<std::path::PathBuf>,
     /// Directory the daemon writes its rolling log files into.
     ///
     /// A leading `~/` means the user's home. The default follows the same
@@ -445,6 +450,7 @@ impl Default for DaemonConfig {
     fn default() -> Self {
         Self {
             url: Self::DEFAULT_URL.to_string(),
+            owner_root: None,
             log_dir: Self::DEFAULT_LOG_DIR.to_string(),
             log_level: Self::DEFAULT_LOG_LEVEL.to_string(),
             log_max_bytes: Self::DEFAULT_LOG_MAX_BYTES,
@@ -2266,6 +2272,22 @@ summary_min_lines = 0
         let effective = resolved("[daemon]\nurl = \"http://127.0.0.1:9999\"\n", &[]).unwrap();
         assert_eq!(effective.config.daemon.url, "http://127.0.0.1:9999");
         assert_eq!(effective.layer("daemon"), Layer::File);
+    }
+
+    #[test]
+    fn daemon_owner_root_is_configurable_from_file_and_environment() {
+        let from_file = resolved("[daemon]\nowner_root = \"/srv/flowspace3\"\n", &[]).unwrap();
+        assert_eq!(
+            from_file.config.daemon.owner_root.as_deref(),
+            Some(std::path::Path::new("/srv/flowspace3"))
+        );
+
+        let from_env = resolved("", &[("FS3_DAEMON__OWNER_ROOT", "/srv/flowspace3-env")]).unwrap();
+        assert_eq!(
+            from_env.config.daemon.owner_root.as_deref(),
+            Some(std::path::Path::new("/srv/flowspace3-env"))
+        );
+        assert_eq!(from_env.layer("daemon"), Layer::Env);
     }
 
     /// Every log knob has to be reachable from BOTH layers: the file for a

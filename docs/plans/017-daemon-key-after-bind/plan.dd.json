@@ -1,0 +1,87 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "017 — a losing daemon never touches the shared key (rows 165, 169)",
+        "slug": "daemon-key-after-bind",
+        "ordinal": 17,
+        "status": "ready",
+        "summary": "Twice today a second `flowspace3 daemon` started by another government's seat with the DEFAULT config (prod database :5433, port 7373) damaged prod: once by squatting the port the second prod stepped aside (row 165), once — at 16:54:32 while prod pid 1548 was listening — by rewriting ~/.config/flows",
+        "backpressure": "assets/backpressure.dd.json#rows"
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Twice today a second `flowspace3 daemon` started by another government's seat with the DEFAULT config (prod database :5433, port 7373) damaged prod: once by squatting the port the second prod stepped aside (row 165), once — at 16:54:32 while prod pid 1548 was listening — by rewriting ~/.config/flowspace3/daemon.key so every client got FS3-E-DAEMON-UNAUTHORIZED (row 169), with a 401 hint that pointed at the very key that could not work. boot.rs already binds before `auth.publish()`, so the rewrite path is not yet understood (candidates: the `--json`/sandbox boot path staging into the global config dir; a second bind succeeding on a different address family; a staged temp file promoted on error). This packet reproduces the clobber first, then makes the daemon refuse to touch the shared key unless it owns the configured port, makes the 401 hint honest, and adds a prod-database owner designation so a foreign cwd cannot attach to prod by accident."
+    },
+    {
+      "name": "goals",
+      "value": [
+        "reproduce: with a first daemon listening on the configured port, a second daemon started with the same config (and with `--json`) exits non-zero WITHOUT modifying daemon.key (mtime, content) — the test pins the exact path that wrote the key today",
+        "the daemon publishes its key ONLY after its listener is bound on the configured address, on every boot path (normal, --json, sandbox); a bind failure leaves no staged temp file behind",
+        "the 401 (FS3-E-DAEMON-UNAUTHORIZED) hint notices when daemon.key is NEWER than the listening daemon's boot and says 'another flowspace3 daemon overwrote the shared key; restart the daemon that owns :7373' instead of advising the stale key",
+        "a daemon started in a cwd outside the designated prod root refuses the prod database unless FS3_PROD_OWNER=1 (or the config names the owner path); the refusal names the env/config to set and the :5434 test URL to use instead",
+        "real usage: on the TEST daemon setup (:5434 + a free port), start a first daemon, then a second with the same config from a foreign cwd: the second refuses, the first's clients keep working, the key file is untouched"
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "per-instance keys keyed by port (bigger change; consider after this lands)",
+        "changing the key format or the client auth flow",
+        "protecting against a daemon started WITH the designation on purpose"
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-0001",
+          "state": "checked",
+          "claim": "a test starts daemon A on an ephemeral port with config dir X, then daemon B with the same config dir and port: B exits non-zero, daemon.key's bytes and mtime are unchanged, no temp file remains in X, and A's clients still authenticate; the same holds for B started with `--json`",
+          "receipt": "boot_contract A/B tests green for normal + --json: bind loser exits nonzero, key bytes/mtime unchanged, config dir has no staging residue, daemon A remains authorized; canonicalization mutation red."
+        },
+        {
+          "id": "ac-0002",
+          "state": "checked",
+          "claim": "on every boot path the key publish is ordered after a successful bind on the configured address family; a failed bind returns the bind error and never calls publish (unit test on the boot sequence with a pre-bound port)",
+          "receipt": "StagedAuth::publish requires private-field BoundListener proof; normal and sandbox paths pass actual bound listener. fs3-daemon lib 175/175; dual-family guard mutation red."
+        },
+        {
+          "id": "ac-0003",
+          "state": "checked",
+          "claim": "when daemon.key's mtime is newer than the listening daemon's boot time, the CLI's 401 rendering names the shared-key overwrite and the restart-the-owner fix (test with a rewritten key file against a live daemon)",
+          "receipt": "Live daemon key rewrite + real CLI ping names shared overwrite and restart owner; key_newer_than_daemon true only for strict newer mtime, unchanged key false; reversed comparison mutation red."
+        },
+        {
+          "id": "ac-0004",
+          "state": "checked",
+          "claim": "a daemon whose cwd is outside the configured prod root refuses the prod database URL with an error naming FS3_PROD_OWNER and the test URL; setting FS3_PROD_OWNER=1 (or cwd inside the root) proceeds; no regression in `harness checks` / CI on the exact PR sha",
+          "receipt": "Owner config and boot guard cases green; Config::default owner_root=None + foreign cwd refuses. Exact fail-open mutation is_some_and->map_or(true) RED, restored GREEN. Local harness checks and PR #108 final-head CI green before review fix; new-head CI required."
+        },
+        {
+          "id": "ac-0005",
+          "state": "checked",
+          "claim": "real usage transcript on the TEST setup (:5434 + free port, FS3_CONFIG_DIR scratch): first daemon healthy → second daemon from a foreign cwd refuses → first daemon's `flowspace3 ping` still authorized → key mtime unchanged; the exact prod commands o-prime runs after merge are written in the PR body",
+          "receipt": "TEST runtime transcript: scratch config, per-run :5434 database, port 63359; A healthy, B foreign cwd exit 1, A still authorized, key mtime/hash unchanged, no temp residue, DB dropped. PR #108 body carries exact production bounce sequence."
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-6cf0",
+          "title": "Phase 1: reproduce, then refuse",
+          "brief": "One coder. t1 reproduce the clobber (two daemons, one config) and pin the writing path; t2 publish-after-bind on every path + no leftover staging; t3 honest 401 hint; t4 prod-owner designation; t5 regression + gate; t6 real-usage transcript + PR.",
+          "state": "checked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+        }
+      ]
+    }
+  ]
+}

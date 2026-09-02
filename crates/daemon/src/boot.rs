@@ -33,6 +33,12 @@ use crate::{config, http, logging};
 /// The `Notify` nudge handle in the doctrine lands only if that ever stops
 /// being true.
 const RECONCILE_EVERY_SECONDS: u64 = 5;
+/// Explicit escape hatch for an operator intentionally owning production.
+const PROD_OWNER_ENV: &str = "FS3_PROD_OWNER";
+
+/// The safe database named in every production-owner refusal.
+const TEST_DATABASE_URL_GUIDANCE: &str =
+    "postgres://flowspace3:flowspace3@127.0.0.1:5434/flowspace3_test";
 
 /// How much missing-vector backlog one boot re-queues.
 ///
@@ -68,6 +74,14 @@ pub fn run() -> Result<()> {
         .with_context(|| format!("loading configuration from {}", directory.display()))?;
 
     refuse_a_defaulted_store_under_test(&configuration)?;
+
+    let current_dir = std::env::current_dir().context("reading the daemon working directory")?;
+    let explicitly_designated = std::env::var_os(PROD_OWNER_ENV).is_some_and(|value| value == "1");
+    refuse_undesignated_production_store(
+        &configuration.config,
+        &current_dir,
+        explicitly_designated,
+    )?;
 
     // FIRST use of the configuration, before anything is logged: the log file's
     // path, its caps and its filter are all configuration, so a subscriber
@@ -387,6 +401,52 @@ fn refuse_a_defaulted_store_under_test(configuration: &fs3_core::Effective) -> R
     )
 }
 
+/// Refuse the shipped production database unless this process is its declared owner.
+///
+/// Snap-in recipe: set `[daemon].owner_root` to the absolute checkout root used
+/// by the long-running daemon. A deliberate launch elsewhere must set
+/// `FS3_PROD_OWNER=1`; tests use `FS3_TEST_DATABASE_URL` on port 5434 instead.
+fn refuse_undesignated_production_store(
+    configuration: &Config,
+    current_dir: &std::path::Path,
+    explicitly_designated: bool,
+) -> Result<()> {
+    if configuration.database.url.trim() != fs3_core::DatabaseConfig::DEFAULT_URL
+        || explicitly_designated
+    {
+        return Ok(());
+    }
+
+    let designated_by_root = configuration
+        .daemon
+        .owner_root
+        .as_deref()
+        .is_some_and(|root| path_is_within(current_dir, root));
+    if designated_by_root {
+        return Ok(());
+    }
+
+    let configured_root = configuration.daemon.owner_root.as_deref().map_or_else(
+        || "<not configured>".to_string(),
+        |root| root.display().to_string(),
+    );
+    bail!(
+        "FS3-E-PROD-NOT-DESIGNATED: refusing to boot against the production database at \
+         127.0.0.1:5433/flowspace3 from cwd {}. This process is not designated to own it \
+         (`[daemon].owner_root` is {}). Start the long-running daemon from inside that root, \
+         or set {PROD_OWNER_ENV}=1 for an intentional production launch. Tests and scratch \
+         daemons must use FS3_TEST_DATABASE_URL={TEST_DATABASE_URL_GUIDANCE} instead.",
+        current_dir.display(),
+        configured_root,
+    )
+}
+
+fn path_is_within(path: &std::path::Path, root: &std::path::Path) -> bool {
+    let path = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    let root = std::fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
+    path.starts_with(root)
+}
+
 async fn serve(
     configuration: Config,
     address: String,
@@ -578,8 +638,9 @@ async fn serve(
             .await
             .with_context(|| format!("cannot bind {address}"))?,
     };
+    let listener = crate::auth::BoundListener::new(listener);
     let bound = listener.local_addr().context("cannot read bound address")?;
-    let auth = auth.publish()?;
+    let auth = auth.publish(&listener)?;
 
     if *shutdown.borrow() == crate::runner::Shutdown::Running
         && let Some(ready) = sandbox
@@ -679,7 +740,7 @@ async fn serve(
     )));
     let reconcile = tokio::spawn(crate::reconcile::run_forever(reconcilers, cadence));
 
-    let server = http::serve_listener(state, listener, auth, shutdown).await;
+    let server = http::serve_listener(state, listener.into_inner(), auth, shutdown).await;
     runner.await.context("joining the job runner")?;
     reconcile.abort();
     signal_task.abort();
@@ -760,10 +821,22 @@ fn bind_address(url: &str) -> Result<String> {
          127.0.0.1, ::1, or localhost."
     );
 
-    Ok(if port.is_some() {
-        authority.to_string()
+    let port = port.unwrap_or("80");
+    // `localhost` commonly resolves to both ::1 and 127.0.0.1. Passing that
+    // hostname to `TcpListener::bind` lets it retry the second family when the
+    // first is occupied, so two daemons can each bind half of one configured
+    // endpoint and both publish the shared key. Canonicalize the one accepted
+    // hostname to one address before binding; IP literals already name their
+    // family exactly.
+    let host = if host.eq_ignore_ascii_case("localhost") {
+        "127.0.0.1"
     } else {
-        format!("{authority}:80")
+        host
+    };
+    Ok(if host.contains(':') {
+        format!("[{host}]:{port}")
+    } else {
+        format!("{host}:{port}")
     })
 }
 
@@ -783,7 +856,7 @@ fn split_authority(authority: &str) -> (&str, Option<&str>) {
     }
 }
 
-/// A loopback address, or the one name that always resolves to one.
+/// A loopback address, or the one name that always resolves locally.
 ///
 /// Anything else is refused rather than resolved: a name that happens to point
 /// at a loopback address today is not a local-only guarantee.
@@ -796,7 +869,7 @@ fn is_loopback(host: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{bind_address, sandbox_configuration};
+    use super::{bind_address, refuse_undesignated_production_store, sandbox_configuration};
 
     #[test]
     fn bind_address_strips_scheme_and_path() {
@@ -809,7 +882,7 @@ mod tests {
             "127.0.0.1:7373"
         );
         assert_eq!(bind_address("127.0.0.1:7373").unwrap(), "127.0.0.1:7373");
-        assert_eq!(bind_address("http://localhost").unwrap(), "localhost:80");
+        assert_eq!(bind_address("http://localhost").unwrap(), "127.0.0.1:80");
     }
 
     /// The finding this kills: `http://0.0.0.0:7373` used to be accepted, and
@@ -834,6 +907,43 @@ mod tests {
     }
 
     #[test]
+    fn production_store_requires_an_owner_root_or_explicit_designation() {
+        let owner = tempfile::tempdir().expect("an owner root");
+        let foreign = tempfile::tempdir().expect("a foreign cwd");
+        refuse_undesignated_production_store(&fs3_core::Config::default(), foreign.path(), false)
+            .expect_err("an unset owner_root must fail closed outside an owner tree");
+        let mut configuration = fs3_core::Config::default();
+        configuration.daemon.owner_root = Some(owner.path().to_path_buf());
+
+        let error = refuse_undesignated_production_store(&configuration, foreign.path(), false)
+            .expect_err("a foreign cwd must not own the production database");
+        let message = error.to_string();
+        assert!(message.contains("FS3-E-PROD-NOT-DESIGNATED"), "{message}");
+        assert!(message.contains("FS3_PROD_OWNER=1"), "{message}");
+        assert!(
+            message.contains("127.0.0.1:5434/flowspace3_test"),
+            "{message}"
+        );
+
+        let child = owner.path().join("checkout");
+        std::fs::create_dir(&child).expect("creating a cwd inside the owner root");
+        refuse_undesignated_production_store(&configuration, &child, false)
+            .expect("a cwd inside owner_root is designated");
+        refuse_undesignated_production_store(&configuration, foreign.path(), true)
+            .expect("FS3_PROD_OWNER=1 explicitly designates a foreign cwd");
+    }
+
+    #[test]
+    fn non_production_database_needs_no_owner_designation() {
+        let foreign = tempfile::tempdir().expect("a foreign cwd");
+        let mut configuration = fs3_core::Config::default();
+        configuration.database.url =
+            "postgres://flowspace3:flowspace3@127.0.0.1:5434/flowspace3_test".to_string();
+        refuse_undesignated_production_store(&configuration, foreign.path(), false)
+            .expect("the dedicated test database is not production");
+    }
+
+    #[test]
     fn bind_address_accepts_every_loopback_spelling() {
         assert_eq!(bind_address("http://[::1]:7373").unwrap(), "[::1]:7373");
         assert_eq!(
@@ -842,7 +952,7 @@ mod tests {
         );
         assert_eq!(
             bind_address("http://LocalHost:7373").unwrap(),
-            "LocalHost:7373"
+            "127.0.0.1:7373"
         );
     }
 

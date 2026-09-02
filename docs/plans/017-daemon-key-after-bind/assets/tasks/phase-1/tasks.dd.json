@@ -1,0 +1,151 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: reproduce, then refuse",
+        "slug": "phase-1",
+        "status": "ready",
+        "summary": "One coder, tasks in order, every assertion pinned to a backpressure row."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Work top to bottom; stop-and-ask o-prime on anything outside the fence."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "t1",
+          "title": "Reproduce the clobber and pin the writing path",
+          "state": "checked",
+          "done": "#done_when/t1",
+          "success": "a failing test shows which boot path rewrote daemon.key while another daemon owned the port (normal and --json); the path is named in the execution log",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ],
+          "receipt": "cargo test -p fs3-cli --test boot_contract another_loopback_address_family -- --nocapture --test-threads=1 with FS3_TEST_DATABASE_URL=:5434 anchor: RED 2/2; daemon B bound the other localhost address family and StagedAuth::publish rewrote daemon.key for normal and --json"
+        },
+        {
+          "id": "t2",
+          "title": "Publish strictly after a successful bind on every boot path; no staged temp file survives a bind failure",
+          "state": "checked",
+          "done": "#done_when/t2",
+          "success": "key untouched on bind failure; temp file cleaned; guard mutation red",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0002"
+          ],
+          "receipt": "BoundListener private-field proof required by StagedAuth::publish; localhost canonicalized once to 127.0.0.1 before bind. Clobber tests green 2/2, fs3-daemon lib green 172/172; removing canonicalization made both clobber tests RED."
+        },
+        {
+          "id": "t3",
+          "title": "Honest 401 hint when the key is newer than the daemon",
+          "state": "checked",
+          "done": "#done_when/t3",
+          "success": "CLI names the overwrite + restart-the-owner fix",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ],
+          "receipt": "Auth records daemon.key mtime immediately after publication and reports key_newer_than_daemon only for strict >; live CLI rewrite test green and generic unchanged-key 401 asserts false. Reversing the mtime comparison made the live render test RED; restored and green."
+        },
+        {
+          "id": "t4",
+          "title": "Prod-database owner designation (FS3_PROD_OWNER / config owner path)",
+          "state": "checked",
+          "done": "#done_when/t4",
+          "success": "foreign cwd refuses prod URL with a helpful error; designated proceeds",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ],
+          "receipt": "DaemonConfig owner_root resolves from file/FS3_DAEMON__OWNER_ROOT. Boot refuses DEFAULT_URL before staging unless cwd inside root or FS3_PROD_OWNER=1. Config::default owner_root=None + foreign cwd is explicitly fail-closed; is_some_and->map_or(true) mutation RED, restored GREEN."
+        },
+        {
+          "id": "t5",
+          "title": "Regression + gate",
+          "state": "checked",
+          "done": "#done_when/t5",
+          "success": "suites green; clippy clean; CI green on the PR sha",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ],
+          "receipt": "Local harness checks status=ok at 2026-09-02T08:08:18.225Z; daemon lib 175/175. PR #108 CI gate green on rebased implementation head 04ad9a7 after run 33609408499; final progress-only commit reuses the same gate."
+        },
+        {
+          "id": "t6",
+          "title": "Real-usage transcript on the TEST setup + PR",
+          "state": "checked",
+          "done": "#done_when/t6",
+          "success": "two-daemon transcript with counts/mtimes in the PR body; exact prod commands for o-prime",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ],
+          "receipt": "TEST transcript: daemon A healthy on scratch config + per-run :5434 DB + port 63359; daemon B foreign cwd exited 1; A stayed authorized; key mtime/hash unchanged; no temp residue; DB dropped. PR #108 opened with ac-0001..ac-0005 receipts and exact prod bounce commands."
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {
+        "t1": [
+          {
+            "id": "dw-3111",
+            "assertion": "test RED on main, names the path",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          }
+        ],
+        "t2": [
+          {
+            "id": "dw-3112",
+            "assertion": "A/B test green",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          },
+          {
+            "id": "dw-3113",
+            "assertion": "boot-sequence test green; publish-before-bind mutation red",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          }
+        ],
+        "t3": [
+          {
+            "id": "dw-3114",
+            "assertion": "render test green; mtime-check mutation red",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          }
+        ],
+        "t4": [
+          {
+            "id": "dw-3115",
+            "assertion": "boot test both ways; mutation red",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+          }
+        ],
+        "t5": [
+          {
+            "id": "dw-3116",
+            "assertion": "suites + CI green",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+          }
+        ],
+        "t6": [
+          {
+            "id": "dw-3117",
+            "assertion": "transcript reproducible",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0006"
+          }
+        ]
+      }
+    }
+  ]
+}

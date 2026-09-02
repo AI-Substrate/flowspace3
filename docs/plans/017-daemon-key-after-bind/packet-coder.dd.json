@@ -1,0 +1,173 @@
+{
+  "dd": {
+    "schema": "pij-team/packet"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Coder packet \u2014 daemon-key-after-bind",
+        "role": "coder",
+        "plan": "docs/plans/017-daemon-key-after-bind/plan.dd.json",
+        "seat": "<filled at spawn>",
+        "updated": "2026-09-02"
+      }
+    },
+    {
+      "name": "mission",
+      "value": "You are the coder for plan 017-daemon-key-after-bind, a single unit, no PM; o-prime (rs name pij-binding-magpie) is your counterpart. Today a second daemon with the default config rewrote prod's shared daemon.key while prod was listening and locked every client out. Reproduce that with a test FIRST, then make key publication impossible without a bound listener on every boot path, make the 401 hint honest, and add a prod-database owner designation so a foreign cwd cannot attach to prod by accident. Never run a daemon with the default config; scratch FS3_CONFIG_DIR, :5434, ephemeral ports."
+    },
+    {
+      "name": "instructions",
+      "value": [
+        {
+          "id": "i1",
+          "text": "Orient: read your unit's row in the impl-guide (impl-guide.dd.json), the plan phase/tasks you own, and the interface contract. Run `harness boot --json` in your worktree before changing anything. DOGFOOD FLOWSPACE: `flowspace3 search \"<question>\"` for every meaning-shaped question before grep (exact identifiers may still grep); report every miss or confusing envelope as friction."
+        },
+        {
+          "id": "i1b",
+          "text": "THE WIRE: your seat is rs-resident. o-prime's rs name is pij-binding-magpie \u2014 `pij send pij-binding-magpie '<one line>'` lands as a real turn; use it for every edge (canary, ack pointer, stop-and-asks, done). Files in .harness/temp/agent/ (<slug>-ack.md / -ask-NNN.md / -report.md) stay the durable record. Never pij adopt. Verify every LSP edit by exact read \u2014 LSP rename lied to a sibling seat today."
+        },
+        {
+          "id": "i2",
+          "text": "Ack FIRST: reply to o-prime with your read of the unit + a numbered implementation plan before writing code. Corrections to the packet are welcome \u2014 bring evidence."
+        },
+        {
+          "id": "i3",
+          "text": "Implement using the /builder implement discipline: work the tasks in order, keep the execution log honest, tests alongside code \u2014 your unit's test suite must prove the interface contract without the other units present."
+        },
+        {
+          "id": "i4",
+          "text": "Stay inside your unit's paths (scope below). If the work forces you outside them, STOP and ask o-prime \u2014 that is a composition concern, not yours to solve unilaterally."
+        },
+        {
+          "id": "i6",
+          "text": "Done = `harness checks` green in YOUR worktree + your unit's tests proving the contract. Report done to o-prime with the evidence, then hold for composition questions \u2014 do not merge anything."
+        },
+        {
+          "id": "i7",
+          "text": "Capture friction with `harness observe` the moment it bites; list, never clear the buffer."
+        },
+        {
+          "id": "i8",
+          "text": "OMP seats: use your native tooling deliberately \u2014 your LSP (go-to-definition, find-references, rename, diagnostics) for symbol-level questions and refactors instead of text search, and your harness's structured edit/diagnostic surfaces over raw shell equivalents. If the LSP for this repo's language is not configured in your seat, report it as friction at ack time rather than silently falling back to grep for the whole packet."
+        },
+        {
+          "id": "i10",
+          "text": "TRIPWIRE (PM fills per unit): the check that proves this plan's invariant still holds, and what a red one MEANS. A red tripwire is a STOP-and-report, never something to investigate away or fix around. (From 007: every coder stopped correctly on a red golden because this line existed.)"
+        },
+        {
+          "id": "i11",
+          "text": "READS DECLARATION (PM fills per unit): the types/files/modules this unit CONSUMES that it does not own, each with its owning unit named. Consumption is where fences actually collide \u2014 if you need to read something not listed here, that is a stop-and-ask, not a widening. (From 007: a zero-shared-files claim was false precisely because only ownership, not consumption, was mapped.)"
+        },
+        {
+          "id": "i13",
+          "text": "ABSOLUTE PATHS ALWAYS for every file tool (edit/write/read): rooted at YOUR OWN worktree. Never a relative path or bare section header \u2014 OMP edit resolves relatives against a session root fixed at spawn, and if that root is wrong your edits land in ANOTHER TREE reporting success (DL-044). Also: do NOT `flowspace3 add` your worktree even when a next_action suggests it \u2014 search is a comprehension aid over the main index; bytes are verified in your own tree."
+        },
+        {
+          "id": "i8b",
+          "text": "DDOC MUTATION SURFACE: the GLOBAL `ddocs` CLI on PATH (`ddocs set` / `ddocs add` / `ddocs build <file>`) \u2014 NOT node_modules/.bin/dd or ddocs (that skill text is stale). Never hand-edit .dd.json/.dd.md."
+        },
+        {
+          "id": "i9",
+          "text": "PROD :7373 is never a test target; read-only commands against it are fine and the real-usage criteria REQUIRE them after o-prime's bounce. Per-run test DBs ONLY on the dedicated test postmaster :5434 (FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5434/flowspace3_test, container flowspace3-db-test) \u2014 NEVER :5433; one cargo invocation at a time (host load is high); NEVER run harness checks while another seat's gate is running \u2014 ask o-prime for the slot."
+        },
+        {
+          "id": "i10b",
+          "text": "Read assets/inputs/evidence.md FIRST: it is the evidence this packet exists for; your ack must cite it."
+        }
+      ]
+    },
+    {
+      "name": "working_with",
+      "value": [
+        {
+          "id": "w1",
+          "text": "o-prime (pij-binding-magpie) is your interface: ack, stop-and-asks, done report \u2014 rs send + file."
+        },
+        {
+          "id": "w2",
+          "text": "DEFER to o-prime: anything outside the fence, migrations, dependency additions, anything that changes a public envelope shape."
+        },
+        {
+          "id": "w3",
+          "text": "Your evidence outranks the packet: correct it at ack with a measurement."
+        }
+      ]
+    },
+    {
+      "name": "scope",
+      "value": {
+        "worktree": "/Users/jordanknight/substrate/flowspace/fs3-daemon-key-after-bind",
+        "branch": "017-daemon-key-after-bind",
+        "fence": "crates/daemon/src/{auth,boot,http}.rs (http: the 401 body only), crates/cli/src/** (401 rendering/hint only), crates/core/src/config.rs (owner designation only), crates/daemon/tests/**, crates/cli/tests/**, docs/plans/017-daemon-key-after-bind/**, .harness/temp/agent/**. Fence is by RESPONSIBILITY: any file that must change to carry these four behaviours is in; anything touching search, store schema or the runner is out and needs an ask.",
+        "forbidden_note": "Never touch another unit's paths, .harness/government/**, or the plan's flow state. Open the PR yourself when the done-bar is met; NEVER merge it \u2014 o-prime merges. ABSOLUTE PATHS FOR EVERY FILE READ AND EDIT, ALWAYS: a spawned seat's file tools may resolve relative paths against the SPAWN directory (the main clone) while your shell resolves against your worktree \u2014 the same relative path then addresses two different files, the tool reports success either way, and your build goes green against a tree missing your change (proven 2026-08-28, three seats, DL-007/008). State your worktree root once at ack and prefix every path with it."
+      }
+    },
+    {
+      "name": "done_bar",
+      "value": [
+        {
+          "id": "d1",
+          "text": "Unit implements the interface contract in the impl-guide row, verbatim or with PM-ruled amendments."
+        },
+        {
+          "id": "d2",
+          "text": "Unit test suite passes standalone and proves the contract."
+        },
+        {
+          "id": "d3",
+          "text": "harness checks green in your worktree \u2014 AND prove the change is IN THE TREE YOU BUILT, not just that the build exited 0: cite tree-resident evidence (the lockfile carries your dependency, mtime/git status shows your file, the artifact names your module). An exit code is honest about what it built and silent about what it did not."
+        },
+        {
+          "id": "d4",
+          "text": "The SNAP-IN RECIPE shipped with the unit (tenet 4): the exact wiring the composer will paste \u2014 config shape, construction call, registration line \u2014 as a doc comment or section in your unit's service page. Wire it in yourself ONLY when both hold: the wiring file is uncontended (no sibling unit touches it) AND your done bar is behavioural (unreachable unwired); the recipe still ships so composition verifies rather than re-derives. Otherwise the composer wires. (Amended 2026-08-28: the blanket never-wire rule contradicted a live probe-flip done bar.)"
+        },
+        {
+          "id": "d5",
+          "text": "Done report to PM: what shipped, evidence, deviations, anything the composer must know \u2014 INCLUDING an explicit ASSUMPTIONS section: everything you assumed about the composition you do not own (who calls you, in what order, with what already in the store). A green gate proves your unit against YOUR assumptions; naming them is what lets the composer test them."
+        }
+      ]
+    },
+    {
+      "name": "refs",
+      "value": [
+        {
+          "id": "r1",
+          "path": "docs/plans/017-daemon-key-after-bind/plan.dd.md",
+          "note": "the promises (ac-0001..0005)"
+        },
+        {
+          "id": "r2",
+          "path": "docs/plans/017-daemon-key-after-bind/impl-guide.dd.md",
+          "note": "architecture + the three candidate clobber paths"
+        },
+        {
+          "id": "r3",
+          "path": "docs/plans/017-daemon-key-after-bind/assets/backpressure.dd.md",
+          "note": "proof per criterion"
+        },
+        {
+          "id": "r4",
+          "path": "docs/plans/017-daemon-key-after-bind/assets/inputs/evidence.md",
+          "note": "the incident timeline (rows 165, 169) and the code facts"
+        },
+        {
+          "id": "r5",
+          "path": "crates/daemon/src/auth.rs",
+          "note": "stage/publish two-phase key; existing tests"
+        },
+        {
+          "id": "r6",
+          "path": "crates/daemon/src/boot.rs",
+          "note": "serve(): bind at :577, publish at :582; the --json/sandbox path at :207-224"
+        },
+        {
+          "id": "r7",
+          "path": "docs/plans/017-daemon-key-after-bind/assets/inputs/pij-two-daemons.md",
+          "note": "the wire: how to reach o-prime"
+        }
+      ]
+    }
+  ]
+}
