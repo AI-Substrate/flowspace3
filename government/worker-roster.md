@@ -82,3 +82,4 @@ CLOSED 2026-09-02 (plans 010/011 shipped as #92/#93, closeout #94): limpet, zeal
 O-PRIME IDENTITIES (2026-09-02): legacy pij-instant-lynx + rs pij-binding-magpie (pane %21, claude session a5a5588f). rs children send to the magpie name; legacy peers keep lynx.
 
 CLOSED 2026-09-02: pij-purring-orangutan — w-db-cpu-profile delivered (scratch/db-cpu-profile/); buffer rescued.
+| pij-common-cheetah | plan 012 REVIEWER (fs3-review-012, detached at 5c7f7bdb = PR #95); omp / claude-opus-5 / high; pane %2742 | **rs** — file + pij send pij-binding-magpie | ACTIVE — spawned 2026-09-02 with the three owed lists + the store-crate bypass hunt |
