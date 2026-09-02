@@ -2664,3 +2664,8 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     Claude transcript. Encode (pij): a consumption ack from the Claude
     hook, a `delivered` spine event from the drain worker, and the rs id
     in the sessions join.
+    ROW 126 — **#99 MERGED** b528860 (012b follow-ups: seed-age clamp +
+    round-trip test, test hook out of the shipped body, probe shipped at
+    bin/ac-0001-ddl-probe.sh, review-012 record committed under the plan).
+    PLAN 012 FULLY CLOSED. Seat pij-sufficient-mite ended; worktree
+    fs3-fresh-db-serialise removed; deliverables in scratch/closeout-012/.
