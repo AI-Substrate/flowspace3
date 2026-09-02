@@ -183,6 +183,14 @@ pub struct SearchOutcome {
     pub limit: i64,
     /// Whether at least one additional legitimate result existed beyond the cap.
     pub truncated: bool,
+    /// Whether semantic candidate expansion ended at its bounded ceiling or
+    /// after the admitted set stopped growing.
+    pub candidate_limit_exhausted: bool,
+    /// Semantic search returned a bounded short page. Independent of
+    /// `empty_because`, lexical fusion, and display truncation.
+    pub scan_incomplete: bool,
+    /// Number of semantic candidate pages examined.
+    pub passes: usize,
 }
 
 impl SearchOutcome {
@@ -338,11 +346,15 @@ async fn search_filtered(
 
     apply_ddoc_filters(&mut filters, request);
 
-    let (mut hits, mut lexical_hits) = tokio::try_join!(
+    let (semantic, mut lexical_hits) = tokio::try_join!(
         fs3_store::search_elements(&state.db, &model_key, &vector, &filters),
         fs3_store::search_lexical(&state.db, query, &filters),
     )
     .map_err(fail)?;
+    let candidate_limit_exhausted = semantic.candidate_limit_exhausted;
+    let scan_incomplete = candidate_limit_exhausted;
+    let passes = semantic.passes;
+    let mut hits = semantic.hits;
 
     // Both store legs scope candidate eligibility and representative
     // resolution. This final legitimacy guard is deliberately shared: a future
@@ -389,6 +401,9 @@ async fn search_filtered(
             empty_because: None,
             limit,
             truncated,
+            candidate_limit_exhausted,
+            scan_incomplete,
+            passes,
         });
     }
 
@@ -399,6 +414,9 @@ async fn search_filtered(
             empty_because: Some(reason),
             limit,
             truncated: false,
+            candidate_limit_exhausted,
+            scan_incomplete,
+            passes,
         });
     }
 
@@ -415,9 +433,12 @@ async fn search_filtered(
     Ok(SearchOutcome {
         results: Vec::new(),
         composition: SearchComposition::default(),
-        empty_because: empty_because(&filters, file_backed),
+        empty_because: empty_because(&filters, file_backed, scan_incomplete),
         limit,
         truncated: false,
+        candidate_limit_exhausted,
+        scan_incomplete,
+        passes,
     })
 }
 
@@ -452,14 +473,17 @@ fn composition(hits: &[Hit]) -> SearchComposition {
 ///
 /// Source and ddoc predicates can legitimately admit zero rows. In that case
 /// the scan cause is unproven, so `None` keeps the generic filtered-empty steer
-/// rather than telling the caller to wait for a scan that may already be done.
 ///
 /// No floor and no anchor, or a conversation search: nothing here has
 /// established that any reachable content exists — [`anchor_not_indexed`]
 /// declines to speak for turns, which have no `worktree_files` row — so there
 /// is no claim to make and `None` is the honest answer. The generic steer
 /// stands.
-fn empty_because(filters: &SearchFilters, code: bool) -> Option<EmptyBecause> {
+fn empty_because(
+    filters: &SearchFilters,
+    code: bool,
+    scan_incomplete: bool,
+) -> Option<EmptyBecause> {
     if let Some(distance) = filters.max_distance
         && distance < 1.0
     {
@@ -478,10 +502,11 @@ fn empty_because(filters: &SearchFilters, code: bool) -> Option<EmptyBecause> {
         return None;
     }
 
-    if filters.source.is_some()
-        || filters.id_kinds.is_some()
-        || filters.gate_open.is_some()
-        || filters.ddoc_schema.is_some()
+    if !scan_incomplete
+        && (filters.source.is_some()
+            || filters.id_kinds.is_some()
+            || filters.gate_open.is_some()
+            || filters.ddoc_schema.is_some())
     {
         return None;
     }
@@ -1236,7 +1261,7 @@ mod tests {
         /// envelope says so.
         #[test]
         fn an_anchored_search_with_no_floor_blames_the_scan_and_names_the_scope() {
-            let reason = empty_because(&anchored(), true).expect("a claim is available");
+            let reason = empty_because(&anchored(), true, false).expect("a claim is available");
             assert_eq!(reason.reason, "scan_incomplete");
             assert!(reason.detail.contains("git:example.com/one"));
             assert!(
@@ -1255,7 +1280,7 @@ mod tests {
                 max_distance: Some(0.3),
                 ..anchored()
             };
-            let reason = empty_because(&filters, true).expect("a claim is available");
+            let reason = empty_because(&filters, true, false).expect("a claim is available");
             assert_eq!(reason.reason, "below_floor");
             assert!(
                 reason.detail.contains("0.700"),
@@ -1274,7 +1299,7 @@ mod tests {
                 ..anchored()
             };
             assert_eq!(
-                empty_because(&filters, true)
+                empty_because(&filters, true, false)
                     .expect("a claim is available")
                     .reason,
                 "scan_incomplete"
@@ -1289,8 +1314,8 @@ mod tests {
                 kinds: Some(CODE_KINDS.to_vec()),
                 ..SearchFilters::default()
             };
-            assert!(empty_because(&filters, false).is_none());
-            assert!(empty_because(&filters, true).is_none());
+            assert!(empty_because(&filters, false, false).is_none());
+            assert!(empty_because(&filters, true, false).is_none());
         }
 
         /// A conversation search is answered from turns, which have no
@@ -1298,7 +1323,7 @@ mod tests {
         /// never ran, so the claim is not available.
         #[test]
         fn a_conversation_search_makes_no_claim_about_file_content() {
-            assert!(empty_because(&anchored(), false).is_none());
+            assert!(empty_because(&anchored(), false, false).is_none());
         }
 
         /// A `--path` filter is an anchor too, and the report names what was
@@ -1311,7 +1336,7 @@ mod tests {
                 kinds: Some(CODE_KINDS.to_vec()),
                 ..SearchFilters::default()
             };
-            let reason = empty_because(&filters, true).expect("a claim is available");
+            let reason = empty_because(&filters, true, false).expect("a claim is available");
             assert_eq!(reason.reason, "scan_incomplete");
             assert!(reason.detail.contains("crates/store/%"));
         }

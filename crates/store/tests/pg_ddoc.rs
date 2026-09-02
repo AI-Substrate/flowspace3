@@ -153,6 +153,7 @@ impl SearchFixture {
         search_elements(&self.pool, EMBEDDER, &query, &filters)
             .await
             .expect("search ddoc fixture")
+            .hits
     }
 
     async fn search(&self, filters: SearchFilters) -> Vec<String> {

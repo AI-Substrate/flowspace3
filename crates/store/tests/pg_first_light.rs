@@ -669,7 +669,8 @@ async fn a_repo_filter_excludes_the_other_repository_from_the_ranking() {
 
     let everywhere = search_elements(&pool, EMBEDDER, &query, &SearchFilters::default())
         .await
-        .unwrap();
+        .unwrap()
+        .hits;
     assert!(
         everywhere.len() >= 2,
         "unfiltered, both repositories compete"
@@ -685,7 +686,8 @@ async fn a_repo_filter_excludes_the_other_repository_from_the_ranking() {
         },
     )
     .await
-    .unwrap();
+    .unwrap()
+    .hits;
     assert!(!scoped.is_empty(), "the filter must not empty the result");
     assert!(
         scoped
@@ -770,7 +772,8 @@ async fn a_worktree_filter_excludes_versions_the_caller_cannot_open() {
     let query = vector_for("feature experimental marker").await;
     let unscoped = search_elements(&pool, EMBEDDER, &query, &SearchFilters::default())
         .await
-        .unwrap();
+        .unwrap()
+        .hits;
     assert!(
         unscoped
             .iter()
@@ -789,7 +792,8 @@ async fn a_worktree_filter_excludes_versions_the_caller_cannot_open() {
         },
     )
     .await
-    .unwrap();
+    .unwrap()
+    .hits;
 
     assert!(
         !from_main.is_empty(),
@@ -873,7 +877,8 @@ async fn scoped_search_resolves_the_element_held_by_the_caller() {
         },
     )
     .await
-    .unwrap();
+    .unwrap()
+    .hits;
 
     assert!(
         !hits.is_empty(),
@@ -963,7 +968,8 @@ async fn smart_search_chooses_the_raw_body_held_by_the_caller() {
         },
     )
     .await
-    .unwrap();
+    .unwrap()
+    .hits;
 
     assert_eq!(
         hits.len(),
@@ -1042,7 +1048,8 @@ async fn a_path_filter_narrows_to_a_subtree_and_hits_carry_their_live_path() {
         },
     )
     .await
-    .unwrap();
+    .unwrap()
+    .hits;
     assert_eq!(matching.len(), 1);
     assert_eq!(
         matching[0].path.as_deref(),
@@ -1060,7 +1067,8 @@ async fn a_path_filter_narrows_to_a_subtree_and_hits_carry_their_live_path() {
         },
     )
     .await
-    .unwrap();
+    .unwrap()
+    .hits;
     assert!(
         elsewhere.is_empty(),
         "a filter that matches nothing returns nothing"
@@ -1149,7 +1157,8 @@ async fn a_source_filter_chooses_which_vector_space_is_searched() {
         },
     )
     .await
-    .unwrap();
+    .unwrap()
+    .hits;
     assert_eq!(smart_only.len(), 1);
     assert_eq!(smart_only[0].similar.source_kind, SourceKind::Smart);
     assert_eq!(
@@ -1176,7 +1185,8 @@ async fn a_source_filter_chooses_which_vector_space_is_searched() {
         },
     )
     .await
-    .unwrap();
+    .unwrap()
+    .hits;
     assert!(
         raw_only
             .iter()
@@ -1210,7 +1220,8 @@ async fn a_distance_ceiling_drops_hits_that_are_merely_the_nearest() {
 
     let unbounded = search_elements(&pool, EMBEDDER, &unrelated, &SearchFilters::default())
         .await
-        .unwrap();
+        .unwrap()
+        .hits;
     assert!(
         !unbounded.is_empty(),
         "without a ceiling, the nearest row is returned however far it is"
@@ -1226,7 +1237,8 @@ async fn a_distance_ceiling_drops_hits_that_are_merely_the_nearest() {
         },
     )
     .await
-    .unwrap();
+    .unwrap()
+    .hits;
     assert!(
         bounded.is_empty(),
         "a tight ceiling returns nothing rather than the least-bad answer"

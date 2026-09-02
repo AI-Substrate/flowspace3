@@ -617,6 +617,9 @@ async fn search(
                     "limit": outcome.limit,
                     "truncated": outcome.truncated,
                 },
+                "candidate_limit_exhausted": outcome.candidate_limit_exhausted,
+                "scan_incomplete": outcome.scan_incomplete,
+                "passes": outcome.passes,
             });
             if weak_match {
                 meta["hint"] = serde_json::Value::String(WEAK_MATCH_HINT.to_string());

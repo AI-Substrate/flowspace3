@@ -53,14 +53,23 @@ const ITERATIVE_SCAN: &str = "SET LOCAL hnsw.iterative_scan = strict_order";
 /// startup cost cannot amortize before the query returns.
 const DISABLE_SEARCH_JIT: &str = "SET LOCAL jit = off";
 
+async fn configure_search_transaction(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+) -> Result<(), StoreError> {
+    sqlx::query(ITERATIVE_SCAN).execute(&mut **tx).await?;
+    sqlx::query(DISABLE_SEARCH_JIT).execute(&mut **tx).await?;
+    Ok(())
+}
+
 /// Start with enough vectors for ordinary two- or three-chunk elements while
 /// keeping the common ANN scan small.
 const INITIAL_CANDIDATE_MULTIPLIER: i64 = 4;
 /// Double only when the current candidate page is full and still under-fills
 /// the requested number of distinct elements.
 const CANDIDATE_GROWTH_FACTOR: i64 = 2;
-/// Refuse rather than return a silently under-filled page after eight retries.
-/// At the largest page a limit of ten examines at most 10,240 vectors.
+/// Bound both search paths after eight retries. The unfiltered
+/// [`query_embeddings`] path refuses an unreachable under-fill; filtered
+/// [`search_elements`] returns a short page with explicit scan metadata.
 const MAX_CANDIDATE_EXPANSIONS: usize = 8;
 
 fn candidate_count(rows: &[sqlx::postgres::PgRow]) -> Result<i64, StoreError> {
@@ -69,6 +78,33 @@ fn candidate_count(rows: &[sqlx::postgres::PgRow]) -> Result<i64, StoreError> {
         .transpose()
         .map(|count| count.unwrap_or(0))
         .map_err(StoreError::from)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ExpansionDecision {
+    Continue,
+    Return { scan_incomplete: bool },
+}
+
+fn expansion_decision(
+    hit_count: i64,
+    requested: i64,
+    scanned: i64,
+    candidate_limit: i64,
+    admitted: i64,
+    previous_admitted: Option<i64>,
+    expansion: usize,
+) -> ExpansionDecision {
+    let admitted_stalled = previous_admitted == Some(admitted);
+    let candidate_scan_exhausted = scanned < candidate_limit;
+    let expansion_exhausted = admitted_stalled || expansion == MAX_CANDIDATE_EXPANSIONS;
+    if hit_count >= requested || candidate_scan_exhausted || expansion_exhausted {
+        ExpansionDecision::Return {
+            scan_incomplete: hit_count < requested && expansion_exhausted,
+        }
+    } else {
+        ExpansionDecision::Continue
+    }
 }
 
 fn candidate_limit_exhausted(limit: i64) -> StoreError {
@@ -496,19 +532,97 @@ pub struct SearchHit {
     /// A live path holding the blob, relative to its worktree root.
     pub path: Option<String>,
 }
+/// One completed search page and how the bounded expansion reached it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SearchPage {
+    /// Caller-visible hits, nearest first.
+    pub hits: Vec<SearchHit>,
+    /// Number of SQL candidate pages examined.
+    pub passes: usize,
+    /// The scan returned a short page because admitted candidates stopped
+    /// growing or the configured expansion ceiling was reached.
+    pub candidate_limit_exhausted: bool,
+}
+
+fn page_from_rows(
+    rows: &[sqlx::postgres::PgRow],
+    passes: usize,
+    candidate_limit_exhausted: bool,
+) -> Result<SearchPage, StoreError> {
+    let hits = rows
+        .iter()
+        .map(|row| {
+            if row.try_get::<Option<i64>, _>("element_id")?.is_none() {
+                return Ok(None);
+            }
+            Ok(Some(SearchHit {
+                similar: similar_from_row(row)?,
+                identity: row.try_get("identity")?,
+                root_path: row.try_get("root_path")?,
+                path: row.try_get("path")?,
+            }))
+        })
+        .filter_map(Result::transpose)
+        .collect::<Result<Vec<_>, StoreError>>()?;
+    Ok(SearchPage {
+        hits,
+        passes,
+        candidate_limit_exhausted,
+    })
+}
 
 #[cfg(test)]
-const ADMISSION_JOIN_SQL: &str = r#"JOIN admitted_sources admitted
+const ADMISSION_JOIN_SQL: &str = r#"JOIN page_admitted_sources admitted
         ON admitted.source_hash = candidate.source_hash
        AND admitted.source_kind = candidate.source_kind"#;
 
-const SEARCH_ELEMENTS_SQL: &str = r#"WITH candidate_vectors AS MATERIALIZED (
+const SEARCH_ELEMENTS_SQL: &str = r#"WITH scope_blobs AS MATERIALIZED (
+    SELECT f.blob_sha
+      FROM worktree_files f
+      JOIN worktrees w ON w.id = f.worktree_id
+      JOIN repos r     ON r.id = w.repo_id
+     WHERE ($6::text IS NOT NULL OR $7::text IS NOT NULL OR $9::text IS NOT NULL)
+       AND ($6::text IS NULL OR r.identity = $6)
+       AND ($7::text IS NULL OR f.path LIKE $7)
+       AND ($9::text IS NULL OR w.root_path = $9)
+    UNION
+    SELECT t.blob_sha
+      FROM turns t
+      JOIN conversations c ON c.guid = t.conversation_id
+     WHERE ($6::text IS NOT NULL OR $7::text IS NOT NULL
+            OR $9::text IS NOT NULL OR $13::text IS NOT NULL)
+       AND ($6::text IS NULL OR c.repo_identity = $6)
+       AND ($7::text IS NULL OR c.worktree LIKE $7)
+       AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)
+       AND ($13::text IS NULL OR c.guid = $13::uuid)
+),
+scope_representatives AS MATERIALIZED (
+    SELECT DISTINCT scoped.raw_hash
+      FROM elements scoped
+      JOIN scope_blobs scope ON scope.blob_sha = scoped.blob_sha
+     WHERE ($13::text IS NULL OR strpos(scoped.address, 'conv:' || $13 || '#t') = 1)
+),
+admitted_sources AS MATERIALIZED (
+    SELECT raw_hash AS source_hash, 'raw'::text AS source_kind
+      FROM scope_representatives
+    UNION
+    SELECT smart.text_hash AS source_hash, 'smart'::text AS source_kind
+      FROM smart_content smart
+      JOIN scope_representatives scoped ON scoped.raw_hash = smart.raw_hash
+),
+candidate_vectors AS MATERIALIZED (
     SELECT e.source_hash, e.source_kind, e.chunk_no,
            e.vector <=> $1 AS distance
       FROM embeddings_1024 e
      WHERE e.model_key = $2
        AND ($4::text IS NULL OR e.source_kind = $4)
        AND ($5::float8 IS NULL OR (e.vector <=> $1) <= $5)
+       AND (($6::text IS NULL AND $7::text IS NULL
+             AND $9::text IS NULL AND $13::text IS NULL)
+            OR (e.source_kind = 'raw' AND e.source_hash IN (
+                 SELECT source_hash FROM admitted_sources WHERE source_kind = 'raw'))
+            OR (e.source_kind = 'smart' AND e.source_hash IN (
+                 SELECT source_hash FROM admitted_sources WHERE source_kind = 'smart')))
      ORDER BY e.vector <=> $1
      LIMIT $14
 ),
@@ -516,12 +630,22 @@ candidate_meta AS (
     SELECT count(*)::bigint AS candidate_count
       FROM candidate_vectors
 ),
+candidate_raw_hashes AS MATERIALIZED (
+    SELECT source_hash AS raw_hash
+      FROM candidate_vectors
+     WHERE source_kind = 'raw'
+    UNION
+    SELECT smart.raw_hash
+      FROM candidate_vectors candidate
+      JOIN smart_content smart ON smart.text_hash = candidate.source_hash
+     WHERE candidate.source_kind = 'smart'
+),
 admitted_elements AS MATERIALIZED (
     SELECT admitted.id, admitted.raw_hash
       FROM elements admitted
+      JOIN candidate_raw_hashes page ON page.raw_hash = admitted.raw_hash
      WHERE ($8::text[] IS NULL OR admitted.kind = ANY($8))
-       AND ($10::text[] IS NULL
-            OR admitted.ddoc->>'id_kind' = ANY($10))
+       AND ($10::text[] IS NULL OR admitted.ddoc->>'id_kind' = ANY($10))
        AND ($11::boolean IS NULL
             OR (CASE
                   WHEN jsonb_typeof(admitted.ddoc->'derived_state') = 'object'
@@ -533,10 +657,8 @@ admitted_elements AS MATERIALIZED (
                   THEN (admitted.ddoc->'derived_state'->>'complete')::boolean
                   ELSE (admitted.ddoc->>'gate_terminal')::boolean
                 END = NOT $11))
-       AND ($12::text IS NULL
-            OR admitted.ddoc->>'schema' = $12)
-       AND ($13::text IS NULL
-            OR strpos(admitted.address, 'conv:' || $13 || '#t') = 1)
+       AND ($12::text IS NULL OR admitted.ddoc->>'schema' = $12)
+       AND ($13::text IS NULL OR strpos(admitted.address, 'conv:' || $13 || '#t') = 1)
        AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
             OR EXISTS (
                  SELECT 1
@@ -562,19 +684,19 @@ admitted_representatives AS MATERIALIZED (
      ORDER BY raw_hash, id
 ),
 smart_map AS MATERIALIZED (
-    SELECT candidate.raw_hash, candidate.model_key, candidate.text,
-           candidate.text_hash, candidate.tags, candidate.extras,
-           candidate.created_at
-      FROM smart_content candidate
-      JOIN admitted_representatives admitted
-        ON admitted.raw_hash = candidate.raw_hash
+    SELECT smart.raw_hash, smart.model_key, smart.text,
+           smart.text_hash, smart.tags, smart.extras, smart.created_at
+      FROM smart_content smart
+      JOIN candidate_vectors candidate
+        ON candidate.source_kind = 'smart' AND candidate.source_hash = smart.text_hash
+      JOIN admitted_representatives admitted ON admitted.raw_hash = smart.raw_hash
 ),
 smart_representatives AS MATERIALIZED (
     SELECT DISTINCT ON (text_hash) raw_hash, text_hash, text, tags, extras
       FROM smart_map
      ORDER BY text_hash, created_at, model_key, raw_hash
 ),
-admitted_sources AS MATERIALIZED (
+page_admitted_sources AS MATERIALIZED (
     SELECT raw_hash AS source_hash, 'raw'::text AS source_kind
       FROM admitted_representatives
     UNION
@@ -584,9 +706,13 @@ admitted_sources AS MATERIALIZED (
 admitted_candidates AS MATERIALIZED (
     SELECT candidate.*
       FROM candidate_vectors candidate
-      JOIN admitted_sources admitted
+      JOIN page_admitted_sources admitted
         ON admitted.source_hash = candidate.source_hash
        AND admitted.source_kind = candidate.source_kind
+),
+admitted_meta AS (
+    SELECT count(*)::bigint AS admitted_count
+      FROM admitted_candidates
 ),
 resolved AS (
     SELECT c.source_hash, c.source_kind, c.chunk_no, c.distance,
@@ -597,8 +723,7 @@ resolved AS (
            e.raw_text, e.ddoc
       FROM admitted_candidates c
       LEFT JOIN smart_representatives s
-        ON c.source_kind = 'smart'
-       AND s.text_hash = c.source_hash
+        ON c.source_kind = 'smart' AND s.text_hash = c.source_hash
       JOIN admitted_representatives admitted
         ON admitted.raw_hash = COALESCE(s.raw_hash, c.source_hash)
       JOIN elements e ON e.id = admitted.id
@@ -650,50 +775,34 @@ SELECT h.source_kind, h.distance,
        h.blob_sha, h.parser_version, h.kind, h.subkind, h.name,
        h.address, h.span_start, h.span_end, h.sibling_order, h.raw_text,
        h.ddoc, h.identity, h.root_path, h.path,
-       m.candidate_count, h.element_id
-  FROM candidate_meta m
+       candidate.candidate_count, admitted.admitted_count, h.element_id
+  FROM candidate_meta candidate
+  CROSS JOIN admitted_meta admitted
   LEFT JOIN final_hits h ON TRUE
  ORDER BY h.distance, h.element_id"#;
 
 /// The `limit` nearest elements to `query`, narrowed by `filters`, nearest first.
 ///
-/// The filtered sibling of [`query_embeddings`]. [`SEARCH_ELEMENTS_SQL`] first
-/// materializes the ordered HNSW candidate page, then filters that bounded page
-/// through one-time admitted-element and smart-map source sets. The plan-shape
-/// test prevents admission work from being pushed below the vector `LIMIT`.
+/// Scope source keys are resolved once and applied inside the ordered HNSW scan,
+/// so iterative scan can pass nearer foreign vectors without probing
+/// `smart_content` per candidate. Full smart-content and element resolution is
+/// bounded to the resulting candidate page.
 ///
-/// The `<=>` operator is not interchangeable here: `embeddings_1024`'s index is
-/// built for `vector_cosine_ops`, and a query written with `<->` gets a
-/// sequential scan with no error to notice.
-///
-/// # Why this runs in a transaction
-///
-/// Keeping the filters inside the CTE buys the index scan, and it costs
-/// something that has to be paid for explicitly: an HNSW scan yields at most
-/// `hnsw.ef_search` candidates, and every predicate above is applied to THAT
-/// handful rather than to the index. A selective anchor — one small repository
-/// inside an index holding several — can therefore delete every candidate and
-/// leave the CTE empty while thousands of matching vectors sit one hop
-/// further out. Nothing surfaces: no error, no warning, just an answer that is
-/// short or absent, and `--min-score` cannot be blamed because the floor never
-/// gets a row to reject. Measured on a four-repository index where the
-/// searched repository held 9.5% of the vectors, twelve ordinary questions
-/// asked for ten hits each and were answered with 19 of 120.
-///
-/// [`ITERATIVE_SCAN`] is the remedy pgvector 0.8 added for exactly this: keep
-/// pulling batches until the `LIMIT` is satisfied or the scan budget runs out.
-/// The same twelve questions then return 120 of 120.
+/// Candidate expansion is deliberately bounded. A short page is successful:
+/// [`SearchPage::candidate_limit_exhausted`] distinguishes admitted-candidate
+/// stagnation or the ceiling from ordinary index exhaustion without turning a
+/// diagnostic search into an outage.
 ///
 /// # Errors
 /// [`StoreError::Dimensions`] when `query` is the wrong width;
-/// [`StoreError::Query`] on failure; [`StoreError::Corrupt`] when a row carries
-/// an unknown kind.
+/// [`StoreError::Query`] on database failure; [`StoreError::Corrupt`] when a row
+/// carries an unknown kind.
 pub async fn search_elements(
     pool: &PgPool,
     model_key: &str,
     query: &[f32],
     filters: &SearchFilters,
-) -> Result<Vec<SearchHit>, StoreError> {
+) -> Result<SearchPage, StoreError> {
     if query.len() != EMBEDDING_DIMENSIONS {
         return Err(StoreError::Dimensions {
             expected: EMBEDDING_DIMENSIONS,
@@ -702,19 +811,14 @@ pub async fn search_elements(
     }
 
     let mut tx = pool.begin().await?;
-    sqlx::query(ITERATIVE_SCAN).execute(&mut *tx).await?;
-    sqlx::query(DISABLE_SEARCH_JIT).execute(&mut *tx).await?;
+    configure_search_transaction(&mut tx).await?;
 
-    // Every filter is bound unconditionally with a NULL-means-any guard, so
-    // there is ONE statement text whatever the caller asked for. A query built
-    // by string concatenation would have a different plan per flag combination
-    // and could not be read as a single thing.
-    // Bind map: $1 vector, $2 model, $3 element limit, $4 source, $5 distance,
-    // $6 repo, $7 path, $8 kinds, $9 worktree, $10 id_kinds,
-    // $11 gate_open, $12 ddoc_schema, $13 conversation, $14 vector candidate
-    // limit. Keep SQL and binds in this order: these types overlap, so a shifted
-    // parameter can compile and answer incorrectly.
+    // One statement text for every filter combination. Bind map: $1 vector,
+    // $2 model, $3 element limit, $4 source, $5 distance, $6 repo, $7 path,
+    // $8 kinds, $9 worktree, $10 id_kinds, $11 gate_open, $12 ddoc_schema,
+    // $13 conversation, $14 vector candidate limit.
     let mut candidate_limit = filters.limit.saturating_mul(INITIAL_CANDIDATE_MULTIPLIER);
+    let mut previous_admitted = None;
     for expansion in 0..=MAX_CANDIDATE_EXPANSIONS {
         let rows = sqlx::query(SEARCH_ELEMENTS_SQL)
             .bind(Vector::from(query.to_vec()))
@@ -740,37 +844,37 @@ pub async fn search_elements(
             .await?;
 
         let scanned = candidate_count(&rows)?;
-
+        let admitted: i64 = rows
+            .first()
+            .map(|row| row.try_get("admitted_count"))
+            .transpose()?
+            .unwrap_or(0);
         let hit_count = rows.iter().try_fold(0_i64, |count, row| {
             row.try_get::<Option<i64>, _>("element_id")
                 .map(|element_id| count + i64::from(element_id.is_some()))
                 .map_err(StoreError::from)
         })?;
-        if hit_count >= filters.limit || scanned < candidate_limit {
-            tx.commit().await?;
-            return rows
-                .iter()
-                .map(|row| {
-                    if row.try_get::<Option<i64>, _>("element_id")?.is_none() {
-                        return Ok(None);
-                    }
-                    Ok(Some(SearchHit {
-                        similar: similar_from_row(row)?,
-                        identity: row.try_get("identity")?,
-                        root_path: row.try_get("root_path")?,
-                        path: row.try_get("path")?,
-                    }))
-                })
-                .filter_map(Result::transpose)
-                .collect();
+        let passes = expansion + 1;
+        match expansion_decision(
+            hit_count,
+            filters.limit,
+            scanned,
+            candidate_limit,
+            admitted,
+            previous_admitted,
+            expansion,
+        ) {
+            ExpansionDecision::Return { scan_incomplete } => {
+                tx.commit().await?;
+                return page_from_rows(&rows, passes, scan_incomplete);
+            }
+            ExpansionDecision::Continue => {}
         }
-        if expansion == MAX_CANDIDATE_EXPANSIONS {
-            return Err(candidate_limit_exhausted(filters.limit));
-        }
+        previous_admitted = Some(admitted);
         candidate_limit = candidate_limit.saturating_mul(CANDIDATE_GROWTH_FACTOR);
     }
 
-    unreachable!("candidate expansion loop returns or refuses at its bound")
+    unreachable!("bounded candidate expansion returns on its final pass")
 }
 
 /// Does `model_key` hold reachable content in `scope`?
@@ -925,6 +1029,16 @@ mod tests {
             assert_eq!(SourceKind::from_str(kind.as_str()).unwrap(), kind);
         }
         assert!(SourceKind::from_str("summary").is_err());
+    }
+
+    #[test]
+    fn filtered_search_returns_a_short_page_at_the_expansion_bound() {
+        assert_eq!(
+            expansion_decision(1, 10, 10_240, 10_240, 9, Some(8), MAX_CANDIDATE_EXPANSIONS,),
+            ExpansionDecision::Return {
+                scan_incomplete: true,
+            }
+        );
     }
 
     const SHAPE_MODEL: &str = "search-plan-shape@1024";
@@ -1225,7 +1339,7 @@ mod tests {
         pool: &PgPool,
         analyze_shipped: bool,
         include_old: bool,
-    ) -> Result<(serde_json::Value, Option<serde_json::Value>), sqlx::Error> {
+    ) -> Result<(serde_json::Value, Option<serde_json::Value>), StoreError> {
         let mut transaction = pool.begin().await?;
         sqlx::query("SET LOCAL statement_timeout = '30s'")
             .execute(&mut *transaction)
@@ -1233,9 +1347,7 @@ mod tests {
         sqlx::query("SET LOCAL max_parallel_workers_per_gather = 0")
             .execute(&mut *transaction)
             .await?;
-        sqlx::query(DISABLE_SEARCH_JIT)
-            .execute(&mut *transaction)
-            .await?;
+        configure_search_transaction(&mut transaction).await?;
         let shipped =
             explain_search(&mut transaction, SEARCH_ELEMENTS_SQL, analyze_shipped).await?;
         let old = if include_old {
@@ -1308,6 +1420,26 @@ mod tests {
             shipped[0].get("JIT").is_none(),
             "JIT must not trigger for the shipped query: {shipped:#}"
         );
+    }
+
+    #[tokio::test]
+    async fn shipped_search_transaction_disables_jit_locally() {
+        let (name, pool, admin) = shape_database().await;
+        let verdict: Result<String, StoreError> = async {
+            let mut transaction = pool.begin().await?;
+            sqlx::query("SET LOCAL jit = on")
+                .execute(&mut *transaction)
+                .await?;
+            configure_search_transaction(&mut transaction).await?;
+            let jit: String = sqlx::query_scalar("SHOW jit")
+                .fetch_one(&mut *transaction)
+                .await?;
+            transaction.rollback().await?;
+            Ok(jit)
+        }
+        .await;
+        cleanup_shape_database(&name, pool, admin).await;
+        assert_eq!(verdict.unwrap(), "off");
     }
 
     #[tokio::test]

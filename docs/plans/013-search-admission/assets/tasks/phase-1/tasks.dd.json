@@ -58,12 +58,12 @@
         {
           "id": "tk-0104",
           "title": "Gate + PR with the mutation and the EXPLAIN before/after in the body",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0104",
           "success": "PR open, CI green",
           "satisfies": [],
           "note": "In progress: request exclusive harness-checks slot, gate, commit final changes, open PR, and await CI.",
-          "receipt": "PASS: harness checks on head beee1491be13f3920affc5d257eb580974188360 at 2026-09-02T04:30:38Z, all gates green using separate :5434 test postmaster. Earlier production-version guard red was ruled false positive: o-prime's daemon bounce installed migration 0023 during the gate window; no test touched :5433. PR/CI receipt to append after opening."
+          "receipt": "REQUEST-CHANGES FIX READY: option-B scope keys inside HNSW, page-bounded payload resolution, admitted-growth stop, never-Err filtered bound, SearchPage metadata, additive daemon scan_incomplete/candidate_limit_exhausted/passes. Paired 12k foreign +5 scoped: Ok 5 hits pass1; query elapsed varied 45.811–78.659 ms under host load, latest final 74.025 ms (reviewer <40 ms target not claimed). No-growth: empty/exhausted/pass2. Mutations RED: growth removal, bound Error restoration, JIT removal. Shape 7.322 ms/3,113 hits/159 smart loops; store 3+5+53 green; daemon 56 green. Await exact-SHA CI."
         },
         {
           "id": "tk-0105",

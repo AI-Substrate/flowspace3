@@ -44,7 +44,7 @@
           "id": "ac-0001",
           "state": "checked",
           "claim": "Loops bound, mutation-checked: an integration test runs EXPLAIN (ANALYZE, FORMAT JSON) on the shipped query against a seeded corpus with ≥50k elements and ≥10k smart_content rows and asserts the smart_content node's loops ≤ candidate_limit, no Materialize-over-Seq-Scan-on-elements node exists, the candidate_vectors CTE target list carries no vector column, and JIT is not triggered (or is disabled for this statement with the reason stated); the SAME test fails against the old query (keep it under a cfg/feature or a golden-SQL comparison so the mutation is one-line). Mutation stated in the PR body.",
-          "receipt": "PASS on flowspace3-db-test :5434 after main merge. Corpus: 50,000 elements, 10,000 smart_content, 20,000 embeddings (10k smart + 10k raw; stabilizes HNSW below sequential-sort cost). Static non-ANALYZE: HNSW candidate_vectors Limit first; old mutation contains correlated smart_content SubPlan + Materialize/elements. Shipped ANALYZE: 108.468 ms, 2,691 shared hits, HNSW rows 160, candidate rows 160, smart_content max loops 1, four target columns, no JIT. Command: cargo test -p fs3-store search_plan_shape -- --nocapture."
+          "receipt": "PASS after review option-B correction on flowspace3-db-test :5434. Corpus: 50,000 elements, 10,000 smart_content, 20,000 embeddings. Shipped ANALYZE: 7.322 ms, 3,113 shared hits, HNSW/candidate rows 160, smart_content max loops 159 (bounded by candidate page), four target columns, no JIT. Static mutation restores correlated smart_content SubPlan + Materialize/elements. JIT guard is mutation-sensitive: removing shipped SET LOCAL yields on vs expected off."
         },
         {
           "id": "ac-0002",
@@ -56,7 +56,7 @@
           "id": "ac-0003",
           "state": "checked",
           "claim": "All existing crates/store and crates/daemon search tests pass unchanged (009's collapse fixtures included).",
-          "receipt": "PASS on separate :5434 postmaster: store pg_ddoc + pg_first_light + pg_store_flows = 53/53; daemon conversation_query + first_light + oversize + search_empty + search_lexical + search_scope_starvation = 55/55. Includes 009 chunk collapse/best-score and candidate expansion fixtures. Full harness checks remains queued behind plan 014's exclusive slot."
+          "receipt": "PASS after review option-B correction on separate :5434 postmaster: store search_admission 3/3, embeddings tests 5/5, pg_ddoc + pg_first_light + pg_store_flows 53/53; daemon conversation_query + first_light + oversize + search_empty + search_lexical + search_scope_starvation 56/56. Includes paired 12,000-nearer-foreign/5-scoped result, admitted-growth stop, no-Err bound, additive scan_incomplete Rust+HTTP metadata, 009 chunk collapse, and smart parity."
         },
         {
           "id": "ac-0004",
