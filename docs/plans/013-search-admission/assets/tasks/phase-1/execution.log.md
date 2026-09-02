@@ -23,7 +23,7 @@ The statement now disables JIT transaction-locally: the production profile measu
 Added two plan-shape legs inside `embeddings.rs`:
 
 - non-ANALYZE static proof: the `candidate_vectors` Limit estimates at most 160 rows; its child is the childless `<=>` HNSW index scan; admission joins sit above it; the old SQL mutation retains the correlated `smart_content` SubPlan and Materialize-over-elements shape;
-- bounded runtime proof: on exactly 50,000 elements, 10,000 smart-content rows, and 10,000 smart embeddings, shipped `EXPLAIN (ANALYZE, BUFFERS, VERBOSE, FORMAT JSON)` passes under `statement_timeout=30s` and parallel workers disabled, with candidate and smart-content work bounded by 160, four CTE target columns, and no JIT.
+- bounded runtime proof: on exactly 50,000 elements, 10,000 smart-content rows, and 20,000 embeddings (10,000 smart + 10,000 raw), shipped `EXPLAIN (ANALYZE, BUFFERS, VERBOSE, FORMAT JSON)` passes under `statement_timeout=30s` and parallel workers disabled, with candidate and smart-content work bounded by 160, four CTE target columns, and no JIT.
 
 Evidence on the separate `:5434` test postmaster: `search_plan_shape_static` — 1 passed; `search_plan_shape_analyze` — 1 passed; `search_parity` — 1 passed after the rewrite.
 
@@ -50,3 +50,9 @@ Final focused receipts on the separate `:5434` postmaster:
 - daemon `conversation_query`, `first_light`, `oversize`, `search_empty`, `search_lexical`, and `search_scope_starvation` — 55/55.
 
 These cover the full caller filter matrix, deterministic shared-summary choice, exact conversation pin, ddoc state/schema/id filters, distance ceiling, chunk collapse/best score, candidate expansion, and semantic-only scoped starvation.
+
+## Full-gate diagnosis after main merge
+
+Merged main commit `f73dee0` (plan 012's process-wide database-mutation permit) before rerunning the full suite. The first captured suite failed only in unrelated `streaming::progress_is_reported_while_the_queue_is_still_draining`; that test passed three consecutive correctly configured targeted runs, classifying the full-suite miss as environmental timing under load. No plan-013 code touches provider progress reporting.
+
+The merge exposed a real fixture boundary in `search_plan_shape_analyze_bounds_admission_work`: with only 10,000 equal smart vectors, PostgreSQL could choose either HNSW or sequential sort at nearly equal cost. Adding 10,000 raw vectors stabilizes the prod-shaped 20,000-vector fixture without weakening any assertion. Both shape legs now pass together after the merge: 108.468 ms, 2,691 shared hits, HNSW/candidate rows 160, smart-content max loops 1.

@@ -44,7 +44,7 @@
           "id": "ac-0001",
           "state": "checked",
           "claim": "Loops bound, mutation-checked: an integration test runs EXPLAIN (ANALYZE, FORMAT JSON) on the shipped query against a seeded corpus with ≥50k elements and ≥10k smart_content rows and asserts the smart_content node's loops ≤ candidate_limit, no Materialize-over-Seq-Scan-on-elements node exists, the candidate_vectors CTE target list carries no vector column, and JIT is not triggered (or is disabled for this statement with the reason stated); the SAME test fails against the old query (keep it under a cfg/feature or a golden-SQL comparison so the mutation is one-line). Mutation stated in the PR body.",
-          "receipt": "PASS on flowspace3-db-test :5434. Corpus: 50,000 elements, 10,000 smart_content, 10,000 smart embeddings. Static non-ANALYZE: HNSW candidate_vectors Limit first; old mutation contains correlated smart_content SubPlan + Materialize/elements. Shipped ANALYZE: 112.644 ms, 2,743 shared hits, HNSW rows 160, candidate rows 160, smart_content max loops 1, four target columns, no JIT. Commands: cargo test -p fs3-store search_plan_shape -- --nocapture."
+          "receipt": "PASS on flowspace3-db-test :5434 after main merge. Corpus: 50,000 elements, 10,000 smart_content, 20,000 embeddings (10k smart + 10k raw; stabilizes HNSW below sequential-sort cost). Static non-ANALYZE: HNSW candidate_vectors Limit first; old mutation contains correlated smart_content SubPlan + Materialize/elements. Shipped ANALYZE: 108.468 ms, 2,691 shared hits, HNSW rows 160, candidate rows 160, smart_content max loops 1, four target columns, no JIT. Command: cargo test -p fs3-store search_plan_shape -- --nocapture."
         },
         {
           "id": "ac-0002",

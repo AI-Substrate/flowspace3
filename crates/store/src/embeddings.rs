@@ -930,8 +930,10 @@ mod tests {
     const SHAPE_MODEL: &str = "search-plan-shape@1024";
 
     async fn shape_database() -> (String, PgPool, PgPool) {
+        use std::sync::atomic::{AtomicU64, Ordering};
         use std::time::{SystemTime, UNIX_EPOCH};
 
+        static SEQUENCE: AtomicU64 = AtomicU64::new(0);
         let base_url = fs3_testkit::test_database_url();
         let (maintenance_url, _) = crate::maintenance_url(&base_url).unwrap();
         let admin = crate::connect(&maintenance_url).await.unwrap();
@@ -939,7 +941,8 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let name = format!("fs3_test_searchplan_{nanos}");
+        let sequence = SEQUENCE.fetch_add(1, Ordering::Relaxed);
+        let name = format!("fs3_test_searchplan_{nanos}_{sequence}");
         crate::create_database(&admin, &name).await.unwrap();
         let url = crate::database_url(&base_url, &name).unwrap();
         let pool = crate::connect(&url).await.unwrap();
@@ -977,6 +980,19 @@ mod tests {
                  (source_hash, source_kind, chunk_no, model_key, vector, truncated)
              SELECT text_hash, 'smart', 0, $1, $2, false
                FROM smart_content",
+        )
+        .bind(SHAPE_MODEL)
+        .bind(Vector::from(query.clone()))
+        .execute(pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO embeddings_1024
+                 (source_hash, source_kind, chunk_no, model_key, vector, truncated)
+             SELECT raw_hash, 'raw', 0, $1, $2, false
+               FROM elements
+              ORDER BY id
+              LIMIT 10000",
         )
         .bind(SHAPE_MODEL)
         .bind(Vector::from(query))
@@ -1247,6 +1263,13 @@ mod tests {
                 .await
                 .unwrap(),
             10_000
+        );
+        assert_eq!(
+            sqlx::query_scalar::<_, i64>("SELECT count(*) FROM embeddings_1024")
+                .fetch_one(&pool)
+                .await
+                .unwrap(),
+            20_000
         );
         (name, pool, admin)
     }

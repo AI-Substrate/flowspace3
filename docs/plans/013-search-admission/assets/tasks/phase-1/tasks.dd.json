@@ -40,7 +40,7 @@
             "../../../plan.dd.json#acceptance_criteria/ac-0005"
           ],
           "note": "In progress: extract the shipped SQL for private plan testing, add the prod-shaped EXPLAIN mutation check, then replace correlated admission with deduplicated one-time sets.",
-          "receipt": "PASS on separate :5434 postmaster: cargo test -p fs3-store search_plan_shape_static -- --nocapture (HNSW candidate_vectors Limit first; old non-ANALYZE mutation red by correlated smart_content SubPlan + Materialize/elements); cargo test -p fs3-store search_plan_shape_analyze -- --nocapture (1 passed under SET LOCAL statement_timeout=30s and max_parallel_workers_per_gather=0); corpus exactly 50,000 elements + 10,000 smart_content + 10,000 smart embeddings; candidate page and smart loops bounded at 160; four-field candidate target; JIT explicitly disabled. New-query parity golden also passes."
+          "receipt": "PASS on separate :5434 postmaster after merging main: cargo test -p fs3-store search_plan_shape -- --nocapture. Static leg: HNSW candidate_vectors Limit first; old non-ANALYZE mutation red by correlated smart_content SubPlan + Materialize/elements. ANALYZE leg: 108.468 ms, 2,691 shared hits under SET LOCAL statement_timeout=30s and max_parallel_workers_per_gather=0. Corpus exactly 50,000 elements + 10,000 smart_content + 20,000 embeddings (10k smart + 10k raw); candidate page 160; smart loops 1; four-field target; JIT off."
         },
         {
           "id": "tk-0103",
