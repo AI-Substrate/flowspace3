@@ -2826,3 +2826,13 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     / an ANSI sequence) landed inside the JSON. Row 149 already says it:
     parse stdout only. Not a product defect. Lesson kept: reproduce with
     a different tool before filing (row 152, twice today).
+161. **rs seats SPAWNED after the wire v2 cutover receive nothing** (05:03):
+    `delivered_messages` has 0 rows for pij-select-carp (spawned 04:36)
+    and pij-resonant-fox (04:37) while the RESUMED seats (barnacle 3,
+    amistad 3, mite 2) deliver. Every `pij-rs send` to the two new seats
+    returned ok/queued and sat undelivered (row 155 gap B: "queued
+    forever"); both seats went idle waiting on rulings that never landed
+    (carp 16 min, fox 10 min) until o-prime pane-pasted. Outbound from
+    them works. For the pij government: spawn-time subscription after
+    the v2 daemon restart. fs3 workaround: every ruling to a post-cutover
+    seat is pasted, not sent; delivered_at is the liveness signal.
