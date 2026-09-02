@@ -3149,3 +3149,23 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     start edge. Encode: strip the status-card line from the pij-team
     coder/reviewer templates (third template defect today after i6/i7
     contamination and i10/i11 placeholders).
+    PLAN 013 — DELTA APPROVE at b332f46 (carp, round 2 record validates):
+    f-9c41 fixed both directions (hits=5 scanned=5 admitted=5 at every
+    sweep step, byte-matching pre-013; Rust test passes ≤ 2, exhausted
+    false); f-2e07's test proven to DISCRIMINATE by splicing the pre-fix
+    SQL back (RED: 0 vs 5) — and that shim showed the two halves are
+    independently load-bearing (the Rust sentinel alone turns the 9-pass
+    outage into a 2-pass diagnosed empty page; the SQL relocation
+    recovers the hits); f-6a55 fixed; all four binding notes implemented;
+    page-bounding took plan-shape ANALYZE 105–121 ms → 6.9–7.3 ms (5/5).
+    NEW non-blocking, RULED into one last commit (prime-reply-018):
+    f-3b7e — expansion_decision labels a COMPLETED scan incomplete when
+    scan-exhausted and admitted-stall coincide (fix: && !candidate_scan_
+    exhausted + the reviewer's unit case); f-5c92 — scan_incomplete and
+    candidate_limit_exhausted are published aliases → publish one. Plan
+    prose "resolved ONCE" → "once per page" + explicit loops ≤
+    candidate_limit. Carried to a follow-up: f-7b13 (JIT assertion
+    unfalsifiable), f-4d88 shifted risk (worktree + conversation/scope
+    legs are new code below the LIMIT with no parity case). The ac-0004
+    HNSW-driver clause is now THE prod risk (hash semi-join inside ORDER
+    BY/LIMIT).
