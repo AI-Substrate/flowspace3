@@ -1,0 +1,26 @@
+crates/cli/tests/boot_contract.rs
+  h_9e71e8b09f7cf2 168-479
+crates/core/src/config.rs
+  h_9e71e8b09f7cf2 344-348,453,2277-2292
+crates/daemon/src/auth.rs
+  h_9e71e8b09f7cf2 27-28,38-40,44-45,55-73,91,96-107,109-114,179-198,206-207,222-226,229,238-242,246-247,259-265,291-292,294-296,298,308-364
+crates/daemon/src/boot.rs
+  h_9e71e8b09f7cf2 36-41,78-85,404-449,641,643,743,824-832,834-839,859,872,885,909-943,953
+docs/plans/017-daemon-key-after-bind/assets/tasks/phase-1/execution.log.md
+  h_9e71e8b09f7cf2 1-63
+docs/plans/017-daemon-key-after-bind/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 25,30-31,36,42-43,48,53-54,59,64-65,75-76,97,105,111,119,127,149-150
+docs/plans/017-daemon-key-after-bind/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 38-42,53,59-60,66,72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "43fca08f22bc6c2f14d84ab237cec14d8d0906c3",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
