@@ -2744,3 +2744,11 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     under a load average of 63) — re-measure at a quiet moment before
     calling it closed. Search timings unchanged (013 not landed):
     6.7 / 3.8 / 13.9 s vs 8.3 / 4.0 / 14.5 s before.
+    DRAIN 2026-09-02 04:30Z (o-prime): retro 002 recorded
+    (records/retro/2026-09-02/002-plans-012-014-drain.md, harness-shaped,
+    46 entries: shared buffer 11 + closeout-012 16 + review-012 6 +
+    closeout-014 11 + review-014 2); shared buffer CLEARED after the
+    record landed. Encode-next ranked in the retro (top: LSP reference
+    sanity probe; `harness checks --no-sweep`; test-slot URL preflight).
+    **#100 MERGED** 57b25df — the 014 review record is on main; docs
+    worktree removed.
