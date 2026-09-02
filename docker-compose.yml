@@ -18,6 +18,34 @@ services:
       POSTGRES_USER: flowspace3
       POSTGRES_PASSWORD: flowspace3
       POSTGRES_DB: flowspace3
+    # Row 140 (2026-09-02, measured in scratch/db-cpu-profile): the defaults
+    # (128MB shared_buffers, 4MB work_mem, 1GB max_wal_size) turned the 16k
+    # buffer pool over every 5s and pinned WAL at the ceiling. These values are
+    # ALSO applied via ALTER SYSTEM on the live volume; this block keeps a fresh
+    # volume identical. pg_stat_statements is preloaded so a DB question can be
+    # answered without hand-rolling a sampler.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=4GB
+      - -c
+      - work_mem=64MB
+      - -c
+      - maintenance_work_mem=1GB
+      - -c
+      - effective_cache_size=16GB
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - max_wal_size=8GB
+      - -c
+      - wal_compression=on
+      - -c
+      - track_io_timing=on
+      - -c
+      - shared_preload_libraries=pg_stat_statements
     ports:
       - "5433:5432"
     volumes:
