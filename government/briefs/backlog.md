@@ -2505,3 +2505,14 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     trees that carry 012; until every worktree rebases past the merge,
     the test postmaster still sees the row-141 storm pattern. Encode
     (after merge): a fleet notice "rebase on main for the DB permit".
+    ROW 126 — REVIEW 012 DELTA VERDICT: APPROVE on 09509b7 (cheetah, 27
+    findings). Reviewer's own measurement: store suite max_concurrent_ddl
+    1 across 1003 samples (774 active, 0 above one, foreign 0); trajectory
+    across three shas 16 → 2 → 1. Both guards mutation-proved (no-FORCE
+    RED :571; permit removal RED admin.rs:705). Merging #95 via the veto
+    train. NON-BLOCKING follow-ups for a small packet AFTER merge:
+    f-1a1a — widened parser derives age from unique_seed's low 64 bits
+    (nanos) with no range check; if the bit layout changes, ~10% of
+    names decode as immediately sweepable. Clamp the decode to a
+    plausible window + one round-trip-within-seconds test. f-1a10 — two
+    cfg(test) lines remain in create_database behind create_test_hook.
