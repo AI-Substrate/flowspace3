@@ -1,0 +1,241 @@
+{
+  "dd": {
+    "schema": "builder/review"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Cross-model review \u2014 plan 015 ts-grammar (TypeScript + TSX grammars)",
+        "reviewer": "rs seat (cross-model reviewer), worktree /Users/jordanknight/substrate/flowspace/fs3-review-015",
+        "model": "github-copilot/claude-opus-5",
+        "round": "1 (3649c0fd)",
+        "date": "2026-09-02",
+        "plan": "../../plan.dd.json#meta",
+        "note": "SHA UNDER REVIEW: 3649c0fdbe96e1cd4d47b4b76fa6bca58a82d1b1 (PR #102, branch 015-ts-grammar), reviewed detached in a worktree only this seat holds, base 57b25df4fb7af14d8d48fbb90362323b4921ee00, diff 29 files +2154/-8. The reviewed sha is the PR head: `gh pr view 102` reports headRefOid == 3649c0f.\n\nVERDICT: APPROVE \u2014 no blocking findings. All five acceptance criteria judged TRUE against evidence I generated myself in a worktree detached at the reviewed sha; the author's receipts were re-derived, not audited, and every one of them held.\n\nPER-CRITERION JUDGEMENT\n- ac-0001 TRUE. The .ts golden is 22 rows and I hand-counted the fixture against it line by line: all ten promised kinds are present (function, class, abstract class, interface, enum, type alias, method, method signature, function signature, namespace), spans are 1-based inclusive and correct (top 3-8, Service 10-14, Tools 32-38, generated 44-46), and the file root reports typescript/tsx. The assertion is the whole forest including parenting and sibling order, not a count. The TSX fixture asserts !has_error, which is strictly stronger than the criterion's \"without ScanError::Unparseable\".\n- ac-0002 TRUE. The rule is in source.rs:93-101, reached from element_at at :55 via classify(ts_kind).or_else(|| function_binding_kind(node)) \u2014 no Language:: branch anywhere on its path, so it will serve JavaScript unchanged. All six binding shapes are in the fixture and named by their binding. Double emission does NOT occur: a binding inside a function body appears exactly once, nested (proved on my own source, not the fixture). Non-function values, destructuring, IIFEs and class expressions produce nothing. Removing the rule reddens the golden; widening it reddens BOTH the golden and the invents_nothing negative.\n- ac-0003 TRUE. internal_module is a Container that scopes members, and the scoping holds beyond the fixture: I proved nested namespaces (Outer::Inner::deep) and namespace>class>method (Outer::Holder::method, Outer::Holder::field) with correct sibling order. The classify test enumerates all three deliberate non-elements (export_statement, lexical_declaration, import_statement) plus the bindings and function-values as explicit rows.\n- ac-0004 TRUE. cargo test -p fs3-core -p fs3-parsers = 311 passed, 0 failed, matching the author's number exactly once my scratch probes were removed. Workspace clippy with -D warnings exits 0. CI check \"gate\" on PR #102 is COMPLETED/SUCCESS and its headRefOid is exactly 3649c0fdbe96e1cd4d47b4b76fa6bca58a82d1b1 \u2014 green on the sha under review, not on a neighbour. Rust/Python/Markdown goldens are untouched by the diff and green.\n- ac-0005 pre-prod half TRUE and exactly reproducible. I re-derived the table independently and matched every headline number: 327 files, 327 before, 3452 after, 284 with symbols, 43 file-only, 1 recovery, 0 errors. The prod half (bp-0006) is o-prime's post-bounce receipt and is out of my fence \u2014 not yet proven, owner o-prime.\n\nCOMPOSITION SEAMS (done-bar d2)\nSingle unit, so the seams are internal. Nothing outside crates/{parsers,core,testkit} is touched; crates/core/src/element.rs is untouched so ElementKind is unchanged; the arch allow-list gained exactly the one approved tree-sitter-typescript line. All four exhaustive matches on Language (lib.rs as_str/grammar/scan dispatch, discovery.rs LanguageFamily) are updated, and because they are exhaustive the compiler forecloses a missed callsite \u2014 which is what bit the author at t1 and is the correct failure mode. Non-goals hold: .js/.jsx/.mjs still scan to language=unknown with zero elements. .mts/.cts newly become discoverable Source via the grammar-first branch (they are absent from SOURCE_EXTENSIONS), which is the intended goal, not drift.\n\nSCANNER CONTRACT: the five-step add-language recipe in docs/services/scanner.md is followed in full, including step 2 (the allow-list edge) and the \"no per-language branch\" rule, and the snap-in recipe in the Language::for_extension doc comment was updated to match.\n\nWHAT I FOUND: four non-blocking observations, two of them real extraction gaps in TypeScript's dominant idioms (f-2b01, f-2b02). None contradicts a plan promise; none should hold the merge. All are worth a follow-up packet.\n\nKNOWN-OPEN, ZERO FINDINGS SPENT (per o-prime): JavaScript/JSX, decorators/overload merging, the exclusive gate slot, CI rerun, and the t5 tasks.dd.md checkbox docs gap."
+      }
+    },
+    {
+      "name": "findings",
+      "value": [
+        {
+          "id": "d0-1a01",
+          "kind": "dim0",
+          "severity": "NA",
+          "state": "checked",
+          "finding": "MUTATION (author's, re-derived by me): deleting the generic value-shape rule removes EXACTLY six Function elements \u2014 not 'some'. I patched source.rs:55 to `let kind = classify(ts_kind)?;` and diffed expected-vs-actual rows: the six that vanish are sample.ts::Service::field, ::plain, ::assigned, ::exported, ::asyncTask, ::generated. Every other row was unchanged. The author's count is exact.",
+          "address": "crates/parsers/src/source.rs:55,93-101; crates/parsers/tests/fixture_elements.rs:176-204",
+          "pressure": "../backpressure.dd.json#rows/bp-0002",
+          "receipt": "typescript_fixture_yields_the_expected_tree FAILED; the six named addresses appear once (expected only) while all 15 other addresses appear twice (both sides). Restored; git diff --stat clean."
+        },
+        {
+          "id": "d0-1a02",
+          "kind": "dim0",
+          "severity": "NA",
+          "state": "checked",
+          "finding": "MUTATION (mine, not the author's): widening the rule to promote ANY value \u2014 replacing the FUNCTION_VALUES membership test with an unconditional Some(ElementKind::Function) \u2014 turns BOTH typescript_fixture_yields_the_expected_tree AND typescript_fixtures_invent_nothing_and_never_emit_blank_identity red. This is the check that matters: it proves `const x = 1` and `const cfg = {}` are load-bearing negatives that actually defend the contract, rather than decorative fixture lines that would stay green under a broken rule.",
+          "address": "crates/parsers/src/source.rs:97-100; crates/parsers/tests/fixture_elements.rs:221-243",
+          "pressure": "../backpressure.dd.json#rows/bp-0002",
+          "receipt": "cargo test -p fs3-parsers --test fixture_elements => 11 passed, 2 FAILED under the mutation. Restored; 13/13 green."
+        },
+        {
+          "id": "d0-1a03",
+          "kind": "dim0",
+          "severity": "NA",
+          "state": "checked",
+          "finding": "MUTATION (author's, re-derived): removing the internal_module entry from BARE_DECLS flattens the namespace exactly as claimed \u2014 sample.ts::Tools disappears entirely and its members re-parent to file scope as sample.ts::inside and sample.ts::Nested, shifting sibling order. Both the parsers golden and the fs3-core classify suite go red, so the namespace decision is defended on both sides of the crate seam, not just in the fixture.",
+          "address": "crates/core/src/classify.rs:81-82; crates/parsers/tests/fixture_elements.rs:193-196",
+          "pressure": "../backpressure.dd.json#rows/bp-0003",
+          "receipt": "fixture_elements 12 passed / 1 FAILED; fs3-core classify 9 passed / 1 FAILED. Restored; git diff --stat clean."
+        },
+        {
+          "id": "d0-1a04",
+          "kind": "dim0",
+          "severity": "NA",
+          "state": "checked",
+          "finding": "MUTATION (mine, owed-1b hint fragility): classify rides on substring hints, so I deleted them one at a time to prove the tests fail loudly rather than drifting silently. Deleting \"type\" from CONTAINER_HINTS (which is what makes type_alias_declaration classify) reddens 1 parsers test and 1 core test. Deleting \"mod\" (which is what makes internal_module classify) reddens 3 parsers tests and 3 core tests. risk-2 in the impl-guide is therefore genuinely covered: a future hint change cannot pass unnoticed.",
+          "address": "crates/core/src/classify.rs:40-53 (\"type\" :46, \"mod\" :51); crates/core/src/classify.rs:188-232",
+          "pressure": "../backpressure.dd.json#rows/bp-0003",
+          "receipt": "H1 (drop \"type\"): fixture_elements 12/1 FAILED, classify 9/1 FAILED. H2 (drop \"mod\"): fixture_elements 10/3 FAILED, classify 7/3 FAILED. Both restored; git diff --stat clean."
+        },
+        {
+          "id": "d0-1a05",
+          "kind": "dim0",
+          "severity": "NA",
+          "state": "checked",
+          "finding": "MUTATION (mine, bp-0001's stated receipt): removing the \"tsx\" arm from Language::for_extension collapses the TSX fixture to a single row, `file unknown parsers/fixtures/sample.tsx #0 1-16` \u2014 zero elements \u2014 and the golden goes red. The tsx registration is therefore load-bearing and proven, not incidentally green because the TypeScript grammar would have parsed the file anyway.",
+          "address": "crates/parsers/src/lib.rs:70; crates/parsers/tests/fixture_elements.rs:207-219",
+          "pressure": "../backpressure.dd.json#rows/bp-0001",
+          "receipt": "left: [\"file unknown parsers/fixtures/sample.tsx #0 1-16\"] vs right: 4 rows. Restored; git diff --stat clean."
+        },
+        {
+          "id": "d0-1a06",
+          "kind": "dim0",
+          "severity": "NA",
+          "state": "checked",
+          "finding": "RE-DERIVATION (owed-1e): I wrote my own scanner over /Users/jordanknight/pi-hacking/pij/.pi/extensions/pij and reproduced the PR's pre-prod table to the digit \u2014 327 files, 327 before, 3452 after, 284 with symbols, 43 file-only, 1 file using tree-sitter recovery, 0 scan errors. The table in the PR body is reproducible from the branch. I also confirmed the file set independently: `find -name '*.ts'` under that root returns exactly 327, with no node_modules and no .d.ts to explain the number away.",
+          "address": "docs/plans/015-ts-grammar/assets/tasks/phase-1/tasks.dd.md#t5; .harness/temp/agent/ts-grammar-pr-body.md",
+          "pressure": "../backpressure.dd.json#rows/bp-0005",
+          "receipt": "SUMMARY files=327 before=327 after=3452 with_symbols=284 file_only=43 recovery=1 errors=0 \u2014 identical to the PR body's stated figures. Scratch harness deleted; git status on crates/ clean."
+        },
+        {
+          "id": "f-2b01",
+          "kind": "defect",
+          "severity": "MINOR",
+          "state": "checked",
+          "finding": "MINOR \u2014 object-literal and class-expression members get two DIFFERENT wrong answers, and neither is covered by a test. The value-shape rule keys on variable_declarator and public_field_definition, so for the extremely common TS module idiom `export const api = { get() {}, post() {}, put: () => {} }`: (a) `get` and `post` are emitted, but the unclassified variable_declarator is spliced through, so they land at FILE scope as `p.ts::get` / `p.ts::post` with the `api` segment lost \u2014 two modules each exporting `get` collide on one address; and (b) `put: () => {}` is an object `pair`, not a binding node, so it produces NO element at all \u2014 a real exported callable is invisible to search. The same split hits `const C = class { m() {} }`, which yields a file-scope `p.ts::m` and no element for C. This is consistent with the documented splice rule ('declarations attach to the nearest named ancestor'), so it is not a contract violation \u2014 but it is unfixtured, so a future change to either behaviour is silent.",
+          "address": "crates/parsers/src/source.rs:20-28 (FUNCTION_BINDINGS/FUNCTION_VALUES), :93-101, :38-50 (splice); crates/parsers/fixtures/sample.ts",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria",
+            "../../impl-guide.dd.json#architecture"
+          ],
+          "receipt": "MEASURED by me at the reviewed sha. `export const api = { get() {}, post() {}, put: () => {} };` => file typescript p.ts #0 1-5 / function method_definition p.ts::get #0 2-2 / function method_definition p.ts::post #1 3-3 \u2014 no `api` element, no `put` element, both method addresses at file depth. `const C = class { m() {} };` => function method_definition p.ts::m #0 2-2 only.",
+          "note": "Smallest fix, and it is deliberately small: add these two shapes to sample.ts and lock TODAY'S behaviour in the golden, so the gap is recorded rather than accidental. Actually changing the behaviour (scoping members under the binding, and teaching the rule about `pair` \u2014 which also needs a `key` entry in NAME_FIELDS) is a follow-up packet, not this one; no acceptance criterion promises object-literal members."
+        },
+        {
+          "id": "f-2b02",
+          "kind": "defect",
+          "severity": "MINOR",
+          "state": "checked",
+          "finding": "MINOR \u2014 ambient module declarations carry their quote characters into the element name and address. `declare module \"pkg/sub\" { ... }` classifies as a Container (subkind `module`, via the pre-existing Ruby BARE_DECLS entry) whose name field is a string literal, so first_identifier_text returns the raw text INCLUDING the quotes: the address becomes `p.ts::\"pkg/sub\"`. Every member beneath it inherits that segment. This was unreachable before this packet because .ts never parsed, so it is newly exposed here, and no fixture covers it. Impact is cosmetic-to-search rather than corrupting \u2014 addresses are text and a quote does not break the store key \u2014 but `\"pkg/sub\"` is not a name a human or agent would ever type into a lookup.",
+          "address": "crates/parsers/src/source.rs:127-142 (first_identifier_text); crates/core/src/classify.rs:76-85 (BARE_DECLS \"module\")",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "receipt": "MEASURED by me: `declare module \"pkg/sub\" { export const q: number; }` => container module p.ts::\"pkg/sub\" #1 4-6. Related: `declare module \"ext\" { export function amb(): void; }` => container module p.ts::\"ext\" with child function_signature p.ts::\"ext\"::amb. Also observed: `declare global { interface Window {...} }` produces no container, so Window lands at file scope.",
+          "note": "Smallest fix: strip a single matched pair of surrounding quotes in first_identifier_text when the name node is a string literal \u2014 one condition, no language branch, and it serves every grammar that names a module with a string. Add a `declare module` line to sample.ts to lock it."
+        },
+        {
+          "id": "f-2b03",
+          "kind": "question",
+          "severity": "NIT",
+          "state": "checked",
+          "finding": "NIT \u2014 anonymous default exports produce no element for the exported thing. `export default function () {}` yields an empty forest, and `export default class { m() {} }` yields only a file-scope `p.ts::m`. This is the documented and correct nameless-declaration behaviour ('Nameless declarations are skipped; their children are not'), and I am NOT calling it a defect \u2014 but TypeScript makes the anonymous default export a routine idiom in a way Rust and Python never do, so the rule costs materially more here than where it was designed. Worth a conscious decision (synthesise a name from the module basename, or accept the hole) rather than inheriting it by default.",
+          "address": "crates/parsers/src/source.rs:56-60 (node_name gate); docs/services/scanner.md (Key decisions \u2014 nameless declarations)",
+          "links": [
+            "../../plan.dd.json#non-goals"
+          ],
+          "receipt": "MEASURED by me: `export default function () {}` => single row `file typescript p.ts #0 1-1`. `export default class { m() {} }` => `function method_definition p.ts::m #0 2-2` and no container row."
+        },
+        {
+          "id": "f-2b04",
+          "kind": "question",
+          "severity": "NIT",
+          "state": "checked",
+          "finding": "NIT / read-before-you-take-the-receipt \u2014 ac-0005 promises 'N>1 elements per file for every file that DECLARES ANYTHING', and the measured result is 43 files still at exactly 1. I checked every one: 42 are .test.ts files plus core/name-corpus.ts and smoke.ts, and all of them declare only VALUE bindings (const objects, arrays, Sets) with no callable or container anywhere. So the implemented contract is 'declares a callable or a container', which is correct and exactly consistent with Rust's deliberate const_item/static_item exclusion \u2014 but it is narrower than the criterion's English. Concretely: core/name-corpus.ts is 1,720 lines and yields one element. Nothing to fix in this packet; flagged so the prod receipt is not read as a miss.",
+          "address": "docs/plans/015-ts-grammar/plan.dd.json#acceptance-criteria (ac-0005); crates/core/src/classify.rs:293-300 (bindings_are_not_elements)",
+          "links": [
+            "../backpressure.dd.json#rows/bp-0006"
+          ],
+          "receipt": "43 file-only paths enumerated by me; grep for declaration keywords across them returns only `const` value bindings (e.g. core/name-corpus.ts: EXCLUDED_NAME_WORDS, NAME_ADJECTIVES, NAME_NOUNS, SHIP_NAMES \u2014 all data)."
+        },
+        {
+          "id": "f-2b05",
+          "kind": "defect",
+          "severity": "MINOR",
+          "state": "checked",
+          "finding": "MINOR \u2014 the plan's own document set does not pass `ddocs validate` at the reviewed sha, and both offenders are NEW on this branch (added in f4b368f, the planning commit). (a) impl-guide.dd.json has two schema-shape ERRORs: $.sections[units].value[0].paths is a 9-element array and $.sections[review].value.inputs is a 5-element array, where builder/impl-guide requires a string in both slots. (b) packet-coder.dd.json has a duplicate instruction id \u2014 \"i10\" appears at instructions[9] (the TRIPWIRE row) and again at instructions[14] (\"Read assets/inputs/evidence.md FIRST...\"), so one substantive instruction in the CODER'S OWN BRIEF is not uniquely addressable. plan.dd.json, backpressure.dd.json, tasks.dd.json and packet-reviewer.dd.json all validate clean. I am reporting this because 'build' is not 'validate': these documents were built and rendered, so the breakage is invisible in the .dd.md that everyone actually reads.",
+          "address": "docs/plans/015-ts-grammar/impl-guide.dd.json ($.sections[units].value[0].paths, $.sections[review].value.inputs); docs/plans/015-ts-grammar/packet-coder.dd.json ($.sections[instructions].value[14].id)",
+          "links": [
+            "../../impl-guide.dd.json#units"
+          ],
+          "receipt": "`ddocs validate docs/plans/015-ts-grammar/impl-guide.dd.json` => status error, counts {error:2, warn:0}, code E402 'value must be a string' at both locations. `ddocs validate docs/plans/015-ts-grammar/packet-coder.dd.json` => status error, 1 issue: 'id \"i10\" duplicates $.sections[instructions].value[9].id'. `ddocs validate docs/plans/015-ts-grammar/plan.dd.json` => ok. Validating THIS review record surfaces the same two impl-guide errors as outbound-neighbourhood issues with owner=impl-guide.dd.json and zero issues owned by the record itself.",
+          "note": "Smallest fix: join each array into a single string (comma-separated, matching how every other plan folder writes those fields) and renumber the second i10 to i14. Both are one-line edits in the .dd.json followed by `ddocs build`. Ownership routes to o-prime, not to git (DL-011) \u2014 I am not attributing the planning commit to a seat."
+        }
+      ]
+    },
+    {
+      "name": "verdict",
+      "value": [
+        {
+          "id": "vd-3c01",
+          "finding": "#findings/d0-1a01",
+          "resolution": "confirmed",
+          "state": "checked",
+          "rationale": "The author's 'exactly six' is exact, and I read the row diff rather than the author's prose to establish it.",
+          "receipt": "Six addresses present once, fifteen present twice."
+        },
+        {
+          "id": "vd-3c02",
+          "finding": "#findings/d0-1a02",
+          "resolution": "confirmed",
+          "state": "checked",
+          "rationale": "The negatives are real controls, not decoration \u2014 widening the rule reddens the invents_nothing test as well as the golden. This was the single most likely place for a green-but-empty proof and it held.",
+          "receipt": "2 of 13 failed under the widened rule; 13/13 on restore."
+        },
+        {
+          "id": "vd-3c03",
+          "finding": "#findings/d0-1a03",
+          "resolution": "confirmed",
+          "state": "checked",
+          "rationale": "Namespace scoping is defended on both sides of the parsers/core seam.",
+          "receipt": "Red in fixture_elements and in fs3-core classify simultaneously."
+        },
+        {
+          "id": "vd-3c04",
+          "finding": "#findings/d0-1a04",
+          "resolution": "confirmed",
+          "state": "checked",
+          "rationale": "impl-guide risk-2 ('write the tests so a future hint change fails loudly') is discharged \u2014 both hints are load-bearing and both fail loudly.",
+          "receipt": "\"type\": 1+1 red. \"mod\": 3+3 red."
+        },
+        {
+          "id": "vd-3c05",
+          "finding": "#findings/d0-1a05",
+          "resolution": "confirmed",
+          "state": "checked",
+          "rationale": "bp-0001's stated mutation receipt reproduces exactly; the TSX grammar entry is proven, not assumed.",
+          "receipt": "TSX collapses to file unknown with zero elements."
+        },
+        {
+          "id": "vd-3c06",
+          "finding": "#findings/d0-1a06",
+          "resolution": "confirmed",
+          "state": "checked",
+          "rationale": "ac-0005's pre-prod half is TRUE and the PR's table is reproducible from the branch by an independent implementation. o-prime can take the prod receipt on this basis.",
+          "receipt": "All seven headline figures identical."
+        },
+        {
+          "id": "vd-3c07",
+          "finding": "#findings/f-2b01",
+          "resolution": "confirmed",
+          "state": "checked",
+          "rationale": "Real and reproducible, but NOT blocking: no acceptance criterion promises object-literal or class-expression members, and the behaviour follows the documented splice rule. It matters because the two spellings of the same idea diverge \u2014 one lands at the wrong address, the other vanishes \u2014 and nothing in the suite would notice either changing. Recommend the fixture rows now and the behaviour change in the JavaScript packet, where the same rule has to serve object literals anyway.",
+          "receipt": "Measured forests recorded in the finding."
+        },
+        {
+          "id": "vd-3c08",
+          "finding": "#findings/f-2b02",
+          "resolution": "confirmed",
+          "state": "checked",
+          "rationale": "Real, newly exposed by this packet, not blocking. One-condition fix available that stays language-agnostic. Recommend for the follow-up rather than a respin, since ambient module declarations are rare in the .ts corpus measured here (0 of 327 files).",
+          "receipt": "container module p.ts::\"pkg/sub\"."
+        },
+        {
+          "id": "vd-3c09",
+          "finding": "#findings/f-2b03",
+          "resolution": "deferred",
+          "state": "checked",
+          "rationale": "Correct-by-design and explicitly out of this packet's scope; raised as a decision to make deliberately, not a defect to fix here.",
+          "receipt": "Empty forest for an anonymous default-exported function."
+        },
+        {
+          "id": "vd-3c10",
+          "finding": "#findings/f-2b04",
+          "resolution": "deferred",
+          "state": "checked",
+          "rationale": "No code change wanted. The criterion's English is broader than the implemented and correct contract; recorded so the prod receipt in bp-0006 is not misread as an extraction miss.",
+          "receipt": "43 file-only paths, all value-binding-only, enumerated."
+        },
+        {
+          "id": "vd-3c11",
+          "finding": "#findings/f-2b05",
+          "resolution": "confirmed",
+          "state": "checked",
+          "rationale": "Confirmed and non-blocking for the CODE, but it should be fixed before this plan is archived, because these documents are the durable contract and a future `ddocs validate` sweep will trip on them. It also cost something already: the reviewer packet shipped with stale plan-014 rows (i6/i7) that o-prime has acknowledged, and a duplicate id in the coder packet is the same class of packet-cloning defect. Pairs naturally with the t5 checkbox docs gap o-prime has already ruled known-open \u2014 one docs pass closes all of it.",
+          "receipt": "impl-guide 2 errors, packet-coder 1 error, plan/backpressure/tasks/packet-reviewer clean."
+        }
+      ]
+    }
+  ]
+}

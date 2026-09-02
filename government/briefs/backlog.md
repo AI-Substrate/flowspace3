@@ -2952,3 +2952,23 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     outcome/meta + test (authorised daemon edit). THE residual risk: the
     planner keeping the HNSW driver with a hash semi-join inside ORDER BY/
     LIMIT — booked in the ac-0004 post-merge receipt.
+    PLAN 015 — VERDICT (boar): APPROVE, no blocking findings. All five ACs
+    true on the reviewer's own evidence at 3649c0f; 6/6 mutations (the
+    author's two + four of its own: widening the value rule reddens the
+    golden AND invents_nothing; 'type' hint 1+1 red; 'mod' hint 3+3 red;
+    .tsx arm removal collapses TSX); no double emission; t5 table
+    reproduced to the digit (327/327/3452/284/43, 0 errors); CI green on
+    the reviewed sha. Findings: f-2b01 MINOR object-literal members
+    (get(){} at file scope, `put: () => {}` emits nothing) → JS/JSX
+    packet; f-2b02 MINOR `declare module "pkg/sub"` keeps quotes in the
+    name → one-condition fix, same packet; f-2b03/04 NIT (anonymous
+    default exports; "declares anything" vs callable/container — all 43
+    file-only files are value-bindings-only, e.g. name-corpus.ts 1,720
+    lines → 1 element); f-2b05 MINOR, O-PRIME'S: impl-guide.dd.json has
+    2 schema errors (arrays where strings required) and packet-coder has
+    duplicate id i10 — `harness plan validate` passed while `ddocs
+    validate` fails: two validators, different rules (encode: the team
+    scaffold runs BOTH). Docs-only commit by the coder, then merge.
+163. **JS/JSX grammar packet** (follow-up to 015): tree-sitter-javascript;
+    object-literal members (f-2b01) and quoted module names (f-2b02) solved
+    there; anonymous default exports (f-2b03) decided there.
