@@ -3270,3 +3270,22 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     launch-before-kill safe (start the new binary on a probe port, or
     trap/guard so a crash after Ctrl-C still relaunches), and o-prime's
     receipt script must relaunch itself on a non-zero restart.
+    PLAN 013 — ac-0004 DISCHARGED ON PROD (carp, one authorised EXPLAIN
+    at load 10.5, READ ONLY, 30 s timeout, no parallel, rolled back):
+    the NEW unscoped statement on prod statistics — execution 35.1 ms
+    (was 1,667 ms in the profile: 48×; vs the 10,696 ms pg_stat mean:
+    ~305×), shared buffers 8,063 (was 3,853,170: 478×), smart_content
+    loops 1 (was 962,792), HNSW index still the childless `<=>`-ordered
+    driver (160 rows, 1 loop), zero correlated SubPlans, no JIT node,
+    planning 1.8 ms. The round-1 484 MB fear is resolved by the fix itself
+    (page-bounded admitted_elements). Reviewer's correction: the
+    fixture's 150–160 loops were an artefact (all seeded vectors
+    identical); prod probes once. Scope: statement-level, not the
+    service path; ac-0005 (client wall, must-return-results) still owed
+    post-bounce.
+168. **The 20k search-shape fixture is a SHAPE fixture, not a COST
+    fixture** (carp): identical vectors and 14-byte raw_text made it
+    mislead three times today (round-1 latency figure, buffer-count fear,
+    per-candidate loops). Encode: state that on the fixture, and add a
+    cost fixture with distinct vectors and realistic text sizes for any
+    latency claim.
