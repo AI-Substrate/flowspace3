@@ -3333,3 +3333,11 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     +110 s; the plan-132 rogue (89658) exited by itself before the
     bounce. Client outage ~16:54–16:59 local. Fix packet next (key after
     bind; key path by port; prod-db designation).
+    PLAN 017 — daemon-key-after-bind (rows 165/169): plan/impl-guide/
+    tasks/backpressure/coder packet written on 017-daemon-key-after-bind
+    (validate 0 errors, 0 warns, 25 completable); evidence.md carries the
+    incident timeline + the code facts (bind precedes publish at boot.rs
+    :577/:582, so t1 must REPRODUCE the clobber and name the path before
+    any fix; candidates: the --json/sandbox boot, a promoted staged temp
+    file, a second address family). Coder HAND-STARTED in a tmux window
+    (self-registering omp) per the spawn-bind rule, 07:05.
