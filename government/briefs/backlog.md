@@ -2497,3 +2497,11 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     plus three siblings). Small repair applied: `.serena/` added to the common-dir
     `info/exclude` (local, not committed). Encode: add `.serena/` to `.gitignore`
     in the next packet that touches the root, so fresh clones inherit it.
+    ROW 126 — 012 DONE at 09509b7 (PR #95, CI gate pass 4m53s; report
+    fresh-db-serialise-report.md). Attributed probes 2→1, 2→1, 16→1 with
+    0 samples over one. NOTE: foreign_ddl_max=15/16 during those runs —
+    OTHER seats (pre-012 trees, other governments) still hit the :5434
+    test postmaster with 16 concurrent DDL. The permit only protects
+    trees that carry 012; until every worktree rebases past the merge,
+    the test postmaster still sees the row-141 storm pattern. Encode
+    (after merge): a fleet notice "rebase on main for the DB permit".
