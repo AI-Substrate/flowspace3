@@ -1108,10 +1108,9 @@ mod tests {
                 .get("Relation Name")
                 .and_then(serde_json::Value::as_str)
                 == Some("smart_content")
+                && let Some(actual) = node.get("Actual Loops").and_then(serde_json::Value::as_f64)
             {
-                if let Some(actual) = node.get("Actual Loops").and_then(serde_json::Value::as_f64) {
-                    loops = Some(loops.map_or(actual, |current| current.max(actual)));
-                }
+                loops = Some(loops.map_or(actual, |current| current.max(actual)));
             }
         });
         loops
