@@ -2842,3 +2842,10 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     check kind/subkind/address/parent/sibling/span + no-empty-name
     invariant; 13 run, 11 pass, exactly the 2 t3-mechanism goldens RED
     (internal_module + value-shape bindings). Allow-list line in. On to t3.
+    PLAN 015 — t3 DONE (fox, 05:12): generic function-valued binding rule
+    in source.rs (no Language branch); internal_module → Container in
+    classify.rs with an exhaustive TypeScript decision test; fixture
+    forests green (13 passed; classify 10 passed); mutations: rule removed
+    → exactly six binding Functions vanish → golden red; internal_module
+    removed → members flatten to file scope → red; both restored. Five-step
+    add-language mapping recorded. Gate slot GRANTED in advance for t4.
