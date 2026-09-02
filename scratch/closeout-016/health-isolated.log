@@ -1,0 +1,45 @@
+   Compiling ring v0.17.14
+   Compiling rustls v0.23.43
+   Compiling rustls-webpki v0.103.15
+   Compiling sqlx-core v0.8.6
+   Compiling ureq v3.4.0
+   Compiling tokio-rustls v0.26.4
+   Compiling rustls-platform-verifier v0.7.0
+   Compiling hyper-rustls v0.27.9
+   Compiling reqwest v0.13.4
+   Compiling reqwest v0.12.28
+   Compiling ort-sys v2.0.0-rc.13
+   Compiling hf-hub v0.5.0
+   Compiling typespec_client_core v1.1.0
+   Compiling sqlx-postgres v0.8.6
+   Compiling ort v2.0.0-rc.13
+   Compiling azure_core v1.1.0
+   Compiling fastembed v6.0.1
+   Compiling azure_identity v1.0.0
+   Compiling sqlx-macros-core v0.8.6
+   Compiling fs3-providers v0.5.0 (/Users/jordanknight/substrate/flowspace/fs3-hidden-dirs/crates/providers)
+   Compiling sqlx-macros v0.8.6
+   Compiling sqlx v0.8.6
+   Compiling pgvector v0.4.2
+   Compiling fs3-store v0.5.0 (/Users/jordanknight/substrate/flowspace/fs3-hidden-dirs/crates/store)
+   Compiling fs3-testkit v0.5.0 (/Users/jordanknight/substrate/flowspace/fs3-hidden-dirs/crates/testkit)
+   Compiling fs3-daemon v0.5.0 (/Users/jordanknight/substrate/flowspace/fs3-hidden-dirs/crates/daemon)
+   Compiling fs3-cli v0.5.0 (/Users/jordanknight/substrate/flowspace/fs3-hidden-dirs/crates/cli)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 16.84s
+     Running tests/health.rs (target/debug/deps/health-387888b935674f1d)
+
+running 1 test
+
+thread 'the_real_binaries_agree_through_a_discovered_config' (610187868) panicked at crates/daemon/tests/health.rs:178:9:
+the real daemon never served http://127.0.0.1:62617/health — it did not honour FS3_CONFIG_DIR
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test the_real_binaries_agree_through_a_discovered_config ... FAILED
+
+failures:
+
+failures:
+    the_real_binaries_agree_through_a_discovered_config
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2 filtered out; finished in 10.26s
+
+error: test failed, to rerun pass `-p fs3-daemon --test health`
