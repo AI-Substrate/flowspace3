@@ -1,0 +1,14 @@
+government/briefs/backlog.md
+  h_9e71e8b09f7cf2 3420-3429
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "051f475f2c986d2f8fed1a2c2ff9bd6ef243d146",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
