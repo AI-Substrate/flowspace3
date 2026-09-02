@@ -3009,3 +3009,10 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     (scan.rs:247), recipe step in lib.rs doc comment + scanner.md, f-2b05
     fixed (impl-guide strings; packet-coder i10 dedup), t5 ticked. CI in
     progress; reviewer boar on the four-point delta.
+    PLAN 015 — DELTA PASS at a45fdc9 (boar): @3 with a doc comment naming
+    the grammar delta; recipe step in scanner.md (renumbered, no stale
+    numbering) AND the lib.rs snap-in comment; f-2b05 fixed and all five
+    plan ddocs validate ok; crates/ diff = scan.rs + comment-only lib.rs;
+    cargo check + fixture_elements 13/13 + classify 10/10 at the delta sha;
+    t5/dw-30f7 ticked with the 327→3,452 receipt. Merge train armed on
+    CI green.
