@@ -355,9 +355,9 @@ fn every_denied_directory_is_named_in_the_prune_ledger() {
     assert_eq!(
         pruned,
         [
-            (".cache", "hidden"),
-            (".next", "hidden"),
-            (".venv", "hidden"),
+            (".cache", "standard-ignore"),
+            (".next", "standard-ignore"),
+            (".venv", "standard-ignore"),
             ("__pycache__", "standard-ignore"),
             ("build", "standard-ignore"),
             ("dist", "standard-ignore"),
@@ -404,30 +404,93 @@ fn an_empty_deny_list_prunes_nothing_and_reports_nothing() {
     assert!(discovery.pruned.is_empty(), "{:?}", discovery.pruned);
 }
 
-/// Dot-prefixed deny-list names reveal which rule won: hidden policy by
-/// default, standard-ignore after hidden entries are enabled.
+/// Dot-prefixed deny-list names are governed by the deny list in both modes,
+/// while an ordinary hidden directory keeps the hidden-policy advice.
 #[test]
 fn hidden_directory_prunes_name_the_effective_rule() {
-    let hidden_off = found(&ungoverned());
-    for hidden in [".cache", ".next", ".venv"] {
-        let pruned = hidden_off
-            .pruned
-            .iter()
-            .find(|dir| dir.path == hidden)
-            .unwrap_or_else(|| panic!("{hidden} was not named: {:?}", hidden_off.pruned));
-        assert_eq!(pruned.reason.as_str(), "hidden");
+    let tree = temp_tree(
+        "hidden-prune-fix",
+        &[
+            (".venv/site.py", "def site():\n    return 1\n"),
+            (".cache/warm.js", "export const warm = true;\n"),
+            (".next/server.js", "export const server = true;\n"),
+            (".hidden/notes.md", "# hidden\n"),
+        ],
+    );
+
+    for include_hidden in [false, true] {
+        let discovery = discover(
+            &tree,
+            &DiscoverySettings {
+                include_hidden,
+                ..ungoverned()
+            },
+        )
+        .expect("fixture walks");
+        for denied in [".cache", ".next", ".venv"] {
+            let pruned = discovery
+                .pruned
+                .iter()
+                .find(|dir| dir.path == denied)
+                .unwrap_or_else(|| panic!("{denied} was not named: {:?}", discovery.pruned));
+            assert_eq!(pruned.reason.as_str(), "standard-ignore");
+            assert_eq!(
+                pruned.reason.fix(),
+                "index it anyway with `[scan] standard_ignores = false`"
+            );
+        }
+        let hidden = discovery.pruned.iter().find(|dir| dir.path == ".hidden");
+        if include_hidden {
+            assert!(hidden.is_none(), "hidden opt-in must admit .hidden");
+            assert!(kept(&discovery).contains(&".hidden/notes.md"));
+        } else {
+            let hidden = hidden.expect("plain hidden directory is named");
+            assert_eq!(hidden.reason.as_str(), "hidden");
+            assert_eq!(
+                hidden.reason.fix(),
+                "index hidden directories with `flowspace3 add <root> --include-hidden`"
+            );
+        }
     }
 
-    let hidden_on = found(&DiscoverySettings {
-        include_hidden: true,
-        ..ungoverned()
-    });
-    for hidden in [".cache", ".next", ".venv"] {
-        let pruned = hidden_on
-            .pruned
-            .iter()
-            .find(|dir| dir.path == hidden)
-            .unwrap_or_else(|| panic!("{hidden} was not named: {:?}", hidden_on.pruned));
-        assert_eq!(pruned.reason.as_str(), "standard-ignore");
+    // Execute the standard-ignore fix. With hidden policy still off, `.venv`
+    // remains honestly pruned as hidden; enabling both policies admits it.
+    let standard_fix_only = discover(
+        &tree,
+        &DiscoverySettings {
+            standard_ignores: Vec::new(),
+            ..ungoverned()
+        },
+    )
+    .expect("fixture walks with standard ignores disabled");
+    let venv = standard_fix_only
+        .pruned
+        .iter()
+        .find(|dir| dir.path == ".venv")
+        .expect("hidden policy still prunes .venv");
+    assert_eq!(venv.reason.as_str(), "hidden");
+    assert_eq!(
+        venv.reason.fix(),
+        "index hidden directories with `flowspace3 add <root> --include-hidden`"
+    );
+
+    let both_fixes = discover(
+        &tree,
+        &DiscoverySettings {
+            include_hidden: true,
+            standard_ignores: Vec::new(),
+            ..ungoverned()
+        },
+    )
+    .expect("fixture walks with both policies enabled");
+    for admitted in [
+        ".cache/warm.js",
+        ".hidden/notes.md",
+        ".next/server.js",
+        ".venv/site.py",
+    ] {
+        assert!(kept(&both_fixes).contains(&admitted), "{admitted} absent");
     }
+
+    fs::remove_dir_all(tree).expect("cleanup");
 }

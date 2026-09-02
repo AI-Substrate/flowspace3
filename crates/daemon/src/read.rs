@@ -305,7 +305,7 @@ pub async fn tree(
             .await
             .map_err(fail)?;
         if !files.is_empty() {
-            return file_tree(state, files, &prefix, depth, scope, include_hidden).await;
+            return file_tree(state, files, &prefix, depth, scope).await;
         }
     }
 
@@ -349,10 +349,11 @@ async fn tree_hidden_policy(
     scope: &Scope,
 ) -> Result<Option<bool>, Failure> {
     let path = match raw {
+        None => scope.worktree.as_deref(),
         Some(target) if target.starts_with('/') || target.starts_with("\\\\") => {
             Some(target.trim_end_matches('/'))
         }
-        _ => scope.worktree.as_deref(),
+        Some(_) => None,
     };
     let Some(path) = path else {
         return Ok(None);
@@ -408,9 +409,12 @@ async fn file_tree(
     path: &str,
     depth: u32,
     scope: &Scope,
-    include_hidden: Option<bool>,
 ) -> Result<TreeResult, Failure> {
     let file = choose_file(files, path, scope)?;
+    let include_hidden = fs3_store::find_worktree(&state.db, &file.root_path)
+        .await
+        .map_err(fail)?
+        .map(|worktree| worktree.include_hidden);
     let (_, root, inconsistencies) = parse_tree(state, &file).await?;
 
     let entries: Vec<TreeEntry> = root

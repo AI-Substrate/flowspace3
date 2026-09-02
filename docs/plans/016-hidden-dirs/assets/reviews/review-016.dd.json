@@ -1,0 +1,296 @@
+{
+ "dd": {
+  "schema": "builder/review"
+ },
+ "sections": [
+  {
+   "name": "meta",
+   "value": {
+    "title": "Cross-model review — plan 016 hidden-dirs",
+    "reviewer": "pij-soviet-knobbler (cross-model reviewer seat)",
+    "model": "github-copilot/claude-opus-5",
+    "round": "1",
+    "date": "2026-09-02",
+    "plan": "../../plan.dd.json#meta",
+    "sha_under_review": "f9b6d0780cd9208a844c129748cccd45beda1d8d (PR #107, branch 016-hidden-dirs, detached in /Users/jordanknight/substrate/flowspace/fs3-review-016). Base 82f60eceb3c955d5897151cf732e18625c14a9d3, 47 files +2529/-79. PR head advanced to fa4da2fe8b341c6a0ea320ffae262d3c72075de7 after this seat spawned; `git diff --stat f9b6d07..fa4da2f` = 3 files, 4 insertions, 2 deletions, ALL under docs/plans/016-hidden-dirs/assets/tasks/phase-1/ and `git diff --name-only f9b6d07..fa4da2f -- crates/` returns ZERO paths, so the head drift is docs-only and this review's crate evidence covers the PR head unchanged.",
+    "note": "VERDICT: APPROVE WITH FINDINGS. All five ACs judged TRUE on evidence I generated myself: I re-derived every receipt in the PR body and hidden-dirs-report.md rather than auditing its prose. 2 MEDIUM defects and 3 MINOR, none of which falsify a plan promise; all live in the agent-facing EXPLANATION of the flag rather than in the flag's behaviour. The persistence tri-state, both discovery call sites, the permanent deny list under opt-in, and the pij real-usage counts are all correct and independently reproduced. The two MEDIUM findings are both cases where the new surfaces tell an agent something FALSE: the prune ledger's `fix` names an action that provably does not work for `.venv`/`.cache`/`.next`, and `tree` attaches the cwd root's include_hidden to a file in a different root. Recommend merge, then fix both in a follow-up — neither blocks the prod bounce.",
+    "method": "Read-only on code, per the packet fence — so no source mutations were performed. Every behavioural claim below is instead backed by a BLACK-BOX receipt from real binaries against a scratch daemon on the test postmaster, which is strictly stronger evidence than a mutation for the claims made, and every one carries its exact reproduction command. The author's own mutation receipts were re-run as tests rather than re-mutated.",
+    "fence": "Tests: FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5434/flowspace3_test (container flowspace3-db-test). Scratch daemons: FS3_CONFIG_DIR=/tmp/fs3-rev016-scratch (port 54990, DB fs3_rev016) and /tmp/fs3-rev016-scratch2 (port 54991, DB fs3_rev016_mirror), both created fresh on :5434 so the shared flowspace3_test database was NOT polluted further. Prod (:7373, :5433, the default config dir and its daemon key) was never touched. No `harness checks` was run — the exclusive slot is not the reviewer's.",
+    "packet_note": "Packet instructions i6 and i7 were stale clones from plan 014 (migration 0023, the job-row purge, `status --history`). Raised at ack time and ruled VOID by o-prime in .harness/temp/agent/review-016-prime-reply-001.md. Reviewed against the 016 ACs, the three owed lists, and the include_hidden construction seams only."
+   }
+  },
+  {
+   "name": "findings",
+   "value": [
+    {
+     "id": "f-16a1",
+     "kind": "defect",
+     "severity": "MAJOR",
+     "finding": "MEDIUM — the hidden prune's `fix` string tells the operator to run a command that provably does not work. `walker`'s filter_entry tests the hidden policy (discovery.rs:868) BEFORE the standard deny list (discovery.rs:884), so every dot-prefixed directory that is ALSO on STANDARD_IGNORES — `.cache`, `.venv`, `.next` (discovery.rs:91-103) — is reported by a default add with reason `hidden`, and `pruned_rows` (roots.rs:390-401) therefore attaches the hidden fix: \"index hidden directories with `flowspace3 add <root> --include-hidden`\". Following that instruction exactly does NOT index them: with include_hidden on, the same directories are still pruned, now as `standard-ignore`. The ledger exists so that \"why is my code missing\" has an actionable answer (the doc comment on PrunedDirectory says exactly that); for these three names the actionable field is false. The author's own test `hidden_directory_prunes_name_the_effective_rule` pins the reason FLIP across modes but never asserts anything about the fix, so the suite is green while the advice is wrong. Second-order cost: the reason for a given directory is now mode-dependent, so an agent diffing two `add` reports sees `.venv` change category without anything about `.venv` having changed. SMALLEST FIX: test the deny list before the hidden policy for directories, so a deny-listed dot-directory always reports `standard-ignore` with its correct fix and the reason stops flipping; `.hidden`, `.pi`, `.harness` are unaffected and keep reason `hidden`.",
+     "address": "crates/parsers/src/discovery.rs:868-877 (hidden branch) vs :884-899 (deny branch); crates/daemon/src/roots.rs:390-401 (`pruned_rows` fix strings); crates/parsers/tests/discovery_standard_ignores.rs:396-433 (`hidden_directory_prunes_name_the_effective_rule`)",
+     "links": [
+      "../../plan.dd.json#goals",
+      "../../plan.dd.json#acceptance-criteria"
+     ],
+     "state": "checked",
+     "receipt": "REPRODUCED by me end-to-end on scratch daemon 127.0.0.1:54990 (FS3_CONFIG_DIR=/tmp/fs3-rev016-scratch, DB fs3_rev016 on :5434) against fixture /tmp/fs3-rev016-fixture containing src/b.ts, .hidden/a.ts, .hidden/node_modules/deep.ts, .git/never.ts, .venv/site/never.py, node_modules/pkg/never.ts, .pi/deep/x.ts. STEP 1 `flowspace3 --json add <fixture> --no-include-hidden` returned pruned rows: {path .venv, reason hidden, fix \"index hidden directories with `flowspace3 add <root> --include-hidden`\"} alongside the same row for .hidden and .pi. STEP 2, following that fix literally, `flowspace3 --json add <fixture> --include-hidden` returned {path .venv, reason standard-ignore, fix \"index it anyway with `[scan] standard_ignores = false`\"} and mapped exactly [.hidden/a.ts, .pi/deep/x.ts, src/b.ts] — .venv still absent. The advertised fix changed nothing for .venv."
+    },
+    {
+     "id": "f-16a2",
+     "kind": "defect",
+     "severity": "MAJOR",
+     "finding": "MEDIUM — `tree` reports the CWD root's hidden policy for a file that belongs to a DIFFERENT root, in both JSON and the human title. `tree_hidden_policy` (read.rs:346-364) resolves the policy from `scope.worktree` — the registered root the CALLER happens to be standing in — for every target that is not an absolute path, while the repo and the entries come from the resolved address. For the bare element-address form (`tree el:<repo>/<path>`), `scope.repo` is unset, so `scope.worktree` is the cwd root and the answer pairs one root's file list with another root's policy. This is the one field plan 016 added \"so an agent can see why a hidden path is or is not indexed\" (plan goals), and in this shape it is not merely absent — it is wrong, which is worse than the `null` the same function correctly returns for the index and conversation views. SMALLEST FIX: derive the policy from the worktree that owns the RESOLVED file/repo (`file.identity` is already in hand in `file_tree`), or return `None` whenever the resolved repo is not the cwd worktree's repo — the honest-absence shape this function already uses elsewhere.",
+     "address": "crates/daemon/src/read.rs:346-364 (`tree_hidden_policy`), :275 (call site), :405-433 (`file_tree`); crates/cli/src/render/surfaces/read.rs:84-95 (human title)",
+     "links": [
+      "../../plan.dd.json#goals",
+      "../../plan.dd.json#acceptance-criteria"
+     ],
+     "state": "checked",
+     "receipt": "REPRODUCED by me, symmetrically, on scratch daemon 127.0.0.1:54990. Two roots registered: /private/tmp/fs3-rev016-fixture (include_hidden FALSE) and /private/tmp/fs3-rev016-fixture2 (include_hidden TRUE), both confirmed in `status --json`. (a) `cd /private/tmp/fs3-rev016-fixture2 && flowspace3 --json tree 'el:path:/private/tmp/fs3-rev016-fixture/src/b.ts'` returned {repo: path:/private/tmp/fs3-rev016-fixture, kind: file, include_hidden: TRUE} — that root's stored value is false. (b) the mirror case `cd /private/tmp/fs3-rev016-fixture && flowspace3 --json tree 'el:path:/private/tmp/fs3-rev016-fixture2/src/c.ts'` returned include_hidden FALSE for a root whose stored value is true. (c) the human renderer prints the same wrong answer: the same command under FS3_OUTPUT=human printed `tree  file · showing 1 of 1 · hidden yes` for the root whose policy is off. Controls that behave correctly and rule out coincidence: plain `tree` from inside each root returned that root's own true/false; `tree <absolute path of the other root>` returned the other root's correct value; `tree --repo <other> …` returned `null` rather than a wrong value."
+    },
+    {
+     "id": "f-16b1",
+     "kind": "defect",
+     "severity": "MINOR",
+     "finding": "MINOR — `hidden=N` in the add envelope's `skipped` list counts DIRECTORIES while every other row in that list counts FILES, so the number understates what a default add left out by orders of magnitude. `skip_counts` (roots.rs:355-370) folds `PruneReason::Hidden` prune rows into the same `Vec<SkipCount>` that carries `unsupported-extension`, `config-format`, `binary` and `too-large`, all of which are per-file. The CLI renders them in one undifferentiated two-column `skipped` table (cli/src/render/surfaces/roots.rs:28-38), so an operator reads `hidden 14` next to `config-format 167` and concludes 14 files were left out. The plan's own motivating case is the opposite: on pij a default add reports `hidden=14` while 563 TypeScript files under `.pi/` are the actual omission. The same directories are already reported by name, with a fix, in the `pruned` / \"directories not walked\" table, so the aggregate adds ambiguity rather than information. The count IS measured, not decorative (checked below), so this is a units problem, not a wiring one. SMALLEST FIX: leave `hidden` out of `skipped` and let the `pruned` table carry it, or label the unit (`hidden-directories`).",
+     "address": "crates/daemon/src/roots.rs:355-370 (`skip_counts`); crates/cli/src/render/surfaces/roots.rs:28-38; crates/daemon/tests/first_light.rs (`hidden_files_are_discovered_only_for_an_opted_in_root`, asserts count 2 for .hidden and .venv)",
+     "links": [
+      "../../plan.dd.json#acceptance-criteria"
+     ],
+     "state": "checked",
+     "receipt": "MEASURED by me. Fixture default add: `{files: 1, skipped: [{reason: hidden, count: 3}]}` while the pruned list held exactly 3 hidden directories (.hidden, .pi, .venv) and 2 indexable files (.hidden/a.ts, .pi/deep/x.ts) were the real omission — 3 matches the directory count and neither file count. Real pij default add (`flowspace3 --json add /Users/jordanknight/pi-hacking/pij --no-include-hidden`, scratch daemon :54990): `{files: 1974, skipped: [config-format 167, generated-sibling 119, hidden 14, unsupported-extension 37]}` with 14 hidden directories named in `pruned` (.agents, .agents-skills-port, .claude, .dd, .fs2, .github, .harness, .omp, .pi, .pij, docs/plans/121-adopt-is-consent/.dd, docs/plans/122-tmux-full-body/.dd, docs/plans/123-one-message-one-delivery/.dd, skills/pij/.harness). `git -C /Users/jordanknight/pi-hacking/pij ls-files '.pi/**/*.ts' | wc -l` = 379 in `.pi/` alone. The count is genuinely measured — it tracked 3 on the fixture and 14 on pij, matching each pruned list exactly — it is simply counting a different noun from its neighbours."
+    },
+    {
+     "id": "f-16b2",
+     "kind": "defect",
+     "severity": "MINOR",
+     "finding": "MINOR — replacing the walker's own hidden filter with a UTF-8 name check narrows what counts as hidden on two platforms. `walker` now sets `.hidden(false)` unconditionally (discovery.rs:824) and re-implements the policy in `filter_entry` as `name.starts_with('.')` (discovery.rs:868) AFTER an early `let Some(name) = entry.file_name().to_str() else { return true; }` (discovery.rs:854). The `ignore` crate's own check is byte-based on unix (`name.as_bytes().get(0) == Some(&b'.')`, ignore-0.4.23/src/pathutil.rs:11-19) and on Windows ALSO honours FILE_ATTRIBUTE_HIDDEN (pathutil.rs:28-45). So at this sha: (a) a dot-prefixed directory whose name is not valid UTF-8 is now WALKED and indexed with include_hidden off, where the crate previously pruned it — and `display_path` (discovery.rs:920-926) lossily maps such names through U+FFFD, so the stored path would not round-trip to disk; (b) a Windows entry hidden by file attribute rather than by a leading dot is no longer hidden at all. Neither is reachable on this host — APFS rejects the non-UTF-8 name outright (verified: `os.makedirs(b'.../.bad\\xff')` → OSError 92 Illegal byte sequence) — but (a) is reachable on ext4 and the repo's own comments show it targets Windows behaviour deliberately. The author's DONE report explicitly asked review to check \"manual hidden prune equivalence to the prior walker filter\"; this is the non-equivalence. SMALLEST FIX: match on the raw bytes (`entry.file_name().as_encoded_bytes().first() == Some(&b'.')`) so the check no longer depends on UTF-8 validity, and keep the `to_str()` bail-out only for the deny-list comparison that genuinely needs a string.",
+     "address": "crates/parsers/src/discovery.rs:822-824, :854-856, :868-877, :920-926; contrast ignore-0.4.23/src/pathutil.rs:11-19 (unix) and :28-45 (windows)",
+     "links": [
+      "../../impl-guide.dd.json#architecture"
+     ],
+     "state": "checked",
+     "receipt": "DERIVED from both sources read side by side, and the reachability boundary tested: creating `/tmp/fs3-rev016-fixture/.bad\\xff` on this macOS host fails with OSError 92 (Illegal byte sequence), so the case cannot be exercised locally and is reported as a cross-platform narrowing rather than a live bug. The ordering that makes it reachable elsewhere is verified in the vendored crate: `Walk::skip_entry` consults `should_skip_entry` (the ignore/hidden matchers) at walk.rs:945 BEFORE the user `filter_entry` predicate at walk.rs:960, and returns early at walk.rs:933 for depth 0 — which also confirms the separate question that a hidden ROOT is still walked in both the old and new code, so `add ~/repo/.harness` is unaffected."
+    },
+    {
+     "id": "f-16b3",
+     "kind": "defect",
+     "severity": "MINOR",
+     "finding": "MINOR — the one command that SETS the policy is the only human surface that never reports it. `RootReport` carries `include_hidden` and `status` and `tree` both render it (status gains a `hidden` column, tree gains a `· hidden yes/no` title suffix), but the `add` renderer prints repository / root / identity / removed and no policy row, so `flowspace3 add <root> --include-hidden` in a terminal gives the operator no confirmation of what was just persisted. It is present in `--json`, so this is a human-surface gap only. SMALLEST FIX: one more `facts.add_row([\"hidden\", …])` beside the existing rows.",
+     "address": "crates/cli/src/render/surfaces/roots.rs:19-27 (the facts table); contrast crates/cli/src/render/surfaces/status.rs:47-58 and crates/cli/src/render/surfaces/read.rs:84-95",
+     "links": [
+      "../../plan.dd.json#goals"
+     ],
+     "state": "checked",
+     "receipt": "READ from crates/cli/src/render/surfaces/roots.rs at this sha: `render` builds the facts table from report.identity, report.root_path, report.identity_source and report.removed only, then the `skipped` and `directories not walked` tables — `include_hidden` is never referenced in the file. Confirmed the JSON half is fine: `flowspace3 --json add … --include-hidden` returned `data.include_hidden: true`."
+    },
+    {
+     "id": "f-16c1",
+     "kind": "question",
+     "severity": "NA",
+     "finding": "DIAGNOSED, NOT A 016 REGRESSION — `crates/daemon/tests/health.rs::the_real_binaries_agree_through_a_discovered_config` fails deterministically on this host, and the cause is shared-test-database pollution meeting a pre-existing boot ordering, not anything plan 016 changed. Boot probes ddocs tooling for EVERY registered worktree before it binds and publishes the key (boot.rs:478-492, explicitly \"BEFORE serving\"); the shared `flowspace3_test` database currently holds 19 registered roots, so the probe loop runs 19 times against real repositories while the test waits 10 s for /health. This corroborates o-prime's ruling that the failure is environmental and names the mechanism, which the author could only characterise as a timeout. Two notes for follow-up, neither a 016 defect: the boot probe is unbounded in the number of roots and delays serving proportionally, and plan 016's own AC-0005 receipt left root id 19 (/Users/jordanknight/pi-hacking/pij, 2463 files, include_hidden=t) registered in the SHARED test database — the receipt procedure kills its scratch daemon but does not unregister its roots, so it degrades the shared database for every later seat. This review deliberately used fresh scratch databases (fs3_rev016, fs3_rev016_mirror) to avoid adding to it.",
+     "address": "crates/daemon/src/boot.rs:478-492; crates/daemon/tests/health.rs:129-179; docs/plans/016-hidden-dirs/assets/backpressure.dd.json#bp-0004",
+     "links": [
+      "../../plan.dd.json#acceptance-criteria",
+      "../backpressure.dd.json#rows"
+     ],
+     "state": "checked",
+     "receipt": "MEASURED by me, three ways. (1) Reproduced the failure twice — inside the full targeted run and again isolated and unloaded: `cargo test -p fs3-daemon --test health the_real_binaries_agree` FAILED at health.rs:178 in 10.24 s, so it is not a load artefact. (2) `docker exec flowspace3-db-test psql -U flowspace3 -d flowspace3_test -c 'select id, root_path, include_hidden from worktrees'` lists 19 rows, ids 1-18 predating this plan and id 19 = the author's pij receipt. (3) Controlled A/B on the same binary and config shape: against a FRESH empty database (fs3_rev016_probe) the daemon logged `probed ddocs tooling for registered roots roots=0` and `listening bound=127.0.0.1:54998` and published daemon.key in 1 s, health 200; against `flowspace3_test` the identical spawn logged `roots=19` and published the key only after 25 s (`listening` at 07:38:39 for a boot begun at 07:38:14). The test's ceiling is 10 s, so 19 roots is a deterministic failure and 0 roots is a deterministic pass. CI is green on the exact sha, which is consistent with a clean CI database."
+    },
+    {
+     "id": "f-16c2",
+     "kind": "question",
+     "severity": "NIT",
+     "finding": "NIT, receipt wording only — the PR body claims the scoped default-mode search returns `empty_because.reason=path_unmatched`. At this sha the envelope carries no `empty_because` key; the same information arrives as `next_action` prose. The substance of the receipt (the scoped `.pi/**` search returns zero results with a path-unmatched explanation) is TRUE and reproduced; only the field name in the prose is wrong. Adjacent, and out of scope for this plan: evidence.md row 125's encoding (b) asked that an unmatched path say WHETHER the prefix exists on disk but is excluded by an index rule (\"not indexed (hidden dir rule)\" vs \"no such path\"). The current message lists indexed top-level entries but never says `.pi` exists on disk and was excluded because hidden directories are off for this root — which is exactly the question this plan's flag now has the answer to. Worth a backlog row, not a change to 016.",
+     "address": ".harness/temp/agent/hidden-dirs-pr-body.md (TEST-daemon real-usage receipt, Default section); docs/plans/016-hidden-dirs/assets/inputs/evidence.md (row 125 encoding b)",
+     "links": [
+      "../../plan.dd.json#non-goals"
+     ],
+     "state": "checked",
+     "receipt": "OBSERVED by me on scratch daemon :54990: `flowspace3 --json search daemonLocation --repo git:github.com/AI-Substrate/pij --path '.pi/**' --limit 5` returned ok=true, zero results, composition all zero, `error: null`, and next_action = \"the --path filter \\\".pi/**\\\" matches zero indexed paths in this scope; … indexed top-level entries in this scope: agents, AGENTS.md, … correct --path to start from one of these entries\". No `empty_because` key is present anywhere in the envelope."
+    },
+    {
+     "id": "f-16d1",
+     "kind": "question",
+     "severity": "NA",
+     "finding": "AC-0001 JUDGED TRUE — TRUE, and the tri-state is correct end to end through the real CLI, which is the shape owed-1(b) asked for. Migration 0024 is a single additive `ALTER TABLE worktrees ADD COLUMN include_hidden BOOLEAN NOT NULL DEFAULT FALSE` — instant, no backfill, no rewrite (risk-3 satisfied). The preserve semantics are structural rather than incidental: `register_worktree` never writes the column at all, and `set_worktree_include_hidden` (refs.rs:107-124) is called only when the request carried `Some` (roots.rs:180-182), so absence CANNOT reset a stored true by construction. `RootRequest.include_hidden` is `#[serde(default)] Option<bool>`, so an OLD client body with no key deserialises to `None`, not `Some(false)`. The CLI models the three states with two `conflicts_with` flags collapsed to `Option<bool>` (main.rs:60-65, 583-591) rather than a bare `bool` with a default, which is the shape that would have silently reset on every plain re-add.",
+     "address": "crates/store/migrations/0024_worktree_include_hidden.sql; crates/store/src/refs.rs:107-124; crates/daemon/src/roots.rs:161-183; crates/daemon/src/http.rs:509-532; crates/cli/src/main.rs:60-65,583-591",
+     "links": [
+      "../../plan.dd.json#acceptance-criteria"
+     ],
+     "state": "checked",
+     "receipt": "RE-DERIVED by me on scratch daemon :54990 against /tmp/fs3-rev016-fixture, four transitions, each confirmed in BOTH the envelope and the database row (`docker exec flowspace3-db-test psql -U flowspace3 -d fs3_rev016 -tAc 'select root_path, include_hidden from worktrees'`): `add --include-hidden` → envelope true, row t; plain `add` → envelope true, row t (PRESERVED); `scan` → envelope true, row t (preserved on the rescan path too, which the AC does not name and I checked anyway); `add --no-include-hidden` → envelope false, row f, and the file map shrank from [.hidden/a.ts, .pi/deep/x.ts, src/b.ts] back to [src/b.ts], so the stale hidden rows are reaped rather than orphaned. Targeted suites re-run by me on :5434 and read by exit status: fs3-store `a_worktree_hidden_policy_survives_reregistration_until_explicitly_changed` ok; fs3-daemon `add_hidden_policy_round_trips_and_absence_does_not_reset_it` ok; fs3-cli `add_hidden_flags_are_explicit_and_mutually_exclusive` ok; fs3-core view round-trips ok (216 passed)."
+    },
+    {
+     "id": "f-16d2",
+     "kind": "question",
+     "severity": "NA",
+     "finding": "AC-0002 JUDGED TRUE — TRUE at BOTH call sites, including the one owed-1(a) says people forget. `roots.rs` computes the settings per scan from `find_worktree` before discovery and ORs the global with the per-root flag (`settings.include_hidden |= root_include_hidden`), and `watch.rs::relist` re-reads `fs3_store::worktree_include_hidden` on EVERY rescan rather than capturing it when the watcher is installed — so a flag flipped by a later `add` reaches the running watcher without a daemon restart, which is risk-1 answered structurally rather than by luck. `.git` is refused unconditionally ahead of the hidden branch (discovery.rs:865), so it survives include_hidden at any setting. owed-1(c) holds and I extended it: the deny list prunes deny-listed directories even when NESTED INSIDE a hidden directory, which the author's fixtures did not cover.",
+     "address": "crates/daemon/src/roots.rs:167-176; crates/daemon/src/watch.rs:275-282; crates/parsers/src/discovery.rs:837-900",
+     "links": [
+      "../../plan.dd.json#acceptance-criteria"
+     ],
+     "state": "checked",
+     "receipt": "RE-DERIVED by me. Live watcher, not a stub: `cargo test -p fs3-daemon --test watcher watcher_rescans_follow_the_current_per_root_hidden_policy` PASSED (1 passed, 4.62 s) on :5434 — it builds a real `WatcherSupervisor`, reconciles, indexes `.hidden/live.ts` while enabled, re-adds with the flag off WITHOUT restarting the supervisor, and asserts the next rescan refuses `.hidden/ignored.ts` while still processing `src/canary.ts`. MY OWN EXTRA CASE (not in the author's fixtures): I added `.hidden/node_modules/deep.ts` to my fixture; the opt-in add pruned `.hidden/node_modules` with reason `standard-ignore` and mapped exactly [.hidden/a.ts, .pi/deep/x.ts, src/b.ts] — a deny-listed directory nested inside a hidden one is still pruned. `.git/never.ts`, `node_modules/pkg/never.ts` and `.venv/site/never.py` never appear in `worktree_files` in either mode. Also PASSED by me: fs3-daemon `hidden_files_are_discovered_only_for_an_opted_in_root`; fs3-parsers `hidden_files_appear_only_when_asked_for`, `ignored_files_are_absent_and_hidden_directories_are_named`, `a_hidden_directory_is_not_walked_either`."
+    },
+    {
+     "id": "f-16d3",
+     "kind": "question",
+     "severity": "NA",
+     "finding": "AC-0003 JUDGED TRUE AS WRITTEN — TRUE AS WRITTEN, with two caveats carried as findings rather than as a false verdict. The ledger does report `hidden` with a count for a default add of a root with dot-directories; `status --json` DOES carry `include_hidden` for EVERY root row, not only the cwd root, which is the half of owed-1(e) that mattered most; `tree` does expose the field. The caveats: the count counts directories among file counts (f-16b1), the prune row's fix is false for deny-listed dot-names (f-16a1), and the tree field can name the wrong root (f-16a2). The envelope change is strictly additive — `RootReport.include_hidden` and `status::Root.include_hidden` are new `#[serde(default)] bool` fields and `TreeResult.include_hidden` is `Option<bool>` with `skip_serializing_if`; no existing key was renamed or removed anywhere in crates/core/src/views.",
+     "address": "crates/daemon/src/status.rs:17-27; crates/daemon/src/read.rs:275,346-364; crates/core/src/views/{roots,status,read}.rs; crates/cli/src/render/surfaces/{status,read}.rs",
+     "links": [
+      "../../plan.dd.json#acceptance-criteria"
+     ],
+     "state": "checked",
+     "receipt": "MEASURED by me with TWO roots of DIFFERING policy registered simultaneously on scratch daemon :54990, which is the case a cwd-only implementation would fail: `flowspace3 --json status` returned [{root_path /private/tmp/fs3-rev016-fixture, include_hidden false, files 1}, {root_path /private/tmp/fs3-rev016-fixture2, include_hidden true, files 2}] — correct per row. Ledger measured on two corpora (fixture hidden=3, pij hidden=14), matching each pruned list exactly, so the count is real and not decorative. Additivity read field-by-field from the diff of crates/core/src/views/{roots,status,read}.rs. Renderer tests re-run by me: fs3-cli `roots_show_their_hidden_directory_policy` ok, `tree_title_shows_the_resolved_root_policy` ok; fs3-daemon `tree_exposes_the_resolved_roots_hidden_policy` ok."
+    },
+    {
+     "id": "f-16d4",
+     "kind": "question",
+     "severity": "NA",
+     "finding": "AC-0004 JUDGED TRUE — TRUE, verified independently rather than taken from the author's gate. CI is green on the EXACT sha under review, not merely on the PR head. I re-ran fmt, clippy and the targeted suites myself and read exit status. The sole failure in my run is the health test diagnosed in f-16c1, which I proved is caused by shared-test-database state and not by this branch. I also read the changed test files for weakened assertions: the edits to event_stream.rs, lanes.rs, remove_root.rs and worktree_lifecycle.rs are all mechanical `add_root(&state, &root)` → `add_root(&state, &root, None)` signature updates, and the parser test changes tighten rather than relax — `hidden_directory_prunes_name_the_effective_rule` now asserts an exact reason per directory where the old test only asserted presence.",
+     "address": "crates/daemon/tests/{event_stream,lanes,remove_root,worktree_lifecycle}.rs; crates/parsers/tests/discovery_standard_ignores.rs:396-433; PR #107 CI runs 33603518927 and its predecessor",
+     "links": [
+      "../../plan.dd.json#acceptance-criteria"
+     ],
+     "state": "checked",
+     "receipt": "RUN BY ME on this worktree at f9b6d07 with FS3_TEST_DATABASE_URL pinned to :5434/flowspace3_test: `cargo fmt --all --check` → FMT_OK; `cargo clippy --all-targets -- -D warnings` → exit 0, zero warnings; `cargo test -p fs3-store -p fs3-daemon -p fs3-parsers -p fs3-cli -p fs3-core` → every suite ok except tests/health.rs (see f-16c1). CI read from the API, not from the PR page: run 33603518927 conclusion `success` head_sha fa4da2fe…, and a second run conclusion `success` head_sha f9b6d078… — green on the reviewed sha itself. No `harness checks` was run; the exclusive slot is not the reviewer's."
+    },
+    {
+     "id": "f-16d5",
+     "kind": "question",
+     "severity": "NA",
+     "finding": "AC-0005 JUDGED TRUE — TRUE, re-derived from primary sources rather than from the receipt's prose, and the author's numbers survive to the byte. The default add yields zero `.pi/` rows and a scoped miss; the opt-in evaluates every git-tracked `.pi/**/*.ts` and stores all of them but one; the exclusion is exactly the file named, for exactly the reason named; and the `daemonLocation` search returns its element at exactly the span claimed. Method note: the pij COUNT half was measured on the real repository, while the SEARCH half was measured on a byte-identical copy of the same file in a controlled root, because a fresh scratch database enqueues the whole 2463-file corpus (2034 jobs) and the drain is a throughput limit on my host, not a correctness question — the count half already proves the file is indexed, and the mirror proves the element is findable and reaped when the flag is turned back off.",
+     "address": "docs/plans/016-hidden-dirs/plan.dd.json#acceptance-criteria (ac-0005); .harness/temp/agent/hidden-dirs-pr-body.md",
+     "links": [
+      "../../plan.dd.json#acceptance-criteria"
+     ],
+     "state": "checked",
+     "receipt": "RE-DERIVED by me on scratch daemon :54990 / DB fs3_rev016. Baseline from git, not from the receipt: `git -C /Users/jordanknight/pi-hacking/pij ls-files '.pi/**/*.ts' | wc -l` = 379 (head 4418e3f3) — the amended tracked-corpus criterion, and the stale ≥500 figure is correctly retired. DEFAULT: `add /Users/jordanknight/pi-hacking/pij --no-include-hidden` → include_hidden false, files 1974, hidden 14; `select count(*) from worktree_files where path like '.pi/%'` = 0; scoped `.pi/**` search returned zero results with a path-unmatched next_action. OPT-IN: `add … --include-hidden` → include_hidden true, files 2463, binary 1; `.pi/%` rows 402, of which `.ts` 378. EXACT DIFF (LC_ALL=C sorted both sides): tracked 379, stored 378, tracked-but-not-stored = exactly `.pi/extensions/pij/core/memorable-id.test.ts`, stored-but-not-tracked = empty. BINARY CAUSE verified independently, not accepted: `head -c 8192 .pi/extensions/pij/core/memorable-id.test.ts` contains 3 NUL bytes in 6322 bytes read — inside SNIFF_BYTES=8192, matching add's `binary=1`. SEARCH, on daemon :54991 / DB fs3_rev016_mirror with a byte-identical copy of daemon-http.ts at the same `.pi/extensions/pij/adapters/` path: default add mapped only `src/plain.ts` and a search for `daemonLocation` returned no such element; `add --include-hidden` then returned `el:…/.pi/extensions/pij/adapters/daemon-http.ts::daemonLocation`, kind function, span [62, 72], score 1.0, channel both — the same span the receipt claims — and `sed -n '62p'` of the real pij file is `export function daemonLocation(`. Flipping back to `--no-include-hidden` reaped it: the repo returned to `src/plain.ts` only and the element was gone."
+    },
+    {
+     "id": "f-16d6",
+     "kind": "question",
+     "severity": "NA",
+     "finding": "COMPOSITION SEAMS EXAMINED — SEAMS EXAMINED, no drift. Single unit but four crates, and the field is carried across five hops without collapsing the tri-state too early: CLI two flags → `Option<bool>` (main.rs) → JSON body key omitted when `None` (client.rs:202-208, which builds the object and only inserts the key for `Some` — so an absent flag sends no key at all rather than a null) → `RootRequest.include_hidden: Option<bool>` with `#[serde(default)]` → `scan_root(requested_include_hidden)` → conditional `set_worktree_include_hidden`. `Option<bool>` survives to the exact point where the decision is made and collapses to `bool` only in the report and the store, which is correct. The two `DiscoverySettings` construction sites named in the impl-guide are the ONLY two, both use `|=` against the global rather than assignment, and I re-checked there is no third: `add_root_with_priority` (the lifecycle auto-add) and `rescan_root` both pass `None`, so neither can reset a stored policy. Interface matches the impl-guide u1 contract exactly — CLI `--include-hidden|--no-include-hidden`, `/roots` body `include_hidden: Option<bool>`, `RootReport` + status/tree JSON, store `worktrees.include_hidden`, ledger reason `hidden` — with one documented deviation: the packet named `crates/store/src/worktrees.rs`, which does not exist, and the work landed in `crates/store/src/refs.rs` and `read.rs` after o-prime amended the fence (asks 002-004). The one seam that IS imperfect is read.rs's tree policy resolution, reported separately as f-16a2.",
+     "address": "crates/cli/src/client.rs:202-208; crates/cli/src/main.rs:583-591; crates/daemon/src/roots.rs:105-108,161-183,286-306; crates/daemon/src/watch.rs:275-282; crates/store/src/refs.rs:31-45,107-138; crates/store/src/read.rs:225-252; crates/daemon/src/worktrees.rs:288-296",
+     "links": [
+      "../../plan.dd.json#acceptance-criteria"
+     ],
+     "state": "checked",
+     "receipt": "Full diff of all 29 changed crate files read at f9b6d07 (`git diff 82f60ec..f9b6d07`). Both `RegisteredWorktree` constructors updated (refs.rs `list_worktrees`, read.rs `worktree_containing`) with `include_hidden` selected in both SQL statements, plus the test fixture constructor in daemon/src/worktrees.rs — no construction site left defaulting. Dogfooded `flowspace3 search` against the prod index to locate the add renderer by meaning (\"render the add root report skip counts table\" → crates/cli/src/render/surfaces/roots.rs::render, score 0.62, top hit) — the tool found the right consumer first try, no miss to report."
+    }
+   ]
+  },
+  {
+   "name": "verdict",
+   "value": [
+    {
+     "id": "vd-1601",
+     "finding": "#findings/f-16a1",
+     "resolution": "confirmed",
+     "rationale": "APPROVE WITH FINDINGS. ac-0003 is literally true — the ledger does report `hidden` with a count — but the row's actionable field is false for the three dot-named deny-list entries, and the ledger's stated purpose is to be actionable. Fix in a follow-up by ordering the deny check before the hidden check; it is a few lines and it also removes the mode-dependent reason flip. Does not block the merge or the prod bounce: no file is indexed or missed incorrectly, only explained incorrectly.",
+     "state": "checked",
+     "receipt": "Two consecutive `add` invocations on the same fixture and daemon, quoted verbatim in f-16a1: the fix advertised by the first is executed by the second and `.venv` is still pruned."
+    },
+    {
+     "id": "vd-1602",
+     "finding": "#findings/f-16a2",
+     "resolution": "confirmed",
+     "rationale": "APPROVE WITH FINDINGS. The tree field is present per the AC, but for the bare element-address form it answers about the wrong root, and the human renderer prints that wrong answer as `hidden yes`/`hidden no`. A wrong policy label is more expensive than an absent one, and this function already knows how to return `None` honestly. Follow-up, not a blocker: the field is additive and no existing key changed, so nothing regresses for callers that ignore it.",
+     "state": "checked",
+     "receipt": "Symmetric reproduction in both directions plus three correct controls, quoted in f-16a2."
+    },
+    {
+     "id": "vd-1603",
+     "finding": "#findings/f-16b1",
+     "resolution": "confirmed",
+     "rationale": "APPROVE WITH FINDINGS. Units mismatch in a shared table; the count is real and measured (I verified it tracks the pruned-directory list on two different corpora), it is simply a directory count sitting among file counts, and on the plan's own motivating repo it reads 14 where the omission is 563 files. Cosmetic in code, material in what an agent concludes. Follow-up.",
+     "state": "checked",
+     "receipt": "Fixture hidden=3 with 3 pruned directories and 2 omitted files; pij hidden=14 with 14 pruned directories and 379 tracked `.pi/**/*.ts`."
+    },
+    {
+     "id": "vd-1604",
+     "finding": "#findings/f-16b2",
+     "resolution": "confirmed",
+     "rationale": "APPROVE WITH FINDINGS. A genuine narrowing against the filter it replaced, unreachable on this host and on prod today, reachable on ext4 and on Windows. Worth the two-line byte-comparison fix in a follow-up rather than a blocker, and worth recording because it is precisely the equivalence question the author asked review to answer.",
+     "state": "checked",
+     "receipt": "Both implementations read side by side; the macOS reachability boundary tested and reported (OSError 92); the crate's matcher-before-filter and depth-0 exemptions verified in vendored source."
+    },
+    {
+     "id": "vd-1605",
+     "finding": "#findings/f-16b3",
+     "resolution": "confirmed",
+     "rationale": "APPROVE WITH FINDINGS. Human-surface gap on the `add` command only; JSON is complete and status/tree render it. One row in the facts table closes it.",
+     "state": "checked",
+     "receipt": "Renderer source read at this sha; JSON half confirmed live."
+    },
+    {
+     "id": "vd-1606",
+     "finding": "#findings/f-16c1",
+     "resolution": "confirmed",
+     "rationale": "NOT A 016 DEFECT — o-prime's existing ruling is upheld, now with a named mechanism rather than a characterisation. ac-0004 stands: I ran fmt, clippy and the targeted suites myself and read CI on the exact sha. The two follow-up notes (unbounded pre-serve probe; the AC-0005 receipt not unregistering its roots from the SHARED test database) belong to other plans and to the receipt recipe respectively, and are recorded here only so the next seat does not have to re-derive them.",
+     "state": "checked",
+     "receipt": "Controlled A/B: 0 registered roots → key in 1 s, health 200; 19 registered roots → key in 25 s against a 10 s test ceiling. Same binary, same config shape, both on :5434."
+    },
+    {
+     "id": "vd-1607",
+     "finding": "#findings/f-16c2",
+     "resolution": "confirmed",
+     "rationale": "NIT only; the receipt's substance is true and reproduced. The adjacent row-125 encoding (b) gap is real but is not in this plan's goals or ACs and should be a backlog row, not a change request against 016.",
+     "state": "checked",
+     "receipt": "Full envelope inspected; no `empty_because` key, next_action prose quoted in f-16c2."
+    },
+    {
+     "id": "vd-1608",
+     "finding": "#findings/f-16d1",
+     "resolution": "confirmed",
+     "rationale": "AC-0001 JUDGED TRUE — judged on evidence this reviewer generated; see the finding row for the full rationale and the receipt for the commands.",
+     "state": "checked",
+     "receipt": "RE-DERIVED by me on scratch daemon :54990 against /tmp/fs3-rev016-fixture, four transitions, each confirmed in BOTH the envelope and the database row (`docker exec flowspace3-db-test psql -U flowspace3 -d fs3_rev016 -tAc 'select root_path, include_hidden from worktrees'`): `add --include-hidden` → envelope true, row t; plain `add` → envelope true, row t (PRESERVED); `scan` → envelope true, row t ("
+    },
+    {
+     "id": "vd-1609",
+     "finding": "#findings/f-16d2",
+     "resolution": "confirmed",
+     "rationale": "AC-0002 JUDGED TRUE — judged on evidence this reviewer generated; see the finding row for the full rationale and the receipt for the commands.",
+     "state": "checked",
+     "receipt": "RE-DERIVED by me. Live watcher, not a stub: `cargo test -p fs3-daemon --test watcher watcher_rescans_follow_the_current_per_root_hidden_policy` PASSED (1 passed, 4.62 s) on :5434 — it builds a real `WatcherSupervisor`, reconciles, indexes `.hidden/live.ts` while enabled, re-adds with the flag off WITHOUT restarting the supervisor, and asserts the next rescan refuses `.hidden/ignored.ts` while stil"
+    },
+    {
+     "id": "vd-1610",
+     "finding": "#findings/f-16d3",
+     "resolution": "confirmed",
+     "rationale": "AC-0003 JUDGED TRUE AS WRITTEN — judged on evidence this reviewer generated; see the finding row for the full rationale and the receipt for the commands.",
+     "state": "checked",
+     "receipt": "MEASURED by me with TWO roots of DIFFERING policy registered simultaneously on scratch daemon :54990, which is the case a cwd-only implementation would fail: `flowspace3 --json status` returned [{root_path /private/tmp/fs3-rev016-fixture, include_hidden false, files 1}, {root_path /private/tmp/fs3-rev016-fixture2, include_hidden true, files 2}] — correct per row. Ledger measured on two corpora (fi"
+    },
+    {
+     "id": "vd-1611",
+     "finding": "#findings/f-16d4",
+     "resolution": "confirmed",
+     "rationale": "AC-0004 JUDGED TRUE — judged on evidence this reviewer generated; see the finding row for the full rationale and the receipt for the commands.",
+     "state": "checked",
+     "receipt": "RUN BY ME on this worktree at f9b6d07 with FS3_TEST_DATABASE_URL pinned to :5434/flowspace3_test: `cargo fmt --all --check` → FMT_OK; `cargo clippy --all-targets -- -D warnings` → exit 0, zero warnings; `cargo test -p fs3-store -p fs3-daemon -p fs3-parsers -p fs3-cli -p fs3-core` → every suite ok except tests/health.rs (see f-16c1). CI read from the API, not from the PR page: run 33603518927 concl"
+    },
+    {
+     "id": "vd-1612",
+     "finding": "#findings/f-16d5",
+     "resolution": "confirmed",
+     "rationale": "AC-0005 JUDGED TRUE — judged on evidence this reviewer generated; see the finding row for the full rationale and the receipt for the commands.",
+     "state": "checked",
+     "receipt": "RE-DERIVED by me on scratch daemon :54990 / DB fs3_rev016. Baseline from git, not from the receipt: `git -C /Users/jordanknight/pi-hacking/pij ls-files '.pi/**/*.ts' | wc -l` = 379 (head 4418e3f3) — the amended tracked-corpus criterion, and the stale ≥500 figure is correctly retired. DEFAULT: `add /Users/jordanknight/pi-hacking/pij --no-include-hidden` → include_hidden false, files 1974, hidden 14"
+    },
+    {
+     "id": "vd-1613",
+     "finding": "#findings/f-16d6",
+     "resolution": "confirmed",
+     "rationale": "COMPOSITION SEAMS EXAMINED — judged on evidence this reviewer generated; see the finding row for the full rationale and the receipt for the commands.",
+     "state": "checked",
+     "receipt": "Full diff of all 29 changed crate files read at f9b6d07 (`git diff 82f60ec..f9b6d07`). Both `RegisteredWorktree` constructors updated (refs.rs `list_worktrees`, read.rs `worktree_containing`) with `include_hidden` selected in both SQL statements, plus the test fixture constructor in daemon/src/worktrees.rs — no construction site left defaulting. Dogfooded `flowspace3 search` against the prod index"
+    }
+   ]
+  }
+ ]
+}

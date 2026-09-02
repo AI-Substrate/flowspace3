@@ -387,15 +387,7 @@ fn pruned_rows(discovery: &discovery::Discovery) -> Vec<PrunedDirectoryRow> {
         .map(|pruned| PrunedDirectoryRow {
             path: pruned.path.clone(),
             reason: pruned.reason.as_str().to_string(),
-            fix: match pruned.reason {
-                discovery::PruneReason::Hidden => {
-                    "index hidden directories with `flowspace3 add <root> --include-hidden`"
-                        .to_string()
-                }
-                discovery::PruneReason::StandardIgnore => {
-                    "index it anyway with `[scan] standard_ignores = false`".to_string()
-                }
-            },
+            fix: pruned.reason.fix().to_string(),
         })
         .collect()
 }

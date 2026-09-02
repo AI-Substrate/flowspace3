@@ -1015,24 +1015,89 @@ async fn tree_on_a_repository_lists_its_directories_and_files() {
     stack.destroy().await;
 }
 
-/// Cwd-scoped tree output carries the policy of the concrete root whose bytes
-/// answer the browse.
+/// File tree policy comes from the selected file's owning worktree, never from
+/// a different root supplied only as the caller's cwd.
 #[tokio::test]
-async fn tree_exposes_the_resolved_roots_hidden_policy() {
-    let stack = Stack::create("read_tree_hidden_policy").await;
-    let fixture = Fixture::create("read-tree-hidden-policy", None);
-    let here = fixture.path();
-    stack.index(&here).await;
-    let worktree = fs3_store::worktree_containing(&stack.state.db, &here)
+async fn tree_policy_tracks_the_resolved_root_in_both_directions() {
+    let stack = Stack::create("read_tree_cross_root_policy").await;
+    let fixture_a = Fixture::create("read-tree-policy-a", None);
+    let fixture_b = Fixture::create("read-tree-policy-b", None);
+    let path_a = fixture_a.path();
+    let path_b = fixture_b.path();
+    stack.index(&path_a).await;
+    stack.index(&path_b).await;
+
+    let root_a = fs3_store::worktree_containing(&stack.state.db, &path_a)
         .await
         .unwrap()
         .unwrap();
-    fs3_store::set_worktree_include_hidden(&stack.state.db, worktree.id, true)
+    let root_b = fs3_store::worktree_containing(&stack.state.db, &path_b)
+        .await
+        .unwrap()
+        .unwrap();
+    fs3_store::set_worktree_include_hidden(&stack.state.db, root_a.id, true)
+        .await
+        .unwrap();
+    fs3_store::set_worktree_include_hidden(&stack.state.db, root_b.id, false)
         .await
         .unwrap();
 
-    let envelope = stack.tree(&[("cwd", here.as_str())]).await;
-    assert_eq!(data(&envelope)["include_hidden"], true);
+    // Controls: implicit cwd resolution remains per-root in each direction.
+    assert_eq!(
+        data(&stack.tree(&[("cwd", path_a.as_str())]).await)["include_hidden"],
+        true
+    );
+    assert_eq!(
+        data(&stack.tree(&[("cwd", path_b.as_str())]).await)["include_hidden"],
+        false
+    );
+
+    // Control: an absolute file target resolves from that file's root.
+    let absolute_b = Path::new(&path_b)
+        .join("src/geometry.rs")
+        .to_string_lossy()
+        .to_string();
+    assert_eq!(
+        data(
+            &stack
+                .tree(&[("address", absolute_b.as_str()), ("cwd", path_a.as_str())])
+                .await
+        )["include_hidden"],
+        false
+    );
+
+    // Control: an explicit repository does not identify one concrete root.
+    assert!(
+        data(
+            &stack
+                .tree(&[("repo", root_b.identity.as_str()), ("cwd", path_a.as_str())])
+                .await
+        )["include_hidden"]
+            .is_null()
+    );
+
+    // The defect under review, proved symmetrically.
+    let file_a = fs3_core::element_address(Some(&root_a.identity), "src/geometry.rs");
+    let file_b = fs3_core::element_address(Some(&root_b.identity), "src/geometry.rs");
+    assert_eq!(
+        data(
+            &stack
+                .tree(&[("address", file_b.as_str()), ("cwd", path_a.as_str())])
+                .await
+        )["include_hidden"],
+        false,
+        "root B's file must never inherit root A's enabled policy"
+    );
+    assert_eq!(
+        data(
+            &stack
+                .tree(&[("address", file_a.as_str()), ("cwd", path_b.as_str())])
+                .await
+        )["include_hidden"],
+        true,
+        "root A's file must never inherit root B's disabled policy"
+    );
+
     stack.destroy().await;
 }
 

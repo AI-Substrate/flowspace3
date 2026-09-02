@@ -153,12 +153,47 @@ mod tests {
     }
 
     #[test]
-    fn tree_title_shows_the_resolved_root_policy() {
-        let envelope: Envelope<Value> = serde_json::from_str(
-            r#"{"ok":true,"command":"tree","v":1,"data":{"target":"git:example/repo","repo":"git:example/repo","include_hidden":true,"kind":"repository","total":0,"showing":0,"entries":[],"inconsistencies":[]}}"#,
-        )
+    fn tree_title_agrees_with_the_resolved_root_policy() {
+        for (policy, expected) in [(Some(true), "hidden yes"), (Some(false), "hidden no")] {
+            let envelope: Envelope<Value> = serde_json::from_value(serde_json::json!({
+                "ok": true,
+                "command": "tree",
+                "v": 1,
+                "data": {
+                    "target": "git:example/repo/src/lib.rs",
+                    "repo": "git:example/repo",
+                    "include_hidden": policy,
+                    "kind": "file",
+                    "total": 0,
+                    "showing": 0,
+                    "entries": [],
+                    "inconsistencies": []
+                }
+            }))
+            .unwrap();
+            let screen = anstream::adapter::strip_str(&tree(&envelope, 100).unwrap()).to_string();
+            assert!(screen.contains(expected), "{screen}");
+        }
+
+        let unknown: Envelope<Value> = serde_json::from_value(serde_json::json!({
+            "ok": true,
+            "command": "tree",
+            "v": 1,
+            "data": {
+                "target": "git:example/repo",
+                "repo": "git:example/repo",
+                "kind": "repository",
+                "total": 0,
+                "showing": 0,
+                "entries": [],
+                "inconsistencies": []
+            }
+        }))
         .unwrap();
-        let screen = anstream::adapter::strip_str(&tree(&envelope, 100).unwrap()).to_string();
-        assert!(screen.contains("hidden yes"), "{screen}");
+        let screen = anstream::adapter::strip_str(&tree(&unknown, 100).unwrap()).to_string();
+        assert!(
+            !screen.contains("hidden"),
+            "unknown policy must stay absent: {screen}"
+        );
     }
 }

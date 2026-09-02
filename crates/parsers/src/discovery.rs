@@ -367,6 +367,16 @@ impl PruneReason {
             PruneReason::StandardIgnore => "standard-ignore",
         }
     }
+
+    /// The operator action that can change this prune decision.
+    pub const fn fix(self) -> &'static str {
+        match self {
+            PruneReason::Hidden => {
+                "index hidden directories with `flowspace3 add <root> --include-hidden`"
+            }
+            PruneReason::StandardIgnore => "index it anyway with `[scan] standard_ignores = false`",
+        }
+    }
 }
 
 /// A directory fs3 refused to walk, named so its absence is not silent.
@@ -865,6 +875,22 @@ fn walker(
             if name.eq_ignore_ascii_case(".git") {
                 return false;
             }
+            if is_dir
+                && denied
+                    .iter()
+                    .any(|denied| denied.eq_ignore_ascii_case(name))
+            {
+                // The deny list is more specific than hidden policy. Check it
+                // first so `.venv` never recommends a flag that still refuses it.
+                if let Ok(relative) = entry.path().strip_prefix(&ledger_root) {
+                    ledger
+                        .lock()
+                        .expect("prune ledger is never poisoned")
+                        .entry(display_path(relative))
+                        .or_insert(PruneReason::StandardIgnore);
+                }
+                return false;
+            }
             if !include_hidden && name.starts_with('.') {
                 if is_dir && let Ok(relative) = entry.path().strip_prefix(&ledger_root) {
                     ledger
@@ -875,28 +901,7 @@ fn walker(
                 }
                 return false;
             }
-            if !is_dir {
-                return true;
-            }
-            // Whole component, never substring: `src/target_types.rs` is a
-            // file (already returned above), `my-vendor/` and `builder/` are
-            // directories whose NAMES simply are not on the list.
-            if !denied
-                .iter()
-                .any(|denied| denied.eq_ignore_ascii_case(name))
-            {
-                return true;
-            }
-            // Refused — so name it. Only the directory: everything under it is
-            // never visited, which is the saving this ledger must not undo.
-            if let Ok(relative) = entry.path().strip_prefix(&ledger_root) {
-                ledger
-                    .lock()
-                    .expect("prune ledger is never poisoned")
-                    .entry(display_path(relative))
-                    .or_insert(PruneReason::StandardIgnore);
-            }
-            false
+            true
         });
     builder
 }

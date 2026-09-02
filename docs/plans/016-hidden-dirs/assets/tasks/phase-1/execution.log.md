@@ -87,3 +87,11 @@ O-prime amended AC-0005/BP-0005 from the stale untracked-inclusive `>=500` count
 All five task rows and assertions are checked and receipted. `harness plan validate ...#tasks` reports `error=0`, `warn=0`, `open=0`, `contradictions=0`, `orphans=0`. Full `harness checks` passed on this worktree at `2026-09-02T07:07:06Z`.
 
 Pull request: https://github.com/AI-Substrate/flowspace3/pull/107 (`f9b6d0780cd9208a844c129748cccd45beda1d8d` plus this receipt update).
+
+## Review delta — f-16a1 / f-16a2
+
+`f-16a1`: standard deny-list directories are classified before hidden policy, so `.venv`, `.cache`, and `.next` consistently report `standard-ignore` with the executable `standard_ignores = false` fix in both hidden modes. Plain `.hidden` retains `hidden` plus `--include-hidden`. The delta fixture executes the standard-ignore fix and verifies the remaining hidden-policy boundary. Mutation gated the deny-list check on `include_hidden`, recreating the review defect; `hidden_directory_prunes_name_the_effective_rule` failed with `left: hidden, right: standard-ignore`, then passed after restoration.
+
+`f-16a2`: file tree policy now comes from the selected `IndexedFile.root_path`; unresolved repository/directory targets remain `None` rather than borrowing cwd state. The delta test registers two roots with opposite policies and proves cross-root element addresses symmetrically, plus plain-cwd, absolute-path, and explicit-other-repo controls. Renderer tests cover `hidden yes`, `hidden no`, and honest absence. Mutation restored cwd-based lookup; the cross-root test failed with `left: true, right: false`, then passed after restoration.
+
+Targeted proof: full `discovery_standard_ignores` integration suite (14 passed), daemon hidden add-envelope test, daemon cross-root tree test, CLI tree-title test, `cargo fmt --all --check`, and `ddocs validate` on the committed review record all passed. Full harness gate intentionally not run: another seat holds the exclusive slot.

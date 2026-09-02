@@ -426,6 +426,16 @@ async fn hidden_files_are_discovered_only_for_an_opted_in_root() {
         ".venv/site/never.py",
         "def dependency():\n    return 5\n",
     );
+    Fixture::write(
+        &root,
+        ".cache/warm.ts",
+        "export function cached() { return 6; }\n",
+    );
+    Fixture::write(
+        &root,
+        ".next/server.ts",
+        "export function generated() { return 7; }\n",
+    );
     let stack = Stack::create("hidden-discovery").await;
     let path = root.to_string_lossy().to_string();
 
@@ -449,7 +459,20 @@ async fn hidden_files_are_discovered_only_for_an_opted_in_root() {
         .iter()
         .find(|row| row["reason"] == "hidden")
         .expect("default discovery must explain hidden-directory pruning");
-    assert_eq!(hidden["count"], 2, ".hidden and .venv are named once each");
+    assert_eq!(hidden["count"], 1, "only plain .hidden uses hidden policy");
+    for denied in [".cache", ".next", ".venv"] {
+        let pruned = default_data["pruned"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["path"] == denied)
+            .unwrap_or_else(|| panic!("{denied} was not named: {default_data:#}"));
+        assert_eq!(pruned["reason"], "standard-ignore");
+        assert_eq!(
+            pruned["fix"],
+            "index it anyway with `[scan] standard_ignores = false`"
+        );
+    }
 
     let enabled = call(
         &stack.state,
@@ -465,6 +488,19 @@ async fn hidden_files_are_discovered_only_for_an_opted_in_root() {
         enabled_data["files"], 2,
         "hidden opt-in adds .hidden/a.ts but never .git, node_modules, or .venv"
     );
+    for denied in [".cache", ".next", ".venv"] {
+        let pruned = enabled_data["pruned"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["path"] == denied)
+            .unwrap_or_else(|| panic!("{denied} was not named: {enabled_data:#}"));
+        assert_eq!(pruned["reason"], "standard-ignore");
+        assert_eq!(
+            pruned["fix"],
+            "index it anyway with `[scan] standard_ignores = false`"
+        );
+    }
 
     let status = call(&stack.state, "GET", "/status", None).await;
     let roots = status.data.as_ref().unwrap()["roots"].as_array().unwrap();
