@@ -47,6 +47,12 @@ pub const EMBEDDING_DIMENSIONS: usize = 1024;
 /// ignores it instead of taking search down.
 const ITERATIVE_SCAN: &str = "SET LOCAL hnsw.iterative_scan = strict_order";
 
+/// The admission plan's conservative cost estimate used to trigger roughly
+/// 281 ms of JIT compilation for a query whose HNSW work took 12 ms. This
+/// statement is latency-sensitive and bounded by [`candidate_limit`], so JIT's
+/// startup cost cannot amortize before the query returns.
+const DISABLE_SEARCH_JIT: &str = "SET LOCAL jit = off";
+
 /// Start with enough vectors for ordinary two- or three-chunk elements while
 /// keeping the common ANN scan small.
 const INITIAL_CANDIDATE_MULTIPLIER: i64 = 4;
@@ -493,10 +499,24 @@ pub struct SearchHit {
 
 #[cfg(test)]
 const ADMISSION_JOIN_SQL: &str = r#"JOIN admitted_sources admitted
-        ON admitted.source_hash = e.source_hash
-       AND admitted.source_kind = e.source_kind"#;
+        ON admitted.source_hash = candidate.source_hash
+       AND admitted.source_kind = candidate.source_kind"#;
 
-const SEARCH_ELEMENTS_SQL: &str = r#"WITH admitted_elements AS MATERIALIZED (
+const SEARCH_ELEMENTS_SQL: &str = r#"WITH candidate_vectors AS MATERIALIZED (
+    SELECT e.source_hash, e.source_kind, e.chunk_no,
+           e.vector <=> $1 AS distance
+      FROM embeddings_1024 e
+     WHERE e.model_key = $2
+       AND ($4::text IS NULL OR e.source_kind = $4)
+       AND ($5::float8 IS NULL OR (e.vector <=> $1) <= $5)
+     ORDER BY e.vector <=> $1
+     LIMIT $14
+),
+candidate_meta AS (
+    SELECT count(*)::bigint AS candidate_count
+      FROM candidate_vectors
+),
+admitted_elements AS MATERIALIZED (
     SELECT admitted.id, admitted.raw_hash
       FROM elements admitted
      WHERE ($8::text[] IS NULL OR admitted.kind = ANY($8))
@@ -536,37 +556,37 @@ const SEARCH_ELEMENTS_SQL: &str = r#"WITH admitted_elements AS MATERIALIZED (
                     AND ($7::text IS NULL OR c.worktree LIKE $7)
                     AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)))
 ),
+admitted_representatives AS MATERIALIZED (
+    SELECT DISTINCT ON (raw_hash) id, raw_hash
+      FROM admitted_elements
+     ORDER BY raw_hash, id
+),
 smart_map AS MATERIALIZED (
     SELECT candidate.raw_hash, candidate.model_key, candidate.text,
            candidate.text_hash, candidate.tags, candidate.extras,
            candidate.created_at
       FROM smart_content candidate
-      JOIN (SELECT DISTINCT raw_hash FROM admitted_elements) admitted
+      JOIN admitted_representatives admitted
         ON admitted.raw_hash = candidate.raw_hash
+),
+smart_representatives AS MATERIALIZED (
+    SELECT DISTINCT ON (text_hash) raw_hash, text_hash, text, tags, extras
+      FROM smart_map
+     ORDER BY text_hash, created_at, model_key, raw_hash
 ),
 admitted_sources AS MATERIALIZED (
     SELECT raw_hash AS source_hash, 'raw'::text AS source_kind
-      FROM admitted_elements
+      FROM admitted_representatives
     UNION
     SELECT text_hash AS source_hash, 'smart'::text AS source_kind
-      FROM smart_map
+      FROM smart_representatives
 ),
-candidate_vectors AS MATERIALIZED (
-    SELECT e.source_hash, e.source_kind, e.chunk_no,
-           e.vector <=> $1 AS distance
-      FROM embeddings_1024 e
+admitted_candidates AS MATERIALIZED (
+    SELECT candidate.*
+      FROM candidate_vectors candidate
       JOIN admitted_sources admitted
-        ON admitted.source_hash = e.source_hash
-       AND admitted.source_kind = e.source_kind
-     WHERE e.model_key = $2
-       AND ($4::text IS NULL OR e.source_kind = $4)
-       AND ($5::float8 IS NULL OR (e.vector <=> $1) <= $5)
-     ORDER BY e.vector <=> $1
-     LIMIT $14
-),
-candidate_meta AS (
-    SELECT count(*)::bigint AS candidate_count
-      FROM candidate_vectors
+        ON admitted.source_hash = candidate.source_hash
+       AND admitted.source_kind = candidate.source_kind
 ),
 resolved AS (
     SELECT c.source_hash, c.source_kind, c.chunk_no, c.distance,
@@ -575,78 +595,72 @@ resolved AS (
            e.blob_sha, e.parser_version, e.kind, e.subkind, e.name,
            e.address, e.span_start, e.span_end, e.sibling_order,
            e.raw_text, e.ddoc
-      FROM candidate_vectors c
-      LEFT JOIN LATERAL (
-           SELECT candidate.raw_hash, candidate.text,
-                  candidate.tags, candidate.extras
-             FROM smart_map candidate
-            WHERE c.source_kind = 'smart'
-              AND candidate.text_hash = c.source_hash
-            ORDER BY candidate.created_at, candidate.model_key,
-                     candidate.raw_hash
-            LIMIT 1
-      ) s ON TRUE
-      JOIN LATERAL (
-           SELECT el.id, el.blob_sha, el.parser_version,
-                  el.kind, el.subkind, el.name, el.address,
-                  el.span_start, el.span_end, el.sibling_order,
-                  el.raw_text, el.ddoc
-             FROM admitted_elements admitted
-             JOIN elements el ON el.id = admitted.id
-            WHERE admitted.raw_hash = COALESCE(s.raw_hash, c.source_hash)
-            ORDER BY admitted.id
-            LIMIT 1
-      ) e ON TRUE
+      FROM admitted_candidates c
+      LEFT JOIN smart_representatives s
+        ON c.source_kind = 'smart'
+       AND s.text_hash = c.source_hash
+      JOIN admitted_representatives admitted
+        ON admitted.raw_hash = COALESCE(s.raw_hash, c.source_hash)
+      JOIN elements e ON e.id = admitted.id
 ),
 nearest AS (
     SELECT DISTINCT ON (element_id) *
       FROM resolved
      ORDER BY element_id, distance, source_kind, source_hash, chunk_no
+),
+final_hits AS (
+    SELECT n.element_id, n.source_kind, n.distance,
+           n.text, n.tags, n.extras,
+           n.blob_sha, n.parser_version, n.kind, n.subkind, n.name,
+           n.address, n.span_start, n.span_end, n.sibling_order, n.raw_text,
+           n.ddoc,
+           COALESCE(live.identity, anchored.identity) AS identity,
+           COALESCE(live.root_path, anchored.root_path) AS root_path,
+           live.path
+      FROM nearest n
+      LEFT JOIN LATERAL (
+           SELECT r.identity, w.root_path, f.path
+             FROM worktree_files f
+             JOIN worktrees w ON w.id = f.worktree_id
+             JOIN repos r     ON r.id = w.repo_id
+            WHERE f.blob_sha = n.blob_sha
+              AND ($6::text IS NULL OR r.identity = $6)
+              AND ($7::text IS NULL OR f.path LIKE $7)
+              AND ($9::text IS NULL OR w.root_path = $9)
+            ORDER BY r.identity, w.root_path, f.path
+            LIMIT 1
+      ) live ON TRUE
+      LEFT JOIN LATERAL (
+           SELECT c.repo_identity AS identity, c.worktree AS root_path
+             FROM turns t
+             JOIN conversations c ON c.guid = t.conversation_id
+            WHERE t.blob_sha = n.blob_sha
+              AND ($6::text IS NULL OR c.repo_identity = $6)
+              AND ($7::text IS NULL OR c.worktree LIKE $7)
+              AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)
+              AND ($13::text IS NULL OR c.guid = $13::uuid)
+            ORDER BY c.repo_identity, c.worktree
+            LIMIT 1
+      ) anchored ON TRUE
+     ORDER BY n.distance, n.element_id
+     LIMIT $3
 )
-SELECT n.source_kind, n.distance,
-       n.text, n.tags, n.extras,
-       n.blob_sha, n.parser_version, n.kind, n.subkind, n.name,
-       n.address, n.span_start, n.span_end, n.sibling_order, n.raw_text,
-       n.ddoc,
-       COALESCE(live.identity, anchored.identity) AS identity,
-       COALESCE(live.root_path, anchored.root_path) AS root_path,
-       live.path, m.candidate_count
-  FROM nearest n
-  CROSS JOIN candidate_meta m
-  LEFT JOIN LATERAL (
-       SELECT r.identity, w.root_path, f.path
-         FROM worktree_files f
-         JOIN worktrees w ON w.id = f.worktree_id
-         JOIN repos r     ON r.id = w.repo_id
-        WHERE f.blob_sha = n.blob_sha
-          AND ($6::text IS NULL OR r.identity = $6)
-          AND ($7::text IS NULL OR f.path LIKE $7)
-          AND ($9::text IS NULL OR w.root_path = $9)
-        ORDER BY r.identity, w.root_path, f.path
-        LIMIT 1
-  ) live ON TRUE
-  LEFT JOIN LATERAL (
-       SELECT c.repo_identity AS identity, c.worktree AS root_path
-         FROM turns t
-         JOIN conversations c ON c.guid = t.conversation_id
-        WHERE t.blob_sha = n.blob_sha
-          AND ($6::text IS NULL OR c.repo_identity = $6)
-          AND ($7::text IS NULL OR c.worktree LIKE $7)
-          AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)
-          AND ($13::text IS NULL OR c.guid = $13::uuid)
-        ORDER BY c.repo_identity, c.worktree
-        LIMIT 1
-  ) anchored ON TRUE
- ORDER BY n.distance, n.element_id
- LIMIT $3"#;
+SELECT h.source_kind, h.distance,
+       h.text, h.tags, h.extras,
+       h.blob_sha, h.parser_version, h.kind, h.subkind, h.name,
+       h.address, h.span_start, h.span_end, h.sibling_order, h.raw_text,
+       h.ddoc, h.identity, h.root_path, h.path,
+       m.candidate_count, h.element_id
+  FROM candidate_meta m
+  LEFT JOIN final_hits h ON TRUE
+ ORDER BY h.distance, h.element_id"#;
 
 /// The `limit` nearest elements to `query`, narrowed by `filters`, nearest first.
 ///
-/// The filtered sibling of [`query_embeddings`]. [`SEARCH_ELEMENTS_SQL`] resolves
-/// eligible elements and smart mappings once, reduces them to distinct source
-/// keys, and keeps that key set on the inner side of the ordered HNSW scan. The
-/// plan-shape test guards both halves: hash admission must not become correlated,
-/// and the vector index must remain the source of nearest candidates.
+/// The filtered sibling of [`query_embeddings`]. [`SEARCH_ELEMENTS_SQL`] first
+/// materializes the ordered HNSW candidate page, then filters that bounded page
+/// through one-time admitted-element and smart-map source sets. The plan-shape
+/// test prevents admission work from being pushed below the vector `LIMIT`.
 ///
 /// The `<=>` operator is not interchangeable here: `embeddings_1024`'s index is
 /// built for `vector_cosine_ops`, and a query written with `<->` gets a
@@ -689,6 +703,7 @@ pub async fn search_elements(
 
     let mut tx = pool.begin().await?;
     sqlx::query(ITERATIVE_SCAN).execute(&mut *tx).await?;
+    sqlx::query(DISABLE_SEARCH_JIT).execute(&mut *tx).await?;
 
     // Every filter is bound unconditionally with a NULL-means-any guard, so
     // there is ONE statement text whatever the caller asked for. A query built
@@ -725,18 +740,28 @@ pub async fn search_elements(
             .await?;
 
         let scanned = candidate_count(&rows)?;
-        if rows.len() as i64 >= filters.limit || scanned < candidate_limit {
+
+        let hit_count = rows.iter().try_fold(0_i64, |count, row| {
+            row.try_get::<Option<i64>, _>("element_id")
+                .map(|element_id| count + i64::from(element_id.is_some()))
+                .map_err(StoreError::from)
+        })?;
+        if hit_count >= filters.limit || scanned < candidate_limit {
             tx.commit().await?;
             return rows
                 .iter()
                 .map(|row| {
-                    Ok(SearchHit {
+                    if row.try_get::<Option<i64>, _>("element_id")?.is_none() {
+                        return Ok(None);
+                    }
+                    Ok(Some(SearchHit {
                         similar: similar_from_row(row)?,
                         identity: row.try_get("identity")?,
                         root_path: row.try_get("root_path")?,
                         path: row.try_get("path")?,
-                    })
+                    }))
                 })
+                .filter_map(Result::transpose)
                 .collect();
         }
         if expansion == MAX_CANDIDATE_EXPANSIONS {
@@ -914,7 +939,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let name = format!("fs3_search_plan_{}_{}", std::process::id(), nanos);
+        let name = format!("fs3_test_searchplan_{nanos}");
         crate::create_database(&admin, &name).await.unwrap();
         let url = crate::database_url(&base_url, &name).unwrap();
         let pool = crate::connect(&url).await.unwrap();
@@ -991,8 +1016,17 @@ mod tests {
         old
     }
 
-    async fn explain_search(pool: &PgPool, sql: &str) -> serde_json::Value {
-        let statement = format!("EXPLAIN (ANALYZE, BUFFERS, VERBOSE, FORMAT JSON) {sql}");
+    async fn explain_search(
+        connection: &mut sqlx::PgConnection,
+        sql: &str,
+        analyze: bool,
+    ) -> Result<serde_json::Value, sqlx::Error> {
+        let options = if analyze {
+            "ANALYZE, BUFFERS, VERBOSE, FORMAT JSON"
+        } else {
+            "VERBOSE, FORMAT JSON"
+        };
+        let statement = format!("EXPLAIN ({options}) {sql}");
         let row = sqlx::query(&statement)
             .bind(Vector::from(shape_vector()))
             .bind(SHAPE_MODEL)
@@ -1008,10 +1042,9 @@ mod tests {
             .bind(Option::<&str>::None)
             .bind(Option::<&str>::None)
             .bind(160_i64)
-            .fetch_one(pool)
-            .await
-            .unwrap();
-        row.try_get::<Json<serde_json::Value>, _>(0).unwrap().0
+            .fetch_one(&mut *connection)
+            .await?;
+        Ok(row.try_get::<Json<serde_json::Value>, _>(0)?.0)
     }
 
     fn visit_plan(
@@ -1099,20 +1132,109 @@ mod tests {
         count
     }
 
-    fn uses_vector_index(plan: &serde_json::Value) -> bool {
+    fn candidate_vector_rows(plan: &serde_json::Value) -> Option<(f64, Option<f64>)> {
+        let mut rows = None;
+        visit_plan(plan, &mut |node| {
+            if node.get("Subplan Name").and_then(serde_json::Value::as_str)
+                == Some("CTE candidate_vectors")
+            {
+                rows = node
+                    .get("Plan Rows")
+                    .and_then(serde_json::Value::as_f64)
+                    .map(|estimated| {
+                        (
+                            estimated,
+                            node.get("Actual Rows").and_then(serde_json::Value::as_f64),
+                        )
+                    });
+            }
+        });
+        rows
+    }
+
+    #[derive(Debug)]
+    struct VectorDriver {
+        actual_rows: Option<f64>,
+        ordered_by_distance: bool,
+        child_count: usize,
+    }
+
+    fn vector_driver(plan: &serde_json::Value) -> Option<VectorDriver> {
+        let mut driver = None;
+        visit_plan(plan, &mut |node| {
+            if node.get("Index Name").and_then(serde_json::Value::as_str)
+                == Some("embeddings_1024_vector_idx")
+            {
+                driver = Some(VectorDriver {
+                    actual_rows: node.get("Actual Rows").and_then(serde_json::Value::as_f64),
+                    ordered_by_distance: node
+                        .get("Order By")
+                        .is_some_and(|order| order.to_string().contains("<=>")),
+                    child_count: node
+                        .get("Plans")
+                        .and_then(serde_json::Value::as_array)
+                        .map_or(0, Vec::len),
+                });
+            }
+        });
+        driver
+    }
+
+    fn has_correlated_smart_subplan(plan: &serde_json::Value) -> bool {
         let mut found = false;
         visit_plan(plan, &mut |node| {
-            found |= node.get("Index Name").and_then(serde_json::Value::as_str)
-                == Some("embeddings_1024_vector_idx");
+            let smart_content = node
+                .get("Relation Name")
+                .and_then(serde_json::Value::as_str)
+                == Some("smart_content");
+            let subplan = node
+                .get("Parent Relationship")
+                .and_then(serde_json::Value::as_str)
+                == Some("SubPlan")
+                || node
+                    .get("Subplan Name")
+                    .and_then(serde_json::Value::as_str)
+                    .is_some_and(|name| name.starts_with("SubPlan"));
+            found |= smart_content && subplan;
         });
         found
     }
 
-    #[tokio::test]
-    async fn search_plan_shape_bounds_smart_content_work_and_rejects_the_old_query() {
+    async fn cleanup_shape_database(name: &str, pool: PgPool, admin: PgPool) {
+        pool.close().await;
+        crate::drop_database(&admin, name).await.unwrap();
+        admin.close().await;
+    }
+
+    async fn bounded_plans(
+        pool: &PgPool,
+        analyze_shipped: bool,
+        include_old: bool,
+    ) -> Result<(serde_json::Value, Option<serde_json::Value>), sqlx::Error> {
+        let mut transaction = pool.begin().await?;
+        sqlx::query("SET LOCAL statement_timeout = '30s'")
+            .execute(&mut *transaction)
+            .await?;
+        sqlx::query("SET LOCAL max_parallel_workers_per_gather = 0")
+            .execute(&mut *transaction)
+            .await?;
+        sqlx::query(DISABLE_SEARCH_JIT)
+            .execute(&mut *transaction)
+            .await?;
+        let shipped =
+            explain_search(&mut transaction, SEARCH_ELEMENTS_SQL, analyze_shipped).await?;
+        let old = if include_old {
+            Some(explain_search(&mut transaction, &old_search_elements_sql(), false).await?)
+        } else {
+            None
+        };
+        transaction.commit().await?;
+        Ok((shipped, old))
+    }
+
+    async fn seeded_shape_database() -> (String, PgPool, PgPool) {
         let (name, pool, admin) = shape_database().await;
         seed_search_plan_corpus(&pool).await;
-
         assert_eq!(
             sqlx::query_scalar::<_, i64>("SELECT count(*) FROM elements")
                 .fetch_one(&pool)
@@ -1127,26 +1249,36 @@ mod tests {
                 .unwrap(),
             10_000
         );
+        (name, pool, admin)
+    }
 
-        let shipped = explain_search(&pool, SEARCH_ELEMENTS_SQL).await;
-        let old = explain_search(&pool, &old_search_elements_sql()).await;
-
-        pool.close().await;
-        crate::drop_database(&admin, &name).await.unwrap();
-        admin.close().await;
-
-        let shipped_loops = smart_content_max_loops(&shipped)
-            .unwrap_or_else(|| panic!("shipped plan has no smart_content node: {shipped:#}"));
+    fn assert_static_shipped_shape(shipped: &serde_json::Value) {
+        let driver = vector_driver(shipped)
+            .unwrap_or_else(|| panic!("shipped plan has no HNSW vector driver: {shipped:#}"));
         assert!(
-            shipped_loops <= 160.0,
-            "smart_content loops {shipped_loops} exceed candidate_limit 160: {shipped:#}"
+            driver.ordered_by_distance,
+            "HNSW driver has no <=> order: {driver:?}\n{shipped:#}"
         );
+        let (estimated_rows, _) = candidate_vector_rows(shipped)
+            .unwrap_or_else(|| panic!("candidate_vectors CTE has no bounded Limit: {shipped:#}"));
         assert!(
-            !materializes_elements(&shipped),
-            "shipped plan materializes an elements scan: {shipped:#}"
+            estimated_rows <= 160.0,
+            "candidate_vectors estimates {estimated_rows} rows, above candidate_limit 160: {shipped:#}"
         );
         assert_eq!(
-            candidate_vector_target_count(&shipped),
+            driver.child_count, 0,
+            "admission was pushed beneath the vector scan: {driver:?}\n{shipped:#}"
+        );
+        assert!(
+            !materializes_elements(shipped),
+            "shipped plan materializes an elements scan: {shipped:#}"
+        );
+        assert!(
+            !has_correlated_smart_subplan(shipped),
+            "shipped plan retains a correlated smart_content SubPlan: {shipped:#}"
+        );
+        assert_eq!(
+            candidate_vector_target_count(shipped),
             Some(4),
             "candidate_vectors must carry source_hash, source_kind, chunk_no, distance only: {shipped:#}"
         );
@@ -1154,15 +1286,68 @@ mod tests {
             shipped[0].get("JIT").is_none(),
             "JIT must not trigger for the shipped query: {shipped:#}"
         );
-        assert!(
-            uses_vector_index(&shipped),
-            "the HNSW index must remain the ordered candidate source: {shipped:#}"
-        );
+    }
 
-        let old_loops = smart_content_max_loops(&old).unwrap_or(f64::INFINITY);
+    #[tokio::test]
+    async fn search_plan_shape_static_keeps_hnsw_first_and_rejects_the_old_query() {
+        let (name, pool, admin) = seeded_shape_database().await;
+        let plans = bounded_plans(&pool, false, true).await;
+        cleanup_shape_database(&name, pool, admin).await;
+        let (shipped, old) =
+            plans.unwrap_or_else(|error| panic!("bounded non-ANALYZE plan check failed: {error}"));
+        let old = old.expect("old mutation plan requested");
+
+        assert_static_shipped_shape(&shipped);
         assert!(
-            old_loops > 160.0 || materializes_elements(&old),
-            "mutation failed: old admission unexpectedly satisfies the shipped shape: {old:#}"
+            has_correlated_smart_subplan(&old),
+            "mutation failed: old admission has no correlated smart_content SubPlan: {old:#}"
+        );
+        assert!(
+            materializes_elements(&old),
+            "mutation failed: old admission has no Materialize over elements scan: {old:#}"
+        );
+    }
+
+    #[tokio::test]
+    async fn search_plan_shape_analyze_bounds_admission_work() {
+        let (name, pool, admin) = seeded_shape_database().await;
+        let plans = bounded_plans(&pool, true, false).await;
+        cleanup_shape_database(&name, pool, admin).await;
+        let (shipped, _) = plans.unwrap_or_else(|error| {
+            panic!("bounded shipped-query ANALYZE failed; timeout is a red verdict: {error}")
+        });
+
+        assert_static_shipped_shape(&shipped);
+        let driver = vector_driver(&shipped).expect("static shape already checked the driver");
+        assert!(
+            driver.actual_rows.is_some_and(|rows| rows <= 160.0),
+            "HNSW driver returned {:?} rows, above candidate_limit 160: {shipped:#}",
+            driver.actual_rows
+        );
+        let (_, actual_rows) = candidate_vector_rows(&shipped)
+            .expect("static shape already checked the candidate page");
+        assert!(
+            actual_rows.is_some_and(|rows| rows <= 160.0),
+            "candidate_vectors returned {actual_rows:?} rows, above candidate_limit 160: {shipped:#}"
+        );
+        let shipped_loops = smart_content_max_loops(&shipped)
+            .unwrap_or_else(|| panic!("shipped plan has no smart_content node: {shipped:#}"));
+        assert!(
+            shipped_loops <= 160.0,
+            "smart_content loops {shipped_loops} exceed candidate_limit 160: {shipped:#}"
+        );
+        let execution_ms = shipped[0]
+            .get("Execution Time")
+            .and_then(serde_json::Value::as_f64)
+            .expect("ANALYZE reports execution time");
+        let shared_hits = shipped[0]["Plan"]
+            .get("Shared Hit Blocks")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0);
+        println!(
+            "search_plan_after: execution_ms={execution_ms} shared_hits={shared_hits} hnsw_rows={} candidate_rows={} smart_content_max_loops={shipped_loops}",
+            driver.actual_rows.expect("ANALYZE reports HNSW rows"),
+            actual_rows.expect("ANALYZE reports candidate rows"),
         );
     }
 }

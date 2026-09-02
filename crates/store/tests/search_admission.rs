@@ -404,3 +404,100 @@ async fn search_parity_matches_old_query_golden() {
         );
     }
 }
+
+#[tokio::test]
+async fn search_expands_after_a_fully_foreign_first_candidate_page() {
+    let database =
+        FreshDatabase::create_from(&fs3_testkit::test_database_url(), "search-expansion")
+            .await
+            .expect("create migrated search-expansion database");
+    let pool = database.pool().await;
+
+    let scoped = RepoIdentity::from_remote_parts(Some("github.com"), "fixtures/scoped").unwrap();
+    let foreign = RepoIdentity::from_remote_parts(Some("github.com"), "fixtures/foreign").unwrap();
+    let scoped_worktree = register_worktree(&pool, &scoped, "/fixtures/scoped", Some("main"))
+        .await
+        .unwrap();
+    let foreign_worktree = register_worktree(&pool, &foreign, "/fixtures/foreign", Some("main"))
+        .await
+        .unwrap();
+
+    let mut scoped_paths = Vec::new();
+    let mut foreign_paths = Vec::new();
+    let mut embedding_rows = Vec::new();
+    for index in 0..40 {
+        let path = format!("src/foreign-{index}.rs");
+        let stored = store_element(
+            &pool,
+            &path,
+            &format!("foreign_{index}"),
+            ElementKind::Function,
+            &format!("fn foreign_{index}() {{ nearest_but_out_of_scope(); }}"),
+        )
+        .await;
+        foreign_paths.push((path, stored.blob));
+        embedding_rows.push((stored.raw_hash, vector(0.001 + index as f32 * 0.0001)));
+    }
+    for index in 0..10 {
+        let path = format!("src/scoped-{index}.rs");
+        let stored = store_element(
+            &pool,
+            &path,
+            &format!("scoped_{index}"),
+            ElementKind::Function,
+            &format!("fn scoped_{index}() {{ farther_but_in_scope(); }}"),
+        )
+        .await;
+        scoped_paths.push((path, stored.blob));
+        embedding_rows.push((stored.raw_hash, vector(0.5 + index as f32 * 0.01)));
+    }
+    sync_worktree_files(&pool, foreign_worktree, &foreign_paths)
+        .await
+        .unwrap();
+    sync_worktree_files(&pool, scoped_worktree, &scoped_paths)
+        .await
+        .unwrap();
+
+    let embeddings = embedding_rows
+        .iter()
+        .map(|(source_hash, vector)| NewEmbedding {
+            chunk_no: 0,
+            source_hash,
+            source_kind: SourceKind::Raw,
+            vector,
+            truncated: false,
+        })
+        .collect::<Vec<_>>();
+    put_embeddings(&pool, EMBEDDER, &embeddings).await.unwrap();
+
+    let hits = search_elements(
+        &pool,
+        EMBEDDER,
+        &vector(0.0),
+        &SearchFilters {
+            repo: Some(scoped.key().to_string()),
+            source: Some(SourceKind::Raw),
+            limit: 10,
+            ..SearchFilters::default()
+        },
+    )
+    .await
+    .expect("candidate expansion reaches the scoped page");
+    let identities = hits
+        .iter()
+        .map(|hit| hit.identity.as_deref())
+        .collect::<Vec<_>>();
+
+    database.destroy(pool).await;
+    assert_eq!(
+        hits.len(),
+        10,
+        "the fully foreign first page must trigger expansion"
+    );
+    assert!(
+        identities
+            .iter()
+            .all(|identity| *identity == Some(scoped.key())),
+        "every expanded hit must belong to the requested repository: {identities:?}"
+    );
+}
