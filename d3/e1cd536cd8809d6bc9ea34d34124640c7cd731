@@ -1,0 +1,16 @@
+scratch/closeout-015/ts-grammar-report.md
+  h_9e71e8b09f7cf2 5-6,10,47,58,78-120
+scratch/review-015/review-015-status.md
+  h_9e71e8b09f7cf2 10-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d3e1cd536cd8809d6bc9ea34d34124640c7cd731",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
