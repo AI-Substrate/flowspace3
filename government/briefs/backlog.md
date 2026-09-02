@@ -1892,3 +1892,11 @@ ROW 121 — REQ-0033 IN FLIGHT AS PIJ PLAN 128 (weasel, 2026-09-02; relayed
     count so a hollow conversation cannot verify clean. Sibling of rows
     129/133; the restore path for the 12 is the parent re-ingest in
     scratch/reply-to-meadowlark-subagents.md.
+
+BACKFILL CLOSED (meadowlark, 2026-09-02): pij repo 4 → 49 conversations
+    (37 re-anchored + 12 subagents restored via the parent route, turns
+    8-82 each, real content) plus 3 under the raw https identity awaiting
+    row 133's backfill. Every answer that made this possible was a
+    source-read with line numbers, and every one was checked by the
+    consumer before use — that is the standard for cross-government
+    answers from here on.
