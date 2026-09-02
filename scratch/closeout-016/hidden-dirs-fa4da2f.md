@@ -1,0 +1,1 @@
+`fa4da2f` contains only docs/receipts: `docs/plans/016-hidden-dirs/assets/tasks/phase-1/execution.log.md`, `tasks.dd.json`, and generated `tasks.dd.md`; no source, migration, test, configuration, or runtime changes.
