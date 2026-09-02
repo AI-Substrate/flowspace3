@@ -3599,3 +3599,22 @@ late-delivery notice, and no composer veto for omp/pi (they take the extension s
 check `delivered_at` in `~/.pij-rs/pij.sqlite` before assuming a seat has your ruling, and
 never let a queued ruling be the only thing standing between a seat and an irreversible
 action. Related: 161 (spawn-bind zero delivery), 172 (blocked seat idles silently).
+
+## 181 — `bin/daemon-restart` Bus error AFTER Ctrl-C, BEFORE relaunch — RECURRENCE, and it takes prod down
+2026-09-02 18:29, second occurrence (row 167 was the first, same day). Restarting prod onto
+the 689ac27 build: the script found pane %50, sent Ctrl-C, the daemon shut down cleanly —
+then the script itself died with `Bus error: 10` (rc=138) before typing the launch command.
+**Prod was left DOWN**, not degraded: nothing on :7373 for ~50 s until o-prime relaunched by
+hand with the script's own `shell_quote`d command (`'<binary>' daemon`) via two send-keys
+(text, settle, Enter separately). Recovered on pid 76514, healthy.
+**Why it keeps costing us:** the script's stop and start are not a transaction — a crash in
+between is indistinguishable from success to anything that only checks the exit code, and the
+window it leaves is a full prod outage.
+**Encode:** (a) find and fix the Bus error (it is in the shell script's own execution, twice
+now, at the same point); (b) failing that, make the script trap EXIT/ERR and relaunch if it
+dies after the stop — never leave the stopped state as the final state; (c) o-prime's bounce
+scripts must keep asserting `rc==0 AND new pid != old pid` (mine did, which is the only
+reason this was caught in seconds rather than by a user).
+**Also observed, and it is row 177 in prod:** the relaunched prod daemon took ~21 s from
+"store schema is current" to listening — the pre-serve ddoc probe over prod's registered
+roots. Prod pays that on every bounce, and no gate we run can see it.
