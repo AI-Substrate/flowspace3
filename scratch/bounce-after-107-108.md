@@ -49,3 +49,24 @@ no-op, not damage.
   search).
 - Row 178 cleanup: reap the orphaned roots in the shared `flowspace3_test` DB, now that
   both gates are done.
+
+## Two caveats from the 017 reviewer — expect this shape on the first bounce
+
+Both measured through the real binary (hyena, review 017), and both matter because the
+refusal is the state prod is in until `owner_root` is set:
+
+1. **The refusal fires BEFORE `logging::init`.** It never reaches the daemon log file.
+   The full `FS3-E-PROD-NOT-DESIGNATED` text goes to **stderr only**.
+2. **`bin/daemon-restart` will hide it.** A refusing daemon exits inside the script's
+   first 0.25 s poll, so the script never sees a process and reports only the generic
+   `no replacement 'flowspace3 daemon' appeared in pane %50`. **The real error is in
+   pane %50's scrollback** — read the pane, not the script's output, if the bounce
+   "fails" after this merge. (Combined with row 181, the script's failure output is
+   twice unhelpful: it can crash between stop and start, and it cannot report a refusal.)
+
+**Also correct the packet/runbook assertion:** the prod key mtime is now
+`2026-09-02 18:29:55`, not the earlier `16:57:45` — that is daemon pid 76514 (the release
+binary from the main clone) republishing on its legitimate bounce, key mtime matching its
+start to the second, one daemon alive. Verified by the reviewer, who had every reason to
+flag it as a fence breach and instead checked it out first.
+

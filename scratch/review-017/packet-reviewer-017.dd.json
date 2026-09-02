@@ -1,0 +1,149 @@
+{
+  "dd": {
+    "schema": "pij-team/packet"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Reviewer packet — daemon-key-after-bind (plan 017)",
+        "role": "reviewer",
+        "plan": "docs/plans/017-daemon-key-after-bind/plan.dd.json",
+        "seat": "assigned by the self-registering seat",
+        "updated": "2026-09-02"
+      }
+    },
+    {
+      "name": "mission",
+      "value": "You are the cross-model reviewer (Claude) for plan 017-daemon-key-after-bind, coded by a GPT-5.6 seat. Single unit, no PM: your counterpart is o-prime (rs name pij-binding-magpie). Judge whether the code makes the promises TRUE: a second daemon started with the same settings can never replace the shared boot token file (the pinned cause: localhost resolving to both loopback families, a half-bind, then publication); publication is impossible without a bound-listener proof on every boot path; the 401 hint is truthful when the token file is newer than the daemon; a foreign working directory cannot attach to the prod database without designation; and the two-daemon transcript on the TEST setup is reproducible. Read-only on code. SHA UNDER REVIEW: 6d6637d8eac60ec61a200338fb4b061b98040caf on branch 017-daemon-key-after-bind, detached in your worktree."
+    },
+    {
+      "name": "instructions",
+      "value": [
+        {
+          "id": "i1",
+          "text": "Orient: read the plan (rendered .dd.md), the impl-guide (the intended decomposition + interfaces), and then the full diff of the branch against its base. DOGFOOD FLOWSPACE: use `flowspace3 search` to locate consumers/related code by meaning while reviewing; report misses as friction."
+        },
+        {
+          "id": "i1b",
+          "text": "REVIEW A COMMITTED SHA IN ITS OWN WORKTREE, never a live tree someone is still editing (DL-011, 2026-08-28: a reviewer on a shared moving tree watched a coder's instructed red-proof fail and began writing a blocker for it). A review of a moving tree is not reproducible and its findings cannot be attributed. Your packet must name the sha under review; if it does not, refuse and ask."
+        },
+        {
+          "id": "i2",
+          "text": "Review with the /builder review discipline: verify claims against fresh evidence — run targeted tests yourself, read exit status, never trust a green claim you did not see."
+        },
+        {
+          "id": "i2b",
+          "text": "Your dispatcher OWES you three lists in this packet, and you should refuse to start without them: (1) WHERE THE AUTHOR IS LEAST CONFIDENT (hunt there first), (2) an instruction to DISBELIEVE THE AUTHOR'S OWN RECEIPTS (re-derive, don't audit prose), (3) WHAT IS ALREADY KNOWN-OPEN (spend zero findings re-reporting it). Proven 2026-08-28: this brief shape bought a 4-for-4 all-confirmed zero-noise review, including a defect the author hunted for in writing and could not see from inside."
+        },
+        {
+          "id": "i3",
+          "text": "Priority order: (1) plan promises that are not actually true, (2) composition-seam defects between units, (3) interface drift from the impl-guide, (4) correctness/safety in the changed code, (5) test gaps on the contract. Style noise is unwanted."
+        },
+        {
+          "id": "i4",
+          "text": "Findings: at most the material ones, each with severity (CRITICAL/HIGH/MEDIUM), exact location, the claim, the proof, and the smallest fix. `no_material_findings` is a valid verdict."
+        },
+        {
+          "id": "i5",
+          "text": "Deliver as a ddoc review record in the plan folder (assets/reviews/), build it, and send the PM the path + a one-line verdict."
+        },
+        {
+          "id": "owed-1-least-confident",
+          "text": "WHERE THE AUTHOR IS LEAST CONFIDENT (hunt here first): (a) canonicalising localhost to 127.0.0.1 — does any client/config path still use ::1 or a hostname, and does the daemon refuse (not silently rebind) when 127.0.0.1:<port> is taken; (b) the BoundListener proof — is there any remaining call site (sandbox / --json / tests) that constructs the proof without a real bound listener; (c) the 401 mtime check — normal restart (key mtime == boot) must not false-positive; clock skew; (d) the owner designation — o-prime's own bounce from the main clone and bin/daemon-restart must still work; the error names the :5434 test URL; (e) the transcript: re-run it yourself on a scratch FS3_CONFIG_DIR + :5434 + ephemeral port with a per-run FreshDatabase; (f) no temp residue after a refused second boot. (e) ADDED AFTER CODING — GUARD PRECEDENCE, hunt here first: the author found itself that the new prod-owner refusal MASKED the older `fs3_testkit::sealed` refusal and reordered so `refuse_a_defaulted_store_under_test` runs first. Ordering defects of that shape recur. Prove the current order is right across the COMBINATIONS (sealed/unsealed x designated/undesignated x default/non-default URL), not just the two the tests cover; a wrong order returns the wrong remediation to the operator."
+        },
+        {
+          "id": "owed-2-disbelieve",
+          "text": "Re-derive every receipt in .harness/temp/agent/daemon-key-t*.md and the PR body: run the boot_contract, auth, cli 401 and config tests yourself on :5434 with per-run databases; perform the author's mutations (remove canonicalisation → dual-family red; remove the proof → compile/red) plus one of your own per promise. NEVER run a daemon with the default config; never touch :7373 / :5433 / ~/.config/flowspace3. Every number in PR #108's body — the key mtime, the SHA-256, 175 lib tests, the RED/GREEN A/B — was produced by the author. Reproduce the ac-0001 dual-family clobber against your OWN scratch daemons and confirm daemon B leaves the key file untouched; do not accept a quoted hash as evidence."
+        },
+        {
+          "id": "owed-3-known-open",
+          "text": "ALREADY KNOWN-OPEN (spend zero findings here): rows 164/167 (daemon-restart script) and 165 (foreign daemons) are separate; per-instance keys keyed by port are a non-goal; the shared flowspace3_test database may carry migration 0024 (row 171) — use per-run databases; the exclusive harness-checks slot is NOT yours; CI runs on the PR — read it; '[Some lines truncated to 768 chars]' is your viewer (row 152). ADDED: backlog 179 — CI's FS3_TEST_DATABASE_URL is BYTE-IDENTICAL to `DatabaseConfig::DEFAULT_URL`, which is why this PR's first CI run went red; real hazard, already rowed, NOT this PR's to fix. Rows 177/178 — the pre-serve ddoc probe is unbounded in root count and every gate mints an EMPTY database, so no gate we run can see it. Row 181 — `bin/daemon-restart` dies between stop and start. AND THE BIG ONE: the guard is FAIL-CLOSED BY DESIGN — a daemon with no `[daemon].owner_root` refuses the prod URL. o-prime has reviewed and ACCEPTED that, it makes a prod config edit a merge prerequisite (runbook written), and it is NOT a finding. Report it only if you can show it breaks something other than an undesignated daemon reaching prod."
+        },
+        {
+          "id": "i11",
+          "text": "CLOSE OUT BY STATING YOUR FENCE AS WHAT YOU DID NOT TOUCH: shared resources counted before and after (the shared test DB at :5434 is currently 19 roots — say what it is when you leave), scratch resources created AND destroyed, what you never went near (:7373, :5433, ~/.config/flowspace3/daemon.key — its mtime is 16:57:45, it must still be that when you finish), and which gates you did not run because they were not yours to hold. ABSOLUTE: never run a daemon with the default config dir, and never point anything at the prod database."
+        }
+      ]
+    },
+    {
+      "name": "working_with",
+      "value": [
+        {
+          "id": "w1",
+          "text": "o-prime is your counterpart. Deliver BY FILE (.harness/temp/agent/review-017-ack.md, review-017-verdict.md, plus a one-line mirror in review-017-status.md in YOUR worktree) AND pij send pij-binding-magpie <one line>. Never pij send pij-instant-lynx; never pij adopt."
+        },
+        {
+          "id": "w2",
+          "text": "You do not fix code, commit, or open PRs."
+        }
+      ]
+    },
+    {
+      "name": "scope",
+      "value": {
+        "worktree": "/Users/jordanknight/substrate/flowspace/fs3-review-017",
+        "branch": "017-daemon-key-after-bind (detached at 6d6637d8eac60ec61a200338fb4b061b98040caf)",
+        "fence": "read-only on code; write only docs/plans/017-daemon-key-after-bind/assets/reviews/ and .harness/temp/agent/ in your worktree",
+        "forbidden_note": "No code edits, no merges, no government files, no daemon with default config."
+      }
+    },
+    {
+      "name": "done_bar",
+      "value": [
+        {
+          "id": "d1",
+          "text": "Every plan AC judged true/false with evidence cited."
+        },
+        {
+          "id": "d2",
+          "text": "Both boot paths (normal, --json/sandbox) examined for the proof."
+        },
+        {
+          "id": "d3",
+          "text": "Review record ddoc written, BUILT AND VALIDATED with the global ddocs from the worktree root, and the path delivered with a verdict line."
+        }
+      ]
+    },
+    {
+      "name": "refs",
+      "value": [
+        {
+          "id": "r1",
+          "path": "docs/plans/017-daemon-key-after-bind/plan.dd.md",
+          "note": "the promises (ac-0001..0005)"
+        },
+        {
+          "id": "r2",
+          "path": "docs/plans/017-daemon-key-after-bind/impl-guide.dd.md",
+          "note": "architecture + the candidate paths (t1 pinned dual-stack)"
+        },
+        {
+          "id": "r3",
+          "path": "docs/plans/017-daemon-key-after-bind/assets/backpressure.dd.md",
+          "note": "proof per criterion"
+        },
+        {
+          "id": "r4",
+          "path": ".harness/temp/agent/daemon-key-pr-body.md",
+          "note": "the author's receipts — DISBELIEVE and re-derive"
+        },
+        {
+          "id": "r5",
+          "path": "docs/plans/017-daemon-key-after-bind/assets/inputs/evidence.md",
+          "note": "the incident timeline"
+        },
+        {
+          "id": "r6",
+          "path": "crates/daemon/src/auth.rs",
+          "note": "stage / BoundListener proof / publish"
+        },
+        {
+          "id": "r7",
+          "path": "crates/daemon/src/boot.rs",
+          "note": "serve(): resolve-once + bind + publish; the --json/sandbox path"
+        }
+      ]
+    }
+  ]
+}
