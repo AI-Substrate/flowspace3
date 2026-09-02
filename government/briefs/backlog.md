@@ -3506,3 +3506,43 @@ contract (now a standing rule, delivered as prime-reply-003).
 give the prime's reply ritual a `ddocs get`/`harness plan quote <ac-id>` step so a
 re-wording physically cannot carry a contract change. Related: 170, 172, and the
 earlier "rulings state the PROMISE, not the mechanism" finding from plan 013.
+
+## 174 — `hidden=N` in the add report counts directories among per-file counts
+Review 016 f-16b1. A default add on pij reports `hidden 14` beside `config-format 167`;
+the actual omission is 379 tracked `.pi` TS files. The count is honest (it matches the
+pruned dir list exactly) — it just counts a different noun from its neighbours in the
+same table, so an agent reads "14 files skipped". Those dirs are already named with a
+fix in the `pruned` table. **Encode:** either count the files under the pruned dirs, or
+label the row as directories.
+
+## 175 — the manual hidden check narrows the `ignore` filter it replaced
+Review 016 f-16b2. Plan 016 replaced `.hidden(true)` with `.hidden(false)` plus a manual
+`name.starts_with('.')` after a `to_str()` bail-out. That loses two cases the crate
+covered: non-UTF-8 dot-named directories (`ignore` compares BYTES — `pathutil.rs:11-19`)
+and Windows `FILE_ATTRIBUTE_HIDDEN` (`:28-45`). Unreachable on APFS (rejects the name,
+OSError 92); reachable on ext4 and Windows. Verified in passing: `ignore` exempts depth 0
+(`walk.rs:933`), so `add ~/repo/.harness` still walks in both the old and new code.
+**Encode:** compare bytes via `OsStrExt` and carry the Windows attribute case.
+
+## 176 — `add` is the only human surface that never shows the policy it just set
+Review 016 f-16b3. `include_hidden` is in `add --json`, and both `status` and `tree`
+render it; the human `add` facts table does not. The one surface where the operator just
+CHANGED the policy is the one that does not confirm it.
+
+## 177 — boot probes ddocs per registered root BEFORE it binds; unbounded in root count
+Review 016 f-16c1 — the mechanism behind the "flaky" `crates/daemon/tests/health.rs::
+the_real_binaries_agree_through_a_discovered_config` (rows 151/171). Not a load artefact:
+reproduced isolated and unloaded. `boot.rs:478-492` probes ddocs tooling for EVERY
+registered worktree before binding. Controlled A/B, same binary, same config, both on
+:5434: 0 roots → key published in **1 s**; 19 roots (the shared `flowspace3_test` DB) →
+**25 s**, against the test's 10 s ceiling. **Encode:** bound or parallelise the pre-serve
+probe, or move it after bind — a daemon's time-to-serve must not scale with root count.
+
+## 178 — plan-016's ac-0005 receipt left a root registered in the SHARED test DB
+Review 016 f-16c1, second part. The receipt recipe kills its scratch daemon but never
+unregisters its roots, so `/Users/jordanknight/pi-hacking/pij` (2463 files,
+`include_hidden=t`) is still root id 19 in `flowspace3_test`, degrading boot for every
+later seat (see 177). The reviewer correctly did NOT clear it (shared state) and used
+fresh scratch DBs instead. **Encode:** every receipt recipe that registers a root must
+unregister it in a trap/teardown, and the test DB needs a cheap `roots: N` assertion at
+suite start so pollution is named rather than inferred from a timeout.
