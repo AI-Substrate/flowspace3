@@ -3457,3 +3457,13 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     PLAN 016 — CI GREEN on fa4da2f (07:31:45). Merge train fires on the
     reviewer's verdict; then release build → bounce → row-125 prod receipt
     (scratch/receipt-016-prod.sh).
+    PLAN 017 — t1 RED (cod, 07:44): the clobber path is PINNED —
+    `daemon.url = http://localhost:<port>` resolves to BOTH loopback
+    families; daemon A bound ::1, daemon B fell through the occupied IPv6
+    address and bound 127.0.0.1, then boot::serve published its key —
+    both "bound", one key file. Red test: crates/cli/tests/boot_contract
+    another_loopback_address_family (normal + --json), per-run
+    FreshDatabase on :5434, scratch config. Row 169's mechanism is
+    therefore dual-stack half-binding, not publish-before-bind. t2:
+    resolve once, bind every family (or pin + refuse), proof token from
+    the fully-bound set.
