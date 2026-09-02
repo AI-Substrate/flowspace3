@@ -2366,3 +2366,33 @@ DEGRADED-ATTRIBUTION TALLY: EIGHT (plan 012 delta commit f3aec311, 2026-09-02).
     "no parser for .<ext>" honesty line in the same PR; then C#/GDShader
     (136) on the same rail. A doctor row listing "extensions indexed vs
     parsers wired" is part of it so this cannot be invisible again.
+
+    ROW 144 UPGRADED TO SYSTEMIC (antelope batch 2, 2026-09-02):
+    `meta.empty_because` is ABSENT on every zero produced across
+    `search --path` and `refs`, while `next_action` carries an excellent,
+    precise reason in both — the information exists in the human field
+    and is missing from the machine field the contract names. One fix,
+    every honest-empty path: populate `meta.empty_because` first, mirror
+    into `next_action`. (Praise recorded: `ask --path` answered a real
+    plan-093 question with correct constants, the coalescing rule and
+    the design intent — grounded, 7 iterations, 2 correct citations —
+    "the strongest thing in the product"; `conversation verify` "a model
+    of the honesty contract, keep it exactly as is".)
+
+148. **`conversation list` rejects `--limit` which `search` accepts**
+    (antelope batch 2). Small: add `--limit` to list for verb symmetry.
+
+149. **agents-start-here must say "parse stdout only; stderr carries a
+    human copy of the error"** (antelope batch 2 — the same trap caught
+    forward-worm, antelope, and o-prime today): errors print the JSON
+    envelope to stdout AND a human line to stderr; an agent that merges
+    2>&1 reports a malformed envelope. One paragraph in the guide and in
+    `--help` for `--json`. Raw: scratch/dogfood-antelope-batch-2.md.
+
+ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
+    rs event stream in the disk incident (weasel: omps started before pij
+    plan 124 do not re-attach; req-0042 filed for "queued must name its
+    reason" + a live-subscriber flag in pij-rs list). Its work was safe:
+    f3aec31 committed locally, tree clean, not pushed. o-prime killed the
+    seat and respawned in place with the full reply set to read;
+    successor's canary pending.
