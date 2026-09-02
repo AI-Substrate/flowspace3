@@ -2561,3 +2561,11 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     (dajeil, rs pij-joyous-rooster — routed by meadowlark 2026-09-02); until fixed, pij-team packets must keep long
     items OUT of table cells (use instructions[] entries) — encode in the
     pij-team template notes.
+    PLAN 014 — fix AMENDED after the reviewer mutation-checked its own CASE
+    on :5434 (four controls: revivable-failed → pending/claimable; pending
+    unchanged; running NOT demoted; terminal-failed mints a second row;
+    zero keys with >1 live owner): the DO UPDATE also resets `parks` so
+    mint-time revival matches requeue_failed (jobs.rs:515-517) — a revived
+    row at parks=20 could never park again (runner.rs:1035) and would burn
+    attempts against a provider asking us to slow down. Relayed to the coder
+    with the two extra pins (running preserved; second row minted).
