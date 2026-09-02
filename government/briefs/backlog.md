@@ -3546,3 +3546,19 @@ later seat (see 177). The reviewer correctly did NOT clear it (shared state) and
 fresh scratch DBs instead. **Encode:** every receipt recipe that registers a root must
 unregister it in a trap/teardown, and the test DB needs a cheap `roots: N` assertion at
 suite start so pollution is named rather than inferred from a timeout.
+
+## 179 — CI's test database URL is spelled identically to the shipped prod default
+Found 2026-09-02 when plan 017's new owner guard turned #108 red.
+`.github/workflows/ci.yml:23` sets
+`FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5433/flowspace3` —
+byte-identical to `DatabaseConfig::DEFAULT_URL`. So in CI every test database IS the
+string we call production, and any guard keyed on that string (correctly) refuses inside
+CI. It also means CI can never prove a prod-only guard: the two cases are indistinguishable
+by URL. `health.rs::the_real_binaries_agree_through_a_discovered_config` was the first
+casualty; fixed test-side with a per-run `FreshDatabase` (23e6bf2), which is the right
+shape but does not remove the hazard for the next such guard.
+**Encode:** give CI its own database name/port (`flowspace3_test`, or :5434 as local does)
+so the prod default URL is unreachable in CI by construction, and add an assertion that
+`FS3_TEST_DATABASE_URL != DatabaseConfig::DEFAULT_URL` so this can never silently return.
+Do it as its own small PR AFTER #107/#108 land — changing it now invalidates in-flight runs.
+Related: 169 (shared key clobber), 177/178 (shared test DB).
