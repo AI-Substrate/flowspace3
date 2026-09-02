@@ -1,0 +1,29 @@
+scratch/review-012/ac-0001-ddl-probe.sh
+  s_15d888f4b629c1::t_0dfb56f3e21763 1-123
+scratch/review-012/review-012-ack.md
+  s_15d888f4b629c1::t_8c27d801ddf9d0 1-26
+scratch/review-012/review-012-verdict.md
+  s_15d888f4b629c1::t_946e04b46e80c4 1-63
+scratch/review-012/review-012.dd.json
+  s_15d888f4b629c1::t_af8357346e6c1c 1-575
+scratch/review-012/review-012.dd.md
+  s_15d888f4b629c1::t_66641d1502bb52 1-89
+scratch/review-012/session-buffer.md
+  s_15d888f4b629c1::t_538b766dea2116 1-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a9eadb8585a7c5baeacc9ce04e5b2aa6ae8713bb",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
