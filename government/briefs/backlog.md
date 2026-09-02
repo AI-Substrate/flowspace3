@@ -3328,3 +3328,8 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     rescans read the current flag; ledger `hidden=N` (fixture hidden=2);
     status JSON/human + tree show include_hidden per root; receipts ticked.
     Gate slot GRANTED for t4 (no other gate on the box).
+    ROW 169 — RESOLVED for now: prod bounced 06:57:41Z (pid 1548 → 74144,
+    013 binary), key republished 16:57 local, healthy+authorized at
+    +110 s; the plan-132 rogue (89658) exited by itself before the
+    bounce. Client outage ~16:54–16:59 local. Fix packet next (key after
+    bind; key path by port; prod-db designation).
