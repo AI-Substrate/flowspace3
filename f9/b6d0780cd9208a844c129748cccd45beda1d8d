@@ -1,0 +1,61 @@
+crates/cli/src/client.rs
+  s_0ce02639c40511::t_c62858afeba9e5 203-209
+crates/daemon/src/http.rs
+  s_0ce02639c40511::t_43d23a303ab12d 516-522
+crates/daemon/src/worktrees.rs
+  s_0ce02639c40511::t_35d80c023ad2ca 293
+crates/daemon/tests/event_stream.rs
+  s_0ce02639c40511::t_ffe5d074eaa032 195,333
+crates/daemon/tests/lanes.rs
+  s_0ce02639c40511::t_e2a3b29f3d8b0a 334
+crates/daemon/tests/remove_root.rs
+  s_0ce02639c40511::t_b89f4a07eb985f 79,145,198,237,240,300,328
+crates/daemon/tests/worktree_lifecycle.rs
+  s_0ce02639c40511::t_86c16855c67fbe 81
+crates/store/src/lib.rs
+  s_0ce02639c40511::t_7c3c63f090b41e 77-78
+crates/store/src/read.rs
+  s_0ce02639c40511::t_4af05a9afffa1a 226,245
+crates/store/src/refs.rs
+  s_0ce02639c40511::t_51e495db89a90a 41-42,107-142,272,288
+docs/plans/016-hidden-dirs/assets/backpressure.dd.json
+  s_68ab0dade8e508::t_929ca3f116be58 23-25,33-35,43-45,54-55,59,63-65,95-96
+docs/plans/016-hidden-dirs/assets/backpressure.dd.md
+  s_68ab0dade8e508::t_dfd389885228a5 23-27
+docs/plans/016-hidden-dirs/assets/tasks/phase-1/tasks.dd.json
+  s_5411722c355d67::t_c6b463741246a3 25,27,30-31,36,41-42,47,52-53,58,63-64,68-69,71,74-75,85-88,95-97,104-106,113-115,121-124,129-130
+docs/plans/016-hidden-dirs/assets/tasks/phase-1/tasks.dd.md
+  s_5411722c355d67::t_de84c1f19621ab 38-42,50-52,56-58,62-64,68-70,74-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f9b6d0780cd9208a844c129748cccd45beda1d8d",
+  "prompts": {},
+  "sessions": {
+    "s_0ce02639c40511": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b95239d-d05a-44e7-ad9d-ecc36e15c1ca",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_5411722c355d67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2dfb4cf2-2fb1-47a1-ac46-07058ab29538",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_68ab0dade8e508": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1cc88fc-b66c-4303-87ea-d5a5f443402a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
