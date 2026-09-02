@@ -2993,3 +2993,15 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     Encode: the add-language skill's contract gains the version-bump step
     (a grammar addition that does not bump it is a no-op for existing
     blobs).
+    ROW 147 — reviewer precheck of the bump: the const's own doc comment
+    already records this case (@1→@2 by workshop 008 for the ddoc grammar:
+    "an existing corpus must be re-minted"); skip paths scan.rs:196 +
+    roots.rs:209 both key on (blob, version); @3 strands nothing (the @1
+    literals in CLI goldens are fixture-supplied; first_light binds
+    @test-previous deliberately). BLAST RADIUS: @3 re-mints every blob on
+    its next enqueue (unchanged trees enqueue nothing, so it is lazy);
+    enrichment stays raw_hash-keyed → zero provider spend, parse CPU only.
+    RECEIPT TIMING: take the row-147 receipt only after the re-parse
+    drains — gate on `count(elements where kind != 'file')` for TS blobs
+    going 0 → >0 (≈3,452 for the pij tree) BEFORE searching; an early
+    search returns nothing from .ts and looks like a parser failure.
