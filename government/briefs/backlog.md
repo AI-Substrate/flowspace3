@@ -2539,3 +2539,25 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     shape = a re-fire into a failed row re-arms it to pending + boot
     sweep covers scan_file + a test that re-adds a failed file and proves
     claim_job returns it. Ruling after the full verdict.
+    PLAN 014 — VERDICT (takin): REQUEST CHANGES — f-001 CRITICAL (above),
+    f-002 MEDIUM (plan says 7 days, code ships the ruled 1 day). ACs
+    0001/0002/0004 TRUE re-derived; ac-0003 true-as-written but only ever
+    required one row to exist, never that absorbed work runs — that gap IS
+    f-001. Seven reviewer experiments refuted the rest (0023 converges 13
+    in/13 out across 6 duplicate shapes; atomic; no purge/recovery race
+    because nothing leaves done; purge 42.5 ms with 5 rows held FOR
+    UPDATE, touched none; boot pass 38.8 ms/10k batch). RULED: reviewer's
+    exact CASE re-arm in DO UPDATE (failed→pending, attempts 0), flip the
+    pinning test at pg_jobs_retention.rs:230, terminal-vs-nonterminal
+    control, ac-0003 amended; boot requeue NOT widened to scan_file.
+    BOUNCE NOTES: n-001 purged_last_run is overwritten by every hourly
+    sweep — capture status --json within the hour or use the log line;
+    n-002 0023 builds a UNIQUE index non-concurrently over 1.01M rows in
+    the migration txn — first boot pauses there, not a hang.
+152. **`ddocs build` truncates table-cell values at 768 chars in the rendered
+    `.dd.md` — silently ate the three owed lists in the 014 reviewer packet and
+    the reviewer's own ac-0003 row** (takin n-004 / DL-001). The reviewer only
+    caught it by reading the `.dd.json`. Tooling defect for the ddocs owner
+    (meadowlark's government); until fixed, pij-team packets must keep long
+    items OUT of table cells (use instructions[] entries) — encode in the
+    pij-team template notes.
