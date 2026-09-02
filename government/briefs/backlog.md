@@ -1829,3 +1829,18 @@ ROW 121 — REQ-0033 IN FLIGHT AS PIJ PLAN 128 (weasel, 2026-09-02; relayed
     43: `conversation remove <guid>` then re-ingest with the correct
     folder (remove drops turns + cursor, so re-ingest re-reads and
     re-anchors; costs re-embedding those turns).
+
+130. **`harness daemon bounce` returns ok before the daemon serves; the
+    CLI's DAEMON-UNAVAILABLE fix text would double-start prod** (o-prime
+    DL-006, 2026-09-02; Jordan hit it with `flowspace3 add .` during the
+    #93 bounce). New daemon listened on :7373 within seconds but did not
+    answer /health for ~2 min (boot requeue + pending work under load);
+    bounce had already reported ok; the CLI told a human to `flowspace3
+    daemon &`. ENCODE: bounce waits (bounded) for /health and otherwise
+    reports "booting: <pid>, <pending jobs>"; the fix text checks for a
+    listening pid and says "booting — retry" instead of "start it".
+
+131. **`harness checks` is opaque for minutes — slow vs stuck cannot be
+    told apart** (limpet DL-004, 2026-09-02, at host load 124). ENCODE:
+    stream the active stage (fmt/clippy/test-<crate>) with elapsed time;
+    a gate that cannot say where it is trains seats to bypass it.
