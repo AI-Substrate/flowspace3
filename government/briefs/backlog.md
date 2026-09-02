@@ -2528,3 +2528,14 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     fails with a "No such file" race** (arach, PR #98 docs-only CI run; the
     implementation head's run was green). A test that races the filesystem is a
     defect: find the shared temp path / ordering assumption and pin it. Small packet.
+    ROW 139 / PLAN 014 — REVIEW CRITICAL (takin, reproduced on :5434 both
+    pre- and post-0023): a failed non-terminal scan_file job now keeps
+    its dedupe key forever; the documented recovery (re-add / edit →
+    watcher re-fire) is absorbed by ON CONFLICT DO UPDATE and never
+    leaves state='failed'; claim_job takes only 'pending' and the boot
+    sweep requeue_failed covers only summarize+embed (boot.rs:186). Net:
+    the file is permanently unindexable and silent. PR #98 head d04ae3e
+    is docs-only over cc8da52 (review valid). Coder told: no push; fix
+    shape = a re-fire into a failed row re-arms it to pending + boot
+    sweep covers scan_file + a test that re-adds a failed file and proves
+    claim_job returns it. Ruling after the full verdict.
