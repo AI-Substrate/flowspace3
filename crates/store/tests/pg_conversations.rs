@@ -23,9 +23,9 @@ use fs3_core::{
     ToolInput, Turn, TurnItem, TurnRole, TurnSource, earns_summary,
 };
 use fs3_store::{
-    AnchorFilter, PgPool, append_turns, collect_garbage, delete_conversation, enqueue_job,
-    get_elements, get_smart_content, list_conversations, outline, put_smart_content,
-    raw_hash_is_referenced, register_worktree, remove_root, sync_worktree_files,
+    AnchorFilter, PgPool, append_turns, collect_garbage, conversation_delivery,
+    delete_conversation, enqueue_job, get_elements, get_smart_content, list_conversations, outline,
+    put_smart_content, raw_hash_is_referenced, register_worktree, remove_root, sync_worktree_files,
     upsert_conversation, upsert_element_tree, window,
 };
 use std::collections::BTreeMap;
@@ -83,6 +83,53 @@ async fn store_conversation(pool: &PgPool, guid: &ConversationId, turns: &[Turn]
     append_turns(pool, guid, turns, gate)
         .await
         .expect("appending turns");
+}
+
+#[tokio::test]
+async fn delivery_probe_is_exact_and_reports_the_last_turn_without_loading_turns() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+    let guid = id('0');
+
+    upsert_conversation(&pool, &conversation(&guid, Some("github.com/x/anchored")))
+        .await
+        .expect("storing the header");
+    let empty = conversation_delivery(&pool, &guid)
+        .await
+        .expect("probing an empty conversation")
+        .expect("the header exists");
+    assert_eq!(empty.turns, 0);
+    assert_eq!(empty.last_turn_at, None);
+
+    let mut last = turn(2, "delivered");
+    last.at = "2026-08-27T10:30:00Z".to_string();
+    append_turns(&pool, &guid, &[turn(1, "first"), last], gate)
+        .await
+        .expect("storing turns");
+    let delivered = conversation_delivery(&pool, &guid)
+        .await
+        .expect("probing a delivered conversation")
+        .expect("the conversation exists");
+    assert_eq!(delivered.guid, guid);
+    assert_eq!(
+        delivered.repo_identity.as_deref(),
+        Some("github.com/x/anchored")
+    );
+    assert_eq!(delivered.worktree.as_deref(), Some("/srv/checkout"));
+    assert_eq!(delivered.turns, 2);
+    assert_eq!(
+        delivered.last_turn_at.as_deref(),
+        Some("2026-08-27T10:30:00Z")
+    );
+
+    assert!(
+        conversation_delivery(&pool, &id('1'))
+            .await
+            .expect("probing an absent conversation")
+            .is_none()
+    );
+
+    database.destroy(pool).await;
 }
 
 /// A conversation grows across many posts, and a re-post of an overlap must

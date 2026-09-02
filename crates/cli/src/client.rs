@@ -248,6 +248,12 @@ impl DaemonClient {
             .await
     }
 
+    /// Confirm that one native session has delivered turns to the index.
+    pub async fn conversation_verify(&self, query: &[(String, String)]) -> Envelope {
+        self.get_json("conversation verify", "/conversations/verify", query)
+            .await
+    }
+
     /// Forget one conversation and its turns.
     pub async fn conversation_remove(&self, guid: &str) -> Envelope {
         self.post(

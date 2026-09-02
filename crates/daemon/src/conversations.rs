@@ -41,7 +41,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::enrich;
 use crate::runner::fail;
-use crate::scope::Scope;
+use crate::scope::{Scope, ScopeSource};
 use crate::wiring::AppState;
 
 /// The identity a conversation with no repository anchor is enriched under.
@@ -281,22 +281,27 @@ pub fn next_after_list(report: &ConversationList) -> String {
     }
 }
 
-/// Resolve a full guid, a conventional short guid, or a `conv:` address to one
-/// indexed conversation inside the caller's repository scope.
+/// Resolve a full guid, conventional short guid, or `conv:` address.
 ///
-/// Resolution happens before the ask loop starts. A bad pin therefore cannot
-/// consume model turns and cannot degrade into an empty, plausibly answered
-/// search.
+/// Canonical full guids and addresses ignore cwd-derived scope but honor an
+/// explicit repository flag. Short prefixes remain scoped so a local shorthand
+/// does not become ambiguous merely because another repository shares it.
 pub(crate) async fn resolve_selector(
     state: &AppState,
     selector: &str,
     scope: &Scope,
 ) -> Result<fs3_store::ConversationSummary, Failure> {
     let prefix = selector_prefix(selector)?;
+    let exact = prefix.len() == 36;
+    let apply_scope = !exact || scope.source == ScopeSource::Flag;
     let rows = fs3_store::list_conversations(
         &state.db,
         fs3_store::AnchorFilter {
-            repo: scope.repo.as_deref(),
+            repo: if apply_scope {
+                scope.repo.as_deref()
+            } else {
+                None
+            },
             path_prefix: None,
             guid: Some(&prefix),
         },
@@ -305,11 +310,12 @@ pub(crate) async fn resolve_selector(
     .map_err(fail)?;
 
     let mut matches = rows.into_iter().filter(|row| {
-        scope.worktree.as_deref().is_none_or(|worktree| {
-            row.worktree
-                .as_deref()
-                .is_none_or(|candidate| candidate == worktree)
-        })
+        !apply_scope
+            || scope.worktree.as_deref().is_none_or(|worktree| {
+                row.worktree
+                    .as_deref()
+                    .is_none_or(|candidate| candidate == worktree)
+            })
     });
     let Some(found) = matches.next() else {
         return Err(conversation_selector_failure(format!(

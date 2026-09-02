@@ -23,7 +23,8 @@ flowspace3 tree el:git:github.com/org/repo/crates/store/src/jobs.rs
 el:<repo>/<path>::<container>::<name>    an element
 el:<repo>/<path>                         a whole file
 el:<path>::<name>                        repo-less: resolved where you stand
-conv:<guid>                              a conversation — not in this version
+conv:<guid>                              one whole conversation
+conv:<guid>#t<ord>                       one addressed turn
 ```
 
 Every search hit carries the address to `get` it with. Copy it; do not compose
@@ -42,12 +43,20 @@ standing in.
 |---|---|
 | `--depth N` | levels of children to outline (default 1, 0 for none) |
 | `--span <line>` | pick one of several elements sharing an address |
-| `--repo <identity>` | resolve a repo-less address in this repository, or `all` |
+| `--before N` / `--after N` | conversation turns surrounding the addressed turn |
+| `--repo <identity>` | resolve a repo-less element here; on `conv:` explicitly require this anchor repository; `all` removes the filter |
 
 Returns the element's own `raw_text` — for a file address, the whole file as
 indexed, served from the file element rather than stitched together from its
 children — plus its summary and tags when it has them, the `parents` chain up
 to the file, and a `children` outline you can `get` next.
+
+An explicit `conv:` address is authoritative across the whole index. The cwd
+never narrows it: a conversation anchored to another checkout or repository is
+still returned. An explicit `--repo`, unlike cwd-derived scope, remains a real
+filter. A mismatch reports that the conversation exists outside the requested
+scope; a globally absent guid reports that no such conversation is indexed.
+The two failures have distinct messages and `details` shapes.
 
 `meta.parser_version` names the parse that answered. Elements are keyed by
 `(blob, parser_version)`, so after a parser upgrade the previous version's rows
@@ -87,9 +96,11 @@ the store keys elements on `(address, span_start)` for exactly that reason. So
 
 ## Scope: what "here" means
 
-A bare `search`, `get` or `tree` is about the repository you are standing in.
-The CLI sends your working directory and the daemon resolves it to a registered
-root; `meta.scope` always reports what happened:
+A bare `search`, repo-less element `get`, or non-address `tree` target is about
+the repository you are standing in. Explicit `el:` and `conv:` addresses carry
+their own identity and resolve authoritatively; only an explicit `--repo` can
+constrain a `conv:` address. The CLI still sends your working directory and the
+daemon reports the resolved context in `meta.scope`:
 
 | `scope.source` | meaning |
 |---|---|
@@ -115,8 +126,9 @@ confidence, from an unrelated repository.
 |---|---|---|
 | `FS3-E-QUERY-INVALID-ADDRESS` | not an address at all | 400 |
 | `FS3-E-QUERY-INVALID-AMBIGUOUS` | matches several elements or checkouts | 400 |
-| `FS3-E-QUERY-NOT-FOUND` | nothing answers to it — `details` names what IS nearby | 404 |
-| `FS3-E-QUERY-NOT-IMPLEMENTED` | a `conv:` address; conversations are not stored yet | 501 |
+| `FS3-E-QUERY-NOT-FOUND` | no address exists globally, or an explicit `--repo` excludes an existing conversation; the message and `details` distinguish them | 404 |
 
-Not in this version: conversation storage, so `conv:` addresses parse and are
-refused as not-yet rather than as errors in your typing.
+For a conversation absent globally, `details` carries `guid`. For a conversation
+outside an explicit repository filter it also carries `requested_repo`,
+`indexed_repo`, and `indexed_worktree`; callers never need to infer absence from
+a scope decision.

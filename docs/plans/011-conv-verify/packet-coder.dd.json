@@ -1,0 +1,174 @@
+{
+  "dd": {
+    "schema": "pij-team/packet"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Coder packet \u2014 authoritative conv address + verify verb (conv-verify)",
+        "role": "coder",
+        "plan": "docs/plans/011-conv-verify/plan.dd.json",
+        "seat": "<filled at spawn>",
+        "updated": "2026-09-02"
+      }
+    },
+    {
+      "name": "mission",
+      "value": "You build the ONE unit of plan 011-conv-verify: authoritative conv address + verify verb \u2014 an explicit conv:<guid> resolves index-wide; two-message miss; `conversation verify --harness/--session|--pij` under the consumer's contract, unscopable by construction. There is NO PM on this plan: you report to o-prime (pij-instant-lynx) directly. Read the plan, the impl-guide, the tasks and the backpressure survey IN THAT ORDER \u2014 every done-when assertion is pinned to a backpressure row that names the exact command that proves it; 'done' means those commands ran and their output is in the receipt, not that the code exists."
+    },
+    {
+      "name": "instructions",
+      "value": [
+        {
+          "id": "i1",
+          "text": "Orient: read your unit's row in the impl-guide (impl-guide.dd.json), the plan phase/tasks you own, and the interface contract. Run `harness boot --json` in your worktree before changing anything. DOGFOOD FLOWSPACE: `flowspace3 search \"<question>\"` for every meaning-shaped question before grep (exact identifiers may still grep); report every miss or confusing envelope as friction."
+        },
+        {
+          "id": "i1b",
+          "text": "THE WIRE IS UNTRUSTED (read assets/inputs/pij-two-daemons.md \u2014 pij is two daemons and it is unstable). Ack goes to o-prime by `pij send pij-instant-lynx '<path>'` with the ack persisted to a file first. If `pij send` fails TWICE, write .harness/temp/agent/conv-verify-ack.md in YOUR worktree and STOP \u2014 o-prime polls that path. Same for the done report: .harness/temp/agent/conv-verify-report.md. Never `pij adopt`. `pij whoami` saying 'no seat in this store' is rs answering, not your death."
+        },
+        {
+          "id": "i2",
+          "text": "Ack FIRST: reply to o-prime with your read of the unit + a numbered implementation plan before writing code. Corrections to the packet are welcome \u2014 bring evidence."
+        },
+        {
+          "id": "i3",
+          "text": "Implement using the /builder implement discipline: work the tasks in order, keep the execution log honest, tests alongside code \u2014 your unit's test suite must prove the interface contract without the other units present."
+        },
+        {
+          "id": "i4",
+          "text": "Stay inside your unit's paths (scope below). If the work forces you outside them, STOP and ask o-prime \u2014 that is a composition concern, not yours to solve unilaterally."
+        },
+        {
+          "id": "i5",
+          "text": "Commit with `harness commit` (conventional commits are binding), status card at start and end of each unit of work (`pij report now`)."
+        },
+        {
+          "id": "i6",
+          "text": "Done = `harness checks` green in YOUR worktree + your unit's tests proving the contract. Report done to o-prime with the evidence, then hold for composition questions \u2014 do not merge anything."
+        },
+        {
+          "id": "i7",
+          "text": "Capture friction with `harness observe` the moment it bites; list, never clear the buffer."
+        },
+        {
+          "id": "i8",
+          "text": "OMP seats: use your native tooling deliberately \u2014 your LSP (go-to-definition, find-references, rename, diagnostics) for symbol-level questions and refactors instead of text search, and your harness's structured edit/diagnostic surfaces over raw shell equivalents. If the LSP for this repo's language is not configured in your seat, report it as friction at ack time rather than silently falling back to grep for the whole packet."
+        },
+        {
+          "id": "i10",
+          "text": "TRIPWIRE (PM fills per unit): the check that proves this plan's invariant still holds, and what a red one MEANS. A red tripwire is a STOP-and-report, never something to investigate away or fix around. (From 007: every coder stopped correctly on a red golden because this line existed.)"
+        },
+        {
+          "id": "i11",
+          "text": "READS DECLARATION (PM fills per unit): the types/files/modules this unit CONSUMES that it does not own, each with its owning unit named. Consumption is where fences actually collide \u2014 if you need to read something not listed here, that is a stop-and-ask, not a widening. (From 007: a zero-shared-files claim was false precisely because only ownership, not consumption, was mapped.)"
+        },
+        {
+          "id": "i13",
+          "text": "ABSOLUTE PATHS ALWAYS for every file tool (edit/write/read): rooted at YOUR OWN worktree. Never a relative path or bare section header \u2014 OMP edit resolves relatives against a session root fixed at spawn, and if that root is wrong your edits land in ANOTHER TREE reporting success (DL-044). Also: do NOT `flowspace3 add` your worktree even when a next_action suggests it \u2014 search is a comprehension aid over the main index; bytes are verified in your own tree."
+        },
+        {
+          "id": "i9",
+          "text": "PROD is :7373 and it is NEVER a test target. Read-only commands against it (status, search, get, list, verify) are fine and some acceptance criteria REQUIRE them after o-prime's bounce. All tests use per-run databases; the FS3_TEST_DATABASE_URL guard is correct behaviour, not a defect."
+        },
+        {
+          "id": "i10",
+          "text": "Absolute paths for every read and edit. State your worktree root once at ack and prefix every path with it."
+        }
+      ]
+    },
+    {
+      "name": "working_with",
+      "value": [
+        {
+          "id": "w1",
+          "text": "o-prime (pij-instant-lynx) is your interface: ack, stop-and-asks, done report. Jordan is never messaged directly."
+        },
+        {
+          "id": "w2",
+          "text": "DEFER to o-prime: anything outside the fence, any dependency addition, any change that reverses a plan ruling, anything that touches the other plan's surface (010 = embed path; 011 = conv resolution/CLI)."
+        },
+        {
+          "id": "w3",
+          "text": "Your evidence outranks the packet: if the plan is wrong, say so at ack or stop-and-ask WITH the measurement \u2014 do not code around it."
+        }
+      ]
+    },
+    {
+      "name": "scope",
+      "value": {
+        "worktree": "/Users/jordanknight/substrate/flowspace/fs3-conv-verify",
+        "branch": "011-conv-verify",
+        "fence": "crates/cli (get + conversation verbs, docs), crates/daemon/src/{conversations,http,convo_ingest}.rs, their tests, testkit fixtures you add",
+        "forbidden_note": "Never touch another unit's paths, .harness/government/**, or the plan's flow state. Open the PR yourself when the done-bar is met (tk-0104); NEVER merge it \u2014 o-prime merges. ABSOLUTE PATHS FOR EVERY FILE READ AND EDIT, ALWAYS: a spawned seat's file tools may resolve relative paths against the SPAWN directory (the main clone) while your shell resolves against your worktree \u2014 the same relative path then addresses two different files, the tool reports success either way, and your build goes green against a tree missing your change (proven 2026-08-28, three seats, DL-007/008). State your worktree root once at ack and prefix every path with it."
+      }
+    },
+    {
+      "name": "done_bar",
+      "value": [
+        {
+          "id": "d1",
+          "text": "Unit implements the interface contract in the impl-guide row, verbatim or with PM-ruled amendments."
+        },
+        {
+          "id": "d2",
+          "text": "Unit test suite passes standalone and proves the contract."
+        },
+        {
+          "id": "d3",
+          "text": "harness checks green in your worktree \u2014 AND prove the change is IN THE TREE YOU BUILT, not just that the build exited 0: cite tree-resident evidence (the lockfile carries your dependency, mtime/git status shows your file, the artifact names your module). An exit code is honest about what it built and silent about what it did not."
+        },
+        {
+          "id": "d4",
+          "text": "The SNAP-IN RECIPE shipped with the unit (tenet 4): the exact wiring the composer will paste \u2014 config shape, construction call, registration line \u2014 as a doc comment or section in your unit's service page. Wire it in yourself ONLY when both hold: the wiring file is uncontended (no sibling unit touches it) AND your done bar is behavioural (unreachable unwired); the recipe still ships so composition verifies rather than re-derives. Otherwise the composer wires. (Amended 2026-08-28: the blanket never-wire rule contradicted a live probe-flip done bar.)"
+        },
+        {
+          "id": "d5",
+          "text": "Done report to PM: what shipped, evidence, deviations, anything the composer must know \u2014 INCLUDING an explicit ASSUMPTIONS section: everything you assumed about the composition you do not own (who calls you, in what order, with what already in the store). A green gate proves your unit against YOUR assumptions; naming them is what lets the composer test them."
+        }
+      ]
+    },
+    {
+      "name": "refs",
+      "value": [
+        {
+          "id": "r1",
+          "path": "docs/plans/011-conv-verify/plan.dd.md"
+        },
+        {
+          "id": "r2",
+          "path": "docs/plans/011-conv-verify/impl-guide.dd.md"
+        },
+        {
+          "id": "r3",
+          "path": "docs/plans/011-conv-verify/assets/tasks/phase-1/tasks.dd.md"
+        },
+        {
+          "id": "r4",
+          "path": "docs/plans/011-conv-verify/assets/backpressure.dd.md"
+        },
+        {
+          "id": "r5",
+          "path": "docs/plans/011-conv-verify/assets/inputs/pij-two-daemons.md"
+        },
+        {
+          "id": "r6",
+          "path": "crates/daemon/src/convo_ingest.rs (conversation_guid, line ~341)"
+        },
+        {
+          "id": "r7",
+          "path": "crates/daemon/src/conversations.rs"
+        },
+        {
+          "id": "r8",
+          "path": "crates/daemon/src/http.rs"
+        },
+        {
+          "id": "r9",
+          "path": "PR #84 (the --conversation binding)"
+        }
+      ]
+    }
+  ]
+}

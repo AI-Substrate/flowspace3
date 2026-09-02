@@ -56,7 +56,7 @@ fn render_at_width(envelope: &Envelope<Value>, width: u16) -> Option<String> {
         "tree" => surfaces::read::tree(envelope, width),
         "remove" => surfaces::remove::remove(envelope, width),
         "gc" => surfaces::remove::gc(envelope, width),
-        "conversation list" | "docs" | "agents-start-here" => {
+        "conversation list" | "conversation verify" | "docs" | "agents-start-here" => {
             surfaces::lists::render(envelope, width)
         }
         _ => None,

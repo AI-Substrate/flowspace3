@@ -14,11 +14,13 @@ mod support;
 
 use fs3_core::views::read::GetPayload;
 use fs3_core::{
-    Config, DatabaseConfig, ElementKind, ToolBox, ToolInput, Turn, TurnItem, TurnRole, TurnSource,
+    Config, DatabaseConfig, ElementKind, Harness, ToolBox, ToolInput, Turn, TurnItem, TurnRole,
+    TurnSource,
 };
 use fs3_daemon::conversations::{IntakeRequest, intake};
+use fs3_daemon::convo_ingest::{VerifyRequest, conversation_guid, verify};
 use fs3_daemon::read::{GetRequest, TreeRequest};
-use fs3_daemon::scope::Scope;
+use fs3_daemon::scope::{Scope, ScopeSource};
 use fs3_daemon::search::{SearchRequest, search};
 use fs3_daemon::wiring::AppState;
 
@@ -91,6 +93,7 @@ async fn drain(state: &AppState) {
 fn scoped(identity: &str) -> Scope {
     Scope {
         repo: Some(identity.to_string()),
+        source: ScopeSource::Flag,
         ..Scope::unscoped()
     }
 }
@@ -442,11 +445,20 @@ async fn ask_tools_search_and_get_conversations_under_the_same_scope() {
         vec![turn(1, "conversation evidence for the ask loop")],
     )
     .await;
+    store_at(
+        &state,
+        OTHER,
+        Some("git:github.com/fs3/foreign"),
+        None,
+        vec![turn(1, "foreign conversation evidence")],
+    )
+    .await;
     drain(&state).await;
     let tools = fs3_daemon::ask::IndexTools::new(
         &state,
         Scope {
             repo: Some(ANCHOR.to_string()),
+            source: ScopeSource::Flag,
             worktree: Some("/srv/current-checkout".to_string()),
             ..Scope::unscoped()
         },
@@ -469,12 +481,42 @@ async fn ask_tools_search_and_get_conversations_under_the_same_scope() {
             .contains("conversation evidence for the ask loop")
     );
 
+    let escaped = tools
+        .call("get", &format!(r#"{{"address":"conv:{OTHER}#t1"}}"#))
+        .await;
+    assert!(
+        escaped.is_err(),
+        "an unpinned model-proposed address must not escape the ask corpus"
+    );
+
+    let cwd_tools = fs3_daemon::ask::IndexTools::new(
+        &state,
+        Scope {
+            repo: Some(ANCHOR.to_string()),
+            source: ScopeSource::Cwd,
+            cwd: Some("/srv/current-checkout".to_string()),
+            worktree: Some("/srv/current-checkout".to_string()),
+            warnings: Vec::new(),
+        },
+    );
+    let error = cwd_tools
+        .call("get", &format!(r#"{{"address":"conv:{OTHER}#t1"}}"#))
+        .await
+        .expect_err("the post-resolution guard rejects a cwd-scoped escape");
+    assert!(
+        error
+            .to_string()
+            .contains("outside the caller's immutable repository scope"),
+        "the compensating guard itself must fire: {error}"
+    );
+
     database.destroy(state.db).await;
 }
 
+/// A body-less turn remains readable and explains where its typed content lives.
 #[tokio::test]
-async fn get_rejects_foreign_conversations_and_explains_body_less_turns() {
-    let (database, state) = stack("conv-query-get-scope-empty").await;
+async fn get_explains_body_less_turns() {
+    let (database, state) = stack("conv-query-get-empty").await;
     let mut items_only = turn(1, "");
     items_only.items.push(TurnItem::ToolCall {
         tool: "read".to_string(),
@@ -483,17 +525,6 @@ async fn get_rejects_foreign_conversations_and_explains_body_less_turns() {
         },
     });
     store(&state, GUID, vec![items_only]).await;
-
-    let foreign = fs3_daemon::read::get(
-        &state,
-        &GetRequest {
-            address: format!("conv:{GUID}#t1"),
-            ..GetRequest::default()
-        },
-        &scoped("git:github.com/fs3/other"),
-    )
-    .await;
-    assert!(foreign.is_err(), "get must not cross the repository scope");
 
     let payload = fs3_daemon::read::get(
         &state,
@@ -516,6 +547,196 @@ async fn get_rejects_foreign_conversations_and_explains_body_less_turns() {
         Some("the stored turn contains typed items but no prose")
     );
     assert_eq!(turn.items.len(), 1, "typed content remains intact");
+
+    database.destroy(state.db).await;
+}
+
+/// Backlog row 101 and o-prime reply 002 reverse the former repository-scope
+/// assertion: a canonical address is authoritative when scope came from cwd.
+#[tokio::test]
+async fn get_conv_cross_worktree() {
+    let (database, state) = stack("conv-query-get-authoritative").await;
+    store(
+        &state,
+        GUID,
+        vec![turn(1, "address-authoritative evidence")],
+    )
+    .await;
+
+    for (repo, worktree) in [
+        (ANCHOR, "/srv/a-different-checkout"),
+        ("git:github.com/fs3/a-different-repo", "/srv/foreign"),
+    ] {
+        let payload = fs3_daemon::read::get(
+            &state,
+            &GetRequest {
+                address: format!("conv:{GUID}#t1"),
+                ..GetRequest::default()
+            },
+            &Scope {
+                repo: Some(repo.to_string()),
+                source: ScopeSource::Cwd,
+                cwd: Some(worktree.to_string()),
+                worktree: Some(worktree.to_string()),
+                warnings: Vec::new(),
+            },
+        )
+        .await
+        .expect("an explicit conv address ignores cwd-derived scope")
+        .0;
+        let GetPayload::Conversation(window) = payload else {
+            panic!("a conversation");
+        };
+        assert_eq!(window.address, format!("conv:{GUID}"));
+    }
+
+    database.destroy(state.db).await;
+}
+
+#[tokio::test]
+async fn conv_not_found_messages() {
+    let (database, state) = stack("conv-query-get-misses").await;
+    store(&state, GUID, vec![turn(1, "known conversation")]).await;
+
+    let outside = fs3_daemon::read::get(
+        &state,
+        &GetRequest {
+            address: format!("conv:{GUID}#t1"),
+            ..GetRequest::default()
+        },
+        &scoped("git:github.com/fs3/other"),
+    )
+    .await
+    .expect_err("an explicit --repo remains a real filter");
+    let absent_guid = "00000000-0000-4000-8000-000000000000";
+    let absent = fs3_daemon::read::get(
+        &state,
+        &GetRequest {
+            address: format!("conv:{absent_guid}#t1"),
+            ..GetRequest::default()
+        },
+        &Scope::unscoped(),
+    )
+    .await
+    .expect_err("a globally absent guid is not found");
+
+    assert_ne!(outside.message, absent.message);
+    assert!(
+        outside
+            .message
+            .contains("outside the explicitly requested scope")
+    );
+    assert!(absent.message.contains("no conversation"));
+    assert_eq!(outside.details["guid"], GUID);
+    assert_eq!(
+        outside.details["requested_repo"],
+        "git:github.com/fs3/other"
+    );
+    assert_eq!(absent.details["guid"], absent_guid);
+    assert!(!absent.details.contains_key("requested_repo"));
+
+    database.destroy(state.db).await;
+}
+#[tokio::test]
+async fn conversation_verify_contract() {
+    let (database, state) = stack("conversation-verify-contract").await;
+    let session = "01a051b7-3b2c-7000-8987-3e66b28db4b6";
+    let guid = conversation_guid(Harness::Omp, session);
+    store_at(
+        &state,
+        guid.as_str(),
+        Some(ANCHOR),
+        Some("/srv/anchored"),
+        vec![turn(1, "delivered")],
+    )
+    .await;
+
+    let report = verify(
+        &state,
+        &VerifyRequest {
+            pij_id: None,
+            session_id: Some(session.to_string()),
+            harness: Some("omp".to_string()),
+        },
+    )
+    .await
+    .expect("the indexed session was delivered");
+    assert_eq!(report.guid, guid.as_str());
+    assert_eq!(report.address, guid.address());
+    assert_eq!(report.turns, 1);
+    assert_eq!(report.repo.as_deref(), Some(ANCHOR));
+    assert_eq!(report.worktree.as_deref(), Some("/srv/anchored"));
+    assert_eq!(report.last_turn_at, "2026-08-27T09:00:00Z");
+
+    let absent_session = "01a051b7-3b2c-7000-8987-000000000000";
+    let absent_guid = conversation_guid(Harness::Omp, absent_session);
+    let absent = verify(
+        &state,
+        &VerifyRequest {
+            pij_id: None,
+            session_id: Some(absent_session.to_string()),
+            harness: Some("omp".to_string()),
+        },
+    )
+    .await
+    .expect_err("a never-indexed session is not delivered");
+    assert_eq!(absent.code, "FS3-E-QUERY-CONVERSATION-NOT-FOUND");
+    assert_eq!(absent.details["guid"], absent_guid.as_str());
+    assert!(!absent.details.contains_key("turns"));
+
+    let empty_session = "01a051b7-3b2c-7000-8987-111111111111";
+    let empty_guid = conversation_guid(Harness::Omp, empty_session);
+    store_at(&state, empty_guid.as_str(), None, None, Vec::new()).await;
+    let empty = verify(
+        &state,
+        &VerifyRequest {
+            pij_id: None,
+            session_id: Some(empty_session.to_string()),
+            harness: Some("omp".to_string()),
+        },
+    )
+    .await
+    .expect_err("a zero-turn row delivered nothing");
+    assert_eq!(empty.code, "FS3-E-QUERY-CONVERSATION-NOT-FOUND");
+    assert_eq!(empty.details["guid"], empty_guid.as_str());
+    assert_eq!(empty.details["turns"], 0);
+    assert!(empty.message.contains("zero turns"));
+
+    let auth = support::auth("conversation-verify-route");
+    let base = support::spawn(fs3_daemon::router(state.clone(), auth.auth)).await;
+    let envelope: serde_json::Value = reqwest::Client::new()
+        .get(format!(
+            "{base}/conversations/verify?session_id={session}&harness=omp"
+        ))
+        .bearer_auth(&auth.key)
+        .send()
+        .await
+        .expect("verify route answers")
+        .json()
+        .await
+        .expect("verify route returns an envelope");
+    assert_eq!(envelope["ok"], true);
+    assert_eq!(envelope["command"], "conversation verify");
+    assert_eq!(envelope["data"]["guid"], guid.as_str());
+    assert_eq!(envelope["data"]["last_turn_at"], "2026-08-27T09:00:00Z");
+
+    let response = reqwest::Client::new()
+        .get(format!(
+            "{base}/conversations/verify?session_id={absent_session}&harness=omp"
+        ))
+        .bearer_auth(&auth.key)
+        .send()
+        .await
+        .expect("negative verify route answers");
+    assert_eq!(response.status(), reqwest::StatusCode::NOT_FOUND);
+    let negative: serde_json::Value = response
+        .json()
+        .await
+        .expect("negative verify returns an envelope");
+    assert_eq!(
+        negative["error"]["code"],
+        "FS3-E-QUERY-CONVERSATION-NOT-FOUND"
+    );
 
     database.destroy(state.db).await;
 }

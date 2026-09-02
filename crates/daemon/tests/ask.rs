@@ -21,8 +21,10 @@ use fs3_core::{
     BlobRef, ChatMessage, ChatTurn, Config, DatabaseConfig, Element, ElementKind, RepoIdentity,
     Span, ToolCall, Turn, TurnRole, TurnSource, content_hash, element_address,
 };
+use fs3_daemon::ask::{AskRequest, resolve_corpus};
 use fs3_daemon::conversations::{IntakeRequest, intake};
 use fs3_daemon::router;
+use fs3_daemon::scope::{Scope, ScopeSource};
 use fs3_daemon::wiring::AppState;
 use fs3_store::{NewEmbedding, SourceKind};
 use fs3_testkit::fakes::FakeChatProvider;
@@ -163,12 +165,22 @@ async fn seed_search_hit(state: &AppState, question: &str) -> String {
 }
 
 async fn seed_conversation(state: &AppState, guid: &str, body: &str) {
+    seed_conversation_at(state, guid, body, None, None).await;
+}
+
+async fn seed_conversation_at(
+    state: &AppState,
+    guid: &str,
+    body: &str,
+    repo_identity: Option<&str>,
+    worktree: Option<&str>,
+) {
     intake(
         state,
         IntakeRequest {
             guid: guid.to_string(),
-            repo_identity: None,
-            worktree: None,
+            repo_identity: repo_identity.map(str::to_string),
+            worktree: worktree.map(str::to_string),
             base_sha: None,
             title: Some("ask scope fixture".to_string()),
             started_at: "2026-08-30T00:00:00Z".to_string(),
@@ -403,6 +415,148 @@ async fn unknown_conversation_refuses_before_chat() {
     assert!(failure.message.contains("more than one"));
     assert!(failure.fix.contains("conversation list"));
     assert!(chat.received_messages().is_empty(), "chat cost stays zero");
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn exact_conversation_pins_ignore_cwd_but_honor_explicit_repo_scope() {
+    let database = support::FreshDatabase::create("ask-conversation-authoritative").await;
+    let config = Config {
+        database: DatabaseConfig {
+            url: database.url(),
+        },
+        ..Config::default()
+    };
+    let state = AppState::from_config(config).expect("the fake stack wires");
+    fs3_store::migrate(&state.db).await.expect("migrates");
+    seed_conversation_at(
+        &state,
+        CONVERSATION,
+        "authoritative transcript",
+        Some("git:github.com/fs3/anchored"),
+        Some("/srv/anchored"),
+    )
+    .await;
+
+    let cwd_scope = Scope {
+        repo: Some("git:github.com/fs3/foreign".to_string()),
+        source: ScopeSource::Cwd,
+        cwd: Some("/srv/foreign".to_string()),
+        worktree: Some("/srv/foreign".to_string()),
+        warnings: Vec::new(),
+    };
+    for selector in [CONVERSATION.to_string(), format!("conv:{CONVERSATION}")] {
+        resolve_corpus(
+            &state,
+            &AskRequest {
+                question: "what happened?".to_string(),
+                conversation: Some(selector),
+                ..AskRequest::default()
+            },
+            &cwd_scope,
+        )
+        .await
+        .expect("an exact conversation pin ignores cwd-derived scope");
+    }
+
+    let short = resolve_corpus(
+        &state,
+        &AskRequest {
+            question: "what happened?".to_string(),
+            conversation: Some(CONVERSATION[..8].to_string()),
+            ..AskRequest::default()
+        },
+        &cwd_scope,
+    )
+    .await;
+    assert!(short.is_err(), "short selectors remain cwd scoped");
+
+    let explicit_scope = Scope {
+        source: ScopeSource::Flag,
+        ..cwd_scope
+    };
+    let explicit = resolve_corpus(
+        &state,
+        &AskRequest {
+            question: "what happened?".to_string(),
+            conversation: Some(CONVERSATION.to_string()),
+            ..AskRequest::default()
+        },
+        &explicit_scope,
+    )
+    .await;
+    assert!(
+        explicit.is_err(),
+        "an explicit --repo remains a real filter"
+    );
+
+    database.destroy(state.db).await;
+}
+
+#[tokio::test]
+async fn exact_pins_retrieve_foreign_and_unanchored_conversations_under_cwd_scope() {
+    let database = support::FreshDatabase::create("ask-conversation-foreign-pin").await;
+    let config = Config {
+        database: DatabaseConfig {
+            url: database.url(),
+        },
+        ..Config::default()
+    };
+    let mut state = AppState::from_config(config).expect("the fake stack wires");
+    fs3_store::migrate(&state.db).await.expect("migrates");
+
+    let caller_root = "/srv/caller";
+    let caller_identity = RepoIdentity::from_path(std::path::Path::new(caller_root));
+    fs3_store::register_worktree(&state.db, &caller_identity, caller_root, Some("main"))
+        .await
+        .expect("registers the caller worktree");
+    seed_conversation_at(
+        &state,
+        CONVERSATION,
+        "foreign pinned evidence",
+        Some("git:github.com/fs3/anchored"),
+        Some("/srv/anchored"),
+    )
+    .await;
+    seed_conversation(&state, OTHER_CONVERSATION, "unanchored pinned evidence").await;
+
+    state.agent = Arc::new(FakeChatProvider::scripted(vec![
+        tool_call("search", r#"{"query":"foreign pinned evidence"}"#),
+        prose("foreign pin answered"),
+        tool_call("search", r#"{"query":"unanchored pinned evidence"}"#),
+        prose("unanchored pin answered"),
+    ]));
+    let pool = state.db.clone();
+    let auth = support::auth("ask-conversation-foreign-pin");
+    let base = support::spawn(router(state, auth.auth)).await;
+
+    for (guid, question) in [
+        (CONVERSATION, "foreign pinned evidence"),
+        (OTHER_CONVERSATION, "unanchored pinned evidence"),
+    ] {
+        let envelope = post_ask_request(
+            &base,
+            &auth.key,
+            json!({
+                "question": question,
+                "source": "conversation",
+                "conversation": guid,
+                "cwd": caller_root
+            }),
+        )
+        .await;
+        assert!(
+            envelope.ok,
+            "exact pin must answer from its transcript: {envelope:?}"
+        );
+        let data = envelope.data.expect("ask report");
+        assert_eq!(
+            data["trace"][0]["search_hits"],
+            json!([format!("conv:{guid}#t1")])
+        );
+        assert_eq!(data["trace"][0]["evidence"], true);
+    }
 
     database.destroy(pool).await;
 }

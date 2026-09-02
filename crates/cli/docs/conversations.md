@@ -13,24 +13,51 @@ costing hundreds of tokens instead of scrollback archaeology.
 ## The loop
 
 ```bash
-# 1. Store a transcript. Re-run it as the file grows — only new turns land.
+# 1. Store a transcript, or pull one from a native harness session.
 flowspace3 conversation import ./session.jsonl
+flowspace3 conversation ingest --harness omp --session <id>
 
-# 2. Ask one transcript directly. Short/full guids and conv: addresses work.
+# 2. Confirm that the native session delivered at least one indexed turn.
+flowspace3 conversation verify --harness omp --session <id>
+
+# 3. Ask one transcript directly. Short/full guids and conv: addresses work.
 flowspace3 ask "what did we decide about the foreign key" --conversation <guid>
 
-# 3. Or search discussion broadly across the repository.
+# 4. Or search discussion broadly across the repository.
 flowspace3 search "why did we drop the foreign key" --source conversation
 
-# 4. Read around a search hit. You choose how much you pay for.
+# 5. Read around a search hit. You choose how much you pay for.
 flowspace3 get conv:<guid>#t42 --before 10 --after 20
 
-# 5. Or browse the whole thing first.
+# 6. Or browse the whole thing first.
 flowspace3 tree conv:<guid>
 ```
 
 `conversation list` shows what is indexed; `conversation remove <guid>` forgets
 one.
+
+## Verify delivery
+
+`conversation verify` derives the guid with the same `conversation_guid()` code
+used by ingest, then queries that exact guid across the whole index. Clients do
+not copy the digest layout and cwd cannot narrow the answer. The two identity
+forms are mutually exclusive:
+
+```bash
+flowspace3 conversation verify --harness <claude|omp|pij|metrics-db> --session <id>
+flowspace3 conversation verify --pij <legacy-seat>
+```
+
+Success is exit 0 with `ok: true` and
+`data {guid,address,turns,repo,worktree,last_turn_at}`. A missing conversation or
+a header with zero turns exits non-zero with
+`FS3-E-QUERY-CONVERSATION-NOT-FOUND`; the latter also carries
+`details.turns: 0`. The command has no `--repo` or `--path` flag, so a consumer
+cannot accidentally turn "outside my cwd" into "not delivered".
+
+`--pij` uses the existing `pij sessions` join. That join is legacy-only. An rs
+seat absent from it is refused with a message naming `pij req-0033`; use the
+native `--harness`/`--session` form when that identity is available.
 
 ## Conversations in the default search
 
@@ -43,8 +70,12 @@ or `--source code` when only current implementation may answer.
 `ask` accepts the same `--source code|doc|conversation|all` axis. Add
 `--conversation <guid-or-conv:address>` when the question is about one session:
 every retrieval and citation is then hard-bound to that transcript, and the
-coverage envelope names its stored turn count. An unknown guid is refused before
-the chat model runs; `conversation list` is the authoritative way to choose one.
+coverage envelope names its stored turn count. A canonical full guid or `conv:`
+address resolves index-wide regardless of cwd, and the tool search/read scope
+follows that resolved transcript even when it is foreign or unanchored. An
+explicit `--repo` still filters it, while a short prefix remains scoped for
+disambiguation. An unknown guid is refused before the chat model runs;
+`conversation list` is the authoritative way to choose one.
 
 Do not use `--path` for transcript questions: conversations carry repository and
 worktree anchors, not file paths. Use `--conversation <guid>` to pin one transcript
@@ -119,6 +150,10 @@ It does not BELONG to them:
   the repository IDENTITY, not a row id.
 - A conversation can be anchored to a repository fs3 has never indexed.
 
+Explicit `get conv:<guid>` and `tree conv:<guid>` addresses follow the pointer
+across the entire index instead of inheriting cwd scope. Pass `--repo` only when
+you deliberately want the anchor repository to be part of the lookup.
+
 `--repo` and `--path` compose with `--source conversation`, and reach
 conversations through their anchor rather than through a live file path.
 
@@ -159,8 +194,6 @@ reclaims whatever nothing else carries.
 
 ## What v1 does not do
 
-- **Automatic capture.** The live git-ai/harness submitter is a separate packet
-  against the same endpoint. `import` is how transcripts get in today.
 - **Conversation-level rollup summaries.** Per-turn summaries only.
 - **Thinking blocks.** Claude transcripts store them empty; an absent-by-harness
   field cannot be a contract.

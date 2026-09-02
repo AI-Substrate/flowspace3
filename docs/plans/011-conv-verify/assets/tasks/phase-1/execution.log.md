@@ -1,0 +1,50 @@
+# Phase 1 execution log
+
+## tk-0101 — authoritative conversation addresses
+
+Changed explicit `conv:` reads to ignore cwd-derived scope while retaining explicit `--repo` filtering. Split globally absent GUIDs from explicit-scope misses. Exact `ask --conversation` pins now ignore cwd scope; short selectors and explicit repository flags remain scoped. Ask's internal get rejects model-proposed foreign conversation addresses when unpinned.
+
+Evidence:
+- RED before source change: `get_conv_cross_worktree` returned `FS3-E-QUERY-NOT-FOUND` (`artifact://42`).
+- GREEN: `get_conv_cross_worktree`, `conv_not_found_messages`, `exact_conversation_pins_ignore_cwd_but_honor_explicit_repo_scope`, and `ask_tools_search_and_get_conversations_under_the_same_scope`.
+- Ruling: `.harness/temp/agent/conv-verify-prime-reply-002.md` reverses the old scope assertion and expands the file fence.
+
+Discovery — Noteworthy: `ScopeSource` already records whether scope came from `--repo` or cwd, so the cutover requires no new request flag or compatibility path.
+
+## tk-0102 — conversation verify contract
+
+Added an exact-GUID delivery aggregate in `fs3-store`, the dedicated `FS3-E-QUERY-CONVERSATION-NOT-FOUND` catalog code, daemon verification for native session and legacy pij identities, an authenticated read-only HTTP route, and the unscopable CLI subcommand. Success requires at least one turn and carries `guid`, `address`, `turns`, `repo`, `worktree`, and `last_turn_at`; a zero-turn header is a distinct not-delivered message with `details.turns = 0`.
+
+Evidence:
+- `delivery_probe_is_exact_and_reports_the_last_turn_without_loading_turns` passed.
+- `conversation_verify_contract` passed, including the HTTP envelope and absent/zero-turn branches.
+- `verify_pij_uses_the_legacy_join_and_names_an_rs_miss` passed against fake join rows.
+- `cargo test -p fs3-cli conversation_verify` passed and rejects `--repo`/`--path`.
+
+Discovery — Noteworthy: the store needed a dedicated aggregate; using `outline()` would allocate every turn merely to read the final timestamp.
+
+## tk-0103 — docs and help
+
+Updated the bundled read and conversation guides, `get --help`, the verify TTY view, the plan's stale source pointer, and the generated error-code reference. The docs distinguish authoritative addresses, explicit scope misses, zero-turn delivery, and the legacy-only pij join.
+
+Evidence:
+- `cargo test -p fs3-cli --test docs_bundle` — 5 passed.
+- Local `get --help` and `conversation verify --help` smokes expose the shipped contracts.
+- Solo `harness checks` — green at `2026-09-01T22:55:25.077Z`.
+
+Discovery — Noteworthy: the first corrected gate sampled production Postgres during crash recovery and reported schema `absent`; o-prime verified all production counts intact and cleared the solo rerun. Harness row 124 tracks the guard defect.
+
+## tk-0104 — gate and pull request
+
+Committed the implementation with `harness commit` as `4c82eeae915ddecd00d2d2530b4afd22667c7663`, opened PR #93, and watched the GitHub `gate` check pass in 5m8s. The PR body carries the mutation statement, focused-test receipts, contract decisions, and assumptions.
+
+Evidence:
+- Local `harness checks` — green.
+- PR: `https://github.com/AI-Substrate/flowspace3/pull/93`.
+- Flowspace dogfood search returned both `conversation_verify_contract` and `convo_ingest::verify` from this worktree.
+
+## Review fixes — F-0001 through F-0003
+
+- Pinned exact conversations now clear cwd-derived repo/worktree filters before tool search/read, so foreign and unanchored transcripts retrieve the conversation already accepted by corpus resolution. Exact end-to-end test was red with zero hits before the fix and green after.
+- Verify's dedicated negative is `FS3-E-QUERY-CONVERSATION-NOT-FOUND`; the HTTP leg asserts 404 rather than 500, and catalog/reference/plan/docs strings agree.
+- The ask escape test now includes a `ScopeSource::Cwd` branch and asserts the compensating guard's own `outside the caller's immutable repository scope` message.
