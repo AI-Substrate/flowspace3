@@ -3042,3 +3042,16 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     manual bounce in pane %50 (Ctrl-C, relaunch the c11ab19 binary), then
     re-add pij and take the gated receipt. Not pij's fault; their process
     was not touched.
+165. **A pij-government seat's `flowspace3 daemon` is now serving prod
+    :7373** (06:04:09Z, pid 77843, cwd ~/pi-hacking/fs3-rs-tap-supersedes-
+    legacy, parent bun/omp gpt-5.6-sol --auto-approve, pid 96641; binary =
+    our target/release/flowspace3 via PATH, database = prod :5433). It
+    bound the port the second pid 901 exited for the 015 bounce; o-prime's
+    relaunch in pane %50 died "address already in use". Earlier instance
+    pid 29080 caused row 164. Ruled: do NOT kill another government's
+    process; escalated to weasel via Jordan; prod is healthy on their
+    instance (same binary/db) so the 015 receipt proceeds on it; relaunch
+    in %50 once 7373 is free. Encode (fs3): the daemon must refuse to
+    start against the prod database unless FS3_PROD_OWNER (or the pane
+    identity) matches; and `flowspace3 daemon` in a foreign cwd should
+    default to a per-cwd port/db, not the global one.
