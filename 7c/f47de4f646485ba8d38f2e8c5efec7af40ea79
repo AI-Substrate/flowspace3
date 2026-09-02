@@ -1,0 +1,14 @@
+.agents/skills/pij-team/EXPERIENCES.md
+  h_9e71e8b09f7cf2 812-828
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7cf47de4f646485ba8d38f2e8c5efec7af40ea79",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
