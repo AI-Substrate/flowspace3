@@ -1,0 +1,57 @@
+docs/plans/013-search-admission/assets/backpressure.dd.json
+  s_15d888f4b629c1::t_902b112b982571 1-101
+docs/plans/013-search-admission/assets/backpressure.dd.md
+  s_15d888f4b629c1::t_ba113137d68fa8 1-38
+docs/plans/013-search-admission/assets/inputs/db-cpu-profile-report.md
+  s_15d888f4b629c1::t_dfe9ba9c570c75 1-322
+docs/plans/013-search-admission/assets/inputs/pij-two-daemons.md
+  s_15d888f4b629c1::t_b9581240bd05bd 1-122
+docs/plans/013-search-admission/assets/tasks/phase-1/tasks.dd.json
+  s_15d888f4b629c1::t_4caddc63d4df9a 1-132
+docs/plans/013-search-admission/assets/tasks/phase-1/tasks.dd.md
+  s_15d888f4b629c1::t_5865eaee11ff59 1-78
+docs/plans/013-search-admission/impl-guide.dd.json
+  s_15d888f4b629c1::t_d2dbf46bdef7d0 1-87
+docs/plans/013-search-admission/impl-guide.dd.md
+  s_15d888f4b629c1::t_f05815d18322f5 1-78
+docs/plans/013-search-admission/packet-coder.dd.json
+  s_15d888f4b629c1::t_6cef4c770c0953 1-146
+docs/plans/013-search-admission/packet-coder.dd.md
+  s_15d888f4b629c1::t_21b461880b05c0 1-89
+docs/plans/013-search-admission/packet-pm.dd.json
+  s_0ce02639c40511::t_12eca0690c5e4d 1-159
+docs/plans/013-search-admission/packet-pm.dd.md
+  s_0ce02639c40511::t_9dd04f9cf63fca 1-87
+docs/plans/013-search-admission/packet-reviewer.dd.json
+  s_0ce02639c40511::t_51352c93889ee1 1-65
+docs/plans/013-search-admission/packet-reviewer.dd.md
+  s_0ce02639c40511::t_217d73664ce2e2 1-76
+docs/plans/013-search-admission/plan.dd.json
+  s_15d888f4b629c1::t_dc23e1d4bb3dfe 1-84
+docs/plans/013-search-admission/plan.dd.md
+  s_15d888f4b629c1::t_67221987353d7c 1-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5e1539abba540b8281105cc45215d04d5ce5c742",
+  "prompts": {},
+  "sessions": {
+    "s_0ce02639c40511": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b95239d-d05a-44e7-ad9d-ecc36e15c1ca",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
