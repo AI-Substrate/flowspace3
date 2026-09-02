@@ -2467,3 +2467,14 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     never the criterion. Attributed measurements discharged; remaining:
     per-fix red-proofs, ac-0005 via list_orphans, re-measure 16 → 1 on
     the successor's sha.
+    ROW 126 — PER-FIX RED-PROOFS on f3aec311 (reviewer): M1 (liveness
+    filter) RED :551; M2a (remove recheck) RED :560 via the 10 s
+    self-deadlock timeout — the recheck prevents a HANG; M2c RED :584;
+    **M2b (re-force the sweep DROP with recheck kept) GREEN — the
+    unforced drop was covered by nothing.** Also: the race test leaks
+    five epoch-1 databases on failure and poisons the next run's
+    window (reviewer's own first red was that poisoning). RULED
+    (prime-reply-019): no-FORCE regression guard asserting on the real
+    sweep SQL (shared const) + ac-0003 amended to name the unforced drop
+    as defence-in-depth covered only by that guard + drop-on-exit
+    cleanup for the race test + doc note "one mutation per clean server".
