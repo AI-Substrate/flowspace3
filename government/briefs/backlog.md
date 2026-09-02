@@ -2803,3 +2803,20 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     #3 crates/parsers/src/lib.rs grammar. The product would have caught
     o-prime's miss in one call. Defender note sent to Jordan (wdavdaemon
     ~174 % CPU for 3 h 46 m + dlpdaemon ~48 % — two cores on cargo churn).
+159. **Search JSON envelope contains an unescaped control character** (o-prime,
+    04:58: `flowspace3 search "what owns the watcher debounce" --limit 3
+    --json` → json.decoder "Invalid control character at line 22 col 37" —
+    a snippet carrying a raw control byte). Agents parsing the envelope
+    crash. Fix: escape/strip control chars in snippet rendering; a test with
+    a fixture containing \x1b / \x00 in content. P1 for agent consumers.
+160. **Search exposes no timing anywhere** — no `took_ms`/phase timings in the
+    envelope, no daemon log line per search (grep of daemon.rs/search.rs/http.rs
+    finds none; doctor is the only surface with elapsed_ms). Jordan asked
+    "what is going on" and the only answer came from pg_stat_statements.
+    Encode: per-search `timing{embed_ms, sql_ms, rank_ms, total_ms}` in
+    meta + one INFO log line; the ask-tool view likewise.
+    ROW 122 / PLAN 013 — LIVE RECEIPT (pg_stat_statements, prod, 04:58):
+    the `WITH candidate_vectors AS MATERIALIZED …` search statement
+    mean_exec_time 10,696 ms over 132 calls; one measured search 12.5 s
+    wall. ~85 % of search latency is that statement. Same counter is the
+    after-metric for 013 (reset or note calls/mean at the bounce).
