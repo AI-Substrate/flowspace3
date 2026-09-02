@@ -2578,3 +2578,19 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     reader is named (candidates: omp file-view cap, fs3 read path).
     Lesson (again): a symptom seen through a viewer is not a defect in the
     writer until the file on disk is measured.
+    PLAN 014 — f-003 MEDIUM (takin): /status still Seq Scans jobs via
+    `last_failure` (no serving index; 200k-done seed → Seq Scan cost 5167;
+    at a 1-day window prod settles at ~515k done rows and every /status
+    call scans them forever). RULED into the same fix commit: partial index
+    `jobs_failed_recent_idx ON jobs (updated_at DESC) WHERE state='failed'
+    AND last_error IS NOT NULL` in migration 0023 (reviewer verified
+    Index Scan cost 4.14) + daemon.md: terminal failures only under
+    --history. The 5 s progress loop is clean (never calls last_failure).
+153. **pij wire-version mismatch kills new seats' inboxes**: the 014 reviewer
+    (spawned 13:31) reports `pij inbox` → "pij daemon wire v1 is unsupported by
+    this extension (v2); upgrade pij" (rs 127.0.0.1:7461, CLI 0.1.0). Its inbound
+    is dead from birth; the coder pij-chosen-arach has been inbound-dead since
+    02:30Z. O-prime relays by file + pane-paste. Also: legacy `pij report now`
+    fails with E-RS "answered with something this CLI cannot read" and
+    `pij-rs report` refuses without a seat it cannot be given. For the pij
+    government; fs3 cannot fix it.
