@@ -66,14 +66,15 @@
         },
         {
           "id": "ac-0005",
-          "state": "unchecked",
+          "state": "checked",
           "claim": "PROD DRAIN (o-prime applies the bounce; coder provides the queries and reads them back with o-prime): before deploy `flowspace3 status --json` shows embed failed count=5; after deploy + bounce the five dedupe_keys (recorded in the receipt) are done or terminal-with-reason; `flowspace3 status` shows embed failed=0 or the named residue. Receipt = both status envelopes and the five keys' final states.",
-          "receipt": "PRE-BOUNCE: flowspace3 status --json embed failed=5. Rows: 1314967=8ecded…, 1315244=9dce39…, 1316706=043365…, 1323215=043365… duplicate, 1344012=conv c5a6be2d; all failed attempts=3 terminal=false. NAMED PRECONDITION: requeue_failed collides on jobs_live_dedupe_idx unless duplicate jobs 1316706/1323215 are repaired first. O-prime owns the Jordan-approved prod repair at bounce. Automatic mechanism after repair: boot.rs:176-194 -> jobs.rs:506-534."
+          "receipt": "BEFORE: flowspace3 status embed failed=5; jobs 1314967,1315244,1316706,1323215,1344012 failed attempts=3 terminal=false with cap-400 last_error. PRECONDITION REPAIR: 1316706 terminal=true, last_error duplicate-of:1323215, avoiding jobs_live_dedupe_idx collision. BOUNCE 2026-09-02 09:53:57 on main 7fdf6fc. AFTER: 1314967,1315244,1323215,1344012 done attempts=1 terminal=false; 1316706 is the single terminal named residue. status embed done=494958 failed=1. Mechanism: boot.rs:176-194 calls jobs.rs:506-534 requeue_failed after repair."
         },
         {
           "id": "ac-0006",
-          "state": "unchecked",
-          "claim": "REAL USAGE: after the drain, `flowspace3 search --source conversation \"<a phrase from the recovered turn>\"` returns a hit from conv job c5a6be2d's conversation, proving the healed content is searchable, not just stored. Receipt = the search envelope with the hit address."
+          "state": "checked",
+          "claim": "REAL USAGE: after the drain, flowspace3 search --source doc --repo all \"pij verb usage ranking\" returns docs/plans/112-verb-usage/report.md::pij verb usage ranking, whose raw hash c74f70755adff59c9e30261e232389b537ca4614e56e180bdf86d80de161f2f4 was embedded by recovered job 1344012. Receipt = the search envelope with that section address.",
+          "receipt": "AMENDED by o-prime after read-back: premise disproven — job 1344012 is a recovery batch of 6 hashes across content; conv:recovery is a placeholder default-provider identity, not a conversation job (enrich.rs:485-496). Proof after prod restored on 4788c9d: flowspace3 search --source doc --repo all \"pij verb usage ranking\" --json returned exact_name score=1.0 at el:git:github.com/AI-Substrate/pij/docs/plans/112-verb-usage/report.md::pij verb usage ranking; snippet contains Stores overlap, so values are never summed or averaged; recovered hash c74f70755adff59c9e30261e232389b537ca4614e56e180bdf86d80de161f2f4."
         }
       ]
     },
@@ -84,8 +85,9 @@
           "id": "ph-14a4",
           "title": "Phase 1: heal + align + drain",
           "brief": "Single unit, single coder, no PM: (1) verify the FILL-alignment hypothesis and measure it; (2) classify cap rejection in both provider adapters; (3) re-split-on-rejection with a bounded round count and a named terminal failure; (4) tests incl. the mutation check; (5) PR; (6) drain evidence after o-prime's bounce.",
-          "state": "unchecked",
-          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+          "state": "checked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks",
+          "receipt": "AC-0001..0006 checked: aligned and measured; typed cap classification across 3 adapters; bounded indexed/bisect heal; terminal exhaustion; PR #92 merged; five-row prod drain complete with one named duplicate residue; recovered c74f7075 document section searchable."
         }
       ]
     }

@@ -65,13 +65,14 @@
         {
           "id": "tk-0105",
           "title": "Prod drain with o-prime: hand over the before-status envelope and the five dedupe keys + the exact re-queue mechanism; after o-prime's bounce read back status, key states, and one real search over the recovered conversation; write receipts into ac-0005/0006",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0105",
           "success": "five keys done or terminal-with-reason; search hit in the recovered conversation",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0005",
             "../../../plan.dd.json#acceptance_criteria/ac-0006"
-          ]
+          ],
+          "receipt": "AC-0005 passed: after bounce four jobs done attempts=1; duplicate 1316706 terminal duplicate-of:1323215; status embed failed=1 named residue. AC-0006 amended after conv:recovery premise was disproven; document search returned exact score-1 hit el:git:github.com/AI-Substrate/pij/docs/plans/112-verb-usage/report.md::pij verb usage ranking for recovered hash c74f7075."
         }
       ]
     },
@@ -120,13 +121,13 @@
           {
             "id": "dw-1006",
             "assertion": "before/after flowspace3 status envelopes + the five keys' final states, read from prod",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0005"
           },
           {
             "id": "dw-1007",
-            "assertion": "a flowspace3 search hit whose address is inside the recovered conversation",
-            "state": "unchecked",
+            "assertion": "a flowspace3 --source doc --repo all search hit at docs/plans/112-verb-usage/report.md::pij verb usage ranking for recovered hash c74f7075",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0006"
           }
         ]
