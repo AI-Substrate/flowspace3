@@ -1,0 +1,31 @@
+Cargo.lock
+  s_9411be5c6bf91a::t_56e8143fc02434 1290,5085-5094
+crates/core/src/classify.rs
+  s_15d888f4b629c1::t_19ea77f9dd8561 81-82,187-233
+crates/parsers/src/source.rs
+  s_15d888f4b629c1::t_28c3de07763a60 9,20-29,55,92-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3649c0fdbe96e1cd4d47b4b76fa6bca58a82d1b1",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_9411be5c6bf91a": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "e5dd6b07-f2a1-48ac-aeab-bed1debce7a6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
