@@ -34,3 +34,39 @@
       status: open
       source: agent-self
       first_seen_at: "2026-09-02T01:26:51.691Z"
+- id: DL-004
+  kind: difficulty
+  description: "I published a measurement script (.harness/temp/agent/ac-0001-ddl-probe.sh) naming 'store' as an example target without warning that 'cargo test -p fs3-store' is a 107-database unguarded CREATE/DROP burst against the shared postmaster. Another seat picked it up, ran the store target, and the container went into crash recovery shortly after."
+  severity: blocking
+  workaround: "Added an explicit caveat to the script and told o-prime to warn seats off the store target while :5433 is fragile; proposed re-baselining with a small store target (pg_lexical, 2 DBs) instead of the full crate."
+  suggested_encoding: "Any shared probe or repro script that drives load at the shared container should carry its blast radius in the usage block AND refuse targets above a database-churn threshold unless an explicit --i-know flag is passed. A script handed between seats is a command; commands need guardrails."
+  fp: c7190221044b
+  system:
+    compound:
+      status: open
+      source: agent-self
+      first_seen_at: "2026-09-02T02:09:44.734Z"
+- id: DL-005
+  kind: difficulty
+  description: "Disk exhaustion took out the docker socket and froze the fleet mid-review. Root shape: per-seat CARGO_TARGET_DIR means every worktree carries a near-identical copy of the same dependency build — measured 45G across five flowspace worktrees (17G main clone, 8.3G, 7.8G, 7.1G, 5.0G), for what is largely the same set of compiled crates."
+  severity: blocking
+  workaround: "Reported a read-only du triage to o-prime and volunteered my own 5.0G review-seat target dir as first-to-delete, since a read-only reviewer's build cache is pure disposable."
+  suggested_encoding: "Share one CARGO_TARGET_DIR (or sccache) across seats in the worktree scaffolding, so N seats cost roughly one build cache instead of N. Failing that, a harness disk sensor that warns at a free-space floor BEFORE the docker socket dies, and a documented 'which target dirs are disposable' order so triage is not improvised during an outage."
+  fp: d376d67932ab
+  system:
+    compound:
+      status: open
+      source: agent-self
+      first_seen_at: "2026-09-02T02:12:50.031Z"
+- id: CONF-001
+  kind: confusion
+  description: "I published a load-bearing probe script with a blast-radius guard I had never executed. Testing it later required deliberately letting the allowed path start, which meant briefly running cargo and docker during a period I had declared read-only."
+  severity: annoying
+  workaround: "Bounded the test with 'timeout 3' and junk credentials so no DDL was possible, then verified no orphaned cargo or sampler processes survived, and disclosed the lapse to o-prime."
+  suggested_encoding: "Scripts that gate on environment should expose a --check/--dry-run that runs every guard and exits before doing any work, so the guard can be proven without paying for the guarded action. Guard code that can only be tested by triggering it will stay untested."
+  fp: a03395fc0bca
+  system:
+    compound:
+      status: open
+      source: agent-self
+      first_seen_at: "2026-09-02T02:23:48.131Z"
