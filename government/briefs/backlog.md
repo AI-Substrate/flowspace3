@@ -2455,3 +2455,15 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     daemon/VM incident, o-prime sends a one-line DELIVERY-CHECK to every
     omp seat spawned before the incident and pane-pastes any that do not
     answer within a minute. Outbound-works/inbound-dead is the signature.
+    ROW 126 — BOTH BYPASSES ISOLATED WITH MATCHED CONTROLS (reviewer
+    cheetah, f-1a17 MAJOR): pg_first_light alone max_concurrent_ddl 2
+    (92/189 samples above one) vs pg_conversations 1 and pg_store_flows
+    1; daemon first_light 2 (18/422) vs boot_recovery 1; foreign_ddl_max
+    0 on every isolating run. Both sites are `DROP DATABASE … WITH
+    (FORCE)` through a pool built from the test URL — no permit, own
+    application_name. The successor coder now has a per-site red
+    baseline: fix a site, re-run that one binary, watch 2 → 1. Reviewer's
+    written correction: rated MINOR on volume grounds when volume was
+    never the criterion. Attributed measurements discharged; remaining:
+    per-fix red-proofs, ac-0005 via list_orphans, re-measure 16 → 1 on
+    the successor's sha.
