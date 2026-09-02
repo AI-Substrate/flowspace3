@@ -56,3 +56,11 @@ These cover the full caller filter matrix, deterministic shared-summary choice, 
 Merged main commit `f73dee0` (plan 012's process-wide database-mutation permit) before rerunning the full suite. The first captured suite failed only in unrelated `streaming::progress_is_reported_while_the_queue_is_still_draining`; that test passed three consecutive correctly configured targeted runs, classifying the full-suite miss as environmental timing under load. No plan-013 code touches provider progress reporting.
 
 The merge exposed a real fixture boundary in `search_plan_shape_analyze_bounds_admission_work`: with only 10,000 equal smart vectors, PostgreSQL could choose either HNSW or sequential sort at nearly equal cost. Adding 10,000 raw vectors stabilizes the prod-shaped 20,000-vector fixture without weakening any assertion. Both shape legs now pass together after the merge: 108.468 ms, 2,691 shared hits, HNSW/candidate rows 160, smart-content max loops 1.
+
+## tk-0104 — full gate
+
+Merged main's plan-012 database-mutation permit before the full gate. A captured direct full-suite rerun passed completely; output is `.harness/temp/agent/search-admission-suite-rerun.log`. The stabilized shape fixture and all workspace tests ran inside the suite.
+
+Final `harness checks` passed on `beee1491be13f3920affc5d257eb580974188360` at 2026-09-02T04:30:38Z: docs, lockfile, test-DB probe, harness contracts, formatting, Clippy with warnings denied, isolated full suite, production migration guard, and architecture drift all green.
+
+An earlier production-version guard observed 22→23 and stopped correctly. O-prime proved it was a false positive caused by a production daemon bounce during the held gate window: migration 0023 installed at 04:17:23Z; no test touched production. The rerun occurred without a concurrent bounce.

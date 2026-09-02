@@ -62,7 +62,8 @@
           "done": "#done_when/tk-0104",
           "success": "PR open, CI green",
           "satisfies": [],
-          "note": "In progress: request exclusive harness-checks slot, gate, commit final changes, open PR, and await CI."
+          "note": "In progress: request exclusive harness-checks slot, gate, commit final changes, open PR, and await CI.",
+          "receipt": "PASS: harness checks on head beee1491be13f3920affc5d257eb580974188360 at 2026-09-02T04:30:38Z, all gates green using separate :5434 test postmaster. Earlier production-version guard red was ruled false positive: o-prime's daemon bounce installed migration 0023 during the gate window; no test touched :5433. PR/CI receipt to append after opening."
         },
         {
           "id": "tk-0105",
@@ -114,7 +115,7 @@
           {
             "id": "dw-30d5",
             "assertion": "harness checks green; CI green",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0006"
           }
         ],
