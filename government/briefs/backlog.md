@@ -3304,3 +3304,10 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     the cutover — relaunched. UNTIL 132 LANDS (binding for fs3): never
     `pij spawn --bin omp`; hand-start omp in a tmux window and let it
     self-register, or resume with `omp -c`. Keep msg_ids of every send.
+    PLAN 013 — round-2 record AMENDED (carp): vd-ac04 checked/confirmed
+    with the full prod receipt + scope limits; ac-0005 split to its own
+    vd-ac05 (deferred until the client pair); the loops conclusion marked
+    WITHDRAWN in two places with what survives separated from what does
+    not. Ledger: 13 entries — 4 fixed, 5 confirmed, 3 deferred, 1
+    unchecked. Re-vendored (293f280b). Reviewer answered (c): governance
+    holds everything incl. the raw prod plan; docs PR after ac-0005.
