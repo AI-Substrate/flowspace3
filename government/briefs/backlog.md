@@ -3489,3 +3489,20 @@ a one-line pij message naming the blocker, before writing any status file;
 outbound send is an `awaiting-ruling` row in `pij anomalies`, so the prime is told
 rather than having to poll. Related: 170 (provider content filter), 157 (packet
 clone contamination — the reviewer's blocker was a stale i6/i7 row again).
+
+## 173 — a filter-driven re-wording silently re-cut an AC (caught by the coder)
+2026-09-02 17:52. To get plan-017 t4 past the provider content filter (row 170),
+o-prime restated it from memory and inverted `ac-0004`: the plan requires a
+foreign-cwd daemon to REFUSE `DatabaseConfig::DEFAULT_URL` with
+`FS3-E-PROD-NOT-DESIGNATED` naming `FS3_PROD_OWNER` and the `:5434` test URL; the
+paraphrase said absent designation "behaves exactly as today" and invented a
+private-token-per-`FS3_CONFIG_DIR` mechanism. Coder cod raised stop-ask-001 before
+touching t4 source — the packet's stop-and-ask discipline worked exactly as
+designed and is the only reason this did not ship as a weaker guard.
+**Ruled:** READY ddocs are authoritative; the paraphrase's t4 paragraph is void;
+only an explicit `ddoc mutation: <field> := <value>` from o-prime changes a
+contract (now a standing rule, delivered as prime-reply-003).
+**Encode:** a prime unblock message must QUOTE the AC verbatim out of the ddoc —
+give the prime's reply ritual a `ddocs get`/`harness plan quote <ac-id>` step so a
+re-wording physically cannot carry a contract change. Related: 170, 172, and the
+earlier "rulings state the PROMISE, not the mechanism" finding from plan 013.
