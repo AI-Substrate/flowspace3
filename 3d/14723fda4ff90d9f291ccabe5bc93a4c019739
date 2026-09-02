@@ -1,0 +1,23 @@
+.agents/skills/pij-team/EXPERIENCES.md
+  s_15d888f4b629c1::t_ccc3e149044e9a 829-863
+.agents/skills/pij-team/templates/packet-reviewer.dd.md
+  s_15d888f4b629c1::t_aba3226ae880a9 1-77
+.agents/skills/pij-team/templates/packet-reviewer.dd.json
+  s_15d888f4b629c1::t_aba3226ae880a9 23-54,60-67,82-93,99-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3d14723fda4ff90d9f291ccabe5bc93a4c019739",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
