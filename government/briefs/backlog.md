@@ -2794,3 +2794,7 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     grammar"` would have found it. Coder told to follow all five and map
     them to tasks. Encode: pij-team plan template line "cite the repo's own
     how-to (search first) for the change class".
+    PLAN 014 — ac-0005 quiet-time status re-measure DEFERRED: load average
+    held 20–63 from 04:20 to 04:56 (reviewer + coder builds and tests);
+    two load-gated attempts never fired. Owed at the 013 bounce, which
+    needs a quiet moment anyway; row stays "partial" until then.
