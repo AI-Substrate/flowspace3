@@ -1,0 +1,158 @@
+{
+ "dd": {
+  "schema": "pij-team/packet"
+ },
+ "sections": [
+  {
+   "name": "meta",
+   "value": {
+    "title": "Reviewer packet \u2014 hidden-dirs (plan 016)",
+    "role": "reviewer",
+    "plan": "docs/plans/016-hidden-dirs/plan.dd.json",
+    "seat": "assigned by the self-registering seat",
+    "updated": "2026-09-02"
+   }
+  },
+  {
+   "name": "mission",
+   "value": "You are the cross-model reviewer (Claude) for plan 016-hidden-dirs, coded by a GPT-5.6 seat. Single unit, no PM: your counterpart is o-prime (rs name pij-binding-magpie). Judge whether the code makes the promises TRUE: a per-root include_hidden flag is persisted (migration 0024), honoured by BOTH discovery call sites (root scan/re-add AND watcher rescans), never lets .git/node_modules/.venv through, is visible in status/tree and explained by a `hidden=N` ledger reason, and the real-usage receipt on a scratch TEST daemon (pij's 563 .ts files under .pi/) is reproducible. Read-only on code. SHA UNDER REVIEW: f9b6d0780cd9208a844c129748cccd45beda1d8d on branch 016-hidden-dirs, detached in your worktree."
+  },
+  {
+   "name": "instructions",
+   "value": [
+    {
+     "id": "i1",
+     "text": "Orient: read the plan (rendered .dd.md), the impl-guide (the intended decomposition + interfaces), and then the full diff of the branch against its base. DOGFOOD FLOWSPACE: use `flowspace3 search` to locate consumers/related code by meaning while reviewing; report misses as friction."
+    },
+    {
+     "id": "i1b",
+     "text": "REVIEW A COMMITTED SHA IN ITS OWN WORKTREE, never a live tree someone is still editing (DL-011, 2026-08-28: a reviewer on a shared moving tree watched a coder's instructed red-proof fail and began writing a blocker for it). A review of a moving tree is not reproducible and its findings cannot be attributed. Your packet must name the sha under review; if it does not, refuse and ask."
+    },
+    {
+     "id": "i2",
+     "text": "Review with the /builder review discipline: verify claims against fresh evidence \u2014 run targeted tests yourself, read exit status, never trust a green claim you did not see."
+    },
+    {
+     "id": "i2b",
+     "text": "Your dispatcher OWES you three lists in this packet, and you should refuse to start without them: (1) WHERE THE AUTHOR IS LEAST CONFIDENT (hunt there first), (2) an instruction to DISBELIEVE THE AUTHOR'S OWN RECEIPTS (re-derive, don't audit prose), (3) WHAT IS ALREADY KNOWN-OPEN (spend zero findings re-reporting it). Proven 2026-08-28: this brief shape bought a 4-for-4 all-confirmed zero-noise review, including a defect the author hunted for in writing and could not see from inside."
+    },
+    {
+     "id": "i3",
+     "text": "Priority order: (1) plan promises that are not actually true, (2) composition-seam defects between units, (3) interface drift from the impl-guide, (4) correctness/safety in the changed code, (5) test gaps on the contract. Style noise is unwanted."
+    },
+    {
+     "id": "i4",
+     "text": "Findings: at most the material ones, each with severity (CRITICAL/HIGH/MEDIUM), exact location, the claim, the proof, and the smallest fix. `no_material_findings` is a valid verdict."
+    },
+    {
+     "id": "i5",
+     "text": "Deliver as a ddoc review record in the plan folder (assets/reviews/), build it, and send o-prime the path + a one-line verdict."
+    },
+    {
+     "id": "i6",
+     "text": "THE THREE OWED LISTS. (1) LEAST CONFIDENT \u2014 hunt first: (a) migration 0023 on a DIRTY database \u2014 duplicates under one key with different states (failed+failed, failed+pending, running+failed): which row wins, is any job lost, can the migration fail halfway and leave the old index dropped; (b) the purge racing the runner \u2014 a done row cannot be claimed, but assert the DELETE ... LIMIT batch cannot lock a live row, and that a batch mid-flight during a bounce is safe; (c) the live-only view \u2014 enumerate every state the runner consults (parked? not_before in the future? failed-terminal?) and prove none went invisible; (d) the boot pass purging ~1M rows in 10k batches at the first bounce \u2014 WAL volume and lock time on prod; is it bounded per boot or can it starve the runner; (e) retention age uses updated_at \u2014 does anything else touch updated_at on done rows (requeue? the terminal flag?) and shift the age. (2) DISBELIEVE THE RECEIPTS: re-run the plan test with 200k seeded done rows yourself and read the EXPLAIN; PERFORM the two mutations (old GROUP BY golden; old dedupe predicate); run migration 0023 yourself against a database you dirtied by hand. (3) KNOWN-OPEN, zero findings: rows 122/126/141/124b; the one-off prod purge (o-prime runs it after merge via the coder's mechanism)."
+    },
+    {
+     "id": "i7",
+     "text": "ALSO JUDGE: `flowspace3 status --history` documentation and help \u2014 the default is now live-only; does the doc say what changed and why; does the JSON envelope keep its existing keys (add, do not rename)."
+    },
+    {
+     "id": "owed-1-least-confident",
+     "text": "WHERE THE AUTHOR IS LEAST CONFIDENT (hunt here first): (a) the WATCHER path \u2014 a flag flipped by a later `add --include-hidden` must reach the running watcher's next rescan without a daemon restart; prove it with a live watcher in the test, not a unit stub; (b) re-add WITHOUT the flag must not reset a stored true, and explicit --no-include-hidden must clear it \u2014 check the /roots body semantics (Option<bool>) end to end through the CLI; (c) the deny list under include_hidden: .git always, node_modules/.venv/.cache pruned even inside hidden dirs \u2014 mutation-check; (d) the ledger `hidden=N` count is measured, not decorative (mutation); (e) status JSON + tree JSON carry include_hidden for EVERY root row (not only the cwd root); (f) migration 0024 is additive, default false, and migrating_twice_changes_nothing still holds; (g) the receipt: re-run the scratch-daemon transcript from the PR body yourself on :5434 + a free port and diff the counts (\u2265500 .pi/**/*.ts scanned; the extension-function search returns the element; the default add returns nothing from .pi/)."
+    },
+    {
+     "id": "owed-2-disbelieve",
+     "text": "Re-derive every receipt in .harness/temp/agent/hidden-dirs-t*-complete.md and the PR body yourself: run the store/daemon/parsers targeted suites on FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5434/flowspace3_test (container flowspace3-db-test), perform the author's mutations plus one of your own per promise. A scratch daemon for the receipt binds :5434 and a port you choose; NEVER :7373 / :5433 / the prod key file (do not run `flowspace3 daemon` with default config \u2014 it clobbers prod's key, row 169)."
+    },
+    {
+     "id": "owed-3-known-open",
+     "text": "ALREADY KNOWN-OPEN (spend zero findings here): row 169 (daemon key published before bind) and row 165 (foreign daemons) \u2014 not this plan; the global default stays off by design; per-directory allow-lists are a non-goal; the exclusive harness-checks slot is NOT yours (targeted cargo tests only); CI runs on the PR \u2014 read it; row 152: '[Some lines truncated to 768 chars]' is your viewer, not the file."
+    }
+   ]
+  },
+  {
+   "name": "working_with",
+   "value": [
+    {
+     "id": "w1",
+     "text": "o-prime is your counterpart. Deliver BY FILE (.harness/temp/agent/review-014-ack.md, review-014-verdict.md in YOUR worktree) AND `pij send pij-binding-magpie <one line>` \u2014 that lands as a real turn. Never pij send pij-instant-lynx; never pij adopt."
+    },
+    {
+     "id": "w2",
+     "text": "You do not fix code, commit, or open PRs."
+    }
+   ]
+  },
+  {
+   "name": "scope",
+   "value": {
+    "worktree": "/Users/jordanknight/substrate/flowspace/fs3-review-016",
+    "branch": "016-hidden-dirs (detached at f9b6d0780cd9208a844c129748cccd45beda1d8d)",
+    "fence": "read-only on code; write only docs/plans/016-hidden-dirs/assets/reviews/ and .harness/temp/agent/ in your worktree",
+    "forbidden_note": "No code edits, no merges, no government files."
+   }
+  },
+  {
+   "name": "done_bar",
+   "value": [
+    {
+     "id": "d1",
+     "text": "Every plan AC judged true/false with evidence cited."
+    },
+    {
+     "id": "d2",
+     "text": "Composition seams between units explicitly examined and reported."
+    },
+    {
+     "id": "d3",
+     "text": "Review record ddoc written, built, and path delivered to the PM with a verdict line."
+    }
+   ]
+  },
+  {
+   "name": "refs",
+   "value": [
+    {
+     "id": "r1",
+     "path": "docs/plans/016-hidden-dirs/plan.dd.md",
+     "note": "the promises (ac-0001..0005)"
+    },
+    {
+     "id": "r2",
+     "path": "docs/plans/016-hidden-dirs/impl-guide.dd.md",
+     "note": "architecture: plumbing, both call sites"
+    },
+    {
+     "id": "r3",
+     "path": "docs/plans/016-hidden-dirs/assets/backpressure.dd.md",
+     "note": "proof per criterion"
+    },
+    {
+     "id": "r4",
+     "path": ".harness/temp/agent/hidden-dirs-pr-body.md",
+     "note": "the author's receipts \u2014 DISBELIEVE and re-derive"
+    },
+    {
+     "id": "r5",
+     "path": "docs/plans/016-hidden-dirs/assets/inputs/evidence.md",
+     "note": "row 125/147: the setting exists, no caller; the pij numbers"
+    },
+    {
+     "id": "r6",
+     "path": "crates/daemon/src/roots.rs",
+     "note": "add_root / settings; needs_scan_job"
+    },
+    {
+     "id": "r7",
+     "path": "crates/daemon/src/watch.rs",
+     "note": "watcher settings (the one people forget)"
+    },
+    {
+     "id": "r8",
+     "path": "crates/parsers/src/discovery.rs",
+     "note": "include_hidden + the skip ledger"
+    }
+   ]
+  }
+ ]
+}
