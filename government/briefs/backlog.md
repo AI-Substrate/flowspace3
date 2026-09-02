@@ -2722,3 +2722,14 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     detached and gitignored-for-temp — the record must be COLLECTED by
     o-prime before tidy (twice now: 012 and 014). Encode: `harness team
     collect <seat>`.
+158. **O-prime bounced prod during a held gate slot → the gate's production
+    migration guard fired a false CRITICAL STOP** (013, amistad, ask-010).
+    Prod 0023 installed_on 04:17:23Z = the 014 daemon bounce; the gate ran
+    04:12–04:21Z; before=22/after=23 straddled it. No test touched :5433.
+    Two encodes: (1) a held gate slot and a prod bounce are MUTUALLY
+    EXCLUSIVE — o-prime checks the slot before `bin/daemon-restart`
+    (add the check to the script: refuse if `harness checks` is running
+    anywhere on the box); (2) the guard must print the migrating
+    application_name + installed_on from _sqlx_migrations / pg_stat so a
+    reader can attribute the change instead of assuming the tests.
+    Observed against o-prime.
