@@ -65,3 +65,7 @@ Status: runtime proof complete; PR/CI pending.
 Real binary daemon A ran with scratch config, per-run database `fs3_daemon_key_20260902_0810` on the `:5434` test postmaster, and ephemeral port 63359. Daemon B ran from a foreign cwd with the same scratch config and exited 1 on `cannot bind 127.0.0.1:63359`. Daemon A's subsequent real `ping` remained healthy. `daemon.key` stayed at mtime `1788336617` and SHA-256 `3d50f80e19d92941337ab505b205d43c01362f2751c3ee12e2ce679767c8e576`; the config directory contained only `config.toml` and `daemon.key`. Daemon A stopped cleanly and the per-run database was dropped.
 
 Full transcript: `.harness/temp/agent/daemon-key-real-usage.md`.
+
+## Phase complete
+
+All six task rows, seven done-when assertions, five acceptance criteria, and six backpressure rows are checked through global `ddocs`. PR #108 is open against main. After rebasing onto main `689ac27`, focused real-binary health and boot-contract suites were green; CI run `33609408499` was green on implementation head `04ad9a7`. The final commit contains progress receipts only and must receive the same CI gate before the done report.

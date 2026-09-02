@@ -20,8 +20,9 @@
           "phase": "1",
           "mode": "BUILD",
           "tier": "computational",
-          "proof": "cargo test -p fs3-daemon key_clobber: A then B (normal and --json); mutation: revert the guard \u2192 B rewrites the key \u2192 red",
-          "state": "unchecked"
+          "proof": "cargo test -p fs3-daemon key_clobber: A then B (normal and --json); mutation: revert the guard → B rewrites the key → red",
+          "state": "checked",
+          "receipt": "A/B normal + --json tests RED on dual-family main, GREEN after canonical bind; mutation restores RED; key bytes/mtime/temp/A-auth asserted."
         },
         {
           "id": "bp-0002",
@@ -29,8 +30,9 @@
           "phase": "1",
           "mode": "BUILD",
           "tier": "computational",
-          "proof": "boot-sequence unit test with a pre-bound port: publish never called; mutation: move publish before bind \u2192 red",
-          "state": "unchecked"
+          "proof": "boot-sequence unit test with a pre-bound port: publish never called; mutation: move publish before bind → red",
+          "state": "checked",
+          "receipt": "BoundListener private token required by publish; daemon lib 175/175 and A/B bind-failure assertions green; canonical bind mutation red."
         },
         {
           "id": "bp-0003",
@@ -38,8 +40,9 @@
           "phase": "1",
           "mode": "BUILD",
           "tier": "computational",
-          "proof": "CLI render test with key mtime > daemon boot; mutation: drop the mtime check \u2192 red",
-          "state": "unchecked"
+          "proof": "CLI render test with key mtime > daemon boot; mutation: drop the mtime check → red",
+          "state": "checked",
+          "receipt": "Auth envelope + real CLI rewrite tests green; strict mtime comparison avoids unchanged-key false positive; reversed comparison mutation red."
         },
         {
           "id": "bp-0004",
@@ -47,8 +50,9 @@
           "phase": "1",
           "mode": "BUILD",
           "tier": "computational",
-          "proof": "daemon boot test: foreign cwd + prod URL \u2192 refusal naming FS3_PROD_OWNER; with the env set \u2192 proceeds; mutation: remove the check \u2192 red",
-          "state": "unchecked"
+          "proof": "daemon boot test: foreign cwd + prod URL → refusal naming FS3_PROD_OWNER; with the env set → proceeds; mutation: remove the check → red",
+          "state": "checked",
+          "receipt": "Foreign-cwd prod guard test refuses with required code/env/test URL; owner-root and explicit override proceed; bypass mutation red."
         },
         {
           "id": "bp-0005",
@@ -57,7 +61,8 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "cargo test -p fs3-daemon -p fs3-cli -p fs3-core; clippy -D warnings; CI on the exact PR sha (ruling 2026-09-02-ci-green-on-the-sha-is-the-gate)",
-          "state": "unchecked"
+          "state": "checked",
+          "receipt": "Local harness checks status=ok; daemon lib 175/175; PR #108 CI run 33609408499 green on rebased implementation head 04ad9a7."
         },
         {
           "id": "bp-0006",
@@ -65,8 +70,9 @@
           "phase": "1",
           "mode": "BUILD",
           "tier": "human-judgement",
-          "proof": "scratch FS3_CONFIG_DIR + :5434 + free port: first daemon healthy, second from a foreign cwd refuses, first's ping still authorized, key mtime unchanged \u2014 transcript in the PR body",
-          "state": "unchecked"
+          "proof": "scratch FS3_CONFIG_DIR + :5434 + free port: first daemon healthy, second from a foreign cwd refuses, first's ping still authorized, key mtime unchanged — transcript in the PR body",
+          "state": "checked",
+          "receipt": "Scratch :5434 per-run DB + free port transcript: A healthy, B exits bind failure, A stays authorized, key mtime/hash unchanged, no temp residue; PR #108 body contains prod sequence."
         }
       ]
     },
@@ -96,6 +102,5 @@
         }
       ]
     }
-  ],
-  "references": []
+  ]
 }

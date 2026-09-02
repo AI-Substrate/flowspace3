@@ -39,8 +39,8 @@ Work top to bottom; stop-and-ask o-prime on anything outside the fence.
 | t2 | Publish strictly after a successful bind on every boot path; no staged temp file survives a bind failure | — | — | [x] checked | — | BoundListener private-field proof required by StagedAuth::publish; localhost canonicalized once to 127.0.0.1 before bind. Clobber tests green 2/2, fs3-daemon lib green 172/172; removing canonicalization made both clobber tests RED. | [x] 2/2 [t2](#t2) | key untouched on bind failure; temp file cleaned; guard mutation red | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0002](../../../plan.dd.md#acceptance-criteria) |
 | t3 | Honest 401 hint when the key is newer than the daemon | — | — | [x] checked | — | Auth records daemon.key mtime immediately after publication and reports key_newer_than_daemon only for strict &gt;; live CLI rewrite test green and generic unchanged-key 401 asserts false. Reversing the mtime comparison made the live render test RED; restored and green. | [x] 1/1 [t3](#t3) | CLI names the overwrite + restart-the-owner fix | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
 | t4 | Prod-database owner designation (FS3_PROD_OWNER / config owner path) | — | — | [x] checked | — | DaemonConfig owner_root resolves from file/FS3_DAEMON__OWNER_ROOT. Boot refuses DatabaseConfig::DEFAULT_URL before staging unless cwd is within owner_root or FS3_PROD_OWNER=1, with FS3-E-PROD-NOT-DESIGNATED and :5434 test URL. Config + guard tests green; bypass mutation made refusal test RED, restored green. | [x] 1/1 [t4](#t4) | foreign cwd refuses prod URL with a helpful error; designated proceeds | — | [ac-0004](../../../plan.dd.md#acceptance-criteria) |
-| t5 | Regression + gate | — | — | [ ] unchecked | — | LOCAL GATE: harness checks =&gt; {command:checks,status:ok,timestamp:2026-09-02T08:08:18.225Z}; fmt/clippy/tests and repo gates green. cargo test -p fs3-daemon --lib =&gt; 175 passed. Exact-PR-sha CI pending until t6 opens PR. | [ ] 0/1 [t5](#t5) | suites green; clippy clean; CI green on the PR sha | — | [ac-0004](../../../plan.dd.md#acceptance-criteria) |
-| t6 | Real-usage transcript on the TEST setup + PR | — | — | [ ] unchecked | — | — | [ ] 0/1 [t6](#t6) | two-daemon transcript with counts/mtimes in the PR body; exact prod commands for o-prime | — | [ac-0005](../../../plan.dd.md#acceptance-criteria) |
+| t5 | Regression + gate | — | — | [x] checked | — | Local harness checks status=ok at 2026-09-02T08:08:18.225Z; daemon lib 175/175. PR #108 CI gate green on rebased implementation head 04ad9a7 after run 33609408499; final progress-only commit reuses the same gate. | [x] 1/1 [t5](#t5) | suites green; clippy clean; CI green on the PR sha | — | [ac-0004](../../../plan.dd.md#acceptance-criteria) |
+| t6 | Real-usage transcript on the TEST setup + PR | — | — | [x] checked | — | TEST transcript: daemon A healthy on scratch config + per-run :5434 DB + port 63359; daemon B foreign cwd exited 1; A stayed authorized; key mtime/hash unchanged; no temp residue; DB dropped. PR #108 opened with ac-0001..ac-0005 receipts and exact prod bounce commands. | [x] 1/1 [t6](#t6) | two-daemon transcript with counts/mtimes in the PR body; exact prod commands for o-prime | — | [ac-0005](../../../plan.dd.md#acceptance-criteria) |
 
 <a id="done-when"></a>
 
@@ -75,10 +75,10 @@ Work top to bottom; stop-and-ask o-prime on anything outside the fence.
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-3116 | suites + CI green | [ ] unchecked | [bp-0005](../../backpressure.dd.md#rows) |
+| dw-3116 | suites + CI green | [x] checked | [bp-0005](../../backpressure.dd.md#rows) |
 
 ### t6
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-3117 | transcript reproducible | [ ] unchecked | [bp-0006](../../backpressure.dd.md#rows) |
+| dw-3117 | transcript reproducible | [x] checked | [bp-0006](../../backpressure.dd.md#rows) |

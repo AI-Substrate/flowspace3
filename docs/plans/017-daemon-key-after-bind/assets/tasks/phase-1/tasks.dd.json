@@ -67,23 +67,24 @@
         {
           "id": "t5",
           "title": "Regression + gate",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/t5",
           "success": "suites green; clippy clean; CI green on the PR sha",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0004"
           ],
-          "receipt": "LOCAL GATE: harness checks => {command:checks,status:ok,timestamp:2026-09-02T08:08:18.225Z}; fmt/clippy/tests and repo gates green. cargo test -p fs3-daemon --lib => 175 passed. Exact-PR-sha CI pending until t6 opens PR."
+          "receipt": "Local harness checks status=ok at 2026-09-02T08:08:18.225Z; daemon lib 175/175. PR #108 CI gate green on rebased implementation head 04ad9a7 after run 33609408499; final progress-only commit reuses the same gate."
         },
         {
           "id": "t6",
           "title": "Real-usage transcript on the TEST setup + PR",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/t6",
           "success": "two-daemon transcript with counts/mtimes in the PR body; exact prod commands for o-prime",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0005"
-          ]
+          ],
+          "receipt": "TEST transcript: daemon A healthy on scratch config + per-run :5434 DB + port 63359; daemon B foreign cwd exited 1; A stayed authorized; key mtime/hash unchanged; no temp residue; DB dropped. PR #108 opened with ac-0001..ac-0005 receipts and exact prod bounce commands."
         }
       ]
     },
@@ -132,7 +133,7 @@
           {
             "id": "dw-3116",
             "assertion": "suites + CI green",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0005"
           }
         ],
@@ -140,7 +141,7 @@
           {
             "id": "dw-3117",
             "assertion": "transcript reproducible",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0006"
           }
         ]
