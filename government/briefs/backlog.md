@@ -1900,3 +1900,40 @@ BACKFILL CLOSED (meadowlark, 2026-09-02): pij repo 4 → 49 conversations
     source-read with line numbers, and every one was checked by the
     consumer before use — that is the standard for cross-government
     answers from here on.
+
+135. **`tree <dir>` fans out one row per worktree with no way to tell them
+    apart** (forward-worm, external dogfood, 2026-09-02, voxel repo with
+    11 roots under one identity): `tree godot/…/Config --json` →
+    total=24, entries=169, every file 11x; entry keys are only
+    [address, kind, name, path] — no `worktree`. `search` scopes to the
+    cwd's checkout and stamps `worktree` on every hit; `tree` does
+    neither, and `total` vs `showing` disagreeing is the envelope
+    showing its own fan-out. ENCODE: tree scopes like search (cwd
+    worktree, `--repo all` to widen) and carries a `worktree` field per
+    row. Raw findings vendored: scratch/dogfood-forward-worm-batch-1.md.
+
+136. **C# and GDShader are unparsed, and `tree <file>` with zero children
+    gives a bare zero with no reason** (forward-worm, same batch). `.cs`
+    files index as file-vectors only (34 hits, all kind=file, zero
+    element rows — no grammar); `.gdshader` is not scanned at all
+    (`path_unmatched`). For that repo the shader IS the product; a naive
+    user read "composition code=0" as "code not indexed" for ten minutes.
+    Two halves: (a) HONESTY — `tree <file>` with zero children must say
+    "no parser for .cs; file-level only" the way `refs` says "successful
+    empty answer" (row 119's two-messages principle, again); (b) SUPPORT
+    — tree-sitter has C# and there is a GLSL-adjacent grammar for
+    gdshader; the add-language skill exists for exactly this. (a) is
+    small and first.
+
+137. **compaction-summary turns read as first-hand findings** (forward-
+    worm F5 nit): the `smart` summary of a compaction turn (t4423 in
+    their transcript) presents second-hand content as if fresh. ENCODE:
+    tag turns whose source record is a compaction/summary so search
+    hits and `get` render them as "summary of earlier turns", not
+    testimony. Small; touches conversation ingest + smart summariser
+    prompt.
+
+ROW 120 SECOND WITNESS: forward-worm F6 — scan_file pending pinned at 463
+    for ~7 min with no per-job view, so "queued behind summarize" and
+    "stuck" are indistinguishable from `status`. Same encoding as 120
+    (`doctor jobs`), now asked for by an external user.
