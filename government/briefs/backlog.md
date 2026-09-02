@@ -2881,3 +2881,6 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     (0.25 s is process start + auth + one round trip). Two follow-ups:
     measure server-side (row 160 timing) rather than CLI wall; and if
     pg_stat_user_tables.n_dead_tup stays ~900k, schedule a VACUUM window.
+    (correction) autovacuum DID run on jobs at 04:21:04 (n_live 271,430,
+    n_dead 37,596); the 2.8 GB is free space inside the relation, which
+    only VACUUM FULL returns to the OS — not a defect, no window needed.
