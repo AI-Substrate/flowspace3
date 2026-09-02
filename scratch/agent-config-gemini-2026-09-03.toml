@@ -1,0 +1,49 @@
+active = "azure-luna"
+
+[providers.openrouter-glm]
+kind = "openai_compat"
+base_url = "https://openrouter.ai/api/v1"
+model = "z-ai/glm-5.3-flash"
+api_key_env = "OPENROUTER_API_KEY"
+
+# gemini-3.8-flash via OpenRouter (Jordan, 2026-09-03). Verified present in the
+# OpenRouter catalogue before wiring: GET /api/v1/models lists `google/gemini-3.8-flash`.
+[providers.openrouter-gemini]
+kind = "openai_compat"
+base_url = "https://openrouter.ai/api/v1"
+model = "google/gemini-3.8-flash"
+api_key_env = "OPENROUTER_API_KEY"
+# gemini 3.8 flash is a REASONING model: reasoning and the answer come out of the
+# same allowance, and at the 4000 default a tool-using agent turn can spend the
+# whole budget thinking and return empty content — which the agent loop reads as
+# "no answer yet", so it calls another tool and burns an iteration. Measured
+# directly against OpenRouter: max_tokens=50 -> finish_reason=length, content=None,
+# 46/46 completion tokens were reasoning; max_tokens=2000 -> content "PONG", 82
+# reasoning tokens. Sized well above the answer so both fit.
+max_tokens = 16000
+
+# [agent] — the ask verb's provider. gemini-3.8-flash via OpenRouter (Jordan,
+# 2026-09-03; was glm-5.3-flash from 2026-08-28). Summarizer/embedder stay on Azure.
+[agent]
+active = "openrouter-gemini"
+max_iterations = 30
+token_budget = 300000
+tool_result_max_chars = 7000
+
+# ---- record (o-prime, 2026-09-03) ----
+# The prod agent surface as it stands after wiring google/gemini-3.8-flash.
+# Verified: `google/gemini-3.8-flash` is present in the OpenRouter catalogue
+# (GET /api/v1/models, 425 models) — checked before wiring, not assumed.
+#
+# Working receipts, both grounded, both correct, on prod pid 19238+:
+#   "What must a caller provide to StagedAuth::publish ..."  -> 29 iterations, 266,389 tokens
+#   "How does the daemon decide whether a root should index hidden directories?" -> 16, 106,232
+#
+# What did NOT work and why (backlog 190/191): a question about a `const` is
+# unanswerable because constants are not indexed elements, so the model correctly
+# refuses to answer ungrounded and searches until it runs out of budget. glm
+# answered such questions anyway — worse, not better.
+#
+# Bounds had to go 8 -> 30 iterations and 80k -> 300k tokens for gemini. Those are
+# GLOBAL (backlog 192): switching the agent surface back to openrouter-glm should
+# restore 8 / 80000, or glm silently inherits gemini's allowance.
