@@ -3297,3 +3297,10 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     calls → new statement 209 ms mean (max 234) over 4 calls. `status`
     wall 0.58 → 0.28 s. Rows 122/145 latency: RESOLVED. Remaining ~0.4 s
     is query embedding + HTTP (row 160 timing would show the split).
+    ROW 161 — DIAGNOSED by weasel: the zero-delivery seats are the
+    spawn-bind family (req-0046/req-0035): `pij spawn --bin omp` pre-mints
+    a seat id and delivery depends on the extension binding INTO it; pij
+    plan 132 (spawn-reports-bind) fixes it and its PM had sat idle since
+    the cutover — relaunched. UNTIL 132 LANDS (binding for fs3): never
+    `pij spawn --bin omp`; hand-start omp in a tmux window and let it
+    self-register, or resume with `omp -c`. Keep msg_ids of every send.
