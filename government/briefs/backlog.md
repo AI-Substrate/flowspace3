@@ -3408,3 +3408,5 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     unfalsifiable), f-4d88 shifted risk (worktree + conversation/scope
     parity), row 160 (search timing in the envelope), row 168 (cost
     fixture).
+    PIJ-TEAM — **#106 MERGED** a33a8f3 (retro-003 experiences); docs
+    worktree removed. Worktrees now: main, governance, 016, 017.
