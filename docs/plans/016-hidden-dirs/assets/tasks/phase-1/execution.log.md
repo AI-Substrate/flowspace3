@@ -85,3 +85,5 @@ O-prime amended AC-0005/BP-0005 from the stale untracked-inclusive `>=500` count
 ## Phase complete
 
 All five task rows and assertions are checked and receipted. `harness plan validate ...#tasks` reports `error=0`, `warn=0`, `open=0`, `contradictions=0`, `orphans=0`. Full `harness checks` passed on this worktree at `2026-09-02T07:07:06Z`.
+
+Pull request: https://github.com/AI-Substrate/flowspace3/pull/107 (`f9b6d0780cd9208a844c129748cccd45beda1d8d` plus this receipt update).
