@@ -2447,3 +2447,11 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     support/mod.rs:110) are therefore the fix, not cosmetics; re-measure
     on the successor's sha. Also: cargo does not parallelise test
     binaries (max concurrent binaries of one run = 1, 240 samples).
+    REQ-0042 SECOND WITNESS: pij-chosen-arach (plan 014 coder, spawned
+    pre-fix) also lost INBOUND rs delivery in the disk incident while its
+    OUTBOUND kept working — it sat "blocked on the gate slot" for ~1 h
+    after the slot was granted, until a pane-paste reached it. Rule for
+    this fleet until pij plan 124's re-attach is universal: after any
+    daemon/VM incident, o-prime sends a one-line DELIVERY-CHECK to every
+    omp seat spawned before the incident and pane-pastes any that do not
+    answer within a minute. Outbound-works/inbound-dead is the signature.
