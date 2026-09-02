@@ -2930,3 +2930,15 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     + plan, never by cloning a sibling; a packet lint that greps for the
     previous plan's slug. Row 161 note: outbound from post-cutover seats
     is also lossy (boar's ack send lost) — file mirror `review-015-status.md`.
+    PLAN 015 — reviewer's early flag resolved: the pre-prod scan table IS
+    in PR #102's body (327 .ts files: 327 → 3,452 elements, 43 file-only,
+    0 scan errors); the vendored copy in the review tree was stale
+    (copied before the coder edited the PR) — refreshed; t5 unchecked in
+    tasks.dd.md is a docs gap for the coder's delta. Encode: vendor the
+    PR body from `gh pr view --json body` at spawn, never from the seat's
+    draft file.
+    PLAN 013 — reviewer de-risks forwarded as BINDING to the coder: no-Err
+    only in search_elements; reuse search.rs:462 scan_incomplete as the
+    landing zone; page-bounded admitted_elements must union raw hashes
+    with raw hashes reached via smart_content.text_hash for smart
+    candidates (else every smart hit drops / the correlated probe returns).
