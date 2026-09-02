@@ -1,0 +1,49 @@
+docs/plans/014-jobs-retention/assets/backpressure.dd.json
+  s_15d888f4b629c1::t_3303eb133210a6 1-101
+docs/plans/014-jobs-retention/assets/backpressure.dd.md
+  s_15d888f4b629c1::t_cd9b3badf7c861 1-38
+docs/plans/014-jobs-retention/assets/inputs/db-cpu-profile-report.md
+  s_15d888f4b629c1::t_2710dfaf0c69ce 1-322
+docs/plans/014-jobs-retention/assets/inputs/pij-two-daemons.md
+  s_15d888f4b629c1::t_abaf0bee7366a2 1-122
+docs/plans/014-jobs-retention/assets/tasks/phase-1/tasks.dd.json
+  s_15d888f4b629c1::t_aaac4bd3997eac 1-127
+docs/plans/014-jobs-retention/assets/tasks/phase-1/tasks.dd.md
+  s_15d888f4b629c1::t_5b7dd30c13704b 1-77
+docs/plans/014-jobs-retention/impl-guide.dd.json
+  s_15d888f4b629c1::t_da46b4443e025a 1-87
+docs/plans/014-jobs-retention/impl-guide.dd.md
+  s_15d888f4b629c1::t_26aaa139c084f0 1-78
+docs/plans/014-jobs-retention/packet-coder.dd.json
+  s_15d888f4b629c1::t_320d3ac2aa01f6 1-146
+docs/plans/014-jobs-retention/packet-coder.dd.md
+  s_15d888f4b629c1::t_8bf24e91e24986 1-89
+docs/plans/014-jobs-retention/packet-pm.dd.json
+  s_15d888f4b629c1::t_171fd38abc2843 1-159
+docs/plans/014-jobs-retention/packet-pm.dd.md
+  s_15d888f4b629c1::t_55e490bb1d38ef 1-87
+docs/plans/014-jobs-retention/packet-reviewer.dd.json
+  s_15d888f4b629c1::t_f63ff1552cdcac 1-65
+docs/plans/014-jobs-retention/packet-reviewer.dd.md
+  s_15d888f4b629c1::t_92ba092c3d2c78 1-76
+docs/plans/014-jobs-retention/plan.dd.json
+  s_15d888f4b629c1::t_ad4b6c78b7a2c2 1-84
+docs/plans/014-jobs-retention/plan.dd.md
+  s_15d888f4b629c1::t_527cafdf8e0be1 1-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c97b9a50ea43301f5b91f00c507f729d64691a90",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
