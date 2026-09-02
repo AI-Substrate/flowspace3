@@ -2623,3 +2623,12 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     template + how-we-work): before filing a tooling defect, reproduce it
     with a DIFFERENT tool than the one that showed it — one `awk length`
     on disk ends it. Told dajeil; closed.
+    ROW 153 — fs3 cutover receipt: PONG probe to all four seats; only the
+    reviewer (takin) answered and only it shows a delivered_at after the
+    13:52 daemon restart in ~/.pij-rs/pij.sqlite `delivered_messages`
+    (arach 02:30, weasel 03:40, junglefowl 03:48 UTC — the last thing each
+    ever received). Ctrl-C does NOT exit omp (the first "omp -c" attempt
+    landed as a user message the seats read as "continue"); `/exit` then
+    `omp -c` is the in-place restart. Restarted the three at ~14:08 while
+    idle. METHOD worth encoding in pij: `max(delivered_at)` per recipient
+    is the inbound-liveness signal a prime can read without asking the seat.
