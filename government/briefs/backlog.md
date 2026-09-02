@@ -2287,3 +2287,18 @@ DEGRADED-ATTRIBUTION TALLY: EIGHT (plan 012 delta commit f3aec311, 2026-09-02).
     DEFAULT — what every new agent types first — is 10× outside it. Plan
     013's ac-0005 wall-time proof must therefore include an UNSCOPED run
     on a doc-heavy root (chainglass), not just the flowspace3 bare query.
+    ROW 145 / 122 — FINDING 2 WITHDRAWN ENTIRELY (antelope, third attribution
+    in one session, all wrong): a later probe measured the SAME unscoped
+    query on chainglass at 6 s (vs 156–185 s twenty minutes earlier) and
+    flowspace3's bare search at 106 s — the uncontrolled variable was
+    DAEMON LOAD (the post-recovery queue was still draining under the
+    "all clear"). No version of "scope is a latency lever" or "doc-heavy
+    repos are slower" is supported; carry NONE of it. Findings 1 and 3
+    stand (ranking observation; empty_because vs next_action). The
+    consequential fact for plan 013's ac-0005 remains: wall-time proofs
+    must record `status` queue depth before and after each timing, and
+    interleave siblings — a timing taken while the queue drains measures
+    the queue. LESSON (antelope's words): "an all-clear is a statement
+    about availability, not about load". The extra 013 acceptance run
+    (unscoped on a doc-heavy root) STAYS, but as a load-controlled
+    measurement, not because of a repo effect.
