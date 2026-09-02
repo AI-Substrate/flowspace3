@@ -1937,3 +1937,21 @@ ROW 120 SECOND WITNESS: forward-worm F6 — scan_file pending pinned at 463
     for ~7 min with no per-job view, so "queued behind summarize" and
     "stuck" are indistinguishable from `status`. Same encoding as 120
     (`doctor jobs`), now asked for by an external user.
+
+TRANSPORT DIAGNOSIS (weasel, 2026-09-02, Jordan's question "why do
+    lynx's messages arrive via tmux while meadowlark's come through the
+    Rust daemon"): the legacy TS daemon has NO Claude socket transport at
+    ANY commit — every legacy delivery to a Claude seat is tmux
+    send-keys, BOTH directions. The asymmetry was the recipient's
+    composer: meadowlark's accepted the trailing Enter; lynx's swallowed
+    it in the paste-detection debounce (same class Jordan hit by hand
+    this morning). Legacy daemon restarted anyway (was c8d99b13, 607
+    commits stale; now d5b8be5e). Native turns come only from rs.
+    o-prime's decision on `pij adopt` into rs: GATED on one fact — after
+    adopting, can an rs pane still deliver to legacy-only seats
+    (pij-telegram is the merge-veto channel; meadowlark is legacy)?
+    Asked weasel. Yes → adopt today (rs children can then `pij send` me;
+    file+poll retires). No → stay legacy until pij plan 128 surfaces
+    both ids under one consumer row. Meadowlark's evidence:
+    ~/pi-hacking/pij/.harness/temp/meadowlark-delivery-asymmetry-report.md;
+    weasel's diagnosis: …/weasel-diagnosis-delivery-asymmetry.md.
