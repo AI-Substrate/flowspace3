@@ -2478,3 +2478,8 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     sweep SQL (shared const) + ac-0003 amended to name the unforced drop
     as defence-in-depth covered only by that guard + drop-on-exit
     cleanup for the race test + doc note "one mutation per clean server".
+    ROW 131 — second bite (014, arach): `harness checks` RED at
+    fs3-test-suite twice; on the second run the failing suite's name was
+    in the truncated tail, so the coder had to re-run the runner
+    directly to learn which test failed. Encode: checks must print the
+    failing runner's last N lines untruncated, or the path of a full log.
