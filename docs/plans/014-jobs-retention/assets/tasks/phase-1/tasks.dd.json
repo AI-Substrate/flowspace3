@@ -1,0 +1,130 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: live-only hot path + bounded retention",
+        "slug": "phase-1",
+        "status": "ready",
+        "summary": "One coder, tasks in order, every assertion pinned to a backpressure row."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Work top to bottom; stop-and-ask o-prime on anything outside the fence."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-0101",
+          "title": "Hot path: implement a live-only depth query (WHERE state IN ('pending','running') OR (state='failed' AND NOT terminal)) served by jobs_live_dedupe_idx / jobs_revivable_idx; route report_progress and GET /status through it; keep the full GROUP BY available behind an explicit `--history` flag on status if anyone wants it; fix the stale comment at jobs.rs:558-560",
+          "state": "checked",
+          "done": "#done_when/tk-0101",
+          "success": "plan test green; red with old SQL",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ],
+          "receipt": "queue plan 3/3; daemon progress + snapshot 1/1 each; CLI status 4/4 on dedicated test postmaster"
+        },
+        {
+          "id": "tk-0102",
+          "title": "Retention: `indexing.job_retention_days` (default 1); `purge_done_jobs(older_than, batch)` in the store; a daemon sweep at boot and every N ticks (reuse the reconciler pattern in boot.rs:632 / worktrees.rs); receipt in /status + one log line per purge with counts",
+          "state": "checked",
+          "done": "#done_when/tk-0102",
+          "success": "retention test green; receipt visible",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002",
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ],
+          "receipt": "store retention 3/3; status/log 2/2; cadence 1/1; config 1/1 on dedicated :5434 postmaster where applicable"
+        },
+        {
+          "id": "tk-0103",
+          "title": "Mint-time prevention of a second job under a failed non-terminal key (row 123): extend the ON CONFLICT / dedupe path or add a partial unique index covering failed-non-terminal — stop-and-ask if it needs a migration",
+          "state": "checked",
+          "done": "#done_when/tk-0103",
+          "success": "dedupe_failed test green; red without",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ],
+          "receipt": "failed owner revives pending and claimable; attempts+parks reset; running preserved; terminal history mints fresh row; state/attempts/parks mutations red; 13 focused tests green on :5434"
+        },
+        {
+          "id": "tk-0104",
+          "title": "Gate + PR with both mutations and the EXPLAIN in the body",
+          "state": "checked",
+          "done": "#done_when/tk-0104",
+          "success": "PR open, CI green",
+          "satisfies": [],
+          "receipt": "harness checks green on :5434; PR #98 opened; implementation head CI gate passed in 5m22s"
+        },
+        {
+          "id": "tk-0105",
+          "title": "With o-prime after the bounce: one-off purge of today's ~1.01M done rows (o-prime runs it, batched), then the four prod measurements; receipts into ac-0005",
+          "state": "unchecked",
+          "done": "#done_when/tk-0105",
+          "success": "ac-0005 receipt",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {
+        "tk-0101": [
+          {
+            "id": "dw-30e1",
+            "assertion": "EXPLAIN has no Seq Scan on jobs; mutation red",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          }
+        ],
+        "tk-0102": [
+          {
+            "id": "dw-30e2",
+            "assertion": "exactly aged done rows purged, live untouched, idempotent, batched",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          },
+          {
+            "id": "dw-30e3",
+            "assertion": "/status shows retention; log line present",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+          }
+        ],
+        "tk-0103": [
+          {
+            "id": "dw-30e4",
+            "assertion": "second mint under a failed key yields one row; mutation red",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          }
+        ],
+        "tk-0104": [
+          {
+            "id": "dw-30e5",
+            "assertion": "harness checks green; CI green",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0006"
+          }
+        ],
+        "tk-0105": [
+          {
+            "id": "dw-30e6",
+            "assertion": "counts, size, /status ×3, seq_tup_read flat",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+          }
+        ]
+      }
+    }
+  ]
+}

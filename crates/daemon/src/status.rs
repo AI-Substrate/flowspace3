@@ -9,13 +9,11 @@ use fs3_core::envelope::Failure;
 
 use crate::answer::IntoFailure;
 use crate::wiring::AppState;
-use fs3_core::views::status::{ElementTreeInconsistency, LastError, QueueRow, Root, StatusReport};
+use fs3_core::views::status::{
+    ElementTreeInconsistency, LastError, QueueRow, RetentionStatus, Root, StatusReport,
+};
 
-/// Read the current state.
-///
-/// # Errors
-/// Store failures, mapped to their own catalog codes.
-pub async fn report(state: &AppState) -> Result<StatusReport, Failure> {
+pub async fn report(state: &AppState, history: bool) -> Result<StatusReport, Failure> {
     let roots = fs3_store::list_worktrees(&state.db)
         .await
         .map_err(IntoFailure::into_failure)?
@@ -27,8 +25,12 @@ pub async fn report(state: &AppState) -> Result<StatusReport, Failure> {
         })
         .collect();
 
-    let queue = fs3_store::queue_depth(&state.db)
-        .await
+    let depth = if history {
+        fs3_store::queue_depth_history(&state.db).await
+    } else {
+        fs3_store::queue_depth(&state.db).await
+    };
+    let queue = depth
         .map_err(IntoFailure::into_failure)?
         .into_iter()
         .map(|row| QueueRow {
@@ -38,6 +40,15 @@ pub async fn report(state: &AppState) -> Result<StatusReport, Failure> {
             with_error: row.with_error,
         })
         .collect();
+
+    let retained = fs3_store::job_retention_receipt(&state.db)
+        .await
+        .map_err(IntoFailure::into_failure)?;
+    let retention = RetentionStatus {
+        window_days: state.config.indexing.job_retention_days,
+        last_purge_at: retained.last_purge_at,
+        purged_last_run: retained.purged_last_run,
+    };
 
     let last_error = fs3_store::last_failure(&state.db)
         .await
@@ -59,6 +70,7 @@ pub async fn report(state: &AppState) -> Result<StatusReport, Failure> {
     Ok(StatusReport {
         roots,
         queue,
+        retention: Some(retention),
         last_error,
         inconsistencies,
         schema_ahead: crate::schema::ahead_of_us(&state.db).await,

@@ -264,9 +264,14 @@ impl DaemonClient {
         .await
     }
 
-    /// Read roots and queue depth.
-    pub async fn status(&self) -> Envelope {
-        self.get_json("status", "/status", &[]).await
+    /// Read roots and queue depth, including settled history only on request.
+    pub async fn status(&self, history: bool) -> Envelope {
+        let query = if history {
+            vec![("history".to_string(), "true".to_string())]
+        } else {
+            Vec::new()
+        };
+        self.get_json("status", "/status", &query).await
     }
 
     /// Ask a question.

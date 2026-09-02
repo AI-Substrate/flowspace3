@@ -673,6 +673,10 @@ async fn serve(
     // the trait a per-loop cadence — the same shape the update supervisor's
     // clock takes, for the same reason (req-0057).
     reconcilers.push(Box::new(crate::gc::GcSupervisor::new(state.db.clone())));
+    reconcilers.push(Box::new(crate::retention::RetentionSupervisor::new(
+        state.db.clone(),
+        state.config.indexing.job_retention_days,
+    )));
     let reconcile = tokio::spawn(crate::reconcile::run_forever(reconcilers, cadence));
 
     let server = http::serve_listener(state, listener, auth, shutdown).await;

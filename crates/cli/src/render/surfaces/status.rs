@@ -59,6 +59,18 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
         out.push_str(&theme::block(&roots));
     }
 
+    if let Some(retention) = &report.retention {
+        let last_purge = retention.last_purge_at.as_deref().unwrap_or("not run");
+        out.push_str(&format!(
+            "\n{}{} {}d · last {} · purged {}\n",
+            theme::GUTTER,
+            "retention".bright_black(),
+            retention.window_days,
+            last_purge,
+            retention.purged_last_run,
+        ));
+    }
+
     if !report.queue.is_empty() {
         let mut grouped: BTreeMap<&str, BTreeMap<&str, &QueueRow>> = BTreeMap::new();
         for row in &report.queue {
@@ -67,29 +79,48 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
                 .or_default()
                 .insert(&row.state, row);
         }
+        let history = report.queue.iter().any(|row| row.state == "done");
         let mut queue = theme::table(width);
-        queue.set_header([
-            theme::header("job"),
-            theme::header("progress"),
-            theme::header("done"),
-            theme::header("running"),
-            theme::header("pending"),
-            theme::header("failed"),
-        ]);
+        if history {
+            queue.set_header([
+                theme::header("job"),
+                theme::header("progress"),
+                theme::header("done"),
+                theme::header("running"),
+                theme::header("pending"),
+                theme::header("failed"),
+            ]);
+        } else {
+            queue.set_header([
+                theme::header("job"),
+                theme::header("running"),
+                theme::header("pending"),
+                theme::header("failed"),
+            ]);
+        }
         for (kind, states) in grouped {
             let count = |state: &str| states.get(state).map_or(0, |row| row.count);
             let done = count("done");
             let running = count("running");
             let pending = count("pending");
             let failed = count("failed");
-            queue.add_row([
-                Cell::new(format!("{}", kind.bright_white())),
-                Cell::new(theme::meter(done, done + running + pending + failed, 12)),
-                theme::right(theme::count(done)),
-                theme::right(theme::count(running)),
-                theme::right(theme::count(pending)),
-                theme::right(theme::count(failed)),
-            ]);
+            if history {
+                queue.add_row([
+                    Cell::new(format!("{}", kind.bright_white())),
+                    Cell::new(theme::meter(done, done + running + pending + failed, 12)),
+                    theme::right(theme::count(done)),
+                    theme::right(theme::count(running)),
+                    theme::right(theme::count(pending)),
+                    theme::right(theme::count(failed)),
+                ]);
+            } else {
+                queue.add_row([
+                    Cell::new(format!("{}", kind.bright_white())),
+                    theme::right(theme::count(running)),
+                    theme::right(theme::count(pending)),
+                    theme::right(theme::count(failed)),
+                ]);
+            }
         }
         out.push('\n');
         out.push_str(&theme::block(&queue));
@@ -130,4 +161,68 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
         out.push('\n');
     }
     Some(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn plain(screen: &str) -> String {
+        anstream::adapter::strip_str(screen).to_string()
+    }
+
+    fn envelope(queue: Value) -> Envelope<Value> {
+        serde_json::from_value(json!({
+            "ok": true,
+            "command": "status",
+            "v": 1,
+            "data": {
+                "roots": [],
+                "queue": queue,
+                "retention": {
+                    "window_days": 1,
+                    "last_purge_at": "2026-09-02T01:00:00.000Z",
+                    "purged_last_run": 3
+                },
+                "last_error": null,
+                "inconsistencies": [],
+                "schema_ahead": []
+            }
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn live_status_has_no_fake_done_progress_and_shows_retention() {
+        let screen = plain(
+            &render(
+                &envelope(json!([
+                    {"kind": "embed", "state": "pending", "count": 2, "with_error": 0}
+                ])),
+                100,
+            )
+            .unwrap(),
+        );
+        assert!(screen.contains("retention 1d"), "{screen}");
+        assert!(screen.contains("purged 3"), "{screen}");
+        assert!(!screen.contains("progress"), "{screen}");
+        assert!(!screen.contains("done"), "{screen}");
+    }
+
+    #[test]
+    fn explicit_history_restores_done_progress() {
+        let screen = plain(
+            &render(
+                &envelope(json!([
+                    {"kind": "embed", "state": "done", "count": 7, "with_error": 1}
+                ])),
+                100,
+            )
+            .unwrap(),
+        );
+        assert!(screen.contains("progress"), "{screen}");
+        assert!(screen.contains("done"), "{screen}");
+        assert!(screen.contains('7'), "{screen}");
+    }
 }

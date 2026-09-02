@@ -179,8 +179,8 @@ summary every five seconds while work is in flight:
 INFO fs3_daemon::runner: done kind=scan_file subject=src/auth.rs ms=91 left=1214
 INFO fs3_daemon::runner: done kind=summarize subject=src/admin.rs::schema_current ms=612 left=1213
 INFO fs3_daemon::runner: done kind=embed subject=16 x raw ms=104 left=1212
-INFO fs3_daemon::runner: progress phase="working" scanned=18 scan_left=0 \
-     summarized=54 summarize_left=44 embedded=61 embed_left=57 failed=0
+INFO fs3_daemon::runner: progress phase="working" scan_left=0 \
+     summarize_left=44 embed_left=57 failed=0
 ```
 
 Three decisions behind that shape:
@@ -197,9 +197,10 @@ Three decisions behind that shape:
   the backlog GROWS while it drains — each `scan_file` enqueues the summarize
   and embed work it finds, so a decrementing counter would march to zero while
   the real backlog was still climbing.
-- **Progress is derived from the QUEUE, not from counters in the loop.** A
+- **Progress is derived from LIVE QUEUE rows, not counters in the loop.** A
   counter in the process would reset on restart and would not see a sibling
-  worker's rows. The cost is one grouped aggregate every few seconds.
+  worker's rows. Done history is deliberately excluded: scanning it every five
+  seconds made reporting the dominant jobs-table cost.
 
 The five-second summary is emitted by the drain loop itself, not between
 drains. It was between drains until 2026-08-26, and `drain` returns only when

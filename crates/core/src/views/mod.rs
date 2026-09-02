@@ -148,6 +148,7 @@ mod tests {
         round_trip!(status::StatusReport {
             roots: Vec::new(),
             queue: Vec::new(),
+            retention: None,
             last_error: None,
             inconsistencies: Vec::new(),
             schema_ahead: Vec::new(),

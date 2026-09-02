@@ -15,6 +15,8 @@ mod support;
 use std::sync::{Arc, Mutex};
 
 use fs3_core::{Config, DatabaseConfig, EventKind};
+use fs3_daemon::Reconcile;
+use fs3_daemon::retention::RetentionSupervisor;
 use fs3_daemon::runner;
 use fs3_daemon::wiring::AppState;
 use serde_json::json;
@@ -191,6 +193,12 @@ async fn progress_is_reported_while_the_queue_is_still_draining() {
         Some("working"),
         "reported from inside the drain, so the phase is the truth: {first}"
     );
+    for historical in ["scanned", "summarized", "embedded"] {
+        assert!(
+            field(first, historical).is_none(),
+            "the hot-path census must not derive {historical} from done history: {first}"
+        );
+    }
 
     let provider_lines = lines
         .iter()
@@ -204,6 +212,37 @@ async fn progress_is_reported_while_the_queue_is_still_draining() {
 
     let pool = state.db.clone();
     database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn status_retention_log_names_completed_purge() {
+    let (database, state) = stack_with_jobs("status_retention_log", 0).await;
+    sqlx::query(
+        "INSERT INTO jobs (kind, dedupe_key, payload, state, updated_at)
+         VALUES ('scan_file', 'expired-log-row', '{}'::jsonb, 'done',
+                 now() - interval '2 days')",
+    )
+    .execute(&state.db)
+    .await
+    .expect("seed expired job");
+    let mut supervisor = RetentionSupervisor::new(state.db.clone(), 1);
+    let log = Captured::default();
+
+    let pass = {
+        let _guard = log.install();
+        supervisor.reconcile().await.expect("retention pass")
+    };
+
+    assert_eq!(pass.changed, 1);
+    let lines = log.lines();
+    let receipt = lines
+        .iter()
+        .find(|line| line.contains("purged expired done jobs"))
+        .unwrap_or_else(|| panic!("retention receipt missing: {lines:#?}"));
+    assert!(receipt.contains("window_days=1"), "{receipt}");
+    assert!(receipt.contains("purged=1"), "{receipt}");
+
+    database.destroy(state.db.clone()).await;
 }
 
 /// Queue censuses are reporting work, not settlement work.
@@ -258,13 +297,9 @@ async fn queue_snapshots_follow_reporting_cadence_not_settlements() {
         0,
         "the final snapshot observes an empty live queue"
     );
-    assert_eq!(
-        final_rows
-            .iter()
-            .filter(|row| row.kind == "embed" && row.state == "done")
-            .map(|row| row.count)
-            .sum::<i64>(),
-        HISTORY + JOBS as i64
+    assert!(
+        final_rows.iter().all(|row| row.state != "done"),
+        "queue events are live snapshots, not a scan of {HISTORY} settled rows: {final_rows:#?}"
     );
 
     let pool = state.db.clone();
@@ -273,8 +308,8 @@ async fn queue_snapshots_follow_reporting_cadence_not_settlements() {
 
 /// `jobs_remaining` counts what is still to do, and nothing else.
 ///
-/// Settled rows stay in the table forever — they are the run's history — so a
-/// count that included them would climb while the backlog fell, which is the
+/// Settled rows live longer than active work but are not part of the backlog.
+/// A count that included them would climb while the queue fell, which is the
 /// exact inversion of what the number is for.
 #[tokio::test]
 async fn remaining_counts_live_work_and_ignores_settled_history() {

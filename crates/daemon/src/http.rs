@@ -547,12 +547,21 @@ async fn scan(
     }
 }
 
-async fn status(State(state): State<AppState>) -> Answer<StatusReport> {
+#[derive(Default, Deserialize)]
+struct StatusQuery {
+    #[serde(default)]
+    history: bool,
+}
+
+async fn status(
+    State(state): State<AppState>,
+    Query(query): Query<StatusQuery>,
+) -> Answer<StatusReport> {
     const COMMAND: &str = "status";
     if let Err(failure) = crate::schema::guard(&state.db).await {
         return failed(&state, COMMAND, failure).await;
     }
-    match crate::status::report(&state).await {
+    match crate::status::report(&state, query.history).await {
         Ok(report) => {
             let next = if !report.inconsistencies.is_empty() {
                 "element-tree inconsistencies were reported — follow each row's `next_action` before trusting affected reads"

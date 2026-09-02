@@ -22,6 +22,7 @@ pub mod logging;
 pub mod read;
 pub mod reconcile;
 pub mod remove;
+pub mod retention;
 pub mod roots;
 pub mod runner;
 pub mod scan;

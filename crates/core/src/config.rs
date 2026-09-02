@@ -110,6 +110,7 @@ pub const REDACTED: &str = "<redacted>";
 /// summary_min_lines = 10
 /// debounce_seconds = 10
 /// worktree_reconcile_ticks = 6
+/// job_retention_days = 1
 ///
 /// [scan]
 /// max_file_bytes = 2000000
@@ -964,6 +965,7 @@ fn unknown_instance(
 /// summary_min_lines = 10
 /// debounce_seconds = 10
 /// worktree_reconcile_ticks = 6
+/// job_retention_days = 1
 /// turn_summary_min_bytes = 256
 /// worker_concurrency = 4
 /// summarize_lane = 32
@@ -999,6 +1001,13 @@ pub struct IndexingConfig {
     /// Thirty seconds also matches the product's probe window while remaining
     /// shorter than the normal create-then-query workflow.
     pub worktree_reconcile_ticks: u32,
+
+    /// Days to retain completed jobs before the daemon purges them.
+    ///
+    /// At the measured lower-bound churn of 515,000 completed jobs per day, a
+    /// seven-day default would retain roughly 3.6 million rows. One day keeps a
+    /// useful operational window without rebuilding the million-row hot table.
+    pub job_retention_days: u32,
     /// How many jobs the runner claims at once.
     ///
     /// This is the QUEUE's concurrency: `claim_job`'s `SKIP LOCKED` hands N
@@ -1075,6 +1084,13 @@ impl IndexingConfig {
                 "turn_summary_min_bytes = 256",
             ));
         }
+        if self.job_retention_days == 0 {
+            problems.push(Problem::file(
+                "indexing.job_retention_days",
+                "must be at least 1 — zero would erase completed jobs immediately",
+                "job_retention_days = 1",
+            ));
+        }
         if self.worker_concurrency == 0 {
             problems.push(Problem::file(
                 "indexing.worker_concurrency",
@@ -1106,6 +1122,7 @@ impl Default for IndexingConfig {
             summary_min_lines: 10,
             debounce_seconds: 10,
             worktree_reconcile_ticks: 6,
+            job_retention_days: 1,
             worker_concurrency: 4,
             summarize_lane: 32,
             embed_lane: 10,
@@ -1805,6 +1822,7 @@ mod tests {
         // PRD req 29: debounce defaults to 10 seconds.
         assert_eq!(config.indexing.debounce_seconds, 10);
         assert_eq!(config.indexing.worktree_reconcile_ticks, 6);
+        assert_eq!(config.indexing.job_retention_days, 1);
         assert_eq!(config.scan, ScanConfig::default());
     }
 
@@ -2179,6 +2197,14 @@ summary_min_lines = 0
         .unwrap_err();
         let message = err.to_string();
         assert!(message.contains("indexing.summary_min_lines"), "{message}");
+        assert!(message.contains("must be at least 1"), "{message}");
+    }
+
+    #[test]
+    fn zero_job_retention_is_rejected() {
+        let err = Config::from_toml_str("[indexing]\njob_retention_days = 0\n").unwrap_err();
+        let message = err.to_string();
+        assert!(message.contains("indexing.job_retention_days"), "{message}");
         assert!(message.contains("must be at least 1"), "{message}");
     }
 

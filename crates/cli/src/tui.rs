@@ -268,7 +268,7 @@ impl Mailbox {
 fn spawn_snapshot_worker(client: DaemonClient, messages: Mailbox) -> JoinHandle<()> {
     tokio::spawn(async move {
         loop {
-            let status = decode_envelope(client.status().await);
+            let status = decode_envelope(client.status(false).await);
             messages.push(WorkerMessage::Snapshot(status));
             tokio::time::sleep(SNAPSHOT_INTERVAL).await;
         }
