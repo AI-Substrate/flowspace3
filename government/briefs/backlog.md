@@ -2768,3 +2768,14 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     errors, 0 warns, 24 completable items); evidence.md records which TS
     node kinds classify today and the arrow-binding gap. Coder (sol)
     spawning 04:37.
+    PLAN 013 — reviewer carp ack RULED GO 04:46 (review-013-prime-reply-001):
+    prod NOT bounced for 013 → ac-0004/0005 pre-registered thresholds,
+    o-prime's post-merge receipt; read-only prod AUTHORISED bounded (client
+    search/status any time; ONE EXPLAIN ANALYZE per statement in BEGIN READ
+    ONLY + statement_timeout 30 s + no parallel workers, load < 15 only — the
+    row-143 lesson); timings only with load stated. Reviewer's #1 hunt: a
+    selective scope over a >10,240-vector corpus expanding to the bound and
+    raising candidate_limit_exhausted where the old query returned a short
+    valid page. Reviewer reported the 768-char cut again — its viewer (row 152).
+    PLAN 015 — fox ack GO; the pushed GO turn did not land while the seat
+    was mid-turn (delivered_at stayed 04:42:26) — pane-pasted 04:47.
