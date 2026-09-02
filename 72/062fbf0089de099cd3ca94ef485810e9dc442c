@@ -1,0 +1,25 @@
+docs/plans/010-embed-cap-heal/assets/tasks/phase-1/tasks.dd.json
+  s_15d888f4b629c1::t_c9c523839fd7d8 11,31,137
+docs/plans/010-embed-cap-heal/assets/tasks/phase-1/tasks.dd.md
+  s_15d888f4b629c1::t_5ca7c83bc19aad 15
+docs/plans/011-conv-verify/assets/tasks/phase-1/tasks.dd.json
+  s_15d888f4b629c1::t_254a5d5e0a34d4 11,68,74-75,135-138,143-145,151
+docs/plans/011-conv-verify/assets/tasks/phase-1/tasks.dd.md
+  s_15d888f4b629c1::t_4050a51315eb18 15,42,77-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "72062fbf0089de099cd3ca94ef485810e9dc442c",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
