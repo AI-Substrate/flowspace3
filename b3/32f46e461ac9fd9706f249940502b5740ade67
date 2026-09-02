@@ -1,0 +1,45 @@
+crates/daemon/src/search.rs
+  s_ade38bb94ecdc9::t_e0874d57f8687b 186-193,349,354-357,404-406,417-419,436,439-441,482-486,505-509,1264,1283,1302,1317-1318,1326,1339
+docs/plans/013-search-admission/assets/tasks/phase-1/execution.log.md
+  s_15d888f4b629c1::t_806ae9d5215b63 67-82
+docs/plans/013-search-admission/assets/tasks/phase-1/tasks.dd.json
+  s_0ce02639c40511::t_2802c0c2bfb062 61,66
+docs/plans/013-search-admission/assets/tasks/phase-1/tasks.dd.md
+  s_0ce02639c40511::t_caab7841c3145b 41
+docs/plans/013-search-admission/plan.dd.json
+  s_0ce02639c40511::t_a1a53177975e04 47,59
+docs/plans/013-search-admission/plan.dd.md
+  s_0ce02639c40511::t_a773057e0d36f9 57,59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b332f46e461ac9fd9706f249940502b5740ade67",
+  "prompts": {},
+  "sessions": {
+    "s_0ce02639c40511": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b95239d-d05a-44e7-ad9d-ecc36e15c1ca",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_ade38bb94ecdc9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e4bb79ff-2226-45ab-b901-c01c9a804bdc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
