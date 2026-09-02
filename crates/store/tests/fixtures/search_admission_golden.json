@@ -1,0 +1,76 @@
+{
+  "conversation.limit_10": [
+    { "address": "conv:6ba7b810-9dad-11d1-80b4-00c04fd43017#t1", "score": 0.9992009452120508 },
+    { "address": "conv:6ba7b810-9dad-11d1-80b4-00c04fd43017#t4", "score": 0.9987523103745705 },
+    { "address": "conv:6ba7b810-9dad-11d1-80b4-00c04fd43017#t5", "score": 0.9701425001453319 }
+  ],
+  "conversation.limit_40": [
+    { "address": "conv:6ba7b810-9dad-11d1-80b4-00c04fd43017#t1", "score": 0.9992009452120508 },
+    { "address": "conv:6ba7b810-9dad-11d1-80b4-00c04fd43017#t4", "score": 0.9987523103745705 },
+    { "address": "conv:6ba7b810-9dad-11d1-80b4-00c04fd43017#t5", "score": 0.9701425001453319 }
+  ],
+  "kind.limit_10": [
+    { "address": "src/shared/raw-a.rs::shared_raw_admission", "score": 1.0 },
+    { "address": "src/foreign.rs::foreign_near_match", "score": 0.9999499954539653 },
+    { "address": "src/shared/smart-a.rs::smart_a", "score": 0.9995502884746318 },
+    { "address": "src/shared/smart-b.rs::smart_b", "score": 0.9805806936746632 }
+  ],
+  "kind.limit_40": [
+    { "address": "src/shared/raw-a.rs::shared_raw_admission", "score": 1.0 },
+    { "address": "src/foreign.rs::foreign_near_match", "score": 0.9999499954539653 },
+    { "address": "src/shared/smart-a.rs::smart_a", "score": 0.9995502884746318 },
+    { "address": "src/shared/smart-b.rs::smart_b", "score": 0.9805806936746632 }
+  ],
+  "path.limit_10": [
+    { "address": "src/shared/raw-a.rs", "score": 1.0 },
+    { "address": "src/shared/smart-a.rs", "score": 0.9995502884746318 },
+    { "address": "src/shared/smart-b.rs", "score": 0.9805806936746632 }
+  ],
+  "path.limit_40": [
+    { "address": "src/shared/raw-a.rs", "score": 1.0 },
+    { "address": "src/shared/smart-a.rs", "score": 0.9995502884746318 },
+    { "address": "src/shared/smart-b.rs", "score": 0.9805806936746632 }
+  ],
+  "repo.limit_10": [
+    { "address": "src/shared/raw-a.rs", "score": 1.0 },
+    { "address": "src/shared/smart-a.rs", "score": 0.9995502884746318 },
+    { "address": "conv:6ba7b810-9dad-11d1-80b4-00c04fd43017#t1", "score": 0.9992009452120508 },
+    { "address": "conv:6ba7b810-9dad-11d1-80b4-00c04fd43017#t4", "score": 0.9987523103745705 },
+    { "address": "src/shared/smart-b.rs", "score": 0.9805806936746632 },
+    { "address": "conv:6ba7b810-9dad-11d1-80b4-00c04fd43017#t5", "score": 0.9701425001453319 }
+  ],
+  "repo.limit_40": [
+    { "address": "src/shared/raw-a.rs", "score": 1.0 },
+    { "address": "src/shared/smart-a.rs", "score": 0.9995502884746318 },
+    { "address": "conv:6ba7b810-9dad-11d1-80b4-00c04fd43017#t1", "score": 0.9992009452120508 },
+    { "address": "conv:6ba7b810-9dad-11d1-80b4-00c04fd43017#t4", "score": 0.9987523103745705 },
+    { "address": "src/shared/smart-b.rs", "score": 0.9805806936746632 },
+    { "address": "conv:6ba7b810-9dad-11d1-80b4-00c04fd43017#t5", "score": 0.9701425001453319 }
+  ],
+  "source_raw.limit_10": [
+    { "address": "src/shared/raw-a.rs", "score": 1.0 },
+    { "address": "src/foreign.rs", "score": 0.9999499954539653 },
+    { "address": "conv:6ba7b810-9dad-11d1-80b4-00c04fd43017#t1", "score": 0.9992009452120508 },
+    { "address": "src/shared/smart-a.rs", "score": 0.995037194907719 },
+    { "address": "conv:6ba7b810-9dad-11d1-80b4-00c04fd43017#t4", "score": 0.9889363344209006 },
+    { "address": "src/shared/smart-b.rs", "score": 0.9805806936746632 },
+    { "address": "conv:6ba7b810-9dad-11d1-80b4-00c04fd43017#t5", "score": 0.9701425001453319 }
+  ],
+  "source_raw.limit_40": [
+    { "address": "src/shared/raw-a.rs", "score": 1.0 },
+    { "address": "src/foreign.rs", "score": 0.9999499954539653 },
+    { "address": "conv:6ba7b810-9dad-11d1-80b4-00c04fd43017#t1", "score": 0.9992009452120508 },
+    { "address": "src/shared/smart-a.rs", "score": 0.995037194907719 },
+    { "address": "conv:6ba7b810-9dad-11d1-80b4-00c04fd43017#t4", "score": 0.9889363344209006 },
+    { "address": "src/shared/smart-b.rs", "score": 0.9805806936746632 },
+    { "address": "conv:6ba7b810-9dad-11d1-80b4-00c04fd43017#t5", "score": 0.9701425001453319 }
+  ],
+  "source_smart.limit_10": [
+    { "address": "src/shared/smart-a.rs", "score": 0.9995502884746318 },
+    { "address": "conv:6ba7b810-9dad-11d1-80b4-00c04fd43017#t4", "score": 0.9987523103745705 }
+  ],
+  "source_smart.limit_40": [
+    { "address": "src/shared/smart-a.rs", "score": 0.9995502884746318 },
+    { "address": "conv:6ba7b810-9dad-11d1-80b4-00c04fd43017#t4", "score": 0.9987523103745705 }
+  ]
+}

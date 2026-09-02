@@ -1,0 +1,87 @@
+{
+  "dd": {
+    "schema": "pij-team/impl-guide"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "impl-guide — search-admission",
+        "plan": "docs/plans/013-search-admission/plan.dd.json",
+        "mode": "single-coder",
+        "updated": "2026-09-02"
+      }
+    },
+    {
+      "name": "architecture",
+      "value": "One query path, one bounded search page. The old candidate_vectors CTE admitted each HNSW candidate through correlated element and smart_content EXISTS probes, producing roughly one million smart-content lookups per search. The shipped query pre-resolves caller scope into raw-hash and smart-text-hash source keys, applies those cheap keys inside the HNSW scan so iterative_scan can pass nearer foreign vectors, and resolves smart payload plus deterministic element representatives once per candidate page above the LIMIT. candidate_vectors carries only source_hash, source_kind, chunk_no, and distance. Candidate and admitted counts are independent: unchanged admitted growth stops expansion; the filtered ceiling returns a short SearchPage with scan metadata rather than an outage. The daemon publishes additive scan_incomplete and passes metadata. Evidence is an EXPLAIN shape/mutation test with smart_content Actual Loops ≤ candidate_limit, paired 12,000-foreign/5-scoped geometry, no-growth and no-Err mutations, parity golden, focused suites, then production EXPLAIN and load-controlled timings."
+    },
+    {
+      "name": "fan_out",
+      "value": {
+        "decision": "NO",
+        "rationale": "One unit, one coder, no PM; o-prime coordinates directly (Jordan, 2026-09-02: dispatch the performance work to agents)."
+      }
+    },
+    {
+      "name": "units",
+      "value": [
+        {
+          "id": "u1",
+          "name": "search-admission",
+          "paths": "crates/store/src/embeddings.rs and lib.rs; crates/store/tests/**; reviewer-authorized additive clean cutover in crates/daemon/src/search.rs, crates/daemon/src/http.rs, and crates/daemon/tests/search_scope_starvation.rs; fixtures and goldens",
+          "responsibility": "admission as hash joins; no per-candidate probes; no vectors in the CTE; identical ranking",
+          "interface": "search_elements returns SearchPage { hits, passes, candidate_limit_exhausted }; daemon SearchOutcome and envelope meta add scan_incomplete and passes while existing fields keep their shape; ranking and scoring unchanged; goldens committed",
+          "test_strategy": "EXPLAIN-shape test with a one-line mutation to the old SQL; parity golden; existing suites; prod EXPLAIN + timings after bounce",
+          "depends_on": "none",
+          "wave": 1,
+          "note": "ac-0001–0003 in the worktree; ac-0004/0005 on prod with o-prime after the bounce."
+        }
+      ]
+    },
+    {
+      "name": "isolation",
+      "value": {
+        "mode": "worktree-per-coder",
+        "note": "Worktree ../fs3-search-admission on branch 013-search-admission. Per-seat CARGO_TARGET_DIR. Per-run test DBs on :5433 with your own label — seed a corpus large enough that the plan shape is real (≥50k elements) or the EXPLAIN test proves nothing. NEVER :7373 for tests; read-only prod EXPLAIN/timings are REQUIRED after the bounce. One cargo at a time; ask o-prime for the gate slot."
+      }
+    },
+    {
+      "name": "composition",
+      "value": {
+        "composer": "o-prime",
+        "steps": "None — single unit. o-prime squash-merges and bounces prod (daemon/store binary changes).",
+        "integration_proof": "the real-usage criteria in the plan, measured on prod after the bounce"
+      }
+    },
+    {
+      "name": "review",
+      "value": {
+        "when": "spawned by o-prime once the PR is up",
+        "inputs": "the three owed lists: (1) least confident — does the rewrite change WHICH candidates are admitted under each filter kind (path glob, source, conversation pin), does the semi-join dedupe candidates that the old OR-EXISTS admitted twice, is the plan shape stable when the seeded corpus is small vs prod-sized, does JIT still fire; (2) disbelieve — re-run the EXPLAIN-shape test and perform the mutation (old SQL) yourself; re-derive parity from the golden; run the prod EXPLAIN yourself read-only after the bounce; (3) known-open — rows 139/140/141/124b, zero findings.",
+        "model_override": "github-copilot/claude-opus-5 (Claude reviews; ruling 2026-09-02)"
+      }
+    },
+    {
+      "name": "risks",
+      "value": [
+        {
+          "id": "risk-1",
+          "text": "Parity golden captured from a query that is itself wrong in some edge (e.g. double-admission) would freeze the bug — the coder must state any golden row it believes is wrong at ack rather than match it"
+        },
+        {
+          "id": "risk-2",
+          "text": "A planner that still chooses a nested loop on a small seeded corpus — the shape test must seed enough rows, or assert on prod-sized stats via pg_stat"
+        },
+        {
+          "id": "risk-3",
+          "text": "Filters that were applied inside the correlated EXISTS (kind, gate_open, ddoc_schema, conversation) must be applied to the admitted set with identical semantics — enumerate each in the ack"
+        },
+        {
+          "id": "risk-4",
+          "text": "Candidate expansion: if parity requires the same under-fill behaviour, the loop stays; document the pass count for the reference query before/after"
+        }
+      ]
+    }
+  ]
+}

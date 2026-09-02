@@ -1,0 +1,139 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: rewrite admission as joins + parity",
+        "slug": "phase-1",
+        "status": "ready",
+        "summary": "One coder, tasks in order, every assertion pinned to a backpressure row."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Work top to bottom; stop-and-ask o-prime on anything outside the fence."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-0101",
+          "title": "Golden: capture the OLD query's top-N output (addresses + scores) on the fixture corpus for limit 10/40 and each filter kind; commit as a golden file + the old SQL as a string for the mutation",
+          "state": "checked",
+          "done": "#done_when/tk-0101",
+          "success": "golden committed",
+          "satisfies": [],
+          "note": "In progress: seed shared-raw-hash and shared-summary multiplicity cases before capturing old-query golden.",
+          "receipt": "PASS: cargo test -p fs3-store --test search_admission search_parity -- --nocapture (1 passed). Golden covers limits 10/40 × repo, path, raw source, smart source, kind, conversation; fixture contains raw hashes shared by 3 elements and summary hashes shared by 2 raw bodies in both code and conversation scopes. Old admission fragment saved at crates/store/tests/fixtures/search_admission_old.sql."
+        },
+        {
+          "id": "tk-0102",
+          "title": "Rewrite candidate admission: pre-resolve raw and smart scope source keys inside the HNSW scan; resolve smart payload and eligible representatives once per candidate page above the LIMIT; carry candidate/admitted counts independently; keep candidate_vectors to source_hash, source_kind, chunk_no, distance",
+          "state": "checked",
+          "done": "#done_when/tk-0102",
+          "success": "EXPLAIN shape test green; red with old SQL",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ],
+          "note": "In progress: extract the shipped SQL for private plan testing, add the prod-shaped EXPLAIN mutation check, then replace correlated admission with deduplicated one-time sets.",
+          "receipt": "PASS on separate :5434 postmaster after merging main: cargo test -p fs3-store search_plan_shape -- --nocapture. Static leg: HNSW candidate_vectors Limit first; old non-ANALYZE mutation red by correlated smart_content SubPlan + Materialize/elements. ANALYZE leg: 108.468 ms, 2,691 shared hits under SET LOCAL statement_timeout=30s and max_parallel_workers_per_gather=0. Corpus exactly 50,000 elements + 10,000 smart_content + 20,000 embeddings (10k smart + 10k raw); candidate page 160; smart loops 1; four-field target; JIT off."
+        },
+        {
+          "id": "tk-0103",
+          "title": "Parity + regression: search_parity test against the golden; existing suites",
+          "state": "checked",
+          "done": "#done_when/tk-0103",
+          "success": "all green",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002",
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ],
+          "note": "In progress: focused filter, multiplicity, chunk-collapse, candidate-expansion, store, and daemon regressions on the separate :5434 test postmaster.",
+          "receipt": "PASS on separate :5434 postmaster: search_admission 2/2 (old-query golden at 1e-6 plus 100%-foreign first-page expansion); search_plan_shape 2/2; pg_ddoc + pg_first_light + pg_store_flows 53/53; daemon conversation_query + first_light + oversize + search_empty + search_lexical + search_scope_starvation 55/55. Filter matrix, smart chooser, exact conversation pin, ddoc filters, chunk collapse, candidate expansion, and semantic-only scoped starvation unchanged."
+        },
+        {
+          "id": "tk-0104",
+          "title": "Gate + PR with the mutation and the EXPLAIN before/after in the body",
+          "state": "checked",
+          "done": "#done_when/tk-0104",
+          "success": "PR open, CI green",
+          "satisfies": [],
+          "note": "In progress: request exclusive harness-checks slot, gate, commit final changes, open PR, and await CI.",
+          "receipt": "DELTA APPROVED at b332f46; final diagnosis patch ready: completed candidate scans no longer set scan_incomplete; bound case still does. Agent envelope publishes only scan_incomplete + passes; candidate_limit_exhausted remains internal. Plan prose says resolution once per page and explicitly asserts smart_content loops ≤ candidate_limit. Unit/HTTP assertions updated. Previous option-B receipts: paired 12k/5 Ok five hits pass1; no-growth empty/exhausted/pass2; growth/no-Err/JIT mutations RED; shape 7.322 ms/3,113 hits/159 loops; store 3+5+53, daemon 56, clippy green. Await final exact-SHA CI."
+        },
+        {
+          "id": "tk-0105",
+          "title": "After o-prime's bounce: prod EXPLAIN + the wall-time runs; receipts into the ACs",
+          "state": "unchecked",
+          "done": "#done_when/tk-0105",
+          "success": "ac-0004/0005 receipts",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004",
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {
+        "tk-0101": [
+          {
+            "id": "dw-30d1",
+            "assertion": "golden file exists and the parity test reads it",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          }
+        ],
+        "tk-0102": [
+          {
+            "id": "dw-30d2",
+            "assertion": "loops ≤ candidate_limit; no Materialize/SeqScan(elements) node; mutation red",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          }
+        ],
+        "tk-0103": [
+          {
+            "id": "dw-30d3",
+            "assertion": "top-N addresses/scores match within 1e-6",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          },
+          {
+            "id": "dw-30d4",
+            "assertion": "store + daemon suites unchanged",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          }
+        ],
+        "tk-0104": [
+          {
+            "id": "dw-30d5",
+            "assertion": "harness checks green; CI green",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0006"
+          }
+        ],
+        "tk-0105": [
+          {
+            "id": "dw-30d6",
+            "assertion": "prod plan: loops, hits, time",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+          },
+          {
+            "id": "dw-30d7",
+            "assertion": "three bare-search timings + the two 60 s queries",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+          }
+        ]
+      }
+    }
+  ]
+}

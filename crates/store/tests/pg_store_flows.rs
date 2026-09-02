@@ -915,7 +915,8 @@ async fn a_whale_beyond_the_initial_candidate_cap_cannot_crowd_out_other_element
         },
     )
     .await
-    .expect("search chunks");
+    .expect("search chunks")
+    .hits;
 
     assert_eq!(hits.len(), 3, "LIMIT 3 means three elements, not vectors");
     let addresses = hits
@@ -973,7 +974,8 @@ async fn a_tail_chunk_is_retrievable_while_a_prefix_only_control_is_not() {
         },
     )
     .await
-    .expect("search tail anchor");
+    .expect("search tail anchor")
+    .hits;
 
     assert_eq!(hits.len(), 1, "the prefix-only control must not match");
     assert_eq!(hits[0].similar.element.address, file.children[0].address);
@@ -1194,7 +1196,8 @@ async fn the_filtered_search_surface_carries_extras_and_a_live_path() {
         },
     )
     .await
-    .expect("search");
+    .expect("search")
+    .hits;
 
     let hit = hits.first().expect("the summary vector is an exact match");
     assert_eq!(

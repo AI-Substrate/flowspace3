@@ -47,14 +47,29 @@ pub const EMBEDDING_DIMENSIONS: usize = 1024;
 /// ignores it instead of taking search down.
 const ITERATIVE_SCAN: &str = "SET LOCAL hnsw.iterative_scan = strict_order";
 
+/// The admission plan's conservative cost estimate used to trigger roughly
+/// 281 ms of JIT compilation for a query whose HNSW work took 12 ms. This
+/// statement is latency-sensitive and bounded by [`candidate_limit`], so JIT's
+/// startup cost cannot amortize before the query returns.
+const DISABLE_SEARCH_JIT: &str = "SET LOCAL jit = off";
+
+async fn configure_search_transaction(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+) -> Result<(), StoreError> {
+    sqlx::query(ITERATIVE_SCAN).execute(&mut **tx).await?;
+    sqlx::query(DISABLE_SEARCH_JIT).execute(&mut **tx).await?;
+    Ok(())
+}
+
 /// Start with enough vectors for ordinary two- or three-chunk elements while
 /// keeping the common ANN scan small.
 const INITIAL_CANDIDATE_MULTIPLIER: i64 = 4;
 /// Double only when the current candidate page is full and still under-fills
 /// the requested number of distinct elements.
 const CANDIDATE_GROWTH_FACTOR: i64 = 2;
-/// Refuse rather than return a silently under-filled page after eight retries.
-/// At the largest page a limit of ten examines at most 10,240 vectors.
+/// Bound both search paths after eight retries. The unfiltered
+/// [`query_embeddings`] path refuses an unreachable under-fill; filtered
+/// [`search_elements`] returns a short page with explicit scan metadata.
 const MAX_CANDIDATE_EXPANSIONS: usize = 8;
 
 fn candidate_count(rows: &[sqlx::postgres::PgRow]) -> Result<i64, StoreError> {
@@ -63,6 +78,35 @@ fn candidate_count(rows: &[sqlx::postgres::PgRow]) -> Result<i64, StoreError> {
         .transpose()
         .map(|count| count.unwrap_or(0))
         .map_err(StoreError::from)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ExpansionDecision {
+    Continue,
+    Return { scan_incomplete: bool },
+}
+
+fn expansion_decision(
+    hit_count: i64,
+    requested: i64,
+    scanned: i64,
+    candidate_limit: i64,
+    admitted: i64,
+    previous_admitted: Option<i64>,
+    expansion: usize,
+) -> ExpansionDecision {
+    let admitted_stalled = previous_admitted == Some(admitted);
+    let candidate_scan_exhausted = scanned < candidate_limit;
+    let expansion_exhausted = admitted_stalled || expansion == MAX_CANDIDATE_EXPANSIONS;
+    if hit_count >= requested || candidate_scan_exhausted || expansion_exhausted {
+        ExpansionDecision::Return {
+            scan_incomplete: hit_count < requested
+                && expansion_exhausted
+                && !candidate_scan_exhausted,
+        }
+    } else {
+        ExpansionDecision::Continue
+    }
 }
 
 fn candidate_limit_exhausted(limit: i64) -> StoreError {
@@ -490,48 +534,277 @@ pub struct SearchHit {
     /// A live path holding the blob, relative to its worktree root.
     pub path: Option<String>,
 }
+/// One completed search page and how the bounded expansion reached it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SearchPage {
+    /// Caller-visible hits, nearest first.
+    pub hits: Vec<SearchHit>,
+    /// Number of SQL candidate pages examined.
+    pub passes: usize,
+    /// The scan returned a short page because admitted candidates stopped
+    /// growing or the configured expansion ceiling was reached.
+    pub candidate_limit_exhausted: bool,
+}
+
+fn page_from_rows(
+    rows: &[sqlx::postgres::PgRow],
+    passes: usize,
+    candidate_limit_exhausted: bool,
+) -> Result<SearchPage, StoreError> {
+    let hits = rows
+        .iter()
+        .map(|row| {
+            if row.try_get::<Option<i64>, _>("element_id")?.is_none() {
+                return Ok(None);
+            }
+            Ok(Some(SearchHit {
+                similar: similar_from_row(row)?,
+                identity: row.try_get("identity")?,
+                root_path: row.try_get("root_path")?,
+                path: row.try_get("path")?,
+            }))
+        })
+        .filter_map(Result::transpose)
+        .collect::<Result<Vec<_>, StoreError>>()?;
+    Ok(SearchPage {
+        hits,
+        passes,
+        candidate_limit_exhausted,
+    })
+}
+
+#[cfg(test)]
+const ADMISSION_JOIN_SQL: &str = r#"JOIN page_admitted_sources admitted
+        ON admitted.source_hash = candidate.source_hash
+       AND admitted.source_kind = candidate.source_kind"#;
+
+const SEARCH_ELEMENTS_SQL: &str = r#"WITH scope_blobs AS MATERIALIZED (
+    SELECT f.blob_sha
+      FROM worktree_files f
+      JOIN worktrees w ON w.id = f.worktree_id
+      JOIN repos r     ON r.id = w.repo_id
+     WHERE ($6::text IS NOT NULL OR $7::text IS NOT NULL OR $9::text IS NOT NULL)
+       AND ($6::text IS NULL OR r.identity = $6)
+       AND ($7::text IS NULL OR f.path LIKE $7)
+       AND ($9::text IS NULL OR w.root_path = $9)
+    UNION
+    SELECT t.blob_sha
+      FROM turns t
+      JOIN conversations c ON c.guid = t.conversation_id
+     WHERE ($6::text IS NOT NULL OR $7::text IS NOT NULL
+            OR $9::text IS NOT NULL OR $13::text IS NOT NULL)
+       AND ($6::text IS NULL OR c.repo_identity = $6)
+       AND ($7::text IS NULL OR c.worktree LIKE $7)
+       AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)
+       AND ($13::text IS NULL OR c.guid = $13::uuid)
+),
+scope_representatives AS MATERIALIZED (
+    SELECT DISTINCT scoped.raw_hash
+      FROM elements scoped
+      JOIN scope_blobs scope ON scope.blob_sha = scoped.blob_sha
+     WHERE ($13::text IS NULL OR strpos(scoped.address, 'conv:' || $13 || '#t') = 1)
+),
+admitted_sources AS MATERIALIZED (
+    SELECT raw_hash AS source_hash, 'raw'::text AS source_kind
+      FROM scope_representatives
+    UNION
+    SELECT smart.text_hash AS source_hash, 'smart'::text AS source_kind
+      FROM smart_content smart
+      JOIN scope_representatives scoped ON scoped.raw_hash = smart.raw_hash
+),
+candidate_vectors AS MATERIALIZED (
+    SELECT e.source_hash, e.source_kind, e.chunk_no,
+           e.vector <=> $1 AS distance
+      FROM embeddings_1024 e
+     WHERE e.model_key = $2
+       AND ($4::text IS NULL OR e.source_kind = $4)
+       AND ($5::float8 IS NULL OR (e.vector <=> $1) <= $5)
+       AND (($6::text IS NULL AND $7::text IS NULL
+             AND $9::text IS NULL AND $13::text IS NULL)
+            OR (e.source_kind = 'raw' AND e.source_hash IN (
+                 SELECT source_hash FROM admitted_sources WHERE source_kind = 'raw'))
+            OR (e.source_kind = 'smart' AND e.source_hash IN (
+                 SELECT source_hash FROM admitted_sources WHERE source_kind = 'smart')))
+     ORDER BY e.vector <=> $1
+     LIMIT $14
+),
+candidate_meta AS (
+    SELECT count(*)::bigint AS candidate_count
+      FROM candidate_vectors
+),
+candidate_raw_hashes AS MATERIALIZED (
+    SELECT source_hash AS raw_hash
+      FROM candidate_vectors
+     WHERE source_kind = 'raw'
+    UNION
+    SELECT smart.raw_hash
+      FROM candidate_vectors candidate
+      JOIN smart_content smart ON smart.text_hash = candidate.source_hash
+     WHERE candidate.source_kind = 'smart'
+),
+admitted_elements AS MATERIALIZED (
+    SELECT admitted.id, admitted.raw_hash
+      FROM elements admitted
+      JOIN candidate_raw_hashes page ON page.raw_hash = admitted.raw_hash
+     WHERE ($8::text[] IS NULL OR admitted.kind = ANY($8))
+       AND ($10::text[] IS NULL OR admitted.ddoc->>'id_kind' = ANY($10))
+       AND ($11::boolean IS NULL
+            OR (CASE
+                  WHEN jsonb_typeof(admitted.ddoc->'derived_state') = 'object'
+                  THEN (admitted.ddoc->'derived_state'->>'complete')::boolean
+                  ELSE (admitted.ddoc->>'gate_terminal')::boolean
+                END IS NOT NULL
+                AND CASE
+                  WHEN jsonb_typeof(admitted.ddoc->'derived_state') = 'object'
+                  THEN (admitted.ddoc->'derived_state'->>'complete')::boolean
+                  ELSE (admitted.ddoc->>'gate_terminal')::boolean
+                END = NOT $11))
+       AND ($12::text IS NULL OR admitted.ddoc->>'schema' = $12)
+       AND ($13::text IS NULL OR strpos(admitted.address, 'conv:' || $13 || '#t') = 1)
+       AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
+            OR EXISTS (
+                 SELECT 1
+                   FROM worktree_files f
+                   JOIN worktrees w ON w.id = f.worktree_id
+                   JOIN repos r     ON r.id = w.repo_id
+                  WHERE f.blob_sha = admitted.blob_sha
+                    AND ($6::text IS NULL OR r.identity = $6)
+                    AND ($7::text IS NULL OR f.path LIKE $7)
+                    AND ($9::text IS NULL OR w.root_path = $9))
+            OR EXISTS (
+                 SELECT 1
+                   FROM turns t
+                   JOIN conversations c ON c.guid = t.conversation_id
+                  WHERE t.blob_sha = admitted.blob_sha
+                    AND ($6::text IS NULL OR c.repo_identity = $6)
+                    AND ($7::text IS NULL OR c.worktree LIKE $7)
+                    AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)))
+),
+admitted_representatives AS MATERIALIZED (
+    SELECT DISTINCT ON (raw_hash) id, raw_hash
+      FROM admitted_elements
+     ORDER BY raw_hash, id
+),
+smart_map AS MATERIALIZED (
+    SELECT smart.raw_hash, smart.model_key, smart.text,
+           smart.text_hash, smart.tags, smart.extras, smart.created_at
+      FROM smart_content smart
+      JOIN candidate_vectors candidate
+        ON candidate.source_kind = 'smart' AND candidate.source_hash = smart.text_hash
+      JOIN admitted_representatives admitted ON admitted.raw_hash = smart.raw_hash
+),
+smart_representatives AS MATERIALIZED (
+    SELECT DISTINCT ON (text_hash) raw_hash, text_hash, text, tags, extras
+      FROM smart_map
+     ORDER BY text_hash, created_at, model_key, raw_hash
+),
+page_admitted_sources AS MATERIALIZED (
+    SELECT raw_hash AS source_hash, 'raw'::text AS source_kind
+      FROM admitted_representatives
+    UNION
+    SELECT text_hash AS source_hash, 'smart'::text AS source_kind
+      FROM smart_representatives
+),
+admitted_candidates AS MATERIALIZED (
+    SELECT candidate.*
+      FROM candidate_vectors candidate
+      JOIN page_admitted_sources admitted
+        ON admitted.source_hash = candidate.source_hash
+       AND admitted.source_kind = candidate.source_kind
+),
+admitted_meta AS (
+    SELECT count(*)::bigint AS admitted_count
+      FROM admitted_candidates
+),
+resolved AS (
+    SELECT c.source_hash, c.source_kind, c.chunk_no, c.distance,
+           s.text, s.tags, s.extras,
+           e.id AS element_id,
+           e.blob_sha, e.parser_version, e.kind, e.subkind, e.name,
+           e.address, e.span_start, e.span_end, e.sibling_order,
+           e.raw_text, e.ddoc
+      FROM admitted_candidates c
+      LEFT JOIN smart_representatives s
+        ON c.source_kind = 'smart' AND s.text_hash = c.source_hash
+      JOIN admitted_representatives admitted
+        ON admitted.raw_hash = COALESCE(s.raw_hash, c.source_hash)
+      JOIN elements e ON e.id = admitted.id
+),
+nearest AS (
+    SELECT DISTINCT ON (element_id) *
+      FROM resolved
+     ORDER BY element_id, distance, source_kind, source_hash, chunk_no
+),
+final_hits AS (
+    SELECT n.element_id, n.source_kind, n.distance,
+           n.text, n.tags, n.extras,
+           n.blob_sha, n.parser_version, n.kind, n.subkind, n.name,
+           n.address, n.span_start, n.span_end, n.sibling_order, n.raw_text,
+           n.ddoc,
+           COALESCE(live.identity, anchored.identity) AS identity,
+           COALESCE(live.root_path, anchored.root_path) AS root_path,
+           live.path
+      FROM nearest n
+      LEFT JOIN LATERAL (
+           SELECT r.identity, w.root_path, f.path
+             FROM worktree_files f
+             JOIN worktrees w ON w.id = f.worktree_id
+             JOIN repos r     ON r.id = w.repo_id
+            WHERE f.blob_sha = n.blob_sha
+              AND ($6::text IS NULL OR r.identity = $6)
+              AND ($7::text IS NULL OR f.path LIKE $7)
+              AND ($9::text IS NULL OR w.root_path = $9)
+            ORDER BY r.identity, w.root_path, f.path
+            LIMIT 1
+      ) live ON TRUE
+      LEFT JOIN LATERAL (
+           SELECT c.repo_identity AS identity, c.worktree AS root_path
+             FROM turns t
+             JOIN conversations c ON c.guid = t.conversation_id
+            WHERE t.blob_sha = n.blob_sha
+              AND ($6::text IS NULL OR c.repo_identity = $6)
+              AND ($7::text IS NULL OR c.worktree LIKE $7)
+              AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)
+              AND ($13::text IS NULL OR c.guid = $13::uuid)
+            ORDER BY c.repo_identity, c.worktree
+            LIMIT 1
+      ) anchored ON TRUE
+     ORDER BY n.distance, n.element_id
+     LIMIT $3
+)
+SELECT h.source_kind, h.distance,
+       h.text, h.tags, h.extras,
+       h.blob_sha, h.parser_version, h.kind, h.subkind, h.name,
+       h.address, h.span_start, h.span_end, h.sibling_order, h.raw_text,
+       h.ddoc, h.identity, h.root_path, h.path,
+       candidate.candidate_count, admitted.admitted_count, h.element_id
+  FROM candidate_meta candidate
+  CROSS JOIN admitted_meta admitted
+  LEFT JOIN final_hits h ON TRUE
+ ORDER BY h.distance, h.element_id"#;
 
 /// The `limit` nearest elements to `query`, narrowed by `filters`, nearest first.
 ///
-/// The filtered sibling of [`query_embeddings`], and the shape is the whole
-/// point: the ref-layer join lives INSIDE the CTE as an `EXISTS` predicate, so
-/// Postgres can still answer `ORDER BY vector <=> $1 LIMIT n` from the HNSW
-/// index while excluding vectors no live path holds. Joining first and sorting
-/// after — the obvious way to write it — reads every row in the table and turns
-/// a millisecond query into a table scan.
+/// Scope source keys are resolved once and applied inside the ordered HNSW scan,
+/// so iterative scan can pass nearer foreign vectors without probing
+/// `smart_content` per candidate. Full smart-content and element resolution is
+/// bounded to the resulting candidate page.
 ///
-/// The `<=>` operator is not interchangeable here: `embeddings_1024`'s index is
-/// built for `vector_cosine_ops`, and a query written with `<->` gets a
-/// sequential scan with no error to notice.
-///
-/// # Why this runs in a transaction
-///
-/// Keeping the filters inside the CTE buys the index scan, and it costs
-/// something that has to be paid for explicitly: an HNSW scan yields at most
-/// `hnsw.ef_search` candidates, and every predicate above is applied to THAT
-/// handful rather than to the index. A selective anchor — one small repository
-/// inside an index holding several — can therefore delete every candidate and
-/// leave the CTE empty while thousands of matching vectors sit one hop
-/// further out. Nothing surfaces: no error, no warning, just an answer that is
-/// short or absent, and `--min-score` cannot be blamed because the floor never
-/// gets a row to reject. Measured on a four-repository index where the
-/// searched repository held 9.5% of the vectors, twelve ordinary questions
-/// asked for ten hits each and were answered with 19 of 120.
-///
-/// [`ITERATIVE_SCAN`] is the remedy pgvector 0.8 added for exactly this: keep
-/// pulling batches until the `LIMIT` is satisfied or the scan budget runs out.
-/// The same twelve questions then return 120 of 120.
+/// Candidate expansion is deliberately bounded. A short page is successful:
+/// [`SearchPage::candidate_limit_exhausted`] distinguishes admitted-candidate
+/// stagnation or the ceiling from ordinary index exhaustion without turning a
+/// diagnostic search into an outage.
 ///
 /// # Errors
 /// [`StoreError::Dimensions`] when `query` is the wrong width;
-/// [`StoreError::Query`] on failure; [`StoreError::Corrupt`] when a row carries
-/// an unknown kind.
+/// [`StoreError::Query`] on database failure; [`StoreError::Corrupt`] when a row
+/// carries an unknown kind.
 pub async fn search_elements(
     pool: &PgPool,
     model_key: &str,
     query: &[f32],
     filters: &SearchFilters,
-) -> Result<Vec<SearchHit>, StoreError> {
+) -> Result<SearchPage, StoreError> {
     if query.len() != EMBEDDING_DIMENSIONS {
         return Err(StoreError::Dimensions {
             expected: EMBEDDING_DIMENSIONS,
@@ -540,289 +813,70 @@ pub async fn search_elements(
     }
 
     let mut tx = pool.begin().await?;
-    sqlx::query(ITERATIVE_SCAN).execute(&mut *tx).await?;
+    configure_search_transaction(&mut tx).await?;
 
-    // Every filter is bound unconditionally with a NULL-means-any guard, so
-    // there is ONE statement text whatever the caller asked for. A query built
-    // by string concatenation would have a different plan per flag combination
-    // and could not be read as a single thing.
-    // Bind map: $1 vector, $2 model, $3 element limit, $4 source, $5 distance,
-    // $6 repo, $7 path, $8 kinds, $9 worktree, $10 id_kinds,
-    // $11 gate_open, $12 ddoc_schema, $13 conversation, $14 vector candidate
-    // limit. Keep SQL and binds in this order: these types overlap, so a shifted
-    // parameter can compile and answer incorrectly.
+    // One statement text for every filter combination. Bind map: $1 vector,
+    // $2 model, $3 element limit, $4 source, $5 distance, $6 repo, $7 path,
+    // $8 kinds, $9 worktree, $10 id_kinds, $11 gate_open, $12 ddoc_schema,
+    // $13 conversation, $14 vector candidate limit.
     let mut candidate_limit = filters.limit.saturating_mul(INITIAL_CANDIDATE_MULTIPLIER);
+    let mut previous_admitted = None;
     for expansion in 0..=MAX_CANDIDATE_EXPANSIONS {
-        let rows = sqlx::query(
-            "WITH candidate_vectors AS MATERIALIZED (
-                 SELECT source_hash, source_kind, chunk_no,
-                        vector <=> $1 AS distance
-                   FROM embeddings_1024 e
-                  WHERE model_key = $2
-                    AND ($4::text IS NULL OR source_kind = $4)
-                    AND ($5::float8 IS NULL OR (vector <=> $1) <= $5)
-                    -- Admission asks whether ANY eligible element carries the
-                    -- vector source; it does not choose a smart raw_hash. Choosing
-                    -- here with LIMIT 1 used to let an unordered foreign mapping
-                    -- erase a valid caller-held smart hit before ranking.
-                    AND EXISTS (
-                         SELECT 1
-                           FROM elements admitted
-                          WHERE (
-                                (e.source_kind = 'raw' AND admitted.raw_hash = e.source_hash)
-                                OR (e.source_kind = 'smart' AND EXISTS (
-                                     SELECT 1
-                                       FROM smart_content candidate
-                                      WHERE candidate.text_hash = e.source_hash
-                                        AND candidate.raw_hash = admitted.raw_hash)))
-                            AND ($8::text[] IS NULL OR admitted.kind = ANY($8))
-                            -- Every ddoc classification must belong to this SAME
-                            -- admitted element; raw hashes are shared deliberately.
-                            AND ($10::text[] IS NULL
-                                 OR admitted.ddoc->>'id_kind' = ANY($10))
-                            AND ($11::boolean IS NULL
-                                 OR (CASE
-                                       WHEN jsonb_typeof(admitted.ddoc->'derived_state') = 'object'
-                                       THEN (admitted.ddoc->'derived_state'->>'complete')::boolean
-                                       ELSE (admitted.ddoc->>'gate_terminal')::boolean
-                                     END IS NOT NULL
-                                     AND CASE
-                                       WHEN jsonb_typeof(admitted.ddoc->'derived_state') = 'object'
-                                       THEN (admitted.ddoc->'derived_state'->>'complete')::boolean
-                                       ELSE (admitted.ddoc->>'gate_terminal')::boolean
-                                     END = NOT $11))
-                            AND ($12::text IS NULL
-                                 OR admitted.ddoc->>'schema' = $12)
-                            AND ($13::text IS NULL
-                                 OR strpos(admitted.address, 'conv:' || $13 || '#t') = 1)
-                            -- The caller worktree belongs here, before LIMIT:
-                            -- filtering a ranked page afterwards both under-fills
-                            -- it and can leak a foreign version beyond the cap.
-                            AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
-                                 OR EXISTS (
-                                      SELECT 1
-                                        FROM worktree_files f
-                                        JOIN worktrees w ON w.id = f.worktree_id
-                                        JOIN repos r     ON r.id = w.repo_id
-                                       WHERE f.blob_sha = admitted.blob_sha
-                                         AND ($6::text IS NULL OR r.identity = $6)
-                                         AND ($7::text IS NULL OR f.path LIKE $7)
-                                         AND ($9::text IS NULL OR w.root_path = $9))
-                                 OR EXISTS (
-                                      SELECT 1
-                                        FROM turns t
-                                        JOIN conversations c ON c.guid = t.conversation_id
-                                       WHERE t.blob_sha = admitted.blob_sha
-                                         AND ($6::text IS NULL OR c.repo_identity = $6)
-                                         AND ($7::text IS NULL OR c.worktree LIKE $7)
-                                         AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9))))
-                  ORDER BY vector <=> $1
-                  LIMIT $14
-             ),
-             candidate_meta AS (
-                 SELECT count(*)::bigint AS candidate_count
-                   FROM candidate_vectors
-             ),
-             resolved AS (
-                 SELECT c.source_hash, c.source_kind, c.chunk_no, c.distance,
-                        s.text, s.tags, s.extras,
-                        e.id AS element_id,
-                        e.blob_sha, e.parser_version, e.kind, e.subkind, e.name,
-                        e.address, e.span_start, e.span_end, e.sibling_order,
-                        e.raw_text, e.ddoc
-                   FROM candidate_vectors c
-                   LEFT JOIN LATERAL (
-                        SELECT sc.raw_hash, sc.text, sc.tags, sc.extras
-                          FROM smart_content sc
-                         WHERE c.source_kind = 'smart' AND sc.text_hash = c.source_hash
-                           -- A shared summary text_hash can describe different raw
-                           -- bodies. This is the chooser, so it repeats every caller
-                           -- filter and orders all ties; otherwise a foreign oldest
-                           -- mapping silently removes a valid caller smart hit.
-                           AND EXISTS (
-                                SELECT 1
-                                  FROM elements choice
-                                 WHERE choice.raw_hash = sc.raw_hash
-                                   AND ($8::text[] IS NULL OR choice.kind = ANY($8))
-                                   AND ($10::text[] IS NULL
-                                        OR choice.ddoc->>'id_kind' = ANY($10))
-                                   AND ($11::boolean IS NULL
-                                        OR (CASE
-                                              WHEN jsonb_typeof(choice.ddoc->'derived_state') = 'object'
-                                              THEN (choice.ddoc->'derived_state'->>'complete')::boolean
-                                              ELSE (choice.ddoc->>'gate_terminal')::boolean
-                                            END IS NOT NULL
-                                            AND CASE
-                                              WHEN jsonb_typeof(choice.ddoc->'derived_state') = 'object'
-                                              THEN (choice.ddoc->'derived_state'->>'complete')::boolean
-                                              ELSE (choice.ddoc->>'gate_terminal')::boolean
-                                            END = NOT $11))
-                                   AND ($12::text IS NULL
-                                        OR choice.ddoc->>'schema' = $12)
-                                   AND ($13::text IS NULL
-                                        OR strpos(choice.address, 'conv:' || $13 || '#t') = 1)
-                                   AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
-                                        OR EXISTS (
-                                             SELECT 1
-                                               FROM worktree_files f
-                                               JOIN worktrees w ON w.id = f.worktree_id
-                                               JOIN repos r     ON r.id = w.repo_id
-                                              WHERE f.blob_sha = choice.blob_sha
-                                                AND ($6::text IS NULL OR r.identity = $6)
-                                                AND ($7::text IS NULL OR f.path LIKE $7)
-                                                AND ($9::text IS NULL OR w.root_path = $9))
-                                        OR EXISTS (
-                                             SELECT 1
-                                               FROM turns t
-                                               JOIN conversations c ON c.guid = t.conversation_id
-                                              WHERE t.blob_sha = choice.blob_sha
-                                                AND ($6::text IS NULL OR c.repo_identity = $6)
-                                                AND ($7::text IS NULL OR c.worktree LIKE $7)
-                                                AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9))))
-                         ORDER BY sc.created_at, sc.model_key, sc.raw_hash
-                         LIMIT 1
-                   ) s ON TRUE
-                   JOIN LATERAL (
-                        SELECT el.id, el.blob_sha, el.parser_version,
-                               el.kind, el.subkind, el.name, el.address,
-                               el.span_start, el.span_end, el.sibling_order,
-                               el.raw_text, el.ddoc
-                          FROM elements el
-                         WHERE el.raw_hash = COALESCE(s.raw_hash, c.source_hash)
-                           -- The resolver repeats every element gate: a shared hash
-                           -- must not resolve to the lowest-id row of another kind or
-                           -- another ddoc classification.
-                           AND ($8::text[] IS NULL OR el.kind = ANY($8))
-                           AND ($10::text[] IS NULL OR el.ddoc->>'id_kind' = ANY($10))
-                           AND ($11::boolean IS NULL
-                                OR (CASE
-                                      WHEN jsonb_typeof(el.ddoc->'derived_state') = 'object'
-                                      THEN (el.ddoc->'derived_state'->>'complete')::boolean
-                                      ELSE (el.ddoc->>'gate_terminal')::boolean
-                                    END IS NOT NULL
-                                    AND CASE
-                                      WHEN jsonb_typeof(el.ddoc->'derived_state') = 'object'
-                                      THEN (el.ddoc->'derived_state'->>'complete')::boolean
-                                      ELSE (el.ddoc->>'gate_terminal')::boolean
-                                    END = NOT $11))
-                           AND ($12::text IS NULL OR el.ddoc->>'schema' = $12)
-                           AND ($13::text IS NULL
-                                OR strpos(el.address, 'conv:' || $13 || '#t') = 1)
-                           -- The candidate gate above proves that SOME element with
-                           -- this raw hash is anchored in the caller scope. Without
-                           -- repeating that anchor here, the global lowest-id element
-                           -- may come from a foreign blob; the LEFT JOIN provenance
-                           -- lookups then return nulls and detach the hit from its repo.
-                           -- Scoping the representative also makes shared content
-                           -- report the caller's own path and address.
-                           AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
-                                OR EXISTS (
-                                     SELECT 1
-                                       FROM worktree_files f
-                                       JOIN worktrees w ON w.id = f.worktree_id
-                                       JOIN repos r     ON r.id = w.repo_id
-                                      WHERE f.blob_sha = el.blob_sha
-                                        AND ($6::text IS NULL OR r.identity = $6)
-                                        AND ($7::text IS NULL OR f.path LIKE $7)
-                                        AND ($9::text IS NULL OR w.root_path = $9))
-                                OR EXISTS (
-                                     SELECT 1
-                                       FROM turns t
-                                       JOIN conversations c ON c.guid = t.conversation_id
-                                      WHERE t.blob_sha = el.blob_sha
-                                        AND ($6::text IS NULL OR c.repo_identity = $6)
-                                        AND ($7::text IS NULL OR c.worktree LIKE $7)
-                                        AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)))
-                         ORDER BY el.id
-                         LIMIT 1
-                   ) e ON TRUE
-             ),
-             nearest AS (
-                 SELECT DISTINCT ON (element_id) *
-                   FROM resolved
-                  ORDER BY element_id, distance, source_kind, source_hash, chunk_no
-             )
-             SELECT n.source_kind, n.distance,
-                    n.text, n.tags, n.extras,
-                    n.blob_sha, n.parser_version, n.kind, n.subkind, n.name,
-                    n.address, n.span_start, n.span_end, n.sibling_order, n.raw_text,
-                    n.ddoc,
-                    COALESCE(live.identity, anchored.identity) AS identity,
-                    COALESCE(live.root_path, anchored.root_path) AS root_path,
-                    live.path, m.candidate_count
-               FROM nearest n
-               CROSS JOIN candidate_meta m
-               LEFT JOIN LATERAL (
-                    SELECT r.identity, w.root_path, f.path
-                      FROM worktree_files f
-                      JOIN worktrees w ON w.id = f.worktree_id
-                      JOIN repos r     ON r.id = w.repo_id
-                     WHERE f.blob_sha = n.blob_sha
-                       AND ($6::text IS NULL OR r.identity = $6)
-                       AND ($7::text IS NULL OR f.path LIKE $7)
-                       AND ($9::text IS NULL OR w.root_path = $9)
-                     ORDER BY r.identity, w.root_path, f.path
-                     LIMIT 1
-               ) live ON TRUE
-               LEFT JOIN LATERAL (
-                    SELECT c.repo_identity AS identity, c.worktree AS root_path
-                      FROM turns t
-                      JOIN conversations c ON c.guid = t.conversation_id
-                     WHERE t.blob_sha = n.blob_sha
-                       AND ($6::text IS NULL OR c.repo_identity = $6)
-                       AND ($7::text IS NULL OR c.worktree LIKE $7)
-                       AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)
-                       AND ($13::text IS NULL OR c.guid = $13::uuid)
-                     ORDER BY c.repo_identity, c.worktree
-                     LIMIT 1
-               ) anchored ON TRUE
-              ORDER BY n.distance, n.element_id
-              LIMIT $3",
-        )
-        .bind(Vector::from(query.to_vec()))
-        .bind(model_key)
-        .bind(filters.limit)
-        .bind(filters.source.map(SourceKind::as_str))
-        .bind(filters.max_distance)
-        .bind(filters.repo.as_deref())
-        .bind(filters.path.as_deref())
-        .bind(
-            filters
-                .kinds
-                .as_ref()
-                .map(|kinds| kinds.iter().map(|kind| kind.as_str()).collect::<Vec<_>>()),
-        )
-        .bind(filters.worktree.as_deref())
-        .bind(filters.id_kinds.as_deref())
-        .bind(filters.gate_open)
-        .bind(filters.ddoc_schema.as_deref())
-        .bind(filters.conversation.as_deref())
-        .bind(candidate_limit)
-        .fetch_all(&mut *tx)
-        .await?;
+        let rows = sqlx::query(SEARCH_ELEMENTS_SQL)
+            .bind(Vector::from(query.to_vec()))
+            .bind(model_key)
+            .bind(filters.limit)
+            .bind(filters.source.map(SourceKind::as_str))
+            .bind(filters.max_distance)
+            .bind(filters.repo.as_deref())
+            .bind(filters.path.as_deref())
+            .bind(
+                filters
+                    .kinds
+                    .as_ref()
+                    .map(|kinds| kinds.iter().map(|kind| kind.as_str()).collect::<Vec<_>>()),
+            )
+            .bind(filters.worktree.as_deref())
+            .bind(filters.id_kinds.as_deref())
+            .bind(filters.gate_open)
+            .bind(filters.ddoc_schema.as_deref())
+            .bind(filters.conversation.as_deref())
+            .bind(candidate_limit)
+            .fetch_all(&mut *tx)
+            .await?;
 
         let scanned = candidate_count(&rows)?;
-        if rows.len() as i64 >= filters.limit || scanned < candidate_limit {
-            tx.commit().await?;
-            return rows
-                .iter()
-                .map(|row| {
-                    Ok(SearchHit {
-                        similar: similar_from_row(row)?,
-                        identity: row.try_get("identity")?,
-                        root_path: row.try_get("root_path")?,
-                        path: row.try_get("path")?,
-                    })
-                })
-                .collect();
+        let admitted: i64 = rows
+            .first()
+            .map(|row| row.try_get("admitted_count"))
+            .transpose()?
+            .unwrap_or(0);
+        let hit_count = rows.iter().try_fold(0_i64, |count, row| {
+            row.try_get::<Option<i64>, _>("element_id")
+                .map(|element_id| count + i64::from(element_id.is_some()))
+                .map_err(StoreError::from)
+        })?;
+        let passes = expansion + 1;
+        match expansion_decision(
+            hit_count,
+            filters.limit,
+            scanned,
+            candidate_limit,
+            admitted,
+            previous_admitted,
+            expansion,
+        ) {
+            ExpansionDecision::Return { scan_incomplete } => {
+                tx.commit().await?;
+                return page_from_rows(&rows, passes, scan_incomplete);
+            }
+            ExpansionDecision::Continue => {}
         }
-        if expansion == MAX_CANDIDATE_EXPANSIONS {
-            return Err(candidate_limit_exhausted(filters.limit));
-        }
+        previous_admitted = Some(admitted);
         candidate_limit = candidate_limit.saturating_mul(CANDIDATE_GROWTH_FACTOR);
     }
 
-    unreachable!("candidate expansion loop returns or refuses at its bound")
+    unreachable!("bounded candidate expansion returns on its final pass")
 }
 
 /// Does `model_key` hold reachable content in `scope`?
@@ -977,5 +1031,486 @@ mod tests {
             assert_eq!(SourceKind::from_str(kind.as_str()).unwrap(), kind);
         }
         assert!(SourceKind::from_str("summary").is_err());
+    }
+
+    #[test]
+    fn filtered_search_returns_a_short_page_at_the_expansion_bound() {
+        assert_eq!(
+            expansion_decision(1, 10, 10_240, 10_240, 9, Some(8), MAX_CANDIDATE_EXPANSIONS,),
+            ExpansionDecision::Return {
+                scan_incomplete: true,
+            }
+        );
+
+        assert_eq!(
+            expansion_decision(1, 10, 100, 160, 5, Some(5), 3),
+            ExpansionDecision::Return {
+                scan_incomplete: false,
+            }
+        );
+    }
+
+    const SHAPE_MODEL: &str = "search-plan-shape@1024";
+
+    async fn shape_database() -> (String, PgPool, PgPool) {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        static SEQUENCE: AtomicU64 = AtomicU64::new(0);
+        let base_url = fs3_testkit::test_database_url();
+        let (maintenance_url, _) = crate::maintenance_url(&base_url).unwrap();
+        let admin = crate::connect(&maintenance_url).await.unwrap();
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let sequence = SEQUENCE.fetch_add(1, Ordering::Relaxed);
+        let name = format!("fs3_test_searchplan_{nanos}_{sequence}");
+        crate::create_database(&admin, &name).await.unwrap();
+        let url = crate::database_url(&base_url, &name).unwrap();
+        let pool = crate::connect(&url).await.unwrap();
+        crate::migrate(&pool).await.unwrap();
+        (name, pool, admin)
+    }
+
+    async fn seed_search_plan_corpus(pool: &PgPool) {
+        sqlx::query(
+            "INSERT INTO elements
+                 (blob_sha, parser_version, kind, subkind, name, address,
+                  span_start, span_end, sibling_order, raw_text, raw_hash, enrich)
+             SELECT 'blob-' || n, 'search-plan@1', 'function', 'function_item',
+                    'shape_' || n, 'src/shape.rs::shape_' || n,
+                    1, 1, n, 'shape body ' || n, 'raw-' || n, false
+               FROM generate_series(1, 50000) AS n",
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO smart_content
+                 (raw_hash, model_key, text, text_hash, tags)
+             SELECT 'raw-' || n, 'search-plan-summary@1',
+                    'shape summary ' || n, 'smart-' || n, ARRAY['shape']::text[]
+               FROM generate_series(1, 10000) AS n",
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+
+        let query = shape_vector();
+        sqlx::query(
+            "INSERT INTO embeddings_1024
+                 (source_hash, source_kind, chunk_no, model_key, vector, truncated)
+             SELECT text_hash, 'smart', 0, $1, $2, false
+               FROM smart_content",
+        )
+        .bind(SHAPE_MODEL)
+        .bind(Vector::from(query.clone()))
+        .execute(pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO embeddings_1024
+                 (source_hash, source_kind, chunk_no, model_key, vector, truncated)
+             SELECT raw_hash, 'raw', 0, $1, $2, false
+               FROM elements
+              ORDER BY id
+              LIMIT 10000",
+        )
+        .bind(SHAPE_MODEL)
+        .bind(Vector::from(query))
+        .execute(pool)
+        .await
+        .unwrap();
+        sqlx::query("ANALYZE elements, smart_content, embeddings_1024")
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+
+    fn shape_vector() -> Vec<f32> {
+        let mut vector = vec![0.0; EMBEDDING_DIMENSIONS];
+        vector[0] = 1.0;
+        vector
+    }
+
+    fn old_search_elements_sql() -> String {
+        let without_join = SEARCH_ELEMENTS_SQL.replacen(ADMISSION_JOIN_SQL, "", 1);
+        assert_ne!(
+            without_join, SEARCH_ELEMENTS_SQL,
+            "admission join marker drifted"
+        );
+        let distance_filter = "       AND ($5::float8 IS NULL OR (e.vector <=> $1) <= $5)";
+        let old_admission = include_str!("../tests/fixtures/search_admission_old.sql")
+            .lines()
+            .map(|line| format!("       {line}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let old = without_join.replacen(
+            distance_filter,
+            &format!("{distance_filter}\n{old_admission}"),
+            1,
+        );
+        assert_ne!(old, without_join, "distance filter marker drifted");
+        old
+    }
+
+    async fn explain_search(
+        connection: &mut sqlx::PgConnection,
+        sql: &str,
+        analyze: bool,
+    ) -> Result<serde_json::Value, sqlx::Error> {
+        let options = if analyze {
+            "ANALYZE, BUFFERS, VERBOSE, FORMAT JSON"
+        } else {
+            "VERBOSE, FORMAT JSON"
+        };
+        let statement = format!("EXPLAIN ({options}) {sql}");
+        let row = sqlx::query(&statement)
+            .bind(Vector::from(shape_vector()))
+            .bind(SHAPE_MODEL)
+            .bind(40_i64)
+            .bind(Option::<&str>::None)
+            .bind(Option::<f64>::None)
+            .bind(Option::<&str>::None)
+            .bind(Option::<&str>::None)
+            .bind(Option::<Vec<String>>::None)
+            .bind(Option::<&str>::None)
+            .bind(Option::<Vec<String>>::None)
+            .bind(Option::<bool>::None)
+            .bind(Option::<&str>::None)
+            .bind(Option::<&str>::None)
+            .bind(160_i64)
+            .fetch_one(&mut *connection)
+            .await?;
+        Ok(row.try_get::<Json<serde_json::Value>, _>(0)?.0)
+    }
+
+    fn visit_plan(
+        value: &serde_json::Value,
+        visit: &mut impl FnMut(&serde_json::Map<String, serde_json::Value>),
+    ) {
+        match value {
+            serde_json::Value::Object(object) => {
+                if object.contains_key("Node Type") {
+                    visit(object);
+                }
+                for child in object.values() {
+                    visit_plan(child, visit);
+                }
+            }
+            serde_json::Value::Array(values) => {
+                for child in values {
+                    visit_plan(child, visit);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn contains_relation(value: &serde_json::Value, relation: &str) -> bool {
+        match value {
+            serde_json::Value::Object(object) => {
+                object
+                    .get("Relation Name")
+                    .and_then(serde_json::Value::as_str)
+                    == Some(relation)
+                    || object
+                        .values()
+                        .any(|child| contains_relation(child, relation))
+            }
+            serde_json::Value::Array(values) => values
+                .iter()
+                .any(|child| contains_relation(child, relation)),
+            _ => false,
+        }
+    }
+
+    fn materializes_elements(value: &serde_json::Value) -> bool {
+        match value {
+            serde_json::Value::Object(object) => {
+                (object.get("Node Type").and_then(serde_json::Value::as_str) == Some("Materialize")
+                    && object
+                        .get("Plans")
+                        .is_some_and(|plans| contains_relation(plans, "elements")))
+                    || object.values().any(materializes_elements)
+            }
+            serde_json::Value::Array(values) => values.iter().any(materializes_elements),
+            _ => false,
+        }
+    }
+
+    fn smart_content_max_loops(plan: &serde_json::Value) -> Option<f64> {
+        let mut loops: Option<f64> = None;
+        visit_plan(plan, &mut |node| {
+            if node
+                .get("Relation Name")
+                .and_then(serde_json::Value::as_str)
+                == Some("smart_content")
+                && let Some(actual) = node.get("Actual Loops").and_then(serde_json::Value::as_f64)
+            {
+                loops = Some(loops.map_or(actual, |current| current.max(actual)));
+            }
+        });
+        loops
+    }
+
+    fn candidate_vector_target_count(plan: &serde_json::Value) -> Option<usize> {
+        let mut count = None;
+        visit_plan(plan, &mut |node| {
+            if node.get("Subplan Name").and_then(serde_json::Value::as_str)
+                == Some("CTE candidate_vectors")
+            {
+                count = node
+                    .get("Output")
+                    .and_then(serde_json::Value::as_array)
+                    .map(Vec::len);
+            }
+        });
+        count
+    }
+
+    fn candidate_vector_rows(plan: &serde_json::Value) -> Option<(f64, Option<f64>)> {
+        let mut rows = None;
+        visit_plan(plan, &mut |node| {
+            if node.get("Subplan Name").and_then(serde_json::Value::as_str)
+                == Some("CTE candidate_vectors")
+            {
+                rows = node
+                    .get("Plan Rows")
+                    .and_then(serde_json::Value::as_f64)
+                    .map(|estimated| {
+                        (
+                            estimated,
+                            node.get("Actual Rows").and_then(serde_json::Value::as_f64),
+                        )
+                    });
+            }
+        });
+        rows
+    }
+
+    #[derive(Debug)]
+    struct VectorDriver {
+        actual_rows: Option<f64>,
+        ordered_by_distance: bool,
+        child_count: usize,
+    }
+
+    fn vector_driver(plan: &serde_json::Value) -> Option<VectorDriver> {
+        let mut driver = None;
+        visit_plan(plan, &mut |node| {
+            if node.get("Index Name").and_then(serde_json::Value::as_str)
+                == Some("embeddings_1024_vector_idx")
+            {
+                driver = Some(VectorDriver {
+                    actual_rows: node.get("Actual Rows").and_then(serde_json::Value::as_f64),
+                    ordered_by_distance: node
+                        .get("Order By")
+                        .is_some_and(|order| order.to_string().contains("<=>")),
+                    child_count: node
+                        .get("Plans")
+                        .and_then(serde_json::Value::as_array)
+                        .map_or(0, Vec::len),
+                });
+            }
+        });
+        driver
+    }
+
+    fn has_correlated_smart_subplan(plan: &serde_json::Value) -> bool {
+        let mut found = false;
+        visit_plan(plan, &mut |node| {
+            let smart_content = node
+                .get("Relation Name")
+                .and_then(serde_json::Value::as_str)
+                == Some("smart_content");
+            let subplan = node
+                .get("Parent Relationship")
+                .and_then(serde_json::Value::as_str)
+                == Some("SubPlan")
+                || node
+                    .get("Subplan Name")
+                    .and_then(serde_json::Value::as_str)
+                    .is_some_and(|name| name.starts_with("SubPlan"));
+            found |= smart_content && subplan;
+        });
+        found
+    }
+
+    async fn cleanup_shape_database(name: &str, pool: PgPool, admin: PgPool) {
+        pool.close().await;
+        crate::drop_database(&admin, name).await.unwrap();
+        admin.close().await;
+    }
+
+    async fn bounded_plans(
+        pool: &PgPool,
+        analyze_shipped: bool,
+        include_old: bool,
+    ) -> Result<(serde_json::Value, Option<serde_json::Value>), StoreError> {
+        let mut transaction = pool.begin().await?;
+        sqlx::query("SET LOCAL statement_timeout = '30s'")
+            .execute(&mut *transaction)
+            .await?;
+        sqlx::query("SET LOCAL max_parallel_workers_per_gather = 0")
+            .execute(&mut *transaction)
+            .await?;
+        configure_search_transaction(&mut transaction).await?;
+        let shipped =
+            explain_search(&mut transaction, SEARCH_ELEMENTS_SQL, analyze_shipped).await?;
+        let old = if include_old {
+            Some(explain_search(&mut transaction, &old_search_elements_sql(), false).await?)
+        } else {
+            None
+        };
+        transaction.commit().await?;
+        Ok((shipped, old))
+    }
+
+    async fn seeded_shape_database() -> (String, PgPool, PgPool) {
+        let (name, pool, admin) = shape_database().await;
+        seed_search_plan_corpus(&pool).await;
+        assert_eq!(
+            sqlx::query_scalar::<_, i64>("SELECT count(*) FROM elements")
+                .fetch_one(&pool)
+                .await
+                .unwrap(),
+            50_000
+        );
+        assert_eq!(
+            sqlx::query_scalar::<_, i64>("SELECT count(*) FROM smart_content")
+                .fetch_one(&pool)
+                .await
+                .unwrap(),
+            10_000
+        );
+        assert_eq!(
+            sqlx::query_scalar::<_, i64>("SELECT count(*) FROM embeddings_1024")
+                .fetch_one(&pool)
+                .await
+                .unwrap(),
+            20_000
+        );
+        (name, pool, admin)
+    }
+
+    fn assert_static_shipped_shape(shipped: &serde_json::Value) {
+        let driver = vector_driver(shipped)
+            .unwrap_or_else(|| panic!("shipped plan has no HNSW vector driver: {shipped:#}"));
+        assert!(
+            driver.ordered_by_distance,
+            "HNSW driver has no <=> order: {driver:?}\n{shipped:#}"
+        );
+        let (estimated_rows, _) = candidate_vector_rows(shipped)
+            .unwrap_or_else(|| panic!("candidate_vectors CTE has no bounded Limit: {shipped:#}"));
+        assert!(
+            estimated_rows <= 160.0,
+            "candidate_vectors estimates {estimated_rows} rows, above candidate_limit 160: {shipped:#}"
+        );
+        assert_eq!(
+            driver.child_count, 0,
+            "admission was pushed beneath the vector scan: {driver:?}\n{shipped:#}"
+        );
+        assert!(
+            !materializes_elements(shipped),
+            "shipped plan materializes an elements scan: {shipped:#}"
+        );
+        assert!(
+            !has_correlated_smart_subplan(shipped),
+            "shipped plan retains a correlated smart_content SubPlan: {shipped:#}"
+        );
+        assert_eq!(
+            candidate_vector_target_count(shipped),
+            Some(4),
+            "candidate_vectors must carry source_hash, source_kind, chunk_no, distance only: {shipped:#}"
+        );
+        assert!(
+            shipped[0].get("JIT").is_none(),
+            "JIT must not trigger for the shipped query: {shipped:#}"
+        );
+    }
+
+    #[tokio::test]
+    async fn shipped_search_transaction_disables_jit_locally() {
+        let (name, pool, admin) = shape_database().await;
+        let verdict: Result<String, StoreError> = async {
+            let mut transaction = pool.begin().await?;
+            sqlx::query("SET LOCAL jit = on")
+                .execute(&mut *transaction)
+                .await?;
+            configure_search_transaction(&mut transaction).await?;
+            let jit: String = sqlx::query_scalar("SHOW jit")
+                .fetch_one(&mut *transaction)
+                .await?;
+            transaction.rollback().await?;
+            Ok(jit)
+        }
+        .await;
+        cleanup_shape_database(&name, pool, admin).await;
+        assert_eq!(verdict.unwrap(), "off");
+    }
+
+    #[tokio::test]
+    async fn search_plan_shape_static_keeps_hnsw_first_and_rejects_the_old_query() {
+        let (name, pool, admin) = seeded_shape_database().await;
+        let plans = bounded_plans(&pool, false, true).await;
+        cleanup_shape_database(&name, pool, admin).await;
+        let (shipped, old) =
+            plans.unwrap_or_else(|error| panic!("bounded non-ANALYZE plan check failed: {error}"));
+        let old = old.expect("old mutation plan requested");
+
+        assert_static_shipped_shape(&shipped);
+        assert!(
+            has_correlated_smart_subplan(&old),
+            "mutation failed: old admission has no correlated smart_content SubPlan: {old:#}"
+        );
+        assert!(
+            materializes_elements(&old),
+            "mutation failed: old admission has no Materialize over elements scan: {old:#}"
+        );
+    }
+
+    #[tokio::test]
+    async fn search_plan_shape_analyze_bounds_admission_work() {
+        let (name, pool, admin) = seeded_shape_database().await;
+        let plans = bounded_plans(&pool, true, false).await;
+        cleanup_shape_database(&name, pool, admin).await;
+        let (shipped, _) = plans.unwrap_or_else(|error| {
+            panic!("bounded shipped-query ANALYZE failed; timeout is a red verdict: {error}")
+        });
+
+        assert_static_shipped_shape(&shipped);
+        let driver = vector_driver(&shipped).expect("static shape already checked the driver");
+        assert!(
+            driver.actual_rows.is_some_and(|rows| rows <= 160.0),
+            "HNSW driver returned {:?} rows, above candidate_limit 160: {shipped:#}",
+            driver.actual_rows
+        );
+        let (_, actual_rows) = candidate_vector_rows(&shipped)
+            .expect("static shape already checked the candidate page");
+        assert!(
+            actual_rows.is_some_and(|rows| rows <= 160.0),
+            "candidate_vectors returned {actual_rows:?} rows, above candidate_limit 160: {shipped:#}"
+        );
+        let shipped_loops = smart_content_max_loops(&shipped)
+            .unwrap_or_else(|| panic!("shipped plan has no smart_content node: {shipped:#}"));
+        assert!(
+            shipped_loops <= 160.0,
+            "smart_content loops {shipped_loops} exceed candidate_limit 160: {shipped:#}"
+        );
+        let execution_ms = shipped[0]
+            .get("Execution Time")
+            .and_then(serde_json::Value::as_f64)
+            .expect("ANALYZE reports execution time");
+        let shared_hits = shipped[0]["Plan"]
+            .get("Shared Hit Blocks")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0);
+        println!(
+            "search_plan_after: execution_ms={execution_ms} shared_hits={shared_hits} hnsw_rows={} candidate_rows={} smart_content_max_loops={shipped_loops}",
+            driver.actual_rows.expect("ANALYZE reports HNSW rows"),
+            actual_rows.expect("ANALYZE reports candidate rows"),
+        );
     }
 }

@@ -56,8 +56,9 @@ pub use elements::{
 };
 pub use embeddings::{
     AnchorScope, EMBEDDING_DIMENSIONS, NewEmbedding, PathFilterProbe, SearchFilters, SearchHit,
-    SimilarElement, SourceKind, anchor_has_vectors, embedding_models, existing_embedding_hashes,
-    path_filter_probe, put_embeddings, query_embeddings, search_elements,
+    SearchPage, SimilarElement, SourceKind, anchor_has_vectors, embedding_models,
+    existing_embedding_hashes, path_filter_probe, put_embeddings, query_embeddings,
+    search_elements,
 };
 pub use jobs::{
     JOB_PRIORITY_DEFAULT, JOB_PRIORITY_NEW_WORKTREE_SCAN, Job, JobPriority, JobRetentionReceipt,

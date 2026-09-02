@@ -405,6 +405,61 @@ async fn a_scoped_search_is_not_starved_by_a_crowded_neighbour_repository() {
     database.destroy(state.db).await;
 }
 
+#[tokio::test]
+async fn an_exhausted_semantic_page_reports_scan_incomplete() {
+    let (database, state) = stack("search-starvation-meta", &[]).await;
+    let base = question_vector().await;
+    let (identity, worktree) = repo(&state, TARGET_REPO).await;
+    seed(&state, worktree, "meta-target", 1_000, 0.2, &base).await;
+    pin_to_the_index_plan(&state).await;
+    let identity = identity.to_string();
+    let mut request = ask(Some(&identity), None, 10);
+    request.source = Some("doc".to_string());
+
+    let outcome = search(&state, &request, &scoped(&identity))
+        .await
+        .expect("content-filter exhaustion is metadata, not an outage");
+
+    assert!(outcome.results.is_empty());
+    assert!(outcome.scan_incomplete);
+    assert_eq!(outcome.passes, 2);
+    assert_eq!(
+        outcome
+            .empty_because
+            .as_ref()
+            .expect("exhaustion uses the existing empty reason")
+            .reason,
+        "scan_incomplete"
+    );
+
+    let auth = support::auth("search-starvation-meta");
+    let base = support::spawn(fs3_daemon::http::router(state.clone(), auth.auth)).await;
+    let envelope: serde_json::Value = reqwest::Client::new()
+        .get(format!("{base}/search"))
+        .bearer_auth(&auth.key)
+        .query(&[
+            ("q", QUESTION),
+            ("repo", identity.as_str()),
+            ("source", "doc"),
+            ("limit", "10"),
+        ])
+        .send()
+        .await
+        .expect("the daemon answers")
+        .json()
+        .await
+        .expect("an envelope");
+    assert_eq!(envelope["meta"]["scan_incomplete"], true);
+    assert!(envelope["meta"].get("candidate_limit_exhausted").is_none());
+    assert_eq!(envelope["meta"]["passes"], 2);
+    assert_eq!(
+        envelope["meta"]["empty_because"]["reason"],
+        "scan_incomplete"
+    );
+
+    database.destroy(state.db).await;
+}
+
 /// The original `llm` report table through the SEMANTIC leg alone.
 ///
 /// Each query gets its own crowded pair so its geometry is deterministic: 64
@@ -461,6 +516,7 @@ async fn llm_repro_queries_return_scoped_hits_without_the_lexical_leg() {
         )
         .await
         .unwrap_or_else(|error| panic!("semantic search for {query:?}: {error}"));
+        let hits = hits.hits;
 
         assert_eq!(
             hits.len(),
