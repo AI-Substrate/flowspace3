@@ -2108,3 +2108,14 @@ ROW 140 APPLIED (o-prime, 2026-09-02, under the "restart whenever — get the
     search is CPU-bound on the plan, plan 013 owns it). Compose mirror
     opened as a PR so a fresh volume starts identical. pg_stat_statements
     is now the profiling surface every future DB question uses first.
+
+SKILL-TEXT DEFECT, THIRD SEAT (2026-09-02, plan 013 coder, BLOCKING
+    stop-and-ask): the builder implement module says `node_modules/.bin/dd`
+    (or ddocs) for task-state mutation; this repo's CLI is the global
+    `ddocs` on PATH. Three seats in one day stopped on it (012 coder,
+    011 coder, 013 coder) — correctly, because hand-editing ddocs is
+    forbidden. ENCODE NOW, not at the drain: (a) the pij-team coder
+    packet template i3 names the global `ddocs` explicitly (done in
+    o-prime's generator for future packets); (b) Jordan's builder skill
+    text (`~/.claude/skills/builder/references/stages/60-implement.md`)
+    needs the path fixed — outside this repo, flagged to Jordan.
