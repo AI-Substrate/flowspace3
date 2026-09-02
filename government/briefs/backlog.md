@@ -1777,3 +1777,25 @@ PLAN 011 DELTA REVIEW (2026-09-02): APPROVE at a80e9a5. All three
     hash mints no job for it. Also: ac-0006's plan premise was wrong
     (`conv:recovery` read as "a conversation job") — recorded in the 010
     receipts as an amendment, not hidden.
+
+ROW 121 — REQ-0033 IN FLIGHT AS PIJ PLAN 128 (weasel, 2026-09-02; relayed
+    by Jordan). FROZEN consumer contract, build against nothing else:
+    `pij sessions --json` → rows `{id, harness, session, folder,
+    generation:"legacy"|"rs", lifecycle?, transcriptPath?}`, union of both
+    stores, deduped by id; `pij-rs list` / `/v1/seats` rows gain
+    `session` (nullable) + `generation:"rs"`; `pij whoami --json` under rs
+    → `{id, harness, pane, folder, session, generation:"rs",
+    capabilityGate:"absent"}`; pi/omp seats send their native session id
+    at registration. Envelope `v` bumps so we pin a floor. Plan:
+    ~/pi-hacking/fs3-seat-session-identity/docs/plans/128-seat-session-identity/plan.dd.md.
+    OUR PACKET (row 121, now buildable when the merge sha lands): in
+    convo_ingest.rs `pij_sessions()` / fs3_core::SessionRow, (a) parse the
+    v-bumped shape, (b) pin the floor and refuse older envelopes with a
+    message naming the pij version needed, (c) the `--pij` route works
+    for rs seats end-to-end — proof: `conversation ingest --pij <rs omp
+    seat>` on one of OUR coders, then `conversation verify` for it.
+    FIELD-NAME NOTE sent to weasel: today's rows are `pijId` /
+    `harnessSessionId` / `gitCommonDir`; the frozen shape says `id` /
+    `session` / `folder`. Either name works, but it must be one shape
+    under one `v`, and `folder` must mean what `gitCommonDir` meant (the
+    seat's git dir) or say so.
