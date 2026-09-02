@@ -1,0 +1,19 @@
+records/retro/2026-09-02/003-plan-013-drain.md
+  s_0ce02639c40511::t_0f35f502f2421c 1-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "870ffe473b42bb8cef0d36e475a241b5d7f8ae01",
+  "prompts": {},
+  "sessions": {
+    "s_0ce02639c40511": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b95239d-d05a-44e7-ad9d-ecc36e15c1ca",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
