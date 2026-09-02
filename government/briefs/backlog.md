@@ -3218,3 +3218,14 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     ROW 165 — on Jordan's ask, pij-payable-ferret was asked directly
     (delivered 06:46) what its daemon is for, whether still needed, and to
     stop it or move it to :5434 + a free port.
+    ROW 165 — WHY (weasel's pane, capped on Jordan's ask): pij plan 133
+    "rs-tap-supersedes-legacy" tests a Copilot pane "that the legacy daemon
+    taps first" — the tap reads fs3, so its PM started a flowspace3 daemon
+    for the test and took the DEFAULT config (prod db + :7373). Weasel
+    (pij-still-weasel, Claude/Fable, pane %2081) was mid-closeout of 133
+    (PR #358 CI green, "merging, bouncing"). Asked by pij with a send-keys
+    fallback per Jordan (text, then Enter separately). Encode (fs3): the
+    daemon must refuse the prod database unless explicitly designated
+    (row 165 encode stands).
+    PLAN 013 — CI GREEN on 8d04a77 (5m18s); merge train running; bounce
+    blocked on the port.
