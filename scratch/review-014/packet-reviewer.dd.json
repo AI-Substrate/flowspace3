@@ -1,0 +1,148 @@
+{
+ "dd": {
+  "schema": "pij-team/packet"
+ },
+ "sections": [
+  {
+   "name": "meta",
+   "value": {
+    "title": "Reviewer packet \u2014 jobs-retention (plan 014)",
+    "role": "reviewer",
+    "plan": "docs/plans/014-jobs-retention/plan.dd.json",
+    "seat": "assigned by pij at spawn; see the spawn task text",
+    "updated": "2026-09-02"
+   }
+  },
+  {
+   "name": "mission",
+   "value": "You are the cross-model reviewer (Claude) for plan 014-jobs-retention, coded by a GPT-5.6 seat. Single unit, no PM: your counterpart is o-prime (rs name pij-binding-magpie). Judge whether the code makes the promises TRUE: the hot path (progress + /status) never scans done history; retention is bounded, batched, receipted and cannot delete a live row; the failed-key dedupe migration converges dirty data without losing a job; nothing the runner relies on was dropped from the live-only view. Read-only on code. SHA UNDER REVIEW: cc8da52c2595662664490de7d2b7a120cad95beb on branch 014-jobs-retention, detached in your worktree."
+  },
+  {
+   "name": "instructions",
+   "value": [
+    {
+     "id": "i1",
+     "text": "Orient: read the plan (rendered .dd.md), the impl-guide (the intended decomposition + interfaces), and then the full diff of the branch against its base. DOGFOOD FLOWSPACE: use `flowspace3 search` to locate consumers/related code by meaning while reviewing; report misses as friction."
+    },
+    {
+     "id": "i1b",
+     "text": "REVIEW A COMMITTED SHA IN ITS OWN WORKTREE, never a live tree someone is still editing (DL-011, 2026-08-28: a reviewer on a shared moving tree watched a coder's instructed red-proof fail and began writing a blocker for it). A review of a moving tree is not reproducible and its findings cannot be attributed. Your packet must name the sha under review; if it does not, refuse and ask."
+    },
+    {
+     "id": "i2",
+     "text": "Review with the /builder review discipline: verify claims against fresh evidence \u2014 run targeted tests yourself, read exit status, never trust a green claim you did not see."
+    },
+    {
+     "id": "i2b",
+     "text": "Your dispatcher OWES you three lists in this packet, and you should refuse to start without them: (1) WHERE THE AUTHOR IS LEAST CONFIDENT (hunt there first), (2) an instruction to DISBELIEVE THE AUTHOR'S OWN RECEIPTS (re-derive, don't audit prose), (3) WHAT IS ALREADY KNOWN-OPEN (spend zero findings re-reporting it). Proven 2026-08-28: this brief shape bought a 4-for-4 all-confirmed zero-noise review, including a defect the author hunted for in writing and could not see from inside."
+    },
+    {
+     "id": "i3",
+     "text": "Priority order: (1) plan promises that are not actually true, (2) composition-seam defects between units, (3) interface drift from the impl-guide, (4) correctness/safety in the changed code, (5) test gaps on the contract. Style noise is unwanted."
+    },
+    {
+     "id": "i4",
+     "text": "Findings: at most the material ones, each with severity (CRITICAL/HIGH/MEDIUM), exact location, the claim, the proof, and the smallest fix. `no_material_findings` is a valid verdict."
+    },
+    {
+     "id": "i5",
+     "text": "Deliver as a ddoc review record in the plan folder (assets/reviews/), build it, and send o-prime the path + a one-line verdict."
+    },
+    {
+     "id": "i6",
+     "text": "THE THREE OWED LISTS. (1) LEAST CONFIDENT \u2014 hunt first: (a) migration 0023 on a DIRTY database \u2014 duplicates under one key with different states (failed+failed, failed+pending, running+failed): which row wins, is any job lost, can the migration fail halfway and leave the old index dropped; (b) the purge racing the runner \u2014 a done row cannot be claimed, but assert the DELETE ... LIMIT batch cannot lock a live row, and that a batch mid-flight during a bounce is safe; (c) the live-only view \u2014 enumerate every state the runner consults (parked? not_before in the future? failed-terminal?) and prove none went invisible; (d) the boot pass purging ~1M rows in 10k batches at the first bounce \u2014 WAL volume and lock time on prod; is it bounded per boot or can it starve the runner; (e) retention age uses updated_at \u2014 does anything else touch updated_at on done rows (requeue? the terminal flag?) and shift the age. (2) DISBELIEVE THE RECEIPTS: re-run the plan test with 200k seeded done rows yourself and read the EXPLAIN; PERFORM the two mutations (old GROUP BY golden; old dedupe predicate); run migration 0023 yourself against a database you dirtied by hand. (3) KNOWN-OPEN, zero findings: rows 122/126/141/124b; the one-off prod purge (o-prime runs it after merge via the coder's mechanism)."
+    },
+    {
+     "id": "i7",
+     "text": "ALSO JUDGE: `flowspace3 status --history` documentation and help \u2014 the default is now live-only; does the doc say what changed and why; does the JSON envelope keep its existing keys (add, do not rename)."
+    },
+    {
+     "id": "owed-1-least-confident",
+     "text": "WHERE THE AUTHOR IS LEAST CONFIDENT (hunt here first): migration 0023: the dirty-duplicate backfill for failed non-terminal rows \u2014 does it converge to ONE owner without losing a job, and is the broader partial-unique predicate correct for every status it now covers? | purge safety: boot-pass purge_done_jobs in 10,000-row statements while the runner and boot recovery are live \u2014 can it delete a row that recovery is about to transition (done->pending re-fire), or a row whose updated_at was never set at settlement? | the live-only queue view: does anything the runner, reconcile roster, or /status relies on read done rows and now silently sees nothing? (the reviewer of ac-0005-style claims must seed positives AND negatives \u2014 two empty sets agreeing proves nothing) | retention age = updated_at (the author's assumption): find every writer of jobs.updated_at and prove settlement sets it | the receipt: is the /status + log receipt written only after the LAST batch, and is a mid-purge crash recoverable (no half-state)?"
+    },
+    {
+     "id": "owed-2-disbelieve",
+     "text": "Re-derive every number and every green in .harness/temp/agent/jobs-retention-pr-body.md yourself on the sha: run the store retention/plan/dedupe tests, the 0023 contract test, the daemon status_retention tests against :5434 (FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5434/flowspace3_test, container flowspace3-db-test) and read exit codes. Perform the author's two mutations (unfiltered GROUP BY must Seq Scan; migration from dirty duplicates) and one of your own on each promise. NEVER touch prod :5433/:7373."
+    },
+    {
+     "id": "owed-3-known-open",
+     "text": "ALREADY KNOWN-OPEN (spend zero findings here): backlog row 131: harness checks truncates the failing suite's tail \u2014 not this plan's defect | backlog row 124: prod tripwire reports absent for unreachable \u2014 not this plan's | DL-007 (author buffer): cargo package-cache lock stalls per-seat builds \u2014 environmental | row 150: .serena litter in worktrees \u2014 excluded locally, not this plan's | the gate was green only on :5434 locally; CI runs on PR #98 \u2014 read it, do not re-report a CI-vs-local difference as a code finding without a cause | the exclusive harness-checks gate slot is NOT yours: run targeted cargo tests, never a full harness checks"
+    }
+   ]
+  },
+  {
+   "name": "working_with",
+   "value": [
+    {
+     "id": "w1",
+     "text": "o-prime is your counterpart. Deliver BY FILE (.harness/temp/agent/review-014-ack.md, review-014-verdict.md in YOUR worktree) AND `pij send pij-binding-magpie <one line>` \u2014 that lands as a real turn. Never pij send pij-instant-lynx; never pij adopt."
+    },
+    {
+     "id": "w2",
+     "text": "You do not fix code, commit, or open PRs."
+    }
+   ]
+  },
+  {
+   "name": "scope",
+   "value": {
+    "worktree": "/Users/jordanknight/substrate/flowspace/fs3-review-014",
+    "branch": "014-jobs-retention (detached at cc8da52c2595662664490de7d2b7a120cad95beb)",
+    "fence": "read-only on code; write only docs/plans/014-jobs-retention/assets/reviews/ and .harness/temp/agent/ in your worktree",
+    "forbidden_note": "No code edits, no merges, no government files."
+   }
+  },
+  {
+   "name": "done_bar",
+   "value": [
+    {
+     "id": "d1",
+     "text": "Every plan AC judged true/false with evidence cited."
+    },
+    {
+     "id": "d2",
+     "text": "Composition seams between units explicitly examined and reported."
+    },
+    {
+     "id": "d3",
+     "text": "Review record ddoc written, built, and path delivered to the PM with a verdict line."
+    }
+   ]
+  },
+  {
+   "name": "refs",
+   "value": [
+    {
+     "id": "r1",
+     "path": "docs/plans/014-jobs-retention/plan.dd.md",
+     "note": "the promises (ac-0001..0005)"
+    },
+    {
+     "id": "r2",
+     "path": "docs/plans/014-jobs-retention/impl-guide.dd.md",
+     "note": "architecture + risks"
+    },
+    {
+     "id": "r3",
+     "path": "docs/plans/014-jobs-retention/assets/backpressure.dd.md",
+     "note": "proof commands per criterion"
+    },
+    {
+     "id": "r4",
+     "path": ".harness/temp/agent/jobs-retention-pr-body.md",
+     "note": "the author's receipts \u2014 DISBELIEVE and re-derive"
+    },
+    {
+     "id": "r5",
+     "path": "docs/plans/014-jobs-retention/assets/inputs/db-cpu-profile-report.md",
+     "note": "the measured evidence this plan exists for (\u00a73, \u00a78 causes #2/#5)"
+    },
+    {
+     "id": "r6",
+     "path": "crates/store/migrations/0023_*.sql",
+     "note": "the migration under judgment"
+    }
+   ]
+  }
+ ]
+}
