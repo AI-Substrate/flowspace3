@@ -2225,3 +2225,37 @@ DEGRADED-ATTRIBUTION TALLY: EIGHT (plan 012 delta commit f3aec311, 2026-09-02).
     (done today), and whatever the agent finds. Second-order lesson: a
     reaper that runs on a schedule is the only version of row 110 that
     survives a day like this.
+    ROW 143 ROOT CAUSE (disk agent pij-partial-coral + weasel, same
+    hour): `~/.orbstack/log/vmgr.log` 12:09:18Z — "block req failed:
+    write failed @ 43483119616: StorageFull" → BTRFS transaction abort →
+    "VM stopped". The OrbStack VM was killed by HOST disk-full, not by
+    anything a seat did. Biggest single consumer: the VM image
+    `~/Library/Group Containers/HUAQ24HBR6.dev.orbstack/data/data.img.raw`
+    = 142 GB on disk (2 TB sparse) holding the 128.8 GB of docker Local
+    Volumes (100 GB "reclaimable" per the profile). Reclaimed so far:
+    o-prime 10 GB (two targets), weasel 68 GB (16 pij targets of merged
+    branches), disk agent's ~/pi-hacking sweep; free 0.6 → 95 GB.
+    o-prime restarted OrbStack (`orb start`); prod postgres recovered
+    from the unclean stop with data intact (22/101/323k/327k); test
+    postgres :5434 healthy; daemon bounced. Volume prune (non-pgdata)
+    is the agent's next step, after prod is confirmed serving.
+
+144. **a scoped zero's reason lives in `next_action`, not
+    `meta.empty_because`** (antelope, chainglass dogfood batch 1,
+    2026-09-02; confirmed as a well-formed ok:true envelope). A consumer
+    branching on the DOCUMENTED field sees a reasonless zero. Contract
+    bug: every honest-empty must populate `meta.empty_because` (the
+    machine field) and MAY repeat it in `next_action` (the human field).
+    Row 119/138 family — the honesty is present but in the wrong slot.
+
+145. **`--source code` is the whole ballgame in a doc-heavy repo, and
+    agents-start-here never says the word** (antelope, same batch):
+    unscoped, the right file (`pij-records.ts`) is ABSENT from results;
+    `--source code`, it is a 1.0 hit. Ranking/composition observation,
+    not availability (both legs returned). ENCODE: (a) the agent guide
+    and `search --help` teach `--source` in the first screen; (b)
+    composition facet on every search says how many code/doc/
+    conversation hits were in the candidate pool so a user can SEE the
+    doc flood. (Antelope's finding 2 — pool exhaustion on unscoped
+    search — was DOWNGRADED by its author: measured inside the outage
+    window; re-measure after ALL CLEAR.)
