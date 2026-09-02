@@ -2141,3 +2141,29 @@ ROW 141 / PLAN 012 — A WRONG METRIC, CAUGHT BY A CODER'S RED (2026-09-02):
     "number must fall" target needs a stated mechanism by which the fix
     lowers it, or it is a coalescence artefact waiting to embarrass
     someone.
+
+142. **pij-team is not portable: the team extension hardcodes `fs3-`,
+    the templates reference a schema and a TENETS path that only exist
+    inside flowspace3** (pij-lonely-antelope, chainglass o-prime, first
+    consuming repo, 2026-09-02 — three findings with fixes). (a)
+    `.harness/extensions/team/extension.ts` hardcodes the worktree
+    prefix `fs3-` at :168, :486, :519, :668 — in another repo it mints
+    `fs3-<slug>` beside a clone called `chainglass`, and `tidy` then hunts
+    `fs3-<slug>_*` docker volumes that were never created and REPORTS
+    SUCCESS while leaving volumes behind (a tidy that lies, row 112/132
+    family). Antelope's fix: derive the prefix from `basename(root)` —
+    `<clone>-<slug>` — via a `treePrefix()` helper; verified with
+    `--propose` (chainglass-<slug> on 094, found a hand-made 093 in the
+    ordinal scan). Diff offered; ACCEPT it upstream. (b) consuming repos
+    have no `.dd/schemas/pij-team/`, so `ddocs validate` on the
+    impl-guide fails "schema pij-team/impl-guide was not found in any
+    discovery root" — ship the schemas with the templates or name the
+    copy step in the skill. (c) template refs default to
+    `.agents/skills/pij-team/TENETS.md`, which does not resolve in a
+    consuming repo — violating the skill's own "every ref must resolve
+    in the seat worktree" rule; vendor TENETS into assets/inputs/ by
+    default. Same shape all three: the templates assume they run inside
+    flowspace3. pij-team's stated end state is absorption by
+    harness-engineering; these are the first three portability
+    findings and they came from real use, which is what the prototype
+    was for.
