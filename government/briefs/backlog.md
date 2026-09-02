@@ -3670,3 +3670,31 @@ Post plan-134 u3 (pij main 46c9314c, daemon 53550), measured from this seat:
 identical rows in the empty-composer world (pij-minor-unicorn's blocker, and it was right). And the
 1 s clear does NOT establish a bounded retry: it is one sample at a low attempt count, while the
 pathological row on record is 8 minutes at attempt 101.
+
+## 187 — the "flaky" health test was THREE causes, none of them flakiness — now fully pinned and GREEN
+Closes the loop on rows 151/171/177/178. `crates/daemon/tests/health.rs::
+the_real_binaries_agree_through_a_discovered_config` cost two seats hours today. It was never
+timing, load, or flakiness. The three causes, each proven:
+
+1. **19 registered roots in the shared `flowspace3_test`** → the pre-serve ddoc probe ran before
+   bind → key published at 25 s against the test's 10 s ceiling (knobbler's A/B: 0 roots = 1 s).
+   **Reaped 2026-09-02 20:14** with the product's own `flowspace3 remove` against a scratch daemon
+   on :5434 — 19 roots → **0**, 1,945 orphaned jobs killed. (That scratch daemon itself took ~30 s
+   to serve against those 19 roots — row 177 measured a third time.)
+2. **A STALE `target/debug/flowspace3`.** The test spawns its SIBLING binary
+   (`testkit::flowspace3_binary()` = the test executable's directory), and
+   `cargo test -p fs3-daemon --test health` does NOT rebuild it. Mine carried migrations only to
+   **0017** while the shared DB is at **0024**, so the child refused to boot: *"this flowspace3
+   binary is OLDER than its database … migrating cannot fix this … Upgrade the binary instead"* —
+   an excellent error that nobody could see (below). After `cargo build --workspace --bin flowspace3`:
+   **PASSES in 4.32 s.**
+3. **In CI:** `FS3_TEST_DATABASE_URL` is byte-identical to `DatabaseConfig::DEFAULT_URL` (row 179),
+   so plan 017's new owner guard refused the child. Fixed test-side in #108 with a per-run
+   `FreshDatabase`.
+
+**The reason cause 2 took one run instead of another day: cod's panic now carries the child's
+stdout+stderr** (o-prime required it in #108 as "the reusable half of this bug"). Before it, the
+message was `the daemon exited before serving <url>: exit status: 1` — the daemon's own diagnosis
+existed and was thrown away. That single change converted a multi-seat mystery into a one-line read.
+**Encode:** make the health test depend on (or assert the freshness of) the binary it spawns —
+a test that silently drives a stale sibling binary is a test that lies about which code passed.
