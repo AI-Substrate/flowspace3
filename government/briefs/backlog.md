@@ -3055,3 +3055,7 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     start against the prod database unless FS3_PROD_OWNER (or the pane
     identity) matches; and `flowspace3 daemon` in a foreign cwd should
     default to a per-cwd port/db, not the global one.
+    PLAN 015 — **#103 MERGED** 82f60ec: the review-015 record is on main;
+    docs worktree removed. Remaining: the row-147 receipt (retake running
+    on the squatter daemon, TS symbols climbing), then tidy fox/boar seats
+    and both 015 worktrees.
