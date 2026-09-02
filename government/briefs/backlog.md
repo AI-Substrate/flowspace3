@@ -3016,3 +3016,11 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     cargo check + fixture_elements 13/13 + classify 10/10 at the delta sha;
     t5/dw-30f7 ticked with the 327→3,452 receipt. Merge train armed on
     CI green.
+    ROW 157 — third reviewer in a row (boar, 015) flagged that its record
+    is untracked in a doomed worktree; already vendored (scratch/
+    review-015/) and landing on main as a docs PR after #102, as #100 did
+    for 014. The reviewer's framing is the encode: "a reviewer fenced
+    read-only-plus-assets/reviews always produces an artifact it cannot
+    persist — the fence and the done-bar disagree by construction."
+    `harness team collect <seat>` (or the reviewer packet authorising one
+    docs commit under assets/reviews) closes it.
