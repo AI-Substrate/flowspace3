@@ -2707,3 +2707,18 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     _sqlx_migrations max 23); authenticated ping healthy at +130 s
     (n-002's pause observed as the gap before serving). AFTER receipt
     → scratch/plan-014-prod-after.md.
+157. **Reviewer records: `ddocs build` ≠ `ddocs validate`** (takin, review-014).
+    The record built clean but failed the global validator with 14 errors
+    in four classes: ids not `<prefix>-<4 hex>`; severity outside
+    MAJOR/MINOR/NIT/NA (CRITICAL/MEDIUM used); kind outside
+    defect/dim0/question; resolution outside confirmed/refuted/fixed/
+    deferred; and extra sections (acceptance/delta/refuted/notes) that
+    builder/review does not declare. Re-minted in place (f-3a01..1c,
+    vd-3b01..1c, legacy ids retained inline; meta.id_note records the
+    mapping). ENCODE in the pij-team reviewer template + done_bar: "run
+    `ddocs validate` from the worktree root with the GLOBAL ddocs and
+    paste its status line" — and list the enums in the packet so the
+    reviewer does not invent CRITICAL. Also: reviewer worktrees are
+    detached and gitignored-for-temp — the record must be COLLECTED by
+    o-prime before tidy (twice now: 012 and 014). Encode: `harness team
+    collect <seat>`.
