@@ -107,8 +107,7 @@ pub async fn drop_database(name: &str) {
         .connect(&database_url())
         .await
         .expect("the shared stack must be up");
-    sqlx::query(&format!("DROP DATABASE IF EXISTS {name} WITH (FORCE)"))
-        .execute(&admin)
+    fs3_store::drop_database(&admin, name)
         .await
         .unwrap_or_else(|error| panic!("dropping {name}: {error}"));
     admin.close().await;

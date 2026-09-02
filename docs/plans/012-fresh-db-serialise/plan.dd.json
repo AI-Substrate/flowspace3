@@ -1,0 +1,80 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "fresh-db-serialise — a test helper must not be able to take down the shared database",
+        "slug": "fresh-db-serialise",
+        "ordinal": 12,
+        "status": "ready",
+        "summary": "Reduce backlog row 126 and close the sweep half of row 110: fs3_store serialises CREATE/DROP DATABASE process-wide, FreshDatabase gives truthful failure advice, and orphan sweep matches minted names while preserving live databases. The semaphore is per process, so separate seats can still issue concurrent DDL against one postmaster: row 126 is REDUCED, not closed; the separate test postmaster in row 124b remains its own packet.",
+        "backpressure": "assets/backpressure.dd.json#rows"
+      }
+    },
+    {
+      "name": "summary",
+      "value": "crates/testkit/src/fresh_database.rs mints one database per test (`fs3_<label>_<epoch>_<32hex>`) via `create_unmigrated_from` → `fs3_store::create_database`, with no coordination: a 12-test tokio binary issues ~12 concurrent CREATE DATABASE at the shared postmaster that ALSO serves prod :7373. MEASURED 2026-09-02 22:48Z: that crashed the postmaster (`server process exited with exit code 2` → all backends terminated → 20s crash recovery); the container log shows the same shape three times before (08-27 signal 6 during CREATE DATABASE fs3_migrations_…, 08-28 exit 2 ×2). A sibling gate's prod tripwire then read 'absent' (row 124). 43 source files use FreshDatabase; every coder's gate touches it. Second defect in the same file: the failure advice on `create()` says 'Start it with: docker compose up -d' — wrong when the server is up-and-recovering (the case that actually happens), and on this box `docker compose up` is the known container-name collision (row 110). Third, same file: `sweep_orphans_at` filters on TEST_DATABASE_PREFIX = 'fs3_test_' but `database_name_at` mints 'fs3_<label>_…' — the sweep never matches a per-run database, which is why 55 orphans re-accumulated in two days (row 110's 'sweep spec written against a prefix the code never mints', now located)."
+    },
+    {
+      "name": "goals",
+      "value": [
+        "No test binary can issue more than ONE CREATE DATABASE or DROP DATABASE at a time through fs3_store against the shared server: a process-wide store-level semaphore (N<=2), not a test-threads convention. Separate processes remain independent, so row 126 is reduced rather than closed.",
+        "Failure advice names the real next action for no listener, rejected authentication or permission, and connected-then-closed or recovering servers; compose startup is suggested only when no server is listening.",
+        "The orphan sweep matches names the helper mints, keeps the age threshold, selects only idle databases, and rechecks liveness under the mutation permit before an unforced drop; whole-suite fs3_test_ names keep working.",
+        "Proof by real usage: N=8 store create calls stay within the bound and fail under mutation; store and oversize suites run at default parallelism without recovery; the read-only listing example reports candidates before any o-prime-owned production drop."
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "No change to how `harness checks` invokes cargo test.",
+        "No change to migrations or to fs3_store::create_database itself beyond what the lock needs."
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-0001",
+          "state": "unchecked",
+          "claim": "Serialised, mutation-checked: N=8 real fs3_store::create_database calls against the test server observe at most the configured concurrency after permit acquisition; removing the permit from the store create path observes >N. Additionally, pg_stat_activity sampled during the default-parallel fs3-store run and attributed by application_name shows max in-flight <= N, samples_over_1 = 0, and non-trivial samples_with_ddl. The store integration helper and the remaining test helpers route CREATE/DROP through those primitives, testkit has no nested wrapper, and the mutation is stated in the PR body."
+        },
+        {
+          "id": "ac-0002",
+          "state": "unchecked",
+          "claim": "Advice is truthful: nothing listening produces no-server/start wording; a bad password produces fix-credentials wording; a listening-then-closing or SQLSTATE 57P03 server produces recovery/wait wording. Compose advice appears only in the no-listener case. All three are proved by test."
+        },
+        {
+          "id": "ac-0003",
+          "state": "unchecked",
+          "claim": "Sweep matches canonical timestamped names and legacy seeded fs3_migrations/fs3_storelock names, enforces the age threshold, lists only databases with numbackends=0, rechecks liveness under the mutation permit before each drop, and preserves both a database live during listing and one connected after listing while its connection remains usable. Candidate liveness and the recheck are mutation-covered by M1, M2a, and M2c. The unforced DROP is defence-in-depth for the recheck-to-statement TOCTOU window and is covered by orphan_sweep_drop_statement_is_unforced, which reads the SQL template executed by the sweep path."
+        },
+        {
+          "id": "ac-0004",
+          "state": "unchecked",
+          "claim": "REAL USAGE: FS3_TEST_DATABASE_URL points at the dedicated test postmaster on :5434 and `cargo test -p fs3-daemon --test oversize` completes at DEFAULT parallelism; `docker logs flowspace3-db-test` shows no 'terminating any other active server processes' / recovery lines in that window. Receipt = the test exit and the test-container log count (0)."
+        },
+        {
+          "id": "ac-0005",
+          "state": "unchecked",
+          "claim": "REAL USAGE, PROD SERVER, o-prime-run: the sweep's read-only listing names the current orphans (expected ~55 fs3_<label>_… older than the threshold); after o-prime's GO the sweep drops them and reports the names; `select count(*) from pg_database where datname like 'fs3_%'` drops accordingly. Receipt = both envelopes."
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-c1ee",
+          "title": "Phase 1: lock + advice + sweep",
+          "brief": "Single unit, single coder, no PM: (1) process-wide create/drop serialisation in FreshDatabase; (2) truthful failure advice; (3) sweep matches minted names; (4) tests incl. mutation; (5) PR; (6) real-usage proofs on the shared container and (with o-prime) the prod server's orphans.",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+        }
+      ]
+    }
+  ]
+}

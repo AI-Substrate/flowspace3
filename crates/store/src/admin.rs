@@ -1,9 +1,15 @@
 //! Administration: does the database exist, is its schema current, make it so.
 //!
+//! Database CREATE/DROP is process-wide serialised here, at the lowest shared
+//! API, so test helpers and one-shot CLI callers cannot bypass coordination.
+//! `FS3_DB_MUTATION_CONCURRENCY` permits 1 or 2 concurrent mutations and
+//! defaults to 1. Each process owns one semaphore; separate processes remain
+//! independent.
+//!
 //! Everything here is *control plane* — the operations that logically precede a
 //! daemon existing at all. That is why they are a separate module from the
 //! flows: `elements`, `smart`, `embeddings` and `jobs` all assume a migrated
-//! database, and these four functions are how it gets to be one.
+//! database, and these functions are how it gets to be one.
 //!
 //! Single responsibility, one function per step (Jordan's composition ruling,
 //! 2026-08-26): each of these does exactly one thing and reports what it found.
@@ -25,9 +31,69 @@
 //! comparison: the embedded [`crate::MIGRATOR`] is the source of truth for what
 //! *should* be applied, and the table records what *is*.
 
+use std::sync::OnceLock;
+
 use sqlx::Row;
+use tokio::sync::{Semaphore, SemaphorePermit};
 
 use crate::{PgPool, StoreError};
+
+const DEFAULT_DATABASE_MUTATION_CONCURRENCY: usize = 1;
+const MAX_DATABASE_MUTATION_CONCURRENCY: usize = 2;
+static DATABASE_MUTATION_LIMIT: OnceLock<Semaphore> = OnceLock::new();
+
+#[cfg(test)]
+mod create_test_hook {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::time::Duration;
+
+    static IN_FLIGHT: AtomicUsize = AtomicUsize::new(0);
+    static MAX_IN_FLIGHT: AtomicUsize = AtomicUsize::new(0);
+
+    pub(super) async fn enter() -> InFlight {
+        let active = IN_FLIGHT.fetch_add(1, Ordering::SeqCst) + 1;
+        MAX_IN_FLIGHT.fetch_max(active, Ordering::SeqCst);
+        tokio::time::sleep(Duration::from_millis(25)).await;
+        InFlight
+    }
+
+    pub(super) fn reset() {
+        IN_FLIGHT.store(0, Ordering::SeqCst);
+        MAX_IN_FLIGHT.store(0, Ordering::SeqCst);
+    }
+
+    pub(super) fn maximum() -> usize {
+        MAX_IN_FLIGHT.load(Ordering::SeqCst)
+    }
+
+    pub(super) struct InFlight;
+
+    impl Drop for InFlight {
+        fn drop(&mut self) {
+            IN_FLIGHT.fetch_sub(1, Ordering::SeqCst);
+        }
+    }
+}
+
+fn database_mutation_concurrency() -> usize {
+    match std::env::var("FS3_DB_MUTATION_CONCURRENCY") {
+        Ok(raw) => raw
+            .parse()
+            .ok()
+            .filter(|value| (1..=MAX_DATABASE_MUTATION_CONCURRENCY).contains(value))
+            .unwrap_or_else(|| panic!("FS3_DB_MUTATION_CONCURRENCY must be 1 or 2, got {raw:?}")),
+        Err(std::env::VarError::NotPresent) => DEFAULT_DATABASE_MUTATION_CONCURRENCY,
+        Err(error) => panic!("reading FS3_DB_MUTATION_CONCURRENCY: {error}"),
+    }
+}
+
+async fn database_mutation_permit() -> SemaphorePermit<'static> {
+    DATABASE_MUTATION_LIMIT
+        .get_or_init(|| Semaphore::new(database_mutation_concurrency()))
+        .acquire()
+        .await
+        .expect("the database mutation semaphore is never closed")
+}
 
 /// What [`schema_current`] found.
 ///
@@ -186,6 +252,72 @@ pub async fn database_names_with_prefix(
         .collect()
 }
 
+/// Idle database names beginning with `prefix`, ordered for deterministic reports.
+///
+/// `admin` must be connected to the maintenance database. A database with any
+/// active backend is excluded so an orphan sweep cannot select a live sandbox.
+///
+/// # Errors
+/// [`StoreError::Query`] when the catalog read fails.
+pub async fn idle_database_names_with_prefix(
+    admin: &PgPool,
+    prefix: &str,
+) -> Result<Vec<String>, StoreError> {
+    let rows = sqlx::query(
+        "SELECT datname FROM pg_stat_database \
+         WHERE left(datname, length($1)) = $1 AND numbackends = 0 ORDER BY datname",
+    )
+    .bind(prefix)
+    .fetch_all(admin)
+    .await?;
+    rows.iter()
+        .map(|row| {
+            row.try_get::<String, _>("datname")
+                .map_err(StoreError::from)
+        })
+        .collect()
+}
+
+/// SQL template used by [`drop_database_if_idle`].
+///
+/// Exposed only so the cross-crate sweep regression guard can assert that the
+/// fail-safe statement remains unforced.
+#[doc(hidden)]
+pub const DROP_DATABASE_IF_IDLE_SQL: &str = "DROP DATABASE IF EXISTS \"{database_name}\"";
+
+/// Drop a database only while it has no active backends.
+///
+/// The catalog predicate excludes live databases. The unforced `DROP` closes
+/// the race between that read and the statement: if a backend connects in the
+/// meantime, Postgres refuses the drop and this returns `Ok(false)`.
+///
+/// # Errors
+/// [`StoreError::InvalidName`] when the name is not a plain identifier;
+/// [`StoreError::Query`] when the catalog read or drop fails for another reason.
+pub async fn drop_database_if_idle(admin: &PgPool, name: &str) -> Result<bool, StoreError> {
+    validate_database_name(name)?;
+    let _permit = database_mutation_permit().await;
+    let backends = sqlx::query_scalar::<_, i64>(
+        "SELECT COALESCE(\
+             (SELECT numbackends::bigint FROM pg_stat_database WHERE datname = $1), 0)",
+    )
+    .bind(name)
+    .fetch_one(admin)
+    .await?;
+    if backends != 0 {
+        return Ok(false);
+    }
+
+    match sqlx::query(&DROP_DATABASE_IF_IDLE_SQL.replace("{database_name}", name))
+        .execute(admin)
+        .await
+    {
+        Ok(_) => Ok(true),
+        Err(sqlx::Error::Database(error)) if error.code().as_deref() == Some("55006") => Ok(false),
+        Err(error) => Err(StoreError::from(error)),
+    }
+}
+
 /// Create an empty database.
 ///
 /// `CREATE DATABASE` takes no bind parameters, so the name is interpolated —
@@ -200,6 +332,9 @@ pub async fn database_names_with_prefix(
 /// process created the database first.
 pub async fn create_database(admin: &PgPool, name: &str) -> Result<(), StoreError> {
     validate_database_name(name)?;
+    let _permit = database_mutation_permit().await;
+    #[cfg(test)]
+    let _test_hook = create_test_hook::enter().await;
     sqlx::query(&format!("CREATE DATABASE \"{name}\""))
         .execute(admin)
         .await?;
@@ -216,6 +351,7 @@ pub async fn create_database(admin: &PgPool, name: &str) -> Result<(), StoreErro
 /// [`StoreError::Query`] when Postgres refuses the operation.
 pub async fn drop_database(admin: &PgPool, name: &str) -> Result<(), StoreError> {
     validate_database_name(name)?;
+    let _permit = database_mutation_permit().await;
     sqlx::query(&format!("DROP DATABASE IF EXISTS \"{name}\" WITH (FORCE)"))
         .execute(admin)
         .await?;
@@ -466,6 +602,111 @@ mod tests {
         assert_eq!(status(vec![]).missing_summary(), "nothing");
         assert_eq!(status(vec![6]).missing_summary(), "0006");
         assert_eq!(status(vec![4, 5]).missing_summary(), "0004-0005");
+    }
+
+    #[tokio::test]
+    async fn eight_create_paths_are_serialised() {
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        const WORKERS: usize = 8;
+        create_test_hook::reset();
+        let base_url = std::env::var("FS3_TEST_DATABASE_URL")
+            .expect("FS3_TEST_DATABASE_URL must name the disposable test server");
+        let (maintenance_url, _) = maintenance_url(&base_url).unwrap();
+        let admin = crate::connect(&maintenance_url).await.unwrap();
+        let seed = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let names: Vec<_> = (0..WORKERS)
+            .map(|worker| format!("fs3_storelock_{seed:032x}_{worker}"))
+            .collect();
+        let mut tasks = Vec::with_capacity(WORKERS);
+        for name in &names {
+            let admin = admin.clone();
+            let name = name.clone();
+            tasks.push(tokio::spawn(
+                async move { create_database(&admin, &name).await },
+            ));
+        }
+        for task in tasks {
+            task.await.unwrap().unwrap();
+        }
+        for name in &names {
+            drop_database(&admin, name).await.unwrap();
+        }
+        admin.close().await;
+
+        let maximum = create_test_hook::maximum();
+        assert!(
+            maximum <= database_mutation_concurrency(),
+            "observed {maximum} concurrent CREATE DATABASE operations"
+        );
+    }
+
+    #[test]
+    fn database_mutations_are_serialised_across_tokio_runtimes() {
+        use std::sync::{Arc, Barrier};
+        use std::thread;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        const WORKERS: usize = 8;
+        create_test_hook::reset();
+        let base_url = std::env::var("FS3_TEST_DATABASE_URL")
+            .expect("FS3_TEST_DATABASE_URL must name the disposable test server");
+        let seed = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let names: Vec<_> = (0..WORKERS)
+            .map(|worker| format!("fs3_storelock_{seed:032x}_{worker}"))
+            .collect();
+        let barrier = Arc::new(Barrier::new(WORKERS));
+        let threads: Vec<_> = names
+            .iter()
+            .cloned()
+            .map(|name| {
+                let barrier = Arc::clone(&barrier);
+                let base_url = base_url.clone();
+                thread::spawn(move || {
+                    tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .unwrap()
+                        .block_on(async move {
+                            let (maintenance_url, _) = maintenance_url(&base_url).unwrap();
+                            let admin = crate::connect(&maintenance_url).await.unwrap();
+                            barrier.wait();
+                            let result = create_database(&admin, &name).await;
+                            admin.close().await;
+                            result
+                        })
+                })
+            })
+            .collect();
+        let results: Vec<_> = threads.into_iter().map(thread::JoinHandle::join).collect();
+
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let (maintenance_url, _) = maintenance_url(&base_url).unwrap();
+            let admin = crate::connect(&maintenance_url).await.unwrap();
+            for name in &names {
+                drop_database(&admin, name).await.unwrap();
+            }
+            admin.close().await;
+        });
+        for result in results {
+            result.expect("create worker panicked").unwrap();
+        }
+
+        let maximum = create_test_hook::maximum();
+        assert!(
+            maximum <= database_mutation_concurrency(),
+            "observed {maximum} concurrent CREATE DATABASE operations across Tokio runtimes"
+        );
     }
 
     #[test]

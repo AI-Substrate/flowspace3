@@ -88,8 +88,7 @@ impl FreshDatabase {
         // be quoted out of. `CREATE DATABASE` takes no bind parameters.
         let name = format!("fs3_migrations_{:032x}", unique_seed());
 
-        sqlx::query(&format!("CREATE DATABASE {name}"))
-            .execute(&admin)
+        fs3_store::create_database(&admin, &name)
             .await
             .unwrap_or_else(|error| panic!("creating the throwaway database {name}: {error}"));
 
@@ -127,13 +126,9 @@ impl FreshDatabase {
     /// and a truthful record that the run failed.
     pub async fn destroy(self, pool: PgPool) {
         pool.close().await;
-        sqlx::query(&format!(
-            "DROP DATABASE IF EXISTS {} WITH (FORCE)",
-            self.name
-        ))
-        .execute(&self.admin)
-        .await
-        .unwrap_or_else(|error| panic!("dropping {}: {error}", self.name));
+        fs3_store::drop_database(&self.admin, &self.name)
+            .await
+            .unwrap_or_else(|error| panic!("dropping {}: {error}", self.name));
         self.admin.close().await;
     }
 }
