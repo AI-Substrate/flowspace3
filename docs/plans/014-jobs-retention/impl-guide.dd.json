@@ -1,0 +1,87 @@
+{
+  "dd": {
+    "schema": "pij-team/impl-guide"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "impl-guide \u2014 jobs-retention",
+        "plan": "docs/plans/014-jobs-retention/plan.dd.json",
+        "mode": "single-coder",
+        "updated": "2026-09-02"
+      }
+    },
+    {
+      "name": "architecture",
+      "value": "Three touches around one table. (1) HOT PATH: progress reporting and /status stop asking the whole table; a live-only query hits the partial indexes that already exist and returns in milliseconds; the historical GROUP BY survives only behind an explicit flag. (2) RETENTION: the daemon owns a bounded purge \u2014 a store function that deletes done rows older than the window in batches, and a reconciler-style sweep (boot + timer) that calls it and records a receipt in /status and the log. (3) MINT: the dedupe rule extends to failed-non-terminal rows so row 123's duplicate cannot be minted again (a partial unique index or an ON CONFLICT rewrite \u2014 if it needs a migration, that is a stop-and-ask, not a fence break). Evidence altitude: EXPLAIN-shape and retention tests with mutations, then PROD \u2014 the one-off purge o-prime runs, and the four measurements the profile report took today, re-taken."
+    },
+    {
+      "name": "fan_out",
+      "value": {
+        "decision": "NO",
+        "rationale": "One unit, one coder, no PM; o-prime coordinates directly (Jordan, 2026-09-02: dispatch the performance work to agents)."
+      }
+    },
+    {
+      "name": "units",
+      "value": [
+        {
+          "id": "u1",
+          "name": "jobs-retention",
+          "paths": "crates/store/src/jobs.rs (+ a migration only via stop-and-ask), crates/daemon/src/{runner,status,boot}.rs and a new daemon/src/retention.rs, crates/core config for the retention setting, their tests",
+          "responsibility": "live-only hot path; bounded, receipted retention; duplicate-mint prevention",
+          "interface": "queue_depth semantics change for callers: live-only by default, history behind a flag; new config key indexing.job_retention_days; /status gains `retention`",
+          "test_strategy": "EXPLAIN-shape test with mutation; retention test; dedupe test with mutation; status receipt test; prod measurements",
+          "depends_on": "none",
+          "wave": 1,
+          "note": "ac-0001\u20130004 in the worktree; ac-0005 on prod with o-prime after bounce + purge."
+        }
+      ]
+    },
+    {
+      "name": "isolation",
+      "value": {
+        "mode": "worktree-per-coder",
+        "note": "Worktree ../fs3-jobs-retention on branch 014-jobs-retention. Per-seat CARGO_TARGET_DIR. Per-run test DBs on :5433 with your own label; seed \u2265200k done rows for the plan test or it proves nothing. NEVER :7373 for tests; the prod purge is o-prime's. One cargo at a time; ask o-prime for the gate slot (plan 013 and plan 012's delta share the box)."
+      }
+    },
+    {
+      "name": "composition",
+      "value": {
+        "composer": "o-prime",
+        "steps": "None \u2014 single unit. o-prime squash-merges and bounces prod (daemon/store binary changes).",
+        "integration_proof": "the real-usage criteria in the plan, measured on prod after the bounce"
+      }
+    },
+    {
+      "name": "review",
+      "value": {
+        "when": "spawned by o-prime once the PR is up",
+        "inputs": "the three owed lists: (1) least confident \u2014 can the live-only query miss a state the runner relies on (parked? not_before in the future?); does the purge race a claim (a done row cannot be claimed, but assert it); is the sweep's timer safe under the runner's 32-worker concurrency; does the failed-key prevention change requeue_failed's behaviour (row 123's repair path); (2) disbelieve \u2014 re-run both mutations; seed 200k rows yourself; (3) known-open \u2014 rows 140/141/124b/122, zero findings.",
+        "model_override": "github-copilot/claude-opus-5 (Claude reviews; ruling 2026-09-02)"
+      }
+    },
+    {
+      "name": "risks",
+      "value": [
+        {
+          "id": "risk-1",
+          "text": "A caller of queue_depth that genuinely needs history (the TUI? release notes?) breaks silently when it becomes live-only \u2014 the coder greps every caller at ack and lists them"
+        },
+        {
+          "id": "risk-2",
+          "text": "Purging in batches while the runner writes: use `DELETE \u2026 WHERE id IN (SELECT id \u2026 LIMIT N)` with a short transaction; never a single 1M-row delete on prod"
+        },
+        {
+          "id": "risk-3",
+          "text": "The partial unique index for failed-non-terminal keys may need a migration and a backfill guard for existing duplicates \u2014 row 123's repair already removed prod's; the migration must still tolerate them"
+        },
+        {
+          "id": "risk-4",
+          "text": "Retention default of 7 days may be too long for a 1M/day churn \u2014 measure today's growth rate and propose a default with a number"
+        }
+      ]
+    }
+  ]
+}
