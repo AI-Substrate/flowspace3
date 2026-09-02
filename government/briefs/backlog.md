@@ -3475,3 +3475,17 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     residue, A still authorized); daemon lib 172/172; mutation: remove
     canonicalisation → 2/2 RED; restored. On to t3 (truthful 401) + t4
     (owner designation).
+
+## 172 — a blocked seat idles silently; the prime finds out only by polling
+Observed 2026-09-02 ~17:34–17:52. The 017 coder (cod) hit the provider 422 content
+filter mid-t3 and stopped — no pij message out, no report, just an idle pane with a
+red banner. In the same window the 016 reviewer (knobbler) wrote "Holding for the
+o-prime ruling" into `review-016-status.md` and idled. Neither told the prime; both
+were found by o-prime polling `tmux capture-pane` and `.harness/temp/agent` mtimes.
+Cost: ~18 min of dead time on two seats simultaneously.
+**Encode:** (a) packet instruction — a seat that becomes blocked MUST send its prime
+a one-line pij message naming the blocker, before writing any status file;
+(b) pij anomaly — seat idle >N min whose newest `*-status.md` postdates its last
+outbound send is an `awaiting-ruling` row in `pij anomalies`, so the prime is told
+rather than having to poll. Related: 170 (provider content filter), 157 (packet
+clone contamination — the reviewer's blocker was a stale i6/i7 row again).
