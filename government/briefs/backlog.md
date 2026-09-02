@@ -3565,15 +3565,21 @@ so the prod default URL is unreachable in CI by construction, and add an asserti
 Do it as its own small PR AFTER #107/#108 land — changing it now invalidates in-flight runs.
 Related: 169 (shared key clobber), 177/178 (shared test DB).
 
-## 180 — a queued pij-rs send can never arrive, and the sender is told "ok"
+## 180 — a queued pij-rs send lands MINUTES late, and the sender is never told
 2026-09-02 18:12. o-prime sent dormouse "do NOT run the full gate" and got
-`{"outcome":"queued","reason":"human-typing"}` with `pij send: ok`. The seat's last
-actual delivery was 18:12:28; the message never landed. dormouse acted on the earlier
-instruction — correctly — ran the gate and pushed a new head under an active delta
-review. Harmless this time (the drift was docs-only, 4 lines, zero crates) but the class
-is not: a prime believes a ruling was delivered when it was not, and the only way to know
-is to query `delivered_at` in `~/.pij-rs/pij.sqlite` by hand after the fact.
-**Encode (pij, not fs3):** a send that is still queued after N seconds must be reported
-back to the SENDER — a delivery-failed notice or a "still queued" nudge — so an
-undelivered ruling is loud instead of silent. Related: 161 (spawn-bind zero delivery),
-172 (blocked seat idles silently). Routed to the pij prime.
+`{"outcome":"queued","reason":"human-typing"}` with `pij send: ok`. dormouse acted on the
+earlier instruction — correctly — ran the gate and pushed a new head under an active delta
+review. Harmless this time (docs-only drift, 4 lines, zero crates) but the class is not.
+**Diagnosed by the pij prime (weasel), now pij req-0054 — my first reading was wrong:**
+the message was NOT lost. It delivered on **attempt 101 at ~18:21, eight minutes late**,
+after the seat had already acted. Two real defects:
+(a) the sender is never told a row is still queued, nor that it landed late;
+(b) **`human-typing` was asserted against a WORKING omp** — agent output through the
+composer is not a human draft, so the inbound veto misfires on *every busy omp seat*.
+That is why so many of today's sends came back `queued (human-typing)`.
+**Agreed fix shape (pij side):** still-queued notice to the sender after N s, plus a
+late-delivery notice, and no composer veto for omp/pi (they take the extension stream).
+**Operating rule here until it ships:** a send that returns `queued` is NOT delivered —
+check `delivered_at` in `~/.pij-rs/pij.sqlite` before assuming a seat has your ruling, and
+never let a queued ruling be the only thing standing between a seat and an irreversible
+action. Related: 161 (spawn-bind zero delivery), 172 (blocked seat idles silently).
