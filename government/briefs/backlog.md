@@ -3024,3 +3024,8 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     persist — the fence and the done-bar disagree by construction."
     `harness team collect <seat>` (or the reviewer packet authorising one
     docs commit under assets/reviews) closes it.
+    PLAN 015 — **#102 MERGED** c11ab19 (guarded squash after the veto
+    window; CI green on a45fdc9). Release build of main running; docs PR
+    for the review-015 record opening; bounce + gated row-147 receipt
+    next. 013 fix not yet landed → bounce for 015 now, second bounce for
+    013 later (30-minute rule).
