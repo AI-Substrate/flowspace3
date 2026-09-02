@@ -3392,3 +3392,11 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     the PROMISE, not the mechanism (pij-team fix-ruling template);
     truthful 401 when the key is newer than the daemon (rides plan 017);
     `harness db scratch/drop` (migrated throwaway DB + leak reaper).
+    PLAN 016 — ask-007: the "≥500 .ts under .pi/" bar came from `find`
+    (563, untracked/ignored included); discovery honours gitignore and
+    the tracked set is 379 (.ts 378 stored after opt-in; 0 under the
+    default; scratch daemon on FS3_CONFIG_DIR=/tmp/…, :5434, port 63624).
+    RULED: bar = every git-tracked .ts under .pi/ (name the one missing),
+    plus the named-function search receipt. O-prime's evidence overstated
+    by counting untracked files — encode: evidence counts use `git
+    ls-files`, not `find`.
