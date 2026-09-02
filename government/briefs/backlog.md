@@ -3454,3 +3454,6 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     (task receipts: execution.log, tasks.dd) pushed after the HOLD;
     review stays valid at f9b6d07 (reviewer told to confirm docs-only in
     the verdict). CI running on fa4da2f.
+    PLAN 016 — CI GREEN on fa4da2f (07:31:45). Merge train fires on the
+    reviewer's verdict; then release build → bounce → row-125 prod receipt
+    (scratch/receipt-016-prod.sh).
