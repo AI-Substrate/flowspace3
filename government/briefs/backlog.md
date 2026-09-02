@@ -3562,3 +3562,16 @@ so the prod default URL is unreachable in CI by construction, and add an asserti
 `FS3_TEST_DATABASE_URL != DatabaseConfig::DEFAULT_URL` so this can never silently return.
 Do it as its own small PR AFTER #107/#108 land — changing it now invalidates in-flight runs.
 Related: 169 (shared key clobber), 177/178 (shared test DB).
+
+## 180 — a queued pij-rs send can never arrive, and the sender is told "ok"
+2026-09-02 18:12. o-prime sent dormouse "do NOT run the full gate" and got
+`{"outcome":"queued","reason":"human-typing"}` with `pij send: ok`. The seat's last
+actual delivery was 18:12:28; the message never landed. dormouse acted on the earlier
+instruction — correctly — ran the gate and pushed a new head under an active delta
+review. Harmless this time (the drift was docs-only, 4 lines, zero crates) but the class
+is not: a prime believes a ruling was delivered when it was not, and the only way to know
+is to query `delivered_at` in `~/.pij-rs/pij.sqlite` by hand after the fact.
+**Encode (pij, not fs3):** a send that is still queued after N seconds must be reported
+back to the SENDER — a delivery-failed notice or a "still queued" nudge — so an
+undelivered ruling is loud instead of silent. Related: 161 (spawn-bind zero delivery),
+172 (blocked seat idles silently). Routed to the pij prime.
