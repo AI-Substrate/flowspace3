@@ -1,0 +1,29 @@
+docs/plans/015-ts-grammar/impl-guide.dd.json
+  s_ade38bb94ecdc9::t_7930a22a7b573a 9,17,32,34,38,53,61,70,74,78,82,87
+docs/plans/015-ts-grammar/packet-coder.dd.json
+  s_df43990889e2ef::t_0ead571a176df3 9,29,33,37,41,49,57,65,69,73,77,80,90,108,124,128,132,167,182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a45fdc9326a5d55179554ba9087cbdf647bee56e",
+  "prompts": {},
+  "sessions": {
+    "s_ade38bb94ecdc9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e4bb79ff-2226-45ab-b901-c01c9a804bdc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_df43990889e2ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1aedf4c-fdcb-496d-a59d-75a9027b3f66",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
