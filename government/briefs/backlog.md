@@ -3427,3 +3427,6 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     ordering / guard), and the prime's watcher treats a 422 line in a
     pane as a stall signal. If it recurs, the coder moves to Claude for
     this packet (deviation from the sol-codes ruling, recorded).
+    PLAN 016 — coder DONE (dormouse, 07:30): PR #107 at f9b6d07, slot
+    released, holding for the review; report + buffer vendored to
+    scratch/closeout-016 and the report copied to the review tree.
