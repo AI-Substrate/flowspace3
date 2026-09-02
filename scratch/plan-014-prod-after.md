@@ -37,3 +37,12 @@ status --json wall real 0.32
 status --json wall real 0.34
 load: load averages: 62.93 44.09 36.03
 ```
+
+## Quiet-time status re-measure — 2026-09-02T05:26:18Z, load averages: 26.79 37.50 31.07
+```
+status --json wall real 0.25
+status --json wall real 0.37
+status --json wall real 0.26
+jobs size: 2812 MB
+done|274266 failed|38 
+```

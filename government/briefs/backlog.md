@@ -2873,3 +2873,11 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     with the three owed lists (double-emission / non-function values /
     destructuring; hint-coupled classify; nested namespace addresses; TSX
     error-recovery blank names; scan-table reproducibility; discovery).
+    PLAN 014 — third status measurement 05:26Z (load 27–37, the box never
+    quietened): `status --json` wall 0.25 / 0.37 / 0.26 s; done rows
+    274,266; jobs relation still 2,812 MB an hour after the purge —
+    autovacuum has not reclaimed it. ac-0005 stays PARTIAL: purge and
+    census MET; the <200 ms CLI wall not demonstrated under fleet load
+    (0.25 s is process start + auth + one round trip). Two follow-ups:
+    measure server-side (row 160 timing) rather than CLI wall; and if
+    pg_stat_user_tables.n_dead_tup stays ~900k, schedule a VACUUM window.
