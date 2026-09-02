@@ -3100,3 +3100,20 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     queries from the pij checkout's cwd before calling it a ranking miss.
     PLAN 013 — CI GREEN on b332f46 (06:25). Merge train fires on carp's
     delta verdict; bounce + search before/after after that.
+    ROW 147 — **RECEIPT PROVEN on prod** (06:25Z): searching the first
+    line of a TypeScript function (`function commonPrefixLength(a:
+    string, b: string): number {`) returns
+    `harness/driver/index.ts::commonPrefixLength` as result #1, then its
+    file, then other .ts functions — TS elements are indexed, embedded
+    (model text-embedding-3-small-no-rate@1024, kind raw, same as Rust)
+    and searchable. The earlier misses were phrasing: "what does the
+    <name> function do" ranks conversation turns and docs above code.
+    PLAN 015 CLOSED. Follow-ups: row 125 (hidden dirs hide the pij
+    extensions); row 163 (JS/JSX); row 166 below.
+166. **Symbol-name queries do not boost the element whose name matches**
+    ("what does the commonPrefixLength function do" → turns/docs; the
+    element only surfaces for code-shaped text). An exact identifier token
+    in the query should lexically boost elements with that `name`
+    (fusion weight or a name-match leg). Also observed: `flowspace3 get
+    <path>::<name>` on a TypeScript address returned nothing in the probe
+    (verify the address form the read path expects) — small packet.
