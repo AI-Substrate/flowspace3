@@ -3235,3 +3235,17 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     receiver cannot tell a replay from a new instruction. For the pij
     government: stamp delivery time + "replayed" on late deliveries, or
     expire them.
+    ROW 165 — RESOLVED by weasel (06:52): pid 77843 died when weasel
+    closed ferret's window at ~16:38 local — "my seat's leak", apologised;
+    standing rule for every pij seat: any flowspace3 daemon a worker starts
+    uses FS3_* env for :5434 + a free port (going into the pij-team PM
+    template). CONSEQUENCE: :7373 was EMPTY from ~16:38 until o-prime's
+    relaunch at ~16:53 — prod down ~15 min with nobody noticing (the
+    watcher was not watching the port until 16:49). Encode (fs3): a prod
+    liveness probe in o-prime's watcher (now added) and `harness boot` /
+    doctor showing "prod :7373 = pid X in pane Y".
+    ROW 161 — weasel: post-13:52 PMs it spawned DO have delivered rows, so
+    the zero-delivery pattern is specific to `pij spawn --bin omp` from
+    o-prime's Claude seat; four seat ids handed over for the trace. Pushed
+    turns to a mid-turn omp are held as a steer until the turn ends
+    (req-0031), not spliced.
