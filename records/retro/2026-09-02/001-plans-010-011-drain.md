@@ -44,3 +44,7 @@ Two single-unit plans, two GPT-5.6 coders, two Claude reviewers, no PM, on an un
 3. `harness checks` stage streaming (row 131).
 4. Scaffold-time plan validation in `harness team new`.
 5. Skill text: `ddocs` not `node_modules/.bin/dd`; reviewer packet receipt discipline; coder packet LSP-verify line.
+
+## Post-drain addendum (top-sloth, 2 late observations — re-rescued)
+- `ddocs validate` walks the outbound neighbourhood, so a clean review doc reads as 17 ERRORs owned by a broken neighbour; nothing says "not yours". → ENCODE: group issues by owner in human output, or `--self`.
+- Every existing `builder/review` ddoc in the repo (007, 009) would fail today's schema (old `f-001` ids, retired kinds) — a reviewer who copies the nearest example writes a document that cannot validate. → ENCODE: migrate the old review docs so the nearest example is a correct one, and have E403/E407 name the allowed vocabulary inline. Group D.
