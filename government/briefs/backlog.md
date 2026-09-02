@@ -2119,3 +2119,7 @@ SKILL-TEXT DEFECT, THIRD SEAT (2026-09-02, plan 013 coder, BLOCKING
     o-prime's generator for future packets); (b) Jordan's builder skill
     text (`~/.claude/skills/builder/references/stages/60-implement.md`)
     needs the path fixed — outside this repo, flagged to Jordan.
+    ROW 140 CLOSED (2026-09-02): compose mirror merged as #96 (main
+    7cea955); live values applied by ALTER SYSTEM earlier; a fresh
+    volume now starts identical. No bounce needed (infra only; the
+    running postgres already carries the values).
