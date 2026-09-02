@@ -1,0 +1,113 @@
+records/retro/2026-09-02/001-plans-010-011-drain.md
+  s_15d888f4b629c1::t_a0119ce180d88b 1-46
+scratch/closeout-010-011/buffer-fiscal-tick.md
+  s_15d888f4b629c1::t_3f65325897cbc6 1-12
+scratch/closeout-010-011/buffer-limpet.md
+  s_15d888f4b629c1::t_685cb1b02977e6 1-96
+scratch/closeout-010-011/buffer-oprime.txt
+  s_15d888f4b629c1::t_ec8fd8394a6eef 1-7
+scratch/closeout-010-011/buffer-zealot.md
+  s_15d888f4b629c1::t_451dcd827cfd82 1-84
+scratch/closeout-010-011/conv-verify-ack.md
+  s_15d888f4b629c1::t_02dd4ca106eaf8 1-64
+scratch/closeout-010-011/conv-verify-ask-001.md
+  s_15d888f4b629c1::t_1b006f5feaa230 1-9
+scratch/closeout-010-011/conv-verify-ask-002.md
+  s_15d888f4b629c1::t_cb7e70bc1159a9 1-10
+scratch/closeout-010-011/conv-verify-friction-001.md
+  s_15d888f4b629c1::t_60f89f94ac2eb5 1-3
+scratch/closeout-010-011/conv-verify-friction-002.md
+  s_15d888f4b629c1::t_3db8903906c7f4 1-8
+scratch/closeout-010-011/conv-verify-friction-003.md
+  s_15d888f4b629c1::t_4cec5115a47859 1-3
+scratch/closeout-010-011/conv-verify-friction-004.md
+  s_15d888f4b629c1::t_956889d428eab5 1-3
+scratch/closeout-010-011/conv-verify-friction-005.md
+  s_15d888f4b629c1::t_c3baec818f4574 1-3
+scratch/closeout-010-011/conv-verify-friction-006.md
+  s_15d888f4b629c1::t_0f8b477efc1021 1-3
+scratch/closeout-010-011/conv-verify-friction-007.md
+  s_15d888f4b629c1::t_bda70ab86e16a2 1-3
+scratch/closeout-010-011/conv-verify-gate-ready.md
+  s_15d888f4b629c1::t_da34c5fcbb6b65 1-3
+scratch/closeout-010-011/conv-verify-pr-body.md
+  s_15d888f4b629c1::t_1c4f079d85ebea 1-34
+scratch/closeout-010-011/conv-verify-prime-reply-001.md
+  s_15d888f4b629c1::t_a3f7eddee0cc41 1-9
+scratch/closeout-010-011/conv-verify-prime-reply-002.md
+  s_15d888f4b629c1::t_81949448f1fe7c 1-19
+scratch/closeout-010-011/conv-verify-prime-reply-011.md
+  s_15d888f4b629c1::t_6f7dd0e025e1d8 1-15
+scratch/closeout-010-011/conv-verify-report.md
+  s_15d888f4b629c1::t_2b6896dee93bbb 1-43
+scratch/closeout-010-011/embed-cap-heal-ack.md
+  s_15d888f4b629c1::t_79ae8433add6fb 1-47
+scratch/closeout-010-011/embed-cap-heal-ask-001.md
+  s_15d888f4b629c1::t_dc26d9d36cc7d4 1-5
+scratch/closeout-010-011/embed-cap-heal-ask-002.md
+  s_15d888f4b629c1::t_62a6f15571d78d 1-10
+scratch/closeout-010-011/embed-cap-heal-ask-003.md
+  s_15d888f4b629c1::t_7509430a380fa4 1-5
+scratch/closeout-010-011/embed-cap-heal-ask-004.md
+  s_15d888f4b629c1::t_052e6def9e0a73 1-5
+scratch/closeout-010-011/embed-cap-heal-ask-005.md
+  s_15d888f4b629c1::t_34118a916f7e4d 1-20
+scratch/closeout-010-011/embed-cap-heal-ask-006.md
+  s_15d888f4b629c1::t_de19c023f818e6 1-9
+scratch/closeout-010-011/embed-cap-heal-ask-007.md
+  s_15d888f4b629c1::t_c779eeecc20007 1-12
+scratch/closeout-010-011/embed-cap-heal-ask-008.md
+  s_15d888f4b629c1::t_dc9a4bd3366e7d 1-5
+scratch/closeout-010-011/embed-cap-heal-pr-body.md
+  s_15d888f4b629c1::t_a6da58843f81f6 1-48
+scratch/closeout-010-011/embed-cap-heal-pr-open.md
+  s_15d888f4b629c1::t_56b5ec494f6079 1-13
+scratch/closeout-010-011/embed-cap-heal-prime-reply-001.md
+  s_15d888f4b629c1::t_9eefb075249b1f 1-16
+scratch/closeout-010-011/embed-cap-heal-prime-reply-002.md
+  s_15d888f4b629c1::t_110db6d31e7fe2 1-15
+scratch/closeout-010-011/embed-cap-heal-prime-reply-007.md
+  s_15d888f4b629c1::t_ed6565db962edf 1-15
+scratch/closeout-010-011/embed-cap-heal-report.md
+  s_15d888f4b629c1::t_d98cffc9856f7a 1-91
+scratch/closeout-010-011/prime-reply-to-reviewer-002.md
+  s_15d888f4b629c1::t_294be8320fb338 1-13
+scratch/closeout-010-011/review-010-URGENT-db-crash.md
+  s_15d888f4b629c1::t_ea296d4e49160c 1-99
+scratch/closeout-010-011/review-010-URGENT-retract-trap.md
+  s_15d888f4b629c1::t_b4e92cf3707db2 1-83
+scratch/closeout-010-011/review-010-ack.md
+  s_15d888f4b629c1::t_4cfe23c2afd794 1-96
+scratch/closeout-010-011/review-010-delta-verdict.md
+  s_15d888f4b629c1::t_7886cdabd0dff1 1-139
+scratch/closeout-010-011/review-010-foldin-criteria.md
+  s_15d888f4b629c1::t_7458d582526f78 1-169
+scratch/closeout-010-011/review-010-verdict.md
+  s_15d888f4b629c1::t_024802ac1e8bad 1-168
+scratch/closeout-010-011/review-011-ack.md
+  s_15d888f4b629c1::t_a365bc68aea4ef 1-104
+scratch/closeout-010-011/review-011-delta-standby.md
+  s_15d888f4b629c1::t_e542aac22549dc 1-70
+scratch/closeout-010-011/review-011-verdict-delta.md
+  s_15d888f4b629c1::t_e8171f1690a18d 1-116
+scratch/closeout-010-011/review-011-verdict.md
+  s_15d888f4b629c1::t_a4703dc0f34ff0 1-127
+scratch/closeout-010-011/session-buffer.md
+  s_15d888f4b629c1::t_b8adae13eda4f6 1-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d9a72ede5c780560026f00702c95c45d5fe569f4",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
