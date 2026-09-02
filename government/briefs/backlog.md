@@ -2942,3 +2942,13 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     landing zone; page-bounded admitted_elements must union raw hashes
     with raw hashes reached via smart_content.text_hash for smart
     candidates (else every smart hit drops / the correlated probe returns).
+    PLAN 013 — reviewer precision on option B forwarded as BINDING: the fix
+    is a relocation (existing admitted_sources semi-join, BOTH legs raw +
+    smart text_hash, moves into candidate_vectors WHERE before ORDER BY/
+    LIMIT; payload + chooser stay above) so candidate_count counts admitted
+    rows again; GAP found: the page signal has no daemon carrier
+    (empty_because is empty-only, truncated means the opposite, fusion can
+    mask a starved semantic leg) → distinct `scan_incomplete: bool` on the
+    outcome/meta + test (authorised daemon edit). THE residual risk: the
+    planner keeping the HNSW driver with a hash semi-join inside ORDER BY/
+    LIMIT — booked in the ac-0004 post-merge receipt.
