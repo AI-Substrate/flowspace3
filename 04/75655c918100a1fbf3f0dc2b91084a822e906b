@@ -1,0 +1,26 @@
+docs/plans/010-embed-cap-heal/assets/backpressure.dd.json
+  h_9e71e8b09f7cf2 24-25,34-35,44-45,54-55,64-65,69,73-75,84-85,122-123
+docs/plans/010-embed-cap-heal/assets/backpressure.dd.md
+  h_9e71e8b09f7cf2 23-29
+docs/plans/010-embed-cap-heal/assets/tasks/phase-1/execution.log.md
+  h_9e71e8b09f7cf2 69-78
+docs/plans/010-embed-cap-heal/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 68,74-75,124,129-130
+docs/plans/010-embed-cap-heal/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 42,77-78
+docs/plans/010-embed-cap-heal/plan.dd.json
+  h_9e71e8b09f7cf2 69,71,75-77,88-90
+docs/plans/010-embed-cap-heal/plan.dd.md
+  h_9e71e8b09f7cf2 61-62,70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0475655c918100a1fbf3f0dc2b91084a822e906b",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
