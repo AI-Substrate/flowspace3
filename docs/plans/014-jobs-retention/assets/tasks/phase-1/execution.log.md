@@ -35,7 +35,7 @@ Evidence:
 
 ## tk-0104 — gate and PR
 
-`harness checks` passed every gate against the dedicated `:5434` test postmaster: docs, lockfile, test-db guard, harness contracts, formatting, clippy with warnings denied, the full isolated test suite, architecture drift, and deterministic documents. The first red exposed the missing configuration-reference row; the focused `config_reference` suite passed after adding it. A later transient full-suite red reproduced green, and the final complete harness gate passed.
+`harness checks` passed every gate against the dedicated `:5434` test postmaster: docs, lockfile, test-db guard, harness contracts, formatting, clippy with warnings denied, the full isolated test suite, architecture drift, and deterministic documents. The first red exposed the missing configuration-reference row; the focused `config_reference` suite passed after adding it. A later transient full-suite red reproduced green, and the final complete harness gate passed. PR #98 opened; its implementation head passed CI in 5m22s.
 
 ## Discoveries & learnings
 

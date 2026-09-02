@@ -57,10 +57,11 @@
         {
           "id": "tk-0104",
           "title": "Gate + PR with both mutations and the EXPLAIN in the body",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0104",
           "success": "PR open, CI green",
-          "satisfies": []
+          "satisfies": [],
+          "receipt": "harness checks green on :5434; PR #98 opened; implementation head CI gate passed in 5m22s"
         },
         {
           "id": "tk-0105",
@@ -111,7 +112,7 @@
           {
             "id": "dw-30e5",
             "assertion": "harness checks green; CI green",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0006"
           }
         ],
