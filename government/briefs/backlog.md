@@ -2684,3 +2684,14 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     ROW 124b — **#97 MERGED** c53a911 (docker-compose: db-test on :5434,
     already live). Row CLOSED. Open PRs now: #98 (014, fix sha c5242ea
     under delta review, CI in progress); 013's PR pending amistad's gate.
+    PLAN 014 — DELTA VERDICT: APPROVE at c5242ea (takin, d-001..d-007).
+    f-001 cured against the worst stuck state (attempts=MAX, parks=MAX →
+    pending 0/0, claimable); f-003 cured (Index Scan 4.14; drop-index
+    mutation reverts to Seq Scan 5167); f-002 cured and ac-0003 now
+    requires the absorbed re-fire to be claimable. Reviewer added a
+    FOURTH mutation: an unguarded CASE demotes running rows and wipes
+    budgets — the guard is load-bearing. ac-0001 not regressed. CI green
+    5m13s. n-005 (0023 checksum changed in place): prod _sqlx_migrations
+    max = 22, safe; only six throwaway :5434 test/orphan DBs carry 0023.
+    Merging #98 via the veto train; bounce next (n-001 capture within
+    the hour; n-002 first boot pauses on the non-concurrent unique index).
