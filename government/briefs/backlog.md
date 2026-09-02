@@ -3005,3 +3005,7 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     drains — gate on `count(elements where kind != 'file')` for TS blobs
     going 0 → >0 (≈3,452 for the pij tree) BEFORE searching; an early
     search returns nothing from .ts and looks like a parser failure.
+    PLAN 015 — delta sha a45fdc9 on PR #102 (05:58): PARSER_VERSION @3
+    (scan.rs:247), recipe step in lib.rs doc comment + scanner.md, f-2b05
+    fixed (impl-guide strings; packet-coder i10 dedup), t5 ticked. CI in
+    progress; reviewer boar on the four-point delta.
