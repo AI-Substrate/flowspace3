@@ -2277,3 +2277,13 @@ DEGRADED-ATTRIBUTION TALLY: EIGHT (plan 012 delta commit f3aec311, 2026-09-02).
     CREATE/DROP over TCP from a container. If the volume is ever
     recreated, the entrypoint will add the line itself; if it is ever
     missing again, this is the fix.
+    ROW 145 / ROW 122 — RE-MEASURED ON A HEALTHY STORE (antelope, 2026-09-02,
+    same query, alternated, all exit 0): scoped `--source code` 38 s / 13 s;
+    UNSCOPED 185 s / 156 s. Finding 2 corrected for the record: unscoped
+    search is NOT pool-hungry (that was the outage) — but scope is a
+    4–12× LATENCY lever in a doc-heavy repo, and under store pressure the
+    3-minute query is the one that loses the connection race. So row
+    122's "5–15 s" envelope holds only for scoped queries; the unscoped
+    DEFAULT — what every new agent types first — is 10× outside it. Plan
+    013's ac-0005 wall-time proof must therefore include an UNSCOPED run
+    on a doc-heavy root (chainglass), not just the flowspace3 bare query.
