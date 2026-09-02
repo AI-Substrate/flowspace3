@@ -2820,3 +2820,9 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     mean_exec_time 10,696 ms over 132 calls; one measured search 12.5 s
     wall. ~85 % of search latency is that statement. Same counter is the
     after-metric for 013 (reset or note calls/mean at the bounce).
+    ROW 159 — WITHDRAWN (o-prime's own artefact): re-run with stdout only
+    → 4,467 bytes, zero control bytes, zero raw tabs, `json ok`. The first
+    measurement piped `2>&1`, so a stderr line (the pij stale-card warning
+    / an ANSI sequence) landed inside the JSON. Row 149 already says it:
+    parse stdout only. Not a product defect. Lesson kept: reproduce with
+    a different tool before filing (row 152, twice today).
