@@ -1,0 +1,44 @@
+scratch/closeout-016/health-isolated.log
+  h_9e71e8b09f7cf2 1-45
+scratch/closeout-016/hidden-dirs-ack.md
+  h_9e71e8b09f7cf2 1-32
+scratch/closeout-016/hidden-dirs-ask-001.md
+  h_9e71e8b09f7cf2 1-7
+scratch/closeout-016/hidden-dirs-ask-002.md
+  h_9e71e8b09f7cf2 1-5
+scratch/closeout-016/hidden-dirs-ask-003.md
+  h_9e71e8b09f7cf2 1-10
+scratch/closeout-016/hidden-dirs-ask-004.md
+  h_9e71e8b09f7cf2 1-17
+scratch/closeout-016/hidden-dirs-ask-005.md
+  h_9e71e8b09f7cf2 1-13
+scratch/closeout-016/hidden-dirs-ask-006.md
+  h_9e71e8b09f7cf2 1-9
+scratch/closeout-016/hidden-dirs-ask-007.md
+  h_9e71e8b09f7cf2 1-12
+scratch/closeout-016/hidden-dirs-report.md
+  h_9e71e8b09f7cf2 1-82
+scratch/closeout-016/hidden-dirs-t1-complete.md
+  h_9e71e8b09f7cf2 1-9
+scratch/closeout-016/hidden-dirs-t1-start.md
+  h_9e71e8b09f7cf2 1-9
+scratch/closeout-016/hidden-dirs-t2-start.md
+  h_9e71e8b09f7cf2 1-3
+scratch/closeout-016/hidden-dirs-t3-complete.md
+  h_9e71e8b09f7cf2 1-15
+scratch/closeout-016/hidden-dirs-t5-start.md
+  h_9e71e8b09f7cf2 1-7
+scratch/closeout-016/session-buffer.md
+  h_9e71e8b09f7cf2 1-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2e9a96463e148e33effc9604623f99ef9e1a1154",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
