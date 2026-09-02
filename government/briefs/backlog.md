@@ -2695,3 +2695,9 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     max = 22, safe; only six throwaway :5434 test/orphan DBs carry 0023.
     Merging #98 via the veto train; bounce next (n-001 capture within
     the hour; n-002 first boot pauses on the non-concurrent unique index).
+    PLAN 014 — **#98 MERGED** b86593c (guarded squash after the veto
+    window). Release build of main in progress; bounce via
+    bin/daemon-restart next; then the AFTER receipt (purge count from the
+    log line + status --json within the hour per n-001; status/search
+    timings vs scratch/plan-014-prod-before.md). Review record to land on
+    main as a docs PR.
