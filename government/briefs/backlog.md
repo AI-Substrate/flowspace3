@@ -2594,3 +2594,11 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     fails with E-RS "answered with something this CLI cannot read" and
     `pij-rs report` refuses without a seat it cannot be given. For the pij
     government; fs3 cannot fix it.
+    ROW 143 — disk agent's 24 h large-file sweep (82 min, finished 13:38
+    local, after reaping and Jordan's media purge): on the 1.9 TB volume
+    only 13 files >200 MB were written in 24 h; largest apart from
+    data.img.raw is 4.38 GB. Negative result confirming by elimination
+    that the 170 GB was many small files — the cargo target-tree shape.
+154. **`~/.git-ai/internal/metrics-db` is 4.38 GB and growing with no visible
+    retention policy** (disk agent, flagged not reaped). For the git-ai owner,
+    not fs3; noted so it is not rediscovered at the next disk incident.
