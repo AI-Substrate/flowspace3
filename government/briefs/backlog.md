@@ -2181,3 +2181,4 @@ ROW 126 — THE CRASH MECHANISM, MEASURED AT THE SERVER (reviewer cheetah,
     counts are row 141/124b texture, never a gate. Sixteen concurrent
     CREATE/DROP explains the four crashes better than any checkpoint
     volume.
+DEGRADED-ATTRIBUTION TALLY: EIGHT (plan 012 delta commit f3aec311, 2026-09-02).
