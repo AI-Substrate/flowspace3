@@ -1,0 +1,51 @@
+# Prod bounce runbook — after #107 (016) and #108 (017) merge
+
+**Prerequisite discovered by reading the code, not the PR body (`boot.rs:409-441`):**
+`refuse_undesignated_production_store` refuses when the DB url is the shipped prod
+default AND `FS3_PROD_OWNER` is unset AND `[daemon].owner_root` does not contain the
+cwd. **`owner_root` unset ⇒ `designated_by_root == false` ⇒ REFUSE.** The current prod
+config has no `[daemon]` section at all, so the merged binary refuses to boot until the
+config is edited. This is fail-closed and correct (a foreign daemon clobbered prod twice
+today, rows 165/169), and the error names its own fix — but it makes the config edit a
+MERGE PREREQUISITE, not a follow-up.
+
+**And the edit cannot be made early:** `DaemonConfig` is `deny_unknown_fields`
+(`config.rs:340`), so adding `owner_root` before the new binary exists would make the
+CURRENT daemon fail to parse its config on its next boot. Config and binary must move in
+the same window.
+
+## Sequence (single window, o-prime only)
+
+```bash
+cd /Users/jordanknight/substrate/flowspace/flowspace3
+git pull --ff-only origin main
+cargo build --release --locked            # background it; ~minutes
+
+cp ~/.config/flowspace3/config.toml ~/.config/flowspace3/config.toml.bak-$(date +%H%M)
+cat >> ~/.config/flowspace3/config.toml <<'TOML'
+
+# [daemon] — plan 017: designate this checkout as the production owner so a
+# scratch or foreign daemon cannot take over the shared key / prod database.
+[daemon]
+owner_root = "/Users/jordanknight/substrate/flowspace/flowspace3"
+TOML
+
+bin/daemon-restart --binary /Users/jordanknight/substrate/flowspace/flowspace3/target/release/flowspace3
+# assert rc==0 AND the new pid != the old pid (rows 164/167: the script has
+# refused on ambiguous candidates and has crashed with Bus error AFTER the
+# Ctrl-C and BEFORE the relaunch — never trust it without checking both)
+flowspace3 ping --json
+flowspace3 status --json
+```
+
+## Rollback
+Restore `config.toml.bak-*` and relaunch the previous binary in pane %50. The key file
+is untouched by a refusal (the guard runs before key staging), so a refused boot is a
+no-op, not damage.
+
+## Then
+- `bash fs3-governance/scratch/receipt-016-prod.sh` — the row-125 receipt (opt-in re-add
+  of `~/pi-hacking/pij`, wait for `.pi/` TypeScript symbols, then the `daemonLocation`
+  search).
+- Row 178 cleanup: reap the orphaned roots in the shared `flowspace3_test` DB, now that
+  both gates are done.
