@@ -3208,3 +3208,13 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     /roots semantics + RootReport field + CLI flags; round-trips on
     :5434; column-write mutation red; re-add without the flag preserves
     true, explicit false clears. On to t2.
+    PIJ-TEAM TEMPLATES — **#104 MERGED** e2b3c46; docs worktree removed.
+    PLAN 013 — FINAL CONFIRMED at 8d04a77 (carp): both fixes present and
+    discriminating (reverting only the new conjunct → red; the removed
+    envelope key asserted ABSENT); loops 150 of a 160 bound (margin real,
+    reviewer corrected its own "zero margin"); expansion 1/1, shape 2/2
+    (7.1 ms, 3,103 hits), admission 3/3, starvation 9/9. Merge train armed
+    on CI; bounce waits on the prod port (row 165).
+    ROW 165 — on Jordan's ask, pij-payable-ferret was asked directly
+    (delivered 06:46) what its daemon is for, whether still needed, and to
+    stop it or move it to :5434 + a free port.
