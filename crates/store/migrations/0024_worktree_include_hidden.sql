@@ -1,0 +1,2 @@
+ALTER TABLE worktrees
+ADD COLUMN include_hidden BOOLEAN NOT NULL DEFAULT FALSE;

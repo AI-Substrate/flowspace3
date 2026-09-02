@@ -22,52 +22,57 @@
         {
           "id": "t1",
           "title": "Persist the opt-in: migration 0024 (worktrees.include_hidden boolean not null default false), store read/write, /roots body + RootReport field, CLI `add --include-hidden/--no-include-hidden`",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/t1",
-          "success": "flag round-trips through CLI \u2192 daemon \u2192 store \u2192 envelope; re-add without the flag keeps the stored value",
+          "success": "flag round-trips through CLI → daemon → store → envelope; re-add without the flag keeps the stored value",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001"
-          ]
+          ],
+          "receipt": "migration 0024 + persisted bool + optional /roots field + RootReport field + CLI include/no-include flags; targeted tests green; column-write mutation red then restored green"
         },
         {
           "id": "t2",
           "title": "Thread the flag into discovery at roots.rs:178 and watch.rs:275 (`global OR per-root`); keep the .git refusal",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/t2",
           "success": "opted-in root discovers dot-directory files on scan, re-add and watcher rescan; default root does not; .git never",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0002"
-          ]
+          ],
+          "receipt": "root scan resolves global OR persisted per-root; watcher re-reads stored policy per subtree rescan; opted-in/default/.git/deny fixtures and two independent call-site mutations proven"
         },
         {
           "id": "t3",
           "title": "Skip ledger `hidden` reason + status/tree surfacing",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/t3",
           "success": "default add of a root with dot-dirs reports hidden=N; status --json and tree show include_hidden per root",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
-          ]
+          ],
+          "receipt": "manual hidden pruning names dot directories without descending; skip ledger aggregates hidden reason; status and tree expose the per-root bool in JSON and human output; targeted tests and mutation proven"
         },
         {
           "id": "t4",
           "title": "Regression + gate",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/t4",
           "success": "parsers/daemon/store tests green; clippy clean; CI green on the PR sha",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0004"
-          ]
+          ],
+          "receipt": "exclusive harness checks green at 07:07:06Z after cargo fmt; scoped parsers/daemon/store run had load-time real-daemon health timeout, and the ruled isolated probe also timed out; o-prime accepted the green full gate and classified isolated failure as known-open environment evidence"
         },
         {
           "id": "t5",
-          "title": "Real-usage receipt on the TEST daemon + PR",
-          "state": "unchecked",
+          "title": "Real-usage receipt on the TEST daemon: default `.pi/` absence, all tracked TypeScript evaluated under opt-in, one binary exclusion named, `daemonLocation` found; then PR",
+          "state": "checked",
           "done": "#done_when/t5",
-          "success": "scratch daemon on :5434; pij added with the flag; \u2265500 .pi/ .ts files scanned; named-function search returns the element; default add does not; transcript in the PR body with the exact commands o-prime runs on prod after merge",
+          "success": "scratch daemon on :5434/free port; default `.pi/` rows zero; opt-in evaluates 379 tracked `.pi/**/*.ts`, stores 378 indexable files and names the NUL-byte binary exclusion; exact `daemonLocation` search returns its element; transcript in PR",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0005"
-          ]
+          ],
+          "receipt": "TEST-only scratch daemon at 127.0.0.1:63624 with isolated config and :5434 DB; default .pi zero/path_unmatched; opt-in 378/379 tracked TS stored with one NUL-byte binary named; daemonLocation search and get returned function element; daemon stopped cleanly"
         }
       ]
     },
@@ -77,45 +82,49 @@
         "t1": [
           {
             "id": "dw-3101",
-            "assertion": "add with flag \u2192 true; add without \u2192 unchanged; --no-include-hidden \u2192 false; column-write mutation red",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+            "assertion": "add with flag → true; add without → unchanged; --no-include-hidden → false; column-write mutation red",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001",
+            "receipt": "store test PASS; daemon add round-trip PASS; CLI flag parser PASS; core view round-trip PASS; mutation .bind(false) RED at pg_first_light.rs:173, restored test PASS"
           }
         ],
         "t2": [
           {
             "id": "dw-3102",
             "assertion": "fixture root both modes; call-site mutations red",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002",
+            "receipt": "initial/re-add test PASS with .hidden accepted only opted-in and .git/node_modules/.venv denied; watcher live-flip test PASS; roots call-site mutation RED at files 1!=2; watcher call-site mutation RED at skipped hidden file; both restored PASS"
           }
         ],
         "t3": [
           {
             "id": "dw-3103",
             "assertion": "ledger + JSON assertions; reason-removed mutation red",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003",
+            "receipt": "hidden prune ledger tests PASS; default add reports hidden=2; status JSON and human renderer expose include_hidden; cwd-scoped tree JSON and renderer expose include_hidden; reason-removal mutation RED then restored PASS"
           }
         ],
         "t4": [
           {
             "id": "dw-3104",
             "assertion": "suite green; CI green",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004",
+            "receipt": "harness checks status=ok at 2026-09-02T07:07:06Z on this worktree/head: docs, lock, testdb, fmt, clippy, tests and harness contracts green. Isolated health probe later failed under load; o-prime ruled known environment/harness question, not plan 016 regression; log health-isolated.log."
           }
         ],
         "t5": [
           {
             "id": "dw-3105",
-            "assertion": "counts + search receipt in the PR body",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+            "assertion": "default `.pi/` rows zero; 379 tracked TypeScript files evaluated, 378 indexable stored, NUL-byte exclusion named; `daemonLocation` search receipt and exact commands in PR body",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005",
+            "receipt": "scratch FS3_CONFIG_DIR=/tmp/fs3-hidden-dirs.gis4B3, DB :5434/flowspace3_test, port 63624. Default explicit false: .pi rows 0 and scoped search path_unmatched. Opt-in: 379 tracked TS evaluated, 378 stored; missing memorable-id.test.ts is data with 3 NUL bytes in first 8 KiB and add reports binary=1. Search daemonLocation returns exact function at .pi/extensions/pij/adapters/daemon-http.ts:62-72; get succeeds."
           }
         ]
       }
     }
-  ],
-  "references": []
+  ]
 }

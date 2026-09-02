@@ -47,12 +47,14 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
         roots.set_header([
             theme::header("repo"),
             theme::header("root"),
+            theme::header("hidden"),
             theme::header("files"),
         ]);
         for root in &report.roots {
             roots.add_row([
                 Cell::new(format!("{}", root.identity.bright_white())),
                 Cell::new(format!("{}", root.root_path.bright_black())),
+                Cell::new(if root.include_hidden { "yes" } else { "no" }),
                 theme::right(theme::count(root.files)),
             ]);
         }
@@ -208,6 +210,32 @@ mod tests {
         assert!(screen.contains("purged 3"), "{screen}");
         assert!(!screen.contains("progress"), "{screen}");
         assert!(!screen.contains("done"), "{screen}");
+    }
+
+    #[test]
+    fn roots_show_their_hidden_directory_policy() {
+        let value: Envelope<Value> = serde_json::from_value(json!({
+            "ok": true,
+            "command": "status",
+            "v": 1,
+            "data": {
+                "roots": [{
+                    "identity": "git:example/repo",
+                    "root_path": "/srv/repo",
+                    "include_hidden": true,
+                    "files": 2
+                }],
+                "queue": [],
+                "retention": null,
+                "last_error": null,
+                "inconsistencies": [],
+                "schema_ahead": []
+            }
+        }))
+        .unwrap();
+        let screen = plain(&render(&value, 100).unwrap());
+        assert!(screen.contains("hidden"), "{screen}");
+        assert!(screen.contains("yes"), "{screen}");
     }
 
     #[test]

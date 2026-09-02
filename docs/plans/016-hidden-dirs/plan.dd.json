@@ -6,7 +6,7 @@
     {
       "name": "meta",
       "value": {
-        "title": "016 \u2014 hidden directories per root (row 125)",
+        "title": "016 — hidden directories per root (row 125)",
         "slug": "hidden-dirs",
         "ordinal": 16,
         "status": "ready",
@@ -16,7 +16,7 @@
     },
     {
       "name": "summary",
-      "value": "Make hidden directories indexable per root. Discovery already has `DiscoverySettings.include_hidden` (default false, honoured at discovery.rs:829) but it is only ever built from the GLOBAL daemon config (`state.config.scan`, roots.rs:178 and watch.rs:275), so nothing an operator runs can index a repo whose code lives under a dot-directory. The pij repo keeps 563 of its 667 TypeScript files under `.pi/extensions/` \u2014 invisible to search on prod today (backlog row 125 / row 147 receipt). This packet adds `flowspace3 add --include-hidden`, persists the flag per root, threads it into every scan and watch of that root, surfaces it in status/tree, and proves it by indexing the pij extensions on the test daemon and finding an extension function by search."
+      "value": "Make hidden directories indexable per root. Discovery already has `DiscoverySettings.include_hidden` (default false, honoured at discovery.rs:829) but it is only ever built from the GLOBAL daemon config (`state.config.scan`, roots.rs:178 and watch.rs:275), so nothing an operator runs can index a repo whose code lives under a dot-directory. The pij repo keeps 563 of its 667 TypeScript files under `.pi/extensions/` — invisible to search on prod today (backlog row 125 / row 147 receipt). This packet adds `flowspace3 add --include-hidden`, persists the flag per root, threads it into every scan and watch of that root, surfaces it in status/tree, and proves it by indexing the pij extensions on the test daemon and finding an extension function by search."
     },
     {
       "name": "goals",
@@ -34,7 +34,7 @@
         "changing the global default (hidden stays off by default)",
         "indexing `.git`, `node_modules` or anything the deny list refuses",
         "a per-directory allow-list; the flag is per root only",
-        "prod re-ingest \u2014 o-prime does that after merge and takes the receipt"
+        "prod re-ingest — o-prime does that after merge and takes the receipt"
       ]
     },
     {
@@ -42,28 +42,33 @@
       "value": [
         {
           "id": "ac-0001",
-          "state": "unchecked",
-          "claim": "`flowspace3 add <root> --include-hidden` persists the flag (new nullable-false column on `worktrees`, migration 0024) and the envelope's `data.include_hidden` reflects it; `add` without the flag on an already-opted-in root does NOT silently reset it (explicit `--no-include-hidden` does)"
+          "state": "checked",
+          "claim": "`flowspace3 add <root> --include-hidden` persists the flag (new nullable-false column on `worktrees`, migration 0024) and the envelope's `data.include_hidden` reflects it; `add` without the flag on an already-opted-in root does NOT silently reset it (explicit `--no-include-hidden` does)",
+          "receipt": "0024_worktree_include_hidden.sql; targeted store/daemon/CLI/core tests PASS; absent re-add preserved true; explicit false persisted; forced-false store mutation RED then restored PASS"
         },
         {
           "id": "ac-0002",
-          "state": "unchecked",
-          "claim": "the initial scan, a re-add, and the watcher's rescans of an opted-in root all discover files under dot-directories (fixture root with `.hidden/a.ts` and `src/b.ts`): elements exist for both; a non-opted-in root yields only `src/b.ts`; `.git` contents are never discovered in either mode"
+          "state": "checked",
+          "claim": "the initial scan, a re-add, and the watcher's rescans of an opted-in root all discover files under dot-directories (fixture root with `.hidden/a.ts` and `src/b.ts`): elements exist for both; a non-opted-in root yields only `src/b.ts`; `.git` contents are never discovered in either mode",
+          "receipt": "PASS on :5434: default root only src/b.ts; opted-in root adds .hidden/a.ts; .git/node_modules/.venv never mapped; watcher indexes hidden while enabled and rejects after live re-add disable. Both call-site mutations RED, restored PASS."
         },
         {
           "id": "ac-0003",
-          "state": "unchecked",
-          "claim": "the skip ledger reports `hidden` as a reason with a count for a default add of a root that has dot-directories, and `status --json` / `tree` expose `include_hidden` per root"
+          "state": "checked",
+          "claim": "the skip ledger reports `hidden` as a reason with a count for a default add of a root that has dot-directories, and `status --json` / `tree` expose `include_hidden` per root",
+          "receipt": "Default add reports skipped hidden count from named directory prunes; status roots include include_hidden; cwd/absolute tree data includes resolved root policy; CLI human tables/titles render it. Targeted tests PASS; reason-removal mutation RED and restored PASS."
         },
         {
           "id": "ac-0004",
-          "state": "unchecked",
-          "claim": "no regression: discovery fixtures, roots and watch tests green; clippy clean; CI gate green on the exact PR sha (or the local exclusive gate)"
+          "state": "checked",
+          "claim": "no regression: discovery fixtures, roots and watch tests green; clippy clean; CI gate green on the exact PR sha (or the local exclusive gate)",
+          "receipt": "harness checks GREEN on exact worktree at 07:07:06Z after formatter: docs, lock, testdb, fmt, clippy, tests, contracts. Isolated real-daemon health timeout is known-open environment evidence per o-prime; exact log health-isolated.log."
         },
         {
           "id": "ac-0005",
-          "state": "unchecked",
-          "claim": "real usage on the TEST daemon (never prod): `flowspace3 add ~/pi-hacking/pij --include-hidden` \u2192 \u2265 500 TypeScript files under `.pi/` scanned; `flowspace3 search \"<first line of a named function in .pi/extensions/pij>\"` returns that function element; the same search on a default add returns nothing from `.pi/`"
+          "state": "checked",
+          "claim": "real usage on the TEST daemon (never prod): default add yields 0 `.pi/` rows; opt-in evaluates every git-tracked `.pi/**/*.ts` file (379 today), stores all 378 indexable files, names `.pi/extensions/pij/core/memorable-id.test.ts` as binary because its first 8 KiB contains NUL bytes, and search for `export function daemonLocation(` returns its `.pi/extensions/pij` element",
+          "receipt": "TEST scratch daemon http://127.0.0.1:63624, FS3_CONFIG_DIR=/tmp/fs3-hidden-dirs.gis4B3, DB :5434. Default .pi rows=0 and scoped path_unmatched. Opt-in mapped 378 of 379 tracked .pi TS; missing memorable-id.test.ts classified data with 3 NUL bytes and add binary=1. Search daemonLocation returned exact function element at .pi/extensions/pij/adapters/daemon-http.ts:62-72; get succeeded. Daemon stopped."
         }
       ]
     },
@@ -74,11 +79,11 @@
           "id": "ph-8c14",
           "title": "Phase 1: per-root hidden-directory opt-in",
           "brief": "One coder. Persist first (migration + store + /roots body + CLI flag), then thread the flag into DiscoverySettings at both call sites, then the ledger reason and status/tree surfacing, then fixtures + tests, then the test-daemon real-usage receipt with the pij extensions.",
-          "state": "unchecked",
-          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+          "state": "checked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks",
+          "receipt": "t1-t5 checked: persistence/API/CLI, both discovery call sites, hidden ledger/status/tree, green harness checks, and TEST-only pij real-usage receipt. See assets/tasks/phase-1/execution.log.md and task/backpressure receipts."
         }
       ]
     }
-  ],
-  "references": []
+  ]
 }

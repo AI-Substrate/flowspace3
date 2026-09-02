@@ -1015,6 +1015,27 @@ async fn tree_on_a_repository_lists_its_directories_and_files() {
     stack.destroy().await;
 }
 
+/// Cwd-scoped tree output carries the policy of the concrete root whose bytes
+/// answer the browse.
+#[tokio::test]
+async fn tree_exposes_the_resolved_roots_hidden_policy() {
+    let stack = Stack::create("read_tree_hidden_policy").await;
+    let fixture = Fixture::create("read-tree-hidden-policy", None);
+    let here = fixture.path();
+    stack.index(&here).await;
+    let worktree = fs3_store::worktree_containing(&stack.state.db, &here)
+        .await
+        .unwrap()
+        .unwrap();
+    fs3_store::set_worktree_include_hidden(&stack.state.db, worktree.id, true)
+        .await
+        .unwrap();
+
+    let envelope = stack.tree(&[("cwd", here.as_str())]).await;
+    assert_eq!(data(&envelope)["include_hidden"], true);
+    stack.destroy().await;
+}
+
 /// Structure browse over one file: its declarations, addressed, so the next
 /// step is a `get` rather than a guess.
 #[tokio::test]

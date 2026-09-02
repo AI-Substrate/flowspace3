@@ -273,6 +273,7 @@ pub async fn tree(
         .as_deref()
         .map(str::trim)
         .filter(|value| !value.is_empty());
+    let include_hidden = tree_hidden_policy(state, raw, scope).await?;
 
     let (repo, prefix) = match raw {
         None => (scope.repo.clone(), String::new()),
@@ -304,7 +305,7 @@ pub async fn tree(
             .await
             .map_err(fail)?;
         if !files.is_empty() {
-            return file_tree(state, files, &prefix, depth, scope).await;
+            return file_tree(state, files, &prefix, depth, scope, include_hidden).await;
         }
     }
 
@@ -329,6 +330,7 @@ pub async fn tree(
     Ok(TreeResult {
         target: target_label(repo.as_deref(), &prefix),
         repo,
+        include_hidden,
         kind: if prefix.is_empty() {
             "repository".to_string()
         } else {
@@ -339,6 +341,26 @@ pub async fn tree(
         entries,
         inconsistencies: Vec::new(),
     })
+}
+
+async fn tree_hidden_policy(
+    state: &AppState,
+    raw: Option<&str>,
+    scope: &Scope,
+) -> Result<Option<bool>, Failure> {
+    let path = match raw {
+        Some(target) if target.starts_with('/') || target.starts_with("\\\\") => {
+            Some(target.trim_end_matches('/'))
+        }
+        _ => scope.worktree.as_deref(),
+    };
+    let Some(path) = path else {
+        return Ok(None);
+    };
+    Ok(fs3_store::worktree_containing(&state.db, path)
+        .await
+        .map_err(fail)?
+        .map(|worktree| worktree.include_hidden))
 }
 
 /// Every repository in the index, with how much of each is indexed.
@@ -370,6 +392,7 @@ async fn index_tree(state: &AppState, limit: i64) -> Result<TreeResult, Failure>
     Ok(TreeResult {
         target: "index".to_string(),
         repo: None,
+        include_hidden: None,
         kind: "index".to_string(),
         total,
         showing: entries.len(),
@@ -385,6 +408,7 @@ async fn file_tree(
     path: &str,
     depth: u32,
     scope: &Scope,
+    include_hidden: Option<bool>,
 ) -> Result<TreeResult, Failure> {
     let file = choose_file(files, path, scope)?;
     let (_, root, inconsistencies) = parse_tree(state, &file).await?;
@@ -399,6 +423,7 @@ async fn file_tree(
     Ok(TreeResult {
         target: fs3_core::element_address(Some(&file.identity), path),
         repo: Some(file.identity),
+        include_hidden,
         kind: "file".to_string(),
         total,
         showing: entries.len(),
@@ -1023,6 +1048,7 @@ async fn conversation_outline(
     Ok(TreeResult {
         target: summary.title.clone().unwrap_or_else(|| guid.address()),
         repo: summary.repo_identity,
+        include_hidden: None,
         kind: "conversation".to_string(),
         total: summary.turns,
         showing: rows.len(),

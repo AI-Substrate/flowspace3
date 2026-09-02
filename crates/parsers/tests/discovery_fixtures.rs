@@ -12,7 +12,9 @@
 use std::path::{Path, PathBuf};
 
 use fs3_parsers::Language;
-use fs3_parsers::discovery::{Discovery, DiscoverySettings, LanguageFamily, SkipReason, discover};
+use fs3_parsers::discovery::{
+    Discovery, DiscoverySettings, LanguageFamily, PruneReason, SkipReason, discover,
+};
 
 fn tree() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures/discovery-tree")
@@ -63,10 +65,10 @@ fn the_default_walk_returns_exactly_the_scannable_files() {
     );
 }
 
-/// What git ignores is out of scope, not refused: it must appear in neither
-/// list, or every `node_modules` entry would land in the skip ledger.
+/// Git-ignored files remain out of scope; a hidden directory is named once as
+/// a prune without visiting every file beneath it.
 #[test]
-fn ignored_and_hidden_files_are_absent_from_both_lists() {
+fn ignored_files_are_absent_and_hidden_directories_are_named() {
     let discovery = found(&DiscoverySettings::default());
 
     for trap in [
@@ -83,6 +85,14 @@ fn ignored_and_hidden_files_are_absent_from_both_lists() {
             "{trap} reached the skip ledger",
         );
     }
+    assert!(
+        discovery
+            .pruned
+            .iter()
+            .any(|dir| dir.path == ".hidden" && dir.reason == PruneReason::Hidden),
+        "the hidden directory prune must be observable: {:?}",
+        discovery.pruned,
+    );
 }
 
 /// PRD req 41: "a gitignored folder you do want indexed".
@@ -245,6 +255,10 @@ fn hidden_files_appear_only_when_asked_for() {
     let discovery = found(&settings);
 
     assert!(kept(&discovery).contains(&".hidden/notes.md"));
+    assert!(
+        !discovery.pruned.iter().any(|dir| dir.path == ".hidden"),
+        "an opted-in hidden directory must not be reported as pruned",
+    );
     // The ignore files themselves have no extension, so they are named as
     // unsupported rather than quietly vanishing.
     assert!(refused(&discovery).contains(&(".gitignore", SkipReason::UnsupportedExtension)));

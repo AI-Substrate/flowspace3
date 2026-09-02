@@ -82,7 +82,7 @@ impl Stack {
     }
 
     async fn add_root(&self) -> RootReport {
-        roots::add_root(&self.state, &self.root)
+        roots::add_root(&self.state, &self.root, None)
             .await
             .expect("registering the scratch root")
     }
@@ -226,6 +226,76 @@ async fn a_file_written_under_a_watched_root_is_scanned_without_being_asked() {
     assert!(
         stack.elements_for("src/second.rs").await > 0,
         "a file nobody asked about was indexed because it changed on disk"
+    );
+
+    stack.destroy().await;
+}
+
+/// Watcher subtree discovery re-reads the stored root policy, so a re-add can
+/// flip hidden-directory handling without restarting the daemon.
+#[tokio::test]
+async fn watcher_rescans_follow_the_current_per_root_hidden_policy() {
+    let stack = Stack::create("watch-hidden-policy").await;
+    stack.write("src/b.ts", "export function visible() { return 1; }\n");
+    stack.write(
+        ".hidden/a.ts",
+        "export function initiallyHidden() { return 2; }\n",
+    );
+    stack.write(
+        ".git/never.ts",
+        "export function gitInternal() { return 3; }\n",
+    );
+
+    let report = roots::add_root(&stack.state, &stack.root, Some(true))
+        .await
+        .expect("registering an opted-in root");
+    assert_eq!(report.files, 2, ".git remains denied under hidden opt-in");
+    assert_eq!(stack.drain().await.failed, 0);
+    assert!(stack.elements_for(".hidden/a.ts").await > 0);
+
+    let mut supervisor = WatcherSupervisor::new(stack.state.clone());
+    supervisor.reconcile().await.expect("the boot pass");
+    stack.write(
+        ".hidden/live.ts",
+        "export function watcherHidden() { return 4; }\n",
+    );
+    let saw_hidden = reconcile_until(&mut supervisor, PATIENCE, async || {
+        stack
+            .queued_scan_paths()
+            .await
+            .contains(&".hidden/live.ts".to_string())
+    })
+    .await;
+    assert!(saw_hidden, "the opted-in watcher skipped a hidden file");
+    assert_eq!(stack.drain().await.failed, 0);
+    assert!(stack.elements_for(".hidden/live.ts").await > 0);
+
+    roots::add_root(&stack.state, &stack.root, Some(false))
+        .await
+        .expect("disabling hidden discovery by re-add");
+    stack.drain().await;
+    stack.write(
+        ".hidden/ignored.ts",
+        "export function nowIgnored() { return 5; }\n",
+    );
+    stack.write("src/canary.ts", "export function canary() { return 6; }\n");
+    let saw_canary = reconcile_until(&mut supervisor, PATIENCE, async || {
+        stack
+            .queued_scan_paths()
+            .await
+            .contains(&"src/canary.ts".to_string())
+    })
+    .await;
+    assert!(
+        saw_canary,
+        "the watcher did not process the post-flip events"
+    );
+    assert!(
+        !stack
+            .mapped_paths()
+            .await
+            .contains(&".hidden/ignored.ts".to_string()),
+        "a watcher rescan used stale hidden-directory policy"
     );
 
     stack.destroy().await;

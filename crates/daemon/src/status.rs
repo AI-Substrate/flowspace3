@@ -21,6 +21,7 @@ pub async fn report(state: &AppState, history: bool) -> Result<StatusReport, Fai
         .map(|worktree| Root {
             identity: worktree.identity,
             root_path: worktree.root_path,
+            include_hidden: worktree.include_hidden,
             files: worktree.file_count,
         })
         .collect();

@@ -74,7 +74,8 @@ pub use read::{
 };
 pub use refs::{
     RegisteredWorktree, WorktreePath, find_worktree, list_worktrees, register_worktree,
-    sync_worktree_files, worktree_file_map, worktree_paths_for_blob,
+    set_worktree_include_hidden, sync_worktree_files, worktree_file_map, worktree_include_hidden,
+    worktree_paths_for_blob,
 };
 pub use roots::{
     Reclaimed, Removal, collect_garbage, raw_hash_is_referenced, reclaimable,

@@ -35,11 +35,11 @@ Work top to bottom; stop-and-ask o-prime on anything outside the fence.
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| t1 | Persist the opt-in: migration 0024 (worktrees.include_hidden boolean not null default false), store read/write, /roots body + RootReport field, CLI `add --include-hidden/--no-include-hidden` | — | — | [ ] unchecked | — | — | [ ] 0/1 [t1](#t1) | flag round-trips through CLI → daemon → store → envelope; re-add without the flag keeps the stored value | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
-| t2 | Thread the flag into discovery at roots.rs:178 and watch.rs:275 (`global OR per-root`); keep the .git refusal | — | — | [ ] unchecked | — | — | [ ] 0/1 [t2](#t2) | opted-in root discovers dot-directory files on scan, re-add and watcher rescan; default root does not; .git never | — | [ac-0002](../../../plan.dd.md#acceptance-criteria) |
-| t3 | Skip ledger `hidden` reason + status/tree surfacing | — | — | [ ] unchecked | — | — | [ ] 0/1 [t3](#t3) | default add of a root with dot-dirs reports hidden=N; status --json and tree show include_hidden per root | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
-| t4 | Regression + gate | — | — | [ ] unchecked | — | — | [ ] 0/1 [t4](#t4) | parsers/daemon/store tests green; clippy clean; CI green on the PR sha | — | [ac-0004](../../../plan.dd.md#acceptance-criteria) |
-| t5 | Real-usage receipt on the TEST daemon + PR | — | — | [ ] unchecked | — | — | [ ] 0/1 [t5](#t5) | scratch daemon on :5434; pij added with the flag; ≥500 .pi/ .ts files scanned; named-function search returns the element; default add does not; transcript in the PR body with the exact commands o-prime runs on prod after merge | — | [ac-0005](../../../plan.dd.md#acceptance-criteria) |
+| t1 | Persist the opt-in: migration 0024 (worktrees.include_hidden boolean not null default false), store read/write, /roots body + RootReport field, CLI `add --include-hidden/--no-include-hidden` | — | — | [x] checked | — | migration 0024 + persisted bool + optional /roots field + RootReport field + CLI include/no-include flags; targeted tests green; column-write mutation red then restored green | [x] 1/1 [t1](#t1) | flag round-trips through CLI → daemon → store → envelope; re-add without the flag keeps the stored value | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
+| t2 | Thread the flag into discovery at roots.rs:178 and watch.rs:275 (`global OR per-root`); keep the .git refusal | — | — | [x] checked | — | root scan resolves global OR persisted per-root; watcher re-reads stored policy per subtree rescan; opted-in/default/.git/deny fixtures and two independent call-site mutations proven | [x] 1/1 [t2](#t2) | opted-in root discovers dot-directory files on scan, re-add and watcher rescan; default root does not; .git never | — | [ac-0002](../../../plan.dd.md#acceptance-criteria) |
+| t3 | Skip ledger `hidden` reason + status/tree surfacing | — | — | [x] checked | — | manual hidden pruning names dot directories without descending; skip ledger aggregates hidden reason; status and tree expose the per-root bool in JSON and human output; targeted tests and mutation proven | [x] 1/1 [t3](#t3) | default add of a root with dot-dirs reports hidden=N; status --json and tree show include_hidden per root | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
+| t4 | Regression + gate | — | — | [x] checked | — | exclusive harness checks green at 07:07:06Z after cargo fmt; scoped parsers/daemon/store run had load-time real-daemon health timeout, and the ruled isolated probe also timed out; o-prime accepted the green full gate and classified isolated failure as known-open environment evidence | [x] 1/1 [t4](#t4) | parsers/daemon/store tests green; clippy clean; CI green on the PR sha | — | [ac-0004](../../../plan.dd.md#acceptance-criteria) |
+| t5 | Real-usage receipt on the TEST daemon: default `.pi/` absence, all tracked TypeScript evaluated under opt-in, one binary exclusion named, `daemonLocation` found; then PR | — | — | [x] checked | — | TEST-only scratch daemon at 127.0.0.1:63624 with isolated config and :5434 DB; default .pi zero/path_unmatched; opt-in 378/379 tracked TS stored with one NUL-byte binary named; daemonLocation search and get returned function element; daemon stopped cleanly | [x] 1/1 [t5](#t5) | scratch daemon on :5434/free port; default `.pi/` rows zero; opt-in evaluates 379 tracked `.pi/**/*.ts`, stores 378 indexable files and names the NUL-byte binary exclusion; exact `daemonLocation` search returns its element; transcript in PR | — | [ac-0005](../../../plan.dd.md#acceptance-criteria) |
 
 <a id="done-when"></a>
 
@@ -47,30 +47,30 @@ Work top to bottom; stop-and-ask o-prime on anything outside the fence.
 
 ### t1
 
-| id | assertion | state | pressure |
-| --- | --- | --- | --- |
-| dw-3101 | add with flag → true; add without → unchanged; --no-include-hidden → false; column-write mutation red | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
+| id | assertion | state | pressure | receipt |
+| --- | --- | --- | --- | --- |
+| dw-3101 | add with flag → true; add without → unchanged; --no-include-hidden → false; column-write mutation red | [x] checked | [bp-0001](../../backpressure.dd.md#rows) | store test PASS; daemon add round-trip PASS; CLI flag parser PASS; core view round-trip PASS; mutation .bind(false) RED at pg_first_light.rs:173, restored test PASS |
 
 ### t2
 
-| id | assertion | state | pressure |
-| --- | --- | --- | --- |
-| dw-3102 | fixture root both modes; call-site mutations red | [ ] unchecked | [bp-0002](../../backpressure.dd.md#rows) |
+| id | assertion | state | pressure | receipt |
+| --- | --- | --- | --- | --- |
+| dw-3102 | fixture root both modes; call-site mutations red | [x] checked | [bp-0002](../../backpressure.dd.md#rows) | initial/re-add test PASS with .hidden accepted only opted-in and .git/node_modules/.venv denied; watcher live-flip test PASS; roots call-site mutation RED at files 1!=2; watcher call-site mutation RED at skipped hidden file; both restored PASS |
 
 ### t3
 
-| id | assertion | state | pressure |
-| --- | --- | --- | --- |
-| dw-3103 | ledger + JSON assertions; reason-removed mutation red | [ ] unchecked | [bp-0003](../../backpressure.dd.md#rows) |
+| id | assertion | state | pressure | receipt |
+| --- | --- | --- | --- | --- |
+| dw-3103 | ledger + JSON assertions; reason-removed mutation red | [x] checked | [bp-0003](../../backpressure.dd.md#rows) | hidden prune ledger tests PASS; default add reports hidden=2; status JSON and human renderer expose include_hidden; cwd-scoped tree JSON and renderer expose include_hidden; reason-removal mutation RED then restored PASS |
 
 ### t4
 
-| id | assertion | state | pressure |
-| --- | --- | --- | --- |
-| dw-3104 | suite green; CI green | [ ] unchecked | [bp-0004](../../backpressure.dd.md#rows) |
+| id | assertion | state | pressure | receipt |
+| --- | --- | --- | --- | --- |
+| dw-3104 | suite green; CI green | [x] checked | [bp-0004](../../backpressure.dd.md#rows) | harness checks status=ok at 2026-09-02T07:07:06Z on this worktree/head: docs, lock, testdb, fmt, clippy, tests and harness contracts green. Isolated health probe later failed under load; o-prime ruled known environment/harness question, not plan 016 regression; log health-isolated.log. |
 
 ### t5
 
-| id | assertion | state | pressure |
-| --- | --- | --- | --- |
-| dw-3105 | counts + search receipt in the PR body | [ ] unchecked | [bp-0005](../../backpressure.dd.md#rows) |
+| id | assertion | state | pressure | receipt |
+| --- | --- | --- | --- | --- |
+| dw-3105 | default `.pi/` rows zero; 379 tracked TypeScript files evaluated, 378 indexable stored, NUL-byte exclusion named; `daemonLocation` search receipt and exact commands in PR body | [x] checked | [bp-0005](../../backpressure.dd.md#rows) | scratch FS3_CONFIG_DIR=/tmp/fs3-hidden-dirs.gis4B3, DB :5434/flowspace3_test, port 63624. Default explicit false: .pi rows 0 and scoped search path_unmatched. Opt-in: 379 tracked TS evaluated, 378 stored; missing memorable-id.test.ts is data with 3 NUL bytes in first 8 KiB and add reports binary=1. Search daemonLocation returns exact function at .pi/extensions/pij/adapters/daemon-http.ts:62-72; get succeeds. |

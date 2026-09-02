@@ -192,7 +192,7 @@ async fn serial_success_and_failure_emit_their_settlement_and_queue_snapshot() {
     let mut events = state.subscribe();
     let root = support::temp_dir("event-serial");
     std::fs::write(root.join("one.rs"), "fn one() {}\n").expect("writes source file");
-    fs3_daemon::roots::add_root(&state, &root)
+    fs3_daemon::roots::add_root(&state, &root, None)
         .await
         .expect("adds one serial scan");
     runner::drain(&state, 1).await;
@@ -330,7 +330,7 @@ async fn a_large_real_add_emits_bounded_progress_and_root_changes() {
     }
 
     let mut events = state.subscribe();
-    let report = fs3_daemon::roots::add_root(&state, &root)
+    let report = fs3_daemon::roots::add_root(&state, &root, None)
         .await
         .expect("adds the large root");
     assert_eq!(report.files, 1_025);

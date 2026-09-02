@@ -27,10 +27,10 @@
 //!
 //! Everything a file is refused *for* lands in [`Discovery::skipped`] with a
 //! reason, because "unsupported/no-grammar files must be an observable
-//! outcome, never a silent gap" (PRD req 43). What git ignores — and what the
-//! deny list prunes — is **not** in that ledger: those paths are out of scope,
-//! not refused, and a pruned `node_modules` must not cost a hundred thousand
-//! ledger rows.
+//! outcome, never a silent gap" (PRD req 43). Git-ignored paths remain out of
+//! scope. Directory prunes are named once in [`Discovery::pruned`], including
+//! hidden directories and the standard deny list, without visiting every file
+//! beneath them.
 //!
 //! Paths come back **relative to the root** with `/` separators, so the same
 //! folder scanned from any absolute location (or any machine) yields identical
@@ -48,7 +48,7 @@
 //! refuses. The IO is confined to [`discover`]; the decisions it makes are pure
 //! functions tested without a filesystem.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -351,15 +351,10 @@ pub struct SkippedFile {
 }
 
 /// Why a directory was never walked.
-///
-/// One variant, deliberately. `ignore`'s walker applies its own matchers
-/// *before* the callback fs3 supplies (`Walk::skip_entry` consults
-/// `should_skip_entry` first), so a git-ignored or hidden directory is pruned
-/// before this crate is ever asked about it and cannot honestly be reported
-/// here. That half already has an answer fs3 would only be guessing at:
-/// `git check-ignore -v <path>` names the file and line that did it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PruneReason {
+    /// Excluded by the default hidden-entry policy.
+    Hidden,
     /// Denied by [`DiscoverySettings::standard_ignores`].
     StandardIgnore,
 }
@@ -368,6 +363,7 @@ impl PruneReason {
     /// The name used in reports.
     pub const fn as_str(self) -> &'static str {
         match self {
+            PruneReason::Hidden => "hidden",
             PruneReason::StandardIgnore => "standard-ignore",
         }
     }
@@ -527,7 +523,7 @@ fn reached(
 ) -> bool {
     // The probe never reports prunes: it walks the chain, not a tree, so the
     // only directory it could name is one the caller already has in hand.
-    let ledger: Arc<Mutex<BTreeSet<String>>> = Arc::new(Mutex::new(BTreeSet::new()));
+    let ledger: Arc<Mutex<BTreeMap<String, PruneReason>>> = Arc::new(Mutex::new(BTreeMap::new()));
     walker(
         root,
         settings,
@@ -562,11 +558,10 @@ fn collect(
         skipped: BTreeMap::new(),
     };
 
-    // The deny list prunes whole directories, so what it refuses can never
-    // appear in either file list. This is where those directories get named:
-    // a `BTreeSet` because the two passes overlap and because sorted output
-    // makes a discovery result comparable.
-    let pruned: Arc<Mutex<BTreeSet<String>>> = Arc::new(Mutex::new(BTreeSet::new()));
+    // Directory policies prune whole trees, so their contents can never
+    // appear in either file list. A map names each refused directory once,
+    // preserves its reason across overlapping passes, and sorts the result.
+    let pruned: Arc<Mutex<BTreeMap<String, PruneReason>>> = Arc::new(Mutex::new(BTreeMap::new()));
 
     // `None` rather than `Some(root)` for a whole-root walk: the restriction
     // would answer yes for every entry, and the common case should not pay two
@@ -620,10 +615,7 @@ fn collect(
             .collect(),
         pruned: pruned
             .into_iter()
-            .map(|path| PrunedDirectory {
-                path,
-                reason: PruneReason::StandardIgnore,
-            })
+            .map(|(path, reason)| PrunedDirectory { path, reason })
             .collect(),
     })
 }
@@ -763,7 +755,7 @@ fn walk(
     settings: &DiscoverySettings,
     honour_ignores: bool,
     within: Option<PathBuf>,
-    pruned: &Arc<Mutex<BTreeSet<String>>>,
+    pruned: &Arc<Mutex<BTreeMap<String, PruneReason>>>,
     visit: &mut dyn FnMut(&Path, &Path, Option<u64>),
 ) {
     for entry in walker(root, settings, honour_ignores, within, pruned).build() {
@@ -808,7 +800,7 @@ fn walker(
     settings: &DiscoverySettings,
     honour_ignores: bool,
     within: Option<PathBuf>,
-    pruned: &Arc<Mutex<BTreeSet<String>>>,
+    pruned: &Arc<Mutex<BTreeMap<String, PruneReason>>>,
 ) -> WalkBuilder {
     let honour = honour_ignores && settings.respect_gitignore;
     // Deliberately keyed off `honour_ignores`, not `honour`: the deny list is
@@ -823,10 +815,13 @@ fn walker(
     // Contended only when a directory is actually refused — eleven times on a
     // real repository, not once per entry.
     let ledger = Arc::clone(pruned);
+    let include_hidden = settings.include_hidden;
     let ledger_root = root.to_path_buf();
     let mut builder = WalkBuilder::new(root);
     builder
-        .hidden(!settings.include_hidden)
+        // See every dot entry so `filter_entry` can name a hidden-directory
+        // prune without descending into it.
+        .hidden(false)
         .parents(honour)
         .ignore(honour)
         .git_ignore(honour)
@@ -870,6 +865,16 @@ fn walker(
             if name.eq_ignore_ascii_case(".git") {
                 return false;
             }
+            if !include_hidden && name.starts_with('.') {
+                if is_dir && let Ok(relative) = entry.path().strip_prefix(&ledger_root) {
+                    ledger
+                        .lock()
+                        .expect("prune ledger is never poisoned")
+                        .entry(display_path(relative))
+                        .or_insert(PruneReason::Hidden);
+                }
+                return false;
+            }
             if !is_dir {
                 return true;
             }
@@ -888,7 +893,8 @@ fn walker(
                 ledger
                     .lock()
                     .expect("prune ledger is never poisoned")
-                    .insert(display_path(relative));
+                    .entry(display_path(relative))
+                    .or_insert(PruneReason::StandardIgnore);
             }
             false
         });

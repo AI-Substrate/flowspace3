@@ -76,7 +76,7 @@ async fn removing_a_root_mid_scan_kills_its_queue_and_nothing_comes_back() {
     let directory = a_repo_of(40, "remove-mid-scan");
     let root = directory.to_string_lossy().to_string();
 
-    let report = fs3_daemon::roots::add_root(&state, &directory)
+    let report = fs3_daemon::roots::add_root(&state, &directory, None)
         .await
         .expect("adding the root");
     let worktree = report.worktree_id;
@@ -142,7 +142,7 @@ async fn a_scan_claimed_before_the_removal_settles_without_complaint() {
     let directory = a_repo_of(4, "remove-claimed");
     let root = directory.to_string_lossy().to_string();
 
-    let report = fs3_daemon::roots::add_root(&state, &directory)
+    let report = fs3_daemon::roots::add_root(&state, &directory, None)
         .await
         .expect("adding the root");
 
@@ -195,7 +195,7 @@ async fn the_watcher_stops_watching_a_removed_root_within_one_pass() {
     let directory = a_repo_of(2, "remove-watcher");
     let root = directory.to_string_lossy().to_string();
 
-    fs3_daemon::roots::add_root(&state, &directory)
+    fs3_daemon::roots::add_root(&state, &directory, None)
         .await
         .expect("adding the root");
 
@@ -234,10 +234,10 @@ async fn removing_one_root_leaves_the_other_alone() {
     let doomed = a_repo_of(3, "remove-doomed");
     let kept = a_repo_of(3, "remove-kept");
 
-    fs3_daemon::roots::add_root(&state, &doomed)
+    fs3_daemon::roots::add_root(&state, &doomed, None)
         .await
         .expect("adding");
-    let survivor = fs3_daemon::roots::add_root(&state, &kept)
+    let survivor = fs3_daemon::roots::add_root(&state, &kept, None)
         .await
         .expect("adding")
         .worktree_id;
@@ -297,7 +297,7 @@ async fn concurrent_removals_do_not_deadlock() {
     let state = AppState::from_config(offline(&database.url())).expect("wiring");
     let directory = a_repo_of(5, "remove-concurrent");
     let root = directory.to_string_lossy().to_string();
-    fs3_daemon::roots::add_root(&state, &directory)
+    fs3_daemon::roots::add_root(&state, &directory, None)
         .await
         .expect("adding");
 
@@ -325,7 +325,7 @@ async fn gc_leaves_a_live_index_completely_alone() {
 
     let state = AppState::from_config(offline(&database.url())).expect("wiring");
     let directory = a_repo_of(6, "gc-noop");
-    fs3_daemon::roots::add_root(&state, &directory)
+    fs3_daemon::roots::add_root(&state, &directory, None)
         .await
         .expect("adding");
     fs3_daemon::drain(&state, 2).await;

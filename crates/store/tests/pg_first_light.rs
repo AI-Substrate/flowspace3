@@ -17,8 +17,8 @@ use fs3_store::{
     SourceKind, StoreError, claim_job, complete_job, create_database, database_exists, enqueue_job,
     enqueue_job_with_priority, find_worktree, list_worktrees, maintenance_url, put_embeddings,
     put_smart_content, queue_depth, queue_depth_history, register_worktree, retry_job,
-    schema_current, search_elements, sync_worktree_files, upsert_element_tree,
-    worktree_paths_for_blob,
+    schema_current, search_elements, set_worktree_include_hidden, sync_worktree_files,
+    upsert_element_tree, worktree_paths_for_blob,
 };
 use fs3_testkit::fakes::FakeEmbedder;
 use support::{FreshDatabase, PARSER_VERSION, unique_blob, unique_seed};
@@ -138,6 +138,55 @@ async fn registering_a_root_twice_returns_the_same_worktree() {
         worktrees[0].ref_name.as_deref(),
         Some("feature"),
         "a re-add refreshes the ref name rather than ignoring it"
+    );
+
+    database.destroy(pool).await;
+}
+
+/// An omitted add flag preserves the stored root policy; only an explicit
+/// update may change it.
+#[tokio::test]
+async fn a_worktree_hidden_policy_survives_reregistration_until_explicitly_changed() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+    let identity = identity_of("/srv/code/hidden-policy");
+
+    let worktree = register_worktree(&pool, &identity, "/srv/code/hidden-policy", None)
+        .await
+        .unwrap();
+    assert!(
+        !find_worktree(&pool, "/srv/code/hidden-policy")
+            .await
+            .unwrap()
+            .unwrap()
+            .include_hidden
+    );
+
+    set_worktree_include_hidden(&pool, worktree, true)
+        .await
+        .unwrap();
+    register_worktree(&pool, &identity, "/srv/code/hidden-policy", Some("feature"))
+        .await
+        .unwrap();
+    let persisted = find_worktree(&pool, "/srv/code/hidden-policy")
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(
+        persisted.include_hidden,
+        "re-registration must preserve true"
+    );
+    assert_eq!(persisted.ref_name.as_deref(), Some("feature"));
+
+    set_worktree_include_hidden(&pool, worktree, false)
+        .await
+        .unwrap();
+    assert!(
+        !find_worktree(&pool, "/srv/code/hidden-policy")
+            .await
+            .unwrap()
+            .unwrap()
+            .include_hidden
     );
 
     database.destroy(pool).await;

@@ -331,7 +331,7 @@ async fn general_workers_let_scans_and_summaries_progress_together() {
     .expect("queues summary");
 
     let root = support::temp_dir("general-mixed-scan");
-    roots::add_root(&state, &root)
+    roots::add_root(&state, &root, None)
         .await
         .expect("registers empty root");
     let file = root.join("fresh.rs");

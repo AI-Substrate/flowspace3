@@ -290,6 +290,7 @@ mod tests {
             identity: identity.to_string(),
             root_path: root.display().to_string(),
             ref_name: None,
+            include_hidden: false,
             file_count: 0,
         }
     }

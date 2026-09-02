@@ -355,6 +355,9 @@ fn every_denied_directory_is_named_in_the_prune_ledger() {
     assert_eq!(
         pruned,
         [
+            (".cache", "hidden"),
+            (".next", "hidden"),
+            (".venv", "hidden"),
             ("__pycache__", "standard-ignore"),
             ("build", "standard-ignore"),
             ("dist", "standard-ignore"),
@@ -393,6 +396,7 @@ fn the_prune_ledger_never_descends() {
 #[test]
 fn an_empty_deny_list_prunes_nothing_and_reports_nothing() {
     let discovery = found(&DiscoverySettings {
+        include_hidden: true,
         standard_ignores: Vec::new(),
         ..ungoverned()
     });
@@ -400,23 +404,30 @@ fn an_empty_deny_list_prunes_nothing_and_reports_nothing() {
     assert!(discovery.pruned.is_empty(), "{:?}", discovery.pruned);
 }
 
-/// Hidden denied directories are reported only when the walker can see them —
-/// otherwise `.venv` would be claimed as a policy decision when the hidden
-/// filter is what actually stopped it.
+/// Dot-prefixed deny-list names reveal which rule won: hidden policy by
+/// default, standard-ignore after hidden entries are enabled.
 #[test]
-fn hidden_denied_directories_are_reported_only_when_walked() {
-    let visible = found(&ungoverned());
-    assert!(!visible.pruned.iter().any(|dir| dir.path == ".venv"));
+fn hidden_directory_prunes_name_the_effective_rule() {
+    let hidden_off = found(&ungoverned());
+    for hidden in [".cache", ".next", ".venv"] {
+        let pruned = hidden_off
+            .pruned
+            .iter()
+            .find(|dir| dir.path == hidden)
+            .unwrap_or_else(|| panic!("{hidden} was not named: {:?}", hidden_off.pruned));
+        assert_eq!(pruned.reason.as_str(), "hidden");
+    }
 
     let hidden_on = found(&DiscoverySettings {
         include_hidden: true,
         ..ungoverned()
     });
     for hidden in [".cache", ".next", ".venv"] {
-        assert!(
-            hidden_on.pruned.iter().any(|dir| dir.path == hidden),
-            "{hidden} must be named once the walker can reach it, got {:?}",
-            hidden_on.pruned,
-        );
+        let pruned = hidden_on
+            .pruned
+            .iter()
+            .find(|dir| dir.path == hidden)
+            .unwrap_or_else(|| panic!("{hidden} was not named: {:?}", hidden_on.pruned));
+        assert_eq!(pruned.reason.as_str(), "standard-ignore");
     }
 }

@@ -13,6 +13,9 @@ pub struct RootReport {
     pub root_path: String,
     /// The worktree row id.
     pub worktree_id: i64,
+    /// Whether dot-prefixed directories are enabled for this root.
+    #[serde(default)]
+    pub include_hidden: bool,
     /// Files discovery accepted.
     pub files: usize,
     /// Files discovery saw and refused, by reason (PRD req 43: never a silent

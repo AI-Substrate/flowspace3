@@ -82,11 +82,14 @@ pub fn get(envelope: &Envelope<Value>, width: u16) -> Option<String> {
 #[must_use]
 pub fn tree(envelope: &Envelope<Value>, width: u16) -> Option<String> {
     let result: TreeResult = serde_json::from_value(envelope.data.clone()?).ok()?;
+    let hidden = result.include_hidden.map_or_else(String::new, |enabled| {
+        format!(" · hidden {}", if enabled { "yes" } else { "no" })
+    });
     let mut out = theme::title(
         "tree",
         &format!(
-            "{} · showing {} of {}",
-            result.kind, result.showing, result.total
+            "{} · showing {} of {}{}",
+            result.kind, result.showing, result.total, hidden
         ),
     );
     out.push_str("\n\n");
@@ -147,5 +150,15 @@ mod tests {
         .unwrap();
         let screen = anstream::adapter::strip_str(&get(&envelope, 100).unwrap()).to_string();
         assert!(screen.contains("typed items but no prose"), "{screen}");
+    }
+
+    #[test]
+    fn tree_title_shows_the_resolved_root_policy() {
+        let envelope: Envelope<Value> = serde_json::from_str(
+            r#"{"ok":true,"command":"tree","v":1,"data":{"target":"git:example/repo","repo":"git:example/repo","include_hidden":true,"kind":"repository","total":0,"showing":0,"entries":[],"inconsistencies":[]}}"#,
+        )
+        .unwrap();
+        let screen = anstream::adapter::strip_str(&tree(&envelope, 100).unwrap()).to_string();
+        assert!(screen.contains("hidden yes"), "{screen}");
     }
 }

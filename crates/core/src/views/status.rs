@@ -58,6 +58,9 @@ pub struct Root {
     pub identity: String,
     /// Absolute host path of the added root.
     pub root_path: String,
+    /// Whether dot-prefixed directories are enabled for this root.
+    #[serde(default)]
+    pub include_hidden: bool,
     /// How many files fs3 currently maps for it.
     pub files: i64,
 }
