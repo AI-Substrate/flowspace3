@@ -2483,3 +2483,13 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     in the truncated tail, so the coder had to re-run the runner
     directly to learn which test failed. Encode: checks must print the
     failing runner's last N lines untruncated, or the path of a full log.
+    ROW 126 — REVIEW CLOSED EXCEPT RE-MEASURE (reviewer, 25 findings):
+    M3 (drop credentials branch) RED :183; M4 (drop the store permit in
+    create_database) RED at admin.rs:631 (N=8 bound). ac-0005 PROVED,
+    not merely executed: the example and an independent catalog query
+    both printed nothing — two empty sets agreeing proves nothing — so
+    the reviewer minted four databases on :5434 (aged+idle+conforming,
+    aged+conforming+live connection, young, malformed epoch) and
+    list_orphans printed exactly the first. METHOD for future reviews:
+    an empty listing is proved only against a seeded positive AND
+    negatives. Only the 16 → 1 re-measure on the successor's sha remains.
