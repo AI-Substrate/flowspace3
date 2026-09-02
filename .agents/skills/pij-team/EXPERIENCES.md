@@ -809,3 +809,20 @@ we hand the pattern to pij and the harness. Also `harness observe` each one.
 - o-prime's own generator produced arrays where the impl-guide schema wants strings and a
   duplicate instruction id; the plan-level `harness plan validate` passed while `ddocs validate`
   failed. The scaffold should run both.
+
+## 2026-09-02 — fs3 o-prime, plan 013 close-out (retro 003)
+- **Rulings must state the PROMISE, not the mechanism.** o-prime's fix ruling for a CRITICAL
+  prescribed "admission above the HNSW page" AND "return scoped rows buried behind 12,000 nearer
+  vectors" — mechanically impossible; the coder's stop-and-ask caught it. Encode: the fix-ruling /
+  prime-reply template carries mandatory "invariant to preserve" + "geometry that proves it" lines
+  and forbids naming plan nodes or join positions; the reviewer's "smallest fix" is a hypothesis.
+- **A shape fixture is not a cost fixture.** The 20k search fixture (identical vectors, 14-byte
+  raw_text) misled the review three times (latency, buffers, per-candidate loops); prod said
+  35 ms / 8,063 buffers / 1 loop. Encode: label shape fixtures as such; add a distinct-vector cost
+  fixture before any latency claim.
+- **The prod receipt needs the prod port to be OURS.** Two foreign `flowspace3 daemon` launches
+  (a squat, then a key clobber) blocked the receipt for an hour. Encode (fs3 plan 017): publish the
+  key only after the bind; refuse the prod database without owner designation; and the packet
+  template's hard rule "never run a daemon with the default config" for every seat, every repo.
+- **Reviewer records still die with the worktree** (third time). `harness team collect <seat>`
+  stays the encode; until then o-prime vendors + lands a docs PR every time.
