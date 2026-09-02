@@ -3136,3 +3136,10 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     paths/inputs are now joined strings and the evidence instruction is
     i10b — the two schema defects the 015 reviewer found (f-2b05) cannot
     recur.
+    PLAN 016 — coder dormouse ack RULED GO 06:43 (by paste). Its five
+    points: i10/i11 unfilled placeholders in the coder packet TEMPLATE
+    (o-prime gap — encode: the generator fills or strips every
+    placeholder and the packet lint refuses `<fill`/`__` leftovers);
+    default stays OFF; TEST receipt only; `harness boot` "compose db
+    stopped" tripwire (row 124 family) explained; ddoc untracked-target
+    warnings clear on commit.
