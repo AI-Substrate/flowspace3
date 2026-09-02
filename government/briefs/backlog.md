@@ -3183,3 +3183,11 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     records, build ≠ validate, generator schema drift). Templates live in
     the repo at .agents/skills/pij-team/templates (the extension's
     TEMPLATE_DIR); the ~/.claude symlink is stale. Merge train armed.
+    PLAN 016 — asks 003/004: the fence was a FILE LIST written from memory
+    and missed every owner of the additive field (refs.rs, read.rs,
+    daemon/worktrees.rs test fixture, core/views/{roots,status,mod}.rs).
+    RULED: fence by responsibility — "any file that must change to carry
+    the additive per-root flag is in; anything changing existing shapes or
+    search paths is out". Encode (pij-team impl-guide/packet): fences name
+    responsibilities + the seam files found by `flowspace3 search`, never a
+    memory-written list; four asks in 30 min were the cost.
