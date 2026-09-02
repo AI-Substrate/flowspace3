@@ -110,3 +110,11 @@ never say "adopt").
 - **rs: `pij-binding-magpie`** — minted by `pij-rs adopt --harness claude --parent none %21`. **Every rs-resident seat (all our sol coders and Claude reviewers) can `pij send pij-binding-magpie "<text>"` and it lands as a real turn.** The file channel stays the durable record; the rs send is the instant pointer.
 - pij plan 129 (`migrate-seat`) will fold both under one id; until then, two names, one seat, one pane.
 - **WARNING for o-prime's own hands:** after the rs registration, a PLAIN `pij send` from pane %21 routes to **rs** (`pij generation` says so). Every send to a legacy-only seat — `pij-telegram` (the merge-veto channel), `pij-massive-meadowlark`, `pij-forward-worm` — MUST carry `PIJ_DAEMON_GENERATION=legacy`. The merge-train incantation is updated accordingly; `pij report now` still routes legacy on its own.
+
+## LEGACY DAEMON SHUTDOWN — 2026-09-02 (Jordan, via helper seat pij-surprising-dove)
+The legacy TS daemon is being turned OFF today (CPU cost). Consequences for this fleet:
+- o-prime's live name is **`pij-binding-magpie`** (rs). `pij-instant-lynx` stops resolving when legacy stops. All children: `pij send pij-binding-magpie`.
+- The `PIJ_DAEMON_GENERATION=legacy pij send …` path in this doc dies with the daemon. rs refuses legacy targets; a peer that has not moved is unreachable.
+- omp/pi seats: restart omp — the extension registers into rs at boot. Claude/Copilot/Codex seats: `pij-rs adopt "$TMUX_PANE" --harness <h>` — NEVER `pij adopt` (unrouted verb, served by legacy).
+- **Open question, asked of pij-surprising-dove: does `pij-telegram` (the merge-veto channel) get an rs id?** Until answered, no merge train runs after the daemon stops.
+- Peers' rs ids as they arrive: meadowlark → (file: harness-engineering/scratch/convo-rs-identity/meadowlark-rs-id.txt); roadrunner → pending; forward-worm → already rs.
