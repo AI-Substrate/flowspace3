@@ -1,0 +1,55 @@
+docs/plans/012-fresh-db-serialise/assets/backpressure.dd.json
+  s_f1a7ee9f435ed3::t_0bd13cf6db4a7a 1-101
+docs/plans/012-fresh-db-serialise/assets/backpressure.dd.md
+  s_f1a7ee9f435ed3::t_f5daafc223d6ac 1-38
+docs/plans/012-fresh-db-serialise/assets/inputs/pij-two-daemons.md
+  s_f1a7ee9f435ed3::t_581f9def96bff7 1-106
+docs/plans/012-fresh-db-serialise/assets/tasks/phase-1/tasks.dd.json
+  s_f1a7ee9f435ed3::t_0c5992824e9a26 1-137
+docs/plans/012-fresh-db-serialise/assets/tasks/phase-1/tasks.dd.md
+  s_f1a7ee9f435ed3::t_18193e818f0701 1-83
+docs/plans/012-fresh-db-serialise/impl-guide.dd.json
+  s_15d888f4b629c1::t_7d05779b132feb 1-83
+docs/plans/012-fresh-db-serialise/impl-guide.dd.md
+  s_15d888f4b629c1::t_198f16076272af 1-77
+docs/plans/012-fresh-db-serialise/packet-coder.dd.json
+  s_f1a7ee9f435ed3::t_70766961d8604c 1-141
+docs/plans/012-fresh-db-serialise/packet-coder.dd.md
+  s_f1a7ee9f435ed3::t_9d878da8d1352a 1-87
+docs/plans/012-fresh-db-serialise/packet-pm.dd.json
+  s_15d888f4b629c1::t_4236104c9bc795 1-159
+docs/plans/012-fresh-db-serialise/packet-pm.dd.md
+  s_15d888f4b629c1::t_179e93841c2afb 1-87
+docs/plans/012-fresh-db-serialise/packet-reviewer.dd.json
+  s_15d888f4b629c1::t_7c7405c4abddd5 1-65
+docs/plans/012-fresh-db-serialise/packet-reviewer.dd.md
+  s_15d888f4b629c1::t_ecf1587a2237a3 1-76
+docs/plans/012-fresh-db-serialise/plan.dd.json
+  s_f1a7ee9f435ed3::t_d61befc0907d07 1-82
+docs/plans/012-fresh-db-serialise/plan.dd.md
+  s_f1a7ee9f435ed3::t_0d95265e4abf80 1-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d21a1264becd942306cefd8fcc8a54b43a5f9a1a",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_f1a7ee9f435ed3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6616ca6a-61c0-4a92-b9be-3512605a2826",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
