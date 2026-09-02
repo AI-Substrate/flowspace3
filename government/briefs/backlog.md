@@ -1855,3 +1855,21 @@ ROW 121 — REQ-0033 IN FLIGHT AS PIJ PLAN 128 (weasel, 2026-09-02; relayed
     main has moved past the branch, as o-prime found a minute later), and when it refuses it must say
     "diff vs main is non-empty in <paths>" rather than "not merged".
     Row 112's sibling — a tidy that lies in either direction.
+
+133. **conversation `repo_identity` lands as the RAW origin URL when the
+    folder is not a registered worktree; and a direct `--session agent-*`
+    fails with a misleading "no session file"** (meadowlark's re-anchor
+    run, 2026-09-02: 3 sessions whose worktree no longer exists on disk
+    anchored to `https://github.com/AI-Substrate/pij.git`, splitting
+    `list --repo` 37 vs 3). SOURCE: `ingest()` computes `remote =
+    remote_url(&folder)` RAW on purpose for the git-ai metrics scope
+    (convo_ingest.rs:942) and passes the same string as the header's
+    `repo_identity` (:662); `upsert_conversation` canonicalises only via
+    the `canonical_anchor` CTE (registered worktree). Row 100 fixed the
+    registered path + backfilled; this is the unregistered path.
+    ENCODE: (a) header `repo_identity` = `RepoIdentity::from_remote(raw)`
+    (keep raw only for the metrics scope), (b) migration backfill for
+    rows already raw, (c) `ingest --session agent-*` should say
+    "subagent sessions are ingested through their parent — re-ingest
+    <parent>" instead of "no session file" (claude.rs:199-210 knows the
+    shape). Restore path documented in scratch/reply-to-meadowlark-subagents.md.
