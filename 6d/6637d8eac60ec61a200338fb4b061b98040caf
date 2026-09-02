@@ -1,0 +1,35 @@
+docs/plans/017-daemon-key-after-bind/assets/tasks/phase-1/execution.log.md
+  s_0ce02639c40511::t_3b52d78a779c12 68-71
+docs/plans/017-daemon-key-after-bind/assets/tasks/phase-1/tasks.dd.json
+  s_9e036f908b3c9e::t_e1ad5379cf3ccb 70,76,81,86-87,136,144
+docs/plans/017-daemon-key-after-bind/assets/tasks/phase-1/tasks.dd.md
+  s_9e036f908b3c9e::t_468044574b6e73 42-43,78,84
+docs/plans/017-daemon-key-after-bind/plan.dd.json
+  s_9e036f908b3c9e::t_b3b0cd85bd584c 9,13,19,24,44-46,50-52,56-58,62-64,68-70,81,86-87
+docs/plans/017-daemon-key-after-bind/plan.dd.md
+  s_9e036f908b3c9e::t_5cc518ec5428ef 56-60,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6d6637d8eac60ec61a200338fb4b061b98040caf",
+  "prompts": {},
+  "sessions": {
+    "s_0ce02639c40511": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b95239d-d05a-44e7-ad9d-ecc36e15c1ca",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_9e036f908b3c9e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c80c5019-0a09-4924-8778-c737f7dafff1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
