@@ -1844,3 +1844,13 @@ ROW 121 — REQ-0033 IN FLIGHT AS PIJ PLAN 128 (weasel, 2026-09-02; relayed
     told apart** (limpet DL-004, 2026-09-02, at host load 124). ENCODE:
     stream the active stage (fmt/clippy/test-<crate>) with elapsed time;
     a gate that cannot say where it is trains seats to bypass it.
+
+132. **`harness team tidy` refuses after a SQUASH merge with
+    E_BRANCH_NOT_MERGED — a false verdict for the only merge shape this
+    repo uses** (o-prime, 2026-09-02, tidying plans 010/011). It tests
+    ancestry (`git branch --merged`), which a squash never satisfies; the
+    content WAS on main (verified by `git diff main <branch> -- crates`
+    = empty). ENCODE: tidy checks content (empty diff against main on
+    the fenced paths, or `git cherry`), and when it refuses it must say
+    "diff vs main is non-empty in <paths>" rather than "not merged".
+    Row 112's sibling — a tidy that lies in either direction.
