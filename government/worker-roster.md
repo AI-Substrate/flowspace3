@@ -83,6 +83,7 @@ O-PRIME IDENTITIES (2026-09-02): legacy pij-instant-lynx + rs pij-binding-magpie
 
 CLOSED 2026-09-02: pij-purring-orangutan — w-db-cpu-profile delivered (scratch/db-cpu-profile/); buffer rescued.
 | pij-common-cheetah | plan 012 REVIEWER (fs3-review-012, detached at 5c7f7bdb = PR #95); omp / claude-opus-5 / high; pane %2742 | **rs** — file + pij send pij-binding-magpie | ACTIVE — spawned 2026-09-02 with the three owed lists + the store-crate bypass hunt |
+| pij-quixotic-takin | plan 014 REVIEWER (fs3-review-014, detached at cc8da52c = PR #98); omp / claude-opus-5 / high; pane %3064 | **rs** — file + pij send pij-binding-magpie | ACTIVE — spawned 2026-09-02 with the three owed lists (migration 0023 convergence, purge-vs-recovery race, live-only view blind spots, updated_at as age, receipt atomicity) |
 | pij-imperial-weasel | plan 013 search-admission (fs3-search-admission, branch 013-search-admission); omp / gpt-5.6-sol-fast-1m / high; pane %2810 | **rs** — pij send pij-binding-magpie + files | ACTIVE — spawned 2026-09-02, reading |
 | pij-chosen-arach | plan 014 jobs-retention (fs3-jobs-retention, branch 014-jobs-retention); omp / gpt-5.6-sol-fast-1m / high; pane %2811 | **rs** — pij send pij-binding-magpie + files | ACTIVE — spawned 2026-09-02, reading |
 
