@@ -3065,3 +3065,18 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     files parsed under fs3-parsers@3 — the first TypeScript symbols the
     index has ever had. Scan queue still draining; final receipt (≈3,452
     for the pij tree) + searches follow.
+    PLAN 013 — FIX PUSHED b332f46 (amistad, 06:19): option B as ruled —
+    raw+smart scope keys pre-resolved once and applied inside HNSW before
+    ORDER BY/LIMIT; payload/chooser page-bounded with the required hash
+    union; paired geometry → Ok, 5 scoped hits, pass 1 (74 ms under load);
+    no-growth geometry → 0 hits, exhausted=true, pass 2; query_embeddings
+    keeps its Err; scan_incomplete on SearchOutcome + envelope meta
+    (additive). Mutations: growth check removed → RED; bound Err restored
+    → RED; JIT setup removed → RED; all restored. Shape 2/2 (7.3 ms, 3,113
+    shared hits, HNSW rows 160, smart loops 159); store 53/53, daemon
+    56/56, clippy clean; all DB tests on :5434. CI running; carp on the
+    delta.
+    (o-prime note) the 015 receipt retake died on a zsh quirk — an
+    unquoted `$PSQL` command variable is NOT word-split in zsh, so every
+    gate query was "command not found"; re-run as a bash script. Encode:
+    receipt scripts are files with a bash shebang, never inline zsh.
