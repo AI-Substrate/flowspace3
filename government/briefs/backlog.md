@@ -2884,3 +2884,18 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     (correction) autovacuum DID run on jobs at 04:21:04 (n_live 271,430,
     n_dead 37,596); the 2.8 GB is free space inside the relation, which
     only VACUUM FULL returns to the OS — not a defect, no window needed.
+    PLAN 013 — VERDICT (carp): REQUEST CHANGES — f-9c41 CRITICAL: moving
+    admission from inside candidate_vectors to a post-filter after LIMIT
+    makes a repo-scoped search whose scope is a small share of the index
+    (12,000 nearer foreign vectors, 5 in-scope, limit 10) ERROR after 9
+    passes / 200 ms / 246k shared blocks, where the old query returned 5
+    hits in one 29 ms pass — the exact geometry search_scope_starvation.rs
+    was written to defend, surfacing as an outage via search.rs:341-345.
+    Three MINOR (f-2e07 non-discriminating test; f-7b13 JIT assertion
+    cannot fail; f-4d88 parity table overclaims) + 1 NIT. Every measurable
+    AC TRUE; ac-0004/0005 pre-registered with thresholds for o-prime's
+    post-merge receipt (incl. the unscoped admitted_elements 484 MB heap
+    caveat). RULED (prime-reply-016): admitted-growth sentinel; never Err
+    at the bound (short page + empty_because); bound admitted_elements to
+    the candidate page; discriminating paired-geometry test; JIT assertion
+    that can fail; parity honesty; one commit on 065acfd; delta re-review.
