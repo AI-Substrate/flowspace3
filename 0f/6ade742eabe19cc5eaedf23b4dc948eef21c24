@@ -1,0 +1,25 @@
+scratch/closeout-012/fresh-db-serialise-ack-012b.md
+  s_15d888f4b629c1::t_54778b3e2f2298 1-17
+scratch/closeout-012/fresh-db-serialise-report-012b.md
+  s_15d888f4b629c1::t_59208d224d7525 1-55
+scratch/closeout-012/fresh-db-serialise-report.md
+  s_15d888f4b629c1::t_d9b72bc1113217 1-55
+scratch/closeout-012/session-buffer-012.md
+  s_15d888f4b629c1::t_b0ae8ecf81268f 1-192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0f6ade742eabe19cc5eaedf23b4dc948eef21c24",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
