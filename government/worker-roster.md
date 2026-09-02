@@ -88,3 +88,5 @@ CLOSED 2026-09-02: pij-purring-orangutan — w-db-cpu-profile delivered (scratch
 
 | pij-little-junglefowl | plan 012 coder RESTARTED (fs3-fresh-db-serialise, branch 012-fresh-db-serialise @ f3aec31); omp / gpt-5.6-sol-fast-1m / high; pane %2907 | **rs** | ACTIVE — spawned 2026-09-02 after crocodile lost its event stream (req-0042) |
 CLOSED 2026-09-02: pij-mad-crocodile — event stream dead after the disk incident; work safe at f3aec31; buffer rescued to governance.
+
+| ~~pij-partial-coral~~ | w-disk-space (main clone, no code); omp / claude-opus-5 / high; pane %2845 | rs | CLOSED 2026-09-02 — 113 GB reclaimed in the VM, report vendored |
