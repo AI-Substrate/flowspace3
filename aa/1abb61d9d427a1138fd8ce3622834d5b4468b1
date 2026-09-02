@@ -1,0 +1,32 @@
+crates/cli/src/render/surfaces/read.rs
+  h_9e71e8b09f7cf2 156-191,193-197
+crates/daemon/src/read.rs
+  h_9e71e8b09f7cf2 308,352,356,414-417
+crates/daemon/src/roots.rs
+  h_9e71e8b09f7cf2 390
+crates/daemon/tests/first_light.rs
+  h_9e71e8b09f7cf2 429-438,462-475,491-503
+crates/daemon/tests/read_surface.rs
+  h_9e71e8b09f7cf2 1018-1019,1021-1030,1034-1038,1041-1099
+crates/parsers/src/discovery.rs
+  h_9e71e8b09f7cf2 370-379,878-893,904
+crates/parsers/tests/discovery_standard_ignores.rs
+  h_9e71e8b09f7cf2 358-360,407-408,411-453,456-492,494-495
+docs/plans/016-hidden-dirs/assets/reviews/review-016.dd.json
+  h_9e71e8b09f7cf2 1-296
+docs/plans/016-hidden-dirs/assets/reviews/review-016.dd.md
+  h_9e71e8b09f7cf2 1-62
+docs/plans/016-hidden-dirs/assets/tasks/phase-1/execution.log.md
+  h_9e71e8b09f7cf2 90-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "aa1abb61d9d427a1138fd8ce3622834d5b4468b1",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
