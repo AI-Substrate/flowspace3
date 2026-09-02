@@ -2669,3 +2669,15 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     bin/ac-0001-ddl-probe.sh, review-012 record committed under the plan).
     PLAN 012 FULLY CLOSED. Seat pij-sufficient-mite ended; worktree
     fs3-fresh-db-serialise removed; deliverables in scratch/closeout-012/.
+    PLAN 014 — FIX PUSHED c5242ea (barnacle): mutation receipts — remove
+    state CASE → red failed!=pending; remove attempts reset → red 3!=0;
+    remove parks reset → red 20!=0; drop jobs_failed_recent_idx →
+    last_failure Seq Scan cost 5358; store+migration 13/13 green;
+    running-row-preserved and terminal-row-mints-fresh pinned; plan AC +
+    default amended. Handed to takin for the delta (fresh 200k seed, both
+    f-001 directions, EXPLAIN + drop-index mutation, migrating_twice).
+156. **`harness commit` reported the attribution note MISSED despite a connected
+    ingress** (barnacle DL-009, fs3-jobs-retention, commit c5242ea). The
+    "confirmed" path promised a landed `refs/notes/ai` note or a named miss;
+    it named the miss — good — but the cause (collector accepted, note never
+    written) is the harness prime's to chase. For meadowlark.
