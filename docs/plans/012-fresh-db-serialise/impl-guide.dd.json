@@ -70,11 +70,11 @@
           "text": "A process-wide static Semaphore across multiple tokio runtimes (each #[tokio::test] builds its own) \u2014 a tokio Semaphore in a static is runtime-agnostic, but verify; std::sync::Mutex held across .await is the trap"
         },
         {
-          "id": "risk-1",
+          "id": "risk-2",
           "text": "Serialising creates slows suites that mint many DBs \u2014 measure the oversize suite before/after and report; N knob exists for that reason"
         },
         {
-          "id": "risk-1",
+          "id": "risk-3",
           "text": "The sweep parser matching too broadly and dropping a non-test database \u2014 the shape requires `<epoch>_<32hex>` tail; assert prod-like names (flowspace3, flowspace3_test) are never candidates"
         }
       ]

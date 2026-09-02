@@ -73,5 +73,5 @@ One file, three touches, all in crates/testkit/src/fresh_database.rs. (1) LOCK: 
 | id | text |
 | --- | --- |
 | risk-1 | A process-wide static Semaphore across multiple tokio runtimes (each #[tokio::test] builds its own) — a tokio Semaphore in a static is runtime-agnostic, but verify; std::sync::Mutex held across .await is the trap |
-| risk-1 | Serialising creates slows suites that mint many DBs — measure the oversize suite before/after and report; N knob exists for that reason |
-| risk-1 | The sweep parser matching too broadly and dropping a non-test database — the shape requires `&lt;epoch&gt;_&lt;32hex&gt;` tail; assert prod-like names (flowspace3, flowspace3_test) are never candidates |
+| risk-2 | Serialising creates slows suites that mint many DBs — measure the oversize suite before/after and report; N knob exists for that reason |
+| risk-3 | The sweep parser matching too broadly and dropping a non-test database — the shape requires `&lt;epoch&gt;_&lt;32hex&gt;` tail; assert prod-like names (flowspace3, flowspace3_test) are never candidates |
