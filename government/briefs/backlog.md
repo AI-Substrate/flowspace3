@@ -2123,3 +2123,21 @@ SKILL-TEXT DEFECT, THIRD SEAT (2026-09-02, plan 013 coder, BLOCKING
     7cea955); live values applied by ALTER SYSTEM earlier; a fresh
     volume now starts identical. No bounce needed (infra only; the
     running postgres already carries the values).
+
+ROW 141 / PLAN 012 — A WRONG METRIC, CAUGHT BY A CODER'S RED (2026-09-02):
+    o-prime and the reviewer set "forced checkpoints must fall hard from
+    25" as the f-1a01 delta target. The coder ran the full store suite
+    serialised: 83 forced checkpoints over 4 m 15 s (137 tests), 0
+    recovery lines — RED against the tripwire — and stopped without
+    explaining it away. The metric was wrong: DROP DATABASE forces a
+    checkpoint by design; serialisation removes OVERLAP between drops,
+    so a serialised run legitimately logs MORE lines than a parallel one
+    whose drops coalesced (the reviewer's 25 were over 38 s windows).
+    The lock's promise is crash-free + bounded concurrency; the
+    checkpoint VOLUME is row 141 and only row 124b (separate test
+    postmaster) reduces it. Target withdrawn; replaced with: 0 recovery
+    lines + the N=8 create-path bound through the store primitive; counts
+    reported not gated. LESSON for the reviewer-packet template: a
+    "number must fall" target needs a stated mechanism by which the fix
+    lowers it, or it is a coalescence artefact waiting to embarrass
+    someone.
