@@ -2701,3 +2701,9 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     log line + status --json within the hour per n-001; status/search
     timings vs scratch/plan-014-prod-before.md). Review record to land on
     main as a docs PR.
+    PLAN 014 — BOUNCED 04:17:07Z via bin/daemon-restart (pane %50, old
+    pid 7703 → new 901, binary target/release/flowspace3 built from
+    b86593c in 1m14s). "store schema is current" at +17 s (0023 applied,
+    _sqlx_migrations max 23); authenticated ping healthy at +130 s
+    (n-002's pause observed as the gap before serving). AFTER receipt
+    → scratch/plan-014-prod-after.md.
