@@ -3450,3 +3450,7 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     (main → 0024). Encode: scratch daemons ALWAYS get a per-run database
     (`harness db scratch`, retro 003 #3); the shared flowspace3_test is
     an admin/anchor DB, never a daemon target; packet template line.
+    PLAN 016 — PR #107 head fa4da2f = f9b6d07 + one docs-only commit
+    (task receipts: execution.log, tasks.dd) pushed after the HOLD;
+    review stays valid at f9b6d07 (reviewer told to confirm docs-only in
+    the verdict). CI running on fa4da2f.
