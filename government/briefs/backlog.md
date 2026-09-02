@@ -2182,3 +2182,19 @@ ROW 126 — THE CRASH MECHANISM, MEASURED AT THE SERVER (reviewer cheetah,
     CREATE/DROP explains the four crashes better than any checkpoint
     volume.
 DEGRADED-ATTRIBUTION TALLY: EIGHT (plan 012 delta commit f3aec311, 2026-09-02).
+    ROW 126 CORRECTION (reviewer cheetah, same hour, against itself): the
+    16 is CONTAMINATED — the probe counted every CREATE/DROP on the
+    postmaster while five worktrees were using it (013's
+    search_plan_shape seeding, 014's status_retention, the store suite's
+    own fs3_migrations_ helper); a guarded oversize re-run read 2 with a
+    neighbour's 1 in it. What 16 honestly means: total DDL concurrency
+    the SHARED postmaster saw during one suite on a busy box — which is
+    row 141/124b's problem statement, not ac-0001's per-process
+    promise. Instrument fix in progress: `application_name` on the test
+    URL (sqlx parses it; maintenance_url preserves the query string) and
+    filter pg_stat_activity on it. Target 16 → 1 is PROVISIONAL until
+    attributed numbers exist. Also observed: 7 leaked `fs3_migrations_`
+    databases from concurrent store runs — the store test support leaks
+    on its own (row 110). LESSON (third instrument lesson today): a
+    server-wide counter cannot prove a per-process property on a shared
+    server; attribute or do not gate.
