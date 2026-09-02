@@ -1,0 +1,43 @@
+government/briefs/backlog.md
+  s_15d888f4b629c1::t_b3bb5411639cf8 1992-2064
+scratch/db-cpu-profile/buffer-orangutan.md
+  s_15d888f4b629c1::t_89a3b08e595baa 1-60
+scratch/db-cpu-profile/db-cpu-profile-report.md
+  s_15d888f4b629c1::t_55b7b1776ab42d 1-322
+scratch/db-cpu-profile/dbprof/act.sql
+  s_15d888f4b629c1::t_476f630916ccb9 1-9
+scratch/db-cpu-profile/dbprof/act_raw.txt
+  s_15d888f4b629c1::t_d8e1e640c8ba7c 1-3937
+scratch/db-cpu-profile/dbprof/act_test.sql
+  s_15d888f4b629c1::t_d77b86450ad5d5 1-9
+scratch/db-cpu-profile/dbprof/explain160.out
+  s_15d888f4b629c1::t_9fb23ce79c3fd4 1-129
+scratch/db-cpu-profile/dbprof/explain160.sql
+  s_15d888f4b629c1::t_5694950eb1c603 1-225
+scratch/db-cpu-profile/dbprof/pglog6h.txt
+  s_15d888f4b629c1::t_1ebf67fff58399 1-3046
+scratch/db-cpu-profile/dbprof/samplerA.sh
+  s_15d888f4b629c1::t_a5c3e47768c4d9 1-13
+scratch/db-cpu-profile/dbprof/timeseries.csv
+  s_15d888f4b629c1::t_78f7acf8db430d 1-122
+scratch/db-cpu-profile/dbprof/ts.sql
+  s_15d888f4b629c1::t_2b73ad5ab0100b 1-12
+scratch/db-cpu-profile/dbprof/vec.txt
+  s_15d888f4b629c1::t_40da19280cb7a1 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3059f61a9254093fe626cb7a7ef18069a728e23f",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
