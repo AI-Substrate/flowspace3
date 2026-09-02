@@ -1,0 +1,21 @@
+records/retro/2026-09-02/001-plans-010-011-drain.md
+  s_15d888f4b629c1::t_9aa93c4fd335f4 47-50
+scratch/closeout-010-011/buffer-top-sloth.md
+  s_15d888f4b629c1::t_7fb65938f38a0c 1-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b39fe0250e3cf4ce6e9a05ffc75c12d8cf96c341",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
