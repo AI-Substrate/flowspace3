@@ -2972,3 +2972,10 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
 163. **JS/JSX grammar packet** (follow-up to 015): tree-sitter-javascript;
     object-literal members (f-2b01) and quoted module names (f-2b02) solved
     there; anonymous default exports (f-2b03) decided there.
+    ROW 147 — PROD BEFORE (05:49Z, scratch/plan-015-prod-before.md): 3,785
+    distinct TypeScript blobs across 15,214 worktree paths; 6,285 elements
+    for them, ALL kind=file subkind=unknown (bare). Open question for the
+    receipt: elements are content-addressed (blob_sha + parser_version) —
+    unless 015 bumps parser_version or the re-ingest forces a re-scan of
+    known blobs, the new grammar never touches the 3,785 existing blobs.
+    Asked the coder.
