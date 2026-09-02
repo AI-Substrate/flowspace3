@@ -3029,3 +3029,16 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     for the review-015 record opening; bounce + gated row-147 receipt
     next. 013 fix not yet landed → bounce for 015 now, second bounce for
     013 later (30-minute rule).
+164. **`bin/daemon-restart` refused ("stop all but one candidate and retry")
+    because a pij-government test process named `flowspace3 daemon` (pid
+    29080, cwd ~/pi-hacking/fs3-rs-tap-supersedes-legacy, under bun, no
+    listening port) coexisted with prod (pid 901 on :7373) — and o-prime's
+    receipt script did not check the restart's exit code, so it "healthy
+    after 10 s"-ed the OLD daemon and re-ingested pij under @2 (1,839
+    "unchanged", 0 @3 rows).** Two encodes: (1) daemon-restart selects the
+    candidate that LISTENS on :7373 (or the pane running it), never by
+    command name alone; (2) any script that bounces must `set -e` on the
+    restart and assert the new pid ≠ old pid before proceeding. Recovery:
+    manual bounce in pane %50 (Ctrl-C, relaunch the c11ab19 binary), then
+    re-add pij and take the gated receipt. Not pij's fault; their process
+    was not touched.
