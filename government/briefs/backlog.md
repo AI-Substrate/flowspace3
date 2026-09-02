@@ -2921,3 +2921,12 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     authorised, envelope additive; shape assertion relaxed to the real
     promise. O-prime's 016 was over-specified; the coder's stop-and-ask
     was correct. Reviewer forewarned of the shape.
+    PLAN 015 — reviewer boar ack RULED GO 05:34 (by paste; its ack send
+    never reached o-prime — the seat sat idle 6 min; the watcher caught it).
+    O-PRIME MISS: packet-reviewer-015 was cloned from 014's and leaked two
+    plan-specific instruction rows (i6/i7 queue-status material) and the
+    014 deliverable filenames in w1; the reviewer caught both and executed
+    neither. Encode (pij-team): generate reviewer packets from the template
+    + plan, never by cloning a sibling; a packet lint that greps for the
+    previous plan's slug. Row 161 note: outbound from post-cutover seats
+    is also lossy (boar's ack send lost) — file mirror `review-015-status.md`.
