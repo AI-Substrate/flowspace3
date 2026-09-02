@@ -115,11 +115,18 @@ root's policy for a file in another root). Diagnosed the "flaky" health test as 
 pre-serve ddoc probe + our gate always minting an empty DB (rows 177/178). Records in
 `scratch/review-016/`. Its close-out negative-fence practice is now template instruction i11.
 
-### pij-comparative-cod — plan 017 coder — ACTIVE
+### ~~pij-comparative-cod~~ — plan 017 coder — CLOSED 2026-09-02 19:33
 Worktree `fs3-daemon-key-after-bind`, PR #108 head `6d6637d`, CI green, awaiting review.
 Caught o-prime's paraphrase inverting ac-0004 (stop-ask-001) and a guard-precedence bug of
 its own. Owed nothing further.
 
-### pij-unexpected-hyena — plan 017 reviewer — ACTIVE
+### ~~pij-unexpected-hyena~~ — plan 017 reviewer — CLOSED 2026-09-02 19:33
 Worktree `fs3-review-017` (detached at `6d6637d`), pane %3376, omp on
 `github-copilot/claude-opus-5 --thinking=high`. Dispatched 2026-09-02 20:16.
+
+Plan 017 closed: PR #108 merged as `2d7f45f`; prod bounced onto it 19:29 with
+`[daemon].owner_root` set, and the foreign-cwd refusal proven in production with the key
+file byte-identical before and after (`scratch/plan-017-prod-after.md`). Artefacts and
+both observation buffers in `scratch/closeout-017/` and `scratch/review-017/`; worktrees
+removed, panes closed.
+
