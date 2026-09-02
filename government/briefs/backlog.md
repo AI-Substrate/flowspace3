@@ -1850,7 +1850,8 @@ ROW 121 — REQ-0033 IN FLIGHT AS PIJ PLAN 128 (weasel, 2026-09-02; relayed
     repo uses** (o-prime, 2026-09-02, tidying plans 010/011). It tests
     ancestry (`git branch --merged`), which a squash never satisfies; the
     content WAS on main (verified by `git diff main <branch> -- crates`
-    = empty). ENCODE: tidy checks content (empty diff against main on
-    the fenced paths, or `git cherry`), and when it refuses it must say
+    = empty). ENCODE: tidy checks content by patch identity (`git cherry main
+    <branch>` / patch-id — a plain diff against main is ALSO wrong once
+    main has moved past the branch, as o-prime found a minute later), and when it refuses it must say
     "diff vs main is non-empty in <paths>" rather than "not merged".
     Row 112's sibling — a tidy that lies in either direction.
