@@ -95,6 +95,23 @@ async fn database_mutation_permit() -> SemaphorePermit<'static> {
         .expect("the database mutation semaphore is never closed")
 }
 
+struct CreateDatabasePermit {
+    #[cfg(test)]
+    _test_hook: create_test_hook::InFlight,
+    _permit: SemaphorePermit<'static>,
+}
+
+async fn create_database_permit() -> CreateDatabasePermit {
+    let permit = database_mutation_permit().await;
+    #[cfg(test)]
+    let test_hook = create_test_hook::enter().await;
+    CreateDatabasePermit {
+        #[cfg(test)]
+        _test_hook: test_hook,
+        _permit: permit,
+    }
+}
+
 /// What [`schema_current`] found.
 ///
 /// Carries the versions rather than just a boolean because the caller reports
@@ -332,9 +349,7 @@ pub async fn drop_database_if_idle(admin: &PgPool, name: &str) -> Result<bool, S
 /// process created the database first.
 pub async fn create_database(admin: &PgPool, name: &str) -> Result<(), StoreError> {
     validate_database_name(name)?;
-    let _permit = database_mutation_permit().await;
-    #[cfg(test)]
-    let _test_hook = create_test_hook::enter().await;
+    let _permit = create_database_permit().await;
     sqlx::query(&format!("CREATE DATABASE \"{name}\""))
         .execute(admin)
         .await?;

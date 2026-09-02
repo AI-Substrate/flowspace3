@@ -54,7 +54,7 @@
         },
         {
           "id": "tk-0104",
-          "title": "Real usage on the shared container: run the oversize suite at default parallelism; grep the postgres log for recovery lines in that window; record counts",
+          "title": "Real usage on the dedicated test postmaster: run the oversize suite at default parallelism; inspect flowspace3-db-test logs for recovery lines in that window; record counts",
           "state": "checked",
           "done": "#done_when/tk-0104",
           "success": "oversize green; 0 recovery lines",

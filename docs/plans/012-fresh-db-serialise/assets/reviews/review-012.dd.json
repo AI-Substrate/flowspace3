@@ -1,0 +1,575 @@
+{
+  "dd": {
+    "schema": "builder/review"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Cross-model review \u2014 plan 012 fresh-db-serialise",
+        "reviewer": "rs seat (cross-model reviewer)",
+        "model": "github-copilot/claude-opus-5",
+        "round": "1 (5c7f7bdb) + 2 (f3aec311) + 3 delta (09509b75, VERIFIED)",
+        "date": "2026-09-02",
+        "plan": "../../plan.dd.json#meta",
+        "sha_under_review": "5c7f7bdb069cdb79de3bcf2203d57f934a75c22c (PR #95, branch 012-fresh-db-serialise, detached in /Users/jordanknight/substrate/flowspace/fs3-review-012; head later advanced to 05d7d87c, docs-only, no crate touched)",
+        "note": "VERDICT: CHANGES REQUESTED. 1 HIGH, 3 MEDIUM, all confirmed by fresh evidence I ran myself. The serialisation primitive is real and process-wide across independent tokio runtimes (mutation-proven by me). What is not true is the plan's fleet-level promise: the store crate's own duplicate helper still issues unserialised concurrent CREATE/DROP DATABASE and I measured 25 forced checkpoints from it against 2 from the guarded oversize suite. The change also grants a NEW destructive reach \u2014 every `harness checks` now force-drops any aged `fs3_<label>_<epoch>_<32hex>` database on the configured server, which includes a live `flowspace3 sandbox` older than six hours. ac-0001 partial, ac-0002 true-as-written, ac-0003 true, ac-0004 true and independently reproduced, ac-0005 not proven (o-prime-run, and no read-only operator surface exists to run it with). ROUND 2 (f3aec311): all four round-1 findings are addressed structurally and the shape is right \u2014 ONE semaphore layer in fs3_store::{create_database,drop_database} with testkit's wrappers deleted rather than stacked, so the double-acquire deadlock I warned about is avoided; the sweep now filters numbackends=0 AND re-checks under the permit before an UNFORCED drop, closing the TOCTOU race more completely than I proposed. Four residuals remain, all small, all ruled fold-in. Nothing in round 2 is measured: the freeze permitted reading only.",
+        "delta_sha": "09509b7525c770babd9aae2e974dd7bea62b28de \u2014 successor coder's fold-in commit on PR #95. Re-measured and mutation-checked independently by the reviewer; this is the sha the delta verdict is given on.",
+        "instrument": "ac-0001's pg_stat_activity receipt is produced by ac-0001-ddl-probe.sh (123 lines: --check dry run, application_name attribution, container-keyed blast-radius guard). Instrument vendored to governance (fs3-governance/scratch/ac-0001-ddl-probe.sh, commit aea3ff5) so worktree tidy cannot lose it; product placement in the follow-up packet after #95 merges, shipping it beside the operator surface (bin/ or crates/testkit) with ac-0001 pointing at the shipped path."
+      }
+    },
+    {
+      "name": "findings",
+      "value": [
+        {
+          "id": "f-1a01",
+          "kind": "defect",
+          "severity": "MAJOR",
+          "finding": "HIGH \u2014 the lock covers only half the fleet: `cargo test -p fs3-store` still issues unserialised concurrent CREATE/DROP DATABASE at the same shared postmaster. crates/store/tests/support/mod.rs carries its OWN `FreshDatabase` (lines 62-138) that executes raw `CREATE DATABASE {name}` at :91 and raw `DROP DATABASE IF EXISTS {} WITH (FORCE)` at :130-134, never touching fs3_testkit and therefore never taking the permit. 107 call sites of that helper exist across crates/store/tests (pg_conversations 15, pg_ingest_cursors 20, pg_first_light 18, pg_store_flows 17, pg_ddoc 10, pg_remove_and_gc 8, pg_round_trip 8, pg_migrations 8, pg_lexical 2, pg_read 1). Two smaller bypasses share the shape: crates/daemon/tests/support/mod.rs:103-115 (`support::drop_database`, raw force-drop, used by first_light.rs:1010) and crates/store/tests/pg_first_light.rs:627-631 (`sqlx_drop`). This contradicts plan goal 1 ('No test binary can issue more than ONE CREATE DATABASE or DROP DATABASE at a time against the shared server') and the packet mission ('no caller can bypass'). It matters specifically, not abstractly: the plan's own crash history cites `CREATE DATABASE fs3_migrations_\u2026` (2026-08-27, signal 6) and `fs3_migrations_` is exactly the prefix minted at store support:89 \u2014 the crash-implicated path is the one left unguarded. Second-order: `fs3_migrations_<32hex>` has no epoch segment, so `test_database_created_at` (fresh_database.rs:382-394) returns None for it and the new sweep can never reclaim those leaks either. Smallest fix: move the semaphore down into `fs3_store::create_database` / `fs3_store::drop_database` (crates/store/src/admin.rs:201,217) so it covers every caller including the store's own support, the daemon's support, and `flowspace3 doctor`; the plan's non-goal already permits 'no change to fs3_store::create_database itself beyond what the lock needs'. Wiring store's dev-deps to fs3-testkit is not the fix \u2014 fs3-testkit depends on fs3-store, and the arch-allowlist check would have to be argued with.",
+          "address": "crates/store/tests/support/mod.rs:62-138 (esp. :89, :91, :130-134); crates/daemon/tests/support/mod.rs:103-115; crates/store/tests/pg_first_light.rs:627-631; contrast crates/testkit/src/fresh_database.rs:239,314,356",
+          "links": [
+            "../../plan.dd.json#goals",
+            "../../impl-guide.dd.json#architecture"
+          ],
+          "state": "checked",
+          "receipt": "MEASURED by me on the shared :5433 container (flowspace3-db, pgvector/pgvector:pg16, log_checkpoints=on, shared_buffers=128MB), each run preceded by an idle before-window of comparable length. GUARDED suite: window [2026-09-02T01:15:18Z, 01:15:38Z), `cargo test -p fs3-daemon --test oversize` at DEFAULT parallelism, 12 passed in 15.12 s, exit 0 \u2014 forced checkpoints ('checkpoint starting: immediate force wait') DURING = 2, BEFORE (40 s idle [01:14:38Z,01:15:18Z)) = 0. UNGUARDED suite: window [2026-09-02T01:17:00Z, 01:17:38Z), `cargo test -p fs3-store` at DEFAULT parallelism, exit 0 \u2014 forced checkpoints DURING = 25, BEFORE (40 s idle [01:16:20Z,01:17:00Z)) = 0. Same host, same postmaster, ~12x the forced-checkpoint pressure from the crate the lock does not reach. Postmaster terminations/recovery lines were 0 in both windows (the container has 5 historically, 17176 forced checkpoints historically)."
+        },
+        {
+          "id": "f-1a02",
+          "kind": "defect",
+          "severity": "MINOR",
+          "finding": "MEDIUM \u2014 the 'truthful advice' promise is false for the commonest third case: any non-transient failure from a server that IS listening is reported as 'closed the connection or is in recovery; wait and retry'. crates/testkit/src/fresh_database.rs:148 short-circuits on `server_listening == Some(true)` BEFORE the error is examined, so a permanent condition (bad password, missing role, too many clients) is given a next action that will never come true. This is interface drift from the impl-guide, which specified classification on the StoreError ('connection refused \u2192 \u2026; connected-then-closed / SQLSTATE 57P03 \u2192 \u2026'); the implementation added a 250 ms TCP probe (fresh_database.rs:116-131) and then let the probe DOMINATE the error. The two AC-0002 cases still pass, so the acceptance criterion as written is met \u2014 plan goal 2 ('the failure advice names the real next action') is not. Smallest fix: one condition ahead of line 148 \u2014 if the error carries a `sqlx::Error::Database` whose SQLSTATE is outside class 57 (the operator-intervention class), fall through to the existing neutral branch at 152-156, which already prints 'Check the address, credentials, and server logs'. No new message, no change to the probe, and the accept-then-close test keeps its wording because that failure carries no SQLSTATE at all.",
+          "address": "crates/testkit/src/fresh_database.rs:133-157 (esp. 148-151), 116-131",
+          "links": [
+            "../../plan.dd.json#goals",
+            "../../impl-guide.dd.json#architecture"
+          ],
+          "state": "checked",
+          "receipt": "EXECUTED by me at 5c7f7bdb: `FS3_TEST_DATABASE_URL=postgres://flowspace3:WRONGPASSWORD@127.0.0.1:5433/postgres cargo test -p fs3-daemon --test oversize one_huge_element` \u2192 panicked at crates/testkit/src/fresh_database.rs:203:17 with `Server at postgres://flowspace3:WRONGPASSWORD@127.0.0.1:5433/postgres closed the connection or is in recovery; wait and retry.` / `Cause: error returned from database: password authentication failed for user \"flowspace3\"`. The true cause is printed, but the named next action is wrong. Both owed negatives DO hold: a refused port can never read as 'recovering' (the `Some(false)` branch returns first at :138) and the recovery wording never contains COMPOSE_UP (:149-151, asserted by the author's test at :527)."
+        },
+        {
+          "id": "f-1a03",
+          "kind": "defect",
+          "severity": "MAJOR",
+          "finding": "MEDIUM \u2014 the sweep gained destructive reach over live databases and no liveness guard came with it. Before this commit the sweep asked the catalog for `TEST_DATABASE_PREFIX` = 'fs3_test_' (5c7f7bdb^:111); now it asks for `TEST_DATABASE_NAMESPACE` = 'fs3_' (fresh_database.rs:271) and the parser accepts any 12-char alphanumeric label. Its only production caller is crates/testkit/src/bin/test_suite.rs:17, which runs `sweep_orphans_from` unconditionally at the head of EVERY `harness checks`, and each drop goes through `fs3_store::drop_database` = `DROP DATABASE IF EXISTS \"\u2026\" WITH (FORCE)` (crates/store/src/admin.rs:219), which terminates live sessions by design. Meanwhile `flowspace3 sandbox` mints `fs3_sandbox_<epoch>_<32hex>` through `FreshDatabase::create_from` (crates/daemon/src/boot.rs:234) and holds it for the whole session \u2014 the module's own doc line 1 advertises 'hand-run sandboxes'. A sandbox older than ORPHAN_SWEEP_AGE (6 h) is therefore now a sweep candidate that any other seat's `harness checks` will force-drop out from under its live connections. The author's own test proves the eligibility: fresh_database.rs:559-562 asserts `fs3_sandbox_1700000000_<32hex>` parses to `Some(1700000000)`. This capability did not exist before this commit. Smallest fix: one predicate in `list_orphans_at` excluding databases with live backends (`pg_stat_database.numbackends = 0`), or drop without FORCE on the sweep path so an in-use database refuses instead of being killed.",
+          "address": "crates/testkit/src/fresh_database.rs:263-323 (esp. 271, 314), 382-394, 559-562; crates/testkit/src/bin/test_suite.rs:17; crates/store/src/admin.rs:219; crates/daemon/src/boot.rs:234",
+          "links": [
+            "../../plan.dd.json#goals",
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "state": "checked",
+          "receipt": "Read back at 5c7f7bdb and diffed against 5c7f7bdb^ (old parser: `strip_prefix(\"fs3_test_\")?.split_once('_')`; old query: prefix 'fs3_test_'). Present blast radius MEASURED, not assumed: on :5433 there are 47 conforming `fs3_*` databases and all are younger than 6 h (now_epoch 1788312038), plus 2 non-conforming (`fs3_blastradius`, and `flowspace3_*` names are outside the namespace) \u2014 so today's sweep would take 0. The hazard is a property of the change, not a present incident. I deliberately did NOT run `harness checks` in this worktree for exactly this reason: `fs3-test-suite` would have executed the widened destructive sweep against the container every other seat shares. `cargo fmt --all --check` and `cargo clippy -p fs3-testkit --all-targets` are both clean here."
+        },
+        {
+          "id": "f-1a04",
+          "kind": "defect",
+          "severity": "MINOR",
+          "finding": "MEDIUM \u2014 the serialisation test proves the primitive, not the path, so it cannot catch the defect class that f-001 documents. ac-0001 asks for 'a test [that] spawns N=8 FreshDatabase::create concurrently \u2026 via pg_stat_activity sampled during the run (or an injected counter on the create path)'. The delivered test (fresh_database.rs:430-467) drives `serialise_database_mutation` directly with a synthetic 50 ms sleep, uses `workers = limit + 1` (= 2, not 8), and never calls `create`. Nothing in the suite asserts that `create_unmigrated_from` / `cleanup` / `sweep_orphans_at` are the ONLY routes to `fs3_store::{create,drop}_database` \u2014 coverage is by code reading alone, and a future create path that forgets the permit leaves this test green. That is precisely how the sibling crate's helper came to bypass it. Smallest fix: either add one test that drives `FreshDatabase::create` at N=8 against the test server with the counter incremented inside the guarded region of `create_unmigrated_from`, or make coverage structural by routing all DDL through a single private fn that is the only caller of `fs3_store::{create,drop}_database` in the crate.",
+          "address": "crates/testkit/src/fresh_database.rs:430-467; contrast ../../plan.dd.json#acceptance-criteria ac-0001",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "state": "checked",
+          "receipt": "I re-ran the full testkit lib suite myself against my own per-run database on :5433 (FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5433/fs3_review012): 27 passed, 0 failed. I then PERFORMED the mutation rather than trusting the receipt: deleting the permit acquisition (fresh_database.rs:45-48) turned the test RED with `observed more than 1 concurrent database mutations` at fresh_database.rs:459; I restored the file byte-for-byte and confirmed `git status`/`git diff` clean on that path. So the lock IS genuinely process-wide across independent current-thread tokio runtimes \u2014 owed-list item 1(a) answers TRUE \u2014 but the assertion is about the primitive, not about `create`."
+        },
+        {
+          "id": "f-1a05",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "JUDGEMENT \u2014 ac-0001: PARTIAL. Serialisation is real, process-wide across runtimes, and mutation-proven by me. But the mutation is asserted on the primitive rather than on the create path (f-004), N is 2 rather than the specified 8, and 'no caller can bypass' is false at fleet level (f-001).",
+          "address": "docs/plans/012-fresh-db-serialise/plan.dd.md#acceptance-criteria",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "state": "checked",
+          "receipt": "cargo test -p fs3-testkit --lib: 27 passed. Permit deleted \u2192 `observed more than 1 concurrent database mutations`. Tree restored."
+        },
+        {
+          "id": "f-1a06",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "JUDGEMENT \u2014 ac-0002: TRUE for both named cases. Refused port \u2192 'No server at \u2026' plus COMPOSE_UP; listening-but-closing \u2192 recovery wording with COMPOSE_UP absent. Both owed negatives hold structurally: the Some(false) branch returns before any recovery test (:138), and the recovery message contains no compose text (:149-151). The gap is the unspecified third case (f-002).",
+          "address": "docs/plans/012-fresh-db-serialise/plan.dd.md#acceptance-criteria",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "state": "checked",
+          "receipt": "advice_says_to_start_a_server_only_when_no_server_is_listening and advice_says_wait_when_a_listening_server_closes_connections both green in my own run."
+        },
+        {
+          "id": "f-1a07",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "JUDGEMENT \u2014 ac-0003: TRUE. Both minted shapes swept, the fresh one kept, threshold reported. The owed negative is sound in every direction I could attack it: `flowspace3` and `flowspace3_test` fail the `fs3_` prefix; any name lacking the `<epoch>_<32hex>` tail fails; any label containing an underscore fails because the second rsplit leaves the underscore inside `label` and the alphanumeric check rejects it (so `fs3_migrations_<32hex>` and `fs3_blastradius` are both ineligible); and the catalog query is a literal prefix \u2014 `left(datname, length($1)) = $1` at crates/store/src/admin.rs:176 \u2014 not LIKE, so `_` is never a wildcard. The parser's breadth is not the problem; its blindness to liveness is (f-003).",
+          "address": "docs/plans/012-fresh-db-serialise/plan.dd.md#acceptance-criteria",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "state": "checked",
+          "receipt": "sweep_lists_and_drops_both_aged_minted_name_shapes green in my run against fs3_review012 on :5433; malformed_and_production_database_names_are_not_sweepable green; prefix-query implementation read back at admin.rs:171-187."
+        },
+        {
+          "id": "f-1a08",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "JUDGEMENT \u2014 ac-0004: TRUE, independently reproduced rather than accepted. Also the row-141 answer the packet asked for: serialisation COALESCES forced checkpoints, it does not remove them, because DROP DATABASE forces one by design \u2014 and the forced checkpoint is what the suite's wall time actually is.",
+          "address": "docs/plans/012-fresh-db-serialise/plan.dd.md#acceptance-criteria",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "state": "checked",
+          "receipt": "Window [2026-09-02T01:15:18Z, 01:15:38Z), `cargo test -p fs3-daemon --test oversize` at DEFAULT parallelism (no --test-threads override): 12 passed in 15.12 s, exit 0. `terminating any other active server processes` / `database system is in recovery` / `the database system is starting up` count in the window = 0. FORCED CHECKPOINTS: before-window (40 s idle) = 0, during = 2 \u2014 and the first, at 01:15:24.987, ran total=12.887 s (wrote 11633 buffers = 71.0% of shared_buffers, sync=11.515 s, sync files=4503), i.e. ~12.9 s of a 15.1 s suite was one forced checkpoint, with the remaining drops queued onto a second checkpoint starting 01:15:37.884. Compare 25 forced checkpoints from the unguarded store suite over a comparable window (f-001)."
+        },
+        {
+          "id": "f-1a09",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "JUDGEMENT \u2014 ac-0005: NOT PROVEN, and it cannot be run as specified without new code. tk-0106 is unchecked. ac-0005 requires a READ-ONLY listing first, but `list_orphans_from` has zero callers anywhere in the tree \u2014 it is a library function with no operator surface \u2014 while `sweep_orphans_from`'s only caller is the destructive `fs3-test-suite`. To satisfy this criterion o-prime must first write a throwaway binary, which is a composition-seam gap this plan should name rather than discover at execution time. The plan cannot close on this evidence.",
+          "address": "docs/plans/012-fresh-db-serialise/plan.dd.md#acceptance-criteria",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "state": "checked",
+          "receipt": "Grep across the tree for `list_orphans_from` / `sweep_orphans_from`: the only production caller is crates/testkit/src/bin/test_suite.rs:17 (sweep, destructive). tk-0105 (harness checks green / CI green) is also unchecked at 5c7f7bdb."
+        },
+        {
+          "id": "f-1a0a",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "JUDGEMENT \u2014 composition seams (done-bar d2): Done-bar d2. WIRED AND GUARDED: crates/daemon/tests/support/mod.rs:12 aliases `pub type FreshDatabase = fs3_testkit::FreshDatabase`, so the whole daemon suite inherits the permit \u2014 this is why the oversize proof is meaningful. NOT WIRED: crates/store/tests/support/mod.rs keeps a duplicate helper (f-001). WIDENED: crates/testkit/src/bin/test_suite.rs:17 turns every `harness checks` into a namespace-wide destructive sweep (f-003). PRODUCTION SEAM: crates/daemon/src/boot.rs:234 (`flowspace3 sandbox`) now both takes the permit and becomes sweepable. UNGUARDED BUT BENIGN: crates/cli/src/doctor.rs:514 calls `fs3_store::create_database` directly, but it is one user-invoked repair, not a burst \u2014 not a finding. PUBLIC API: `OrphanCandidates` added to crates/testkit/src/lib.rs:46-48; `FreshDatabase` signatures and `SweepReport` unchanged; no drift from the impl-guide's stated interface. ONE INTERFACE DRIFT: the impl-guide specified StoreError-based classification and the implementation substituted a TCP probe that overrides it (f-002).",
+          "address": "crates/testkit/src/fresh_database.rs @ 5c7f7bdb",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "state": "checked",
+          "receipt": "Each seam read back at 5c7f7bdb at the line numbers given."
+        },
+        {
+          "id": "f-1a0b",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "JUDGEMENT \u2014 promise boundary: Not a finding, a truth-in-labelling note for the merge record. The semaphore is per-PROCESS. CI runs `cargo test --workspace` (.github/workflows/ci.yml:121) and the gate runs `cargo test --all` \u2014 no nextest \u2014 so one process per test binary and binaries run one at a time; within a cargo invocation the guarantee is effectively machine-wide. It is NOT machine-wide across SEATS: N worktrees each running their own gate against the one :5433 postmaster still produce N concurrent CREATE DATABASE, and that multi-seat concurrency plus f-001 is the actual mechanism behind the crashes this plan cites. The real fix is the explicit non-goal (row 124b, separate test postmaster). Merging this should be recorded as 'reduced', not 'closed', on row 126.",
+          "address": "crates/testkit/src/fresh_database.rs @ 5c7f7bdb",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "state": "checked",
+          "receipt": ".github/workflows/ci.yml:121 `cargo test --workspace`; .harness/engineering-harness.md:17 `cargo test --all`; no nextest anywhere in .github/workflows."
+        },
+        {
+          "id": "f-1a0c",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "JUDGEMENT \u2014 known-open: Zero findings spent, as instructed: the leaked fs3_* databases on prod (row 110, o-prime runs the mass drop on GO), the separate test postmaster (row 124b), postgres configuration (row 140), and the search CTE (row 122) are all deliberately unreported.",
+          "address": "crates/testkit/src/fresh_database.rs @ 5c7f7bdb",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "state": "checked",
+          "receipt": "Owed list (3) honoured."
+        },
+        {
+          "id": "f-1a0d",
+          "kind": "defect",
+          "severity": "MINOR",
+          "finding": "MINOR (round 2, f3aec311) \u2014 two of the three raw-DDL bypasses named in f-1a01 survive unchanged. crates/daemon/tests/support/mod.rs:110 and crates/store/tests/pg_first_light.rs:628 both still execute `DROP DATABASE IF EXISTS {name} WITH (FORCE)` through sqlx directly, taking no permit. These are drops only and one-shot per test, so the residual pressure is far below the store crate's create/drop storm that the delta did fix. But while they exist, the claim in the new admin.rs module doc \u2014 that test helpers and one-shot CLI callers cannot bypass coordination \u2014 is still literally false, and the sweep-safety work in f-1a03 does not cover them either because FORCE is retained. Smallest fix: one-line swap of each to `fs3_store::drop_database`.",
+          "address": "crates/daemon/tests/support/mod.rs:110; crates/store/tests/pg_first_light.rs:628; contrast crates/store/src/admin.rs module doc at f3aec311",
+          "links": [
+            "../../plan.dd.json#goals"
+          ],
+          "state": "checked",
+          "receipt": "`git grep -n -E '(CREATE|DROP) DATABASE' f3aec311 -- crates/**/*.rs` returns exactly these two statement sites outside crates/store/src/admin.rs (the third hit, crates/daemon/src/boot.rs:271, is an error-message string, not a statement)."
+        },
+        {
+          "id": "f-1a0e",
+          "kind": "defect",
+          "severity": "MINOR",
+          "finding": "MINOR (round 2, f3aec311) \u2014 the new N=8 test leaks databases the sweep can never reclaim. `eight_create_paths_are_serialised` mints `fs3_storelock_{seed:032x}_{worker}`, which does not parse as a minted name: the trailing `_0`..`_7` becomes the entropy segment, so `test_database_created_at` fails the 32-hex check and returns None. If the test panics before its serial drops, up to eight databases leak permanently. This is the same defect class as `fs3_migrations_<32hex>` (store's own helper), which is also still unsweepable and unchanged at this sha. Both shapes now matter more, not less, because the sweep is the only automatic reclaim path. Smallest fix: mint through `database_name_at`, and \u2014 since f-1a03 has made the sweep idle-only and unforced, so widening it is no longer risky \u2014 widen the parser to cover the `fs3_<label>_<32hex>` shape too.",
+          "address": "crates/store/src/admin.rs `eight_create_paths_are_serialised` at f3aec311; crates/store/tests/support/mod.rs:89; parser at crates/testkit/src/fresh_database.rs test_database_created_at",
+          "links": [
+            "../../plan.dd.json#goals"
+          ],
+          "state": "checked",
+          "receipt": "Parse traced by hand against the shipped parser: strip `fs3_` -> `storelock_<32hex>_0`; first rsplit_once('_') yields entropy=`0`, length 1, failing the `entropy.len() != 32` guard -> None. Same trace for `fs3_migrations_<32hex>`: first rsplit yields a valid 32-hex entropy, but the second rsplit on `migrations` finds no underscore -> None."
+        },
+        {
+          "id": "f-1a0f",
+          "kind": "defect",
+          "severity": "NIT",
+          "finding": "NIT (round 2, f3aec311) \u2014 the advice classifier matches error substrings ('28p01', 'authentication failed', '42501', 'permission denied') rather than the SQLSTATE-class rule proposed in f-1a02. Ordering is correct (it precedes the listening branch) and it fixes the case I demonstrated, but substring matching is narrower and more brittle than testing for a database error outside class 57: a permanent condition whose wording is not on the list still falls through to 'closed the connection or is in recovery; wait and retry'.",
+          "address": "crates/testkit/src/fresh_database.rs `server_rejected_credentials_or_permission` and `creation_failure_message` at f3aec311",
+          "links": [
+            "../../plan.dd.json#goals"
+          ],
+          "state": "checked",
+          "receipt": "Both functions read back in full at f3aec311; the credentials branch returns before the `server_listening == Some(true)` branch, so the ordering defect from f-1a02 is genuinely gone."
+        },
+        {
+          "id": "f-1a10",
+          "kind": "defect",
+          "severity": "NIT",
+          "finding": "NIT (round 2, f3aec311) \u2014 test scaffolding now lives inside a shipped function. `fs3_store::create_database` carries a `#[cfg(test)]` 25 ms `tokio::time::sleep` and a `#[cfg(test)]` in-flight counter, present so the N=8 window is observable. It is confined to fs3-store's own unit tests and is honest instrumentation rather than a behaviour change, but it is scaffolding in a production body and should be a deliberate choice rather than a leftover. Related: `tokio` moved from dev-dependencies to dependencies in crates/store/Cargo.toml, which is a real dependency-graph change worth a look from whoever owns the architecture allowlist.",
+          "address": "crates/store/src/admin.rs create_database and CreateInFlight at f3aec311; crates/store/Cargo.toml",
+          "links": [
+            "../../impl-guide.dd.json#architecture"
+          ],
+          "state": "checked",
+          "receipt": "Diff 5c7f7bdb..f3aec311 on crates/store/Cargo.toml shows tokio moving out of [dev-dependencies] into [dependencies]; the cfg(test) sleep and counter are visible in the create_database body."
+        },
+        {
+          "id": "f-1a11",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "JUDGEMENT (round 2) \u2014 status of the four round-1 findings at f3aec311, BY READING ONLY. f-1a01: addressed. The semaphore moved to fs3_store::{create_database,drop_database}; crates/store/tests/support/mod.rs now routes through those instead of raw sqlx, putting the 107-site path inside the permit. Critically, testkit's serialise_database_mutation wrappers were DELETED rather than left stacked on top \u2014 the double-acquire self-deadlock I flagged before the fix was written did not materialise. f-1a03: addressed, and better than I proposed \u2014 idle_database_names_with_prefix filters numbackends=0, and drop_database_if_idle re-reads numbackends UNDER THE PERMIT and then drops UNFORCED, mapping SQLSTATE 55006 to Ok(false), so both halves of the check-then-drop race are closed rather than just the predicate. f-1a02: addressed, correct ordering (see f-1a0f for the residual). f-1a04: addressed \u2014 eight_create_paths_are_serialised drives N=8 with the counter inside the real create_database under the permit, which is the seam the round-1 test missed. NONE OF THIS IS MEASURED. Every statement here is from the diff; the behavioural red-proofs and the attributed DDL-concurrency numbers are owed.",
+          "address": "git diff 5c7f7bdb..f3aec311",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "state": "checked",
+          "receipt": "Reviewed read-only during a fleet freeze (shared postgres in crash recovery, then disk exhaustion taking the docker socket). Permitted: git reads. Not run: cargo, docker, any DDL."
+        },
+        {
+          "id": "f-1a12",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "DISCHARGED \u2014 every owed item is delivered; see f-1a1b for the delta verification ledger on 09509b75.",
+          "address": ".harness/temp/agent/ac-0001-ddl-probe.sh",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "state": "checked",
+          "receipt": "Attribution itself is already proven: with application_name on the URL the guarded oversize suite gave max_concurrent_ddl=1, samples_with_ddl=517, samples_over_1=0, foreign_ddl_max=1 \u2014 the last figure showing a neighbour WAS issuing DDL inside the window, which is exactly the contamination that produced an earlier bogus max=2 and is now separated out."
+        },
+        {
+          "id": "f-1a13",
+          "kind": "defect",
+          "severity": "MINOR",
+          "finding": "MINOR (round 2, f3aec311) \u2014 COVERAGE REGRESSION on the plan's own named risk. The delta deleted `database_mutations_are_serialised_across_tokio_runtimes` and did not replace it. That test spawned OS threads, each building its own `new_current_thread` runtime and barrier-synced, and it was the only thing proving the static semaphore coordinates ACROSS INDEPENDENT TOKIO RUNTIMES. Its replacement, `eight_create_paths_are_serialised`, uses `tokio::spawn` on a single `#[tokio::test]` runtime, which cannot distinguish a runtime-agnostic semaphore from a runtime-bound one. The property is now exercised nowhere in the tree. It matters specifically because it is impl-guide risk-1 verbatim, it was owed-list item 1(a), and it is the real production shape: every `#[tokio::test]` in this repo builds its own runtime, so suite-wide serialisation depends on exactly it. There is no live defect \u2014 the type is still a `tokio::sync::Semaphore` in a `OnceLock` static, and the property was mutation-proved at 5c7f7bdb \u2014 but the guard against regressing it is gone, and a future swap to a `thread_local` or per-runtime `Lazy` would keep the suite green. Smallest fix: one test at the store primitive, N threads each with its own current-thread runtime, calling `fs3_store::create_database`.",
+          "address": "deleted from crates/testkit/src/fresh_database.rs; not replaced in crates/store/src/admin.rs `eight_create_paths_are_serialised` at f3aec311",
+          "links": [
+            "../../impl-guide.dd.json#risks"
+          ],
+          "state": "checked",
+          "receipt": "Grepped f3aec311 for `new_current_thread`, `runtime::Builder`, `thread::spawn` and `Barrier` across both crates/testkit/src/fresh_database.rs and crates/store/src/admin.rs: no matches in either file."
+        },
+        {
+          "id": "f-1a14",
+          "kind": "defect",
+          "severity": "MINOR",
+          "finding": "MINOR (round 2, f3aec311) \u2014 ac-0001 lost its only INDEPENDENT check. The round-1 criterion accepted proof 'via pg_stat_activity sampled during the run (or an injected counter on the create path)'; the rewrite accepts only the counter, and phrases the bound as 'at most the configured concurrency AFTER PERMIT ACQUISITION'. The counter is better placed than round 1 \u2014 it sits inside the real `create_database`, covering the statement \u2014 but it is in-process and self-reported, and the 'after permit acquisition' qualifier explicitly excludes the queueing region, bringing the assertion close to a restatement of the semaphore's own semantics. The mutation requirement rescues it, but dropping the server-side option removes the only external observation. Smallest fix: restore the pg_stat_activity clause as an ADDITIONAL receipt rather than an alternative. The reviewer supplies that number regardless, from the attributed probe.",
+          "address": "docs/plans/012-fresh-db-serialise/plan.dd.json ac-0001 at f3aec311 vs 5c7f7bdb",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "state": "checked",
+          "receipt": "Both revisions of the ac-0001 claim read back and compared directly in the 5c7f7bdb..f3aec311 diff of plan.dd.json."
+        },
+        {
+          "id": "f-1a15",
+          "kind": "defect",
+          "severity": "MINOR",
+          "finding": "MINOR (round 2, f3aec311) \u2014 ac-0004 is stale and will be measured in the wrong place. Its claim still reads 'against the shared compose container' and names `docker logs flowspace3-db`, but the binding ruling of 2026-09-02 moved all tests to the dedicated postmaster `flowspace3-db-test` on :5434. Anyone executing ac-0004 literally will grep the logs of a container the tests no longer touch and record a clean zero that means nothing \u2014 a receipt that passes for the wrong reason is worse than one that fails. The same staleness sits in the non-goals, which still list 'No separate test postmaster (row 124b \u2014 a compose change, its own packet)' as out of scope although row 124b landed mid-plan. Both are one-line edits; ac-0004 is the load-bearing one because it is a command someone will run.",
+          "address": "docs/plans/012-fresh-db-serialise/plan.dd.json ac-0004 and non_goals at f3aec311",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "state": "checked",
+          "receipt": "ac-0004 claim and the non-goals array read back verbatim from plan.dd.json at f3aec311; both still name the shared container and treat 124b as out of scope."
+        },
+        {
+          "id": "f-1a16",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "CREDIT (round 2) \u2014 `sweep_preserves_live_and_post_listing_race_databases` is a stronger test than the review asked for, and that should be on the record as clearly as the defects are. It creates five databases \u2014 two old and idle, one connected BEFORE listing, one connected AFTER listing but before the sweep, one below the age threshold \u2014 and asserts the correct outcome for each: the pre-connected database never enters the candidate list, the racing one DOES enter the list and still survives the sweep, the fresh one survives on age, and both old idle ones are swept. Crucially it then asserts `racing_pool.acquire()` still succeeds, proving the live connection was not merely spared but never disturbed. The sweep is wrapped in a 10-second `tokio::time::timeout` captioned 'the sweep loop must not self-deadlock', a direct guard against the double-acquire deadlock flagged before the fix was written. Extracting `sweep_candidates` as its own function is what makes the post-listing race injectable at all. The AC's mutation requirement (mutating candidate liveness or the fail-safe drop path must go red) is still owed and is part of the reviewer's round-3 red-proofs.",
+          "address": "crates/testkit/src/fresh_database.rs sweep_preserves_live_and_post_listing_race_databases at f3aec311",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "state": "checked",
+          "receipt": "Test body read in full at f3aec311; every assertion listed above is present."
+        },
+        {
+          "id": "f-1a17",
+          "kind": "defect",
+          "severity": "MAJOR",
+          "finding": "MAJOR (round 2, MEASURED at f3aec311) \u2014 ac-0001 IS NOT MET: attributed DDL concurrency goes 16 -> 2, not 16 -> 1, and the cause is f-1a0d, the residual this review first rated MINOR. Both raw-DDL sites are now isolated independently, each against a matched control in the same crate, with clean attribution (foreign_ddl_max=0 on every isolating run). SITE 1, crates/store/tests/pg_first_light.rs:628 `sqlx_drop`: the pg_first_light binary alone measures max_concurrent_ddl=2 with 92 of 189 samples above one, while pg_conversations and pg_store_flows in the same crate both measure exactly 1 with zero samples above one. SITE 2, crates/daemon/tests/support/mod.rs:110 `support::drop_database`: the first_light binary measures max=2 with 18 of 422 samples above one, while boot_recovery measures exactly 1 with zero above one. Both sites issue `DROP DATABASE ... WITH (FORCE)` through a pool built from the test URL, so they take no permit and \u2014 because the pool inherits application_name from that URL \u2014 they are correctly attributed to the reviewer's own process rather than to a neighbour. REVIEWER'S CORRECTION ON THE RECORD: round 2 characterised these as 'drops only, one-shot, so the impact is far below the store crate's create/drop storm'. That was true about volume and wrong about the promise. Volume was never the criterion \u2014 ac-0001 says at most one in flight, and a single unpermitted drop falsifies it. The semaphore itself is sound: every binary without a bypass sits at exactly 1, and the testkit path (oversize) measures 1 across 342 active samples with zero above one. Smallest fix is unchanged and is two one-line swaps to `fs3_store::drop_database`; 16 -> 1 is expected to fall out the moment they land, and must be re-measured rather than assumed.",
+          "address": "crates/store/tests/pg_first_light.rs:628; crates/daemon/tests/support/mod.rs:110; see f-1a0d for the reading-level finding",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "state": "checked",
+          "receipt": "All on the dedicated test postmaster :5434 (CONTAINER=flowspace3-db-test), default parallelism, attributed by application_name=rs-review-012. PRE-FIX 5c7f7bdb store: max=16 (exit 0, 308 samples, 52 above one) and max=16 (exit 0, 700 samples, 43 above one). PRE-FIX oversize: max=1, 357 active samples, 0 above one. POST-FIX f3aec311 store: max=2 twice (exit 0; 196 and 137 samples above one). POST-FIX oversize: max=1, 342 active, 0 above one. RULED OUT FIRST: a 240-sample watch across a full store run showed max concurrent test binaries of mine = 1, so cargo does not parallelise test targets, while distinct backends issuing my attributed DDL reached 2 \u2014 one process, one permit, two statements. Per-binary isolation then located both sites as tabulated in the finding."
+        },
+        {
+          "id": "f-1a18",
+          "kind": "defect",
+          "severity": "MINOR",
+          "finding": "MINOR (round 2, MEASURED at f3aec311) \u2014 ac-0003's mutation claim is half false: the fail-safe UNFORCED drop is covered by no test. ac-0003 states 'Mutating either candidate liveness or the fail-safe drop path makes the test red'. Mutating candidate liveness does (M1, red). Mutating the liveness RE-CHECK does, and more sharply than expected (M2a, red). But restoring WITH (FORCE) to the sweep's drop while leaving the re-check in place leaves the suite GREEN (M2b) \u2014 the forced statement is never reached for the racing database because the re-check returns Ok(false) first. So the unforced DROP, which is the actual closer for the window between the re-check and the statement, is defence-in-depth that nothing guards: reintroducing FORCE on the sweep path would keep every test green while silently reopening the race. SECOND RESULT WORTH KEEPING: M2a failed at the `.expect(\"the sweep loop must not self-deadlock\")` with a 10.64 s runtime, i.e. removing the re-check makes the sweep HANG on a live database rather than fail fast. The re-check is load-bearing against a hang, not an early-exit optimisation, and the timeout wrapper is doing real work rather than decoration. Smallest fix (ruled): a no-FORCE guard asserting on the real sweep SQL through a const shared by code and test, plus ac-0003 amended to name the unforced drop as defence-in-depth covered only by that guard.",
+          "address": "crates/store/src/admin.rs drop_database_if_idle; crates/testkit/src/fresh_database.rs:551,560,584; plan.dd.json ac-0003",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "state": "checked",
+          "receipt": "Each mutation applied alone against a cleaned server with a green unmutated baseline first, then reverted. M1 drop the numbackends=0 filter -> RED at fresh_database.rs:551. M2a remove the re-check, keep the unforced drop -> RED at :560, the self-deadlock timeout, 10.64 s. M2b keep the re-check, force the drop -> GREEN. M2c both -> RED at :584, report.swept contains the racing database."
+        },
+        {
+          "id": "f-1a19",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "RED-PROOF LEDGER and ac-0005 SURFACE (round 2, f3aec311). Every fix was mutated individually rather than trusted from the diff, each against a confirmed green baseline on a cleaned server, each reverted afterwards with the tree verified clean. Candidate liveness: RED. Liveness re-check: RED (hang). Both together: RED. Unforced drop alone: GREEN \u2014 the one gap, recorded as f-1a18. Advice classifier, removing the credentials branch from creation_failure_message: RED at fresh_database.rs:183. Store permit, removing `let _permit = database_mutation_permit().await` from fs3_store::create_database: RED at admin.rs:631, the N=8 bound. AC-0005 OPERATOR SURFACE PROVED, not merely executed: an empty listing agreeing with an empty catalog proves nothing, so four databases were minted on :5434 \u2014 one aged, idle and conforming; one aged and conforming but holding a live connection; one conforming but younger than the threshold; one malformed with no epoch segment \u2014 and crates/testkit/examples/list_orphans.rs printed EXACTLY the first and none of the other three. All four were dropped afterwards, leaving zero. METHOD WARNING that belongs with any repeat of this work: the race test leaks its five databases when it fails, and because their synthetic epoch is 1 they become candidates in the next run's window and break its exact-equality assertion. Mutations must be run against a cleaned server or the second red onwards is meaningless \u2014 the reviewer's own first attempt was invalidated this way and was caught only because two different mutations failed at an identical line.",
+          "address": "crates/store/src/admin.rs; crates/testkit/src/fresh_database.rs; crates/testkit/examples/list_orphans.rs",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "state": "checked",
+          "receipt": "Green baselines observed for every mutated test before mutation; tree byte-identical after each revert; scratch databases dropped to zero after each trial."
+        },
+        {
+          "id": "f-1a1a",
+          "kind": "defect",
+          "severity": "NIT",
+          "finding": "NIT (round 3, 09509b75) \u2014 the widened sweep parser now DERIVES age from entropy bits, with no plausibility bound. To make `fs3_migrations_<32hex>` and `fs3_storelock_<32hex>_<worker>` sweepable, `test_database_created_at` special-cases both prefixes and calls `unique_seed_created_at`, which is `Some((seed as u64) / 1_000_000_000)` \u2014 it takes the low 64 bits of the seed and divides by a billion, with no range check at all. For names this repo mints the decode is correct, because `unique_seed` puts nanos in the low 64 bits and XORs pid and a counter only above bit 64. But the sweep's age decision for these two shapes is now coupled to that bit layout, and nothing tests the coupling. If `unique_seed` is ever reordered, every such name silently gets a garbage age: uniformly distributed low-64 bits decode to roughly ten percent below the current epoch, i.e. immediately sweepable, and the rest to far-future dates that are never swept. The dangerous direction is the cheap one to close. Smallest fix: clamp the decode to a plausible window (reject anything before, say, 2020 or after now plus a day) so a garbage decode can never read as ancient, and add one test asserting that `unique_seed_created_at(format!(\"{:032x}\", unique_seed()))` is within a few seconds of now, which pins the coupling the parser depends on.",
+          "address": "crates/testkit/src/fresh_database.rs test_database_created_at and unique_seed_created_at at 09509b75",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "state": "checked",
+          "receipt": "Both functions read back in full at 09509b75. unique_seed_created_at performs a length and hex check and then returns (seed as u64)/1e9 with no lower or upper bound; unique_seed places nanos in the low 64 bits, XORing pid at bit 64 and a sequence counter at bit 96, so the decode is correct only while that layout holds."
+        },
+        {
+          "id": "f-1a1b",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "DELTA VERIFICATION LEDGER (round 3, 09509b75) \u2014 every round-1 and round-2 item re-checked against the successor sha, by measurement and mutation rather than by reading the diff. ac-0001 TARGET MET: attributed max_concurrent_ddl for the full fs3-store suite at default parallelism is 1 across 1003 samples, 774 of them with this process's DDL active, ZERO above one, foreign_ddl_max 0. Both previously-isolated bypass sites are fixed and each was re-measured on its own binary: pg_first_light 2 -> 1 (143 active samples, 0 above one) and daemon first_light 2 -> 1 (87 active, 0 above one). So the measured trajectory is 16 -> 2 -> 1. NEW GUARDS MUTATION-PROVED, not accepted: forcing the sweep drop by editing the shared const turns `orphan_sweep_drop_statement_is_unforced` RED at fresh_database.rs:571, closing the f-1a18 gap; removing the permit from the store create path turns the RESTORED `database_mutations_are_serialised_across_tokio_runtimes` RED at admin.rs:705, closing f-1a13. Green baselines first in both cases: fs3-testkit 29 passed, fs3-store 18 passed, zero failures. REMAINING FOLD-INS CONFIRMED BY READING: the advice classifier now uses the SQLSTATE class rule (`server_rejected_permanently` = a database error whose code does not start with 57), closing f-1a0f as proposed; ac-0001 carries the pg_stat_activity clause as an ADDITIONAL receipt with explicit thresholds, closing f-1a14; ac-0003 names the unforced DROP as defence-in-depth covered by the new guard, closing f-1a18; ac-0004 now names :5434 and docker logs flowspace3-db-test, and the stale 'no separate test postmaster' non-goal is gone, closing f-1a15. PARTIAL: f-1a10 \u2014 the cfg(test) scaffolding is tidied into a named `create_test_hook` module but two cfg(test) lines still sit in the shipped create_database body. Acceptable; noted rather than pressed.",
+          "address": "09509b7525c770babd9aae2e974dd7bea62b28de",
+          "links": [
+            "../../plan.dd.json#acceptance-criteria"
+          ],
+          "state": "checked",
+          "receipt": "All measurements on :5434 with CONTAINER=flowspace3-db-test, attributed by application_name, default parallelism, foreign_ddl_max 0 throughout. All mutations applied singly against a cleaned server with a green baseline first and the tree verified byte-identical after each revert."
+        }
+      ]
+    },
+    {
+      "name": "verdict",
+      "value": [
+        {
+          "id": "vd-2b01",
+          "finding": "#findings/f-1a01",
+          "resolution": "confirmed",
+          "rationale": "CHANGES REQUESTED. The plan's headline promise \u2014 no test binary issues concurrent CREATE/DROP DATABASE at the shared server \u2014 is half-kept. Every path inside FreshDatabase is genuinely covered (create_from, create_unmigrated_from, cleanup, destroy, destroy_force, sweep_orphans_at all take the permit at :239/:314/:356, with no nesting and therefore no self-deadlock at N=1), but the store crate's duplicate helper is 107 call sites of unserialised DDL against the same postmaster and it is the exact `fs3_migrations_` path the plan's own crash history names. Row 126 should not be recorded as closed on this evidence.",
+          "state": "checked",
+          "receipt": "25 forced checkpoints from `cargo test -p fs3-store` vs 2 from the guarded oversize suite, both at default parallelism against flowspace3-db, windows and idle baselines stated in f-001."
+        },
+        {
+          "id": "vd-2b02",
+          "finding": "#findings/f-1a02",
+          "resolution": "confirmed",
+          "rationale": "CHANGES REQUESTED, and cheap: a one-condition reorder. ac-0002 as written is TRUE \u2014 I re-ran both advice tests green \u2014 but plan goal 2 says the advice 'names the real next action', and for a listening server that refuses for a permanent reason it names a next action that never arrives.",
+          "state": "checked",
+          "receipt": "Bad-password run against the real container produced 'wait and retry' for `password authentication failed`; transcript in f-002."
+        },
+        {
+          "id": "vd-2b03",
+          "finding": "#findings/f-1a03",
+          "resolution": "confirmed",
+          "rationale": "CHANGES REQUESTED \u2014 this is the one I would fix BEFORE merge. It is the only item that grants a capability the codebase did not previously have: `harness checks`, run by any seat from any worktree, can now force-drop a running `flowspace3 sandbox` database. Today's blast radius is zero because every conforming database on :5433 is younger than the six-hour threshold; that is timing, not a guard.",
+          "state": "checked",
+          "receipt": "Old vs new prefix and parser diffed at 5c7f7bdb^ \u2192 5c7f7bdb; eligibility asserted by the author's own test at :559-562; FORCE semantics at admin.rs:219; live catalog census on :5433 (47 conforming, all <6 h; 2 non-conforming)."
+        },
+        {
+          "id": "vd-2b04",
+          "finding": "#findings/f-1a04",
+          "resolution": "confirmed",
+          "rationale": "Follow-up, not a merge blocker. The behaviour is right and I proved it by mutation; the test simply guards the wrong seam to keep it right.",
+          "state": "checked",
+          "receipt": "27/27 testkit lib tests green at 5c7f7bdb; mutation red at fresh_database.rs:459; worktree restored clean."
+        },
+        {
+          "id": "vd-2b05",
+          "finding": "#findings/f-1a05",
+          "resolution": "confirmed",
+          "rationale": "PARTIAL. Serialisation is real, process-wide across runtimes, and mutation-proven by me. But the mutation is asserted on the primitive rather than on the create path (f-004), N is 2 rather than the specified 8, and 'no caller can bypass' is false at fleet level (f-001).",
+          "state": "checked",
+          "receipt": "cargo test -p fs3-testkit --lib: 27 passed. Permit deleted \u2192 `observed more than 1 concurrent database mutations`. Tree restored."
+        },
+        {
+          "id": "vd-2b06",
+          "finding": "#findings/f-1a06",
+          "resolution": "confirmed",
+          "rationale": "TRUE for both named cases. Refused port \u2192 'No server at \u2026' plus COMPOSE_UP; listening-but-closing \u2192 recovery wording with COMPOSE_UP absent. Both owed negatives hold structurally: the Some(false) branch returns before any recovery test (:138), and the recovery message contains no compose text (:149-151). The gap is the unspecified third case (f-002).",
+          "state": "checked",
+          "receipt": "advice_says_to_start_a_server_only_when_no_server_is_listening and advice_says_wait_when_a_listening_server_closes_connections both green in my own run."
+        },
+        {
+          "id": "vd-2b07",
+          "finding": "#findings/f-1a07",
+          "resolution": "confirmed",
+          "rationale": "TRUE. Both minted shapes swept, the fresh one kept, threshold reported. The owed negative is sound in every direction I could attack it: `flowspace3` and `flowspace3_test` fail the `fs3_` prefix; any name lacking the `<epoch>_<32hex>` tail fails; any label containing an underscore fails because the second rsplit leaves the underscore inside `label` and the alphanumeric check rejects it (so `fs3_migrations_<32hex>` and `fs3_blastradius` are both ineligible); and the catalog query is a literal prefix \u2014 `left(datname, length($1)) = $1` at crates/store/src/admin.rs:176 \u2014 not LIKE, so `_` is never a wildcard. The parser's breadth is not the problem; its blindness to liveness is (f-003).",
+          "state": "checked",
+          "receipt": "sweep_lists_and_drops_both_aged_minted_name_shapes green in my run against fs3_review012 on :5433; malformed_and_production_database_names_are_not_sweepable green; prefix-query implementation read back at admin.rs:171-187."
+        },
+        {
+          "id": "vd-2b08",
+          "finding": "#findings/f-1a08",
+          "resolution": "confirmed",
+          "rationale": "TRUE, independently reproduced rather than accepted. Also the row-141 answer the packet asked for: serialisation COALESCES forced checkpoints, it does not remove them, because DROP DATABASE forces one by design \u2014 and the forced checkpoint is what the suite's wall time actually is.",
+          "state": "checked",
+          "receipt": "Window [2026-09-02T01:15:18Z, 01:15:38Z), `cargo test -p fs3-daemon --test oversize` at DEFAULT parallelism (no --test-threads override): 12 passed in 15.12 s, exit 0. `terminating any other active server processes` / `database system is in recovery` / `the database system is starting up` count in the window = 0. FORCED CHECKPOINTS: before-window (40 s idle) = 0, during = 2 \u2014 and the first, at 01:15:24.987, ran total=12.887 s (wrote 11633 buffers = 71.0% of shared_buffers, sync=11.515 s, sync files=4503), i.e. ~12.9 s of a 15.1 s suite was one forced checkpoint, with the remaining drops queued onto a second checkpoint starting 01:15:37.884. Compare 25 forced checkpoints from the unguarded store suite over a comparable window (f-001)."
+        },
+        {
+          "id": "vd-2b09",
+          "finding": "#findings/f-1a09",
+          "resolution": "deferred",
+          "rationale": "NOT PROVEN, and it cannot be run as specified without new code. tk-0106 is unchecked. ac-0005 requires a READ-ONLY listing first, but `list_orphans_from` has zero callers anywhere in the tree \u2014 it is a library function with no operator surface \u2014 while `sweep_orphans_from`'s only caller is the destructive `fs3-test-suite`. To satisfy this criterion o-prime must first write a throwaway binary, which is a composition-seam gap this plan should name rather than discover at execution time. The plan cannot close on this evidence.",
+          "state": "checked",
+          "receipt": "Grep across the tree for `list_orphans_from` / `sweep_orphans_from`: the only production caller is crates/testkit/src/bin/test_suite.rs:17 (sweep, destructive). tk-0105 (harness checks green / CI green) is also unchecked at 5c7f7bdb."
+        },
+        {
+          "id": "vd-2b10",
+          "finding": "#findings/f-1a0a",
+          "resolution": "confirmed",
+          "rationale": "Done-bar d2. WIRED AND GUARDED: crates/daemon/tests/support/mod.rs:12 aliases `pub type FreshDatabase = fs3_testkit::FreshDatabase`, so the whole daemon suite inherits the permit \u2014 this is why the oversize proof is meaningful. NOT WIRED: crates/store/tests/support/mod.rs keeps a duplicate helper (f-001). WIDENED: crates/testkit/src/bin/test_suite.rs:17 turns every `harness checks` into a namespace-wide destructive sweep (f-003). PRODUCTION SEAM: crates/daemon/src/boot.rs:234 (`flowspace3 sandbox`) now both takes the permit and becomes sweepable. UNGUARDED BUT BENIGN: crates/cli/src/doctor.rs:514 calls `fs3_store::create_database` directly, but it is one user-invoked repair, not a burst \u2014 not a finding. PUBLIC API: `OrphanCandidates` added to crates/testkit/src/lib.rs:46-48; `FreshDatabase` signatures and `SweepReport` unchanged; no drift from the impl-guide's stated interface. ONE INTERFACE DRIFT: the impl-guide specified StoreError-based classification and the implementation substituted a TCP probe that overrides it (f-002).",
+          "state": "checked",
+          "receipt": "Each seam read back at 5c7f7bdb at the line numbers given."
+        },
+        {
+          "id": "vd-2b11",
+          "finding": "#findings/f-1a0b",
+          "resolution": "confirmed",
+          "rationale": "Not a finding, a truth-in-labelling note for the merge record. The semaphore is per-PROCESS. CI runs `cargo test --workspace` (.github/workflows/ci.yml:121) and the gate runs `cargo test --all` \u2014 no nextest \u2014 so one process per test binary and binaries run one at a time; within a cargo invocation the guarantee is effectively machine-wide. It is NOT machine-wide across SEATS: N worktrees each running their own gate against the one :5433 postmaster still produce N concurrent CREATE DATABASE, and that multi-seat concurrency plus f-001 is the actual mechanism behind the crashes this plan cites. The real fix is the explicit non-goal (row 124b, separate test postmaster). Merging this should be recorded as 'reduced', not 'closed', on row 126.",
+          "state": "checked",
+          "receipt": ".github/workflows/ci.yml:121 `cargo test --workspace`; .harness/engineering-harness.md:17 `cargo test --all`; no nextest anywhere in .github/workflows."
+        },
+        {
+          "id": "vd-2b12",
+          "finding": "#findings/f-1a0c",
+          "resolution": "deferred",
+          "rationale": "Zero findings spent, as instructed: the leaked fs3_* databases on prod (row 110, o-prime runs the mass drop on GO), the separate test postmaster (row 124b), postgres configuration (row 140), and the search CTE (row 122) are all deliberately unreported.",
+          "state": "checked",
+          "receipt": "Owed list (3) honoured."
+        },
+        {
+          "id": "vd-2b13",
+          "finding": "#findings/f-1a0d",
+          "resolution": "confirmed",
+          "rationale": "FOLD IN (ruled by o-prime). Two one-line swaps to fs3_store::drop_database. Not a merge blocker on its own, but the module doc should not claim a coordination guarantee the tree does not yet keep.",
+          "state": "checked",
+          "receipt": "`git grep -n -E '(CREATE|DROP) DATABASE' f3aec311 -- crates/**/*.rs` returns exactly these two statement sites outside crates/store/src/admin.rs (the third hit, crates/daemon/src/boot.rs:271, is an error-message string, not a statement)."
+        },
+        {
+          "id": "vd-2b14",
+          "finding": "#findings/f-1a0e",
+          "resolution": "confirmed",
+          "rationale": "FOLD IN. Two permanent leak shapes is one too many now that the sweep is the only automatic reclaim path \u2014 and f-1a03 has made widening the parser safe, which it was not before.",
+          "state": "checked",
+          "receipt": "Parse traced by hand against the shipped parser: strip `fs3_` -> `storelock_<32hex>_0`; first rsplit_once('_') yields entropy=`0`, length 1, failing the `entropy.len() != 32` guard -> None. Same trace for `fs3_migrations_<32hex>`: first rsplit yields a valid 32-hex entropy, but the second rsplit on `migrations` finds no underscore -> None."
+        },
+        {
+          "id": "vd-2b15",
+          "finding": "#findings/f-1a0f",
+          "resolution": "confirmed",
+          "rationale": "FOLD IN. The ordering defect is genuinely fixed; only the breadth of the predicate is at issue. Prefer the SQLSTATE-class rule over a wording list.",
+          "state": "checked",
+          "receipt": "Both functions read back in full at f3aec311; the credentials branch returns before the `server_listening == Some(true)` branch, so the ordering defect from f-1a02 is genuinely gone."
+        },
+        {
+          "id": "vd-2b16",
+          "finding": "#findings/f-1a10",
+          "resolution": "confirmed",
+          "rationale": "FOLD IN. Scaffolding out of the shipped body, and let the allowlist owner look at the tokio dependency move.",
+          "state": "checked",
+          "receipt": "Diff 5c7f7bdb..f3aec311 on crates/store/Cargo.toml shows tokio moving out of [dev-dependencies] into [dependencies]; the cfg(test) sleep and counter are visible in the create_database body."
+        },
+        {
+          "id": "vd-2b17",
+          "finding": "#findings/f-1a11",
+          "resolution": "fixed",
+          "rationale": "Round-1 findings are structurally addressed and the fix is the right shape \u2014 one layer, wrappers removed, race closed at both ends. Recorded as fixed BY READING, with the behavioural proof explicitly still owed; do not read this row as a measured verdict.",
+          "state": "checked",
+          "receipt": "Reviewed read-only during a fleet freeze (shared postgres in crash recovery, then disk exhaustion taking the docker socket). Permitted: git reads. Not run: cargo, docker, any DDL."
+        },
+        {
+          "id": "vd-2b18",
+          "finding": "#findings/f-1a12",
+          "resolution": "deferred",
+          "rationale": "Partly discharged: both attributed measurements are delivered (f-1a17). Outstanding are the per-fix red-proofs, ac-0005 through the list_orphans example, and re-measurement on the successor sha.",
+          "state": "checked",
+          "receipt": "Attribution itself is already proven: with application_name on the URL the guarded oversize suite gave max_concurrent_ddl=1, samples_with_ddl=517, samples_over_1=0, foreign_ddl_max=1 \u2014 the last figure showing a neighbour WAS issuing DDL inside the window, which is exactly the contamination that produced an earlier bogus max=2 and is now separated out."
+        },
+        {
+          "id": "vd-2b19",
+          "finding": "#findings/f-1a13",
+          "resolution": "confirmed",
+          "rationale": "FOLD IN (ruled binding at the store primitive). Deleting the only test of a named risk is a regression even when the behaviour is still correct.",
+          "state": "checked",
+          "receipt": "Grepped f3aec311 for `new_current_thread`, `runtime::Builder`, `thread::spawn` and `Barrier` across both crates/testkit/src/fresh_database.rs and crates/store/src/admin.rs: no matches in either file."
+        },
+        {
+          "id": "vd-2b20",
+          "finding": "#findings/f-1a14",
+          "resolution": "confirmed",
+          "rationale": "FOLD IN \u2014 server-side clause restored as an additional receipt. The attributed pg_stat_activity number goes onto ac-0001 either way.",
+          "state": "checked",
+          "receipt": "Both revisions of the ac-0001 claim read back and compared directly in the 5c7f7bdb..f3aec311 diff of plan.dd.json."
+        },
+        {
+          "id": "vd-2b21",
+          "finding": "#findings/f-1a15",
+          "resolution": "confirmed",
+          "rationale": "FOLD IN \u2014 ac-0004 and the non-goals repointed at flowspace3-db-test / 124b landed. A receipt that passes for the wrong reason is the worst kind.",
+          "state": "checked",
+          "receipt": "ac-0004 claim and the non-goals array read back verbatim from plan.dd.json at f3aec311; both still name the shared container and treat 124b as out of scope."
+        },
+        {
+          "id": "vd-2b22",
+          "finding": "#findings/f-1a16",
+          "resolution": "fixed",
+          "rationale": "No action. Recorded so the review's ledger is not defect-only: this test is the strongest artefact in the delta and it closes the race the reviewer raised, more completely than the reviewer proposed.",
+          "state": "checked",
+          "receipt": "Test body read in full at f3aec311; every assertion listed above is present."
+        },
+        {
+          "id": "vd-2b23",
+          "finding": "#findings/f-1a17",
+          "resolution": "confirmed",
+          "state": "checked",
+          "rationale": "BLOCKS ac-0001 until the two swaps land. This is the review's central measured result: the fix is right and the semaphore works, but f3aec311 does not satisfy the criterion it was written to satisfy. It also vindicates isolating a finding rather than arguing it \u2014 the residual was rated MINOR from reading and turned out to be the whole difference between the promise being kept and not. Re-measurement on the successor coder's sha is required; the expected result is 16 -> 1 and it must be observed, not assumed.",
+          "receipt": "Two bypass sites isolated independently against matched controls in their own crates, foreign_ddl_max=0 throughout."
+        },
+        {
+          "id": "vd-2b24",
+          "finding": "#findings/f-1a18",
+          "resolution": "confirmed",
+          "rationale": "FOLD IN (ruled): no-FORCE guard on the real sweep SQL plus an amended ac-0003. The gap is narrow but it is precisely the regression that would be silent.",
+          "state": "checked",
+          "receipt": "Each mutation applied alone against a cleaned server with a green unmutated baseline first, then reverted. M1 drop the numbackends=0 filter -> RED at fresh_database.rs:551. M2a remove the re-check, keep the unforced drop -> RED at :560, the self-deadlock timeout, 10.64 s. M2b keep the re-check, force the drop -> GREEN. M2c both -> RED at :584, report.swept contains the racing database."
+        },
+        {
+          "id": "vd-2b25",
+          "finding": "#findings/f-1a19",
+          "resolution": "fixed",
+          "rationale": "Owed items (3) and (4) from f-1a12 are discharged: every fix is mutation-proved individually and the ac-0005 listing surface is proved with one positive and three negatives. Only re-measurement on the successor sha remains.",
+          "state": "checked",
+          "receipt": "Green baselines observed for every mutated test before mutation; tree byte-identical after each revert; scratch databases dropped to zero after each trial."
+        },
+        {
+          "id": "vd-2b26",
+          "finding": "#findings/f-1a1a",
+          "resolution": "confirmed",
+          "rationale": "Raise for the record; cheap to close and the sweep is destructive, so the lower bound is worth having. Not a merge blocker.",
+          "state": "checked",
+          "receipt": "Both functions read back in full at 09509b75. unique_seed_created_at performs a length and hex check and then returns (seed as u64)/1e9 with no lower or upper bound; unique_seed places nanos in the low 64 bits, XORing pid at bit 64 and a sequence counter at bit 96, so the decode is correct only while that layout holds."
+        },
+        {
+          "id": "vd-2b27",
+          "finding": "#findings/f-1a1b",
+          "resolution": "fixed",
+          "rationale": "DELTA VERDICT: APPROVE. Every finding this review raised is closed or explicitly accepted, the headline target is met at 16 -> 2 -> 1 measured independently, and the two new guards were mutation-proved rather than taken on trust. One NIT (f-1a1a) and one partial (f-1a10) remain, neither blocking.",
+          "state": "checked",
+          "receipt": "All measurements on :5434 with CONTAINER=flowspace3-db-test, attributed by application_name, default parallelism, foreign_ddl_max 0 throughout. All mutations applied singly against a cleaned server with a green baseline first and the tree verified byte-identical after each revert."
+        }
+      ]
+    }
+  ]
+}
