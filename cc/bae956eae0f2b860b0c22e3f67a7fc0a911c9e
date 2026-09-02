@@ -1,0 +1,14 @@
+government/worker-roster.md
+  h_9e71e8b09f7cf2 86-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ccbae956eae0f2b860b0c22e3f67a7fc0a911c9e",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
