@@ -3720,8 +3720,23 @@ VALUES are not identical, and I stopped one level too shallow.
 that IS alive (recycled) — **5 rows where derivation alone is ambiguous**, which is exactly where two
 independent implementations diverge. And pij ALREADY computes this: `pij list --json` exposes
 `liveness:'dead'` with `terminal:{disposition, evidence:'pid-missing', lastSeenAt}` on a different
-projection. So the cheap ask is "expose what you already compute on /v1/seats", separable from
-retention semantics — not "build a reaper". **23 of the 716 corpses are seats in this repo's tree**, several killed by hand tonight;
+projection. So the ask looked like "expose what you already compute on /v1/seats", separable from
+retention semantics — not "build a reaper".
+
+**SECOND CORRECTION, same night — that ask is NOT cheap, and I verified this myself too.** The two
+projections serve almost disjoint populations: `pij list --json` (legacy) returns **437**,
+`/v1/seats` (rs) returns **839**, and the ids in BOTH number **2**. So exposing the existing
+liveness field on `/v1/seats` would light up **2 rows out of 839**. It is the same legacy/rs split
+weasel ruled on for the roster — legacy holds the unmigrated fleet, rs holds what has adopted.
+The real ask is therefore **"compute the liveness you already know how to compute, for the
+population `/v1/seats` actually serves"** — the algorithm exists and is proven, but it runs on the
+wrong projection.
+**And the categorical argument against every consumer just deriving it themselves** (boa's, and it
+is the strongest point in the thread): pij models **three** liveness states — my own legacy census
+reads dead 406 / active 24 / **stale 7**. A consumer deriving from `pid + proc_start` can only ever
+produce **two**, and has no input from which to compute `stale` at all. So a deriving consumer folds
+those stale seats into "alive" and is confidently wrong in the same direction as the original
+defect. That is categorical, not drift. **23 of the 716 corpses are seats in this repo's tree**, several killed by hand tonight;
 their rows are still `"idle"` with no tombstone.
 Two corroborations from our own day: row 180 (`pij-rs send` routes happily to a corpse — "no such
 pane: %2081" — so only tmux catches it), and the tidy-up where 17 of 19 closed seats had no pane at
