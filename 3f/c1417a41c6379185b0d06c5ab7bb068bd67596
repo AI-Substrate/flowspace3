@@ -1,0 +1,21 @@
+docs/plans/012-fresh-db-serialise/impl-guide.dd.json
+  s_6962df7d34bf4b::t_65dab45d6457e6 36-37
+docs/plans/012-fresh-db-serialise/impl-guide.dd.md
+  s_6962df7d34bf4b::t_9043f5dc06ef7c 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3fc1417a41c6379185b0d06c5ab7bb068bd67596",
+  "prompts": {},
+  "sessions": {
+    "s_6962df7d34bf4b": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "e6b8ab2d-bab9-4a44-b1c9-8941b59bb689",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
