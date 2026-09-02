@@ -57,5 +57,45 @@ services:
       retries: 30
       start_period: 5s
 
+  # Row 124b (2026-09-02): a SEPARATE postmaster for tests. Every coder gate,
+  # per-run FreshDatabase and EXPLAIN experiment used to run against the prod
+  # postmaster above; concurrent CREATE/DROP and one runaway EXPLAIN crashed it
+  # twice in one day (rows 124, 141, the second crash at 02:06Z). Point
+  # FS3_TEST_DATABASE_URL here. Disposable: no data anyone keeps lives in it.
+  db-test:
+    image: pgvector/pgvector:pg16
+    container_name: flowspace3-db-test
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: flowspace3
+      POSTGRES_PASSWORD: flowspace3
+      POSTGRES_DB: flowspace3_test
+    command:
+      - postgres
+      - -c
+      - shared_buffers=1GB
+      - -c
+      - work_mem=64MB
+      - -c
+      - maintenance_work_mem=512MB
+      - -c
+      - max_wal_size=4GB
+      - -c
+      - wal_compression=on
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - max_parallel_workers_per_gather=0
+    ports:
+      - "5434:5432"
+    volumes:
+      - flowspace3-pgdata-test:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flowspace3 -d flowspace3_test"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
 volumes:
+  flowspace3-pgdata-test:
   flowspace3-pgdata:
