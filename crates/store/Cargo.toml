@@ -15,6 +15,7 @@ pgvector.workspace = true
 serde_json.workspace = true
 sqlx.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
 
 [dev-dependencies]
 anyhow.workspace = true
@@ -22,4 +23,3 @@ anyhow.workspace = true
 # cosine ordering means something, and inventing a second hashing scheme here
 # would be exactly the per-test double workshop 001 rule 5 refuses.
 fs3-testkit.workspace = true
-tokio.workspace = true

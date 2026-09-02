@@ -43,5 +43,7 @@ pub use fake_source::{
     FAKE_CHILDREN_DIR, FAKE_MAIN_FILE, FakeConversationSource, FakeDefect, FakeSourceFixture,
 };
 pub use fakes::{FakeChatProvider, FakeEmbedder, FakeSummarizer};
-pub use fresh_database::{FreshDatabase, ORPHAN_SWEEP_AGE, SweepReport, TEST_DATABASE_PREFIX};
+pub use fresh_database::{
+    FreshDatabase, ORPHAN_SWEEP_AGE, OrphanCandidates, SweepReport, TEST_DATABASE_PREFIX,
+};
 pub use spawn::{TestDatabase, flowspace3_binary, sealed};

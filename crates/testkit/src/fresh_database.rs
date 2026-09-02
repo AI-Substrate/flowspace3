@@ -1,4 +1,7 @@
 //! Disposable, migrated Postgres databases for tests and hand-run sandboxes.
+//!
+//! Every `CREATE DATABASE` and `DROP DATABASE` delegates to `fs3_store`, whose
+//! process-wide semaphore protects the shared postmaster from DDL bursts.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -7,15 +10,142 @@ use fs3_store::{PgPool, StoreError};
 
 /// Namespace reserved for whole-suite databases minted by `harness checks`.
 pub const TEST_DATABASE_PREFIX: &str = "fs3_test_";
+const TEST_DATABASE_NAMESPACE: &str = "fs3_";
 
 /// A crashed whole-suite database becomes sweepable after this age.
 pub const ORPHAN_SWEEP_AGE: Duration = Duration::from_secs(6 * 60 * 60);
+
+fn store_error_source(error: &StoreError) -> Option<&(dyn std::error::Error + 'static)> {
+    match error {
+        StoreError::Unreachable { source, .. } | StoreError::Query(source) => Some(source),
+        _ => None,
+    }
+}
+
+fn connection_error_kind(error: &StoreError) -> Option<std::io::ErrorKind> {
+    let mut current = store_error_source(error);
+    while let Some(source) = current {
+        if let Some(error) = source.downcast_ref::<std::io::Error>() {
+            return Some(error.kind());
+        }
+        current = source.source();
+    }
+    None
+}
+
+fn database_error_code(error: &StoreError) -> Option<std::borrow::Cow<'_, str>> {
+    let source = match error {
+        StoreError::Unreachable { source, .. } | StoreError::Query(source) => source,
+        _ => return None,
+    };
+    source.as_database_error()?.code()
+}
+
+fn server_rejected_permanently(error: &StoreError) -> bool {
+    database_error_code(error).is_some_and(|code| !code.starts_with("57"))
+}
+
+fn server_is_recovering(error: &StoreError) -> bool {
+    database_error_code(error).is_some_and(|code| code.starts_with("57"))
+        || matches!(
+            connection_error_kind(error),
+            Some(
+                std::io::ErrorKind::ConnectionReset
+                    | std::io::ErrorKind::ConnectionAborted
+                    | std::io::ErrorKind::BrokenPipe
+                    | std::io::ErrorKind::UnexpectedEof
+            )
+        )
+}
+
+fn postgres_endpoint(url: &str) -> Option<(&str, u16)> {
+    let authority = url
+        .strip_prefix("postgres://")
+        .or_else(|| url.strip_prefix("postgresql://"))?
+        .split('/')
+        .next()?;
+    let host_port = authority
+        .rsplit_once('@')
+        .map_or(authority, |(_, host_port)| host_port);
+    if let Some(bracketed) = host_port.strip_prefix('[') {
+        let close = bracketed.find(']')?;
+        let host = &bracketed[..close];
+        let suffix = &bracketed[close + 1..];
+        let port = if suffix.is_empty() {
+            5432
+        } else {
+            suffix.strip_prefix(':')?.parse().ok()?
+        };
+        return (!host.is_empty()).then_some((host, port));
+    }
+
+    let (host, port) = match host_port.rsplit_once(':') {
+        Some((host, port)) => (host, port.parse().ok()?),
+        None => (host_port, 5432),
+    };
+    (!host.is_empty()).then_some((host, port))
+}
+
+async fn postgres_server_is_listening(base_url: &str) -> Option<bool> {
+    let endpoint = postgres_endpoint(base_url)?;
+    match tokio::time::timeout(
+        Duration::from_millis(250),
+        tokio::net::TcpStream::connect(endpoint),
+    )
+    .await
+    {
+        Ok(Ok(stream)) => {
+            drop(stream);
+            Some(true)
+        }
+        Ok(Err(error)) if error.kind() == std::io::ErrorKind::ConnectionRefused => Some(false),
+        Ok(Err(_)) | Err(_) => None,
+    }
+}
+
+fn creation_failure_message(
+    base_url: &str,
+    error: &StoreError,
+    server_listening: Option<bool>,
+) -> String {
+    if server_listening == Some(false) {
+        return format!(
+            "No server at {base_url}; start one with:\n    {}\nThen re-run the test.",
+            fs3_store::COMPOSE_UP
+        );
+    }
+
+    let detail = store_error_source(error)
+        .map(ToString::to_string)
+        .unwrap_or_else(|| error.to_string());
+    if server_rejected_permanently(error) {
+        return format!(
+            "Server at {base_url} rejected the database operation: {detail}\nFix the credentials, permissions, or database configuration before retrying."
+        );
+    }
+    if server_listening == Some(true) || server_is_recovering(error) {
+        format!(
+            "Server at {base_url} closed the connection or is in recovery; wait and retry.\nCause: {detail}"
+        )
+    } else {
+        format!(
+            "Could not create a test database at {base_url}: {detail}\nCheck the address, credentials, and server logs, then retry."
+        )
+    }
+}
 
 /// What an orphan sweep did, including the policy that decided it.
 #[derive(Debug, PartialEq, Eq)]
 pub struct SweepReport {
     pub threshold: Duration,
     pub swept: Vec<String>,
+}
+
+/// Test databases a sweep would remove, without changing the server.
+#[derive(Debug, PartialEq, Eq)]
+pub struct OrphanCandidates {
+    pub threshold: Duration,
+    pub candidates: Vec<String>,
 }
 
 /// A uniquely named database on an existing Postgres server.
@@ -40,16 +170,20 @@ impl FreshDatabase {
     /// repository's integration-test contract.
     pub async fn create(label: &str) -> Self {
         let base_url = crate::test_database_url();
-        Self::create_unmigrated_from(&base_url, label)
-            .await
-            .unwrap_or_else(|error| {
+        Self::create_with_advice(&base_url, label).await
+    }
+
+    async fn create_with_advice(base_url: &str, label: &str) -> Self {
+        match Self::create_unmigrated_from(base_url, label).await {
+            Ok(database) => database,
+            Err(error) => {
+                let server_listening = postgres_server_is_listening(base_url).await;
                 panic!(
-                    "integration tests need Postgres at {base_url}: {error}\nStart it with:\n    {}\n\
-                     Then re-run the test. Point at another disposable instance with \
-                     FS3_TEST_DATABASE_URL.",
-                    fs3_store::COMPOSE_UP
+                    "{}",
+                    creation_failure_message(base_url, &error, server_listening)
                 )
-            })
+            }
+        }
     }
 
     /// Create and migrate a disposable database beside `base_url`.
@@ -93,10 +227,52 @@ impl FreshDatabase {
         })
     }
 
-    /// Drop crashed whole-suite databases older than [`ORPHAN_SWEEP_AGE`].
+    /// List crashed test databases old enough to sweep, without dropping them.
     ///
-    /// Names outside [`TEST_DATABASE_PREFIX`], malformed names, and databases
-    /// younger than the threshold are never touched.
+    /// Read-only snap-in: `FreshDatabase::list_orphans_from(base_url).await?`.
+    /// Print `report.candidates` for review before calling
+    /// [`FreshDatabase::sweep_orphans_from`].
+    pub async fn list_orphans_from(base_url: &str) -> Result<OrphanCandidates, StoreError> {
+        Self::list_orphans_at(base_url, SystemTime::now(), ORPHAN_SWEEP_AGE).await
+    }
+
+    async fn list_orphans_at(
+        base_url: &str,
+        now: SystemTime,
+        threshold: Duration,
+    ) -> Result<OrphanCandidates, StoreError> {
+        let (maintenance_url, _) = fs3_store::maintenance_url(base_url)?;
+        let admin = fs3_store::connect(&maintenance_url).await?;
+        let names =
+            match fs3_store::idle_database_names_with_prefix(&admin, TEST_DATABASE_NAMESPACE).await
+            {
+                Ok(names) => names,
+                Err(error) => {
+                    admin.close().await;
+                    return Err(error);
+                }
+            };
+        admin.close().await;
+
+        let cutoff = epoch_seconds(now).saturating_sub(threshold.as_secs());
+        let mut candidates: Vec<_> = names
+            .into_iter()
+            .filter(|name| {
+                test_database_created_at(name).is_some_and(|created_at| created_at <= cutoff)
+            })
+            .collect();
+        candidates.sort();
+        Ok(OrphanCandidates {
+            threshold,
+            candidates,
+        })
+    }
+
+    /// Drop crashed test databases older than [`ORPHAN_SWEEP_AGE`].
+    ///
+    /// Malformed names and databases younger than the threshold are never
+    /// touched. Both whole-suite and label-prefixed names minted by this helper
+    /// are eligible.
     pub async fn sweep_orphans_from(base_url: &str) -> Result<SweepReport, StoreError> {
         Self::sweep_orphans_at(base_url, SystemTime::now(), ORPHAN_SWEEP_AGE).await
     }
@@ -106,28 +282,27 @@ impl FreshDatabase {
         now: SystemTime,
         threshold: Duration,
     ) -> Result<SweepReport, StoreError> {
+        let candidates = Self::list_orphans_at(base_url, now, threshold).await?;
         let (maintenance_url, _) = fs3_store::maintenance_url(base_url)?;
         let admin = fs3_store::connect(&maintenance_url).await?;
-        let names = match fs3_store::database_names_with_prefix(&admin, TEST_DATABASE_PREFIX).await
-        {
-            Ok(names) => names,
-            Err(error) => {
-                admin.close().await;
-                return Err(error);
-            }
-        };
-        let cutoff = epoch_seconds(now).saturating_sub(threshold.as_secs());
-        let mut swept = Vec::new();
-        for name in names {
-            if test_database_created_at(&name).is_some_and(|created_at| created_at <= cutoff) {
-                if let Err(error) = fs3_store::drop_database(&admin, &name).await {
-                    admin.close().await;
-                    return Err(error);
-                }
-                swept.push(name);
+        let report = Self::sweep_candidates(&admin, threshold, candidates.candidates).await;
+        admin.close().await;
+        report
+    }
+
+    async fn sweep_candidates(
+        admin: &PgPool,
+        threshold: Duration,
+        candidates: Vec<String>,
+    ) -> Result<SweepReport, StoreError> {
+        let mut swept = Vec::with_capacity(candidates.len());
+        for name in candidates {
+            match fs3_store::drop_database_if_idle(admin, &name).await {
+                Ok(true) => swept.push(name),
+                Ok(false) => {}
+                Err(error) => return Err(error),
             }
         }
-        admin.close().await;
         Ok(SweepReport { threshold, swept })
     }
 
@@ -188,11 +363,40 @@ fn database_name_at(label: &str, created_at: SystemTime) -> String {
 }
 
 fn test_database_created_at(name: &str) -> Option<u64> {
-    let (created_at, entropy) = name.strip_prefix(TEST_DATABASE_PREFIX)?.split_once('_')?;
-    if entropy.len() != 32 || !entropy.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+    let tail = name.strip_prefix(TEST_DATABASE_NAMESPACE)?;
+    if let Some(created_at) = tail
+        .strip_prefix("migrations_")
+        .and_then(unique_seed_created_at)
+    {
+        return Some(created_at);
+    }
+    if let Some(created_at) = tail.strip_prefix("storelock_").and_then(|tail| {
+        let (seed, worker) = tail.rsplit_once('_')?;
+        (!worker.is_empty() && worker.bytes().all(|byte| byte.is_ascii_digit()))
+            .then(|| unique_seed_created_at(seed))
+            .flatten()
+    }) {
+        return Some(created_at);
+    }
+
+    let (label_and_time, entropy) = tail.rsplit_once('_')?;
+    let (label, created_at) = label_and_time.rsplit_once('_')?;
+    if label.len() > 12
+        || !label.bytes().all(|byte| byte.is_ascii_alphanumeric())
+        || entropy.len() != 32
+        || !entropy.bytes().all(|byte| byte.is_ascii_hexdigit())
+    {
         return None;
     }
     created_at.parse().ok()
+}
+
+fn unique_seed_created_at(seed: &str) -> Option<u64> {
+    if seed.len() != 32 || !seed.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return None;
+    }
+    let seed = u128::from_str_radix(seed, 16).ok()?;
+    Some((seed as u64) / 1_000_000_000)
 }
 
 fn epoch_seconds(time: SystemTime) -> u64 {
@@ -214,12 +418,136 @@ fn unique_seed() -> u128 {
 
 #[cfg(test)]
 mod tests {
-    use std::time::{Duration, SystemTime};
-
-    use super::{
-        FreshDatabase, ORPHAN_SWEEP_AGE, TEST_DATABASE_PREFIX, database_name_at, epoch_seconds,
-        test_database_created_at, unique_seed,
+    use std::{
+        any::Any,
+        time::{Duration, SystemTime},
     };
+
+    use super::{FreshDatabase, ORPHAN_SWEEP_AGE, database_name_at, test_database_created_at};
+
+    fn panic_text(panic: Box<dyn Any + Send>) -> String {
+        match panic.downcast::<String>() {
+            Ok(message) => *message,
+            Err(panic) => match panic.downcast::<&'static str>() {
+                Ok(message) => (*message).to_owned(),
+                Err(_) => "non-string panic".to_owned(),
+            },
+        }
+    }
+
+    struct DatabaseCleanup {
+        base_url: String,
+        names: Vec<String>,
+    }
+
+    impl Drop for DatabaseCleanup {
+        fn drop(&mut self) {
+            let base_url = self.base_url.clone();
+            let names = std::mem::take(&mut self.names);
+            let cleanup = std::thread::spawn(move || {
+                let Ok(runtime) = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                else {
+                    eprintln!("could not build orphan-test cleanup runtime");
+                    return;
+                };
+                runtime.block_on(async move {
+                    let Ok((maintenance_url, _)) = fs3_store::maintenance_url(&base_url) else {
+                        eprintln!("could not derive orphan-test maintenance URL");
+                        return;
+                    };
+                    let Ok(admin) = fs3_store::connect(&maintenance_url).await else {
+                        eprintln!("could not connect for orphan-test cleanup");
+                        return;
+                    };
+                    for name in names {
+                        if let Err(error) = fs3_store::drop_database(&admin, &name).await {
+                            eprintln!("could not clean orphan-test database {name}: {error}");
+                        }
+                    }
+                    admin.close().await;
+                });
+            });
+            if cleanup.join().is_err() {
+                eprintln!("orphan-test cleanup thread panicked");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn advice_says_to_start_a_server_only_when_no_server_is_listening() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        drop(listener);
+        let base_url = format!("postgres://flowspace3:flowspace3@{address}/postgres");
+
+        let task =
+            tokio::spawn(
+                async move { FreshDatabase::create_with_advice(&base_url, "advice").await },
+            );
+        let error = match task.await {
+            Ok(_) => panic!("database creation unexpectedly succeeded"),
+            Err(error) => error,
+        };
+        let message = panic_text(error.into_panic());
+
+        assert!(message.contains("No server at"), "{message}");
+        assert!(message.contains(fs3_store::COMPOSE_UP), "{message}");
+    }
+
+    #[tokio::test]
+    async fn advice_says_fix_credentials_when_authentication_is_rejected() {
+        let base_url = crate::test_database_url().replace(":flowspace3@", ":wrong-password@");
+        let (base_url, _) = fs3_store::maintenance_url(&base_url).unwrap();
+        let task =
+            tokio::spawn(
+                async move { FreshDatabase::create_with_advice(&base_url, "advice").await },
+            );
+        let error = match task.await {
+            Ok(_) => panic!("database creation unexpectedly succeeded"),
+            Err(error) => error,
+        };
+        let message = panic_text(error.into_panic());
+
+        assert!(
+            message.contains("rejected the database operation"),
+            "{message}"
+        );
+        assert!(message.contains("Fix the credentials"), "{message}");
+        assert!(!message.contains("wait and retry"), "{message}");
+        assert!(!message.contains(fs3_store::COMPOSE_UP), "{message}");
+    }
+
+    #[tokio::test]
+    async fn advice_says_wait_when_a_listening_server_closes_connections() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            while let Ok((stream, _)) = listener.accept().await {
+                drop(stream);
+            }
+        });
+        let base_url = format!("postgres://flowspace3:flowspace3@{address}/postgres");
+
+        let task =
+            tokio::spawn(
+                async move { FreshDatabase::create_with_advice(&base_url, "advice").await },
+            );
+        let error = match task.await {
+            Ok(_) => panic!("database creation unexpectedly succeeded"),
+            Err(error) => error,
+        };
+        let message = panic_text(error.into_panic());
+        server.abort();
+
+        assert!(
+            message.to_ascii_lowercase().contains("recover"),
+            "{message}"
+        );
+        assert!(message.contains("wait and retry"), "{message}");
+        assert!(!message.contains(fs3_store::COMPOSE_UP), "{message}");
+    }
 
     #[test]
     fn names_are_plain_bounded_unique_and_timestamped() {
@@ -239,50 +567,120 @@ mod tests {
     }
 
     #[test]
-    fn malformed_test_database_names_are_not_sweepable() {
+    fn orphan_sweep_drop_statement_is_unforced() {
+        assert!(
+            !fs3_store::DROP_DATABASE_IF_IDLE_SQL.contains("FORCE"),
+            "sweep DROP must fail safely when a backend connects after the liveness recheck"
+        );
+    }
+
+    #[test]
+    fn malformed_and_production_database_names_are_not_sweepable() {
         for name in [
+            "flowspace3",
+            "flowspace3_test",
             "fs3_test_1700000000",
             "fs3_test_notatime_0123456789abcdef0123456789abcdef",
             "fs3_test_1700000000_nothex",
-            "fs3_sandbox_1700000000_0123456789abcdef0123456789abcdef",
+            "fs3_label-too-long_1700000000_0123456789abcdef0123456789abcdef",
+            "fs3_migrations_nothex",
+            "fs3_storelock_0123456789abcdef0123456789abcdef_worker",
         ] {
             assert_eq!(test_database_created_at(name), None, "{name}");
         }
+        assert_eq!(
+            test_database_created_at("fs3_sandbox_1700000000_0123456789abcdef0123456789abcdef"),
+            Some(1_700_000_000)
+        );
     }
 
+    #[test]
+    fn legacy_seeded_database_names_are_sweepable() {
+        let created_at = 1_700_000_000_u64;
+        let seed = u128::from(created_at) * 1_000_000_000;
+
+        assert_eq!(
+            test_database_created_at(&format!("fs3_migrations_{seed:032x}")),
+            Some(created_at)
+        );
+        assert_eq!(
+            test_database_created_at(&format!("fs3_storelock_{seed:032x}_7")),
+            Some(created_at)
+        );
+    }
+
+    /// Run mutations one at a time with a clean test postmaster between runs.
+    /// `DatabaseCleanup` removes this test's synthetic-epoch names even on panic.
     #[tokio::test]
-    async fn sweep_drops_only_aged_well_formed_test_databases() {
+    async fn sweep_preserves_live_and_post_listing_race_databases() {
         let base_url = crate::test_database_url();
         let (maintenance_url, _) = fs3_store::maintenance_url(&base_url).unwrap();
         let admin = fs3_store::connect(&maintenance_url).await.unwrap();
-        let now = SystemTime::now();
-        let old_seconds = epoch_seconds(now) - ORPHAN_SWEEP_AGE.as_secs() - 1;
-        let fresh_seconds = epoch_seconds(now);
-        let old = format!("{TEST_DATABASE_PREFIX}{old_seconds}_{:032x}", unique_seed());
-        let fresh = format!(
-            "{TEST_DATABASE_PREFIX}{fresh_seconds}_{:032x}",
-            unique_seed()
-        );
-        let unrelated = format!("fs3_sandbox_{old_seconds}_{:032x}", unique_seed());
-        for name in [&old, &fresh, &unrelated] {
+        let old_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
+        let now = SystemTime::UNIX_EPOCH + Duration::from_secs(ORPHAN_SWEEP_AGE.as_secs() + 2);
+        let old_suite = database_name_at("test", old_time);
+        let old_label = database_name_at("sweep012", old_time);
+        let live = database_name_at("sweeplive", old_time);
+        let racing = database_name_at("sweeprace", old_time);
+        let fresh = database_name_at("sweep012", now);
+        let _cleanup = DatabaseCleanup {
+            base_url: base_url.clone(),
+            names: vec![
+                old_suite.clone(),
+                old_label.clone(),
+                live.clone(),
+                racing.clone(),
+                fresh.clone(),
+            ],
+        };
+        for name in [&old_suite, &old_label, &live, &racing, &fresh] {
             fs3_store::create_database(&admin, name).await.unwrap();
         }
+        let live_url = fs3_store::database_url(&base_url, &live).unwrap();
+        let live_pool = fs3_store::connect(&live_url).await.unwrap();
 
-        let report = FreshDatabase::sweep_orphans_at(&base_url, now, ORPHAN_SWEEP_AGE)
+        let mut listed = vec![old_suite.clone(), old_label.clone(), racing.clone()];
+        listed.sort();
+        let candidates = FreshDatabase::list_orphans_at(&base_url, now, ORPHAN_SWEEP_AGE)
             .await
             .unwrap();
+        assert_eq!(candidates.threshold, ORPHAN_SWEEP_AGE);
+        assert_eq!(candidates.candidates, listed);
 
-        assert_eq!(report.threshold, ORPHAN_SWEEP_AGE);
-        assert_eq!(report.swept, vec![old.clone()]);
-        assert!(!fs3_store::database_exists(&admin, &old).await.unwrap());
-        assert!(fs3_store::database_exists(&admin, &fresh).await.unwrap());
-        assert!(
-            fs3_store::database_exists(&admin, &unrelated)
-                .await
-                .unwrap()
-        );
-        fs3_store::drop_database(&admin, &fresh).await.unwrap();
-        fs3_store::drop_database(&admin, &unrelated).await.unwrap();
+        let racing_url = fs3_store::database_url(&base_url, &racing).unwrap();
+        let racing_pool = fs3_store::connect(&racing_url).await.unwrap();
+        let report = tokio::time::timeout(
+            Duration::from_secs(10),
+            FreshDatabase::sweep_candidates(&admin, ORPHAN_SWEEP_AGE, candidates.candidates),
+        )
+        .await
+        .expect("the sweep loop must not self-deadlock")
+        .unwrap();
+
+        let old_suite_exists = fs3_store::database_exists(&admin, &old_suite)
+            .await
+            .unwrap();
+        let old_label_exists = fs3_store::database_exists(&admin, &old_label)
+            .await
+            .unwrap();
+        let live_exists = fs3_store::database_exists(&admin, &live).await.unwrap();
+        let racing_exists = fs3_store::database_exists(&admin, &racing).await.unwrap();
+        let fresh_exists = fs3_store::database_exists(&admin, &fresh).await.unwrap();
+        let racing_connection_usable = racing_pool.acquire().await.is_ok();
+
+        live_pool.close().await;
+        racing_pool.close().await;
         admin.close().await;
+
+        let mut swept = vec![old_suite, old_label];
+        swept.sort();
+        assert_eq!(report.threshold, ORPHAN_SWEEP_AGE);
+        assert_eq!(report.swept, swept);
+        assert!(!old_suite_exists);
+        assert!(!old_label_exists);
+        assert!(live_exists);
+        assert!(racing_exists);
+        assert!(fresh_exists);
+        assert!(racing_connection_usable);
     }
 }

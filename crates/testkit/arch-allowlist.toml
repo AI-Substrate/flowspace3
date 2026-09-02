@@ -122,13 +122,16 @@ external = [
 internal = ["fs3-core", "fs3-testkit@dev"]
 # `pgvector` is the wire codec for the `vector` column type; `serde_json` is
 # the typed shape of `jobs.payload`, which is JSONB.
+# Plan 012 ships Tokio in fs3-store because the process-wide CREATE/DROP
+# semaphore is store runtime behaviour. SQLx's Tokio runtime already ships in
+# this binary, so the edge changes kind without adding runtime machinery.
 external = [
   "anyhow@dev",
   "pgvector",
   "serde_json",
   "sqlx",
   "thiserror",
-  "tokio@dev",
+  "tokio",
 ]
 
 # The git front door (PRD reqs 5, 35, 41). Concrete infrastructure, the same
