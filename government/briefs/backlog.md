@@ -3059,3 +3059,9 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     docs worktree removed. Remaining: the row-147 receipt (retake running
     on the squatter daemon, TS symbols climbing), then tidy fox/boar seats
     and both 015 worktrees.
+    ROW 147 — LIVE (06:18Z, interim): after the 015 build and the pij
+    re-ingest (1,943 files enqueued, 0 unchanged under @3), prod already
+    holds 553 Function + 145 container elements across the first 100 .ts
+    files parsed under fs3-parsers@3 — the first TypeScript symbols the
+    index has ever had. Scan queue still draining; final receipt (≈3,452
+    for the pij tree) + searches follow.
