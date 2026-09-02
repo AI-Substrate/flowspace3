@@ -2259,3 +2259,13 @@ DEGRADED-ATTRIBUTION TALLY: EIGHT (plan 012 delta commit f3aec311, 2026-09-02).
     doc flood. (Antelope's finding 2 — pool exhaustion on unscoped
     search — was DOWNGRADED by its author: measured inside the outage
     window; re-measure after ALL CLEAR.)
+    ROW 143 RECOVERED (02:27Z): OrbStack started by o-prime; prod postgres
+    recovered from the unclean VM stop with data intact (22 / 101 /
+    323,417 elements / 326,966 vectors); test postgres :5434 healthy;
+    daemon bounced, serving after ~52 s (log: 100 roots watched, embeds
+    and summaries flowing); one bare search 11.05 s. CLEARED sent to the
+    four seats with receipts and ALL CLEAR to the two peer primes, from
+    the verification task itself so the clear could not precede the
+    proof. Total user-facing outage of queries: ~02:06Z (second crash)
+    with intermittent service, then hard down from the VM stop until
+    02:27Z.
