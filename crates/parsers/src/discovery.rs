@@ -167,7 +167,9 @@ impl LanguageFamily {
         if let Some(language) = Language::for_extension(&extension) {
             return match language {
                 Language::Markdown => LanguageFamily::Document,
-                Language::Rust | Language::Python => LanguageFamily::Source,
+                Language::Rust | Language::Python | Language::TypeScript | Language::Tsx => {
+                    LanguageFamily::Source
+                }
             };
         }
         let extension = extension.as_str();

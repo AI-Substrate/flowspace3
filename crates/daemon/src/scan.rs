@@ -243,7 +243,8 @@ pub async fn run(state: &AppState, value: serde_json::Value) -> Result<(), Failu
 ///
 /// Bumped to @2 by workshop 008: the ddoc grammar produces row elements that a
 /// @1 parse never emitted, so an existing corpus must be re-minted to gain them.
-pub const PARSER_VERSION: &str = "fs3-parsers@2";
+/// Bumped to @3 by plan 015: grammar set changed: +typescript,+tsx.
+pub const PARSER_VERSION: &str = "fs3-parsers@3";
 
 #[cfg(test)]
 mod tests {
