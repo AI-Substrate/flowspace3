@@ -108,8 +108,10 @@ pub async fn enqueue_job(
 ///
 /// A duplicate active row keeps the higher priority: an ordinary re-fire must
 /// never demote work the lifecycle detector already promoted. A failed
-/// non-terminal row also keeps the key and remains failed until boot recovery
-/// requeues it; minting a second row would make that recovery ambiguous.
+/// non-terminal row also keeps the key, but the re-fire revives that same row
+/// with fresh attempt and park budgets; minting a second owner would make
+/// recovery ambiguous. Running work is never demoted, and terminal failures are
+/// outside the arbiter so genuinely new work gets a fresh row.
 ///
 /// # Errors
 /// [`StoreError::Query`] when the statement fails.
@@ -129,6 +131,9 @@ pub async fn enqueue_job_with_priority(
            payload    = EXCLUDED.payload,
            not_before = GREATEST(jobs.not_before, EXCLUDED.not_before),
            priority   = GREATEST(jobs.priority, EXCLUDED.priority),
+           state      = CASE WHEN jobs.state = 'failed' THEN 'pending' ELSE jobs.state END,
+           attempts   = CASE WHEN jobs.state = 'failed' THEN 0 ELSE jobs.attempts END,
+           parks      = CASE WHEN jobs.state = 'failed' THEN 0 ELSE jobs.parks END,
            updated_at = now()",
     )
     .bind(kind)

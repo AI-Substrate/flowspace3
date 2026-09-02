@@ -52,7 +52,7 @@
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
           ],
-          "receipt": "dedupe mint green in store contract 3/3; migration dirty-backfill/index mutation 1/1 on dedicated :5434 postmaster"
+          "receipt": "failed owner revives pending and claimable; attempts+parks reset; running preserved; terminal history mints fresh row; state/attempts/parks mutations red; 13 focused tests green on :5434"
         },
         {
           "id": "tk-0104",

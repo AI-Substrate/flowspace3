@@ -34,6 +34,12 @@ CREATE INDEX jobs_done_retention_idx
     ON jobs (updated_at, id)
     WHERE state = 'done';
 
+-- Ordinary status reads the latest failure separately from the live census;
+-- terminal failures therefore need their own ordered serving path.
+CREATE INDEX jobs_failed_recent_idx
+    ON jobs (updated_at DESC)
+    WHERE state = 'failed' AND last_error IS NOT NULL;
+
 -- One durable receipt survives daemon restarts and costs status one primary-key
 -- lookup. The daemon records a completed sweep only after every bounded delete
 -- has finished, so this row never claims a partial run was complete.

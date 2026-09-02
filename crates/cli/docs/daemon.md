@@ -94,8 +94,10 @@ call and an embedding call run at the same time.
 
 A failed job is retried up to three times with backoff, but **only if the error
 is retryable** — re-running a job whose cause is a missing API key costs three
-times as much and fails three times. `flowspace3 status` reports failed jobs
-with their last error.
+times as much and fails three times. Ordinary `flowspace3 status` counts only
+failed non-terminal work in the live queue; terminal failure counts appear only
+with `--history`. The most recent failure remains visible as `last error` in
+either mode.
 
 Completed jobs are retained for `indexing.job_retention_days` (default 1), then
 the daemon purges them in bounded batches at boot and hourly. Ordinary

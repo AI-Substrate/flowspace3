@@ -34,7 +34,7 @@ MEASURED ON PROD 2026-09-02 (assets/inputs/db-cpu-profile-report.md §3, §6, §
 ## Goals
 
 - Progress reporting and GET /status read only LIVE rows (pending/running/failed-non-terminal) via an index-only path in single-digit milliseconds; the full-history GROUP BY is gone from every hot path.
-- Done jobs are retained for a bounded window (default 7 days, config `indexing.job_retention_days`) and purged by a daemon-owned sweep that runs at boot and on a timer, in batches, with a receipt in the log and in `status`.
+- Done jobs are retained for a bounded window (default 1 day, ruled 2026-09-02 in prime-reply-001 item 4; config `indexing.job_retention_days`) and purged by a daemon-owned sweep that runs at boot and on a timer, in batches, with a receipt in the log and in `status`.
 - The purge is safe: it never touches pending/running/failed rows, never a row younger than the window, and is idempotent; the duplicate-key repair (row 123) is prevented at mint — a failed non-terminal row under a key blocks a second mint.
 - The one-off prod purge of today's 1.01M done rows is applied by o-prime after merge (Jordan's GO stands: 'restart whenever, get the work done'), with before/after counts, table size, and the /status wall time as the receipt.
 - The stale comment is fixed and a test pins queue_depth's plan to an index-only scan (no Seq Scan node) so the regression cannot return silently.
@@ -56,7 +56,7 @@ MEASURED ON PROD 2026-09-02 (assets/inputs/db-cpu-profile-report.md §3, §6, §
 | --- | --- | --- | --- | --- | --- | --- |
 | ac-0001 | Hot path is live-only, mutation-checked: `queue_depth` (or its replacement used by progress + /status) produces a plan with NO Seq Scan on jobs against a seeded table of ≥200k done rows — asserted by an EXPLAIN (FORMAT JSON) test; the same test fails against the old GROUP BY (kept as a golden string for the one-line mutation). PR body states the mutation. | [ ] unchecked | — | — | — | — |
 | ac-0002 | Retention is bounded and safe: a test seeds done rows across ages, pending/running/failed rows, runs the purge, and asserts exactly the done rows older than the window are gone, live rows untouched, and a second run purges nothing; batch size respected (no single statement over N rows). | [ ] unchecked | — | — | — | — |
-| ac-0003 | Mint refuses/absorbs a duplicate under a failed non-terminal key (row 123 prevention): a test mints a job, fails it non-terminally, mints the same key again, and asserts one row (or a named absorb) — red without the fix. | [ ] unchecked | — | — | — | — |
+| ac-0003 | Mint refuses/absorbs a duplicate under a failed non-terminal key (row 123 prevention): a test mints a job, fails it non-terminally, mints the same key again, and asserts one row (or a named absorb) — and an absorbed re-fire of a failed row is claimable; red without the fix. | [ ] unchecked | — | — | — | — |
 | ac-0004 | /status carries a retention receipt (`retention: {window_days, last_purge_at, purged_last_run}`) and the daemon log names each purge with counts. | [ ] unchecked | — | — | — | — |
 | ac-0005 | PROD, after o-prime's bounce and one-off purge: `select state, count(*) from jobs group by 1` before/after; `pg_total_relation_size('jobs')` before/after; `/usr/bin/time -p flowspace3 status --json` ×3 under 200 ms wall (was ~135 ms DB + 260 ms CPU per call plus the disk read); pg_stat_user_tables.seq_tup_read for jobs flat over 5 minutes of daemon operation (was +10.1M per 65 s). Receipt = all four. | [ ] unchecked | — | — | — | — |
 

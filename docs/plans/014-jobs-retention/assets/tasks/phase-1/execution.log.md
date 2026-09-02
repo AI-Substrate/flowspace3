@@ -31,7 +31,19 @@ Migration 0023 retires redundant failed owners without deleting history, expands
 Evidence:
 
 - `cargo test -p fs3-store migration_0023 -- --nocapture` — 1 passed; dirty pre-migration duplicates converge, the index shape is pinned, and a new duplicate is rejected.
-- `dedupe_failed_non_terminal_job_absorbs_a_second_mint` — green in the 3-test store contract run; one row and the original id remain.
+- `dedupe_failed_non_terminal_job_absorbs_a_claimable_refire` — the existing row revives to pending, resets attempts and parks, and is claimable; running rows preserve state/budgets and terminal history permits a fresh second row.
+
+## Review delta — f-001, f-002, f-003
+
+The reviewer found that absorbing a failed `scan_file` without changing state made it permanently unclaimable. Enqueue now revives a failed non-terminal owner to `pending` and resets both attempt and park budgets, while preserving running work and leaving terminal history outside the arbiter. Migration 0023 also serves `/status`'s separate latest-failure lookup through `jobs_failed_recent_idx`. The plan now records the ruled one-day default and claimable-refire contract; daemon docs distinguish live failed counts from terminal history.
+
+Mutation receipts on the dedicated `:5434` postmaster:
+
+- remove failed→pending CASE: red, `state` remained `failed` (`artifact://136`)
+- remove attempts reset: red, attempts remained `3` (`artifact://154`)
+- remove parks reset: red, parks remained `20` (`artifact://138`)
+- remove `jobs_failed_recent_idx`: red, exact latest-failure query became jobs `Seq Scan`, cost 5358 (`artifact://150`)
+- restored delta: `pg_jobs_retention` + `pg_migrations`, 13 passed (`artifact://156`)
 
 ## tk-0104 — gate and PR
 

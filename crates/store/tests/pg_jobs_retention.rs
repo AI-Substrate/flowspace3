@@ -103,6 +103,18 @@ async fn queue_depth_plan_is_live_only_and_never_scans_done_history() {
         "bounded purge must start from the retention index: {purge_plan:#}"
     );
 
+    let failure_plan = explain(
+        &pool,
+        "SELECT dedupe_key, last_error FROM jobs
+          WHERE state = 'failed' AND last_error IS NOT NULL
+          ORDER BY updated_at DESC LIMIT 1",
+    )
+    .await;
+    assert!(
+        has_job_node(&failure_plan, "Index Scan", Some("jobs_failed_recent_idx")),
+        "latest failure must use its ordered partial index: {failure_plan:#}"
+    );
+
     let old_plan = explain(&pool, OLD_QUEUE_DEPTH_SQL).await;
     assert!(
         has_job_node(&old_plan, "Seq Scan", None),
@@ -187,7 +199,7 @@ async fn retention_purges_only_aged_done_rows_in_bounded_idempotent_batches() {
 }
 
 #[tokio::test]
-async fn dedupe_failed_non_terminal_job_absorbs_a_second_mint() {
+async fn dedupe_failed_non_terminal_job_absorbs_a_claimable_refire() {
     let database = FreshDatabase::create().await;
     let pool = database.migrated_pool().await;
     let key = "scan:failed-owner";
@@ -208,6 +220,11 @@ async fn dedupe_failed_non_terminal_job_absorbs_a_second_mint() {
     fs3_store::fail_job(&pool, claimed.id, "retry later", false)
         .await
         .expect("non-terminal failure");
+    sqlx::query("UPDATE jobs SET attempts = 3, parks = 20 WHERE id = $1")
+        .bind(claimed.id)
+        .execute(&pool)
+        .await
+        .expect("seed exhausted retry and park budgets");
 
     fs3_store::enqueue_job(
         &pool,
@@ -217,18 +234,121 @@ async fn dedupe_failed_non_terminal_job_absorbs_a_second_mint() {
         Duration::ZERO,
     )
     .await
-    .expect("the re-fire is absorbed");
+    .expect("the re-fire revives its existing owner");
 
-    let rows: Vec<(i64, String, serde_json::Value)> =
-        sqlx::query_as("SELECT id, state, payload FROM jobs WHERE dedupe_key = $1")
-            .bind(key)
-            .fetch_all(&pool)
-            .await
-            .expect("read the dedupe owner");
+    let rows: Vec<(i64, String, i32, i32, serde_json::Value)> = sqlx::query_as(
+        "SELECT id, state, attempts, parks, payload FROM jobs WHERE dedupe_key = $1",
+    )
+    .bind(key)
+    .fetch_all(&pool)
+    .await
+    .expect("read the dedupe owner");
     assert_eq!(rows.len(), 1, "one key has one active owner: {rows:#?}");
     assert_eq!(rows[0].0, claimed.id, "the failed row remains the owner");
-    assert_eq!(rows[0].1, "failed");
-    assert_eq!(rows[0].2, serde_json::json!({"attempt": 2}));
+    assert_eq!(rows[0].1, "pending");
+    assert_eq!(rows[0].2, 0, "the retry budget is fresh");
+    assert_eq!(rows[0].3, 0, "the park budget is fresh");
+    assert_eq!(rows[0].4, serde_json::json!({"attempt": 2}));
+
+    let revived = fs3_store::claim_job(&pool, &["scan_file"])
+        .await
+        .expect("claim revived row")
+        .expect("an absorbed re-fire must be claimable");
+    assert_eq!(revived.id, claimed.id);
+    assert_eq!(revived.attempts, 1);
+    assert_eq!(revived.parks, 0);
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn dedupe_running_and_terminal_failed_rows_keep_their_distinct_semantics() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+
+    let running_key = "scan:running-owner";
+    fs3_store::enqueue_job(
+        &pool,
+        "scan_file",
+        running_key,
+        &serde_json::json!({"version": 1}),
+        Duration::ZERO,
+    )
+    .await
+    .expect("mint running control");
+    let running = fs3_store::claim_job(&pool, &["scan_file"])
+        .await
+        .expect("claim running control")
+        .expect("running control is ready");
+    sqlx::query("UPDATE jobs SET attempts = 7, parks = 9 WHERE id = $1")
+        .bind(running.id)
+        .execute(&pool)
+        .await
+        .expect("seed running budgets");
+    fs3_store::enqueue_job(
+        &pool,
+        "scan_file",
+        running_key,
+        &serde_json::json!({"version": 2}),
+        Duration::ZERO,
+    )
+    .await
+    .expect("a running re-fire is absorbed without demotion");
+    let running_after: (i64, String, i32, i32) =
+        sqlx::query_as("SELECT id, state, attempts, parks FROM jobs WHERE dedupe_key = $1")
+            .bind(running_key)
+            .fetch_one(&pool)
+            .await
+            .expect("read running owner");
+    assert_eq!(running_after, (running.id, "running".to_string(), 7, 9));
+    fs3_store::complete_job(&pool, running.id)
+        .await
+        .expect("settle running control");
+
+    let terminal_key = "scan:terminal-history";
+    fs3_store::enqueue_job(
+        &pool,
+        "scan_file",
+        terminal_key,
+        &serde_json::json!({"version": 1}),
+        Duration::ZERO,
+    )
+    .await
+    .expect("mint terminal control");
+    let terminal = fs3_store::claim_job(&pool, &["scan_file"])
+        .await
+        .expect("claim terminal control")
+        .expect("terminal control is ready");
+    fs3_store::fail_job(&pool, terminal.id, "hopeless", true)
+        .await
+        .expect("terminal failure");
+    fs3_store::enqueue_job(
+        &pool,
+        "scan_file",
+        terminal_key,
+        &serde_json::json!({"version": 2}),
+        Duration::ZERO,
+    )
+    .await
+    .expect("terminal history does not absorb fresh work");
+
+    let terminal_rows: Vec<(i64, String, bool)> =
+        sqlx::query_as("SELECT id, state, terminal FROM jobs WHERE dedupe_key = $1 ORDER BY id")
+            .bind(terminal_key)
+            .fetch_all(&pool)
+            .await
+            .expect("read terminal control rows");
+    assert_eq!(terminal_rows.len(), 2);
+    assert_eq!(terminal_rows[0], (terminal.id, "failed".to_string(), true));
+    assert_eq!(terminal_rows[1].1, "pending");
+    assert!(!terminal_rows[1].2);
+    assert_ne!(terminal_rows[1].0, terminal.id);
+    let fresh = fs3_store::claim_job(&pool, &["scan_file"])
+        .await
+        .expect("claim fresh row")
+        .expect("fresh row beside terminal history is claimable");
+    assert_ne!(fresh.id, terminal.id);
+    assert_eq!(fresh.dedupe_key, terminal_key);
 
     database.destroy(pool).await;
 }
