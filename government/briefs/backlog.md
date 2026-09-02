@@ -3430,3 +3430,8 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     PLAN 016 — coder DONE (dormouse, 07:30): PR #107 at f9b6d07, slot
     released, holding for the review; report + buffer vendored to
     scratch/closeout-016 and the report copied to the review tree.
+    PLAN 016 — reviewer knobbler ack RULED GO 07:33 (by paste). THIRD
+    packet with stale i6/i7 rows from the 014 clone chain (015 → 016) —
+    o-prime fixed only the owed lists each time. Stripped the stale rows
+    from every staged reviewer packet in scratch now; 017's reviewer
+    packet will be generated from the template + plan, not cloned.
