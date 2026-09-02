@@ -3143,3 +3143,9 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     default stays OFF; TEST receipt only; `harness boot` "compose db
     stopped" tripwire (row 124 family) explained; ddoc untracked-target
     warnings clear on commit.
+    PLAN 016 — ask-001: the coder packet template still tells workers to
+    run `pij report now` (E-RS, no legacy fallback, and a worker's card
+    renders nowhere — pij rule 12). RULED: skip; the ack pointer is the
+    start edge. Encode: strip the status-card line from the pij-team
+    coder/reviewer templates (third template defect today after i6/i7
+    contamination and i10/i11 placeholders).
