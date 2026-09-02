@@ -99,6 +99,9 @@ enum Command {
         /// Keep reading the daemon's live NDJSON event stream.
         #[arg(long)]
         watch: bool,
+        /// Include settled job history in this one snapshot.
+        #[arg(long, conflicts_with = "watch")]
+        history: bool,
         /// Override the stream heartbeat cadence.
         #[arg(long, value_name = "MILLISECONDS", requires = "watch")]
         heartbeat_ms: Option<u64>,
@@ -604,6 +607,7 @@ async fn run(command: Command) -> Result<ExitCode> {
         }
         Command::Status {
             watch: watching,
+            history,
             heartbeat_ms,
             daemon_url,
         } => {
@@ -612,7 +616,7 @@ async fn run(command: Command) -> Result<ExitCode> {
                 watch::run(&client, heartbeat_ms, output_mode() == OutputMode::Human).await?;
                 Ok(ExitCode::SUCCESS)
             } else {
-                emit(&client.status().await)
+                emit(&client.status(history).await)
             }
         }
         Command::Tui { daemon_url } => {
@@ -1089,6 +1093,20 @@ mod tests {
 
         let cli = Cli::try_parse_from(["flowspace3", "daemon"]).unwrap();
         assert!(matches!(cli.command, Command::Daemon { sandbox: false }));
+    }
+
+    #[test]
+    fn status_history_is_explicit_and_cannot_watch() {
+        let cli = Cli::try_parse_from(["flowspace3", "status", "--history"]).unwrap();
+        let Command::Status { history, watch, .. } = cli.command else {
+            panic!("status command");
+        };
+        assert!(history);
+        assert!(!watch);
+        assert!(
+            Cli::try_parse_from(["flowspace3", "status", "--history", "--watch"]).is_err(),
+            "history is a bounded snapshot, never a repeated full-table watch"
+        );
     }
 
     #[test]

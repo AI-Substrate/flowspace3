@@ -763,12 +763,6 @@ fn summarize_identity(payload: &serde_json::Value) -> String {
         .to_string()
 }
 
-/// One line saying where the whole index run is up to.
-///
-/// Derived from the queue rather than from counters this loop keeps, so it is
-/// true across restarts and across however many workers are running — a
-/// counter in this process would reset on reboot and would not see a sibling's
-/// work. The cost is one grouped aggregate every few seconds.
 async fn report_progress(state: &AppState, phase: &str) {
     let Ok(rows) = fs3_store::queue_depth(&state.db).await else {
         // A store that cannot answer is already being reported by whatever
@@ -792,11 +786,8 @@ async fn report_progress(state: &AppState, phase: &str) {
 
     tracing::info!(
         phase,
-        scanned = count(SCAN_FILE, "done"),
         scan_left = left(SCAN_FILE),
-        summarized = count(SUMMARIZE, "done"),
         summarize_left = left(SUMMARIZE),
-        embedded = count(EMBED, "done"),
         embed_left = left(EMBED),
         failed,
         "progress"

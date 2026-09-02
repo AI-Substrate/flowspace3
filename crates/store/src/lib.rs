@@ -59,10 +59,11 @@ pub use embeddings::{
     path_filter_probe, put_embeddings, query_embeddings, search_elements,
 };
 pub use jobs::{
-    JOB_PRIORITY_DEFAULT, JOB_PRIORITY_NEW_WORKTREE_SCAN, Job, JobPriority, QueueDepth, claim_job,
-    claim_jobs, complete_job, enqueue_job, enqueue_job_with_priority, fail_job, jobs_remaining,
-    last_failure, park_job, queue_depth, requeue_failed, requeue_running, retire_empty_embed_jobs,
-    retry_job,
+    JOB_PRIORITY_DEFAULT, JOB_PRIORITY_NEW_WORKTREE_SCAN, Job, JobPriority, JobRetentionReceipt,
+    QueueDepth, claim_job, claim_jobs, complete_job, enqueue_job, enqueue_job_with_priority,
+    fail_job, job_retention_receipt, jobs_remaining, last_failure, park_job, purge_done_jobs,
+    queue_depth, queue_depth_history, record_job_retention, requeue_failed, requeue_running,
+    retire_empty_embed_jobs, retry_job,
 };
 pub use lexical::{LexicalHit, LexicalMatch, search_lexical};
 pub use messages::{ack_message, live_messages, sync_messages};

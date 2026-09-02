@@ -16,8 +16,9 @@ use fs3_store::{
     EMBEDDING_DIMENSIONS, JOB_PRIORITY_NEW_WORKTREE_SCAN, NewEmbedding, PgPool, SearchFilters,
     SourceKind, StoreError, claim_job, complete_job, create_database, database_exists, enqueue_job,
     enqueue_job_with_priority, find_worktree, list_worktrees, maintenance_url, put_embeddings,
-    put_smart_content, queue_depth, register_worktree, retry_job, schema_current, search_elements,
-    sync_worktree_files, upsert_element_tree, worktree_paths_for_blob,
+    put_smart_content, queue_depth, queue_depth_history, register_worktree, retry_job,
+    schema_current, search_elements, sync_worktree_files, upsert_element_tree,
+    worktree_paths_for_blob,
 };
 use fs3_testkit::fakes::FakeEmbedder;
 use support::{FreshDatabase, PARSER_VERSION, unique_blob, unique_seed};
@@ -439,8 +440,7 @@ async fn priority_beats_recency_across_job_kinds() {
     database.destroy(pool).await;
 }
 
-/// Status reports what is *left*, per kind — "142 pending embed, 0 pending
-/// scan_file" says the scan finished; one total says nothing.
+/// Default status reports what is live, per kind; history is explicit.
 #[tokio::test]
 async fn queue_depth_is_grouped_by_kind_and_state() {
     let database = FreshDatabase::create().await;
@@ -470,20 +470,22 @@ async fn queue_depth_is_grouped_by_kind_and_state() {
     fs3_store::complete_job(&pool, claimed.id).await.unwrap();
 
     let depth = queue_depth(&pool).await.unwrap();
-    let find = |kind: &str, state: &str| {
-        depth
-            .iter()
+    let find = |rows: &[fs3_store::QueueDepth], kind: &str, state: &str| {
+        rows.iter()
             .find(|row| row.kind == kind && row.state == state)
             .map_or(0, |row| row.depth)
     };
-    assert_eq!(find("scan_file", "pending"), 2);
-    assert_eq!(find("scan_file", "done"), 1);
-    assert_eq!(find("embed", "pending"), 1);
+    assert_eq!(find(&depth, "scan_file", "pending"), 2);
+    assert_eq!(find(&depth, "scan_file", "done"), 0);
+    assert_eq!(find(&depth, "embed", "pending"), 1);
     assert_eq!(
-        find("embed", "running"),
+        find(&depth, "embed", "running"),
         0,
         "a kind that has never run is absent, not a zero row"
     );
+
+    let history = queue_depth_history(&pool).await.unwrap();
+    assert_eq!(find(&history, "scan_file", "done"), 1);
 
     database.destroy(pool).await;
 }

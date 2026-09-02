@@ -196,9 +196,12 @@ one. A lease with an expiry is the general answer and belongs to the daemon
 plan; this is the whole fix for the crash that actually happens, which is the
 process stopping.
 
-`queue_depth()` groups by `(kind, state)` rather than totalling: "142 pending
-embed, 0 pending scan_file" says the scan finished and the enrichment is the
-thing to wait for, while "142 pending" says nothing. `last_failure()` is the
+`queue_depth()` groups only LIVE rows by `(kind, state)`: pending, running, and
+failed non-terminal work. Settled history is available only through
+`queue_depth_history()`, which `flowspace3 status --history` requests
+explicitly; daemon progress and ordinary `/status` never scan done rows.
+`purge_done_jobs()` removes only old `done` rows in bounded statements, and the
+daemon records the completed sweep for `/status`. `last_failure()` remains the
 most recent `last_error`, so a status line can say what went wrong rather than
 only that something did.
 

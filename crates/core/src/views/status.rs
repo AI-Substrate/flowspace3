@@ -7,8 +7,11 @@ use serde::{Deserialize, Serialize};
 pub struct StatusReport {
     /// Every registered worktree, with its file count.
     pub roots: Vec<Root>,
-    /// The queue, grouped by kind and state.
+    /// The live queue, grouped by kind and state.
     pub queue: Vec<QueueRow>,
+    /// The daemon-owned done-job retention receipt.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub retention: Option<RetentionStatus>,
     /// The most recent failure, when there is one — so a status line can say
     /// what went wrong rather than only that something did.
     pub last_error: Option<LastError>,
@@ -22,6 +25,17 @@ pub struct StatusReport {
     /// nobody here expects, and it is the first thing to check when two daemons
     /// disagree.
     pub schema_ahead: Vec<i64>,
+}
+
+/// The most recently completed done-job retention sweep.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RetentionStatus {
+    /// Configured age window before a completed job becomes purgeable.
+    pub window_days: u32,
+    /// UTC timestamp of the last completed sweep, absent before the first pass.
+    pub last_purge_at: Option<String>,
+    /// Number of rows removed by that complete sweep.
+    pub purged_last_run: u64,
 }
 
 /// One shared blob whose parsed rows do not form exactly one file tree.

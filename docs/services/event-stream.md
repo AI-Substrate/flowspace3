@@ -124,8 +124,9 @@ something other than an envelope; every other invocation, including plain
   no history; `/status` supplies current roots and queue truth after reconnect.
 - One broadcast send determines ordering and timestamp once, so concurrent
   subscribers receive byte-identical work events in the same order.
-- Queue rows come from `fs3_store::queue_depth` after settlement. The stream
-  owns no shadow counters and therefore cannot drift from the store.
+- Queue rows come from the live-only `fs3_store::queue_depth` after settlement.
+  The stream owns no shadow counters, cannot drift from the store, and never
+  rescans completed history.
 - Heartbeat sequence numbers are per connection. They prove that connection's
   liveness and are intentionally not identical between subscribers.
 

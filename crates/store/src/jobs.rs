@@ -106,8 +106,10 @@ pub async fn enqueue_job(
 
 /// Put work on the queue at one of the declared shared priorities.
 ///
-/// A duplicate live row keeps the higher priority: an ordinary re-fire must
-/// never demote work the lifecycle detector already promoted.
+/// A duplicate active row keeps the higher priority: an ordinary re-fire must
+/// never demote work the lifecycle detector already promoted. A failed
+/// non-terminal row also keeps the key and remains failed until boot recovery
+/// requeues it; minting a second row would make that recovery ambiguous.
 ///
 /// # Errors
 /// [`StoreError::Query`] when the statement fails.
@@ -122,7 +124,8 @@ pub async fn enqueue_job_with_priority(
     sqlx::query(
         "INSERT INTO jobs (kind, dedupe_key, payload, not_before, priority)
          VALUES ($1, $2, $3, now() + make_interval(secs => $4), $5)
-         ON CONFLICT (dedupe_key) WHERE state IN ('pending', 'running') DO UPDATE SET
+         ON CONFLICT (dedupe_key) WHERE state IN ('pending', 'running')
+                                      OR (state = 'failed' AND NOT terminal) DO UPDATE SET
            payload    = EXCLUDED.payload,
            not_before = GREATEST(jobs.not_before, EXCLUDED.not_before),
            priority   = GREATEST(jobs.priority, EXCLUDED.priority),
@@ -487,10 +490,8 @@ pub async fn retire_empty_embed_jobs(pool: &PgPool) -> Result<u64, StoreError> {
 /// to record: an unreadable payload requeued on every boot would be an
 /// unbounded, permanent trickle of claims that can never succeed.
 ///
-/// Rows whose `dedupe_key` is already held by a LIVE job are skipped rather
-/// than moved. The live-dedupe index is unique over `pending`/`running`, so
-/// waking a duplicate would abort the whole statement — and the live row is
-/// the one that is going to do the work anyway.
+/// Failed non-terminal rows retain their dedupe key, so this state transition
+/// cannot collide with another pending or running owner.
 ///
 /// # Why the caller names the kinds
 ///
@@ -520,12 +521,7 @@ pub async fn requeue_failed(pool: &PgPool, kinds: &[&str]) -> Result<u64, StoreE
                 updated_at = now()
           WHERE state = 'failed'
             AND NOT terminal
-            AND kind = ANY($1)
-            AND NOT EXISTS (
-                  SELECT 1 FROM jobs live
-                   WHERE live.dedupe_key = jobs.dedupe_key
-                     AND live.state IN ('pending', 'running')
-            )",
+            AND kind = ANY($1)",
     )
     .bind(&owned)
     .execute(pool)
@@ -534,15 +530,6 @@ pub async fn requeue_failed(pool: &PgPool, kinds: &[&str]) -> Result<u64, StoreE
     Ok(swept)
 }
 
-/// How many jobs sit in each state, by kind — what `flowspace3 status` reports.
-///
-/// Grouped rather than totalled: "142 pending" answers nothing useful, while
-/// "142 pending embed, 0 pending scan_file" says the scan finished and the
-/// enrichment is the thing to wait for. The zero rows are absent rather than
-/// synthesised — a kind fs3 has never run is not a kind at depth zero.
-///
-/// # Errors
-/// [`StoreError::Query`] when the read fails.
 /// How many jobs are still to do — `pending` plus `running`, every kind.
 ///
 /// One number, for the per-job streaming line, where the grouped
@@ -556,8 +543,8 @@ pub async fn requeue_failed(pool: &PgPool, kinds: &[&str]) -> Result<u64, StoreE
 /// is worse than no number at all — it reads as "nearly done" at the exact
 /// moment it is not.
 ///
-/// `jobs_claim_idx` leads on `state`, so this is an index scan of the live
-/// rows and never touches the settled history.
+/// `jobs_live_dedupe_idx` contains every pending/running row, so PostgreSQL can
+/// count the live population without touching settled history.
 pub async fn jobs_remaining(pool: &PgPool) -> Result<i64, StoreError> {
     let row =
         sqlx::query("SELECT count(*) AS left FROM jobs WHERE state IN ('pending', 'running')")
@@ -566,16 +553,44 @@ pub async fn jobs_remaining(pool: &PgPool) -> Result<i64, StoreError> {
     Ok(row.try_get("left")?)
 }
 
+/// Canonical live-depth SQL, public so the integration plan test cannot drift
+/// away from the production query it is meant to protect.
+pub const LIVE_QUEUE_DEPTH_SQL: &str = "SELECT kind, state, count(*) AS depth,
+            count(*) FILTER (WHERE last_error IS NOT NULL) AS with_error
+       FROM jobs
+      WHERE state IN ('pending', 'running')
+         OR (state = 'failed' AND NOT terminal)
+      GROUP BY kind, state
+      ORDER BY kind, state";
+
+const HISTORY_QUEUE_DEPTH_SQL: &str = "SELECT kind, state, count(*) AS depth,
+            count(*) FILTER (WHERE last_error IS NOT NULL) AS with_error
+       FROM jobs
+      GROUP BY kind, state
+      ORDER BY kind, state";
+
+/// How many live jobs sit in each state, by kind — the default status surface.
+///
+/// Completed history is deliberately absent. Call [`queue_depth_history`] only
+/// for an explicit history request; a daemon hot path must never scan settled
+/// rows merely to learn what work remains.
+///
+/// # Errors
+/// [`StoreError::Query`] when the read fails.
 pub async fn queue_depth(pool: &PgPool) -> Result<Vec<QueueDepth>, StoreError> {
-    let rows = sqlx::query(
-        "SELECT kind, state, count(*) AS depth,
-                count(*) FILTER (WHERE last_error IS NOT NULL) AS with_error
-           FROM jobs
-          GROUP BY kind, state
-          ORDER BY kind, state",
-    )
-    .fetch_all(pool)
-    .await?;
+    read_queue_depth(pool, LIVE_QUEUE_DEPTH_SQL).await
+}
+
+/// The full historical queue census for an explicit `status --history` request.
+///
+/// # Errors
+/// [`StoreError::Query`] when the read fails.
+pub async fn queue_depth_history(pool: &PgPool) -> Result<Vec<QueueDepth>, StoreError> {
+    read_queue_depth(pool, HISTORY_QUEUE_DEPTH_SQL).await
+}
+
+async fn read_queue_depth(pool: &PgPool, statement: &str) -> Result<Vec<QueueDepth>, StoreError> {
+    let rows = sqlx::query(statement).fetch_all(pool).await?;
 
     rows.iter()
         .map(|row| {
@@ -587,6 +602,97 @@ pub async fn queue_depth(pool: &PgPool) -> Result<Vec<QueueDepth>, StoreError> {
             })
         })
         .collect()
+}
+
+/// Durable receipt for the most recently completed retention sweep.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct JobRetentionReceipt {
+    /// UTC timestamp written after the complete sweep.
+    pub last_purge_at: Option<String>,
+    /// Rows deleted across every bounded statement in that sweep.
+    pub purged_last_run: u64,
+}
+
+/// Delete at most `batch` completed jobs older than `older_than`.
+///
+/// Selection and deletion share one short statement. `SKIP LOCKED` means a
+/// concurrent maintenance pass never waits behind another copy of itself, and
+/// the state predicate makes pending, running, and failed rows ineligible.
+///
+/// # Errors
+/// [`StoreError::Query`] when the statement fails.
+pub async fn purge_done_jobs(
+    pool: &PgPool,
+    older_than: Duration,
+    batch: std::num::NonZeroU32,
+) -> Result<u64, StoreError> {
+    let purged = sqlx::query(
+        "WITH doomed AS (
+             SELECT id
+               FROM jobs
+              WHERE state = 'done'
+                AND updated_at < now() - make_interval(secs => $1)
+              ORDER BY updated_at, id
+              LIMIT $2
+              FOR UPDATE SKIP LOCKED
+         )
+         DELETE FROM jobs
+          USING doomed
+          WHERE jobs.id = doomed.id",
+    )
+    .bind(older_than.as_secs_f64())
+    .bind(i64::from(batch.get()))
+    .execute(pool)
+    .await?
+    .rows_affected();
+    Ok(purged)
+}
+
+/// Record one fully completed retention sweep and return its UTC timestamp.
+///
+/// # Errors
+/// [`StoreError::Query`] when the statement fails.
+pub async fn record_job_retention(pool: &PgPool, purged: u64) -> Result<String, StoreError> {
+    let row = sqlx::query(
+        "UPDATE job_retention_state
+            SET last_purge_at = clock_timestamp(),
+                purged_last_run = $1
+          WHERE singleton
+          RETURNING to_char(
+              last_purge_at AT TIME ZONE 'UTC',
+              'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'
+          ) AS last_purge_at",
+    )
+    .bind(i64::try_from(purged).expect("Postgres cannot report more than i64::MAX deleted rows"))
+    .fetch_one(pool)
+    .await?;
+    Ok(row.try_get("last_purge_at")?)
+}
+
+/// Read the durable receipt for the most recently completed retention sweep.
+///
+/// # Errors
+/// [`StoreError::Query`] when the read fails.
+pub async fn job_retention_receipt(pool: &PgPool) -> Result<JobRetentionReceipt, StoreError> {
+    let row = sqlx::query(
+        "SELECT CASE WHEN last_purge_at IS NULL THEN NULL
+                     ELSE to_char(
+                         last_purge_at AT TIME ZONE 'UTC',
+                         'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'
+                     )
+                END AS last_purge_at,
+                purged_last_run
+           FROM job_retention_state
+          WHERE singleton",
+    )
+    .fetch_one(pool)
+    .await?;
+    let purged: i64 = row.try_get("purged_last_run")?;
+    Ok(JobRetentionReceipt {
+        last_purge_at: row.try_get("last_purge_at")?,
+        purged_last_run: u64::try_from(purged)
+            .expect("job_retention_state enforces a non-negative count"),
+    })
 }
 
 /// The most recent error from a failed job, for a status report that says what

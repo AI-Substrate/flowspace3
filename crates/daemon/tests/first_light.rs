@@ -283,6 +283,52 @@ async fn call(state: &AppState, method: &str, path: &str, body: Option<Value>) -
     envelope
 }
 
+#[tokio::test]
+async fn status_retention_is_receipted_and_history_is_explicit() {
+    let stack = Stack::create("status_retention").await;
+    sqlx::query(
+        "INSERT INTO jobs (kind, dedupe_key, payload, state, updated_at)
+         VALUES ('scan_file', 'expired-status-row', '{}'::jsonb, 'done',
+                 now() - interval '2 days'),
+                ('scan_file', 'young-status-row', '{}'::jsonb, 'done', now())",
+    )
+    .execute(&stack.state.db)
+    .await
+    .expect("seed status history");
+
+    let receipt = fs3_daemon::retention::sweep_once(&stack.state.db, 1)
+        .await
+        .expect("retention sweep");
+    assert_eq!(receipt.purged_last_run, 1);
+
+    let live = call(&stack.state, "GET", "/status", None).await;
+    let live = live.data.expect("status data");
+    assert_eq!(live["retention"]["window_days"], 1);
+    assert_eq!(live["retention"]["purged_last_run"], 1);
+    assert!(live["retention"]["last_purge_at"].as_str().is_some());
+    assert!(
+        live["queue"]
+            .as_array()
+            .expect("queue rows")
+            .iter()
+            .all(|row| row["state"] != "done"),
+        "default status must not scan settled history: {live:#}"
+    );
+
+    let history = call(&stack.state, "GET", "/status?history=true", None).await;
+    let history = history.data.expect("historical status data");
+    assert!(
+        history["queue"]
+            .as_array()
+            .expect("queue rows")
+            .iter()
+            .any(|row| row["state"] == "done" && row["count"] == 1),
+        "explicit history returns the young completed row: {history:#}"
+    );
+
+    stack.destroy().await;
+}
+
 // ---------------------------------------------------------------------------
 // ac-0001 + ac-0002 + ac-0003: the whole path
 

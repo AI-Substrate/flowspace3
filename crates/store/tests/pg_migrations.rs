@@ -321,6 +321,85 @@ async fn migration_0022_grandfathers_vectors_without_minting_embed_jobs() {
     database.destroy(pool).await;
 }
 
+#[tokio::test]
+async fn migration_0023_dedupes_revivable_jobs_and_covers_live_depth() {
+    let database = FreshDatabase::create().await;
+    let pool = database.pool().await;
+    apply_migrations(&pool, 1..=22).await;
+
+    sqlx::query(
+        "INSERT INTO jobs (kind, dedupe_key, payload, state, terminal)
+         VALUES ('scan_file', 'owned-by-pending', '{}'::jsonb, 'pending', false),
+                ('scan_file', 'owned-by-pending', '{}'::jsonb, 'failed', false),
+                ('scan_file', 'owned-by-pending', '{}'::jsonb, 'failed', false),
+                ('embed', 'failed-only', '{}'::jsonb, 'failed', false),
+                ('embed', 'failed-only', '{}'::jsonb, 'failed', false)",
+    )
+    .execute(&pool)
+    .await
+    .expect("the old predicate permits failed duplicates");
+
+    apply_migrations(&pool, 23..=23).await;
+
+    let owners: Vec<(String, i64)> = sqlx::query_as(
+        "SELECT dedupe_key, count(*)
+           FROM jobs
+          WHERE state IN ('pending', 'running')
+             OR (state = 'failed' AND NOT terminal)
+          GROUP BY dedupe_key
+          ORDER BY dedupe_key",
+    )
+    .fetch_all(&pool)
+    .await
+    .expect("read active owners");
+    assert_eq!(
+        owners,
+        [
+            ("failed-only".to_string(), 1),
+            ("owned-by-pending".to_string(), 1)
+        ]
+    );
+    let retired: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM jobs WHERE state = 'failed' AND terminal")
+            .fetch_one(&pool)
+            .await
+            .expect("count retired duplicates");
+    assert_eq!(retired, 3, "duplicates are retained as terminal history");
+
+    let index: String =
+        sqlx::query_scalar("SELECT pg_get_indexdef('jobs_live_dedupe_idx'::regclass)")
+            .fetch_one(&pool)
+            .await
+            .expect("inspect active-job index");
+    for required in [
+        "INCLUDE (kind, state, last_error, terminal)",
+        "state = 'failed'",
+        "NOT terminal",
+    ] {
+        assert!(index.contains(required), "{required} missing from {index}");
+    }
+
+    let duplicate = sqlx::query(
+        "INSERT INTO jobs (kind, dedupe_key, payload, state, terminal)
+         VALUES ('embed', 'failed-only', '{}'::jsonb, 'failed', false)",
+    )
+    .execute(&pool)
+    .await;
+    assert!(
+        duplicate.is_err(),
+        "failed non-terminal owner must hold its key"
+    );
+
+    let receipt_rows: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM job_retention_state WHERE singleton")
+            .fetch_one(&pool)
+            .await
+            .expect("read seeded retention receipt");
+    assert_eq!(receipt_rows, 1);
+
+    database.destroy(pool).await;
+}
+
 /// The migration that had to double as a RECOVERY (Jordan, 2026-08-27).
 ///
 /// A daemon run from a throwaway dev worktree wrote `update:blocked` naming its

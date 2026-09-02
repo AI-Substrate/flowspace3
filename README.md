@@ -132,6 +132,7 @@ active = "fake"
 summary_min_lines = 10     # size floor for per-element summaries
 debounce_seconds = 10      # how long a dirty file must settle
 worker_concurrency = 4     # jobs claimed at once — the QUEUE's concurrency
+job_retention_days = 1     # bounded life for completed jobs
 
 [scan]
 max_file_bytes = 2000000   # generated bundles teach the index nothing
