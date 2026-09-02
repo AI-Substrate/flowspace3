@@ -7,6 +7,28 @@
 - **The three MINORs (f-16b1/b2/b3, backlog 174/175/176) are OUT OF SCOPE** and are not re-litigated here. One incidental note on f-16b1 appears below only because the delta moved its number; it is not a finding and needs no action.
 - **My record from round 1 is committed verbatim** — `diff -q` against my local copy before checkout: **IDENTICAL**.
 
+## Head drift `aa1abb6..ca9d255` — docs-only, VERIFIED MYSELF
+
+```
+$ git log --oneline -1 ca9d2556ae842e6a273fb5cda2302e081f0e7136
+ca9d255 docs: record review delta full gate
+
+$ git diff --stat aa1abb6 ca9d255
+ docs/plans/016-hidden-dirs/assets/tasks/phase-1/execution.log.md | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+$ git diff --name-only aa1abb6 ca9d255 -- crates/ | wc -l
+0
+
+$ git diff --name-only aa1abb6 ca9d255 -- crates/ Cargo.lock Cargo.toml .github/ | wc -l
+0
+```
+
+Confirmed independently, not taken on trust: **one** file, **+4/−0**, and zero paths under `crates/` — widened by me to also cover `Cargo.lock`, `Cargo.toml` and `.github/`, still zero. The four added lines record an exclusive `harness checks` on `aa1abb6` completing `status=ok` at `2026-09-02T08:20:07.988Z`. **This delta review of `aa1abb6` therefore stands unchanged and covers PR head `ca9d255`.**
+
+**Merge gate met on the new head:** run `33608236344` on `ca9d2556ae842e6a273fb5cda2302e081f0e7136` → `status=completed conclusion=success`; PR #107 rollup `gate = SUCCESS`, head `ca9d255`, `mergeable`. CI is now green on **all four** shas of this branch — `f9b6d07`, `fa4da2f`, `aa1abb6`, `ca9d255`.
+
+
 ## Gate: CI green on the sha
 
 ```
@@ -77,6 +99,17 @@ Both are therefore genuine regression locks, not assertions written to match wha
 `cargo test -p fs3-store -p fs3-daemon -p fs3-parsers -p fs3-cli -p fs3-core` on `:5434` — everything green **except** `tests/health.rs::the_real_binaries_agree_through_a_discovered_config`, which is the already-adjudicated **f-16c1**: the shared `flowspace3_test` database still holds **19** registered roots and boot's pre-serve ddoc probe exceeds the test's 10 s ceiling. Same failure, same message, same cause as round 1; unrelated to this delta. Named tests re-run individually: `tree_policy_tracks_the_resolved_root_in_both_directions` ok · `hidden_directory_prunes_name_the_effective_rule` ok · `discovery_standard_ignores` 14/14 · `discovery_fixtures` 10/10 · `watcher` 11/11 · `hidden_files_are_discovered_only_for_an_opted_in_root` ok · `add_hidden_policy_round_trips_and_absence_does_not_reset_it` ok · `tree_title_agrees_with_the_resolved_root_policy` ok · `roots_show_their_hidden_directory_policy` ok.
 
 *Incidental, no action:* the reorder drops the `skipped` `hidden` count on my fixture from 3 to 1, because deny-listed dot-names no longer land in it. That narrows backlog **174 (f-16b1)** without closing it — the count is still directories among per-file counts. Recorded so 174 is re-measured against `aa1abb6`, not against `f9b6d07`.
+
+## f-16c1 — the drift commit CLOSES the diagnosis
+
+The receipt `ca9d255` records reports a **full `harness checks`** on `aa1abb6` passing the whole test suite — including the very health test that fails for me. That is not a contradiction; it is the last piece of the mechanism, and it upgrades f-16c1 from "environmental" to fully explained.
+
+`.harness/extensions/checks/instructions.md` gate 7 (`fs3-test-suite`) "mints and migrates a unique `fs3_test_<epoch>_<entropy>` child with `FreshDatabase`, injects **only that URL** into `cargo test --all`, then force-drops it."
+
+So the gate hands the suite a **freshly migrated, empty** database — **0 registered roots → boot in ~1 s → the health test passes**. Running the same binary with `FS3_TEST_DATABASE_URL` pointed straight at the shared `flowspace3_test` hands it **19 roots → key after 25 s → the 10 s ceiling is missed**. The variable is *which database the test binary is handed*, nothing else.
+
+This retro-explains the author's round-1 chronology exactly (ask-006: `harness checks` green at 07:07:06Z, then the mandated isolated probe red minutes later) — it was never load, timing or flakiness — and it explains why CI is always green. For the 19-root product row: the honest framing is that the pre-serve ddoc probe is unbounded in root count **and** that the failure is invisible to every gate we run, because every gate runs against an empty database. A test that only ever sees a fresh store cannot observe a cost that scales with registered roots.
+
 
 ## Fence
 

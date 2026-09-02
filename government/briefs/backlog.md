@@ -3540,6 +3540,22 @@ registered worktree before binding. Controlled A/B, same binary, same config, bo
 **25 s**, against the test's 10 s ceiling. **Encode:** bound or parallelise the pre-serve
 probe, or move it after bind — a daemon's time-to-serve must not scale with root count.
 
+**Sharpened 2026-09-02 18:30 (knobbler, delta review) — the real row is TWO defects, and
+the second is ours:** `.harness/extensions/checks/instructions.md` gate 7 (fs3-test-suite)
+mints and migrates a UNIQUE `fs3_test_<epoch>_<entropy>` child with `FreshDatabase` and
+injects ONLY that URL into `cargo test --all`. So **every gate we run hands the suite an
+EMPTY database** — 0 roots, boot in ~1 s, health passes — while pointing
+`FS3_TEST_DATABASE_URL` straight at the shared `flowspace3_test` hands it 19 roots, a key
+after 25 s, and a missed 10 s ceiling. The only variable is which database the binary is
+handed. That retro-explains the 016 coder's round-1 chronology exactly (ask-006: gate green
+at 07:07:06Z, mandated isolated probe red minutes later) — never load, timing or flakiness —
+and it explains why CI is always green. So: **the pre-serve ddoc probe is unbounded in root
+count AND that cost is invisible to every gate we run, because a suite that only ever sees
+an empty store cannot observe a cost that scales with registered roots.** The second half is
+a backpressure gap in our own gate, not a product bug: we have no gate that exercises a
+NON-empty store. Encode both — bound the probe, and give the suite one scenario with a
+pre-populated root set.
+
 ## 178 — plan-016's ac-0005 receipt left a root registered in the SHARED test DB
 Review 016 f-16c1, second part. The receipt recipe kills its scratch daemon but never
 unregisters its roots, so `/Users/jordanknight/pi-hacking/pij` (2463 files,
