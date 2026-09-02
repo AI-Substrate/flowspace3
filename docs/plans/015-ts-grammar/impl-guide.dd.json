@@ -1,0 +1,103 @@
+{
+  "dd": {
+    "schema": "pij-team/impl-guide"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "impl-guide \u2014 ts-grammar",
+        "plan": "docs/plans/015-ts-grammar/plan.dd.json",
+        "mode": "single-coder",
+        "updated": "2026-09-02"
+      }
+    },
+    {
+      "name": "architecture",
+      "value": "fs3-parsers owns grammar selection (`Language`) and the generic walk (`source.rs`); fs3-core owns `classify`. Adding TypeScript is: a grammar crate + two Language variants + extension mapping (lib.rs), plus classify decisions for TypeScript node kinds. The only new mechanism is a value-shape rule in the generic walk: a binding node (`variable_declarator`, `public_field_definition`) whose `value` child is a function-like node classifies as Function and takes the binding's name \u2014 written without a language branch so it also serves JavaScript later. Nothing downstream (store, embeddings, CLI) changes: element kinds, addresses and spans are the existing contract."
+    },
+    {
+      "name": "fan_out",
+      "value": {
+        "decision": "NO",
+        "rationale": "One unit, one coder, no PM; o-prime coordinates directly (Jordan, 2026-09-02: dispatch the performance work to agents)."
+      }
+    },
+    {
+      "name": "units",
+      "value": [
+        {
+          "id": "u1",
+          "name": "ts-grammar",
+          "paths": [
+            "Cargo.toml",
+            "Cargo.lock",
+            "crates/parsers/Cargo.toml",
+            "crates/parsers/src/lib.rs",
+            "crates/parsers/src/source.rs",
+            "crates/parsers/tests/**",
+            "crates/parsers/tests/fixtures/**",
+            "crates/core/src/classify.rs",
+            "docs/plans/015-ts-grammar/**"
+          ],
+          "responsibility": "TypeScript/TSX grammars wired; TS node kinds classified; arrow bindings as Function via a generic rule; goldens; pre-prod scan receipt",
+          "interface": "`Language::{TypeScript,Tsx}` with `for_extension` ts|mts|cts|tsx; `Language::as_str` \u2192 \"typescript\"/\"tsx\"; `classify()` gains TS decisions; `source.rs` gains the value-shape rule. No store/daemon/CLI change; ElementKind unchanged.",
+          "test_strategy": "golden element forests per fixture (assert the full forest, not counts); one mutation receipt per rule; classify unit tests per TS kind incl. non-elements; a scan-count integration test over a real TS tree",
+          "depends_on": "none",
+          "wave": 1,
+          "note": "Prove the dependency resolves FIRST (t1) \u2014 if tree-sitter-typescript 0.23.2 cannot link against tree-sitter 0.26, stop-and-ask with the exact cargo error before touching anything else."
+        }
+      ]
+    },
+    {
+      "name": "isolation",
+      "value": {
+        "mode": "worktree-per-coder",
+        "note": "Your worktree is fs3-ts-grammar on branch 015-ts-grammar; parsers/core only. No daemon, no prod, no store."
+      }
+    },
+    {
+      "name": "composition",
+      "value": {
+        "composer": "o-prime",
+        "steps": "None \u2014 single unit. o-prime squash-merges and bounces prod (daemon/store binary changes).",
+        "integration_proof": "the real-usage criteria in the plan, measured on prod after the bounce"
+      }
+    },
+    {
+      "name": "review",
+      "value": {
+        "when": "spawned by o-prime once the PR is up",
+        "inputs": [
+          "golden forests are real (open the fixtures, count declarations by eye against the golden)",
+          "the value-shape rule is generic (no Language branch) and does not double-emit (a binding inside a function must not also appear at file level)",
+          "namespace addressing",
+          "classify non-element decisions are tested, not implied",
+          "the pre-prod scan table is reproducible from the PR"
+        ],
+        "model_override": "github-copilot/claude-opus-5 (Claude reviews; ruling 2026-09-02)"
+      }
+    },
+    {
+      "name": "risks",
+      "value": [
+        {
+          "id": "risk-1",
+          "text": "tree-sitter-typescript 0.23.2 may pin an older tree-sitter ABI than 0.26 \u2014 t1 proves it or stops"
+        },
+        {
+          "id": "risk-2",
+          "text": "classify is heuristic on substrings: `type_alias_declaration` and `internal_module` ride on 'type'/'mod' hints \u2014 write the tests so a future hint change fails loudly"
+        },
+        {
+          "id": "risk-3",
+          "text": "the value-shape rule could double-emit or emit for non-function values \u2014 the fixture must include `const x = 1` and `const cfg = {}` as negatives"
+        },
+        {
+          "id": "risk-4",
+          "text": "TSX JSX error-recovery nodes may carry empty names \u2014 first_identifier_text already drops blank names; assert no `<anonymous>`/empty-address elements"
+        }
+      ]
+    }
+  ]
+}

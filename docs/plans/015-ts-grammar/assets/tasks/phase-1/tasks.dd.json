@@ -1,0 +1,136 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: TypeScript + TSX grammars",
+        "slug": "phase-1",
+        "status": "ready",
+        "summary": "One coder, tasks in order, every assertion pinned to a backpressure row."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Work top to bottom; stop-and-ask o-prime on anything outside the fence."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "t1",
+          "title": "Wire tree-sitter-typescript: workspace dep, Language::TypeScript/Tsx, extension map, as_str, grammar()",
+          "state": "unchecked",
+          "done": "#done_when/t1",
+          "success": "the workspace builds with tree-sitter-typescript 0.23.2 against tree-sitter 0.26; `for_extension(\"ts\"|\"mts\"|\"cts\")` \u2192 TypeScript, `\"tsx\"` \u2192 Tsx; a .ts fixture scans with language typescript",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ]
+        },
+        {
+          "id": "t2",
+          "title": "Fixtures + golden forests for declarations (class, abstract class, interface, enum, type alias, methods, signatures, default export, namespace) and a JSX-heavy tsx",
+          "state": "unchecked",
+          "done": "#done_when/t2",
+          "success": "goldens checked in; every declaration kind appears with the expected address and span; tsx parses",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
+        },
+        {
+          "id": "t3",
+          "title": "Generic value-shape rule + classify decisions: variable_declarator / public_field_definition whose `value` is arrow_function|function_expression|generator_function \u2192 Function named by the binding; internal_module \u2192 Container; classify tests enumerate every TS kind decision",
+          "state": "unchecked",
+          "done": "#done_when/t3",
+          "success": "language-agnostic code in source.rs/classify.rs; six binding shapes pass; mutation receipts recorded",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002",
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
+        },
+        {
+          "id": "t4",
+          "title": "Regression + gate",
+          "state": "unchecked",
+          "done": "#done_when/t4",
+          "success": "rust/python/markdown tests unchanged and green; clippy clean; gate green on the PR sha",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ]
+        },
+        {
+          "id": "t5",
+          "title": "Pre-prod scan receipt + PR",
+          "state": "unchecked",
+          "done": "#done_when/t5",
+          "success": "per-file element table for ~/pi-hacking/pij/.pi/extensions/pij/**/*.ts before/after in the PR body; the exact prod re-ingest command and search query o-prime will run",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {
+        "t1": [
+          {
+            "id": "dw-30f1",
+            "assertion": "fixture scan reports language typescript / tsx and a non-empty forest",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          }
+        ],
+        "t2": [
+          {
+            "id": "dw-30f2",
+            "assertion": "golden equality per fixture",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          },
+          {
+            "id": "dw-30f3",
+            "assertion": "namespace members carry the namespace segment in their address",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          }
+        ],
+        "t3": [
+          {
+            "id": "dw-30f4",
+            "assertion": "six shapes \u2192 six Function elements; rule removed \u2192 red",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          },
+          {
+            "id": "dw-30f5",
+            "assertion": "internal_module \u2192 Container; removed \u2192 red",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          }
+        ],
+        "t4": [
+          {
+            "id": "dw-30f6",
+            "assertion": "cargo test -p fs3-core -p fs3-parsers green; harness checks or CI green",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+          }
+        ],
+        "t5": [
+          {
+            "id": "dw-30f7",
+            "assertion": "table shows 1 \u2192 N for every declaring file",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+          }
+        ]
+      }
+    }
+  ],
+  "references": []
+}

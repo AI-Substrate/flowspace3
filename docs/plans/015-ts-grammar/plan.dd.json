@@ -1,0 +1,84 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "015 \u2014 TypeScript + TSX grammars (row 147)",
+        "slug": "ts-grammar",
+        "ordinal": 15,
+        "status": "ready",
+        "summary": "Wire the tree-sitter TypeScript and TSX grammars into fs3-parsers so .ts/.tsx files stop being bare file elements (backlog row 147: every TypeScript file in the index today is one unparsed blob \u2014 the pij extensions, this repo's own tooling, and most of the fleet's code). The extraction walk is gener",
+        "backpressure": "assets/backpressure.dd.json#rows"
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Wire the tree-sitter TypeScript and TSX grammars into fs3-parsers so .ts/.tsx files stop being bare file elements (backlog row 147: every TypeScript file in the index today is one unparsed blob \u2014 the pij extensions, this repo's own tooling, and most of the fleet's code). The extraction walk is generic; the packet is the two Language entries, the grammar crate, the classify decisions for TypeScript node kinds, a generic value-shape rule so arrow-function bindings (the dominant TS style) become Function elements, fixtures with golden element forests, and a real-usage receipt on prod after re-ingest."
+    },
+    {
+      "name": "goals",
+      "value": [
+        "`.ts`/`.mts`/`.cts` \u2192 Language::TypeScript, `.tsx` \u2192 Language::Tsx; file subkind reports the language",
+        "functions, classes (incl. abstract), interfaces, enums, type aliases, methods, method/function signatures and namespaces become named elements with correct addresses and spans",
+        "arrow-function / function-expression bindings (`const f = () => {}`, `export const h = async () => {}`, class-field arrows) become Function elements named by their binding, via a language-agnostic value-shape rule in the generic walk",
+        "golden fixture tests for every decision, including the deliberate non-elements, with mutation receipts",
+        "prod receipt: after re-ingest of a TS-heavy repo, `flowspace3 search` returns TS function/container elements, not bare files"
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "JavaScript/JSX (`.js`, `.jsx`, `.mjs`) \u2014 separate packet; tree-sitter-javascript is a different crate",
+        "changing ElementKind, the store schema, embeddings, or any CLI envelope",
+        "decorators, overload merging, declaration-merging semantics beyond what the generic walk yields",
+        "re-ingesting prod yourself \u2014 o-prime does the prod re-ingest and takes the receipt"
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-0001",
+          "state": "unchecked",
+          "claim": "`.ts`/`.tsx` fixtures scan into element trees whose language is typescript/tsx and whose forest matches a checked-in golden: function/class/abstract class/interface/enum/type alias/method/method signature/function signature/namespace elements with correct addresses and 1-based spans; a JSX-heavy .tsx file parses without ScanError::Unparseable"
+        },
+        {
+          "id": "ac-0002",
+          "state": "unchecked",
+          "claim": "arrow-function and function-expression bindings (six shapes in the fixture: const/let/export const/async/generator/class-field arrow) are Function elements named by the binding, produced by a generic value-shape rule in source.rs (no `Language::` branch); removing the rule turns the fixture test red"
+        },
+        {
+          "id": "ac-0003",
+          "state": "unchecked",
+          "claim": "`internal_module` (namespace) is a Container that scopes the addresses of its members; the classify tests enumerate every TypeScript node-kind decision including the deliberate non-elements (`export_statement`, `lexical_declaration`, `import_statement`)"
+        },
+        {
+          "id": "ac-0004",
+          "state": "unchecked",
+          "claim": "no regression: rust/python/markdown classify + fixture tests green, `cargo clippy -D warnings` clean, CI gate green on the exact PR sha (or the local exclusive gate)"
+        },
+        {
+          "id": "ac-0005",
+          "state": "unchecked",
+          "claim": "real usage: a scan of ~/pi-hacking/pij/.pi/extensions/pij/**/*.ts through fs3-parsers reports N>1 elements per file for every file that declares anything (before: exactly 1); after o-prime's prod re-ingest, `flowspace3 search` for a named pij extension function returns a function element from a .ts path"
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-45bc",
+          "title": "Phase 1: TypeScript + TSX grammars",
+          "brief": "One coder. Wire the grammar crate and Language entries first (prove the build resolves against tree-sitter 0.26 before anything else), then fixtures + goldens, then the generic value-shape rule and the namespace decision with mutation receipts, then regression + gate, then the pre-prod scan receipt in the PR body.",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+        }
+      ]
+    }
+  ],
+  "references": []
+}
