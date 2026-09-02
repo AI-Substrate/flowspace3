@@ -1873,3 +1873,22 @@ ROW 121 — REQ-0033 IN FLIGHT AS PIJ PLAN 128 (weasel, 2026-09-02; relayed
     "subagent sessions are ingested through their parent — re-ingest
     <parent>" instead of "no session file" (claude.rs:199-210 knows the
     shape). Restore path documented in scratch/reply-to-meadowlark-subagents.md.
+
+134. **P2 — `conversation import` accepts a file it cannot parse and
+    stores HOLLOW turns with ok:true** (meadowlark, 2026-09-02, trying to
+    self-serve a subagent restore): fed Claude's NATIVE session JSONL
+    (types user/assistant/attachment) with --guid/--repo/--worktree →
+    ok:true, accepted=104, verify turns=104 — and every turn empty ("the
+    stored turn has no prose or typed items"); positive control on a
+    properly ingested conversation shows 955-char bodies under the same
+    probe. import's contract is fs3's transcript shape, not a harness's
+    native store (that is `ingest`'s job) — but it neither says so nor
+    refuses. Verdict-cannot-lie at the INTAKE: 104 empties reported as a
+    delivery. ENCODE: import validates the record shape up front and
+    refuses with "this looks like a <harness> native session — use
+    `conversation ingest --harness <h> --session <id>`" (the first line's
+    `type` field is a giveaway); never store a turn with no body and no
+    typed items; verify's success shape should carry a non-empty-turn
+    count so a hollow conversation cannot verify clean. Sibling of rows
+    129/133; the restore path for the 12 is the parent re-ingest in
+    scratch/reply-to-meadowlark-subagents.md.
