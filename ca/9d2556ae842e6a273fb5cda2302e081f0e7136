@@ -1,0 +1,14 @@
+docs/plans/016-hidden-dirs/assets/tasks/phase-1/execution.log.md
+  h_9e71e8b09f7cf2 98-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ca9d2556ae842e6a273fb5cda2302e081f0e7136",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
