@@ -46,3 +46,15 @@
       status: open
       source: agent-self
       first_seen_at: "2026-09-02T06:50:07.722Z"
+- id: DL-004
+  kind: difficulty
+  description: "TWO flowspace3 daemons share one global ~/.config/flowspace3/daemon.key, and the second one to start silently locks every client out of the first. Measured 2026-09-02: prod daemon pid 1548 (main checkout, 013 binary c2f4709) took 127.0.0.1:7373 at 16:51:27 and holds its key in memory. A DIFFERENT flowspace3 daemon, pid 89658 'flowspace3 daemon --json' with cwd /Users/jordanknight/pi-hacking/fs3-spawn-reports-bind, started at 16:54:32 and rewrote daemon.key — the file mtime is exactly 16:54:32. It never took the port, so nothing looks wrong: lsof shows the correct prod daemon listening, prod is genuinely healthy, but every client including 'flowspace3 status' and 'flowspace3 search' now gets {ok:false, command:authenticate}. The next_action tells you to read the key from the file and send it as a bearer, which is precisely the key that does NOT work, so the advice actively misleads. This blocked the ac-0005 measurement pair on a healthy prod. Note this is NOT the documented pij-two-daemons hazard (that is pij legacy vs rs); it is the same failure SHAPE in flowspace3 itself."
+  severity: blocking
+  workaround: "None available inside a read-only reviewer fence: recovering requires stopping another seat's daemon or relaunching prod, neither of which is mine to do. Reported to o-prime instead."
+  suggested_encoding: "Two parts. (1) Make the key per-instance rather than a global singleton, or have the daemon refuse to rewrite a key file owned by a live daemon on the configured port. (2) Fix the 401 next_action: when the on-disk key mtime is NEWER than the listening daemon's start time, say 'another flowspace3 daemon has overwritten the shared key; the daemon on :7373 (pid N, started T) predates the key file (written T2)' instead of telling the operator to send a key that cannot work."
+  fp: a17ab836d71d
+  system:
+    compound:
+      status: open
+      source: agent-self
+      first_seen_at: "2026-09-02T06:57:24.253Z"

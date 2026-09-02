@@ -3,31 +3,32 @@
 Production profiling attributed 261.2 of 380 DB CPU-seconds (68.7%) to `search_elements`. The old admission predicate nested a correlated `smart_content` lookup under `EXISTS(elements)`: 962,792 smart-content probes and 3,851,137 of 3,853,170 shared hits to return 40 rows. The HNSW scan itself took 12.4 ms / 1,078 buffers; the complete query took 1,667 ms and JIT compilation took 281 ms.
 
 ## Change
+- Pre-resolve caller scope to raw and smart source keys once, then apply those keys inside the HNSW scan before `ORDER BY … LIMIT` (`crates/store/src/embeddings.rs:579-627`). This restores iterative-scan recovery for small repository shares without correlated `smart_content` probes.
+- Bound payload and representative resolution to the current candidate page: raw candidate hashes union raw hashes reached through smart `text_hash` mappings (`:633-711`).
+- Carry raw candidate count and admitted count independently (`:629-631`, `:713-715`). Stop after admitted growth stalls; at the ceiling return a short page instead of `Err` (`:820-877`).
+- Return internal `SearchPage { hits, passes, candidate_limit_exhausted }`; publish only additive agent-facing metadata `scan_incomplete` and `passes`, independent of fusion and truncation.
+- Disable JIT transaction-locally through the same setup function production executes (`:50-61`): measured compilation cost was 281 ms against 12 ms of vector work.
 
-- Materialize the HNSW-ordered `candidate_vectors` page first, bounded by `candidate_limit` (`crates/store/src/embeddings.rs:505-513`).
-- Resolve caller-eligible elements once (`:519-557`), collapse them to one deterministic representative per raw hash (`:559-562`), map eligible smart content once (`:564-575`), and build deduplicated raw/smart source keys (`:577-582`).
-- Post-filter only the bounded candidate page against those keys (`:584-589`), then resolve smart and element representatives without correlated probes (`:591-604`).
-- Carry pre-admission `candidate_count` through an internal nullable sentinel when a page admits zero rows (`:611-656`, `:742-770`). This preserves the existing expansion constants and fixes the 100%-foreign-first-page case.
-- Disable JIT transaction-locally for this latency-bound statement (`:50-54`, `:704-706`): measured compilation cost was 281 ms against 12 ms of vector work.
+No migration, index, dependency, scoring, chunk-collapse, or expansion-constant change. The store return type and additive search metadata are the reviewer-authorized clean cutover.
 
-No migration, index, dependency, public API, scoring, chunk-collapse, or expansion-policy change.
+## Filter matrix preserved — proof source stated honestly
 
-## Filter matrix preserved
+The parity golden covers repository, path, raw/smart source, kind, and exact conversation at limits 10/40. Existing focused regression suites cover the remaining unchanged predicates; the table does not claim those are parity-golden cases.
 
-| Contract | Location |
-|---|---|
-| embedding model, vector source, distance ceiling | `embeddings.rs:509-511` |
-| element kinds | `:522` |
-| ddoc id kinds | `:523-524` |
-| gate-open semantics, including unknown state | `:525-535` |
-| ddoc schema | `:536-537` |
-| exact conversation address prefix | `:538-539` |
-| repository, path, worktree through live files | `:540-549` |
-| repository, path, worktree through conversations | `:550-557` |
-| deterministic shared-summary chooser | `:564-575` |
-| deterministic eligible element chooser | `:559-562`, `:599-604` |
-| live/conversation provenance selection | `:621-643` |
-| nearest-per-element collapse and final order | `:606-656` |
+| Contract | Location | Proof |
+|---|---|---|
+| model key, vector source, distance ceiling | `embeddings.rs:617-619` | parity covers source; existing store tests cover model/distance |
+| element kinds | `:647` | parity + no-growth geometry |
+| ddoc id kinds | `:648` | `pg_ddoc` regression |
+| gate-open semantics, including unknown state | `:649-659` | `pg_ddoc` regression |
+| ddoc schema | `:660` | `pg_ddoc` regression |
+| exact conversation | `:592-603`, `:661` | parity + daemon conversation regression |
+| repository, path, worktree scope source keys | `:579-627` | parity + paired 12k/5 geometry + first-light regressions |
+| page-bound raw/smart mapping union | `:633-641` | smart parity + shape-loop assertion |
+| deterministic shared-summary chooser | `:686-697` | parity shared-summary geometry |
+| deterministic eligible element chooser | `:681-684`, `:724-729` | parity shared-raw geometry |
+| collapse/provenance/final order | `:731-782` | chunk-collapse and first-light regressions |
+| admitted-growth / no-error bound | `:83-107`, `:820-877` | no-growth DB test + bound decision unit test; both mutation-checked |
 
 ## EXPLAIN before / after
 
@@ -43,31 +44,37 @@ No migration, index, dependency, public API, scoring, chunk-collapse, or expansi
 **After — isolated `:5434` prod-shaped fixture:**
 
 - seed: 50,000 `elements`, 10,000 `smart_content`, 20,000 embeddings (10,000 smart + 10,000 raw);
-- execution: 108.468 ms;
-- shared hits: 2,691;
+- execution: 7.322 ms;
+- shared hits: 3,113;
 - HNSW rows: 160; `candidate_vectors` rows: 160;
-- maximum `smart_content` loops: 1;
-- no Materialize-over-elements, no correlated smart-content SubPlan, no JIT;
+- maximum `smart_content` loops: 159, bounded by the candidate page;
+- no correlated smart-content SubPlan inside candidate admission, four-field candidate target, no JIT.
 - `candidate_vectors` target list remains exactly `(source_hash, source_kind, chunk_no, distance)`.
 
 The old pathological query is never ANALYZEd in tests. The mutation uses non-ANALYZE `EXPLAIN (VERBOSE, FORMAT JSON)` and must expose both the correlated smart-content SubPlan and Materialize-over-elements shape.
 
 ## Mutation
 
-`crates/store/tests/fixtures/search_admission_old.sql` contains the old correlated admission fragment. The static shape test replaces the new post-admission join with that fragment. The shipped plan must retain a childless `<=>` HNSW driver under the 160-row `candidate_vectors` Limit; the old mutation must fail by restoring the correlated SubPlan and Materialize shape.
+`crates/store/tests/fixtures/search_admission_old.sql` contains the old correlated admission fragment. The static shape mutation restores it and must expose both the correlated `smart_content` SubPlan and Materialize-over-elements shape.
+
+Review mutations were executed, then reverted:
+
+- removing admitted-growth comparison makes `admitted_growth_stops_an_empty_content_filter_after_two_passes` red (`scan_incomplete` is not raised);
+- restoring the bound error makes `filtered_search_returns_a_short_page_at_the_expansion_bound` red (`Error` vs short-page `Return`);
+- removing shipped `SET LOCAL jit=off` makes `shipped_search_transaction_disables_jit_locally` red (`on` vs `off`).
 
 ## Tests
 
 All database tests used only `flowspace3-db-test` on `127.0.0.1:5434`.
 
-- `cargo test -p fs3-store --test search_admission` — 2/2.
-- `cargo test -p fs3-store search_plan_shape` — 2/2.
-- `cargo test -p fs3-store --test pg_first_light --test pg_ddoc --test pg_store_flows` — 53/53.
-- daemon `conversation_query`, `first_light`, `oversize`, `search_empty`, `search_lexical`, `search_scope_starvation` — 55/55.
+- `cargo test -p fs3-store --test search_admission` — 3/3: golden parity; 12,000 nearer foreign + five scoped returns all five on pass 1; empty content filter stops exhausted on pass 2.
+- `cargo test -p fs3-store embeddings::tests` — 5/5: shape, JIT, and bound guards.
+- focused store regressions — 53/53.
+- focused daemon regressions — 56/56, including Rust and HTTP `scan_incomplete` carrier; the envelope publishes no duplicate exhaustion alias.
 
-Parity golden: limits 10 and 40 across repository, path, raw source, smart source, kind, and exact conversation filters; scores within `1e-6`. It includes one raw hash shared by at least three elements and one summary hash shared by at least two raw bodies in both code and conversation scopes. A separate regression makes the entire first HNSW page foreign-repository content and still requires the full scoped limit.
+Parity golden: six predicates × two limits = twelve cases, scores within `1e-6`. It includes a raw hash shared by three elements and a summary hash shared by two raw bodies in code and conversation scopes. Predicates outside those six are covered by the named existing suites above, not claimed as golden cases.
 
-Full `harness checks`: queued for the exclusive gate slot.
+The option-B correction is one commit on PR head `065acfd`; CI on that exact correction SHA is the gate. No local full gate is required for this review round.
 
 ## Production follow-up
 
