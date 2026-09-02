@@ -128,13 +128,19 @@ fn free_port() -> u16 {
 #[tokio::test]
 async fn the_real_binaries_agree_through_a_discovered_config() {
     let port = free_port();
+    let database =
+        fs3_testkit::FreshDatabase::create_from(&fs3_testkit::test_database_url(), "health-real")
+            .await
+            .expect("creating a per-run database on the test postmaster");
     let directory = support::temp_dir("discovered-config");
     std::fs::write(
         directory.join("config.toml"),
         format!(
             "[daemon]\nurl = \"http://127.0.0.1:{port}\"\n\n\
+             [database]\nurl = {:?}\n\n\
              [embedder]\nactive = \"fake\"\n\n\
-             [summarizer]\nactive = \"fake\"\n"
+             [summarizer]\nactive = \"fake\"\n",
+            database.url()
         ),
     )
     .expect("writing the config the binaries must discover");
@@ -143,7 +149,7 @@ async fn the_real_binaries_agree_through_a_discovered_config() {
         fs3_testkit::sealed(
             &fs3_testkit::flowspace3_binary(),
             &directory,
-            fs3_testkit::TestDatabase::Scratch,
+            fs3_testkit::TestDatabase::FromConfigFile,
         )
         .arg("daemon")
         .stdout(std::process::Stdio::null())
@@ -153,7 +159,7 @@ async fn the_real_binaries_agree_through_a_discovered_config() {
     );
 
     // Readiness is observed, never assumed. The daemon publishes daemon.key
-    // before binding, so any open listener must already accept those bytes.
+    // after binding, so any open listener must already accept those bytes.
     let health = format!("http://127.0.0.1:{port}/health");
     let client = reqwest::Client::new();
     let mut answered = None;
@@ -215,4 +221,11 @@ async fn the_real_binaries_agree_through_a_discovered_config() {
         stdout.contains("embedder: fake"),
         "ping should name the wired provider, got: {stdout}"
     );
+
+    let _ = daemon.0.kill();
+    let _ = daemon.0.wait();
+    database
+        .cleanup()
+        .await
+        .expect("dropping the per-run health-test database");
 }

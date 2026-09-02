@@ -54,6 +54,8 @@ Full verdict, verbatim fields from `harness checks`: `{"command":"checks","statu
 
 Task t5 remains open only for CI on the exact PR head SHA.
 
+CI run 33607516052 on `43fca08` failed only `the_real_binaries_agree_through_a_discovered_config`: CI's isolated Postgres service intentionally has the same URL spelling as the shipped local default, so the new owner guard refused it. The test now follows the already-ruled per-run rule: it creates a child `FreshDatabase` on the selected test postmaster, writes that unique URL into its scratch config, uses `TestDatabase::FromConfigFile`, and cleans the child database after stopping the daemon. No `FS3_PROD_OWNER` bypass is needed. The formerly failing isolated command is green locally against `:5434`; CI rerun will prove the Linux path.
+
 ## t6 — Real TEST-setup transcript (pre-PR)
 
 Status: runtime proof complete; PR/CI pending.
