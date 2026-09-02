@@ -3091,3 +3091,10 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     prod; the pij-extension story is blocked on row 125 → promote row 125
     to a packet (a per-root `include_hidden` opt-in). Also: a path-scoped
     search that returns 0 carries `empty_because: None` (row 144 again).
+    ROW 147 — receipt searches: 740 TS elements exist and are embedded,
+    but "what does the <name> function do" for three DB-chosen TypeScript
+    functions from the visible pij files returned Rust functions, docs and
+    conversation turns — never the TS element (walls 5–29 s at load 29).
+    Hypothesis: search auto-scopes to the caller's worktree (o-prime ran
+    from the flowspace3 clone; #91 scopes ask by path) — testing the same
+    queries from the pij checkout's cwd before calling it a ranking miss.
