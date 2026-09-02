@@ -1,0 +1,29 @@
+government/briefs/backlog.md
+  s_15d888f4b629c1::t_85be2fc06b1e68 3232-3237
+scratch/review-013/cross-model-review-round2.dd.json
+  s_15d888f4b629c1::t_4dab03851563bd 1-203
+scratch/review-013/cross-model-review-round2.dd.md
+  s_15d888f4b629c1::t_ef2b1d6c66c5df 1-52
+scratch/review-013/review-013-delta-verdict.md
+  s_15d888f4b629c1::t_141893759f29ea 1-76
+scratch/review-013/review-013-final-confirmation.md
+  s_15d888f4b629c1::t_b0b2c77c64ac55 1-22
+scratch/review-013/session-buffer.md
+  s_15d888f4b629c1::t_9c166c7c947cdc 25-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2fae7714ff996c905127d7c8119543570e48fe87",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
