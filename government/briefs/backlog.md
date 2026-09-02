@@ -3289,3 +3289,11 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     per-candidate loops). Encode: state that on the fixture, and add a
     cost fixture with distinct vectors and realistic text sizes for any
     latency claim.
+    PLAN 013 — **PROD RECEIPT** (06:53Z, pid 1548 on c2f4709, load 29,
+    scratch/plan-013-prod-after.md): the same four searches as the
+    05:00 baseline — 8.28 → 0.56 s, 3.95 → 0.38 s, 14.45 → 0.70 s; a
+    code-shaped TS query 0.54 s; every envelope scan_incomplete=false,
+    passes=1. pg_stat_statements: old statement 10,696 ms mean over 132
+    calls → new statement 209 ms mean (max 234) over 4 calls. `status`
+    wall 0.58 → 0.28 s. Rows 122/145 latency: RESOLVED. Remaining ~0.4 s
+    is query embedding + HTTP (row 160 timing would show the split).
