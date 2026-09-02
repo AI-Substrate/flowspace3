@@ -2352,3 +2352,17 @@ DEGRADED-ATTRIBUTION TALLY: EIGHT (plan 012 delta commit f3aec311, 2026-09-02).
     Also from the batch (goods): verify 0.02 s honest negative; `get
     conv:#t --repo all` reliable throughout the backfill; 101
     conversations survived the outage intact.
+    ROW 147 ROOT CAUSE (o-prime, source read): NOT a regression — only
+    THREE grammars are wired in crates/parsers (tree_sitter_md,
+    tree_sitter_python, tree_sitter_rust). discovery.rs:132 lists ts/
+    tsx/swift/sql/svelte/vue/zig/… as DISCOVERABLE extensions, so those
+    files are indexed as bare file elements and never parsed. Every
+    non-Rust/Python codebase in the index — three TypeScript governments,
+    the C# game (row 136) — has no symbol granularity: no tree, no refs,
+    no element-level search, and document sections dominate ranking.
+    PACKET (next after the perf pair): wire tree-sitter-typescript (+tsx)
+    via the add-language skill, prove on harness-engineering's
+    `resolveConvoIdentity` (refs ≥ 5, tree non-empty), and ship the
+    "no parser for .<ext>" honesty line in the same PR; then C#/GDShader
+    (136) on the same rail. A doctor row listing "extensions indexed vs
+    parsers wired" is part of it so this cannot be invisible again.
