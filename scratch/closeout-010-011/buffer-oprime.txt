@@ -1,0 +1,7 @@
+6 o-prime observations
+- DL-001 difficulty | flowspace3 get on an explicit conv:<guid> address is silently scoped to the cwd worktree, and the miss says 'no conversation X is indexed' — false, since conversation lis
+- DL-002 difficulty | flowspace3 status reports N failed jobs and no verb names WHICH — had to psql the prod jobs table by hand to learn whether the failures were code or conversation content.
+- DL-003 difficulty | pij spawn --bin omp from a legacy prime mints an rs child that cannot message its parent: pij send from the child fails E-RS 'not falling back to legacy' and tells the ch
+- DL-004 difficulty | flowspace3 search takes 23-120s (two coder searches hit the 60s client timeout) while the machine load average is 38-53 from concurrent cargo builds across fleets; daemon
+- DL-005 difficulty | pij-rs send truncated a ~900-char inline body on the receiving reviewer's side (transcript cut at '#4 is MY au...'); the reviewer had to ask for the tail. Known head/tail
+- DL-006 difficulty | harness daemon bounce returned ok while the new daemon was listening but not serving for ~2 min (health 000, curl connect ok then no response); Jordan's flowspace3 add . 
