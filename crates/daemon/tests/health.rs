@@ -6,6 +6,8 @@
 //! CLI asks. The router needs no database, which is the point of wiring the
 //! pool lazily.
 
+use std::io::Read as _;
+
 use fs3_core::Config;
 use fs3_daemon::{AppState, http};
 
@@ -152,8 +154,8 @@ async fn the_real_binaries_agree_through_a_discovered_config() {
             fs3_testkit::TestDatabase::FromConfigFile,
         )
         .arg("daemon")
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
         .spawn()
         .expect("the daemon binary should start"),
     );
@@ -167,7 +169,19 @@ async fn the_real_binaries_agree_through_a_discovered_config() {
         if let Ok(exited) = daemon.0.try_wait()
             && let Some(status) = exited
         {
-            panic!("the daemon exited before serving {health}: {status}");
+            let mut stdout = String::new();
+            if let Some(mut pipe) = daemon.0.stdout.take() {
+                pipe.read_to_string(&mut stdout)
+                    .expect("reading failed daemon stdout");
+            }
+            let mut stderr = String::new();
+            if let Some(mut pipe) = daemon.0.stderr.take() {
+                pipe.read_to_string(&mut stderr)
+                    .expect("reading failed daemon stderr");
+            }
+            panic!(
+                "the daemon exited before serving {health}: {status}\nstdout:\n{stdout}\nstderr:\n{stderr}"
+            );
         }
         let key = std::fs::read_to_string(fs3_core::daemon_key_path(&directory));
         if let Ok(key) = key

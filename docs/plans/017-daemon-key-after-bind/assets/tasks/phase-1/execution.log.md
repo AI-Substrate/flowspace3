@@ -56,6 +56,8 @@ Task t5 remains open only for CI on the exact PR head SHA.
 
 CI run 33607516052 on `43fca08` failed only `the_real_binaries_agree_through_a_discovered_config`: CI's isolated Postgres service intentionally has the same URL spelling as the shipped local default, so the new owner guard refused it. The test now follows the already-ruled per-run rule: it creates a child `FreshDatabase` on the selected test postmaster, writes that unique URL into its scratch config, uses `TestDatabase::FromConfigFile`, and cleans the child database after stopping the daemon. No `FS3_PROD_OWNER` bypass is needed. The formerly failing isolated command is green locally against `:5434`; CI rerun will prove the Linux path.
 
+Why local `harness checks` was green on `43fca08` while CI was red on the same SHA: the environments supplied different database identities. Locally, the mandated `FS3_TEST_DATABASE_URL` was `127.0.0.1:5434/flowspace3_test`, which is not `DatabaseConfig::DEFAULT_URL`, so the production-owner guard correctly did not fire. CI set `FS3_TEST_DATABASE_URL` to `127.0.0.1:5433/flowspace3`, byte-identical to the shipped default URL, so the guard correctly refused the undesignated child. The SHA was the same; the gate inputs were not. The per-run child database removes that URL-identity collision in both environments.
+
 ## t6 — Real TEST-setup transcript (pre-PR)
 
 Status: runtime proof complete; PR/CI pending.
