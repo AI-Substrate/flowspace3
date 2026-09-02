@@ -1,0 +1,84 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "search-admission \u2014 the admission filter must not probe smart_content per candidate",
+        "slug": "search-admission",
+        "ordinal": 13,
+        "status": "ready",
+        "summary": "MEASURED ON PROD 2026-09-02 (assets/inputs/db-cpu-profile-report.md \u00a75, \u00a78 cause #1): the search nearest CTE in crates/store/src/embeddings.rs:557-620 admits a candidate vector with `EXISTS (SELECT 1 FROM elements admitted WHERE (raw) OR (source_kind='smart' AND EXISTS (SELECT 1 FROM smart_content c",
+        "backpressure": "assets/backpressure.dd.json#rows"
+      }
+    },
+    {
+      "name": "summary",
+      "value": "MEASURED ON PROD 2026-09-02 (assets/inputs/db-cpu-profile-report.md \u00a75, \u00a78 cause #1): the search nearest CTE in crates/store/src/embeddings.rs:557-620 admits a candidate vector with `EXISTS (SELECT 1 FROM elements admitted WHERE (raw) OR (source_kind='smart' AND EXISTS (SELECT 1 FROM smart_content candidate WHERE candidate.text_hash = e.source_hash AND candidate.raw_hash = admitted.raw_hash)))`. Postgres plans that as a Nested Loop Semi Join over a spilling Materialize of a Seq Scan on elements (86,191 rows, rescanned per candidate), producing 962,792\u20131,698,017 smart_content_text_hash_idx probes and 3.8\u20136.8M buffer hits PER SEARCH, 1.7\u20132.7 s each \u2014 while the HNSW scan that supposedly dominates takes 12.4 ms / 1,078 buffers. The candidate-expansion loop (MAX_CANDIDATE_EXPANSIONS=8, growth \u00d72) re-runs the whole query up to 9 times when a pass under-fills: that is the 13 s / 60 s / 120 s searches two coders and a reviewer hit today (row 122). 69% of ALL database CPU in the profiling window; smart_content_text_hash_idx measured at 124,551 scans/s. JIT adds 281 ms/query compiling 88 functions on a cost estimate of 478,936,610. 99.7% buffer hit rate \u2014 this is CPU-bound on a bad plan, NOT I/O-bound on shared_buffers (row 122's original premise, falsified by EXPLAIN). Full plan: assets/inputs/db-cpu-profile-report.md and dbprof/explain160.out in governance scratch."
+    },
+    {
+      "name": "goals",
+      "value": [
+        "A search performs O(candidates) work, not O(candidates \u00d7 elements): the admission predicate is resolved as hash semi-joins (smart_content text_hash\u2192raw_hash resolved ONCE, elements admitted ONCE), never as a correlated per-candidate EXISTS.",
+        "EXPLAIN (ANALYZE, BUFFERS) of the shipped query on prod's corpus shows the smart_content probe with loops < 1,000 and total shared buffer hits under 100,000 for limit=40 / candidate_limit=160 (was 962,792 loops / 3.85M hits).",
+        "Ranking parity: the existing search fixtures and the 009 chunk-collapse tests pass unchanged; a new parity test asserts the same top-N addresses and scores (within float tolerance) for the fixture corpus before and after.",
+        "Search wall time on prod for the profile's reference query drops from 1.65 s (single pass) to under 300 ms, and a bare `flowspace3 search` from the main checkout completes under 1 s at idle load. Measured, not estimated.",
+        "The CTE carries (source_hash, source_kind, chunk_no, distance) only; no vector column is materialised into a temp set (row 122(b)). JIT no longer triggers on this query (cost estimate sane), or is explicitly disabled for it with a stated reason."
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "No change to the 009 element collapse semantics, chunk_no handling, or the scoring formula.",
+        "No change to shared_buffers or any postgres config (row 140, separate, needs a restart).",
+        "No change to candidate-expansion policy beyond what parity requires \u2014 if the loop still re-runs, it re-runs a cheap query.",
+        "No index additions without a stop-and-ask naming the size and the write cost."
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-0001",
+          "state": "unchecked",
+          "claim": "Loops bound, mutation-checked: an integration test runs EXPLAIN (ANALYZE, FORMAT JSON) on the shipped query against a seeded corpus with \u226550k elements and \u226510k smart_content rows and asserts the smart_content node's loops \u2264 candidate_limit and no Materialize-over-Seq-Scan-on-elements node exists; the SAME test fails against the old query (keep it under a cfg/feature or a golden-SQL comparison so the mutation is one-line). Mutation stated in the PR body."
+        },
+        {
+          "id": "ac-0002",
+          "state": "unchecked",
+          "claim": "Ranking parity: for the fixture corpus, top-N addresses and scores match the pre-change output within 1e-6 (golden file committed with the OLD query's output), for limit \u2208 {10, 40} and with each filter kind (repo, path glob, source, kind, conversation) exercised once."
+        },
+        {
+          "id": "ac-0003",
+          "state": "unchecked",
+          "claim": "All existing crates/store and crates/daemon search tests pass unchanged (009's collapse fixtures included)."
+        },
+        {
+          "id": "ac-0004",
+          "state": "unchecked",
+          "claim": "PROD, after o-prime's bounce, read-only: EXPLAIN (ANALYZE, BUFFERS) of the profile's reference query (dbprof/explain160.out binds) shows loops < 1,000 on smart_content and < 100,000 shared hits; execution time < 300 ms. Receipt = the plan text before/after."
+        },
+        {
+          "id": "ac-0005",
+          "state": "unchecked",
+          "claim": "PROD real usage: `/usr/bin/time -p flowspace3 search 'where does the daemon detect new git worktrees' --json` from the main checkout, three runs, all under 1 s wall (was 5\u201316 s today); and the two coder queries that hit the 60 s client timeout this morning (in assets/inputs) return under 2 s. Receipt = the timings."
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-11e9",
+          "title": "Phase 1: rewrite admission as joins + parity",
+          "brief": "Single unit, single coder, no PM: (1) golden output of the OLD query on the fixture corpus; (2) rewrite the candidate_vectors CTE: resolve smart_content (text_hash, raw_hash) once, admitted elements once, hash semi-join; CTE carries no vectors; (3) EXPLAIN-shape test with mutation; (4) parity + existing suites; (5) PR; (6) prod EXPLAIN + timings after o-prime's bounce.",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+        }
+      ]
+    }
+  ],
+  "references": []
+}

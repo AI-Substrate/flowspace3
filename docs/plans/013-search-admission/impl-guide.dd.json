@@ -1,0 +1,87 @@
+{
+  "dd": {
+    "schema": "pij-team/impl-guide"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "impl-guide \u2014 search-admission",
+        "plan": "docs/plans/013-search-admission/plan.dd.json",
+        "mode": "single-coder",
+        "updated": "2026-09-02"
+      }
+    },
+    {
+      "name": "architecture",
+      "value": "One query, one function. The nearest CTE in crates/store/src/embeddings.rs builds candidate_vectors by scanning the HNSW index (cheap) and then ADMITTING each candidate through a correlated EXISTS that, for smart vectors, nests a second EXISTS on smart_content \u2014 Postgres cannot hash that, so it nested-loops a materialised Seq Scan of elements per candidate and probes smart_content ~1M times. The rewrite resolves the two admission sets ONCE as CTEs \u2014 admitted elements (with the caller's filters applied) and a smart_map of (text_hash \u2192 raw_hash) \u2014 and joins the candidate stream to them with hash semi-joins; the CTE stops carrying vectors. The candidate-expansion loop is untouched but each pass becomes cheap. Evidence altitude: an EXPLAIN-shape test (structural, mutation-checked against the old SQL kept as a golden string), a ranking-parity test against a golden of the old output, then PROD \u2014 the profiler's exact query and binds, and wall-clock on the queries that timed out this morning."
+    },
+    {
+      "name": "fan_out",
+      "value": {
+        "decision": "NO",
+        "rationale": "One unit, one coder, no PM; o-prime coordinates directly (Jordan, 2026-09-02: dispatch the performance work to agents)."
+      }
+    },
+    {
+      "name": "units",
+      "value": [
+        {
+          "id": "u1",
+          "name": "search-admission",
+          "paths": "crates/store/src/embeddings.rs (the nearest CTE + search_elements/query_embeddings), crates/store/tests (new plan-shape + parity tests, goldens), fixtures you add",
+          "responsibility": "admission as hash joins; no per-candidate probes; no vectors in the CTE; identical ranking",
+          "interface": "public store API unchanged; SQL text changes only; goldens committed",
+          "test_strategy": "EXPLAIN-shape test with a one-line mutation to the old SQL; parity golden; existing suites; prod EXPLAIN + timings after bounce",
+          "depends_on": "none",
+          "wave": 1,
+          "note": "ac-0001\u20130003 in the worktree; ac-0004/0005 on prod with o-prime after the bounce."
+        }
+      ]
+    },
+    {
+      "name": "isolation",
+      "value": {
+        "mode": "worktree-per-coder",
+        "note": "Worktree ../fs3-search-admission on branch 013-search-admission. Per-seat CARGO_TARGET_DIR. Per-run test DBs on :5433 with your own label \u2014 seed a corpus large enough that the plan shape is real (\u226550k elements) or the EXPLAIN test proves nothing. NEVER :7373 for tests; read-only prod EXPLAIN/timings are REQUIRED after the bounce. One cargo at a time; ask o-prime for the gate slot."
+      }
+    },
+    {
+      "name": "composition",
+      "value": {
+        "composer": "o-prime",
+        "steps": "None \u2014 single unit. o-prime squash-merges and bounces prod (daemon/store binary changes).",
+        "integration_proof": "the real-usage criteria in the plan, measured on prod after the bounce"
+      }
+    },
+    {
+      "name": "review",
+      "value": {
+        "when": "spawned by o-prime once the PR is up",
+        "inputs": "the three owed lists: (1) least confident \u2014 does the rewrite change WHICH candidates are admitted under each filter kind (path glob, source, conversation pin), does the semi-join dedupe candidates that the old OR-EXISTS admitted twice, is the plan shape stable when the seeded corpus is small vs prod-sized, does JIT still fire; (2) disbelieve \u2014 re-run the EXPLAIN-shape test and perform the mutation (old SQL) yourself; re-derive parity from the golden; run the prod EXPLAIN yourself read-only after the bounce; (3) known-open \u2014 rows 139/140/141/124b, zero findings.",
+        "model_override": "github-copilot/claude-opus-5 (Claude reviews; ruling 2026-09-02)"
+      }
+    },
+    {
+      "name": "risks",
+      "value": [
+        {
+          "id": "risk-1",
+          "text": "Parity golden captured from a query that is itself wrong in some edge (e.g. double-admission) would freeze the bug \u2014 the coder must state any golden row it believes is wrong at ack rather than match it"
+        },
+        {
+          "id": "risk-2",
+          "text": "A planner that still chooses a nested loop on a small seeded corpus \u2014 the shape test must seed enough rows, or assert on prod-sized stats via pg_stat"
+        },
+        {
+          "id": "risk-3",
+          "text": "Filters that were applied inside the correlated EXISTS (kind, gate_open, ddoc_schema, conversation) must be applied to the admitted set with identical semantics \u2014 enumerate each in the ack"
+        },
+        {
+          "id": "risk-4",
+          "text": "Candidate expansion: if parity requires the same under-fill behaviour, the loop stays; document the pass count for the reference query before/after"
+        }
+      ]
+    }
+  ]
+}

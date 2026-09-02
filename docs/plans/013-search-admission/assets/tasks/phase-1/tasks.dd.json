@@ -1,0 +1,132 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: rewrite admission as joins + parity",
+        "slug": "phase-1",
+        "status": "ready",
+        "summary": "One coder, tasks in order, every assertion pinned to a backpressure row."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Work top to bottom; stop-and-ask o-prime on anything outside the fence."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-0101",
+          "title": "Golden: capture the OLD query's top-N output (addresses + scores) on the fixture corpus for limit 10/40 and each filter kind; commit as a golden file + the old SQL as a string for the mutation",
+          "state": "unchecked",
+          "done": "#done_when/tk-0101",
+          "success": "golden committed",
+          "satisfies": []
+        },
+        {
+          "id": "tk-0102",
+          "title": "Rewrite candidate_vectors: CTE smart_map AS (SELECT text_hash, raw_hash FROM smart_content \u2026) hash-joined once; admitted elements resolved once with the same filter predicates; candidate admitted via semi-join on raw_hash; CTE selects (source_hash, source_kind, chunk_no, distance) only",
+          "state": "unchecked",
+          "done": "#done_when/tk-0102",
+          "success": "EXPLAIN shape test green; red with old SQL",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        },
+        {
+          "id": "tk-0103",
+          "title": "Parity + regression: search_parity test against the golden; existing suites",
+          "state": "unchecked",
+          "done": "#done_when/tk-0103",
+          "success": "all green",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002",
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
+        },
+        {
+          "id": "tk-0104",
+          "title": "Gate + PR with the mutation and the EXPLAIN before/after in the body",
+          "state": "unchecked",
+          "done": "#done_when/tk-0104",
+          "success": "PR open, CI green",
+          "satisfies": []
+        },
+        {
+          "id": "tk-0105",
+          "title": "After o-prime's bounce: prod EXPLAIN + the wall-time runs; receipts into the ACs",
+          "state": "unchecked",
+          "done": "#done_when/tk-0105",
+          "success": "ac-0004/0005 receipts",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004",
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {
+        "tk-0101": [
+          {
+            "id": "dw-30d1",
+            "assertion": "golden file exists and the parity test reads it",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          }
+        ],
+        "tk-0102": [
+          {
+            "id": "dw-30d2",
+            "assertion": "loops \u2264 candidate_limit; no Materialize/SeqScan(elements) node; mutation red",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          }
+        ],
+        "tk-0103": [
+          {
+            "id": "dw-30d3",
+            "assertion": "top-N addresses/scores match within 1e-6",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          },
+          {
+            "id": "dw-30d4",
+            "assertion": "store + daemon suites unchanged",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          }
+        ],
+        "tk-0104": [
+          {
+            "id": "dw-30d5",
+            "assertion": "harness checks green; CI green",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0006"
+          }
+        ],
+        "tk-0105": [
+          {
+            "id": "dw-30d6",
+            "assertion": "prod plan: loops, hits, time",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+          },
+          {
+            "id": "dw-30d7",
+            "assertion": "three bare-search timings + the two 60 s queries",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+          }
+        ]
+      }
+    }
+  ],
+  "references": []
+}
