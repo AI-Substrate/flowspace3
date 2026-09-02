@@ -1762,3 +1762,18 @@ PLAN 011 DELTA REVIEW (2026-09-02): APPROVE at a80e9a5. All three
     own doc says the field exists "so the scope is never something a
     consumer has to infer". Cheap: build `meta` from the widened scope,
     or omit `scope.repo` when a pin widened it. Row 119 family.
+
+128. **the empty-content hash (e3b0c442…) still rides in RECOVERY embed
+    batches** (plan 010 coder limpet, 2026-09-02, from prod job 1344012's
+    payload: six hashes, five doc sections, the sixth the empty hash).
+    Plan 009 filters empties at mint (turn/element enqueue) and drops them
+    at batch assembly; `requeue_missing_vectors` (enrich.rs ~485-496, the
+    `conv:recovery` placeholder identity) minted a job carrying the empty
+    hash anyway — so the mint-side filter has a third entry point it does
+    not cover. Assembly-side drop presumably saved the call (the job
+    completed), which is the defense-in-depth working; but the mint gap is
+    real and cheap: apply the same predicate in the recovery enqueue, plus
+    a test that a missing-vector sweep over a corpus containing the empty
+    hash mints no job for it. Also: ac-0006's plan premise was wrong
+    (`conv:recovery` read as "a conversation job") — recorded in the 010
+    receipts as an amendment, not hidden.
