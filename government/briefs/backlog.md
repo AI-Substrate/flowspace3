@@ -3080,3 +3080,14 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     unquoted `$PSQL` command variable is NOT word-split in zsh, so every
     gate query was "command not found"; re-run as a bash script. Encode:
     receipt scripts are files with a bash shebang, never inline zsh.
+    ROW 147 — RECEIPT, with a catch: prod now holds 586 Function + 154
+    container elements under fs3-parsers@3 across 105 TypeScript blobs
+    (740/740 non-file elements embedded; queue drained). BUT the pij
+    extension code — 563 of the repo's 667 .ts files — lives under `.pi/`
+    and discovery skips hidden directories by default (row 125) with NO
+    `--include-hidden` on `flowspace3 add`, so "where does the pij
+    extension register the seat" can never return a .ts element on prod;
+    only the 100 visible .ts files are indexed. The grammar is proven on
+    prod; the pij-extension story is blocked on row 125 → promote row 125
+    to a packet (a per-root `include_hidden` opt-in). Also: a path-scoped
+    search that returns 0 carries `empty_because: None` (row 144 again).
