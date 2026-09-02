@@ -2198,3 +2198,30 @@ DEGRADED-ATTRIBUTION TALLY: EIGHT (plan 012 delta commit f3aec311, 2026-09-02).
     on its own (row 110). LESSON (third instrument lesson today): a
     server-wide counter cannot prove a per-process property on a shared
     server; attribute or do not gate.
+
+143. **INCIDENT 2026-09-02 ~02:06–02:45Z — second prod postgres crash,
+    then DISK FULL took OrbStack down and with it BOTH postgres ports**
+    (o-prime, live). Sequence: (1) plan 013's EXPLAIN ANALYZE of the OLD
+    pathological search query on a 50k-element seed ran 648 s on the
+    shared postmaster while sibling seats issued DDL; backend `exited
+    with exit code 2` at 02:06:05Z → crash recovery → ready at
+    02:06:43Z; data intact (22 migrations, 101 conversations). (2) o-prime
+    stood up the separate test postmaster (row 124b) as compose
+    `db-test` on :5434 (PR #97) and moved every seat to it. (3) Within
+    minutes `/` hit 96% full (587 MiB free): five flowspace3 worktrees
+    each carrying a full cargo target (17+11+8.2+7.8+5 GB ≈ 45 GB) plus
+    ~48 GB of pij worktree targets in ~/pi-hacking plus ~170 GB of
+    unexplained same-day growth; OrbStack's docker socket vanished, so
+    :5433 AND :5434 died; the daemon answers /health on its pool but
+    every query returns FS3-E-STORE-QUERY-FAILED — flowspace3 is DOWN
+    for users while this stands. (4) Fleet frozen twice; o-prime deleted
+    two targets (10 GB), weasel told to reap pij targets; a disk agent
+    (w-disk-space) spawned to find the ~170 GB, restore OrbStack, and
+    reap in a ruled order; free space 0.6 → 79 GB at the time of this
+    note, OrbStack still down. CAUSES named: row 110 (per-seat
+    CARGO_TARGET_DIR duplicates a full workspace build per seat — the
+    reviewer's line: "the same crates compiled and stored five times";
+    fix = shared target + sccache or cargo-sweep on tidy), row 124b
+    (done today), and whatever the agent finds. Second-order lesson: a
+    reaper that runs on a schedule is the only version of row 110 that
+    survives a day like this.
