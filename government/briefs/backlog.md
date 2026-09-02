@@ -2557,7 +2557,7 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
 152. **`ddocs build` truncates table-cell values at 768 chars in the rendered
     `.dd.md` — silently ate the three owed lists in the 014 reviewer packet and
     the reviewer's own ac-0003 row** (takin n-004 / DL-001). The reviewer only
-    caught it by reading the `.dd.json`. Tooling defect for the ddocs owner
-    (meadowlark's government); until fixed, pij-team packets must keep long
+    caught it by reading the `.dd.json`. Tooling defect for the dd prime
+    (dajeil, rs pij-joyous-rooster — routed by meadowlark 2026-09-02); until fixed, pij-team packets must keep long
     items OUT of table cells (use instructions[] entries) — encode in the
     pij-team template notes.
