@@ -12,7 +12,7 @@
 | title | embed-cap-heal — the provider's cap rejection becomes a re-split signal |
 | slug | embed-cap-heal |
 | ordinal | 10 |
-| status | ready |
+| status | shipped |
 | complexity | — |
 | summary | Close backlog row 117: inputs denser than the bytes/3 estimate slip under the chunk window unsplit and are rejected by the provider at 8192 tokens, then retried into permanent failure. Make the rejection a SIGNAL that re-splits the offending input, align chunk_plan's window with the FILL margin fit_to_cap already honours, and drain the five jobs stuck in prod. |
 | backpressure | [rows](assets/backpressure.dd.md#rows) |
