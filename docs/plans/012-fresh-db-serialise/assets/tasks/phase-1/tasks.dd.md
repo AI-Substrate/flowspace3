@@ -39,7 +39,7 @@ Work top to bottom; stop-and-ask o-prime on anything outside the fence.
 | tk-0102 | Truthful advice: classify the connect error (refused vs closed/recovering — SQLSTATE 57P03 or an EOF after connect) and word the panic accordingly; drop the compose suggestion when a server is listening | — | — | [x] checked | — | cargo test -p fs3-testkit advice: 2 passed (artifact://36); refused port says No server and includes compose command; listening-close server says recovery/wait-and-retry and excludes compose command | [x] 1/1 [tk-0102](#tk-0102) | two advice tests green | — | [ac-0002](../../../plan.dd.md#acceptance-criteria) |
 | tk-0103 | Sweep matches minted names: parse both `fs3_test_&lt;epoch&gt;_&lt;hex&gt;` and `fs3_&lt;label&gt;_&lt;epoch&gt;_&lt;hex&gt;`; keep the age threshold; add a list-only mode that returns candidates without dropping | — | — | [x] checked | — | FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5433/flowspace3_test cargo test -p fs3-testkit sweep: 2 passed (artifact://45); list-only reported both epoch-1 minted shapes, sweep dropped those two, fresh remained; prod-like names rejected | [x] 1/1 [tk-0103](#tk-0103) | sweep test green for both shapes; red without | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
 | tk-0104 | Real usage on the shared container: run the oversize suite at default parallelism; grep the postgres log for recovery lines in that window; record counts | — | — | [x] checked | — | Window start 2026-09-02T00:54:34Z; FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5433/flowspace3_test cargo test -p fs3-daemon --test oversize: 12 passed in 13.81s (artifact://59); docker logs flowspace3-db since start: recovery signature count 0 | [x] 1/1 [tk-0104](#tk-0104) | oversize green; 0 recovery lines | — | [ac-0004](../../../plan.dd.md#acceptance-criteria) |
-| tk-0105 | Gate and PR: harness checks green; fix: commits via harness commit; PR into main with the mutation stated | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0105](#tk-0105) | PR open, CI green | — |  |
+| tk-0105 | Gate and PR: harness checks green; fix: commits via harness commit; PR into main with the mutation stated | — | — | [x] checked | — | harness checks: green 2026-09-02T01:05:54Z; commit 5c7f7bdb069cdb79de3bcf2203d57f934a75c22c verified by refs/notes/ai; PR #95 opened; GitHub gate passed in 5m5s on run 33578074863; lock-removal mutation stated in PR body | [x] 1/1 [tk-0105](#tk-0105) | PR open, CI green | — |  |
 | tk-0106 | With o-prime: sweep list mode against the prod server (read-only) naming the orphans; after GO, the drop; before/after counts into the receipt | — | — | [ ] unchecked | — | — | [ ] 0/1 [tk-0106](#tk-0106) | ac-0005 receipt from prod | — | [ac-0005](../../../plan.dd.md#acceptance-criteria) |
 
 <a id="done-when"></a>
@@ -74,7 +74,7 @@ Work top to bottom; stop-and-ask o-prime on anything outside the fence.
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-2005 | harness checks green; CI green on the PR head | [ ] unchecked | [bp-0006](../../backpressure.dd.md#rows) |
+| dw-2005 | harness checks green; CI green on the PR head | [x] checked | [bp-0006](../../backpressure.dd.md#rows) |
 
 ### tk-0106
 

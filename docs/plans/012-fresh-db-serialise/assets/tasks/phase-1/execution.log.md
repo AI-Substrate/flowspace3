@@ -25,3 +25,9 @@
 - Window began `2026-09-02T00:54:34Z` against the shared test server at `127.0.0.1:5433`.
 - `cargo test -p fs3-daemon --test oversize` ran without a thread override: 12 passed in 13.81 s (`artifact://59`).
 - `docker logs --since 2026-09-02T00:54:34Z flowspace3-db` contained zero postmaster termination, interruption, recovery-mode, or ready-after-recovery signatures.
+
+## tk-0105 — gate and PR
+
+- `harness checks` passed every mandated gate at `2026-09-02T01:05:54Z`.
+- `harness commit` created verified commit `5c7f7bdb069cdb79de3bcf2203d57f934a75c22c`; its `refs/notes/ai` attribution landed.
+- PR #95 opened against `main`, with the lock-removal mutation and all behavioral receipts in the body. GitHub gate run `33578074863` passed in 5m5s.
