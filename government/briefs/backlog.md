@@ -3229,3 +3229,9 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     (row 165 encode stands).
     PLAN 013 — CI GREEN on 8d04a77 (5m18s); merge train running; bounce
     blocked on the port.
+    ROW 161 — new datum: rs REPLAYED a 14:36 send to pij-select-carp at
+    ~06:50 (its inbound was dead at spawn, alive later) — undeliverable
+    sends are queued and replayed hours later, out of context, and the
+    receiver cannot tell a replay from a new instruction. For the pij
+    government: stamp delivery time + "replayed" on late deliveries, or
+    expire them.

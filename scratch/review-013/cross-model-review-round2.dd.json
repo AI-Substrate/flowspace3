@@ -1,0 +1,203 @@
+{
+  "dd": {
+    "schema": "builder/review"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Cross-model review — plan 013 search admission, round 2 delta",
+        "reviewer": "review-013 (cross-model reviewer seat)",
+        "model": "github-copilot/claude-opus-5",
+        "round": "2 (delta on the fix sha)",
+        "date": "2026-09-02",
+        "plan": "../../plan.dd.json#meta",
+        "note": "DELTA VERDICT: APPROVE — the blocker is fixed and independently verified in both directions. Fix sha b332f46e461ac9fd9706f249940502b5740ade67, reviewed detached in /Users/jordanknight/substrate/flowspace/fs3-review-013; round-1 sha was beee1491be13f3920affc5d257eb580974188360. f-9c41 FIXED: on the identical 12,000-nearer-foreign + 5-in-scope geometry the shipped statement now returns hits=5 / scanned=5 / admitted=5 at EVERY step of the 40->10,240 expansion sequence, byte-for-byte matching the pre-013 statement on the same corpus, where round 1 returned hits=0 with scanned==candidate_limit at every step and then raised candidate_limit_exhausted. f-2e07 FIXED and the new test genuinely discriminates: scoped_search_passes_twelve_thousand_nearer_foreign_vectors is green at b332f46 and RED against the pre-fix SQL spliced back in with a column-compatible admitted_count shim, failing behaviourally (left 0, right 5, SearchPage { hits: [], passes: 2, candidate_limit_exhausted: true }) rather than on a missing column. f-6a55 FIXED: the stale iterative_scan comment is gone. All four of the reviewer's binding precision notes are implemented as specified — admitted_sources relocated below the LIMIT, BOTH key legs inside it, a distinct scan_incomplete carrier set on all three SearchOutcome exits and surfaced in the HTTP envelope, and the no-Err change scoped to search_elements only (the sole remaining Err(candidate_limit_exhausted) is at embeddings.rs:413 inside the unfiltered query_embeddings). ac-0001 TRUE 5/5, ac-0002 TRUE, ac-0003 TRUE (store 53/53, daemon 56/56 — one more than round 1, a new starvation case). ac-0004/ac-0005 remain deferred: prod is still unbounced. CI on the sha reads gate pass in 6m3s; read, not rerun. Two round-1 MINORs remain open by design — f-7b13 and f-4d88 were not forwarded in the ruling — and this round adds one new MINOR (f-3b7e, proven) and one NIT (f-5c92). None is blocking. Performance moved sharply the right way: the plan-shape ANALYZE fell from 105.5-121.3 ms in round 1 to 6.873-7.315 ms here, because admitted_elements is now bounded to the candidate page instead of materialising the whole eligible elements set. All reviewer edits were uncommitted and reverted; git diff on crates/ is 0 lines. All work on flowspace3-db-test 127.0.0.1:5434; prod never touched."
+      }
+    },
+    {
+      "name": "findings",
+      "value": [
+        {
+          "id": "f-3b7e",
+          "kind": "defect",
+          "severity": "MINOR",
+          "finding": "MEDIUM — a scan that genuinely ran to completion can be reported as scan_incomplete. expansion_decision (embeddings.rs:89-108) computes expansion_exhausted = admitted_stalled || expansion == MAX_CANDIDATE_EXPANSIONS, then scan_incomplete = hit_count < requested && expansion_exhausted. It never subtracts the case where the vector scan actually finished. When a pass both exhausts the candidate scan (scanned < candidate_limit, i.e. the index has no more rows to give) AND sees the admitted set stop growing on that same pass, both flags are true and the short page is labelled scan_incomplete even though nothing further exists to find. That is a false claim of incompleteness on an exhaustive answer, and it now propagates: crates/daemon/src/search.rs:502-508 branches on scan_incomplete to decide whether to suppress the generic filtered-empty steer, so a content-filtered search that legitimately matched nothing can be reported as a bounded short scan rather than an honest empty. It over-reports rather than under-reports, which is the safe direction, and it is exactly the inverse of the confident-lie failure search.rs:405-410 exists to prevent. Smallest fix: scan_incomplete = hit_count < requested && expansion_exhausted && !candidate_scan_exhausted. The one existing unit test (embeddings.rs:1037) covers only the ceiling case with a growing admitted set, so it cannot see this.",
+          "address": "crates/store/src/embeddings.rs:89-108,1037; crates/daemon/src/search.rs:502-508",
+          "links": [
+            "../../plan.dd.json#acceptance_criteria"
+          ],
+          "state": "checked",
+          "receipt": "Proven, not reasoned. A disposable unit test asserting the correct value was added, run, and reverted: expansion_decision(1, 10, 100, 160, 5, Some(5), 3) — hit_count 1, requested 10, scanned 100, candidate_limit 160 (so the scan IS exhausted), admitted 5, previous_admitted Some(5) (so admitted stalled), expansion 3 (below the ceiling). Observed 'REVIEWER_EDGE: Return { scan_incomplete: true }'; assertion against Return { scan_incomplete: false } failed left/right as expected. Source restored; git diff on crates/ = 0 lines."
+        },
+        {
+          "id": "f-5c92",
+          "kind": "defect",
+          "severity": "NIT",
+          "finding": "The search envelope exposes two keys that can never differ. crates/daemon/src/search.rs:350-352 sets `let scan_incomplete = candidate_limit_exhausted;` from the single SearchPage flag, and crates/daemon/src/http.rs:620-622 publishes candidate_limit_exhausted, scan_incomplete and passes as three separate fields. Two of the three are aliases by construction, so an agent or client reading the envelope will reasonably infer a distinction that does not exist and may branch on it. Either publish one flag, or give them genuinely different meanings (for example candidate_limit_exhausted = the ceiling was reached, scan_incomplete = the answer is short for any bounded reason) — which is also the shape f-3b7e's fix would want, since 'ceiling reached' and 'answer is incomplete' really are different questions.",
+          "address": "crates/daemon/src/search.rs:350-352; crates/daemon/src/http.rs:617-623; crates/store/src/embeddings.rs:535-545",
+          "state": "checked",
+          "receipt": "Read at the fix sha from the beee1491..b332f46 diff: the daemon assigns scan_incomplete directly from candidate_limit_exhausted with no other input, and both are emitted into the meta object alongside passes."
+        },
+        {
+          "id": "f-7b13",
+          "kind": "defect",
+          "severity": "MINOR",
+          "finding": "CARRIED FROM ROUND 1, still open, correctly not forwarded in the ruling. The plan-shape JIT assertion remains unfalsifiable: bounded_plans now calls configure_search_transaction (embeddings.rs:1350), which runs DISABLE_SEARCH_JIT at :60, and assert_static_shipped_shape then asserts shipped[0].get(\"JIT\").is_none() at :1420. The refactor is a genuine improvement in fidelity — the EXPLAIN now runs under exactly the production transaction configuration rather than a hand-rolled imitation — but the assertion still observes the harness's own SET and cannot fail. ac-0001 remains TRUE on its stated alternative limb ('or is disabled for this statement with the reason stated'), which the code satisfies at :50-54 and :60. Test-quality only.",
+          "address": "crates/store/src/embeddings.rs:56-62,1338-1360,1420-1421",
+          "state": "checked",
+          "receipt": "Re-read at b332f46: configure_search_transaction is invoked at :1350 before explain_search at :1352, and executes DISABLE_SEARCH_JIT at :60."
+        },
+        {
+          "id": "f-4d88",
+          "kind": "defect",
+          "severity": "MINOR",
+          "finding": "CARRIED FROM ROUND 1, still open, correctly not forwarded in the ruling. The parity golden is unchanged across the two shas, so coverage is still six predicates times two limits: repo, path, source_raw, source_smart, kind, conversation. model_key, max_distance, id_kinds, gate_open (including the unknown/NULL derived_state limb), ddoc_schema and worktree remain unexercised by any parity case. The residual risk is materially LOWER at this sha than at round 1 for the four content predicates, because the fix leaves kinds/id_kinds/gate_open/ddoc_schema in admitted_elements (embeddings.rs:647-661) with text identical to the pre-013 correlated EXISTS body; but worktree and the conversation/scope legs now run in a NEW place — scope_blobs and scope_representatives at :579-604, below the vector LIMIT — so those two are newly-written code with no parity case of their own.",
+          "address": "crates/store/tests/fixtures/search_admission_golden.json; crates/store/src/embeddings.rs:579-604,647-661",
+          "state": "checked",
+          "receipt": "git diff --stat beee1491..b332f46 -- crates/store/tests/fixtures/search_admission_golden.json returns no lines: the golden is byte-identical. Golden keys enumerated: conversation/kind/path/repo/source_raw/source_smart, each at limit_10 and limit_40."
+        },
+        {
+          "id": "dim0-6d14",
+          "kind": "dim0",
+          "severity": "NA",
+          "finding": "f-9c41 IS FIXED, verified in both directions on the round-1 geometry. The shipped statement now recovers every in-scope hit that sits behind twelve thousand nearer foreign vectors, matching the pre-013 statement exactly, and the store no longer converts a short scoped page into an outage.",
+          "address": "crates/store/src/embeddings.rs:579-627,633-646,686-692,822-877; crates/store/tests/search_admission.rs:490-555",
+          "links": [
+            "../../plan.dd.json#goals"
+          ],
+          "state": "checked",
+          "receipt": "SQL sweep on fs3_review013_hunt1 (:5434) under the production session GUCs (hnsw.iterative_scan=strict_order, jit=off, max_parallel_workers_per_gather=0), 12,005 vectors, repo-scoped, limit 10: FIX returns hits=5 scanned=5 admitted=5 at candidate_limit 40/80/160/320/640/1280/2560/5120/10240; OLD returns hits=5 scanned=5 at every step. Identical. Round 1 recorded NEW hits=0 with scanned==candidate_limit at all nine steps. Through the real Rust: scoped_search_passes_twelve_thousand_nearer_foreign_vectors passed with passes<=2, candidate_limit_exhausted false and all five identities equal to the scoped repo."
+        },
+        {
+          "id": "dim0-9a37",
+          "kind": "dim0",
+          "severity": "NA",
+          "finding": "The new regression test genuinely discriminates — the f-2e07 complaint is discharged. Round 1's expansion test was green under BOTH the old and new statements and therefore defended nothing; this one fails behaviourally when the pre-fix statement is restored.",
+          "address": "crates/store/tests/search_admission.rs:490-555",
+          "state": "checked",
+          "receipt": "SEARCH_ELEMENTS_SQL replaced with the beee1491 statement plus a '0::bigint AS admitted_count' shim so the new Rust consumer could still read every column, guaranteeing a behavioural rather than a schema failure. Result: 'paired_geometry: passes=2 hits=0'; panic at search_admission.rs:538 'all scoped vectors must be returned: SearchPage { hits: [], passes: 2, candidate_limit_exhausted: true }', left 0 right 5. Suite: 2 passed, 1 failed. Source restored. Note the shim also proves the two halves of the fix are independently load-bearing: the Rust sentinel alone already converts round 1's nine-pass outage into a two-pass diagnosed empty page, while recovering the five hits requires the SQL relocation."
+        },
+        {
+          "id": "dim0-4f80",
+          "kind": "dim0",
+          "severity": "NA",
+          "finding": "All four binding precision notes are implemented as specified. (1) admitted_sources relocated below the vector LIMIT — the semi-join is now inside candidate_vectors' WHERE at embeddings.rs:620-625 rather than above the page. (2) BOTH key legs are inside: the raw leg at :622-623 and the smart leg at :624-625, fed by an admitted_sources that unions scope_representatives with smart_content joined on raw_hash at :605-612, so a --source smart search cannot starve in the narrower slot. (3) A distinct carrier exists and survives a non-empty fused page: SearchOutcome gains candidate_limit_exhausted, scan_incomplete and passes (search.rs:186-193) set on ALL THREE exits including the non-empty early return, and http.rs:620-622 publishes them; truncated was correctly left alone. (4) The no-Err change is scoped to search_elements only — the single surviving Err(candidate_limit_exhausted) is at :413 inside the unfiltered query_embeddings, and the constant's doc at :70-73 now states the split explicitly. Additionally admitted_elements and smart_map are bounded to the candidate page (:646, :690-691), which is what produced the large latency win.",
+          "address": "crates/store/src/embeddings.rs:70-73,413,605-627,646,686-692; crates/daemon/src/search.rs:186-193,346-356,401-437; crates/daemon/src/http.rs:617-623",
+          "state": "checked",
+          "receipt": "grep for candidate_limit_exhausted( in embeddings.rs returns exactly two lines — the definition at :110 and one call at :413, whose enclosing function is 'pub async fn query_embeddings' at :333. Diff beee1491..b332f46 of search.rs and http.rs read in full for the carrier."
+        },
+        {
+          "id": "dim0-2b45",
+          "kind": "dim0",
+          "severity": "NA",
+          "finding": "ac-0001 remains TRUE and the query got dramatically faster, but the shape changed in a way worth naming: smart_content is now probed once per candidate rather than resolved once. Max smart_content loops moved from 1 in round 1 to 160 here, which is exactly candidate_limit and therefore exactly at ac-0001's stated bound ('loops <= candidate_limit') — it passes, with zero margin. This is a bounded per-candidate index probe introduced by binding candidate_raw_hashes and smart_map to the page (:633-641, :686-692); it is emphatically NOT the old pathology (962,792 loops), it is not a correlated SubPlan (the test still asserts none and passes), and it bought a 15x latency improvement. But the plan's goal text — 'smart_content text_hash->raw_hash resolved ONCE' — is no longer literally true of the shipped statement, and o-prime should record that the criterion now passes on its numeric bound rather than on its prose.",
+          "address": "crates/store/src/embeddings.rs:633-641,686-692; ../../plan.dd.json#goals",
+          "state": "checked",
+          "receipt": "Reviewer's five consecutive runs at b332f46: execution_ms 6.873 / 7.018 / 7.315 / 7.178 / 7.102; shared_hits 3068 / 3133 / 3167 / 3112 / 3118; hnsw_rows 160; candidate_rows 160; smart_content_max_loops 160 in all five. Round 1 at beee1491 for comparison: execution_ms 105.5-121.3, shared_hits 2710-2767, smart_content_max_loops 1. Determinism 5/5 in both rounds."
+        }
+      ]
+    },
+    {
+      "name": "verdict",
+      "value": [
+        {
+          "id": "vd-6d14",
+          "finding": "#findings/dim0-6d14",
+          "resolution": "fixed",
+          "rationale": "The round-1 blocker is resolved. On the exact geometry that broke it, the fixed statement is indistinguishable from the pre-013 statement at every step of the expansion sequence, and the failure mode is now a diagnosed short page rather than an outage.",
+          "state": "checked",
+          "receipt": "Paired SQL sweep FIX == OLD at 5/5/5 across all nine candidate_limits; real-Rust test green with passes<=2 and candidate_limit_exhausted false."
+        },
+        {
+          "id": "vd-9a37",
+          "finding": "#findings/dim0-9a37",
+          "resolution": "fixed",
+          "rationale": "The contract now has a test that can fail on it, proven by restoring the pre-fix statement and observing a behavioural red.",
+          "state": "checked",
+          "receipt": "left 0, right 5, SearchPage { hits: [], passes: 2, candidate_limit_exhausted: true }."
+        },
+        {
+          "id": "vd-4f80",
+          "finding": "#findings/dim0-4f80",
+          "resolution": "fixed",
+          "rationale": "All four binding notes implemented as written, including the two that were structural risks rather than restatements of the ruling — both key legs inside the LIMIT, and a carrier that survives a non-empty fused page.",
+          "state": "checked",
+          "receipt": "Source read at the fix sha; Err callsite count and enclosing function confirmed by grep."
+        },
+        {
+          "id": "vd-6a55",
+          "finding": "#findings/dim0-4f80",
+          "resolution": "fixed",
+          "rationale": "f-6a55 is discharged: the stale comment crediting hnsw.iterative_scan with a rescue the code no longer performed has been removed.",
+          "state": "checked",
+          "receipt": "grep for 'Keeping the filters inside the CTE', '19 of 120' and 'remedy pgvector' in embeddings.rs at b332f46 returns no matches."
+        },
+        {
+          "id": "vd-3b7e",
+          "finding": "#findings/f-3b7e",
+          "resolution": "confirmed",
+          "rationale": "New, non-blocking. A completed scan can be labelled incomplete, and the daemon now branches on that label. One-line fix; recommend taking it with the same commit rather than deferring, since it is a diagnosis-correctness bug in freshly added code.",
+          "state": "checked",
+          "receipt": "Disposable unit test observed Return { scan_incomplete: true } for an input where the candidate scan was exhausted; reverted."
+        },
+        {
+          "id": "vd-5c92",
+          "finding": "#findings/f-5c92",
+          "resolution": "confirmed",
+          "rationale": "New, cosmetic but agent-facing: two envelope keys that are aliases by construction invite a false distinction. Cheapest resolution is to publish one, or to give them the distinct meanings f-3b7e's fix would naturally create.",
+          "state": "checked",
+          "receipt": "Assignment read at search.rs:350-352; both fields emitted at http.rs:620-622."
+        },
+        {
+          "id": "vd-7b13",
+          "finding": "#findings/f-7b13",
+          "resolution": "deferred",
+          "rationale": "Carried, unchanged, correctly outside the ruling's scope. Does not affect the ac-0001 judgment.",
+          "state": "checked",
+          "receipt": "configure_search_transaction still disables JIT before the asserted EXPLAIN."
+        },
+        {
+          "id": "vd-4d88",
+          "finding": "#findings/f-4d88",
+          "resolution": "deferred",
+          "rationale": "Carried, unchanged, correctly outside the ruling's scope — but note the risk profile shifted: worktree and the conversation/scope legs are now NEW code below the vector LIMIT (scope_blobs, scope_representatives) with no parity case, whereas at round 1 every unexercised predicate was textually identical to its predecessor. Worth a follow-up parity case for worktree and conversation scope specifically.",
+          "state": "checked",
+          "receipt": "Golden byte-identical across the two shas; the scope legs are new source at :579-604."
+        },
+        {
+          "id": "vd-ac01",
+          "finding": "#findings/dim0-2b45",
+          "resolution": "confirmed",
+          "rationale": "ac-0001 TRUE at the fix sha, 5/5 deterministic, and materially faster. Passes on its numeric bound; the goal's 'resolved ONCE' prose no longer describes the statement.",
+          "state": "checked",
+          "receipt": "Five runs: 6.873-7.315 ms, 3068-3167 shared hits, loops 160 at a bound of 160."
+        },
+        {
+          "id": "vd-ac02",
+          "finding": "#findings/f-4d88",
+          "resolution": "confirmed",
+          "rationale": "ac-0002 TRUE. The golden is byte-identical to the one whose provenance the reviewer independently established in round 1 by running it against the recovered pre-013 statement, and the fixed statement reproduces it. The provenance chain therefore holds without re-deriving it.",
+          "state": "checked",
+          "receipt": "No diff on search_admission_golden.json between beee1491 and b332f46; search_parity_matches_old_query_golden green at the fix sha."
+        },
+        {
+          "id": "vd-ac03",
+          "finding": "#findings/dim0-6d14",
+          "resolution": "confirmed",
+          "rationale": "ac-0003 TRUE, re-run by the reviewer. Store 15+21+17 = 53/53 unchanged; daemon 16+15+12+3+1+9 = 56/56, one more than round 1 because the fix adds a starvation case. Nothing regressed.",
+          "state": "checked",
+          "receipt": "cargo test on :5434 at b332f46, all suites exit 0, counts read from each test result line."
+        },
+        {
+          "id": "vd-ac45",
+          "finding": "#findings/dim0-4f80",
+          "resolution": "deferred",
+          "rationale": "ac-0004 and ac-0005 remain NOT YET MEASURABLE — prod is still unbounced. The round-1 pre-registered thresholds stand unchanged, including the two reviewer additions o-prime adopted (the HNSW-driver clause on prod statistics, and the must-return-results gate). The HNSW-driver clause is now MORE load-bearing than at round 1: the admission semi-join moved back inside the ORDER BY/LIMIT as a hash semi-join, which is a different cost object from the old correlated EXISTS, and only prod statistics can settle whether the planner keeps the index driver.",
+          "state": "unchecked",
+          "receipt": "Not measured; prod unbounced. CI on the sha read (not rerun): gate pass, 6m3s."
+        }
+      ]
+    }
+  ]
+}
