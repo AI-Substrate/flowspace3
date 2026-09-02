@@ -3322,3 +3322,9 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     the prod database without an explicit owner designation (row 165).
     Second foreign daemon in one hour despite weasel's standing rule
     (rule in the template, not yet in the running packets).
+    PLAN 016 — t2+t3 DONE (dormouse, 06:58): both discovery call sites use
+    global OR per-root; fixtures prove default-only src/b.ts, opted-in
+    .hidden/a.ts, permanent .git/node_modules/.venv denial; watcher
+    rescans read the current flag; ledger `hidden=N` (fixture hidden=2);
+    status JSON/human + tree show include_hidden per root; receipts ticked.
+    Gate slot GRANTED for t4 (no other gate on the box).
