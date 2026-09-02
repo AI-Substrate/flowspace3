@@ -1989,3 +1989,76 @@ RS INBOUND PROVEN (2026-09-02): the 012 coder's `pij send
     contract keeps the file channel as the durable record and adds the
     rs pointer as the instant one. req-0034's blocking half is routed
     around at o-prime's seat; the spawn defect itself remains weasel's.
+
+ROW 122 CORRECTED BY MEASUREMENT (investigator pij-purring-orangutan,
+    2026-09-02, read-only, 742 s time series + 1 s activity sampler +
+    EXPLAIN ANALYZE on prod; report vendored at scratch/db-cpu-profile/).
+    The stated cause — "128MB shared_buffers vs a 2.3GB HNSW index, every
+    query walks it from disk" — is FALSE for search: the HNSW scan is
+    12.4 ms / 1,078 buffers and the query hits buffers at 99.7%. The real
+    cause: the admission `EXISTS` in crates/store/src/embeddings.rs:557-
+    620 (`… OR (source_kind='smart' AND EXISTS (SELECT 1 FROM
+    smart_content candidate WHERE candidate.text_hash = e.source_hash
+    AND candidate.raw_hash = admitted.raw_hash))`) plans as a nested-loop
+    semi-join over a spilling Materialize of a Seq Scan on elements —
+    **962,792–1,698,017 smart_content index probes per search**, 3.8–6.8M
+    buffer hits, 1.7–2.7 s each, ×up to 9 via the candidate-expansion
+    loop (that is the 13 s / 60 s / 120 s). 69% of ALL database CPU in
+    the window; smart_content_text_hash_idx measured at 124,551 scans/s.
+    JIT adds 281 ms/query on a nonsense cost estimate. NEW TOP PACKET
+    (code, no restart): resolve smart_content text_hash→raw_hash once as
+    a join and hash-semi-join the admission; carry (source_hash,
+    chunk_no, distance) only in the CTE. Acceptance: EXPLAIN loops
+    <1,000, search wall <500 ms on prod's corpus, ranking parity on the
+    existing fixtures. shared_buffers still worth raising — for row 139,
+    not for this.
+
+139. **`queue_depth()` full-scans 1.01M jobs rows on 3 cores every ~6.5 s,
+    and nothing ever deletes done jobs** (investigator, same report).
+    jobs.rs:569 has no WHERE; measured Parallel Seq Scan, read=114,185
+    blocks (892 MB) off disk per call, ~260 ms CPU, called by
+    report_progress every 5 s AND by GET /status — 27% of active DB
+    samples, the dominant source of ~200 MB/s disk read. 1,009,934 of
+    1,016,092 rows are `done` with no retention path anywhere; the table
+    doubled TODAY. Also: jobs has never been autovacuumed and is 6,549
+    dead tuples from a first vacuum of a 2.15 GB relation with 64 MB
+    maintenance_work_mem (latent spike). Stale comment at jobs.rs:558-
+    560 names an index that no longer exists. ENCODE: (a) retention —
+    purge done jobs older than N days (or move to a history table); (b)
+    progress/status use a live-only count (index-only on
+    jobs_live_dedupe_idx, 0.77 ms measured); (c) fix the comment. Row 120
+    family; no restart.
+
+140. **Postgres config bundle — NEEDS RESTART, Jordan's GO** (investigator):
+    shared_buffers 128 MB → 4 GB; shared_preload_libraries =
+    pg_stat_statements + CREATE EXTENSION (the investigator hand-rolled
+    a sampler because it is absent); work_mem 4 → 64 MB;
+    maintenance_work_mem 64 MB → 1 GB; effective_cache_size → 16 GB;
+    effective_io_concurrency 200; random_page_cost 1.1; max_wal_size
+    1 → 8 GB + wal_compression on (SIGHUP-reloadable); track_io_timing
+    on. Container uses 535 MiB of 31 GiB. Buffer pool turns over every
+    5.0 s; backends do 66% of their own evictions. Modest win for search
+    (CPU-bound), solid win for row 139 and bulk ingest.
+
+141. **Our test suite's DROP DATABASE forces a checkpoint every 23.6 s on
+    the PROD postmaster — an FPI death spiral** (investigator): 917
+    `immediate force wait` checkpoints in 6 h (bursts of 65/min) vs 54
+    timed; 836 requested vs 11 timed; 28% of wall-clock in checkpoint
+    writes; 2.03M full-page images / 12.67 GB WAL in 2.2 h; WAL pinned at
+    max_wal_size; 25.6% of active DB time stalled on WALSync/WALWrite.
+    Each CREATE DATABASE under PG16 WAL_LOG strategy also logs the whole
+    template (~8.7 MB × ~900). 56 leaked fs3_* DBs (~490 MB). This is
+    rows 126 + 124b + 110 measured as ONE mechanism: tests must have
+    their own postmaster; until then serialise (012, in flight), reap,
+    and raise max_wal_size. Row 012's ac-0004 gains a check: forced
+    checkpoints in the log window must drop to ~0 with the lock in.
+
+RULED OUT with evidence (same report): the 7 idle hass-mcp containers,
+    fs3-linuxtest, buildkit = 0.00% CPU each; OrbStack's own overhead
+    <1% (its big numbers are postgres CPU + block I/O billed through the
+    VM wrapper — 1.51 TB read / 793 GB written in 5 days); the HNSW
+    index; jobs_remaining(); the 135–158 s timed checkpoints
+    (checkpoint_completion_target=0.9 working as designed). THE MACHINE:
+    flowspace3-db = 0.51 cores avg, 2.1 peak, 3.2% of 16 cores, while
+    load ran 28→76 at ~14% total CPU — the load is 1,309 processes (210
+    node) from the fleet, not the database.
