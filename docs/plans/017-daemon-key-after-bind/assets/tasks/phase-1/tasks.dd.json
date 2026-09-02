@@ -1,0 +1,146 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: reproduce, then refuse",
+        "slug": "phase-1",
+        "status": "ready",
+        "summary": "One coder, tasks in order, every assertion pinned to a backpressure row."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Work top to bottom; stop-and-ask o-prime on anything outside the fence."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "t1",
+          "title": "Reproduce the clobber and pin the writing path",
+          "state": "unchecked",
+          "done": "#done_when/t1",
+          "success": "a failing test shows which boot path rewrote daemon.key while another daemon owned the port (normal and --json); the path is named in the execution log",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ]
+        },
+        {
+          "id": "t2",
+          "title": "Publish strictly after a successful bind on every boot path; no staged temp file survives a bind failure",
+          "state": "unchecked",
+          "done": "#done_when/t2",
+          "success": "key untouched on bind failure; temp file cleaned; guard mutation red",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0002"
+          ]
+        },
+        {
+          "id": "t3",
+          "title": "Honest 401 hint when the key is newer than the daemon",
+          "state": "unchecked",
+          "done": "#done_when/t3",
+          "success": "CLI names the overwrite + restart-the-owner fix",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
+        },
+        {
+          "id": "t4",
+          "title": "Prod-database owner designation (FS3_PROD_OWNER / config owner path)",
+          "state": "unchecked",
+          "done": "#done_when/t4",
+          "success": "foreign cwd refuses prod URL with a helpful error; designated proceeds",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ]
+        },
+        {
+          "id": "t5",
+          "title": "Regression + gate",
+          "state": "unchecked",
+          "done": "#done_when/t5",
+          "success": "suites green; clippy clean; CI green on the PR sha",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ]
+        },
+        {
+          "id": "t6",
+          "title": "Real-usage transcript on the TEST setup + PR",
+          "state": "unchecked",
+          "done": "#done_when/t6",
+          "success": "two-daemon transcript with counts/mtimes in the PR body; exact prod commands for o-prime",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {
+        "t1": [
+          {
+            "id": "dw-3111",
+            "assertion": "test RED on main, names the path",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          }
+        ],
+        "t2": [
+          {
+            "id": "dw-3112",
+            "assertion": "A/B test green",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          },
+          {
+            "id": "dw-3113",
+            "assertion": "boot-sequence test green; publish-before-bind mutation red",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          }
+        ],
+        "t3": [
+          {
+            "id": "dw-3114",
+            "assertion": "render test green; mtime-check mutation red",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          }
+        ],
+        "t4": [
+          {
+            "id": "dw-3115",
+            "assertion": "boot test both ways; mutation red",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+          }
+        ],
+        "t5": [
+          {
+            "id": "dw-3116",
+            "assertion": "suites + CI green",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+          }
+        ],
+        "t6": [
+          {
+            "id": "dw-3117",
+            "assertion": "transcript reproducible",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0006"
+          }
+        ]
+      }
+    }
+  ],
+  "references": []
+}

@@ -1,0 +1,101 @@
+{
+  "dd": {
+    "schema": "builder/backpressure"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Backpressure - daemon-key-after-bind",
+        "plan": "../plan.dd.json#meta",
+        "certainty": "Confident"
+      }
+    },
+    {
+      "name": "rows",
+      "value": [
+        {
+          "id": "bp-0001",
+          "criterion": "second daemon never touches the key",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "cargo test -p fs3-daemon key_clobber: A then B (normal and --json); mutation: revert the guard \u2192 B rewrites the key \u2192 red",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0002",
+          "criterion": "publish strictly after bind on every path",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "boot-sequence unit test with a pre-bound port: publish never called; mutation: move publish before bind \u2192 red",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0003",
+          "criterion": "401 hint names the overwrite",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "CLI render test with key mtime > daemon boot; mutation: drop the mtime check \u2192 red",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0004",
+          "criterion": "prod-db designation",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "daemon boot test: foreign cwd + prod URL \u2192 refusal naming FS3_PROD_OWNER; with the env set \u2192 proceeds; mutation: remove the check \u2192 red",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0005",
+          "criterion": "no regression",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "cargo test -p fs3-daemon -p fs3-cli -p fs3-core; clippy -D warnings; CI on the exact PR sha (ruling 2026-09-02-ci-green-on-the-sha-is-the-gate)",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0006",
+          "criterion": "real usage on the TEST setup",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "human-judgement",
+          "proof": "scratch FS3_CONFIG_DIR + :5434 + free port: first daemon healthy, second from a foreign cwd refuses, first's ping still authorized, key mtime unchanged \u2014 transcript in the PR body",
+          "state": "unchecked"
+        }
+      ]
+    },
+    {
+      "name": "sensors",
+      "value": [
+        {
+          "id": "sn-0001",
+          "name": "harness checks",
+          "command": "harness checks",
+          "dimension": "correctness",
+          "found_in": "repo harness"
+        },
+        {
+          "id": "sn-0002",
+          "name": "prod status (read-only)",
+          "command": "flowspace3 status --json",
+          "dimension": "behaviour",
+          "found_in": "flowspace3 CLI"
+        },
+        {
+          "id": "sn-0003",
+          "name": "prod db (read-only)",
+          "command": "docker exec flowspace3-db psql -U flowspace3 -d flowspace3 -tAc <query>",
+          "dimension": "behaviour",
+          "found_in": "prod postgres"
+        }
+      ]
+    }
+  ],
+  "references": []
+}
