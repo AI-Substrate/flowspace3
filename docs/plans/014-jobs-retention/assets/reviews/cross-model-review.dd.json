@@ -15,209 +15,250 @@
         "sha": "round 1: cc8da52c2595662664490de7d2b7a120cad95beb; DELTA RE-REVIEW SHA: c5242eaab4bfaeb9f0cb324d395e36702650cab4 (fix commit 'fix: revive failed jobs on re-enqueue', PR #98 head)",
         "head_check": "git diff --stat cc8da52..d04ae3e = 3 files, +7/-6, all under docs/plans/014-jobs-retention/assets/tasks/ (execution.log.md, tasks.dd.json, tasks.dd.md). DOCS-ONLY CONFIRMED — no code touched, so this review remains valid at the reviewed sha.",
         "environment": "All DB work on the dedicated test postmaster only: FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5434/flowspace3_test (container flowspace3-db-test). Prod :5433 and the daemon on :7373 were never touched. No full `harness checks` was run — targeted cargo tests only.",
-        "note": "FINAL DELTA VERDICT: APPROVE — all three findings fixed and independently re-derived at c5242ea. f-001 (CRITICAL) is cured: the worst realistic stuck state (attempts=3, parks=20 at the cap) now revives to pending/0/0 and is CLAIMABLE. f-003 (MEDIUM) is cured: last_failure replans Seq Scan cost 5167.16 -> Index Scan cost 4.14 on jobs_failed_recent_idx. f-002 (MEDIUM doc) is cured: the plan goal now says 1 day and cites the ruling. ac-0003 was amended to require the absorbed re-fire be claimable, which closes the under-specification that hid f-001. I performed four mutations of my own on the fix, including one the coder did not run (unguarded state assignment), and every one went red correctly. One PRECONDITION for the bounce is recorded as n-005: migration 0023's content changed after it had already been applied somewhere, and sqlx validates checksums. CI gate was PENDING on the sha at review time."
+        "note": "FINAL DELTA VERDICT: APPROVE — all three findings fixed and independently re-derived at c5242ea. f-001 (CRITICAL) is cured: the worst realistic stuck state (attempts=3, parks=20 at the cap) now revives to pending/0/0 and is CLAIMABLE. f-003 (MEDIUM) is cured: last_failure replans Seq Scan cost 5167.16 -> Index Scan cost 4.14 on jobs_failed_recent_idx. f-002 (MEDIUM doc) is cured: the plan goal now says 1 day and cites the ruling. ac-0003 was amended to require the absorbed re-fire be claimable, which closes the under-specification that hid f-001. I performed four mutations of my own on the fix, including one the coder did not run (unguarded state assignment), and every one went red correctly. One PRECONDITION for the bounce is recorded as n-005: migration 0023's content changed after it had already been applied somewhere, and sqlx validates checksums. CI gate was PENDING on the sha at review time.",
+        "id_note": "Ids were re-minted to the registered <prefix>-<4 lowercase hex> form on 2026-09-02 to pass global `ddocs validate` 0.1.0. The schema declares only meta/findings/verdict, so the earlier acceptance, delta, refuted and notes sections were folded into findings as kind=question (or kind=dim0 for the deliberate mutations) with severity NA; every legacy id is preserved inline as '[legacy id X]' so earlier references still resolve. Severity words were mapped to the schema enum (CRITICAL->MAJOR, MEDIUM->MINOR); the original word is retained in each finding's text."
       }
-    },
-    {
-      "name": "acceptance",
-      "value": [
-        {
-          "id": "ac-0001",
-          "claim": "Hot path is live-only, mutation-checked: no Seq Scan on jobs at >=200k done rows; the old GROUP BY golden must go red.",
-          "judgment": "TRUE — independently confirmed",
-          "receipt": "Re-derived, not audited. Seeded my own scratch DB (rv_scanfile) with 200,000 done + 50 pending + 7 failed rows, ANALYZE, then EXPLAIN (FORMAT JSON) by hand. Production live query -> Aggregate/Sort over `Index Only Scan` on `jobs_live_dedupe_idx`, Plan Rows 50, Total Cost 180.35, zero Seq Scan nodes. Author mutation performed: the old unfiltered GROUP BY on the same table -> `Seq Scan` on jobs, Plan Rows 200,057, Total Cost 6,669.29. The golden genuinely goes red, so the test is not passing for the wrong reason. Anti-drift check of my own: crates/store/tests/pg_jobs_retention.rs:5,81 imports and explains `fs3_store::jobs::LIVE_QUEUE_DEPTH_SQL` — the very constant crates/store/src/jobs.rs:581 executes via read_queue_depth — so the test cannot explain one string while production runs another. `cargo test -p fs3-store --test pg_jobs_retention` = 3 passed, exit 0."
-        },
-        {
-          "id": "ac-0002",
-          "claim": "Retention is bounded and safe: only aged done rows purged, live rows untouched, idempotent, batch size respected.",
-          "judgment": "TRUE — independently confirmed",
-          "receipt": "Bounding is structural, not incidental: crates/store/src/jobs.rs:629-648 selects ids in a CTE with `ORDER BY updated_at, id LIMIT $2 FOR UPDATE SKIP LOCKED` and deletes by join, and crates/daemon/src/retention.rs:90-98 loops that statement at PURGE_BATCH=10,000 until a short batch. No unbounded DELETE exists. I ran the exact batch statement myself on the 200k seed: DELETE 10000 in 38.8 ms, and again in 42.5 ms; after both, all 50 pending and all 7 failed rows survived untouched. Live-row safety proven under contention: I held an open transaction with `FOR UPDATE` on 5 live pending rows and ran the purge concurrently — it completed in 42.5 ms without blocking, because the `state='done'` predicate sits INSIDE the locking subquery so a live tuple is never locked. Receipt ordering verified at retention.rs:99 — record_job_retention is called only after the loop breaks, so a mid-sweep crash leaves the prior receipt intact and no half-state. `cargo test -p fs3-store --test pg_jobs_retention` = 3 passed, exit 0."
-        },
-        {
-          "id": "ac-0003",
-          "claim": "Mint refuses/absorbs a duplicate under a failed non-terminal key; a test asserts one row (or a named absorb), red without the fix.",
-          "judgment": "TRUE AS WRITTEN — but under-specified, and the gap is f-001",
-          "receipt": "The mechanism works exactly as claimed: crates/store/src/jobs.rs:127-132 widens the ON CONFLICT arbiter to `state IN ('pending','running') OR (state='failed' AND NOT terminal)`, matching migration 0023's partial-unique predicate, and the re-fire is absorbed into the existing row. One row, named absorb, test green (dedupe_failed_non_terminal_job_absorbs_a_second_mint, exit 0). Author mutation confirmed via the migration contract test. HOWEVER the criterion only ever required that ONE ROW exist afterwards — it never required the absorbed work to eventually run. crates/store/tests/pg_jobs_retention.rs:230 asserts `rows[0].1 == \"failed\"` using kind `\"scan_file\"`, which is precisely the kind with no revival path (see f-001). The AC is satisfied; the contract it was standing in for is not."
-        },
-        {
-          "id": "ac-0004",
-          "claim": "/status carries retention {window_days, last_purge_at, purged_last_run} and the daemon log names each purge with counts.",
-          "judgment": "TRUE — independently confirmed",
-          "receipt": "crates/core/src/views/status.rs adds `retention: Option<RetentionStatus>` with `#[serde(default, skip_serializing_if = \"Option::is_none\")]`. Checked the i7 requirement directly against the diff: `retention` is ADDED, and no pre-existing StatusReport key is renamed or removed (roots, queue, last_error, schema_ahead all intact); `queue`'s doc comment changes meaning to live-only but the key is stable. Because the field is Option + serde(default), an older daemon's envelope still deserializes in a newer CLI. Log receipt at crates/daemon/src/retention.rs:67-72 names window_days, purged and last_purge_at. `cargo test -p fs3-daemon --test first_light --test streaming` = 16 + 6 passed, exit 0, including status_retention_is_receipted_and_history_is_explicit and status_retention_log_names_completed_purge."
-        },
-        {
-          "id": "ac-0005",
-          "claim": "PROD before/after counts, relation size, three status timings under 200 ms, flat seq_tup_read over 5 minutes.",
-          "judgment": "DEFERRED to o-prime's prod receipt after merge + bounce",
-          "receipt": "Correctly not the reviewer's to execute; prod :5433 and :7373 were never touched. What I can certify is that the mechanism can produce the receipt without a hand-written DELETE: RetentionSupervisor::new sets ticks = RETENTION_EVERY_TICKS - 1 (retention.rs:38) so the first shared reconcile tick performs the boot sweep immediately, and sweep_once drains to completion. Sizing from my own measurement: 38.8 ms per 10,000-row batch means ~1.01M rows is ~101 batches, on the order of 4-10 s of deletes, issued as separate autocommitted statements rather than one long lock. See notes n-001 and n-002 for two capture caveats o-prime should know before the bounce."
-        },
-        {
-          "id": "i7",
-          "claim": "status --history documentation and help; the default is now live-only; envelope keys added not renamed.",
-          "judgment": "TRUE — satisfied",
-          "receipt": "crates/cli/src/main.rs adds `--history` with `conflicts_with = \"watch\"`, so a full-history census can never become a repeated watch. crates/cli/docs/daemon.md states what changed and why: retention window with its default named (1), bounded batch purge at boot and hourly, ordinary status reads only live rows, `--history` requests settled history explicitly. The daemon.md progress-line sample was updated to match the runner's reduced fields, so the doc does not describe output that no longer exists. Envelope keys added, not renamed (see ac-0004)."
-        }
-      ]
     },
     {
       "name": "findings",
       "value": [
         {
-          "id": "f-001",
+          "id": "f-3a01",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id ac-0001] AC-0001 — Hot path is live-only, mutation-checked: no Seq Scan on jobs at >=200k done rows; the old GROUP BY golden must go red. JUDGMENT: TRUE — independently confirmed",
+          "state": "checked",
+          "receipt": "Re-derived, not audited. Seeded my own scratch DB (rv_scanfile) with 200,000 done + 50 pending + 7 failed rows, ANALYZE, then EXPLAIN (FORMAT JSON) by hand. Production live query -> Aggregate/Sort over `Index Only Scan` on `jobs_live_dedupe_idx`, Plan Rows 50, Total Cost 180.35, zero Seq Scan nodes. Author mutation performed: the old unfiltered GROUP BY on the same table -> `Seq Scan` on jobs, Plan Rows 200,057, Total Cost 6,669.29. The golden genuinely goes red, so the test is not passing for the wrong reason. Anti-drift check of my own: crates/store/tests/pg_jobs_retention.rs:5,81 imports and explains `fs3_store::jobs::LIVE_QUEUE_DEPTH_SQL` — the very constant crates/store/src/jobs.rs:581 executes via read_queue_depth — so the test cannot explain one string while production runs another. `cargo test -p fs3-store --test pg_jobs_retention` = 3 passed, exit 0."
+        },
+        {
+          "id": "f-3a02",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id ac-0002] AC-0002 — Retention is bounded and safe: only aged done rows purged, live rows untouched, idempotent, batch size respected. JUDGMENT: TRUE — independently confirmed",
+          "state": "checked",
+          "receipt": "Bounding is structural, not incidental: crates/store/src/jobs.rs:629-648 selects ids in a CTE with `ORDER BY updated_at, id LIMIT $2 FOR UPDATE SKIP LOCKED` and deletes by join, and crates/daemon/src/retention.rs:90-98 loops that statement at PURGE_BATCH=10,000 until a short batch. No unbounded DELETE exists. I ran the exact batch statement myself on the 200k seed: DELETE 10000 in 38.8 ms, and again in 42.5 ms; after both, all 50 pending and all 7 failed rows survived untouched. Live-row safety proven under contention: I held an open transaction with `FOR UPDATE` on 5 live pending rows and ran the purge concurrently — it completed in 42.5 ms without blocking, because the `state='done'` predicate sits INSIDE the locking subquery so a live tuple is never locked. Receipt ordering verified at retention.rs:99 — record_job_retention is called only after the loop breaks, so a mid-sweep crash leaves the prior receipt intact and no half-state. `cargo test -p fs3-store --test pg_jobs_retention` = 3 passed, exit 0."
+        },
+        {
+          "id": "f-3a03",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id ac-0003] AC-0003 — Mint refuses/absorbs a duplicate under a failed non-terminal key; a test asserts one row (or a named absorb), red without the fix. JUDGMENT: TRUE AS WRITTEN — but under-specified, and the gap is f-001",
+          "state": "checked",
+          "receipt": "The mechanism works exactly as claimed: crates/store/src/jobs.rs:127-132 widens the ON CONFLICT arbiter to `state IN ('pending','running') OR (state='failed' AND NOT terminal)`, matching migration 0023's partial-unique predicate, and the re-fire is absorbed into the existing row. One row, named absorb, test green (dedupe_failed_non_terminal_job_absorbs_a_second_mint, exit 0). Author mutation confirmed via the migration contract test. HOWEVER the criterion only ever required that ONE ROW exist afterwards — it never required the absorbed work to eventually run. crates/store/tests/pg_jobs_retention.rs:230 asserts `rows[0].1 == \"failed\"` using kind `\"scan_file\"`, which is precisely the kind with no revival path (see f-001). The AC is satisfied; the contract it was standing in for is not."
+        },
+        {
+          "id": "f-3a04",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id ac-0004] AC-0004 — /status carries retention {window_days, last_purge_at, purged_last_run} and the daemon log names each purge with counts. JUDGMENT: TRUE — independently confirmed",
+          "state": "checked",
+          "receipt": "crates/core/src/views/status.rs adds `retention: Option<RetentionStatus>` with `#[serde(default, skip_serializing_if = \"Option::is_none\")]`. Checked the i7 requirement directly against the diff: `retention` is ADDED, and no pre-existing StatusReport key is renamed or removed (roots, queue, last_error, schema_ahead all intact); `queue`'s doc comment changes meaning to live-only but the key is stable. Because the field is Option + serde(default), an older daemon's envelope still deserializes in a newer CLI. Log receipt at crates/daemon/src/retention.rs:67-72 names window_days, purged and last_purge_at. `cargo test -p fs3-daemon --test first_light --test streaming` = 16 + 6 passed, exit 0, including status_retention_is_receipted_and_history_is_explicit and status_retention_log_names_completed_purge."
+        },
+        {
+          "id": "f-3a05",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id ac-0005] AC-0005 — PROD before/after counts, relation size, three status timings under 200 ms, flat seq_tup_read over 5 minutes. JUDGMENT: DEFERRED to o-prime's prod receipt after merge + bounce",
+          "state": "checked",
+          "receipt": "Correctly not the reviewer's to execute; prod :5433 and :7373 were never touched. What I can certify is that the mechanism can produce the receipt without a hand-written DELETE: RetentionSupervisor::new sets ticks = RETENTION_EVERY_TICKS - 1 (retention.rs:38) so the first shared reconcile tick performs the boot sweep immediately, and sweep_once drains to completion. Sizing from my own measurement: 38.8 ms per 10,000-row batch means ~1.01M rows is ~101 batches, on the order of 4-10 s of deletes, issued as separate autocommitted statements rather than one long lock. See notes n-001 and n-002 for two capture caveats o-prime should know before the bounce."
+        },
+        {
+          "id": "f-3a06",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id i7] I7 — status --history documentation and help; the default is now live-only; envelope keys added not renamed. JUDGMENT: TRUE — satisfied",
+          "state": "checked",
+          "receipt": "crates/cli/src/main.rs adds `--history` with `conflicts_with = \"watch\"`, so a full-history census can never become a repeated watch. crates/cli/docs/daemon.md states what changed and why: retention window with its default named (1), bounded batch purge at boot and hourly, ordinary status reads only live rows, `--history` requests settled history explicitly. The daemon.md progress-line sample was updated to match the runner's reduced fields, so the doc does not describe output that no longer exists. Envelope keys added, not renamed (see ac-0004)."
+        },
+        {
+          "id": "f-3a07",
           "kind": "defect",
-          "severity": "CRITICAL",
-          "finding": "CRITICAL — a failed non-terminal scan_file job is now PERMANENTLY unindexable, silently. Widening the mint-time dedupe arbiter to cover `failed AND NOT terminal` makes a failed row hold its dedupe key forever, but the only revival path in the daemon is requeue_failed, and crates/daemon/src/boot.rs:186 calls it with exactly `&[SUMMARIZE, EMBED]`. scan_file is not covered, and neither is ingest_session. The full trap: (1) runner.rs:937 settles any retryable failure of ANY kind as `fail_job(.., !failure.retryable)` -> state='failed', terminal=false, so the state is reachable for scan_file after its three attempts; (2) the row now occupies the live-dedupe index under `scan:{worktree_id}:{path}` (roots.rs:134-136), a key that is path-based and CONTENT-INDEPENDENT, so editing the file does not mint a new key; (3) every future enqueue — the watcher (watch.rs:345), a rescan, or a re-run of `add` (roots.rs:235) — hits ON CONFLICT DO UPDATE (jobs.rs:127-132) which bumps payload, not_before and priority but CANNOT change state; (4) claim_job only takes `state='pending'` (jobs.rs:164), so the row is never claimed; (5) no boot sweep covers the kind, so even a daemon restart does not rescue it. Net effect: that file is missing from the index forever and the symptom is silence — the scan reports success and enqueues nothing. This is not a hypothetical: crates/store/src/jobs.rs:374-379 already describes this EXACT hazard for wedged `running` rows — 'a wedged row makes every future add or scan of that file collapse into it ... permanently unindexable, and the symptom is silence' — and requeue_running exists as its dedicated fix. This commit reintroduces the same hazard for the `failed` case and ships no equivalent fix. Migration 0023 amplifies it on prod: any pre-existing failed non-terminal scan_file row is converted into this stuck state at migration time, and where duplicates existed the migration retires the losers with terminal=true, leaving exactly one permanently stuck owner. SMALLEST FIX: make the absorb actually re-fire rather than being inert — in enqueue_job_with_priority's DO UPDATE, revive a failed owner, e.g. add `state = CASE WHEN jobs.state = 'failed' THEN 'pending' ELSE jobs.state END, attempts = CASE WHEN jobs.state = 'failed' THEN 0 ELSE jobs.attempts END`. That keeps one row per key (so ac-0003, the index and the requeue_failed guard removal all stay valid), preserves the row-123 prevention this plan wanted, and restores the documented recovery path. It also makes the existing absorb test assert the right contract: crates/store/tests/pg_jobs_retention.rs:230 currently asserts `state == \"failed\"` on kind scan_file, which PINS the defect, and must be changed to assert the re-fire is claimable.",
+          "severity": "MAJOR",
+          "finding": "[legacy id f-001] CRITICAL — a failed non-terminal scan_file job is now PERMANENTLY unindexable, silently. Widening the mint-time dedupe arbiter to cover `failed AND NOT terminal` makes a failed row hold its dedupe key forever, but the only revival path in the daemon is requeue_failed, and crates/daemon/src/boot.rs:186 calls it with exactly `&[SUMMARIZE, EMBED]`. scan_file is not covered, and neither is ingest_session. The full trap: (1) runner.rs:937 settles any retryable failure of ANY kind as `fail_job(.., !failure.retryable)` -> state='failed', terminal=false, so the state is reachable for scan_file after its three attempts; (2) the row now occupies the live-dedupe index under `scan:{worktree_id}:{path}` (roots.rs:134-136), a key that is path-based and CONTENT-INDEPENDENT, so editing the file does not mint a new key; (3) every future enqueue — the watcher (watch.rs:345), a rescan, or a re-run of `add` (roots.rs:235) — hits ON CONFLICT DO UPDATE (jobs.rs:127-132) which bumps payload, not_before and priority but CANNOT change state; (4) claim_job only takes `state='pending'` (jobs.rs:164), so the row is never claimed; (5) no boot sweep covers the kind, so even a daemon restart does not rescue it. Net effect: that file is missing from the index forever and the symptom is silence — the scan reports success and enqueues nothing. This is not a hypothetical: crates/store/src/jobs.rs:374-379 already describes this EXACT hazard for wedged `running` rows — 'a wedged row makes every future add or scan of that file collapse into it ... permanently unindexable, and the symptom is silence' — and requeue_running exists as its dedicated fix. This commit reintroduces the same hazard for the `failed` case and ships no equivalent fix. Migration 0023 amplifies it on prod: any pre-existing failed non-terminal scan_file row is converted into this stuck state at migration time, and where duplicates existed the migration retires the losers with terminal=true, leaving exactly one permanently stuck owner. SMALLEST FIX: make the absorb actually re-fire rather than being inert — in enqueue_job_with_priority's DO UPDATE, revive a failed owner, e.g. add `state = CASE WHEN jobs.state = 'failed' THEN 'pending' ELSE jobs.state END, attempts = CASE WHEN jobs.state = 'failed' THEN 0 ELSE jobs.attempts END`. That keeps one row per key (so ac-0003, the index and the requeue_failed guard removal all stay valid), preserves the row-123 prevention this plan wanted, and restores the documented recovery path. It also makes the existing absorb test assert the right contract: crates/store/tests/pg_jobs_retention.rs:230 currently asserts `state == \"failed\"` on kind scan_file, which PINS the defect, and must be changed to assert the re-fire is claimable.",
+          "state": "checked",
+          "receipt": "Reproduced BOTH WAYS on the :5434 test postmaster with the exact production SQL, using two scratch databases built by replaying crates/store/migrations/*.sql. POST-0023 (rv_scanfile, migrated through 0023): mint scan_file 'file:/repo/a.rs' -> claim -> fail_job(terminal=false) -> re-run the documented recovery enqueue. Result: rows=1, state='failed', revivable=true; the exact claim_job predicate returned claimed_id = -1 (nothing claimable); and the boot sweep's own predicate (state='failed' AND NOT terminal AND kind = ANY(['summarize','embed'])) matched 0 rows, so no restart rescues it. NEGATIVE CONTROL, PRE-0023 (rv_before, migrated to 0022 only, old pending/running-only arbiter): identical sequence produced rows=2 and claimed_id=2 — a fresh, claimable pending row. The recovery path demonstrably worked before this commit and demonstrably does not after it, which establishes regression rather than pre-existing behaviour. Reachability of the precondition confirmed by reading runner.rs:937 rather than assumed. SCHEMA CORROBORATION found while cleaning up: the database carries a dedicated `jobs_revivable_idx ON jobs (kind) WHERE state='failed' AND NOT terminal` — an index whose whole purpose is to find revivable failed jobs by kind, and whose only consumer is requeue_failed. So a stuck scan_file row sits inside an index that classifies it as REVIVABLE while nothing in the daemon will ever revive it, because the sole callsite (boot.rs:186) passes only SUMMARIZE and EMBED. The schema asserts the row is recoverable and the code never acts on it, which is further evidence this is an unintended gap rather than a deliberate narrowing.",
           "address": "crates/store/src/jobs.rs:127-132 (widened ON CONFLICT arbiter); crates/daemon/src/boot.rs:186 (sweep covers only SUMMARIZE, EMBED); crates/daemon/src/runner.rs:937 (any kind can settle failed non-terminal); crates/store/src/jobs.rs:164 (claim requires pending); crates/daemon/src/roots.rs:134-136 (content-independent key); crates/store/src/jobs.rs:374-379 (the codebase's own prior articulation of this hazard); crates/store/tests/pg_jobs_retention.rs:190-234 (test pins the defect)",
           "links": [
             "../../plan.dd.json#goals",
             "../../plan.dd.json#acceptance-criteria"
-          ],
-          "state": "checked",
-          "receipt": "Reproduced BOTH WAYS on the :5434 test postmaster with the exact production SQL, using two scratch databases built by replaying crates/store/migrations/*.sql. POST-0023 (rv_scanfile, migrated through 0023): mint scan_file 'file:/repo/a.rs' -> claim -> fail_job(terminal=false) -> re-run the documented recovery enqueue. Result: rows=1, state='failed', revivable=true; the exact claim_job predicate returned claimed_id = -1 (nothing claimable); and the boot sweep's own predicate (state='failed' AND NOT terminal AND kind = ANY(['summarize','embed'])) matched 0 rows, so no restart rescues it. NEGATIVE CONTROL, PRE-0023 (rv_before, migrated to 0022 only, old pending/running-only arbiter): identical sequence produced rows=2 and claimed_id=2 — a fresh, claimable pending row. The recovery path demonstrably worked before this commit and demonstrably does not after it, which establishes regression rather than pre-existing behaviour. Reachability of the precondition confirmed by reading runner.rs:937 rather than assumed. SCHEMA CORROBORATION found while cleaning up: the database carries a dedicated `jobs_revivable_idx ON jobs (kind) WHERE state='failed' AND NOT terminal` — an index whose whole purpose is to find revivable failed jobs by kind, and whose only consumer is requeue_failed. So a stuck scan_file row sits inside an index that classifies it as REVIVABLE while nothing in the daemon will ever revive it, because the sole callsite (boot.rs:186) passes only SUMMARIZE and EMBED. The schema asserts the row is recoverable and the code never acts on it, which is further evidence this is an unintended gap rather than a deliberate narrowing."
+          ]
         },
         {
-          "id": "f-002",
-          "kind": "doc",
-          "severity": "MEDIUM",
-          "finding": "MEDIUM — the plan text still promises a 7-day default that the code deliberately does not ship. plan.dd.json's goals say 'retained for a bounded window (default 7 days, config indexing.job_retention_days)', while crates/core/src/config.rs ships `job_retention_days: 1` with a validator rejecting 0. The one-day default is AUTHORISED (o-prime ruled it in the coder's jobs-retention-prime-reply-001.md item 4, on the measured basis that 515k done rows/day would make a seven-day window retain ~3.6M rows — the exact problem this plan exists to remove); the code is right and the plan doc is stale because it was not amended after the ruling. Left as-is, the plan's own goal line contradicts shipped behaviour and the next reader cannot tell which is authoritative. SMALLEST FIX: amend the plan.dd.json goal line to say 1 day and cite the ruling, then rebuild the .dd.md. No code change.",
+          "id": "f-3a08",
+          "kind": "defect",
+          "severity": "MINOR",
+          "finding": "[legacy id f-002] MEDIUM — the plan text still promises a 7-day default that the code deliberately does not ship. plan.dd.json's goals say 'retained for a bounded window (default 7 days, config indexing.job_retention_days)', while crates/core/src/config.rs ships `job_retention_days: 1` with a validator rejecting 0. The one-day default is AUTHORISED (o-prime ruled it in the coder's jobs-retention-prime-reply-001.md item 4, on the measured basis that 515k done rows/day would make a seven-day window retain ~3.6M rows — the exact problem this plan exists to remove); the code is right and the plan doc is stale because it was not amended after the ruling. Left as-is, the plan's own goal line contradicts shipped behaviour and the next reader cannot tell which is authoritative. SMALLEST FIX: amend the plan.dd.json goal line to say 1 day and cite the ruling, then rebuild the .dd.md. No code change.",
+          "state": "checked",
+          "receipt": "Read both sides at the reviewed sha: plan.dd.md line 37 says 'default 7 days'; the config diff sets 1 and adds zero_job_retention_is_rejected. Ruling confirmed by o-prime in review-014-prime-reply-001.md item 1, which directed this be reported as exactly one MEDIUM doc finding and not as a code defect. Shipped default independently observed as 1 in the daemon test assertion `live[\"retention\"][\"window_days\"] == 1` and in crates/cli/docs/daemon.md.",
           "address": "docs/plans/014-jobs-retention/plan.dd.json#goals (goal 2); crates/core/src/config.rs (IndexingConfig::default, job_retention_days = 1, and the zero-rejection validator)",
           "links": [
             "../../plan.dd.json#goals"
-          ],
-          "state": "checked",
-          "receipt": "Read both sides at the reviewed sha: plan.dd.md line 37 says 'default 7 days'; the config diff sets 1 and adds zero_job_retention_is_rejected. Ruling confirmed by o-prime in review-014-prime-reply-001.md item 1, which directed this be reported as exactly one MEDIUM doc finding and not as a code defect. Shipped default independently observed as 1 in the daemon test assertion `live[\"retention\"][\"window_days\"] == 1` and in crates/cli/docs/daemon.md."
+          ]
         },
         {
-          "id": "f-003",
+          "id": "f-3a09",
           "kind": "defect",
-          "severity": "MEDIUM",
-          "finding": "MEDIUM — GET /status still Seq Scans the whole jobs table on every call. The plan's headline goal is that 'Progress reporting and GET /status read only LIVE rows ... via an index-only path in single-digit milliseconds; the full-history GROUP BY is gone from every hot path.' queue_depth was fixed and verified (ac-0001), but /status makes a SECOND jobs read that nobody re-planned: crates/daemon/src/status.rs:53 calls fs3_store::last_failure, whose query (crates/store/src/jobs.rs:704-707) is `SELECT dedupe_key, last_error FROM jobs WHERE state='failed' AND last_error IS NOT NULL ORDER BY updated_at DESC LIMIT 1`. No index serves it: jobs_live_dedupe_idx excludes terminal-failed rows, the new jobs_done_retention_idx is `WHERE state='done'`, and jobs_claim_idx cannot satisfy the updated_at ordering. So the predicate falls through to a full scan plus a Sort. This is NOT fixed by retention either — at the ruled 1-day window and the measured 515,000 completed jobs/day, prod settles at roughly half a million done rows permanently, and every /status call scans all of them forever. The 5-second progress loop IS genuinely fixed (report_progress does not call last_failure), so the 27%-of-DB-samples finding from the profile report is still resolved; what survives is the per-/status-call scan, which is exactly what ac-0005's 'three status timings under 200 ms' will be measuring. SMALLEST FIX: one partial index, in the same migration — `CREATE INDEX jobs_failed_recent_idx ON jobs (updated_at DESC) WHERE state='failed' AND last_error IS NOT NULL;`. SECONDARY, same surface: the live-only census also drops failed-TERMINAL rows from what /status reports (LIVE_QUEUE_DEPTH_SQL covers `failed AND NOT terminal` only), so an operator with permanently-dead jobs now sees no count of them; crates/cli/docs/daemon.md still claims 'flowspace3 status reports failed jobs with their last error', which is now only partly true. That exclusion matches the plan's own definition of live and is defensible, but the doc line should be corrected to say terminal failures appear only under --history, or the census should carry a terminal-failed count.",
+          "severity": "MINOR",
+          "finding": "[legacy id f-003] MEDIUM — GET /status still Seq Scans the whole jobs table on every call. The plan's headline goal is that 'Progress reporting and GET /status read only LIVE rows ... via an index-only path in single-digit milliseconds; the full-history GROUP BY is gone from every hot path.' queue_depth was fixed and verified (ac-0001), but /status makes a SECOND jobs read that nobody re-planned: crates/daemon/src/status.rs:53 calls fs3_store::last_failure, whose query (crates/store/src/jobs.rs:704-707) is `SELECT dedupe_key, last_error FROM jobs WHERE state='failed' AND last_error IS NOT NULL ORDER BY updated_at DESC LIMIT 1`. No index serves it: jobs_live_dedupe_idx excludes terminal-failed rows, the new jobs_done_retention_idx is `WHERE state='done'`, and jobs_claim_idx cannot satisfy the updated_at ordering. So the predicate falls through to a full scan plus a Sort. This is NOT fixed by retention either — at the ruled 1-day window and the measured 515,000 completed jobs/day, prod settles at roughly half a million done rows permanently, and every /status call scans all of them forever. The 5-second progress loop IS genuinely fixed (report_progress does not call last_failure), so the 27%-of-DB-samples finding from the profile report is still resolved; what survives is the per-/status-call scan, which is exactly what ac-0005's 'three status timings under 200 ms' will be measuring. SMALLEST FIX: one partial index, in the same migration — `CREATE INDEX jobs_failed_recent_idx ON jobs (updated_at DESC) WHERE state='failed' AND last_error IS NOT NULL;`. SECONDARY, same surface: the live-only census also drops failed-TERMINAL rows from what /status reports (LIVE_QUEUE_DEPTH_SQL covers `failed AND NOT terminal` only), so an operator with permanently-dead jobs now sees no count of them; crates/cli/docs/daemon.md still claims 'flowspace3 status reports failed jobs with their last error', which is now only partly true. That exclusion matches the plan's own definition of live and is defensible, but the doc line should be corrected to say terminal failures appear only under --history, or the census should carry a terminal-failed count.",
+          "state": "checked",
+          "receipt": "Caught by finishing the ack's item-12 enumeration rather than stopping at queue_depth — two green queries on one hot path do not prove the hot path is clean. On the 200,000-done-row seed: EXPLAIN (FORMAT JSON) of last_failure's exact production SQL returned `Seq Scan` on jobs, Total Cost 5167.16, under a Sort and a Limit. Applying the proposed partial index and re-planning the identical statement returned `Index Scan` using jobs_failed_recent_idx, Total Cost 4.14 — a ~1250x planner-cost reduction — and the query returned the same row ('t1', 'malformed payload'), so the fix is behaviour-preserving. Terminal-visibility half verified on the same seed: with 2 terminal-failed and 1 non-terminal-failed row present, the live census reported only `embed failed 1` and gave no indication the 2 terminal failures existed. Note that last_failure itself does NOT filter on terminal (jobs.rs:706), so a single terminal failure can still surface as last_error even though its count cannot.",
           "address": "crates/daemon/src/status.rs:53 (the unplanned second jobs read on the /status hot path); crates/store/src/jobs.rs:703-714 (last_failure, unindexed predicate + sort); crates/store/migrations/0023_jobs_retention.sql (the migration that should carry the missing index); crates/store/src/jobs.rs:558-564 (LIVE_QUEUE_DEPTH_SQL excludes failed-terminal); crates/cli/docs/daemon.md (overstated failure-reporting line)",
           "links": [
             "../../plan.dd.json#goals",
             "../../plan.dd.json#acceptance-criteria"
-          ],
-          "state": "checked",
-          "receipt": "Caught by finishing the ack's item-12 enumeration rather than stopping at queue_depth — two green queries on one hot path do not prove the hot path is clean. On the 200,000-done-row seed: EXPLAIN (FORMAT JSON) of last_failure's exact production SQL returned `Seq Scan` on jobs, Total Cost 5167.16, under a Sort and a Limit. Applying the proposed partial index and re-planning the identical statement returned `Index Scan` using jobs_failed_recent_idx, Total Cost 4.14 — a ~1250x planner-cost reduction — and the query returned the same row ('t1', 'malformed payload'), so the fix is behaviour-preserving. Terminal-visibility half verified on the same seed: with 2 terminal-failed and 1 non-terminal-failed row present, the live census reported only `embed failed 1` and gave no indication the 2 terminal failures existed. Note that last_failure itself does NOT filter on terminal (jobs.rs:706), so a single terminal failure can still surface as last_error even though its count cannot."
-        }
-      ]
-    },
-    {
-      "name": "delta",
-      "value": [
+          ]
+        },
         {
-          "id": "d-001",
-          "checked": "f-001 fix — mint-time revival",
-          "outcome": "CONFIRMED FIXED",
+          "id": "f-3a0a",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id d-001] DELTA — f-001 fix — mint-time revival — OUTCOME: CONFIRMED FIXED",
+          "state": "checked",
           "receipt": "Re-derived on a FRESH database rebuilt from the amended migrations, so the coder's migration is what I measured and not the index I hand-built in round 1 (I dropped that first and re-confirmed the pre-fix baseline still replanned to Seq Scan). Ran the EXACT post-fix production SQL from jobs.rs:127-137. Seeded the worst realistic stuck state — failed non-terminal with attempts=3 (at MAX_ATTEMPTS) and parks=20 (at MAX_PARKS). After the documented recovery re-add: 1 row, state='pending', attempts=0, parks=0, and the exact claim_job predicate returned claimed_id=1. In round 1 the identical sequence returned claimed_id=-1. The permanently-dark-file defect is gone."
         },
         {
-          "id": "d-002",
-          "checked": "f-001 controls — nothing else was disturbed",
-          "outcome": "CONFIRMED",
+          "id": "f-3a0b",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id d-002] DELTA — f-001 controls — nothing else was disturbed — OUTCOME: CONFIRMED",
+          "state": "checked",
           "receipt": "Four controls under one harness: revivable-failed -> pending/0/0 (revived); pending -> stays pending with attempts=1, parks=2 PRESERVED (a live row's budgets are not reset); running -> stays RUNNING with attempts=7-equivalent budgets preserved (not demoted); terminal-failed -> NOT absorbed, a second row is minted and is claimable while the retired defect row stays failed/terminal. Live owners per key after all four: zero keys with more than one, so the unique index, the requeue_failed guard removal and ac-0003 all remain valid."
         },
         {
-          "id": "d-003",
-          "checked": "CASE mutations — disbelieving the coder's three receipts",
-          "outcome": "ALL RED CORRECTLY, plus one the coder did not run",
+          "id": "f-3a0c",
+          "kind": "dim0",
+          "severity": "NA",
+          "finding": "[legacy id d-003] DELTA — CASE mutations — disbelieving the coder's three receipts — OUTCOME: ALL RED CORRECTLY, plus one the coder did not run",
+          "state": "checked",
           "receipt": "I re-ran all three of the coder's mutations myself rather than trusting the reported reds, and added a fourth. (1) state CASE removed -> k_failed stays 'failed': the original f-001 defect returns. (2) attempts reset removed -> revived at attempts=3, i.e. at MAX_ATTEMPTS, so the row would fail on its first retry. (3) parks reset removed -> revived at parks=20, i.e. at MAX_PARKS, so verdict() at runner.rs:1035-1036 could never park it again — this is the refinement I raised pre-fix and it is load-bearing, not cosmetic. (4) MY OWN: replacing the guarded CASE with an unguarded state='pending', attempts=0, parks=0 demotes the RUNNING control to pending and wipes a live pending row's budgets. That proves the CASE guard itself is necessary and that the naive form of this fix would have been a new defect."
         },
         {
-          "id": "d-004",
-          "checked": "f-003 fix — last_failure index",
-          "outcome": "CONFIRMED FIXED",
+          "id": "f-3a0d",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id d-004] DELTA — f-003 fix — last_failure index — OUTCOME: CONFIRMED FIXED",
+          "state": "checked",
           "receipt": "Fresh 200k-done-row seed. With the coder's migration index: Limit -> Index Scan(jobs_failed_recent_idx), Total Cost 4.14. MUTATION: dropped the index and the plan reverted to Limit -> Sort -> Seq Scan, Total Cost 5167.16 — so the new test assertion is genuinely capable of failing. Restored, Index Scan returned. The query still answers correctly and still returns a TERMINAL failure ('t1 / malformed payload'), which confirms the daemon.md correction is accurate: the latest failure stays visible in ordinary status even though terminal COUNTS now need --history. My 5167.16 differs from the coder's reported 5358 only because the seeds differ; same order, consistent."
         },
         {
-          "id": "d-005",
-          "checked": "ac-0001 not regressed by the fix",
-          "outcome": "CONFIRMED",
+          "id": "f-3a0e",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id d-005] DELTA — ac-0001 not regressed by the fix — OUTCOME: CONFIRMED",
+          "state": "checked",
           "receipt": "Re-explained the live census on the same fresh seed after the fix: Aggregate -> Sort -> Index Only Scan(jobs_live_dedupe_idx), no jobs Seq Scan. The retention and dedupe changes did not disturb the hot-path plan this plan exists to deliver."
         },
         {
-          "id": "d-006",
-          "checked": "new tests assert the contract rather than pinning the defect",
-          "outcome": "CONFIRMED — materially better",
+          "id": "f-3a0f",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id d-006] DELTA — new tests assert the contract rather than pinning the defect — OUTCOME: CONFIRMED — materially better",
+          "state": "checked",
           "receipt": "The round-1 test pinned the defect (asserted state=='failed' on kind scan_file). The replacement, dedupe_failed_non_terminal_job_absorbs_a_claimable_refire, seeds the exhausted budgets and then ACTUALLY CLAIMS the row via claim_job — a behavioural assertion, not a row inspection — and checks attempts==1/parks==0 after the claim. The new dedupe_running_and_terminal_failed_rows_keep_their_distinct_semantics pins both controls I asked for: a running row keeps state and its (7,9) budgets, and a terminal row yields two rows with the fresh one claimable under a different id. The plan test gained the Index Scan assertion for f-003. Targeted suites re-run by me at the fix sha, exit 0: fs3-store pg_jobs_retention 4 passed, pg_migrations 9 passed including migrating_twice_changes_nothing."
         },
         {
-          "id": "d-007",
-          "checked": "f-002 plan text",
-          "outcome": "CONFIRMED FIXED",
+          "id": "f-3a10",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id d-007] DELTA — f-002 plan text — OUTCOME: CONFIRMED FIXED",
+          "state": "checked",
           "receipt": "plan.dd.json goal now reads 'default 1 day, ruled 2026-09-02 in prime-reply-001 item 4; config indexing.job_retention_days'. ac-0003's claim was additionally amended to require that 'an absorbed re-fire of a failed row is claimable', which closes the under-specification that let f-001 hide behind a green test."
-        }
-      ]
-    },
-    {
-      "name": "refuted",
-      "value": [
+        },
         {
-          "id": "r-001",
-          "hypothesis": "Migration 0023 loses a job or fails to converge on a dirty database.",
-          "outcome": "REFUTED — converges correctly, loses nothing",
+          "id": "f-3a11",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id r-001] REVIEWER HYPOTHESIS — Migration 0023 loses a job or fails to converge on a dirty database. — OUTCOME: REFUTED — converges correctly, loses nothing",
+          "state": "checked",
           "receipt": "I dirtied a 0022-era database by hand with six duplicate shapes the old index permitted: failed+failed, failed+pending, running+failed, failed-non-terminal+failed-terminal, a three-way failed triple, and done+failed. Applied 0023: rows_before = 13, rows_after = 13 — NO JOB LOST (losers are retired via terminal=true, never deleted). Live owners per key after migration: zero keys with more than one. Winners are correct in every shape: pending beats failed (k_fp), running beats failed (k_rf), newest failed wins a failed pair (k_ff id 4 over id 3) and a triple (k_fff id 13), a pre-existing terminal row is left untouched (k_fT), and a done row is ignored entirely (k_done). The `AND state='failed'` guard on the UPDATE means no pending or running row can ever be retired."
         },
         {
-          "id": "r-002",
-          "hypothesis": "The migration can fail halfway and leave the old index dropped and the new one absent.",
-          "outcome": "REFUTED",
+          "id": "f-3a12",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id r-002] REVIEWER HYPOTHESIS — The migration can fail halfway and leave the old index dropped and the new one absent. — OUTCOME: REFUTED",
+          "state": "checked",
           "receipt": "Migrations run through `sqlx::migrate!` (crates/store/src/lib.rs:96) and 0023 carries no `-- no-transaction` header, so the DROP INDEX and CREATE UNIQUE INDEX are one atomic unit; a failure rolls both back. Confirmed empirically by replaying the file with psql -1, which is the same single-transaction shape. Note n-003 records the one real cost of this (a non-concurrent index build on a large table)."
         },
         {
-          "id": "r-003",
-          "hypothesis": "A NULL `terminal` silently drops rows out of the widened partial-unique index.",
-          "outcome": "REFUTED — cannot happen",
+          "id": "f-3a13",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id r-003] REVIEWER HYPOTHESIS — A NULL `terminal` silently drops rows out of the widened partial-unique index. — OUTCOME: REFUTED — cannot happen",
+          "state": "checked",
           "receipt": "information_schema on the migrated schema: `terminal` is NOT NULL DEFAULT false and `updated_at` is NOT NULL DEFAULT now(). `NOT terminal` can therefore never evaluate to NULL, so no row can fall out of the index predicate unnoticed."
         },
         {
-          "id": "r-004",
-          "hypothesis": "The purge can delete a row that boot recovery is about to transition done->pending, or can lock a live row.",
-          "outcome": "REFUTED — no such writer exists, and live rows are never locked",
+          "id": "f-3a14",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id r-004] REVIEWER HYPOTHESIS — The purge can delete a row that boot recovery is about to transition done->pending, or can lock a live row. — OUTCOME: REFUTED — no such writer exists, and live rows are never locked",
+          "state": "checked",
           "receipt": "Enumerated every writer of jobs.state: settle (by id, on a claimed row), park_job and retry_job (by id, on a running row), claim_job (state='pending'), requeue_running (state='running'), requeue_failed (state='failed'), retire_empty_embed_jobs (state='failed' AND NOT terminal AND kind='embed', jobs.rs:435,469), enqueue's ON CONFLICT (arbitrated by the live partial index, which excludes done), and migration 0023's backfill (state='failed'). NOTHING transitions a row out of `done`, so the done->pending re-fire race does not exist. Live-row locking refuted empirically: with an open transaction holding FOR UPDATE on 5 pending rows, the purge batch completed in 42.5 ms without blocking, and all 50 pending + 7 failed rows survived — the `state='done'` filter is inside the locking subquery, so no live tuple is ever locked."
         },
         {
-          "id": "r-005",
-          "hypothesis": "Retention age is wrong because something else touches updated_at on done rows, or settlement never sets it.",
-          "outcome": "REFUTED — the assumption holds",
+          "id": "f-3a15",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id r-005] REVIEWER HYPOTHESIS — Retention age is wrong because something else touches updated_at on done rows, or settlement never sets it. — OUTCOME: REFUTED — the assumption holds",
+          "state": "checked",
           "receipt": "crates/store/src/jobs.rs:716-734: `settle` sets `updated_at = now()`, and complete_job routes through it, so a done row's updated_at IS its settlement time. Checked the reverse direction too — the only writer that could plausibly reset a settled row's age is enqueue's ON CONFLICT DO UPDATE (which sets updated_at = now()), but its arbiter is the live partial index, which excludes done; and migration 0023's backfill is guarded by `state='failed'`. No path resets a done row's age, so the retention window measures from settlement as intended."
         },
         {
-          "id": "r-006",
-          "hypothesis": "Removing requeue_failed's NOT EXISTS live-row guard lets the boot sweep abort on a unique violation.",
-          "outcome": "REFUTED — the widened index makes the guard genuinely redundant",
+          "id": "f-3a16",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id r-006] REVIEWER HYPOTHESIS — Removing requeue_failed's NOT EXISTS live-row guard lets the boot sweep abort on a unique violation. — OUTCOME: REFUTED — the widened index makes the guard genuinely redundant",
+          "state": "checked",
           "receipt": "o-prime asked for this specifically. Because pending/running and failed-non-terminal now live in ONE unique partial index, a failed-non-terminal row and a pending row under the same key cannot coexist — proven by r-001, where the dirty failed+pending pair (k_fp) converged to a single owner. I then ran requeue_failed's exact UPDATE against the dirty-migrated database: UPDATE 4, no unique violation, and zero keys with more than one live owner afterwards. The concurrent case is safe by construction: a racing enqueue targets the SAME row via ON CONFLICT rather than inserting a second one, so the two serialize on that row's lock."
         },
         {
-          "id": "r-007",
-          "hypothesis": "The boot pass purging ~1M rows starves the runner or holds a long lock.",
-          "outcome": "REFUTED as a starvation risk; bounded, but see n-002",
+          "id": "f-3a17",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id r-007] REVIEWER HYPOTHESIS — The boot pass purging ~1M rows starves the runner or holds a long lock. — OUTCOME: REFUTED as a starvation risk; bounded, but see n-002",
+          "state": "checked",
           "receipt": "sweep_once (retention.rs:90-98) issues separate autocommitted 10,000-row statements rather than one transaction, so lock time is per-batch, not per-sweep. Measured 38.8 ms per 10,000-row batch on a seeded table, so ~1.01M rows is ~101 batches, on the order of 4-10 s total. The job runner is a separately spawned loop (runner::run_forever), so workers are not blocked at all. The reconcile roster IS sequential (reconcile.rs:101-103 awaits each reconciler in turn), so sibling reconcile passes are delayed by that few seconds once, at the first bounce only."
-        }
-      ]
-    },
-    {
-      "name": "notes",
-      "value": [
-        {
-          "id": "n-001",
-          "note": "For o-prime's ac-0005 capture: the boot purge receipt is TRANSIENT. record_job_retention overwrites purged_last_run on every completed sweep, including quiet hourly ones, so roughly one hour after the bounce /status will read purged_last_run = 0 with a fresh last_purge_at. Capture `flowspace3 status --json` inside that window, or take the count from the daemon log line at retention.rs:67-72, which is durable. Not a defect — purged_last_run means what it says — but it will silently cost the receipt if the capture is late."
         },
         {
-          "id": "n-002",
-          "note": "For o-prime's bounce: migration 0023 builds a UNIQUE index non-concurrently over the ~1.01M-row jobs table inside the migration transaction. The daemon migrates before starting its runner so nothing races it, but the first post-merge boot will pause on that index build; expect it, and do not read it as a hang."
+          "id": "f-3a18",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id n-001] NOTE — For o-prime's ac-0005 capture: the boot purge receipt is TRANSIENT. record_job_retention overwrites purged_last_run on every completed sweep, including quiet hourly ones, so roughly one hour after the bounce /status will read purged_last_run = 0 with a fresh last_purge_at. Capture `flowspace3 status --json` inside that window, or take the count from the daemon log line at retention.rs:67-72, which is durable. Not a defect — purged_last_run means what it says — but it will silently cost the receipt if the capture is late.",
+          "state": "checked",
+          "receipt": "Operational note for o-prime; no code claim attached."
         },
         {
-          "id": "n-003",
-          "note": "Deliberate observability reduction, correctly documented, not a finding: the progress line loses the cumulative scanned/summarized/embedded counters (runner.rs, the count(kind,'done') fields) because those were the history reads this plan exists to remove. scan_left/summarize_left/embed_left remain, and crates/cli/docs/daemon.md was updated so the documented sample matches the real output. Flagging it only so the change is a recorded decision rather than a surprise."
+          "id": "f-3a19",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id n-002] NOTE — For o-prime's bounce: migration 0023 builds a UNIQUE index non-concurrently over the ~1.01M-row jobs table inside the migration transaction. The daemon migrates before starting its runner so nothing races it, but the first post-merge boot will pause on that index build; expect it, and do not read it as a hang.",
+          "state": "checked",
+          "receipt": "Operational note for o-prime; no code claim attached."
         },
         {
-          "id": "n-004",
-          "note": "Dogfooding report: `flowspace3 search \"requeue failed jobs back to pending at daemon boot\"` correctly surfaced requeue_running and requeue_failed as the top semantic hits and was the entry point to f-001; the meaning-shaped query worked. CORRECTION — MY ERROR, WITHDRAWN: an earlier revision of this note blamed `ddocs build` for truncating long table cells at 768 chars. That was WRONG and it is retracted in full. o-prime and the dd prime could not reproduce it, and on disk the files are whole: the ac-0003 row of this record measures 1,007 characters, the rendered packet's longest line is 1,313, and both distinctive tail phrases of the i6 row ('retention age uses updated_at' and 'run migration 0023 yourself against a database you dirtied by hand') are present in packet-reviewer.dd.md. Zero literal truncation markers exist in either file. THE REAL OWNER IS MY OWN READER TOOLING, not ddocs: the harness `read` tool emitted the footer '[Some lines truncated to 768 chars]' when it displayed the packet, and the `bash` tool emitted '…[+1172]' continuation markers on long `jq` output. Both are display limits in the tools I read with. Worse, the check I ran to 'confirm' the bug was itself broken: I grepped `\\[+[0-9]*\\]`, in which `\\[+` means one-or-more literal '[' rather than '[' followed by '+', so it matched an ordinary '[0]' in the prose and I read that single hit as proof. That is confirmation bias — I had a hypothesis and accepted a match that never tested it. The genuine, narrower lesson worth keeping: a reviewer whose file-view silently shortens a cell can lose instructions without knowing, so read the .dd.json when a packet row looks like it stops mid-sentence. No ddocs backlog item is warranted."
+          "id": "f-3a1a",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id n-003] NOTE — Deliberate observability reduction, correctly documented, not a finding: the progress line loses the cumulative scanned/summarized/embedded counters (runner.rs, the count(kind,'done') fields) because those were the history reads this plan exists to remove. scan_left/summarize_left/embed_left remain, and crates/cli/docs/daemon.md was updated so the documented sample matches the real output. Flagging it only so the change is a recorded decision rather than a surprise.",
+          "state": "checked",
+          "receipt": "Operational note for o-prime; no code claim attached."
         },
         {
-          "id": "n-005",
-          "note": "PRECONDITION FOR THE BOUNCE, and the one thing that could still make this land badly. The fix ADDED jobs_failed_recent_idx to migration 0023 rather than creating a new 0024, so 0023's content — and therefore its checksum — changed after it had already been applied in at least one place. sqlx validates this: sqlx-core 0.8.6 migrator.rs:175-176 compares the embedded migration's checksum against the applied row and returns MigrateError::VersionMismatch when they differ. Any database that already ran the PRE-FIX 0023 will now refuse to migrate, and the daemon will fail to start with a modified-migration error rather than a helpful one — the same class of failure the store's own StoreError::Migrate doc records from 2026-08-27. Prod is safe IF it has genuinely not bounced since 0023 first landed, which is o-prime's premise for allowing the migration to grow, and per-test databases are created fresh so the suite cannot catch this. Before the bounce, confirm no environment (any dev box, the coder's own database, any staging copy) has the pre-fix 0023 in its _sqlx_migrations; if one has, either drop that database or re-cut the index as migration 0024. Reported as a precondition rather than a finding because o-prime explicitly ruled 0023 free to grow while unshipped."
+          "id": "f-3a1b",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id n-004] NOTE — Dogfooding report: `flowspace3 search \"requeue failed jobs back to pending at daemon boot\"` correctly surfaced requeue_running and requeue_failed as the top semantic hits and was the entry point to f-001; the meaning-shaped query worked. CORRECTION — MY ERROR, WITHDRAWN: an earlier revision of this note blamed `ddocs build` for truncating long table cells at 768 chars. That was WRONG and it is retracted in full. o-prime and the dd prime could not reproduce it, and on disk the files are whole: the ac-0003 row of this record measures 1,007 characters, the rendered packet's longest line is 1,313, and both distinctive tail phrases of the i6 row ('retention age uses updated_at' and 'run migration 0023 yourself against a database you dirtied by hand') are present in packet-reviewer.dd.md. Zero literal truncation markers exist in either file. THE REAL OWNER IS MY OWN READER TOOLING, not ddocs: the harness `read` tool emitted the footer '[Some lines truncated to 768 chars]' when it displayed the packet, and the `bash` tool emitted '…[+1172]' continuation markers on long `jq` output. Both are display limits in the tools I read with. Worse, the check I ran to 'confirm' the bug was itself broken: I grepped `\\[+[0-9]*\\]`, in which `\\[+` means one-or-more literal '[' rather than '[' followed by '+', so it matched an ordinary '[0]' in the prose and I read that single hit as proof. That is confirmation bias — I had a hypothesis and accepted a match that never tested it. The genuine, narrower lesson worth keeping: a reviewer whose file-view silently shortens a cell can lose instructions without knowing, so read the .dd.json when a packet row looks like it stops mid-sentence. No ddocs backlog item is warranted.",
+          "state": "checked",
+          "receipt": "Operational note for o-prime; no code claim attached."
+        },
+        {
+          "id": "f-3a1c",
+          "kind": "question",
+          "severity": "NA",
+          "finding": "[legacy id n-005] NOTE — PRECONDITION FOR THE BOUNCE, and the one thing that could still make this land badly. The fix ADDED jobs_failed_recent_idx to migration 0023 rather than creating a new 0024, so 0023's content — and therefore its checksum — changed after it had already been applied in at least one place. sqlx validates this: sqlx-core 0.8.6 migrator.rs:175-176 compares the embedded migration's checksum against the applied row and returns MigrateError::VersionMismatch when they differ. Any database that already ran the PRE-FIX 0023 will now refuse to migrate, and the daemon will fail to start with a modified-migration error rather than a helpful one — the same class of failure the store's own StoreError::Migrate doc records from 2026-08-27. Prod is safe IF it has genuinely not bounced since 0023 first landed, which is o-prime's premise for allowing the migration to grow, and per-test databases are created fresh so the suite cannot catch this. Before the bounce, confirm no environment (any dev box, the coder's own database, any staging copy) has the pre-fix 0023 in its _sqlx_migrations; if one has, either drop that database or re-cut the index as migration 0024. Reported as a precondition rather than a finding because o-prime explicitly ruled 0023 free to grow while unshipped.",
+          "state": "checked",
+          "receipt": "Operational note for o-prime; no code claim attached."
         }
       ]
     },
@@ -225,44 +266,228 @@
       "name": "verdict",
       "value": [
         {
-          "id": "vd-f001",
-          "finding": "#findings/f-001",
+          "id": "vd-3b01",
+          "finding": "#findings/f-3a01",
+          "resolution": "confirmed",
+          "rationale": "AC-0001 — Hot path is live-only, mutation-checked: no Seq Scan on jobs at >=200k done rows; the old GROUP BY golden must go red. JUDGMENT: TRUE — independently confirmed",
+          "state": "checked",
+          "receipt": "Re-derived, not audited. Seeded my own scratch DB (rv_scanfile) with 200,000 done + 50 pending + 7 failed rows, ANALYZE, then EXPLAIN (FORMAT JSON) by hand. Production live query -> Aggregate/Sort over `Index Only Scan` on `jobs_live_dedupe_idx`, Plan Rows 50, Total Cost 180.35, zero Seq Scan nodes. Author mutation performed: the old unfiltered GROUP BY on the same table -> `Seq Scan` on jobs, Plan Rows 200,057, Total Cost 6,669.29. The golden genuinely goes red, so the test is not passing for the wrong reason. Anti-drift check of my own: crates/store/tests/pg_jobs_retention.rs:5,81 imports an"
+        },
+        {
+          "id": "vd-3b02",
+          "finding": "#findings/f-3a02",
+          "resolution": "confirmed",
+          "rationale": "AC-0002 — Retention is bounded and safe: only aged done rows purged, live rows untouched, idempotent, batch size respected. JUDGMENT: TRUE — independently confirmed",
+          "state": "checked",
+          "receipt": "Bounding is structural, not incidental: crates/store/src/jobs.rs:629-648 selects ids in a CTE with `ORDER BY updated_at, id LIMIT $2 FOR UPDATE SKIP LOCKED` and deletes by join, and crates/daemon/src/retention.rs:90-98 loops that statement at PURGE_BATCH=10,000 until a short batch. No unbounded DELETE exists. I ran the exact batch statement myself on the 200k seed: DELETE 10000 in 38.8 ms, and again in 42.5 ms; after both, all 50 pending and all 7 failed rows survived untouched. Live-row safety proven under contention: I held an open transaction with `FOR UPDATE` on 5 live pending rows and ran"
+        },
+        {
+          "id": "vd-3b03",
+          "finding": "#findings/f-3a03",
+          "resolution": "confirmed",
+          "rationale": "AC-0003 — Mint refuses/absorbs a duplicate under a failed non-terminal key; a test asserts one row (or a named absorb), red without the fix. JUDGMENT: TRUE AS WRITTEN — but under-specified, and the gap is f-001",
+          "state": "checked",
+          "receipt": "The mechanism works exactly as claimed: crates/store/src/jobs.rs:127-132 widens the ON CONFLICT arbiter to `state IN ('pending','running') OR (state='failed' AND NOT terminal)`, matching migration 0023's partial-unique predicate, and the re-fire is absorbed into the existing row. One row, named absorb, test green (dedupe_failed_non_terminal_job_absorbs_a_second_mint, exit 0). Author mutation confirmed via the migration contract test. HOWEVER the criterion only ever required that ONE ROW exist afterwards — it never required the absorbed work to eventually run. crates/store/tests/pg_jobs_retenti"
+        },
+        {
+          "id": "vd-3b04",
+          "finding": "#findings/f-3a04",
+          "resolution": "confirmed",
+          "rationale": "AC-0004 — /status carries retention {window_days, last_purge_at, purged_last_run} and the daemon log names each purge with counts. JUDGMENT: TRUE — independently confirmed",
+          "state": "checked",
+          "receipt": "crates/core/src/views/status.rs adds `retention: Option<RetentionStatus>` with `#[serde(default, skip_serializing_if = \"Option::is_none\")]`. Checked the i7 requirement directly against the diff: `retention` is ADDED, and no pre-existing StatusReport key is renamed or removed (roots, queue, last_error, schema_ahead all intact); `queue`'s doc comment changes meaning to live-only but the key is stable. Because the field is Option + serde(default), an older daemon's envelope still deserializes in a newer CLI. Log receipt at crates/daemon/src/retention.rs:67-72 names window_days, purged and last_pu"
+        },
+        {
+          "id": "vd-3b05",
+          "finding": "#findings/f-3a05",
+          "resolution": "deferred",
+          "rationale": "AC-0005 — PROD before/after counts, relation size, three status timings under 200 ms, flat seq_tup_read over 5 minutes. JUDGMENT: DEFERRED to o-prime's prod receipt after merge + bounce",
+          "state": "checked",
+          "receipt": "Correctly not the reviewer's to execute; prod :5433 and :7373 were never touched. What I can certify is that the mechanism can produce the receipt without a hand-written DELETE: RetentionSupervisor::new sets ticks = RETENTION_EVERY_TICKS - 1 (retention.rs:38) so the first shared reconcile tick performs the boot sweep immediately, and sweep_once drains to completion. Sizing from my own measurement: 38.8 ms per 10,000-row batch means ~1.01M rows is ~101 batches, on the order of 4-10 s of deletes, issued as separate autocommitted statements rather than one long lock. See notes n-001 and n-002 for"
+        },
+        {
+          "id": "vd-3b06",
+          "finding": "#findings/f-3a06",
+          "resolution": "confirmed",
+          "rationale": "I7 — status --history documentation and help; the default is now live-only; envelope keys added not renamed. JUDGMENT: TRUE — satisfied",
+          "state": "checked",
+          "receipt": "crates/cli/src/main.rs adds `--history` with `conflicts_with = \"watch\"`, so a full-history census can never become a repeated watch. crates/cli/docs/daemon.md states what changed and why: retention window with its default named (1), bounded batch purge at boot and hourly, ordinary status reads only live rows, `--history` requests settled history explicitly. The daemon.md progress-line sample was updated to match the runner's reduced fields, so the doc does not describe output that no longer exists. Envelope keys added, not renamed (see ac-0004)."
+        },
+        {
+          "id": "vd-3b07",
+          "finding": "#findings/f-3a07",
           "resolution": "fixed",
-          "rationale": "REQUEST CHANGES. Blocking. A retryable scan_file failure permanently removes that file from the index with no operator-visible symptom and no recovery short of manual SQL — including across daemon restarts. The blast radius is every file whose scan hits a transient error, and migration 0023 converts any such pre-existing row into the stuck state on the first prod bounce. The fix is small and local to enqueue_job_with_priority's DO UPDATE clause and does not disturb the retention design, the index, or ac-0001/0002/0004.",
+          "rationale": "CRITICAL — a failed non-terminal scan_file job is now PERMANENTLY unindexable, silently. Widening the mint-time dedupe arbiter to cover `failed AND NOT terminal` makes a failed row hold its dedupe key forever, but the only revival path in the daemon is requeue_failed, and crates/daemon/src/boot.rs:186 calls it with exactly `&[SUMMARIZE, EMBED]`. scan_file is not covered, and neither is ingest_session. The full trap: (1) runner.rs:937 settles any retryable failure of ANY kind as `fail_job(.., !failure.retryable)` -> state='failed', terminal=false, so the state is reachable for scan_file after i",
           "state": "checked",
-          "receipt": "Reproduced with the exact production SQL on :5434, with a pre-0023 negative control proving regression rather than pre-existing behaviour. See f-001 receipt."
+          "receipt": "Reproduced BOTH WAYS on the :5434 test postmaster with the exact production SQL, using two scratch databases built by replaying crates/store/migrations/*.sql. POST-0023 (rv_scanfile, migrated through 0023): mint scan_file 'file:/repo/a.rs' -> claim -> fail_job(terminal=false) -> re-run the documented recovery enqueue. Result: rows=1, state='failed', revivable=true; the exact claim_job predicate returned claimed_id = -1 (nothing claimable); and the boot sweep's own predicate (state='failed' AND NOT terminal AND kind = ANY(['summarize','embed'])) matched 0 rows, so no restart rescues it. NEGATIV"
         },
         {
-          "id": "vd-f002",
-          "finding": "#findings/f-002",
+          "id": "vd-3b08",
+          "finding": "#findings/f-3a08",
           "resolution": "fixed",
-          "rationale": "Non-blocking doc fix. Amend the plan.dd.json goal line from 7 days to 1 day citing o-prime's ruling, and rebuild. The shipped code is correct and needs no change.",
+          "rationale": "MEDIUM — the plan text still promises a 7-day default that the code deliberately does not ship. plan.dd.json's goals say 'retained for a bounded window (default 7 days, config indexing.job_retention_days)', while crates/core/src/config.rs ships `job_retention_days: 1` with a validator rejecting 0. The one-day default is AUTHORISED (o-prime ruled it in the coder's jobs-retention-prime-reply-001.md item 4, on the measured basis that 515k done rows/day would make a seven-day window retain ~3.6M rows — the exact problem this plan exists to remove); the code is right and the plan doc is stale becau",
           "state": "checked",
-          "receipt": "Ruling confirmed in review-014-prime-reply-001.md item 1."
+          "receipt": "Read both sides at the reviewed sha: plan.dd.md line 37 says 'default 7 days'; the config diff sets 1 and adds zero_job_retention_is_rejected. Ruling confirmed by o-prime in review-014-prime-reply-001.md item 1, which directed this be reported as exactly one MEDIUM doc finding and not as a code defect. Shipped default independently observed as 1 in the daemon test assertion `live[\"retention\"][\"window_days\"] == 1` and in crates/cli/docs/daemon.md."
         },
         {
-          "id": "vd-f003",
-          "finding": "#findings/f-003",
+          "id": "vd-3b09",
+          "finding": "#findings/f-3a09",
           "resolution": "fixed",
-          "rationale": "Non-blocking but SHIP IT WITH THE f-001 FIX, and o-prime should know before the bounce because it directly affects ac-0005's status timings. One partial index in migration 0023 closes it; the secondary doc line in daemon.md should be corrected in the same pass. Left unfixed, /status keeps scanning ~515k done rows on every call at the ruled 1-day window, and the plan's 'single-digit milliseconds' goal for /status stays unmet even though queue_depth is genuinely fixed.",
+          "rationale": "MEDIUM — GET /status still Seq Scans the whole jobs table on every call. The plan's headline goal is that 'Progress reporting and GET /status read only LIVE rows ... via an index-only path in single-digit milliseconds; the full-history GROUP BY is gone from every hot path.' queue_depth was fixed and verified (ac-0001), but /status makes a SECOND jobs read that nobody re-planned: crates/daemon/src/status.rs:53 calls fs3_store::last_failure, whose query (crates/store/src/jobs.rs:704-707) is `SELECT dedupe_key, last_error FROM jobs WHERE state='failed' AND last_error IS NOT NULL ORDER BY updated_",
           "state": "checked",
-          "receipt": "Seq Scan cost 5167.16 -> Index Scan cost 4.14 on the identical statement with the proposed index, same row returned. See f-003 receipt."
+          "receipt": "Caught by finishing the ack's item-12 enumeration rather than stopping at queue_depth — two green queries on one hot path do not prove the hot path is clean. On the 200,000-done-row seed: EXPLAIN (FORMAT JSON) of last_failure's exact production SQL returned `Seq Scan` on jobs, Total Cost 5167.16, under a Sort and a Limit. Applying the proposed partial index and re-planning the identical statement returned `Index Scan` using jobs_failed_recent_idx, Total Cost 4.14 — a ~1250x planner-cost reduction — and the query returned the same row ('t1', 'malformed payload'), so the fix is behaviour-preserv"
         },
         {
-          "id": "vd-plan",
-          "finding": "plan 014 overall",
-          "resolution": "open",
-          "rationale": "The plan's central promise is TRUE and well engineered. The hot path's grouped census really does stop scanning settled history (Index Only Scan, cost 180 vs 6,669 at 200k rows, independently EXPLAINed), retention really is bounded, idempotent, batched, receipted and incapable of touching a live row (measured under concurrent locks), and migration 0023 really does converge dirty duplicates without losing a job (13 rows in, 13 rows out, one owner per key across six duplicate shapes). Two of the four reviewable ACs are confirmed true on fresh evidence, ac-0003 is true as written but under-specified, and ac-0005 is deferred to prod by design. Two caveats the author could not see from inside: the mint-time dedupe widening reaches a job kind with no revival path (f-001, CRITICAL, blocking), and /status carries a SECOND unplanned jobs read that no index serves (f-003, MEDIUM), so the plan's '/status in single-digit milliseconds' goal is not yet met even though the query it targeted is fixed. Ship once f-001 is fixed and its pinning test corrected; f-003's one-line index and f-002's doc amendment should ride in the same commit.",
+          "id": "vd-3b0a",
+          "finding": "#findings/f-3a0a",
+          "resolution": "confirmed",
+          "rationale": "DELTA — f-001 fix — mint-time revival — OUTCOME: CONFIRMED FIXED",
           "state": "checked",
-          "receipt": "Targeted suites re-run by the reviewer against :5434, exit 0 in both: `cargo test -p fs3-store --test pg_jobs_retention --test pg_migrations` = 3 + 9 passed; `cargo test -p fs3-daemon --test first_light --test streaming` = 16 + 6 passed. No full harness checks was run. Every author receipt that could be re-derived was re-derived; both author mutations were performed independently, plus seven reviewer-designed experiments recorded in the refuted section."
+          "receipt": "Re-derived on a FRESH database rebuilt from the amended migrations, so the coder's migration is what I measured and not the index I hand-built in round 1 (I dropped that first and re-confirmed the pre-fix baseline still replanned to Seq Scan). Ran the EXACT post-fix production SQL from jobs.rs:127-137. Seeded the worst realistic stuck state — failed non-terminal with attempts=3 (at MAX_ATTEMPTS) and parks=20 (at MAX_PARKS). After the documented recovery re-add: 1 row, state='pending', attempts=0, parks=0, and the exact claim_job predicate returned claimed_id=1. In round 1 the identical sequenc"
         },
         {
-          "id": "vd-delta",
-          "finding": "plan 014 delta at c5242ea",
-          "resolution": "approve",
-          "rationale": "APPROVE. All three findings fixed, each re-derived by me on fresh data rather than read from the coder's receipts, and each mutation-checked so the passing assertions are proven capable of failing. The plan's promises are now true as written: the hot path is index-only, retention is bounded and safe, dirty duplicates converge without losing a job, a failed job's re-fire actually re-fires, and /status no longer scans the table on either of its two reads. Remaining work is o-prime's: ac-0005's prod receipt after the bounce, subject to n-001, n-002 and n-005.",
+          "id": "vd-3b0b",
+          "finding": "#findings/f-3a0b",
+          "resolution": "confirmed",
+          "rationale": "DELTA — f-001 controls — nothing else was disturbed — OUTCOME: CONFIRMED",
           "state": "checked",
-          "receipt": "See delta section d-001..d-007. CI gate was PENDING on c5242ea at review time (read, not rerun, per instruction)."
+          "receipt": "Four controls under one harness: revivable-failed -> pending/0/0 (revived); pending -> stays pending with attempts=1, parks=2 PRESERVED (a live row's budgets are not reset); running -> stays RUNNING with attempts=7-equivalent budgets preserved (not demoted); terminal-failed -> NOT absorbed, a second row is minted and is claimable while the retired defect row stays failed/terminal. Live owners per key after all four: zero keys with more than one, so the unique index, the requeue_failed guard removal and ac-0003 all remain valid."
+        },
+        {
+          "id": "vd-3b0c",
+          "finding": "#findings/f-3a0c",
+          "resolution": "confirmed",
+          "rationale": "DELTA — CASE mutations — disbelieving the coder's three receipts — OUTCOME: ALL RED CORRECTLY, plus one the coder did not run",
+          "state": "checked",
+          "receipt": "I re-ran all three of the coder's mutations myself rather than trusting the reported reds, and added a fourth. (1) state CASE removed -> k_failed stays 'failed': the original f-001 defect returns. (2) attempts reset removed -> revived at attempts=3, i.e. at MAX_ATTEMPTS, so the row would fail on its first retry. (3) parks reset removed -> revived at parks=20, i.e. at MAX_PARKS, so verdict() at runner.rs:1035-1036 could never park it again — this is the refinement I raised pre-fix and it is load-bearing, not cosmetic. (4) MY OWN: replacing the guarded CASE with an unguarded state='pending', att"
+        },
+        {
+          "id": "vd-3b0d",
+          "finding": "#findings/f-3a0d",
+          "resolution": "confirmed",
+          "rationale": "DELTA — f-003 fix — last_failure index — OUTCOME: CONFIRMED FIXED",
+          "state": "checked",
+          "receipt": "Fresh 200k-done-row seed. With the coder's migration index: Limit -> Index Scan(jobs_failed_recent_idx), Total Cost 4.14. MUTATION: dropped the index and the plan reverted to Limit -> Sort -> Seq Scan, Total Cost 5167.16 — so the new test assertion is genuinely capable of failing. Restored, Index Scan returned. The query still answers correctly and still returns a TERMINAL failure ('t1 / malformed payload'), which confirms the daemon.md correction is accurate: the latest failure stays visible in ordinary status even though terminal COUNTS now need --history. My 5167.16 differs from the coder's"
+        },
+        {
+          "id": "vd-3b0e",
+          "finding": "#findings/f-3a0e",
+          "resolution": "confirmed",
+          "rationale": "DELTA — ac-0001 not regressed by the fix — OUTCOME: CONFIRMED",
+          "state": "checked",
+          "receipt": "Re-explained the live census on the same fresh seed after the fix: Aggregate -> Sort -> Index Only Scan(jobs_live_dedupe_idx), no jobs Seq Scan. The retention and dedupe changes did not disturb the hot-path plan this plan exists to deliver."
+        },
+        {
+          "id": "vd-3b0f",
+          "finding": "#findings/f-3a0f",
+          "resolution": "confirmed",
+          "rationale": "DELTA — new tests assert the contract rather than pinning the defect — OUTCOME: CONFIRMED — materially better",
+          "state": "checked",
+          "receipt": "The round-1 test pinned the defect (asserted state=='failed' on kind scan_file). The replacement, dedupe_failed_non_terminal_job_absorbs_a_claimable_refire, seeds the exhausted budgets and then ACTUALLY CLAIMS the row via claim_job — a behavioural assertion, not a row inspection — and checks attempts==1/parks==0 after the claim. The new dedupe_running_and_terminal_failed_rows_keep_their_distinct_semantics pins both controls I asked for: a running row keeps state and its (7,9) budgets, and a terminal row yields two rows with the fresh one claimable under a different id. The plan test gained the"
+        },
+        {
+          "id": "vd-3b10",
+          "finding": "#findings/f-3a10",
+          "resolution": "confirmed",
+          "rationale": "DELTA — f-002 plan text — OUTCOME: CONFIRMED FIXED",
+          "state": "checked",
+          "receipt": "plan.dd.json goal now reads 'default 1 day, ruled 2026-09-02 in prime-reply-001 item 4; config indexing.job_retention_days'. ac-0003's claim was additionally amended to require that 'an absorbed re-fire of a failed row is claimable', which closes the under-specification that let f-001 hide behind a green test."
+        },
+        {
+          "id": "vd-3b11",
+          "finding": "#findings/f-3a11",
+          "resolution": "refuted",
+          "rationale": "REVIEWER HYPOTHESIS — Migration 0023 loses a job or fails to converge on a dirty database. — OUTCOME: REFUTED — converges correctly, loses nothing",
+          "state": "checked",
+          "receipt": "I dirtied a 0022-era database by hand with six duplicate shapes the old index permitted: failed+failed, failed+pending, running+failed, failed-non-terminal+failed-terminal, a three-way failed triple, and done+failed. Applied 0023: rows_before = 13, rows_after = 13 — NO JOB LOST (losers are retired via terminal=true, never deleted). Live owners per key after migration: zero keys with more than one. Winners are correct in every shape: pending beats failed (k_fp), running beats failed (k_rf), newest failed wins a failed pair (k_ff id 4 over id 3) and a triple (k_fff id 13), a pre-existing termina"
+        },
+        {
+          "id": "vd-3b12",
+          "finding": "#findings/f-3a12",
+          "resolution": "refuted",
+          "rationale": "REVIEWER HYPOTHESIS — The migration can fail halfway and leave the old index dropped and the new one absent. — OUTCOME: REFUTED",
+          "state": "checked",
+          "receipt": "Migrations run through `sqlx::migrate!` (crates/store/src/lib.rs:96) and 0023 carries no `-- no-transaction` header, so the DROP INDEX and CREATE UNIQUE INDEX are one atomic unit; a failure rolls both back. Confirmed empirically by replaying the file with psql -1, which is the same single-transaction shape. Note n-003 records the one real cost of this (a non-concurrent index build on a large table)."
+        },
+        {
+          "id": "vd-3b13",
+          "finding": "#findings/f-3a13",
+          "resolution": "refuted",
+          "rationale": "REVIEWER HYPOTHESIS — A NULL `terminal` silently drops rows out of the widened partial-unique index. — OUTCOME: REFUTED — cannot happen",
+          "state": "checked",
+          "receipt": "information_schema on the migrated schema: `terminal` is NOT NULL DEFAULT false and `updated_at` is NOT NULL DEFAULT now(). `NOT terminal` can therefore never evaluate to NULL, so no row can fall out of the index predicate unnoticed."
+        },
+        {
+          "id": "vd-3b14",
+          "finding": "#findings/f-3a14",
+          "resolution": "refuted",
+          "rationale": "REVIEWER HYPOTHESIS — The purge can delete a row that boot recovery is about to transition done->pending, or can lock a live row. — OUTCOME: REFUTED — no such writer exists, and live rows are never locked",
+          "state": "checked",
+          "receipt": "Enumerated every writer of jobs.state: settle (by id, on a claimed row), park_job and retry_job (by id, on a running row), claim_job (state='pending'), requeue_running (state='running'), requeue_failed (state='failed'), retire_empty_embed_jobs (state='failed' AND NOT terminal AND kind='embed', jobs.rs:435,469), enqueue's ON CONFLICT (arbitrated by the live partial index, which excludes done), and migration 0023's backfill (state='failed'). NOTHING transitions a row out of `done`, so the done->pending re-fire race does not exist. Live-row locking refuted empirically: with an open transaction ho"
+        },
+        {
+          "id": "vd-3b15",
+          "finding": "#findings/f-3a15",
+          "resolution": "refuted",
+          "rationale": "REVIEWER HYPOTHESIS — Retention age is wrong because something else touches updated_at on done rows, or settlement never sets it. — OUTCOME: REFUTED — the assumption holds",
+          "state": "checked",
+          "receipt": "crates/store/src/jobs.rs:716-734: `settle` sets `updated_at = now()`, and complete_job routes through it, so a done row's updated_at IS its settlement time. Checked the reverse direction too — the only writer that could plausibly reset a settled row's age is enqueue's ON CONFLICT DO UPDATE (which sets updated_at = now()), but its arbiter is the live partial index, which excludes done; and migration 0023's backfill is guarded by `state='failed'`. No path resets a done row's age, so the retention window measures from settlement as intended."
+        },
+        {
+          "id": "vd-3b16",
+          "finding": "#findings/f-3a16",
+          "resolution": "refuted",
+          "rationale": "REVIEWER HYPOTHESIS — Removing requeue_failed's NOT EXISTS live-row guard lets the boot sweep abort on a unique violation. — OUTCOME: REFUTED — the widened index makes the guard genuinely redundant",
+          "state": "checked",
+          "receipt": "o-prime asked for this specifically. Because pending/running and failed-non-terminal now live in ONE unique partial index, a failed-non-terminal row and a pending row under the same key cannot coexist — proven by r-001, where the dirty failed+pending pair (k_fp) converged to a single owner. I then ran requeue_failed's exact UPDATE against the dirty-migrated database: UPDATE 4, no unique violation, and zero keys with more than one live owner afterwards. The concurrent case is safe by construction: a racing enqueue targets the SAME row via ON CONFLICT rather than inserting a second one, so the t"
+        },
+        {
+          "id": "vd-3b17",
+          "finding": "#findings/f-3a17",
+          "resolution": "refuted",
+          "rationale": "REVIEWER HYPOTHESIS — The boot pass purging ~1M rows starves the runner or holds a long lock. — OUTCOME: REFUTED as a starvation risk; bounded, but see n-002",
+          "state": "checked",
+          "receipt": "sweep_once (retention.rs:90-98) issues separate autocommitted 10,000-row statements rather than one transaction, so lock time is per-batch, not per-sweep. Measured 38.8 ms per 10,000-row batch on a seeded table, so ~1.01M rows is ~101 batches, on the order of 4-10 s total. The job runner is a separately spawned loop (runner::run_forever), so workers are not blocked at all. The reconcile roster IS sequential (reconcile.rs:101-103 awaits each reconciler in turn), so sibling reconcile passes are delayed by that few seconds once, at the first bounce only."
+        },
+        {
+          "id": "vd-3b18",
+          "finding": "#findings/f-3a18",
+          "resolution": "confirmed",
+          "rationale": "NOTE — For o-prime's ac-0005 capture: the boot purge receipt is TRANSIENT. record_job_retention overwrites purged_last_run on every completed sweep, including quiet hourly ones, so roughly one hour after the bounce /status will read purged_last_run = 0 with a fresh last_purge_at. Capture `flowspace3 status --json` inside that window, or take the count from the daemon log line at retention.rs:67-72, which is durable. Not a defect — purged_last_run means what it says — but it will silently cost the receipt if the capture is late.",
+          "state": "checked",
+          "receipt": "Operational note for o-prime; no code claim attached."
+        },
+        {
+          "id": "vd-3b19",
+          "finding": "#findings/f-3a19",
+          "resolution": "confirmed",
+          "rationale": "NOTE — For o-prime's bounce: migration 0023 builds a UNIQUE index non-concurrently over the ~1.01M-row jobs table inside the migration transaction. The daemon migrates before starting its runner so nothing races it, but the first post-merge boot will pause on that index build; expect it, and do not read it as a hang.",
+          "state": "checked",
+          "receipt": "Operational note for o-prime; no code claim attached."
+        },
+        {
+          "id": "vd-3b1a",
+          "finding": "#findings/f-3a1a",
+          "resolution": "confirmed",
+          "rationale": "NOTE — Deliberate observability reduction, correctly documented, not a finding: the progress line loses the cumulative scanned/summarized/embedded counters (runner.rs, the count(kind,'done') fields) because those were the history reads this plan exists to remove. scan_left/summarize_left/embed_left remain, and crates/cli/docs/daemon.md was updated so the documented sample matches the real output. Flagging it only so the change is a recorded decision rather than a surprise.",
+          "state": "checked",
+          "receipt": "Operational note for o-prime; no code claim attached."
+        },
+        {
+          "id": "vd-3b1b",
+          "finding": "#findings/f-3a1b",
+          "resolution": "confirmed",
+          "rationale": "NOTE — Dogfooding report: `flowspace3 search \"requeue failed jobs back to pending at daemon boot\"` correctly surfaced requeue_running and requeue_failed as the top semantic hits and was the entry point to f-001; the meaning-shaped query worked. CORRECTION — MY ERROR, WITHDRAWN: an earlier revision of this note blamed `ddocs build` for truncating long table cells at 768 chars. That was WRONG and it is retracted in full. o-prime and the dd prime could not reproduce it, and on disk the files are whole: the ac-0003 row of this record measures 1,007 characters, the rendered packet's longest line is",
+          "state": "checked",
+          "receipt": "Operational note for o-prime; no code claim attached."
+        },
+        {
+          "id": "vd-3b1c",
+          "finding": "#findings/f-3a1c",
+          "resolution": "confirmed",
+          "rationale": "NOTE — PRECONDITION FOR THE BOUNCE, and the one thing that could still make this land badly. The fix ADDED jobs_failed_recent_idx to migration 0023 rather than creating a new 0024, so 0023's content — and therefore its checksum — changed after it had already been applied in at least one place. sqlx validates this: sqlx-core 0.8.6 migrator.rs:175-176 compares the embedded migration's checksum against the applied row and returns MigrateError::VersionMismatch when they differ. Any database that already ran the PRE-FIX 0023 will now refuse to migrate, and the daemon will fail to start with a modif",
+          "state": "checked",
+          "receipt": "Operational note for o-prime; no code claim attached."
         }
       ]
     }
