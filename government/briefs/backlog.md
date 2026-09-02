@@ -3249,3 +3249,9 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     o-prime's Claude seat; four seat ids handed over for the trace. Pushed
     turns to a mid-turn omp are held as a steer until the turn ends
     (req-0031), not spliced.
+    PLAN 013 — **#101 MERGED** c2f4709 (guarded squash after the veto
+    window; CI green on 8d04a77). Release build running; prod relaunching
+    in its pane on the 015 build (pid 33521) after the ~15-min outage;
+    the 013 bounce + before/after (pg_stat_statements 10,696 ms mean
+    baseline) + carp's ac-0004/0005 pair follow. Delivery status 06:50:
+    carp receives again (4 rows, incl. a replay); dormouse still 0 rows.
