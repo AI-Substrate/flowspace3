@@ -3197,3 +3197,14 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     plan prose once-per-page + explicit loops ≤ candidate_limit; clippy
     green. crates/ diff: http.rs, search.rs, search_scope_starvation.rs,
     embeddings.rs. CI running; carp's one-line check; then merge + bounce.
+    ROW 165 — IDENTIFIED (Jordan asked for a tmux cap): the launcher is
+    pij-payable-ferret, PM of pij plan 133 rs-tap-supersedes-legacy (pane
+    %3149, session pij:133-pm, GPT-5.6 Sol, --auto-approve), now in
+    closeout polling PR #358 checks. pid 77843 `flowspace3 daemon` is a
+    leftover background command from its plan (16:04:09), never stopped;
+    it serves prod :7373 today. Reported with the ask: weasel/ferret kill
+    it or authorise o-prime; nothing of theirs touched.
+    PLAN 016 — t1 DONE (dormouse): migration 0024 + persisted flag +
+    /roots semantics + RootReport field + CLI flags; round-trips on
+    :5434; column-write mutation red; re-add without the flag preserves
+    true, explicit false clears. On to t2.
