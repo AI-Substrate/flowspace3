@@ -100,3 +100,26 @@ CLOSED 2026-09-02: pij-purring-orangutan — w-db-cpu-profile delivered (scratch
 CLOSED 2026-09-02: pij-mad-crocodile — event stream dead after the disk incident; work safe at f3aec31; buffer rescued to governance.
 
 | ~~pij-partial-coral~~ | w-disk-space (main clone, no code); omp / claude-opus-5 / high; pane %2845 | rs | CLOSED 2026-09-02 — 113 GB reclaimed in the VM, report vendored |
+
+### pij-upper-dormouse — plan 016 coder — CLOSED 2026-09-02 18:33
+Worktree `fs3-hidden-dirs` (removed). Built per-root hidden-directory indexing (PR #107,
+merged 689ac27): tri-state `Option<bool>` through five hops, both discovery construction
+sites, live-watcher policy re-read per rescan. Fixed both review MEDIUMs with mutation
+receipts. 22 artefacts + a 14-entry observation buffer rescued to `scratch/closeout-016/`.
+
+### pij-soviet-knobbler — plan 016 reviewer — CLOSED 2026-09-02 18:34
+Worktree `fs3-review-016` (removed). APPROVE WITH FINDINGS then a delta verdict closing both
+MEDIUMs. Re-derived every author number from primary sources; found two lying-envelope defects
+(a prune-ledger `fix` string naming a command that does not work; `tree` reporting the cwd
+root's policy for a file in another root). Diagnosed the "flaky" health test as the unbounded
+pre-serve ddoc probe + our gate always minting an empty DB (rows 177/178). Records in
+`scratch/review-016/`. Its close-out negative-fence practice is now template instruction i11.
+
+### pij-comparative-cod — plan 017 coder — ACTIVE
+Worktree `fs3-daemon-key-after-bind`, PR #108 head `6d6637d`, CI green, awaiting review.
+Caught o-prime's paraphrase inverting ac-0004 (stop-ask-001) and a guard-precedence bug of
+its own. Owed nothing further.
+
+### pij-unexpected-hyena — plan 017 reviewer — ACTIVE
+Worktree `fs3-review-017` (detached at `6d6637d`), pane %3376, omp on
+`github-copilot/claude-opus-5 --thinking=high`. Dispatched 2026-09-02 20:16.
