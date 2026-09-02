@@ -2632,3 +2632,16 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     `omp -c` is the in-place restart. Restarted the three at ~14:08 while
     idle. METHOD worth encoding in pij: `max(delivered_at)` per recipient
     is the inbound-liveness signal a prime can read without asking the seat.
+    ROW 153 — restart lesson: pij-spawned omp panes run omp AS the pane
+    process, so `/exit` closes the PANE, not just omp (three coder panes
+    lost at 14:08; sessions intact on disk in ~/.omp/agent/sessions/
+    <cwd-slug>/, 5–6 MB each). Recovery: new tmux window per worktree +
+    `omp -c` (resumes the latest session for that cwd). `pij-rs revive`
+    refused ("seat is live") because the daemon still held the dead pid.
+    ENCODE for pij: an in-place restart verb (`pij restart <seat>`) that
+    keeps the pane, and liveness that notices a dead pane.
+    TIDY 2026-09-02 14:10 (Jordan): worktrees already tidy (only active:
+    fs3-review-014 detached, three coder trees); closed the idle panes of
+    pij-partial-coral and pij-purring-orangutan (both CLOSED in roster);
+    the other closed seats' panes were already gone. rs `list` still shows
+    tombstone-less rows for gone seats — pij's to reap.
