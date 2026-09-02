@@ -8,7 +8,7 @@
       "value": {
         "title": "Phase 1: authoritative address + verify verb",
         "slug": "phase-1",
-        "status": "ready",
+        "status": "shipped",
         "summary": "One coder, tasks in order, every assertion pinned to a backpressure row."
       }
     },
@@ -65,13 +65,14 @@
         {
           "id": "tk-0105",
           "title": "After o-prime's bounce: run the three prod envelopes from the main checkout and write ac-0006's receipt; o-prime asks meadowlark for the consumer read-back (ac-0007)",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0105",
           "success": "ac-0006 receipt from prod; ac-0007 receipt from the consumer",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0006",
             "../../../plan.dd.json#acceptance_criteria/ac-0007"
-          ]
+          ],
+          "receipt": "o-prime: merged #93 (4788c9d), bounced 10:01Z; ac-0006 three prod envelopes + ac-0007 consumer read-back both PASS (receipts on the ACs)."
         }
       ]
     },
@@ -131,15 +132,17 @@
         "tk-0105": [
           {
             "id": "dw-1008",
-            "assertion": "three prod envelopes: flagless get ok:true, verify ok:true with guid 8c285d65…, made-up session → distinct code",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0006"
+            "assertion": "three prod envelopes: flagless get ok:true, verify ok:true with guid 8c285d65\u2026, made-up session \u2192 distinct code",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0006",
+            "receipt": "o-prime: merged #93 (4788c9d), bounced 10:01Z; ac-0006 three prod envelopes + ac-0007 consumer read-back both PASS (receipts on the ACs)."
           },
           {
             "id": "dw-1009",
             "assertion": "meadowlark's message quoting a verify envelope for one of their sessions",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0007"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0007",
+            "receipt": "o-prime: merged #93 (4788c9d), bounced 10:01Z; ac-0006 three prod envelopes + ac-0007 consumer read-back both PASS (receipts on the ACs)."
           }
         ]
       }

@@ -12,7 +12,7 @@
 | title | Phase 1: heal + align + drain |
 | slug | phase-1 |
 | ordinal | — |
-| status | ready |
+| status | shipped |
 | complexity | — |
 | summary | One coder, tasks in order, every assertion pinned to a backpressure row. |
 | backpressure | — |
@@ -39,7 +39,7 @@ Work top to bottom; each task names its evidence. Stop-and-ask o-prime on anythi
 | tk-0102 | Classify the cap rejection as a distinct error in crates/providers/src/{openai,azure_openai}.rs; other 400s unchanged | — | — | [x] checked | — | cargo test -p fs3-providers cap_rejection: 4 passed; OpenAI and Azure typed cap 400 plus unrelated-400 controls | [x] 1/1 [tk-0102](#tk-0102) | both adapters map the 8192-cap 400 to one variant; tests on both | — | [ac-0004](../../../plan.dd.md#acceptance-criteria) |
 | tk-0103 | Re-split on rejection, bounded: in the f-001 sub-batch loop, catch the variant, isolate the item (input[N] from the body, else bisect), re-plan tighter, re-issue; MAX_HEAL_ROUNDS constant; exhaustion = one named failure + jobs.terminal | — | — | [x] checked | — | cap_rejection_ tests: 3 passed; oversize suite: 12 passed; mutation with typed heal arm removed: same heal test failed 0/1, restored then passed; exhaustion asserted hash/20872 bytes/final 1 byte-token ratio/terminal=true and boot sweep=0 | [x] 2/2 [tk-0103](#tk-0103) | mutation-checked heal test + exhaustion test green; no duplicate chunk rows | — | [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0003](../../../plan.dd.md#acceptance-criteria) |
 | tk-0104 | Gate and PR: harness checks green in the worktree; fix: commits via harness commit; PR into main with the mutation and the two measurements in the body | — | — | [x] checked | — | harness checks status=ok; PR https://github.com/AI-Substrate/flowspace3/pull/92; GitHub gate passed in 5m14s on head 24e67b881eed5804eb9efd4d59d535ebcd0dbf36 | [x] 1/1 [tk-0104](#tk-0104) | PR open, CI green | — |  |
-| tk-0105 | Prod drain with o-prime: hand over the before-status envelope and the five dedupe keys + the exact re-queue mechanism; after o-prime's bounce read back status, key states, and one real search over the recovered conversation; write receipts into ac-0005/0006 | — | — | [ ] unchecked | — | — | [ ] 0/2 [tk-0105](#tk-0105) | five keys done or terminal-with-reason; search hit in the recovered conversation | — | [ac-0005](../../../plan.dd.md#acceptance-criteria), [ac-0006](../../../plan.dd.md#acceptance-criteria) |
+| tk-0105 | Prod drain with o-prime: hand over the before-status envelope and the five dedupe keys + the exact re-queue mechanism; after o-prime's bounce read back status, key states, and one real search over the recovered conversation; write receipts into ac-0005/0006 | — | — | [x] checked | — | AC-0005 passed: after bounce four jobs done attempts=1; duplicate 1316706 terminal duplicate-of:1323215; status embed failed=1 named residue. AC-0006 amended after conv:recovery premise was disproven; document search returned exact score-1 hit el:git:github.com/AI-Substrate/pij/docs/plans/112-verb-usage/report.md::pij verb usage ranking for recovered hash c74f7075. | [x] 2/2 [tk-0105](#tk-0105) | five keys done or terminal-with-reason; search hit in the recovered conversation | — | [ac-0005](../../../plan.dd.md#acceptance-criteria), [ac-0006](../../../plan.dd.md#acceptance-criteria) |
 
 <a id="done-when"></a>
 
@@ -74,5 +74,5 @@ Work top to bottom; each task names its evidence. Stop-and-ask o-prime on anythi
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-1006 | before/after flowspace3 status envelopes + the five keys' final states, read from prod | [ ] unchecked | [bp-0005](../../backpressure.dd.md#rows) |
-| dw-1007 | a flowspace3 search hit whose address is inside the recovered conversation | [ ] unchecked | [bp-0006](../../backpressure.dd.md#rows) |
+| dw-1006 | before/after flowspace3 status envelopes + the five keys' final states, read from prod | [x] checked | [bp-0005](../../backpressure.dd.md#rows) |
+| dw-1007 | a flowspace3 --source doc --repo all search hit at docs/plans/112-verb-usage/report.md::pij verb usage ranking for recovered hash c74f7075 | [x] checked | [bp-0006](../../backpressure.dd.md#rows) |

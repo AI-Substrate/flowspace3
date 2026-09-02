@@ -66,3 +66,13 @@ Status: implementation complete; final gate pending.
 
 Focused receipts: provider cap-rejection tests 7/7; chunk-plan tests 7/7 with alignment counts unchanged; ratio test 1/1; oversize suite 12/12.
 
+
+## Production drain read-back
+
+Main `7fdf6fc` bounced at 2026-09-02 09:53:57 after o-prime repaired the duplicate-key precondition: job 1316706 is terminal with `duplicate-of:1323215`. Jobs 1314967, 1315244, 1323215, and 1344012 completed in one attempt. The after status reports embed done=494958 and failed=1, the named terminal duplicate residue. AC-0005 passes.
+
+AC-0006's conversation premise was disproven during read-back. `conv:recovery` is a collision-proof default-provider identity for cross-content missing-vector batches, not a conversation namespace (`enrich.rs:485-496`). Job 1344012 contains five non-empty document-section hashes plus the empty hash; recovered hash `c74f7075…` resolves to `docs/plans/112-verb-usage/report.md::pij verb usage ranking`. O-prime amended the criterion to prove that document address searchable. The scoped conversation searches were correctly rejected as false-positive evidence; the amended proof is waiting only for prod daemon restoration after it became unavailable following the bounce.
+
+Prod returned on `4788c9d`. The amended search `flowspace3 search --source doc --repo all 'pij verb usage ranking' --json` returned an exact-name, score-1.0 hit at `el:git:github.com/AI-Substrate/pij/docs/plans/112-verb-usage/report.md::pij verb usage ranking`; its snippet contains the recovered text and corresponds to payload hash `c74f7075…`. AC-0006 passes on the corrected content type.
+
+Status: phase complete; all six acceptance criteria have receipts.
