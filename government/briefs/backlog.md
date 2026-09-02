@@ -2269,3 +2269,11 @@ DEGRADED-ATTRIBUTION TALLY: EIGHT (plan 012 delta commit f3aec311, 2026-09-02).
     proof. Total user-facing outage of queries: ~02:06Z (second crash)
     with intermittent service, then hard down from the VM stop until
     02:27Z.
+    ROW 124b NOTE: the test container's initdb was cut short by the
+    OrbStack death, so its pg_hba.conf lacked the entrypoint's
+    `host all all all scram-sha-256` line — host TCP connections from
+    OrbStack's gateway (192.168.97.1) were refused (SQLSTATE 28000) and
+    two seats stopped correctly. Appended + reloaded; proven with a
+    CREATE/DROP over TCP from a container. If the volume is ever
+    recreated, the entrypoint will add the line itself; if it is ever
+    missing again, this is the fix.
