@@ -2752,3 +2752,19 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     sanity probe; `harness checks --no-sweep`; test-slot URL preflight).
     **#100 MERGED** 57b25df — the 014 review record is on main; docs
     worktree removed.
+    PLAN 013 — SLOT RELEASED 04:30:38Z: harness checks green on beee1491
+    (fixture stabilised 10k→20k), PR #101 open (head 065acfd = docs-only
+    on top). Claude reviewer pij-select-carp spawned 04:36 on
+    fs3-review-013 detached at beee1491 with the three owed lists
+    (bounded candidate page can admit zero eligible rows → sentinel +
+    expansion; one-representative-per-hash dedupe losing results; scoping
+    byte-identical; JIT off scoped to the statement; the 20k fixture is a
+    fix or a bigger coin). NOTE: the packet was the unfilled template for
+    its first ~60 s (a heredoc with backticks executed `git diff`);
+    rewritten and the reviewer told to re-read. Encode: never put
+    backticks in an unquoted heredoc — use <<'"'"'EOF'"'"'.
+    PLAN 015 — ts-grammar (row 147): plan/impl-guide/tasks/backpressure/
+    coder packet written and committed on 015-ts-grammar (validate: 0
+    errors, 0 warns, 24 completable items); evidence.md records which TS
+    node kinds classify today and the arrow-binding gap. Coder (sol)
+    spawning 04:37.
