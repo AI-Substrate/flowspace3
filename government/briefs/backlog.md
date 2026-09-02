@@ -1804,3 +1804,28 @@ ROW 121 — REQ-0033 IN FLIGHT AS PIJ PLAN 128 (weasel, 2026-09-02; relayed
     spawnedBy/transcriptPath) and ADD `generation` only; gitCommonDir
     keeps its meaning. One shape, one v. So our packet shrinks to: parse
     `generation`, pin the v floor, and prove the rs route end-to-end.
+
+129. **a conversation's anchor cannot be corrected by re-ingest, and
+    ingest accepts a --folder that does not exist** (meadowlark's
+    backfill pilot, 2026-09-02: 43 of 51 delivered claude transcripts are
+    anchored to worktree `/Users/jordanknight/pi/hacking/pij` — weasel
+    de-slugged Claude's project-dir name by turning every '-' into '/',
+    so `pi-hacking` became `pi/hacking`; the folder does not exist, repo
+    resolved to NULL, and `list --repo pij` shows 10 instead of ~50).
+    Two fs3 facts, read from source: (a) `upsert_conversation` DOES
+    overwrite worktree/repo on conflict (COALESCE(EXCLUDED, old)) — but
+    convo_ingest.rs:660-680 only calls it when the poll READ RECORDS; a
+    re-run with the correct --folder against an unchanged transcript
+    reads zero (cursor), skips the header upsert, and leaves the wrong
+    anchor in place silently; (b) ingest never checks that --folder
+    exists on disk — Claude's slug is lossy (`pi-hacking` and
+    `pi/hacking` both slug to `-pi-hacking`), so the transcript was found
+    while the anchor was garbage. ENCODING: (a) on an explicit --folder
+    that differs from the stored anchor, upsert the header even on an
+    empty poll (or add `conversation reanchor <guid> --folder`); (b)
+    refuse a --folder that is not a directory, with the slug it would
+    have resolved to in the message; (c) `conversation list` should flag
+    anchors whose worktree does not exist on disk. TODAY'S PATH for the
+    43: `conversation remove <guid>` then re-ingest with the correct
+    folder (remove drops turns + cursor, so re-ingest re-reads and
+    re-anchors; costs re-embedding those turns).
