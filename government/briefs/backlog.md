@@ -2613,3 +2613,13 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     all four omp seats restarted in place at ~14:00 while idle; card posts
     again. Lesson for the pij government (recorded by them): a wire bump
     needs a fleet notice BEFORE the merge.
+    ROW 152 — CLOSED, not a ddocs defect (reviewer retraction in writing,
+    review-014-to-prime-003.md): the 768-char cut was the reviewer's own
+    harness READ tool footer ("[Some lines truncated to 768 chars]") and a
+    bash "...[+N]" marker — viewer-side; its grep "confirmation" was a
+    broken regex (`\[+` = one-or-more '[') matching an ordinary "[0]".
+    On disk: ac-0003 row 1007 chars, longest packet line 1313, longest
+    record line 4441, zero truncation markers. ENCODE (pij-team reviewer
+    template + how-we-work): before filing a tooling defect, reproduce it
+    with a DIFFERENT tool than the one that showed it — one `awk length`
+    on disk ends it. Told dajeil; closed.
