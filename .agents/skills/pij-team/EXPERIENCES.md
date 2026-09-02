@@ -860,4 +860,15 @@ we hand the pattern to pij and the harness. Also `harness observe` each one.
   *working* omp — agent output read as a human draft.) Until it ships: check `delivered_at` before
   assuming a ruling landed, and never let a queued ruling be the only thing between a seat and an
   irreversible action.
+- **A reviewer's record can die with the worktree — fourth occurrence, and this one nearly did.**
+  Plan 017's review record was written into the reviewer's detached worktree and the packet's own
+  fence (w2) forbids the reviewer committing, so plan 017 merged with NO review record in the repo:
+  `git ls-tree -r main -- docs/plans/017-*/assets/reviews/` was EMPTY after the merge. The reviewer
+  caught it at close-out and staged verified copies OUTSIDE the worktree before standing down —
+  which is the only reason the ratchet finding is on the record at all. Encode: `harness team collect
+  <seat>` remains the fix; until it exists, **o-prime commits the review record BEFORE removing the
+  worktree**, and the reviewer's close-out must state explicitly whether its record reached main.
+- **The reviewer's buffer lives inside the reviewer's worktree.** Removing the worktree destroys the
+  o-prime-owned observation buffer before it can be drained. Rescue (or drain) before teardown; the
+  017 reviewer flagged this itself and left a byte-identical copy outside the tree.
 
