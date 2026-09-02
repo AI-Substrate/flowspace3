@@ -3764,3 +3764,33 @@ Findings of record live at `docs/plans/093-pij-rs-reader/assets/findings/rs-corp
 pij branch `093-pij-rs-reader` (correction appended, our reproduction attributed) — cite that path
 rather than re-deriving.
 
+
+## 190 — Rust constants are not indexed elements, so `ask` can never answer about one
+Found 2026-09-03 while wiring gemini-3.8-flash to the ask verb. `pub const PARSER_VERSION: &str =
+"fs3-parsers@3"` lives at `crates/daemon/src/scan.rs:247`, and `flowspace3 tree` on that file returns
+kinds **function ×9, container ×3, file ×1 — no constants at all**. So `search "PARSER_VERSION"`
+returns only functions that MENTION it, and a grounded agent asked "what is PARSER_VERSION set to"
+can never terminate: the evidence does not exist in the index. Verified against the model directly —
+given a tool result that contained the value, gemini answered immediately and stopped
+(`finish_reason: stop`), so this is our index, not the model.
+**Encode:** index `const`/`static` (and likely type aliases) as elements. A question about a
+configuration constant is one of the most natural things to ask a code index, and today it is
+structurally unanswerable. Related: 166 (symbol-name boost).
+
+## 191 — conversation turns crowd out code in semantic search
+Same session, third occurrence today. `search "PARSER_VERSION constant value"` returned **five
+`:turn:` rows and zero code**; `search "where are LLM providers configured and validated"` returned
+docs sections and turns with no code hit; the plan-016 prod receipt saw the same shape. Turns are
+legitimately indexed, but they outrank code on code-shaped questions, and they carry `path: None`
+so an agent cannot even tell what it is looking at.
+**Encode:** rank or scope turns below code for code-shaped queries (or give `ask` a code-only tool),
+and give turn rows a usable path/label. Related: f-4d88 (conversation/scope parity), 166.
+
+## 192 — `[agent]` bounds are global, so tuning for one model retunes every model
+`max_iterations` and `token_budget` live under `[agent]`, not on the provider entry. Wiring
+gemini-3.8-flash for `ask` needed **30 iterations / 300k tokens** where glm-5.3-flash ran on
+**8 / 80k** — so making gemini work also loosened the bound for every other provider, and switching
+back would silently over-grant. Measured on the working config: a seam question answered grounded in
+**29 iterations / 266,389 tokens**; a simpler one in **16 / 106,232**.
+**Encode:** allow `max_iterations`/`token_budget` (and any future per-model knob) on the provider
+entry, falling back to `[agent]` — one entry names one model, so per-model bounds belong with it.
