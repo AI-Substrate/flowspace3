@@ -1,0 +1,35 @@
+scratch/bounce-after-107-108.md
+  s_15d888f4b629c1::t_357191454587f5 52-72
+scratch/review-017/packet-reviewer-017.dd.json
+  s_15d888f4b629c1::t_7b8efecbfd0d8e 1-149
+scratch/review-017/review-017-ack.md
+  s_15d888f4b629c1::t_47b860d08940b5 1-94
+scratch/review-017/review-017-brief.md
+  s_15d888f4b629c1::t_326dd1bec50785 1-36
+scratch/review-017/review-017-status.md
+  s_15d888f4b629c1::t_b828563938d300 1
+scratch/review-017/review-017-verdict.md
+  s_15d888f4b629c1::t_9466b9784653e7 1-123
+scratch/review-017/review-017.dd.json
+  s_15d888f4b629c1::t_63be017ec9bdf6 1-257
+scratch/review-017/review-017.dd.md
+  s_15d888f4b629c1::t_9f4bf6c0b720c9 1-58
+scratch/review-017/session-buffer-hyena.md
+  s_15d888f4b629c1::t_cec9893f911baa 1-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f23eb0ca8c5ff0120969752346758839896f8d0b",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
