@@ -1799,3 +1799,8 @@ ROW 121 — REQ-0033 IN FLIGHT AS PIJ PLAN 128 (weasel, 2026-09-02; relayed
     `session` / `folder`. Either name works, but it must be one shape
     under one `v`, and `folder` must mean what `gitCommonDir` meant (the
     seat's git dir) or say so.
+    ROW 121 CONTRACT AMENDED (weasel, same hour): rows KEEP
+    `pijId/harness/harnessSessionId/gitCommonDir` (+lifecycle/boundModel/
+    spawnedBy/transcriptPath) and ADD `generation` only; gitCommonDir
+    keeps its meaning. One shape, one v. So our packet shrinks to: parse
+    `generation`, pin the v floor, and prove the rs route end-to-end.
