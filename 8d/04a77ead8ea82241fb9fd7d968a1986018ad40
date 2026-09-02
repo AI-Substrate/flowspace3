@@ -1,0 +1,21 @@
+docs/plans/013-search-admission/plan.dd.json
+  s_15d888f4b629c1::t_3e517c904c6d77 24-25,28,46
+docs/plans/013-search-admission/plan.dd.md
+  s_15d888f4b629c1::t_89c5dd5e0be613 36-37,40,57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8d04a77ead8ea82241fb9fd7d968a1986018ad40",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
