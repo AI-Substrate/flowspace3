@@ -3435,3 +3435,9 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     o-prime fixed only the owed lists each time. Stripped the stale rows
     from every staged reviewer packet in scratch now; 017's reviewer
     packet will be generated from the template + plan, not cloned.
+    PLAN 017 — t1 in progress (cod, 07:36): "proving dual-stack clobber
+    red" — the writing path appears to be a second address family: a
+    second daemon binds the OTHER loopback family (::1 vs 127.0.0.1) on
+    the same port, so its bind succeeds, it publishes its key, and never
+    serves the clients that connect to 127.0.0.1. Interim; the red test
+    names it.
