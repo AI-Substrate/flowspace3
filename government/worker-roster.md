@@ -75,7 +75,7 @@ All revivable. "CLOSED" = pane killed, descriptor dissolved, work fully landed o
 
 
 CLOSED 2026-09-02 (plans 010/011 shipped as #92/#93, closeout #94): limpet, zealot, fiscal-tick, top-sloth — buffers rescued to scratch/closeout-010-011/ and drained into records/retro/2026-09-02/001; worktrees tidied; scratch DBs dropped.
-| pij-mad-crocodile | plan 012 fresh-db-serialise (fs3-fresh-db-serialise, branch 012-fresh-db-serialise); omp / gpt-5.6-sol-fast-1m / high; spawnId s1788309142136-5995; pane %2644 | **rs** — file channel | ACTIVE — canary verified 2026-09-02; GO issued (prime-reply-001) |
+| ~~pij-mad-crocodile~~ | plan 012 fresh-db-serialise (fs3-fresh-db-serialise, branch 012-fresh-db-serialise); omp / gpt-5.6-sol-fast-1m / high; spawnId s1788309142136-5995; pane %2644 | **rs** — file channel | ACTIVE — canary verified 2026-09-02; GO issued (prime-reply-001) |
 | ~~pij-purring-orangutan~~ | w-db-cpu-profile READ-ONLY investigator (main clone, no code); omp / claude-opus-5 / high; spawnId s1788309908670-61353; pane %2721 | **rs** — file channel | ACTIVE — canary + 8-step plan received 2026-09-02; sampling |
 
 
@@ -85,3 +85,6 @@ CLOSED 2026-09-02: pij-purring-orangutan — w-db-cpu-profile delivered (scratch
 | pij-common-cheetah | plan 012 REVIEWER (fs3-review-012, detached at 5c7f7bdb = PR #95); omp / claude-opus-5 / high; pane %2742 | **rs** — file + pij send pij-binding-magpie | ACTIVE — spawned 2026-09-02 with the three owed lists + the store-crate bypass hunt |
 | pij-imperial-weasel | plan 013 search-admission (fs3-search-admission, branch 013-search-admission); omp / gpt-5.6-sol-fast-1m / high; pane %2810 | **rs** — pij send pij-binding-magpie + files | ACTIVE — spawned 2026-09-02, reading |
 | pij-chosen-arach | plan 014 jobs-retention (fs3-jobs-retention, branch 014-jobs-retention); omp / gpt-5.6-sol-fast-1m / high; pane %2811 | **rs** — pij send pij-binding-magpie + files | ACTIVE — spawned 2026-09-02, reading |
+
+| pij-little-junglefowl | plan 012 coder RESTARTED (fs3-fresh-db-serialise, branch 012-fresh-db-serialise @ f3aec31); omp / gpt-5.6-sol-fast-1m / high; pane %2907 | **rs** | ACTIVE — spawned 2026-09-02 after crocodile lost its event stream (req-0042) |
+CLOSED 2026-09-02: pij-mad-crocodile — event stream dead after the disk incident; work safe at f3aec31; buffer rescued to governance.
