@@ -1,0 +1,39 @@
+scratch/closeout-015/session-buffer.md
+  s_15d888f4b629c1::t_28f15f2034b0af 1-48
+scratch/closeout-015/ts-grammar-ack.md
+  s_15d888f4b629c1::t_c775a50bb181eb 1-24
+scratch/closeout-015/ts-grammar-ask-001.md
+  s_15d888f4b629c1::t_d2696acde93900 1-13
+scratch/closeout-015/ts-grammar-ask-002.md
+  s_15d888f4b629c1::t_ebe666127c79b0 1-18
+scratch/closeout-015/ts-grammar-ask-003.md
+  s_15d888f4b629c1::t_f08cf39a16fa79 1-22
+scratch/closeout-015/ts-grammar-report.md
+  s_15d888f4b629c1::t_6b12d1f53c8c0d 1-77
+scratch/closeout-015/ts-grammar-step-1.md
+  s_15d888f4b629c1::t_a6d1a0ca7d7450 1-21
+scratch/closeout-015/ts-grammar-step-2.md
+  s_15d888f4b629c1::t_a7c5546d558979 1-16
+scratch/closeout-015/ts-grammar-step-3.md
+  s_15d888f4b629c1::t_0bc2260298e808 1-29
+scratch/closeout-015/ts-grammar-step-4-gate.md
+  s_15d888f4b629c1::t_66abb3e3fc65e6 1-3
+scratch/closeout-015/ts-grammar-step-4.md
+  s_15d888f4b629c1::t_2d72396e8ccbbe 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3d93d47821ad27086a0613afd2c49c8912e0bcc1",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
