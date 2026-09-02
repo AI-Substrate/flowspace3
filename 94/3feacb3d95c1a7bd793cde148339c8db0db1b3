@@ -1,0 +1,23 @@
+government/briefs/backlog.md
+  s_15d888f4b629c1::t_7863032cfde0c0 3516-3518
+scratch/review-016/review-016-delta-verdict.md
+  s_15d888f4b629c1::t_b6146293daf6c1 1-83
+scratch/review-016/review-016-prime-reply-002.md
+  s_15d888f4b629c1::t_71ec7ab725ee87 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "943feacb3d95c1a7bd793cde148339c8db0db1b3",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
