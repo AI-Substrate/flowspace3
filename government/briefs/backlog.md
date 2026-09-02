@@ -2516,3 +2516,15 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     names decode as immediately sweepable. Clamp the decode to a
     plausible window + one round-trip-within-seconds test. f-1a10 — two
     cfg(test) lines remain in create_database behind create_test_hook.
+    ROW 126 — **#95 MERGED** f73dee0 (guarded squash after the veto
+    window; head + gate re-read; Jordan "approved" on Telegram). Review
+    012 CLOSED; full record + ack + verdict + probe + buffer vendored to
+    scratch/review-012/ (md5-verified). Follow-up packet 012b dispatched
+    to junglefowl (prime-reply-022): f-1a1a clamp+test, f-1a10, ship the
+    probe to bin/, commit the review record into the plan folder.
+    Fleet notice sent (weasel, arach, alpaca, antelope): rebase for the
+    permit. Reviewer worktree removed.
+151. **Flaky test in CI: `fs3_providers::github_copilot_file_is_used_before_the_omp_store`
+    fails with a "No such file" race** (arach, PR #98 docs-only CI run; the
+    implementation head's run was green). A test that races the filesystem is a
+    defect: find the shared temp path / ordering assumption and pin it. Small packet.
