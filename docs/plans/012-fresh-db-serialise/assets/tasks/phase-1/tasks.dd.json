@@ -22,42 +22,46 @@
         {
           "id": "tk-0101",
           "title": "Serialise create/drop: a process-wide async lock (tokio::sync::Semaphore(N) or Mutex) around fs3_store::create_database / drop_database calls inside FreshDatabase; N from an env knob defaulting to 1; document why in the module doc",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0101",
           "success": "concurrency test green; red with the lock removed",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001"
-          ]
+          ],
+          "receipt": "cargo test -p fs3-testkit serialis: 1 passed (artifact://25); mutation removing permit: FAILED, observed more than 1 concurrent database mutations (artifact://27); guard restored at fresh_database.rs:42-48"
         },
         {
           "id": "tk-0102",
-          "title": "Truthful advice: classify the connect error (refused vs closed/recovering \u2014 SQLSTATE 57P03 or an EOF after connect) and word the panic accordingly; drop the compose suggestion when a server is listening",
-          "state": "unchecked",
+          "title": "Truthful advice: classify the connect error (refused vs closed/recovering — SQLSTATE 57P03 or an EOF after connect) and word the panic accordingly; drop the compose suggestion when a server is listening",
+          "state": "checked",
           "done": "#done_when/tk-0102",
           "success": "two advice tests green",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0002"
-          ]
+          ],
+          "receipt": "cargo test -p fs3-testkit advice: 2 passed (artifact://36); refused port says No server and includes compose command; listening-close server says recovery/wait-and-retry and excludes compose command"
         },
         {
           "id": "tk-0103",
           "title": "Sweep matches minted names: parse both `fs3_test_<epoch>_<hex>` and `fs3_<label>_<epoch>_<hex>`; keep the age threshold; add a list-only mode that returns candidates without dropping",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0103",
           "success": "sweep test green for both shapes; red without",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
-          ]
+          ],
+          "receipt": "FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5433/flowspace3_test cargo test -p fs3-testkit sweep: 2 passed (artifact://45); list-only reported both epoch-1 minted shapes, sweep dropped those two, fresh remained; prod-like names rejected"
         },
         {
           "id": "tk-0104",
           "title": "Real usage on the shared container: run the oversize suite at default parallelism; grep the postgres log for recovery lines in that window; record counts",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/tk-0104",
           "success": "oversize green; 0 recovery lines",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0004"
-          ]
+          ],
+          "receipt": "Window start 2026-09-02T00:54:34Z; FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5433/flowspace3_test cargo test -p fs3-daemon --test oversize: 12 passed in 13.81s (artifact://59); docker logs flowspace3-db since start: recovery signature count 0"
         },
         {
           "id": "tk-0105",
@@ -86,7 +90,7 @@
           {
             "id": "dw-2001",
             "assertion": "at most N in flight observed; >1 with the lock removed (mutation in PR)",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0001"
           }
         ],
@@ -94,7 +98,7 @@
           {
             "id": "dw-2002",
             "assertion": "recovery wording and no-server wording each asserted; no compose text when listening",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0002"
           }
         ],
@@ -102,7 +106,7 @@
           {
             "id": "dw-2003",
             "assertion": "two old minted names swept, one fresh kept, both shapes",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0003"
           }
         ],
@@ -110,7 +114,7 @@
           {
             "id": "dw-2004",
             "assertion": "test exit 0 and log grep count 0, with the time window stated",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0004"
           }
         ],
@@ -132,6 +136,5 @@
         ]
       }
     }
-  ],
-  "references": []
+  ]
 }
