@@ -3400,3 +3400,11 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     plus the named-function search receipt. O-prime's evidence overstated
     by counting untracked files — encode: evidence counts use `git
     ls-files`, not `find`.
+    PLAN 013 — **CLOSED END TO END**: #101 c2f4709 on prod (pid 74144),
+    #105 740f4ad landed both review records on main; seats amistad + carp
+    ended; worktrees fs3-search-admission + fs3-review-013 removed;
+    branch deleted; deliverables in scratch/closeout-013 + review-013;
+    retro 003 drained. Follow-ups carried: f-7b13 (JIT assertion
+    unfalsifiable), f-4d88 shifted risk (worktree + conversation/scope
+    parity), row 160 (search timing in the envelope), row 168 (cost
+    fixture).
