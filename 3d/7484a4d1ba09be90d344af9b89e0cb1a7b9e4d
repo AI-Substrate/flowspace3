@@ -1,0 +1,28 @@
+crates/daemon/src/boot.rs
+  h_9e71e8b09f7cf2 913-914
+docs/plans/017-daemon-key-after-bind/assets/backpressure.dd.json
+  h_9e71e8b09f7cf2 55
+docs/plans/017-daemon-key-after-bind/assets/backpressure.dd.md
+  h_9e71e8b09f7cf2 26
+docs/plans/017-daemon-key-after-bind/assets/tasks/phase-1/execution.log.md
+  h_9e71e8b09f7cf2 72-75
+docs/plans/017-daemon-key-after-bind/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 65
+docs/plans/017-daemon-key-after-bind/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 41
+docs/plans/017-daemon-key-after-bind/plan.dd.json
+  h_9e71e8b09f7cf2 64
+docs/plans/017-daemon-key-after-bind/plan.dd.md
+  h_9e71e8b09f7cf2 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3d7484a4d1ba09be90d344af9b89e0cb1a7b9e4d",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
