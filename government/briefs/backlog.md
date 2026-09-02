@@ -3467,3 +3467,11 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     therefore dual-stack half-binding, not publish-before-bind. t2:
     resolve once, bind every family (or pin + refuse), proof token from
     the fully-bound set.
+    PLAN 017 — t2 DONE (cod, 07:48): `StagedAuth::publish` now requires a
+    private `BoundListener` proof built from a real Tokio listener; normal
+    and sandbox boots publish only while holding it; `localhost`
+    canonicalises once to 127.0.0.1 so no second-family fall-through;
+    A/B normal + --json 2/2 green (key bytes/mtime unchanged, no temp
+    residue, A still authorized); daemon lib 172/172; mutation: remove
+    canonicalisation → 2/2 RED; restored. On to t3 (truthful 401) + t4
+    (owner designation).
