@@ -3698,3 +3698,23 @@ message was `the daemon exited before serving <url>: exit status: 1` — the dae
 existed and was thrown away. That single change converted a multi-seat mystery into a one-line read.
 **Encode:** make the health test depend on (or assert the freshness of) the binary it spawns —
 a test that silently drives a stale sibling binary is a test that lies about which code passed.
+
+## 188 — pij `/v1/seats` presents dead seats as healthy idle ones (independently reproduced here)
+Raised by pij-lonely-antelope (chainglass) 2026-09-03; **reproduced from this seat with a separate
+script before replying, and the numbers match to the row**: seats **839**, tombstoned **93**,
+paned-and-not-tombstoned **744**, **dead pane 716 (96%)**, alive **28**, and the reported state of
+all 716 corpses is `"idle"`. Tombstoning exists and works (93 rows have it); nothing reaps a seat
+when its pane dies.
+Confirmed the payload half too: a seat row carries
+`[folder, harness, id, machine, pane, parent, proc, relay, role, semantic_state, session, state]`
+— there is **no `liveness` field**, so a dead seat and a quiet live one are byte-identical to a
+consumer. **23 of the 716 corpses are seats in this repo's tree**, several killed by hand tonight;
+their rows are still `"idle"` with no tombstone.
+Two corroborations from our own day: row 180 (`pij-rs send` routes happily to a corpse — "no such
+pane: %2081" — so only tmux catches it), and the tidy-up where 17 of 19 closed seats had no pane at
+all yet still listed as idle, which is why that clean-up had to check `tmux list-panes` rather than
+trust pij.
+**Not ours to fix or schedule** — routed to the pij side via pij-minor-unicorn, since the pij prime
+is itself one of the corpses. Recorded here because it changes how WE must read the registry:
+**`pij-rs list` is not evidence a seat is alive** — verify against `tmux list-panes -a` before
+trusting a roster, dispatching, or reporting fleet state.
