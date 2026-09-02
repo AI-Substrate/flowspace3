@@ -3644,3 +3644,29 @@ seats most likely to find defects, for a structural reason rather than a lazy on
 **Encode:** a scratch-daemon search recipe in the reviewer packet (per-run DB on :5434, index the
 worktree, drop it at close-out), or a per-worktree index behind an auto-reconnecting MCP. Until
 one exists, the dogfood mandate should say plainly that it does not bind reviewers.
+
+## 185 — `pij spawn --harness claude` hangs on the trust prompt and reports nothing useful
+2026-09-02 20:05, found while running the plan-134 draft-arm witness. Spawning a Claude seat
+into a cwd Claude has not seen before leaves it sitting on "Do you trust this folder", and the
+spawn fails with `timed out after 60s waiting for registration (exit code unavailable) … last
+output: no child output was captured`. The seat is ALIVE and healthy, parked on a dialog — the
+error names none of that, so the natural reading is "the harness failed to start". Answered by
+hand (Down, Enter) and the seat registered normally.
+**Encode (pij, routed):** detect the trust prompt and say so, or pre-trust the cwd on spawn.
+Related: 161/132 (spawn-bind), 180 (queued sends). NOTE: plan 132 is confirmed FIXED from here —
+`pij-rs spawn --harness omp --bin omp` returned `bound:true` and the seat received on the first
+send, so the standing ban on `pij spawn --bin omp` is LIFTED for this fleet.
+
+## 186 — evidence note: how the pij composer veto actually behaves (both arms measured)
+Recorded because these numbers will be cited and the empty-composer half alone is misleading.
+Post plan-134 u3 (pij main 46c9314c, daemon 53550), measured from this seat:
+- **Empty composer** — claude→claude `outcome=delivered, origin=injected-to-transport`, 0 s; omp
+  idle and omp busy (sent 15 s into a real turn) both `reason=extension-stream`, 0 s.
+- **Real unsubmitted draft** — `{"outcome":"queued","reason":"human-typing","draft_sha":"c6d9d9af0b6a"}`,
+  held undelivered for 60 s, then delivered **1 s after the composer was cleared**. The draft sha
+  matched a sha256 computed independently BEFORE the send, so it is a measurement of the actual
+  draft, not an echoed placeholder.
+**Why both arms matter:** a veto that is correctly quiescent and a veto that has been REMOVED emit
+identical rows in the empty-composer world (pij-minor-unicorn's blocker, and it was right). And the
+1 s clear does NOT establish a bounded retry: it is one sample at a low attempt count, while the
+pathological row on record is 8 minutes at attempt 101.
