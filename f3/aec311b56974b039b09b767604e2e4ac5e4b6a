@@ -1,0 +1,35 @@
+crates/store/Cargo.toml
+  s_78ab7509cf927e::t_b0ff9603128245 18
+crates/store/src/lib.rs
+  s_78ab7509cf927e::t_fea5ebf5fdf87f 42-43
+crates/store/tests/support/mod.rs
+  s_9e2dc4b26650bb::t_63fe0ac39536d4 91,129-131
+crates/testkit/examples/list_orphans.rs
+  s_78ab7509cf927e::t_8bf0b72c2304af 1-17
+docs/plans/012-fresh-db-serialise/impl-guide.dd.json
+  s_78ab7509cf927e::t_70c903a63bfbe1 9,17,32-35,38,46,53,70,74,78,83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f3aec311b56974b039b09b767604e2e4ac5e4b6a",
+  "prompts": {},
+  "sessions": {
+    "s_78ab7509cf927e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "46a802c6-49e4-4db1-8e1b-a7c6fa6d39c5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_9e2dc4b26650bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d60a14ca-fbdd-4417-8eea-c3df33274197",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
