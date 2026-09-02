@@ -2849,3 +2849,10 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     → exactly six binding Functions vanish → golden red; internal_module
     removed → members flatten to file scope → red; both restored. Five-step
     add-language mapping recorded. Gate slot GRANTED in advance for t4.
+    PLAN 015 — t4: parsers/core regression 311 green; the local gate
+    refused ("FS3_TEST_DATABASE_URL is not set") because the coder
+    honoured "no database" literally (ask-002). RULED: run the gate with
+    the :5434 test URL — the gate IS the DB-backed suite; "no database"
+    means no database code. Slot re-granted 05:20. Encode: the coder
+    packet template carries the test URL line for EVERY packet (not only
+    DB ones), and `fs3-test-db-check`'s refusal names the URL to set.
