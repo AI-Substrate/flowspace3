@@ -3707,8 +3707,21 @@ all 716 corpses is `"idle"`. Tombstoning exists and works (93 rows have it); not
 when its pane dies.
 Confirmed the payload half too: a seat row carries
 `[folder, harness, id, machine, pane, parent, proc, relay, role, semantic_state, session, state]`
-— there is **no `liveness` field**, so a dead seat and a quiet live one are byte-identical to a
-consumer. **23 of the 716 corpses are seats in this repo's tree**, several killed by hand tonight;
+— there is **no `liveness` field**.
+
+**CORRECTION 2026-09-03, and it was MY error as much as the reporter's.** I wrote that a corpse and
+a quiet live seat are "byte-identical to a consumer, nothing to branch on". That is FALSE and I have
+re-measured it myself: of the 716 dead-pane rows, **713 carry `proc{pid, proc_start}` and 711 of
+those have a pid that is also gone — 99.3% derivable as dead from the payload alone** (`proc_start`
+is the load-bearing half: a bare pid is recycled at boot, pid+start breaks the tie). So no consumer
+is *blocked* on a reaper for correctness. The identical FIELD SET is what I checked; the field
+VALUES are not identical, and I stopped one level too shallow.
+**The residue is the real finding:** 3 rows carry no `proc` at all and 2 dead-pane rows carry a pid
+that IS alive (recycled) — **5 rows where derivation alone is ambiguous**, which is exactly where two
+independent implementations diverge. And pij ALREADY computes this: `pij list --json` exposes
+`liveness:'dead'` with `terminal:{disposition, evidence:'pid-missing', lastSeenAt}` on a different
+projection. So the cheap ask is "expose what you already compute on /v1/seats", separable from
+retention semantics — not "build a reaper". **23 of the 716 corpses are seats in this repo's tree**, several killed by hand tonight;
 their rows are still `"idle"` with no tombstone.
 Two corroborations from our own day: row 180 (`pij-rs send` routes happily to a corpse — "no such
 pane: %2081" — so only tmux catches it), and the tidy-up where 17 of 19 closed seats had no pane at
@@ -3718,3 +3731,21 @@ trust pij.
 is itself one of the corpses. Recorded here because it changes how WE must read the registry:
 **`pij-rs list` is not evidence a seat is alive** — verify against `tmux list-panes -a` before
 trusting a roster, dispatching, or reporting fleet state.
+
+## 189 — three independent reproductions agreed on the count and none caught the interpretation
+Method note from the row-188 exchange, recorded because it generalises. Three seats in three repos
+ran three separate scripts against the pij registry and got identical numbers (839/93/744/716/28).
+That agreement felt like strong confirmation — and it was, **of the count**. All three of us then
+carried the same wrong INTERPRETATION ("nothing to branch on") until a fourth seat checked the field
+VALUES where the rest of us had checked the field SET and stopped. Independent reproduction
+validates a measurement; it does nothing to catch a shared framing error, because the reproductions
+were of the same shallow query.
+**Encode:** when a finding is about to inform a decision, state separately (a) what was MEASURED and
+(b) what is INFERRED from it, and have the reviewer attack (b) specifically — agreement on (a) is
+not evidence for (b). This is the same shape as reviewer instruction i12 (mutate the guard) and the
+013 lesson that a shape fixture is not a cost fixture: the number was never wrong, the claim built
+on top of it was.
+Findings of record live at `docs/plans/093-pij-rs-reader/assets/findings/rs-corpse-census.md` on the
+pij branch `093-pij-rs-reader` (correction appended, our reproduction attributed) — cite that path
+rather than re-deriving.
+
