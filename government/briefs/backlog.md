@@ -3176,3 +3176,10 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     RULED: fence amended to refs.rs + roots.rs + migration 0024. Third
     dogfood miss by o-prime today (rows: add-language contract, this,
     and the 015 packet clone).
+    PIJ-TEAM TEMPLATES — PR #104 (docs): the worker status-card instruction
+    dropped from packet-coder (i5) and packet-pm (i7); placeholder rows
+    marked must-fill-or-delete; EXPERIENCES.md gains the day's five
+    confirmed findings (status card, placeholder leaks, untracked reviewer
+    records, build ≠ validate, generator schema drift). Templates live in
+    the repo at .agents/skills/pij-team/templates (the extension's
+    TEMPLATE_DIR); the ~/.claude symlink is stale. Merge train armed.
