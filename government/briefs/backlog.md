@@ -2864,3 +2864,6 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     rerun; `harness checks` exposes the timeout (env or flag). RULED for 015:
     release the slot, PR, CI on the exact sha is the gate; no local retry on
     a loaded box.
+    ROW 156 — second bite (fox, plan 015, commit 3649c0fd, 05:33): collector
+    connected, `refs/notes/ai` note missing, nothing buffered. Two seats in
+    one hour; the harness prime has it.
