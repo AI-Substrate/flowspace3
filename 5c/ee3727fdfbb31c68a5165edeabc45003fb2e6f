@@ -1,0 +1,18 @@
+.agents/skills/pij-team/EXPERIENCES.md
+  h_9e71e8b09f7cf2 796-811
+.agents/skills/pij-team/templates/packet-coder.dd.json
+  h_9e71e8b09f7cf2 9,18,29,33,37,41,49,57,61,78,85-86,88,104,108,112,122
+.agents/skills/pij-team/templates/packet-pm.dd.json
+  h_9e71e8b09f7cf2 9,18,25,29,33,37,41,49,53,57,61,104,120,130,135,145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5cee3727fdfbb31c68a5165edeabc45003fb2e6f",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
