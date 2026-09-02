@@ -2785,3 +2785,12 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     fs3-parsers --lib` 29 passed. Only stop condition hit was the newly
     exhaustive LanguageFamily match (mapped to Source). Continuing to
     fixtures/goldens (t2) and the value-shape + namespace rules (t3).
+    PLAN 015 — ask-001 RULED: fence amended for one line in
+    crates/testkit/arch-allowlist.toml (tree-sitter-typescript under
+    fs3-parsers external). O-PRIME MISS: the repo has an `add-language`
+    skill and docs/services/scanner.md with a five-step language-addition
+    contract (grammar dep → Language → allow-list → fixtures → docs) and the
+    plan did not cite it — `flowspace3 search "how do I add a language
+    grammar"` would have found it. Coder told to follow all five and map
+    them to tasks. Encode: pij-team plan template line "cite the repo's own
+    how-to (search first) for the change class".
