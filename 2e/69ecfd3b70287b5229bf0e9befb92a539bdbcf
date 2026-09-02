@@ -1,0 +1,19 @@
+government/briefs/backlog.md
+  s_0ce02639c40511::t_af9c0aa7063ba3 2845-2851
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2e69ecfd3b70287b5229bf0e9befb92a539bdbcf",
+  "prompts": {},
+  "sessions": {
+    "s_0ce02639c40511": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b95239d-d05a-44e7-ad9d-ecc36e15c1ca",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
