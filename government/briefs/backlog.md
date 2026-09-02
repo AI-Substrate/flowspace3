@@ -3341,3 +3341,11 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     any fix; candidates: the --json/sandbox boot, a promoted staged temp
     file, a second address family). Coder HAND-STARTED in a tmux window
     (self-registering omp) per the spawn-bind rule, 07:05.
+    PLAN 016 — ask-005: the parsers+daemon+store suite went RED at
+    daemon/tests/health.rs::the_real_binaries_agree_through_a_discovered_
+    config ("the real daemon never served …/health — it did not honour
+    FS3_CONFIG_DIR", 131 s). 016 touched none of boot/auth/health; prod's
+    key untouched. RULED: environmental until proven otherwise (row 162
+    family — a real daemon boot under load exceeds the test's wait);
+    rerun that test ALONE once; if it fails alone it is evidence for plan
+    017's clobber path (FS3_CONFIG_DIR not honoured), not a 016 defect.
