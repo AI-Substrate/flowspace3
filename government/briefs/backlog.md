@@ -2645,3 +2645,22 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     pij-partial-coral and pij-purring-orangutan (both CLOSED in roster);
     the other closed seats' panes were already gone. rs `list` still shows
     tombstone-less rows for gone seats — pij's to reap.
+155. **pij → Claude direct delivery is only PARTIALLY logged in telemetry**
+    (audit 2026-09-02, scratch/pij-claude-delivery-telemetry-report.md;
+    Jordan's ask). Facts: every Claude-side delivery gets a
+    `delivered_messages` row + `message.pushed`/`delivery.outcome` spine
+    events; transcript cross-check 123 sent = 123 consumed, 0 dropped, 0
+    duplicated. GAPS for the pij government: (A) Claude rows are
+    write-only `injected-to-transport` (uds.rs:538) — no consumption
+    receipt, unlike omp/pi `reader-read`; (B) 23/123 today sit at
+    `delivery.outcome=queued` forever on the spine although the drain
+    worker delivered them (pointer/worker.rs:299-303 acks the ledger,
+    publishes nothing); (C) the uds reply address is stored nowhere,
+    daemon.log has zero uds lines, and `pij sessions` joins the Claude
+    session to the LEGACY id (pij-instant-lynx) not the rs id where the
+    ledger rows live. The eng-harness collector (trace2 → git-ai →
+    refs/notes/ai) is out of scope — no link exists. Only durable
+    consumption evidence today: flowspace3 `conversation ingest` of the
+    Claude transcript. Encode (pij): a consumption ack from the Claude
+    hook, a `delivered` spine event from the drain worker, and the rs id
+    in the sessions join.
