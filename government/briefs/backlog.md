@@ -2302,3 +2302,17 @@ DEGRADED-ATTRIBUTION TALLY: EIGHT (plan 012 delta commit f3aec311, 2026-09-02).
     about availability, not about load". The extra 013 acceptance run
     (unscoped on a doc-heavy root) STAYS, but as a load-controlled
     measurement, not because of a repo effect.
+    ROW 126 — ATTRIBUTED BASELINE, TARGET GROUNDED (reviewer cheetah,
+    2026-09-02, on :5434 with application_name attribution, pre-fix sha
+    5c7f7bdb): UNGUARDED store suite max_concurrent_ddl = 16 (n=2,
+    identical: 308 and 700 samples, 52 and 43 samples above one);
+    GUARDED oversize suite = 1 (522 samples, 357 active, zero above one).
+    The attributed 16 equals the earlier contaminated 16 — foreign DDL
+    was present (foreign_ddl_max=1 both runs) but was not what produced
+    the number. The correction was still right: a binding number the
+    instrument could not attribute was not evidence, and "accidentally
+    correct is not the same as being able to show it" (cheetah). The
+    16 → 1 delta target is no longer provisional. Artefact: a partial
+    failing run during the pg_hba gap still showed 15 concurrent
+    unguarded DDL. Post-fix number next, taken in place (no second
+    worktree — no second target dir).
