@@ -1,0 +1,21 @@
+scratch/review-013/cross-model-review-round2.dd.json
+  s_15d888f4b629c1::t_67911891d62727 15,94,97
+scratch/review-013/cross-model-review-round2.dd.md
+  s_15d888f4b629c1::t_644040d41b6c5f 18,33,49,52-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "408b4b8f7415bae8efeb9697eb5685e40b3bfbfc",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
