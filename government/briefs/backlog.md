@@ -3127,3 +3127,12 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     persisted per root (worktrees table) and threaded into discovery for
     every scan of that root; `status`/`tree` show the flag; the pij
     extensions (563 .ts under .pi/) are the real-usage receipt.
+    PLAN 016 — hidden-dirs (row 125): plan/impl-guide/tasks/backpressure/
+    coder packet written on 016-hidden-dirs (validate: 0 errors, 0 warns,
+    21 completable items); evidence.md records the two global-only
+    DiscoverySettings call sites (roots.rs:178, watch.rs:275) and the pij
+    numbers (563/667 .ts under .pi/). Coder (sol) spawned 06:35 (pane
+    %3283). ROOT CAUSE FIXED in o-prime's plan generator: impl-guide
+    paths/inputs are now joined strings and the evidence instruction is
+    i10b — the two schema defects the 015 reviewer found (f-2b05) cannot
+    recur.
