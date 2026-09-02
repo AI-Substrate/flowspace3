@@ -34,3 +34,15 @@
       status: open
       source: agent-self
       first_seen_at: "2026-09-02T05:30:19.289Z"
+- id: DL-003
+  kind: difficulty
+  description: "The search plan-shape fixture is a SHAPE fixture being read as a COST fixture, and it misled this review three times. seed_search_plan_corpus gives all 20,000 embeddings the SAME vector (shape_vector()) and 14-byte raw_text ('shape body N'), against prod's 333,182 real vectors and a 484 MB elements heap. Consequences observed: (1) round-1 I feared 60-75k prod buffers from an unbounded admitted_elements scan; prod measured 8,063. (2) round-1 fixture latency was 105-121 ms; prod is 35 ms. (3) round-2 I reported smart_content loops 1->160 and wrote that the plan's 'resolved ONCE' prose was no longer true; on prod the loops are 1 — the 160 is an artefact of identical vectors plus small tables making a nested loop cheapest. Each time the fixture pointed the opposite way from production."
+  severity: degrading
+  workaround: "Took the o-prime-authorised read-only prod EXPLAIN (BEGIN READ ONLY, statement_timeout 30s, no parallel, load<15) and scored the criteria against real statistics instead of the fixture"
+  suggested_encoding: "Say so at the fixture: a doc comment on seed_search_plan_corpus stating it pins PLAN SHAPE only and that no cost, buffer or loop number may be read off it. Better, give the seeded vectors spread directions and realistic raw_text so loop counts and buffers mean something; or add a harness command that runs the shipped statement read-only against prod for cost questions, so nobody infers cost from a shape fixture again."
+  fp: 0e88980dd5f0
+  system:
+    compound:
+      status: open
+      source: agent-self
+      first_seen_at: "2026-09-02T06:50:07.722Z"
