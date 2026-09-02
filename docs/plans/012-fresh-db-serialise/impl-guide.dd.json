@@ -33,8 +33,8 @@
           "responsibility": "FreshDatabase cannot issue concurrent CREATE/DROP; its advice is truthful; its sweep matches its own names.",
           "interface": "FreshDatabase public API unchanged; new env knob FS3_TEST_DB_CONCURRENCY (default 1); sweep_orphans_from unchanged in signature, plus a list-only fn.",
           "test_strategy": "concurrency test with an in-flight counter (mutation: remove the permit \u2192 >1 observed); advice tests via a listening-but-closing socket and a refused port; sweep test with past-epoch names for both shapes; real usage per ac-0004/0005.",
-          "depends_on": [],
-          "wave": 1,
+          "depends_on": "none",
+          "wave": "1",
           "note": "ac-0001\u20130004 by test/real usage in the worktree; ac-0005 with o-prime on the prod server."
         }
       ]
