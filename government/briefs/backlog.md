@@ -2396,3 +2396,23 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     f3aec31 committed locally, tree clean, not pushed. o-prime killed the
     seat and respawned in place with the full reply set to read;
     successor's canary pending.
+    ROW 143 / ROW 110 — THE 170 GB ATTRIBUTED (disk agent pij-partial-coral,
+    2026-09-02, report vendored at scratch/db-cpu-profile/disk-space-report.md):
+    TODAY's growth is cargo target/ sprawl — ~25 per-worktree target dirs
+    totalling ~106 GB, every mtime inside 48 h (flowspace3 main 17.6G,
+    s122 8.6G, fs3-search-admission 8.5G, fs3-jobs-retention 8.0G, s121
+    5.9G, s110 5.6G, …) across flowspace3 AND pij governments. The docker
+    volume pool (128.7 GB, 100 GB reclaimable) is a 10-MONTH standing
+    debt, not the spike — newest non-pgdata volume 2026-08-27,
+    fs3-cargo-target 21 GB from 08-26, dind/vscode sets from 2025-11;
+    only today's four *_flowspace3-pgdata volumes are new and three are
+    0 B. OrbStack death proven host-side (vmgr.log 02:09:18Z StorageFull
+    → BTRFS abort → VM stopped). Freed by the agent: ~38.8 GB of stale
+    targets + 23.3 GB of caches (npm _cacache 16.5 G→2 MB, uv 3.7 G,
+    Xcode DerivedData 1.3 G, ShipIt 1.8 G); by weasel 68 GB; by o-prime
+    10 GB; Jordan purged personal media separately. Volume prune of
+    non-pgdata volumes proceeding, names listed first. THE ENCODING IS
+    ROW 110, now with the number that justifies it: one shared
+    CARGO_TARGET_DIR per repo (+ sccache) and a cargo-sweep reaper on
+    worktree teardown — a full workspace build is ~8–17 GB and today
+    there were 25 copies.
