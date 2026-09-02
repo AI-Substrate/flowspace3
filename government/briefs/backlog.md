@@ -2899,3 +2899,11 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     at the bound (short page + empty_because); bound admitted_elements to
     the candidate page; discriminating paired-geometry test; JIT assertion
     that can fail; parity honesty; one commit on 065acfd; delta re-review.
+    PLAN 013 — reviewer additions adopted for o-prime's post-merge receipt:
+    ac-0004 also asserts the HNSW node remains the childless `<=>`-ordered
+    driver on prod stats; ac-0005 fails if ANY run errors, however fast.
+    Coder addendum: fix the stale iterative_scan comment (embeddings.rs:
+    669-685); the paired-geometry test must gate on returning the 5
+    scoped results. Round-1 record (schema-valid, 7bfe9856/4acd658b)
+    vendored to scratch/review-013/. Reviewer retracted its 768-char
+    claim (viewer; third time today).
