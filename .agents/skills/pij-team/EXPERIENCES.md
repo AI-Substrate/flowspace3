@@ -793,3 +793,19 @@ we hand the pattern to pij and the harness. Also `harness observe` each one.
   large durable resource must say in the same breath what removes it, and when,
   without relying on anyone remembering.
 - (add as they arise)
+
+## 2026-09-02 — fs3 o-prime, plans 013–016 (four runs in one day)
+- `packet-coder` told workers to run `pij report now` at the start edge: the rs CLI refuses
+  (E-RS, no legacy fallback) and a worker's card renders nowhere (pij rule 12). Dropped.
+- Placeholder rows (`<fill…>`, `__X__`) reached two coder packets and one reviewer packet when
+  the dispatcher cloned a sibling packet; reviewers caught them. Rows now say "MUST fill or
+  delete before spawn". Encode next: a packet lint that refuses leftovers and the previous
+  plan's slug.
+- Reviewer records are untracked in a doomed worktree every run (012, 014, 015): o-prime
+  vendors them to governance, then lands a docs PR. Encode next: `harness team collect <seat>`
+  or a reviewer fence that permits one docs commit under assets/reviews.
+- `ddocs build` ≠ `ddocs validate`: the reviewer packet must require validate with the GLOBAL
+  CLI from the worktree root and paste its status line (015's record was built, not validated).
+- o-prime's own generator produced arrays where the impl-guide schema wants strings and a
+  duplicate instruction id; the plan-level `harness plan validate` passed while `ddocs validate`
+  failed. The scaffold should run both.
