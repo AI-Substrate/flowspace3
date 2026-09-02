@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.6.0](https://github.com/AI-Substrate/flowspace3/compare/v0.5.0...v0.6.0) (2026-09-02)
+
+
+### Features
+
+* add GitHub Copilot provider ([#71](https://github.com/AI-Substrate/flowspace3/issues/71)) ([e20c39f](https://github.com/AI-Substrate/flowspace3/commit/e20c39f46a94130e6753e0c6747601f82c0b5225))
+* add guarded daemon bounce harness verb ([#77](https://github.com/AI-Substrate/flowspace3/issues/77)) ([0545027](https://github.com/AI-Substrate/flowspace3/commit/054502790b284d608c1f8e9b0f3b22fda4c23b70))
+* add per-root hidden directory indexing ([#107](https://github.com/AI-Substrate/flowspace3/issues/107)) ([689ac27](https://github.com/AI-Substrate/flowspace3/commit/689ac27ddc98325a966acf612026c9c380ef0714))
+* add pinned lexical retrieval channel ([#74](https://github.com/AI-Substrate/flowspace3/issues/74)) ([17d77ec](https://github.com/AI-Substrate/flowspace3/commit/17d77ec6e7b17cab2b19df660cdae87496736ec5))
+* address-authoritative conversation reads and conversation verify ([#93](https://github.com/AI-Substrate/flowspace3/issues/93)) ([4788c9d](https://github.com/AI-Substrate/flowspace3/commit/4788c9d79fbad9b1e44514dafca93ad3fad701e3))
+* chunked embeddings + input hygiene ([#87](https://github.com/AI-Substrate/flowspace3/issues/87)) ([888eeab](https://github.com/AI-Substrate/flowspace3/commit/888eeab251f8b00a889c6bde1313812689016b01))
+* **harness:** enable flowspace conversation ingest tracking (Jordan ruling 2026-08-30 via meadowlark) ([#86](https://github.com/AI-Substrate/flowspace3/issues/86)) ([7bfd11a](https://github.com/AI-Substrate/flowspace3/commit/7bfd11a3ed3286a997310594170867510462bc81))
+* include conversations in scoped default search ([#80](https://github.com/AI-Substrate/flowspace3/issues/80)) ([55e17e0](https://github.com/AI-Substrate/flowspace3/commit/55e17e0d3a76402ce85d50f1cf57afd17a672def))
+* **parsers:** add TypeScript and TSX grammars ([#102](https://github.com/AI-Substrate/flowspace3/issues/102)) ([c11ab19](https://github.com/AI-Substrate/flowspace3/commit/c11ab1981ed08b427f8500a96955e29645f5e552))
+* scope ask by path ([#91](https://github.com/AI-Substrate/flowspace3/issues/91)) ([0240184](https://github.com/AI-Substrate/flowspace3/commit/02401842270d0a0ef381f269c92d4f8942a9981e))
+* scope ask to conversations ([#84](https://github.com/AI-Substrate/flowspace3/issues/84)) ([c743b53](https://github.com/AI-Substrate/flowspace3/commit/c743b53513b0bb308283071ad07da2a331b7ec29))
+
+
+### Bug Fixes
+
+* **ci:** stop running rust-cache twice — setup-rust-toolchain's built-in cache prints a false error every run ([#90](https://github.com/AI-Substrate/flowspace3/issues/90)) ([f1d92c3](https://github.com/AI-Substrate/flowspace3/commit/f1d92c33d1e765c386432923e8ca29290934fccf))
+* **daemon:** reuse parsed blobs for new worktrees ([#69](https://github.com/AI-Substrate/flowspace3/issues/69)) ([5c67f66](https://github.com/AI-Substrate/flowspace3/commit/5c67f663be1d0bd21e7d7d84ad2f20caf7ed161c))
+* enforce one element root per blob ([#78](https://github.com/AI-Substrate/flowspace3/issues/78)) ([b3719f2](https://github.com/AI-Substrate/flowspace3/commit/b3719f23feb0fcea5940894ff6057e53a1659576))
+* **harness:** rename convo extension verb to fs3-convo — core harness 0.13 ships convo, collision bricked every CLI verb (row 106) ([#85](https://github.com/AI-Substrate/flowspace3/issues/85)) ([822d9ee](https://github.com/AI-Substrate/flowspace3/commit/822d9eed5fc4144bd603680fef3ffd29efc571e5))
+* heal embedding cap rejections and align chunk windows ([#92](https://github.com/AI-Substrate/flowspace3/issues/92)) ([7fdf6fc](https://github.com/AI-Substrate/flowspace3/commit/7fdf6fc26335f9c2a73cc22b8919a18663389507))
+* isolate harness test databases ([#70](https://github.com/AI-Substrate/flowspace3/issues/70)) ([dcb532a](https://github.com/AI-Substrate/flowspace3/commit/dcb532ae2319ddaa5fbaaf599bab9697d1624404))
+* make ask bounded terminals honest ([#82](https://github.com/AI-Substrate/flowspace3/issues/82)) ([2f79b4b](https://github.com/AI-Substrate/flowspace3/commit/2f79b4b486f0093035a25070d9bf8e306bb4e1a2))
+* make bounded ask coverage honest ([#67](https://github.com/AI-Substrate/flowspace3/issues/67)) ([0918138](https://github.com/AI-Substrate/flowspace3/commit/09181387ed42c4a7d3d87d76f63a01e0e339e939))
+* prevent losing daemon from replacing shared key ([#108](https://github.com/AI-Substrate/flowspace3/issues/108)) ([2d7f45f](https://github.com/AI-Substrate/flowspace3/commit/2d7f45f4a06397de4a5e64d326aa65125712b9ca))
+* restore scoped conversation readback ([#83](https://github.com/AI-Substrate/flowspace3/issues/83)) ([6ff0aa5](https://github.com/AI-Substrate/flowspace3/commit/6ff0aa56693cef719a21303608e60296c4ce5ec8))
+* **testkit:** clamp legacy seed ages, ship the attributed DDL probe, commit the 012 review record ([#99](https://github.com/AI-Substrate/flowspace3/issues/99)) ([b528860](https://github.com/AI-Substrate/flowspace3/commit/b528860bd4d91519c91aaf5387f2c7a56e72c20d))
+* **testkit:** serialise database lifecycle and make fresh-database failures honest ([#95](https://github.com/AI-Substrate/flowspace3/issues/95)) ([f73dee0](https://github.com/AI-Substrate/flowspace3/commit/f73dee0314295c03a31c93b4929ef5e22f3da247))
+
+
+### Performance Improvements
+
+* bound job retention and queue census ([#98](https://github.com/AI-Substrate/flowspace3/issues/98)) ([b86593c](https://github.com/AI-Substrate/flowspace3/commit/b86593c765f89a4d046d93352dec382826b3018b))
+* bound search admission after the HNSW scan ([#101](https://github.com/AI-Substrate/flowspace3/issues/101)) ([c2f4709](https://github.com/AI-Substrate/flowspace3/commit/c2f4709151d213f2dbcf98648c9c93fc7fbb2683))
+* index pending jobs by claim lane ([#75](https://github.com/AI-Substrate/flowspace3/issues/75)) ([89cd0dc](https://github.com/AI-Substrate/flowspace3/commit/89cd0dca9c4b9b8a53709cf25157d8b415dbe29c))
+* microbatch summary embeddings ([#73](https://github.com/AI-Substrate/flowspace3/issues/73)) ([c881277](https://github.com/AI-Substrate/flowspace3/commit/c881277bca1eda6c20d5c7e6366ade56dc5b4e10))
+* move queue census off settlement hot path ([#72](https://github.com/AI-Substrate/flowspace3/issues/72)) ([7174c1f](https://github.com/AI-Substrate/flowspace3/commit/7174c1fc634cc920862ca5988c9f06ce031ef021))
+
 ## [0.5.0](https://github.com/AI-Substrate/flowspace3/compare/v0.4.0...v0.5.0) (2026-08-28)
 
 
