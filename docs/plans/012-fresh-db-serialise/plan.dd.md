@@ -42,7 +42,6 @@ crates/testkit/src/fresh_database.rs mints one database per test (`fs3_<label>_<
 
 ## Non-goals
 
-- No separate test postmaster (row 124b — a compose change, its own packet).
 - No change to how `harness checks` invokes cargo test.
 - No change to migrations or to fs3_store::create_database itself beyond what the lock needs.
 
@@ -52,10 +51,10 @@ crates/testkit/src/fresh_database.rs mints one database per test (`fs3_<label>_<
 
 | id | claim | state | note | receipt | pressure | proven_by |
 | --- | --- | --- | --- | --- | --- | --- |
-| ac-0001 | Serialised, mutation-checked: N=8 real fs3_store::create_database calls against the test server observe at most the configured concurrency after permit acquisition; removing the permit from the store create path observes &gt;N. The store integration helper routes CREATE/DROP through those primitives, testkit has no nested wrapper, and the mutation is stated in the PR body. | [ ] unchecked | — | — | — | — |
+| ac-0001 | Serialised, mutation-checked: N=8 real fs3_store::create_database calls against the test server observe at most the configured concurrency after permit acquisition; removing the permit from the store create path observes &gt;N. Additionally, pg_stat_activity sampled during the default-parallel fs3-store run and attributed by application_name shows max in-flight &lt;= N, samples_over_1 = 0, and non-trivial samples_with_ddl. The store integration helper and the remaining test helpers route CREATE/DROP through those primitives, testkit has no nested wrapper, and the mutation is stated in the PR body. | [ ] unchecked | — | — | — | — |
 | ac-0002 | Advice is truthful: nothing listening produces no-server/start wording; a bad password produces fix-credentials wording; a listening-then-closing or SQLSTATE 57P03 server produces recovery/wait wording. Compose advice appears only in the no-listener case. All three are proved by test. | [ ] unchecked | — | — | — | — |
-| ac-0003 | Sweep matches both minted name shapes and the age threshold, lists only databases with numbackends=0, rechecks liveness under the mutation permit before each unforced drop, and preserves both a database live during listing and one connected after listing while its connection remains usable. Mutating either candidate liveness or the fail-safe drop path makes the test red. | [ ] unchecked | — | — | — | — |
-| ac-0004 | REAL USAGE: `cargo test -p fs3-daemon --test oversize` at DEFAULT parallelism against the shared compose container completes green and `docker logs flowspace3-db` shows no 'terminating any other active server processes' / recovery lines in that window. Receipt = the test exit and the log grep count (0). | [ ] unchecked | — | — | — | — |
+| ac-0003 | Sweep matches canonical timestamped names and legacy seeded fs3_migrations/fs3_storelock names, enforces the age threshold, lists only databases with numbackends=0, rechecks liveness under the mutation permit before each drop, and preserves both a database live during listing and one connected after listing while its connection remains usable. Candidate liveness and the recheck are mutation-covered by M1, M2a, and M2c. The unforced DROP is defence-in-depth for the recheck-to-statement TOCTOU window and is covered by orphan_sweep_drop_statement_is_unforced, which reads the SQL template executed by the sweep path. | [ ] unchecked | — | — | — | — |
+| ac-0004 | REAL USAGE: FS3_TEST_DATABASE_URL points at the dedicated test postmaster on :5434 and `cargo test -p fs3-daemon --test oversize` completes at DEFAULT parallelism; `docker logs flowspace3-db-test` shows no 'terminating any other active server processes' / recovery lines in that window. Receipt = the test exit and the test-container log count (0). | [ ] unchecked | — | — | — | — |
 | ac-0005 | REAL USAGE, PROD SERVER, o-prime-run: the sweep's read-only listing names the current orphans (expected ~55 fs3_&lt;label&gt;_… older than the threshold); after o-prime's GO the sweep drops them and reports the names; `select count(*) from pg_database where datname like 'fs3_%'` drops accordingly. Receipt = both envelopes. | [ ] unchecked | — | — | — | — |
 
 <a id="phases"></a>

@@ -33,27 +33,20 @@ fn connection_error_kind(error: &StoreError) -> Option<std::io::ErrorKind> {
     None
 }
 
-fn server_rejected_credentials_or_permission(error: &StoreError) -> bool {
-    let detail = store_error_source(error)
-        .map(ToString::to_string)
-        .unwrap_or_else(|| error.to_string())
-        .to_ascii_lowercase();
-    detail.contains("28p01")
-        || detail.contains("invalid_password")
-        || detail.contains("authentication failed")
-        || detail.contains("password authentication")
-        || detail.contains("42501")
-        || detail.contains("insufficient_privilege")
-        || detail.contains("permission denied")
+fn database_error_code(error: &StoreError) -> Option<std::borrow::Cow<'_, str>> {
+    let source = match error {
+        StoreError::Unreachable { source, .. } | StoreError::Query(source) => source,
+        _ => return None,
+    };
+    source.as_database_error()?.code()
+}
+
+fn server_rejected_permanently(error: &StoreError) -> bool {
+    database_error_code(error).is_some_and(|code| !code.starts_with("57"))
 }
 
 fn server_is_recovering(error: &StoreError) -> bool {
-    let detail = store_error_source(error)
-        .map(ToString::to_string)
-        .unwrap_or_else(|| error.to_string())
-        .to_ascii_lowercase();
-    detail.contains("57p03")
-        || detail.contains("database system is in recovery mode")
+    database_error_code(error).is_some_and(|code| code.starts_with("57"))
         || matches!(
             connection_error_kind(error),
             Some(
@@ -125,9 +118,9 @@ fn creation_failure_message(
     let detail = store_error_source(error)
         .map(ToString::to_string)
         .unwrap_or_else(|| error.to_string());
-    if server_rejected_credentials_or_permission(error) {
+    if server_rejected_permanently(error) {
         return format!(
-            "Server at {base_url} rejected authentication or database permissions: {detail}\nFix the credentials or permissions before retrying."
+            "Server at {base_url} rejected the database operation: {detail}\nFix the credentials, permissions, or database configuration before retrying."
         );
     }
     if server_listening == Some(true) || server_is_recovering(error) {
@@ -371,6 +364,21 @@ fn database_name_at(label: &str, created_at: SystemTime) -> String {
 
 fn test_database_created_at(name: &str) -> Option<u64> {
     let tail = name.strip_prefix(TEST_DATABASE_NAMESPACE)?;
+    if let Some(created_at) = tail
+        .strip_prefix("migrations_")
+        .and_then(unique_seed_created_at)
+    {
+        return Some(created_at);
+    }
+    if let Some(created_at) = tail.strip_prefix("storelock_").and_then(|tail| {
+        let (seed, worker) = tail.rsplit_once('_')?;
+        (!worker.is_empty() && worker.bytes().all(|byte| byte.is_ascii_digit()))
+            .then(|| unique_seed_created_at(seed))
+            .flatten()
+    }) {
+        return Some(created_at);
+    }
+
     let (label_and_time, entropy) = tail.rsplit_once('_')?;
     let (label, created_at) = label_and_time.rsplit_once('_')?;
     if label.len() > 12
@@ -381,6 +389,14 @@ fn test_database_created_at(name: &str) -> Option<u64> {
         return None;
     }
     created_at.parse().ok()
+}
+
+fn unique_seed_created_at(seed: &str) -> Option<u64> {
+    if seed.len() != 32 || !seed.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return None;
+    }
+    let seed = u128::from_str_radix(seed, 16).ok()?;
+    Some((seed as u64) / 1_000_000_000)
 }
 
 fn epoch_seconds(time: SystemTime) -> u64 {
@@ -419,6 +435,46 @@ mod tests {
         }
     }
 
+    struct DatabaseCleanup {
+        base_url: String,
+        names: Vec<String>,
+    }
+
+    impl Drop for DatabaseCleanup {
+        fn drop(&mut self) {
+            let base_url = self.base_url.clone();
+            let names = std::mem::take(&mut self.names);
+            let cleanup = std::thread::spawn(move || {
+                let Ok(runtime) = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                else {
+                    eprintln!("could not build orphan-test cleanup runtime");
+                    return;
+                };
+                runtime.block_on(async move {
+                    let Ok((maintenance_url, _)) = fs3_store::maintenance_url(&base_url) else {
+                        eprintln!("could not derive orphan-test maintenance URL");
+                        return;
+                    };
+                    let Ok(admin) = fs3_store::connect(&maintenance_url).await else {
+                        eprintln!("could not connect for orphan-test cleanup");
+                        return;
+                    };
+                    for name in names {
+                        if let Err(error) = fs3_store::drop_database(&admin, &name).await {
+                            eprintln!("could not clean orphan-test database {name}: {error}");
+                        }
+                    }
+                    admin.close().await;
+                });
+            });
+            if cleanup.join().is_err() {
+                eprintln!("orphan-test cleanup thread panicked");
+            }
+        }
+    }
+
     #[tokio::test]
     async fn advice_says_to_start_a_server_only_when_no_server_is_listening() {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
@@ -442,7 +498,8 @@ mod tests {
 
     #[tokio::test]
     async fn advice_says_fix_credentials_when_authentication_is_rejected() {
-        let base_url = "postgres://flowspace3:wrong-password@127.0.0.1:5433/postgres".to_owned();
+        let base_url = crate::test_database_url().replace(":flowspace3@", ":wrong-password@");
+        let (base_url, _) = fs3_store::maintenance_url(&base_url).unwrap();
         let task =
             tokio::spawn(
                 async move { FreshDatabase::create_with_advice(&base_url, "advice").await },
@@ -453,7 +510,10 @@ mod tests {
         };
         let message = panic_text(error.into_panic());
 
-        assert!(message.contains("rejected authentication"), "{message}");
+        assert!(
+            message.contains("rejected the database operation"),
+            "{message}"
+        );
         assert!(message.contains("Fix the credentials"), "{message}");
         assert!(!message.contains("wait and retry"), "{message}");
         assert!(!message.contains(fs3_store::COMPOSE_UP), "{message}");
@@ -507,6 +567,14 @@ mod tests {
     }
 
     #[test]
+    fn orphan_sweep_drop_statement_is_unforced() {
+        assert!(
+            !fs3_store::DROP_DATABASE_IF_IDLE_SQL.contains("FORCE"),
+            "sweep DROP must fail safely when a backend connects after the liveness recheck"
+        );
+    }
+
+    #[test]
     fn malformed_and_production_database_names_are_not_sweepable() {
         for name in [
             "flowspace3",
@@ -515,6 +583,8 @@ mod tests {
             "fs3_test_notatime_0123456789abcdef0123456789abcdef",
             "fs3_test_1700000000_nothex",
             "fs3_label-too-long_1700000000_0123456789abcdef0123456789abcdef",
+            "fs3_migrations_nothex",
+            "fs3_storelock_0123456789abcdef0123456789abcdef_worker",
         ] {
             assert_eq!(test_database_created_at(name), None, "{name}");
         }
@@ -524,6 +594,23 @@ mod tests {
         );
     }
 
+    #[test]
+    fn legacy_seeded_database_names_are_sweepable() {
+        let created_at = 1_700_000_000_u64;
+        let seed = u128::from(created_at) * 1_000_000_000;
+
+        assert_eq!(
+            test_database_created_at(&format!("fs3_migrations_{seed:032x}")),
+            Some(created_at)
+        );
+        assert_eq!(
+            test_database_created_at(&format!("fs3_storelock_{seed:032x}_7")),
+            Some(created_at)
+        );
+    }
+
+    /// Run mutations one at a time with a clean test postmaster between runs.
+    /// `DatabaseCleanup` removes this test's synthetic-epoch names even on panic.
     #[tokio::test]
     async fn sweep_preserves_live_and_post_listing_race_databases() {
         let base_url = crate::test_database_url();
@@ -536,6 +623,16 @@ mod tests {
         let live = database_name_at("sweeplive", old_time);
         let racing = database_name_at("sweeprace", old_time);
         let fresh = database_name_at("sweep012", now);
+        let _cleanup = DatabaseCleanup {
+            base_url: base_url.clone(),
+            names: vec![
+                old_suite.clone(),
+                old_label.clone(),
+                live.clone(),
+                racing.clone(),
+                fresh.clone(),
+            ],
+        };
         for name in [&old_suite, &old_label, &live, &racing, &fresh] {
             fs3_store::create_database(&admin, name).await.unwrap();
         }
@@ -573,9 +670,6 @@ mod tests {
 
         live_pool.close().await;
         racing_pool.close().await;
-        fs3_store::drop_database(&admin, &live).await.unwrap();
-        fs3_store::drop_database(&admin, &racing).await.unwrap();
-        fs3_store::drop_database(&admin, &fresh).await.unwrap();
         admin.close().await;
 
         let mut swept = vec![old_suite, old_label];

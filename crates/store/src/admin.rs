@@ -43,10 +43,37 @@ const MAX_DATABASE_MUTATION_CONCURRENCY: usize = 2;
 static DATABASE_MUTATION_LIMIT: OnceLock<Semaphore> = OnceLock::new();
 
 #[cfg(test)]
-static CREATE_IN_FLIGHT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
-#[cfg(test)]
-static MAX_CREATE_IN_FLIGHT: std::sync::atomic::AtomicUsize =
-    std::sync::atomic::AtomicUsize::new(0);
+mod create_test_hook {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::time::Duration;
+
+    static IN_FLIGHT: AtomicUsize = AtomicUsize::new(0);
+    static MAX_IN_FLIGHT: AtomicUsize = AtomicUsize::new(0);
+
+    pub(super) async fn enter() -> InFlight {
+        let active = IN_FLIGHT.fetch_add(1, Ordering::SeqCst) + 1;
+        MAX_IN_FLIGHT.fetch_max(active, Ordering::SeqCst);
+        tokio::time::sleep(Duration::from_millis(25)).await;
+        InFlight
+    }
+
+    pub(super) fn reset() {
+        IN_FLIGHT.store(0, Ordering::SeqCst);
+        MAX_IN_FLIGHT.store(0, Ordering::SeqCst);
+    }
+
+    pub(super) fn maximum() -> usize {
+        MAX_IN_FLIGHT.load(Ordering::SeqCst)
+    }
+
+    pub(super) struct InFlight;
+
+    impl Drop for InFlight {
+        fn drop(&mut self) {
+            IN_FLIGHT.fetch_sub(1, Ordering::SeqCst);
+        }
+    }
+}
 
 fn database_mutation_concurrency() -> usize {
     match std::env::var("FS3_DB_MUTATION_CONCURRENCY") {
@@ -66,27 +93,6 @@ async fn database_mutation_permit() -> SemaphorePermit<'static> {
         .acquire()
         .await
         .expect("the database mutation semaphore is never closed")
-}
-
-#[cfg(test)]
-struct CreateInFlight;
-
-#[cfg(test)]
-impl CreateInFlight {
-    fn enter() -> Self {
-        use std::sync::atomic::Ordering;
-
-        let active = CREATE_IN_FLIGHT.fetch_add(1, Ordering::SeqCst) + 1;
-        MAX_CREATE_IN_FLIGHT.fetch_max(active, Ordering::SeqCst);
-        Self
-    }
-}
-
-#[cfg(test)]
-impl Drop for CreateInFlight {
-    fn drop(&mut self) {
-        CREATE_IN_FLIGHT.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
-    }
 }
 
 /// What [`schema_current`] found.
@@ -272,6 +278,13 @@ pub async fn idle_database_names_with_prefix(
         .collect()
 }
 
+/// SQL template used by [`drop_database_if_idle`].
+///
+/// Exposed only so the cross-crate sweep regression guard can assert that the
+/// fail-safe statement remains unforced.
+#[doc(hidden)]
+pub const DROP_DATABASE_IF_IDLE_SQL: &str = "DROP DATABASE IF EXISTS \"{database_name}\"";
+
 /// Drop a database only while it has no active backends.
 ///
 /// The catalog predicate excludes live databases. The unforced `DROP` closes
@@ -295,7 +308,7 @@ pub async fn drop_database_if_idle(admin: &PgPool, name: &str) -> Result<bool, S
         return Ok(false);
     }
 
-    match sqlx::query(&format!("DROP DATABASE IF EXISTS \"{name}\""))
+    match sqlx::query(&DROP_DATABASE_IF_IDLE_SQL.replace("{database_name}", name))
         .execute(admin)
         .await
     {
@@ -321,9 +334,7 @@ pub async fn create_database(admin: &PgPool, name: &str) -> Result<(), StoreErro
     validate_database_name(name)?;
     let _permit = database_mutation_permit().await;
     #[cfg(test)]
-    let _in_flight = CreateInFlight::enter();
-    #[cfg(test)]
-    tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+    let _test_hook = create_test_hook::enter().await;
     sqlx::query(&format!("CREATE DATABASE \"{name}\""))
         .execute(admin)
         .await?;
@@ -595,12 +606,10 @@ mod tests {
 
     #[tokio::test]
     async fn eight_create_paths_are_serialised() {
-        use std::sync::atomic::Ordering;
         use std::time::{SystemTime, UNIX_EPOCH};
 
         const WORKERS: usize = 8;
-        CREATE_IN_FLIGHT.store(0, Ordering::SeqCst);
-        MAX_CREATE_IN_FLIGHT.store(0, Ordering::SeqCst);
+        create_test_hook::reset();
         let base_url = std::env::var("FS3_TEST_DATABASE_URL")
             .expect("FS3_TEST_DATABASE_URL must name the disposable test server");
         let (maintenance_url, _) = maintenance_url(&base_url).unwrap();
@@ -628,10 +637,75 @@ mod tests {
         }
         admin.close().await;
 
-        let maximum = MAX_CREATE_IN_FLIGHT.load(Ordering::SeqCst);
+        let maximum = create_test_hook::maximum();
         assert!(
             maximum <= database_mutation_concurrency(),
             "observed {maximum} concurrent CREATE DATABASE operations"
+        );
+    }
+
+    #[test]
+    fn database_mutations_are_serialised_across_tokio_runtimes() {
+        use std::sync::{Arc, Barrier};
+        use std::thread;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        const WORKERS: usize = 8;
+        create_test_hook::reset();
+        let base_url = std::env::var("FS3_TEST_DATABASE_URL")
+            .expect("FS3_TEST_DATABASE_URL must name the disposable test server");
+        let seed = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let names: Vec<_> = (0..WORKERS)
+            .map(|worker| format!("fs3_storelock_{seed:032x}_{worker}"))
+            .collect();
+        let barrier = Arc::new(Barrier::new(WORKERS));
+        let threads: Vec<_> = names
+            .iter()
+            .cloned()
+            .map(|name| {
+                let barrier = Arc::clone(&barrier);
+                let base_url = base_url.clone();
+                thread::spawn(move || {
+                    tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .unwrap()
+                        .block_on(async move {
+                            let (maintenance_url, _) = maintenance_url(&base_url).unwrap();
+                            let admin = crate::connect(&maintenance_url).await.unwrap();
+                            barrier.wait();
+                            let result = create_database(&admin, &name).await;
+                            admin.close().await;
+                            result
+                        })
+                })
+            })
+            .collect();
+        let results: Vec<_> = threads.into_iter().map(thread::JoinHandle::join).collect();
+
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let (maintenance_url, _) = maintenance_url(&base_url).unwrap();
+            let admin = crate::connect(&maintenance_url).await.unwrap();
+            for name in &names {
+                drop_database(&admin, name).await.unwrap();
+            }
+            admin.close().await;
+        });
+        for result in results {
+            result.expect("create worker panicked").unwrap();
+        }
+
+        let maximum = create_test_hook::maximum();
+        assert!(
+            maximum <= database_mutation_concurrency(),
+            "observed {maximum} concurrent CREATE DATABASE operations across Tokio runtimes"
         );
     }
 

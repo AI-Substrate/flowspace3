@@ -625,8 +625,7 @@ async fn the_maintenance_url_reaches_the_same_server() {
 }
 
 async fn sqlx_drop(admin: &PgPool, name: &str) {
-    sqlx::query(&format!("DROP DATABASE IF EXISTS {name} WITH (FORCE)"))
-        .execute(admin)
+    fs3_store::drop_database(admin, name)
         .await
         .unwrap_or_else(|error| panic!("dropping {name}: {error}"));
 }

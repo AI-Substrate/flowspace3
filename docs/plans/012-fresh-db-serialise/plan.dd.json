@@ -30,7 +30,6 @@
     {
       "name": "non_goals",
       "value": [
-        "No separate test postmaster (row 124b — a compose change, its own packet).",
         "No change to how `harness checks` invokes cargo test.",
         "No change to migrations or to fs3_store::create_database itself beyond what the lock needs."
       ]
@@ -41,7 +40,7 @@
         {
           "id": "ac-0001",
           "state": "unchecked",
-          "claim": "Serialised, mutation-checked: N=8 real fs3_store::create_database calls against the test server observe at most the configured concurrency after permit acquisition; removing the permit from the store create path observes >N. The store integration helper routes CREATE/DROP through those primitives, testkit has no nested wrapper, and the mutation is stated in the PR body."
+          "claim": "Serialised, mutation-checked: N=8 real fs3_store::create_database calls against the test server observe at most the configured concurrency after permit acquisition; removing the permit from the store create path observes >N. Additionally, pg_stat_activity sampled during the default-parallel fs3-store run and attributed by application_name shows max in-flight <= N, samples_over_1 = 0, and non-trivial samples_with_ddl. The store integration helper and the remaining test helpers route CREATE/DROP through those primitives, testkit has no nested wrapper, and the mutation is stated in the PR body."
         },
         {
           "id": "ac-0002",
@@ -51,12 +50,12 @@
         {
           "id": "ac-0003",
           "state": "unchecked",
-          "claim": "Sweep matches both minted name shapes and the age threshold, lists only databases with numbackends=0, rechecks liveness under the mutation permit before each unforced drop, and preserves both a database live during listing and one connected after listing while its connection remains usable. Mutating either candidate liveness or the fail-safe drop path makes the test red."
+          "claim": "Sweep matches canonical timestamped names and legacy seeded fs3_migrations/fs3_storelock names, enforces the age threshold, lists only databases with numbackends=0, rechecks liveness under the mutation permit before each drop, and preserves both a database live during listing and one connected after listing while its connection remains usable. Candidate liveness and the recheck are mutation-covered by M1, M2a, and M2c. The unforced DROP is defence-in-depth for the recheck-to-statement TOCTOU window and is covered by orphan_sweep_drop_statement_is_unforced, which reads the SQL template executed by the sweep path."
         },
         {
           "id": "ac-0004",
           "state": "unchecked",
-          "claim": "REAL USAGE: `cargo test -p fs3-daemon --test oversize` at DEFAULT parallelism against the shared compose container completes green and `docker logs flowspace3-db` shows no 'terminating any other active server processes' / recovery lines in that window. Receipt = the test exit and the log grep count (0)."
+          "claim": "REAL USAGE: FS3_TEST_DATABASE_URL points at the dedicated test postmaster on :5434 and `cargo test -p fs3-daemon --test oversize` completes at DEFAULT parallelism; `docker logs flowspace3-db-test` shows no 'terminating any other active server processes' / recovery lines in that window. Receipt = the test exit and the test-container log count (0)."
         },
         {
           "id": "ac-0005",
