@@ -2867,3 +2867,9 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     ROW 156 — second bite (fox, plan 015, commit 3649c0fd, 05:33): collector
     connected, `refs/notes/ai` note missing, nothing buffered. Two seats in
     one hour; the harness prime has it.
+    PLAN 015 — PR #102 open at 3649c0f (feat(parsers): add TypeScript and
+    TSX grammars); CI running (the local gate timed out at load, row 162).
+    Claude reviewer spawned 05:36 on fs3-review-015 detached at 3649c0f
+    with the three owed lists (double-emission / non-function values /
+    destructuring; hint-coupled classify; nested namespace addresses; TSX
+    error-recovery blank names; scan-table reproducibility; discovery).
