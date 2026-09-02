@@ -1,0 +1,26 @@
+crates/store/src/embeddings.rs
+  h_9e71e8b09f7cf2 50-55,502-503,505-519,559-563,569,572-576,579,582,584-586,588-589,598-604,610-646,648-656,660-663,706,743-749,754-757,762,764,942,1019-1029,1045-1047,1135-1183,1186-1198,1203-1235,1252-1253,1255-1257,1259-1260,1262-1263,1265-1273,1276-1279,1281,1289-1304,1306-1307,1309-1318,1320-1321,1323-1350
+crates/store/tests/search_admission.rs
+  h_9e71e8b09f7cf2 407-503
+docs/plans/013-search-admission/assets/tasks/phase-1/execution.log.md
+  h_9e71e8b09f7cf2 16-52
+docs/plans/013-search-admission/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 35,42-43,48,54-56,64-65,95,103,109
+docs/plans/013-search-admission/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 39-41,58,64-65
+docs/plans/013-search-admission/plan.dd.json
+  h_9e71e8b09f7cf2 45-47,51-53,57-59,69
+docs/plans/013-search-admission/plan.dd.md
+  h_9e71e8b09f7cf2 57-59,61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "562e649c9d537cc9f687e87c884032fe2c998d28",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
