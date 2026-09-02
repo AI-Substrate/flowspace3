@@ -3098,3 +3098,5 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     Hypothesis: search auto-scopes to the caller's worktree (o-prime ran
     from the flowspace3 clone; #91 scopes ask by path) — testing the same
     queries from the pij checkout's cwd before calling it a ranking miss.
+    PLAN 013 — CI GREEN on b332f46 (06:25). Merge train fires on carp's
+    delta verdict; bounce + search before/after after that.
