@@ -2907,3 +2907,17 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     scoped results. Round-1 record (schema-valid, 7bfe9856/4acd658b)
     vendored to scratch/review-013/. Reviewer retracted its 768-char
     claim (viewer; third time today).
+    PLAN 013 — ask-011 (amistad): prime-reply-016's two requirements
+    conflicted — with admission strictly above the HNSW page, scoped rows
+    behind 12,000 nearer foreign vectors are unreachable within the bound,
+    so the only "truthful" result was 0, not the 5 the geometry demands.
+    RULED option B (prime-reply-017): 013's promise is "no correlated
+    smart_content probe per candidate", not "all admission above HNSW" —
+    cheap scope/anchor predicates go back INSIDE candidate_vectors as
+    pre-resolved keys (iterative_scan keeps pulling until the scoped page
+    fills); expensive smart_content resolution stays above the page,
+    bounded to its hashes; store returns a page result with
+    candidate_limit_exhausted (never Err); daemon search.rs/http.rs edits
+    authorised, envelope additive; shape assertion relaxed to the real
+    promise. O-prime's 016 was over-specified; the coder's stop-and-ask
+    was correct. Reviewer forewarned of the shape.
