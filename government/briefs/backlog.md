@@ -3169,3 +3169,10 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     legs are new code below the LIMIT with no parity case). The ac-0004
     HNSW-driver clause is now THE prod risk (hash semi-join inside ORDER
     BY/LIMIT).
+    PLAN 016 — ask-002: the fence named crates/store/src/worktrees.rs,
+    which does not exist (register_worktree lives in refs.rs; roots.rs
+    beside it) — o-prime wrote the fence from memory instead of
+    `flowspace3 search "where is a worktree registered in the store"`.
+    RULED: fence amended to refs.rs + roots.rs + migration 0024. Third
+    dogfood miss by o-prime today (rows: add-language contract, this,
+    and the 015 packet clone).
