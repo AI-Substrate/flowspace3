@@ -1,0 +1,59 @@
+docs/plans/015-ts-grammar/assets/backpressure.dd.json
+  s_15d888f4b629c1::t_b97e163734e5e7 1-101
+docs/plans/015-ts-grammar/assets/backpressure.dd.md
+  s_15d888f4b629c1::t_a901518ba0f38e 1-38
+docs/plans/015-ts-grammar/assets/inputs/db-cpu-profile-report.md
+  s_15d888f4b629c1::t_98df5a3722b66d 1-322
+docs/plans/015-ts-grammar/assets/inputs/evidence.md
+  s_15d888f4b629c1::t_360b33da01298a 1-36
+docs/plans/015-ts-grammar/assets/inputs/pij-two-daemons.md
+  s_15d888f4b629c1::t_d9fa8f6ba02100 1-122
+docs/plans/015-ts-grammar/assets/tasks/phase-1/tasks.dd.json
+  s_15d888f4b629c1::t_90088535961248 1-136
+docs/plans/015-ts-grammar/assets/tasks/phase-1/tasks.dd.md
+  s_15d888f4b629c1::t_cb0d2caf2267e8 1-78
+docs/plans/015-ts-grammar/impl-guide.dd.json
+  s_15d888f4b629c1::t_e3acd6d4117ce5 1-103
+docs/plans/015-ts-grammar/impl-guide.dd.md
+  s_15d888f4b629c1::t_83d06d77fa7dfa 1-78
+docs/plans/015-ts-grammar/packet-coder.dd.json
+  s_15d888f4b629c1::t_20d037e76a69ff 1-182
+docs/plans/015-ts-grammar/packet-coder.dd.md
+  s_15d888f4b629c1::t_b21ca0797bff53 1-92
+docs/plans/015-ts-grammar/packet-pm.dd.json
+  s_5411722c355d67::t_aa020136efebf4 1-159
+docs/plans/015-ts-grammar/packet-pm.dd.md
+  s_5411722c355d67::t_0ad3bffbb0ae40 1-87
+docs/plans/015-ts-grammar/packet-reviewer.dd.json
+  s_5411722c355d67::t_475c4c1d6f815d 1-65
+docs/plans/015-ts-grammar/packet-reviewer.dd.md
+  s_5411722c355d67::t_95fa3594072287 1-76
+docs/plans/015-ts-grammar/plan.dd.json
+  s_15d888f4b629c1::t_48901eed72592a 1-84
+docs/plans/015-ts-grammar/plan.dd.md
+  s_15d888f4b629c1::t_4795d9f73c071f 1-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f4b368fc3adf0f33318278341e2b775dfbb06622",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_5411722c355d67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2dfb4cf2-2fb1-47a1-ac46-07058ab29538",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
