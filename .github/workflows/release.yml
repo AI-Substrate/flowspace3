@@ -71,7 +71,7 @@ jobs:
             "/out/flowspace3-${{ matrix.target }}"
           ls -la dist/
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.target }}
           path: dist/
@@ -122,7 +122,7 @@ jobs:
       - name: Fast test tier (${{ matrix.target }})
         run: cargo test --workspace --lib --exclude fs3-store
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.target }}
           path: dist/
