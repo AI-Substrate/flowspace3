@@ -826,3 +826,38 @@ we hand the pattern to pij and the harness. Also `harness observe` each one.
   template's hard rule "never run a daemon with the default config" for every seat, every repo.
 - **Reviewer records still die with the worktree** (third time). `harness team collect <seat>`
   stays the encode; until then o-prime vendors + lands a docs PR every time.
+
+## 2026-09-02 — fs3 o-prime, plans 016 + 017 (same session)
+- **The reviewer's "three owed lists" are what turn a confirming review into a finding one —
+  make them mandatory in `packet-reviewer`.** The 016 brief required (1) *least-confident hunts*
+  (where the author says it is weakest), (2) *disbelieve the receipts* (re-derive every number
+  from primary sources, never read it out of the coder's report), (3) *known-open*. The reviewer's
+  own account: (1) sent it straight at the live watcher and the tri-state flag, and (2) is the only
+  reason it re-derived `379 tracked / 378 stored` and the `[62,72]` span itself — which is HOW both
+  MEDIUM defects surfaced. Both were **lying agent-facing envelopes**: a prune ledger whose `fix`
+  string named a command that provably did not work, and `tree` attaching the *cwd* root's policy to
+  a file in a *different* root. Neither is visible to a review that reads the receipts.
+- **Ask the reviewer to state its fence as what it did NOT touch.** The close-out that reads
+  "flowspace3_test exactly 19 roots before and after, prod key mtime unchanged, zero scratch DBs
+  left, no `harness checks` (not the reviewer's slot)" is what makes the rest of the verdict
+  trustworthy. Add the negative-fence line to the reviewer template's close-out.
+- **A prime's unblock message must QUOTE the AC out of the ddoc, never restate it.** Re-wording a
+  task to get past a provider content filter silently inverted `ac-0004` (plan said REFUSE, the
+  paraphrase said "behaves as today"). The coder stop-and-asked before writing a line. Standing
+  rule now: where a prime message and the READY ddocs disagree, **the ddocs win**; only an explicit
+  `ddoc mutation: <field> := <value>` changes a contract. Encode a `ddocs get <ac-id>` step into the
+  prime-reply ritual so a paraphrase cannot carry a contract change.
+- **Cloned packets keep leaking stale instruction rows** (third occurrence: 014 → 015 → 016 all
+  carried dead i6/i7). The 016 reviewer *held, blocked, for a ruling* because of it. Generate every
+  packet from `templates/`, never by copying the previous plan's.
+- **A blocked seat idles silently.** Two seats sat blocked ~18 min (one on a provider 422, one
+  awaiting a ruling written only to a status *file*) and the prime found both by polling panes.
+  Encode in every packet: **a seat that becomes blocked messages its prime FIRST**, before writing
+  any status file.
+- **A "queued" pij send is not a delivered one.** `{"outcome":"queued","reason":"human-typing"}`
+  returned `ok` while the message landed 8 minutes later, after the seat had acted on stale orders
+  and moved a PR head under an active review. (pij req-0054: the composer veto misfires on a
+  *working* omp — agent output read as a human draft.) Until it ships: check `delivered_at` before
+  assuming a ruling landed, and never let a queued ruling be the only thing between a seat and an
+  irreversible action.
+
