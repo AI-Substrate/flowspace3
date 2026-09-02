@@ -117,4 +117,4 @@ The legacy TS daemon is being turned OFF today (CPU cost). Consequences for this
 - The `PIJ_DAEMON_GENERATION=legacy pij send …` path in this doc dies with the daemon. rs refuses legacy targets; a peer that has not moved is unreachable.
 - omp/pi seats: restart omp — the extension registers into rs at boot. Claude/Copilot/Codex seats: `pij-rs adopt "$TMUX_PANE" --harness <h>` — NEVER `pij adopt` (unrouted verb, served by legacy).
 - **Open question, asked of pij-surprising-dove: does `pij-telegram` (the merge-veto channel) get an rs id?** Until answered, no merge train runs after the daemon stops.
-- Peers' rs ids as they arrive: meadowlark → (file: harness-engineering/scratch/convo-rs-identity/meadowlark-rs-id.txt); roadrunner → pending; forward-worm → already rs.
+- Peer rs ids (2026-09-02): meadowlark → **pij-varied-alpaca**; roadrunner (chainglass) → **pij-lonely-antelope**; forward-worm → already rs; weasel → pij-still-weasel; dove (helper) → pij-surprising-dove.
