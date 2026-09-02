@@ -20,7 +20,7 @@
           "phase": "1",
           "mode": "BUILD",
           "tier": "computational",
-          "proof": "RUN: cargo test -p fs3-testkit serialis; then remove the lock and re-run to show red",
+          "proof": "RUN: cargo test -p fs3-store serialised; remove the create permit and re-run to show both same-runtime and independent-runtime tests red; run bin/ac-0001-ddl-probe.sh with application_name attribution to observe max concurrent DDL.",
           "state": "unchecked"
         },
         {
@@ -47,7 +47,7 @@
           "phase": "1",
           "mode": "BUILD",
           "tier": "computational",
-          "proof": "RUN: cargo test -p fs3-daemon --test oversize; docker logs --since <start> flowspace3-db | grep -c 'terminating any other active server processes' == 0",
+          "proof": "RUN: FS3_TEST_DATABASE_URL points at :5434 and cargo test -p fs3-daemon --test oversize; inspect docker logs --since <start> flowspace3-db-test and require zero postmaster termination/recovery signatures.",
           "state": "unchecked"
         },
         {
@@ -83,7 +83,7 @@
         {
           "id": "sn-0002",
           "name": "postgres log",
-          "command": "docker logs --since 10m flowspace3-db | grep -c 'terminating any other active server processes'",
+          "command": "docker logs --since 10m flowspace3-db-test | grep -c 'terminating any other active server processes'",
           "dimension": "behaviour",
           "found_in": "compose container"
         },
@@ -96,6 +96,5 @@
         }
       ]
     }
-  ],
-  "references": []
+  ]
 }

@@ -20,10 +20,10 @@
 
 | id | criterion | phase | mode | tier | proof | state | note | receipt | probe |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| bp-0001 | at most N CREATE DATABASE in flight; &gt;1 with the lock removed | 1 | BUILD | computational | RUN: cargo test -p fs3-testkit serialis; then remove the lock and re-run to show red | [ ] unchecked | — | — | — |
+| bp-0001 | at most N CREATE DATABASE in flight; &gt;1 with the lock removed | 1 | BUILD | computational | RUN: cargo test -p fs3-store serialised; remove the create permit and re-run to show both same-runtime and independent-runtime tests red; run bin/ac-0001-ddl-probe.sh with application_name attribution to observe max concurrent DDL. | [ ] unchecked | — | — | — |
 | bp-0002 | advice wording: recovery vs no-server, no compose suggestion when listening | 1 | BUILD | computational | RUN: cargo test -p fs3-testkit advice | [ ] unchecked | — | — | — |
 | bp-0003 | sweep matches both minted shapes; red without the fix | 1 | BUILD | computational | RUN: cargo test -p fs3-testkit sweep | [ ] unchecked | — | — | — |
-| bp-0004 | oversize suite at default parallelism, no postmaster recovery in the log | 1 | BUILD | computational | RUN: cargo test -p fs3-daemon --test oversize; docker logs --since &lt;start&gt; flowspace3-db \| grep -c 'terminating any other active server processes' == 0 | [ ] unchecked | — | — | — |
+| bp-0004 | oversize suite at default parallelism, no postmaster recovery in the log | 1 | BUILD | computational | RUN: FS3_TEST_DATABASE_URL points at :5434 and cargo test -p fs3-daemon --test oversize; inspect docker logs --since &lt;start&gt; flowspace3-db-test and require zero postmaster termination/recovery signatures. | [ ] unchecked | — | — | — |
 | bp-0005 | prod-server orphan sweep: listing, then drop on GO, count falls | 1 | BUILD | human-judgement | RUN (o-prime): the sweep's list mode against FS3 prod maintenance URL; GO; drop; psql count before/after | [ ] unchecked | — | — | — |
 | bp-0006 | gate | 1 | BUILD | computational | RUN: harness checks; CI green on the PR head | [ ] unchecked | — | — | — |
 
@@ -34,5 +34,5 @@
 | id | name | command | dimension | found_in |
 | --- | --- | --- | --- | --- |
 | sn-0001 | harness checks | harness checks | correctness | repo harness |
-| sn-0002 | postgres log | docker logs --since 10m flowspace3-db \| grep -c 'terminating any other active server processes' | behaviour | compose container |
+| sn-0002 | postgres log | docker logs --since 10m flowspace3-db-test \| grep -c 'terminating any other active server processes' | behaviour | compose container |
 | sn-0003 | orphan count | docker exec flowspace3-db psql -U flowspace3 -d postgres -tAc "select count(*) from pg_database where datname like 'fs3_%'" | behaviour | prod server, read-only |

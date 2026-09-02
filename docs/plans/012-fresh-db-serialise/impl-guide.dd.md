@@ -44,7 +44,7 @@ The shared DDL boundary is crates/store/src/admin.rs: create_database, drop_data
 | Field | Value |
 | --- | --- |
 | mode | worktree-per-coder |
-| note | ../fs3-fresh-db-serialise on branch 012-fresh-db-serialise (scaffolded by harness team new). Per-seat CARGO_TARGET_DIR. Per-run test DBs on the shared compose container (:5433) — you are changing the helper that makes them; run the concurrency test with a SMALL N against your own scratch database name prefix. NEVER :7373; the prod-server sweep (ac-0005) is o-prime-run, read-only until GO. ABSOLUTE PATHS. pij is unstable (assets/inputs/pij-two-daemons.md): your seat will be rs; channel is FILES in .harness/temp/agent/ (fresh-db-serialise-ack.md / -ask-NNN.md / -report.md); o-prime replies by pij-rs send. Never pij adopt. |
+| note | Worktree-per-coder on the plan branch and follow-up branch, with a per-seat CARGO_TARGET_DIR. All test DDL targets the dedicated flowspace3-db-test postmaster through FS3_TEST_DATABASE_URL on :5434, with small scratch-name sets and one cargo invocation at a time. NEVER :5433 or :7373. Production orphan listing/drop is o-prime-owned. Use absolute paths; rs delivery is by files under .harness/temp/agent plus short pij sends. |
 
 <a id="composition"></a>
 
@@ -63,7 +63,7 @@ The shared DDL boundary is crates/store/src/admin.rs: create_database, drop_data
 | Field | Value |
 | --- | --- |
 | when | spawned by o-prime once the PR is up |
-| inputs | plan, impl-guide, backpressure, the PR body's receipts (to be disbelieved), the three owed lists: (1) is the lock truly process-wide across tokio runtimes and can any caller bypass it; does the advice classifier misread a refused port as recovering; can the sweep parser match a non-test name (flowspace3, flowspace3_test)? (2) re-run the tests and perform the lock mutation yourself; (3) known-open: rows 110 (mass drop is a GO), 122, 124b. |
+| inputs | Plan, impl-guide, backpressure, committed review record, and PR receipts. Reviewer delta 09509b7 independently measured the 16 -&gt; 2 -&gt; 1 DDL trajectory and mutation-proved the restored runtime and no-FORCE guards; its verdict is APPROVE. Follow-up review covers only f-1a1a seed-age plausibility and f-1a10 hook construction unless behavior changes beyond them. Known-open product rows remain 110 and 122; the dedicated test postmaster is landed. |
 | model_override | github-copilot/claude-opus-5 (Claude reviews; ruling 2026-09-02) |
 
 <a id="risks"></a>

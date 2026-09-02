@@ -392,11 +392,18 @@ fn test_database_created_at(name: &str) -> Option<u64> {
 }
 
 fn unique_seed_created_at(seed: &str) -> Option<u64> {
+    const MINIMUM: u64 = 1_577_836_800; // 2020-01-01T00:00:00Z
+    const FUTURE_TOLERANCE: u64 = 60 * 60;
+
     if seed.len() != 32 || !seed.bytes().all(|byte| byte.is_ascii_hexdigit()) {
         return None;
     }
     let seed = u128::from_str_radix(seed, 16).ok()?;
-    Some((seed as u64) / 1_000_000_000)
+    let created_at = (seed as u64) / 1_000_000_000;
+    let maximum = epoch_seconds(SystemTime::now()).saturating_add(FUTURE_TOLERANCE);
+    (MINIMUM..=maximum)
+        .contains(&created_at)
+        .then_some(created_at)
 }
 
 fn epoch_seconds(time: SystemTime) -> u64 {
@@ -423,7 +430,10 @@ mod tests {
         time::{Duration, SystemTime},
     };
 
-    use super::{FreshDatabase, ORPHAN_SWEEP_AGE, database_name_at, test_database_created_at};
+    use super::{
+        FreshDatabase, ORPHAN_SWEEP_AGE, database_name_at, epoch_seconds, test_database_created_at,
+        unique_seed, unique_seed_created_at,
+    };
 
     fn panic_text(panic: Box<dyn Any + Send>) -> String {
         match panic.downcast::<String>() {
@@ -595,17 +605,27 @@ mod tests {
     }
 
     #[test]
-    fn legacy_seeded_database_names_are_sweepable() {
-        let created_at = 1_700_000_000_u64;
-        let seed = u128::from(created_at) * 1_000_000_000;
+    fn legacy_seeded_database_names_have_plausible_ages() {
+        let now = epoch_seconds(SystemTime::now());
+        let seed = unique_seed();
+        let decoded = unique_seed_created_at(&format!("{seed:032x}")).unwrap();
+        assert!(decoded.abs_diff(now) <= 1, "decoded={decoded}, now={now}");
 
         assert_eq!(
             test_database_created_at(&format!("fs3_migrations_{seed:032x}")),
-            Some(created_at)
+            Some(decoded)
         );
         assert_eq!(
             test_database_created_at(&format!("fs3_storelock_{seed:032x}_7")),
-            Some(created_at)
+            Some(decoded)
+        );
+
+        let before_2020 = u128::from(1_577_836_799_u64) * 1_000_000_000;
+        let beyond_tolerance = u128::from(now.saturating_add(2 * 60 * 60)) * 1_000_000_000;
+        assert_eq!(unique_seed_created_at(&format!("{before_2020:032x}")), None);
+        assert_eq!(
+            unique_seed_created_at(&format!("{beyond_tolerance:032x}")),
+            None
         );
     }
 
