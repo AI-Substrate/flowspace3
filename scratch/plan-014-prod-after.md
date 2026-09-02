@@ -20,3 +20,20 @@ search wall [where does the daemon detect new git worktrees appearing and regist
 search wall [how is retry handled for embedding jobs] real 3.79
 search wall [what owns the watcher debounce] real 13.90
 ```
+
+## Second snapshot — 2026-09-02T04:23:52Z
+```
+done|258421 failed|38 
+jobs size: 2811 MB
+retention: {"last_purge_at": "2026-09-02T04:20:27.550Z", "purged_last_run": 898802, "window_days": 1}
+purge log lines:
+d=898802 last_purge_at="2026-09-02T04:20:27.550Z"
+ordanknight/substrate/flowspace/fs3-review-014/docs/plans/014-jobs-retention/assets/reviews events=4
+-retention/assets/reviews/cross-model-review.dd.json ms=247 left=7
+ordanknight/substrate/flowspace/fs3-docs-014-review/docs/plans/014-jobs-retention/assets/reviews even
+-retention/assets/reviews/cross-model-review.dd.json ms=247 left=7
+status --json wall real 0.34
+status --json wall real 0.32
+status --json wall real 0.34
+load: load averages: 62.93 44.09 36.03
+```

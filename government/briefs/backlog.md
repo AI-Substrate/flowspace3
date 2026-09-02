@@ -2733,3 +2733,14 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     application_name + installed_on from _sqlx_migrations / pg_stat so a
     reader can attribute the change instead of assuming the tests.
     Observed against o-prime.
+    PLAN 014 — PROD RECEIPT (ac-0005, scratch/plan-014-prod-after.md):
+    boot purge pass completed 04:20:27Z (+43 s after healthy):
+    purged_last_run = 898,802; done rows 1,155,022 → 258,421 (the 1-day
+    window); `status --json` wall 0.58 s → 0.27–0.34 s under fleet load
+    avg 30–63; jobs relation still 2.8 GB (dead tuples until autovacuum —
+    watch it shrink; if it does not, a VACUUM (FULL) window is a separate
+    o-prime call). ac-0005 verdict: purge + live-only census MET; the
+    "three status timings < 200 ms" bar NOT met as measured (CLI wall
+    under a load average of 63) — re-measure at a quiet moment before
+    calling it closed. Search timings unchanged (013 not landed):
+    6.7 / 3.8 / 13.9 s vs 8.3 / 4.0 / 14.5 s before.
