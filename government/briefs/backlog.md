@@ -2798,3 +2798,8 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     held 20–63 from 04:20 to 04:56 (reviewer + coder builds and tests);
     two load-gated attempts never fired. Owed at the 013 bounce, which
     needs a quiet moment anyway; row stays "partial" until then.
+    (receipt) `flowspace3 search "how do I add a new language grammar to the
+    parser" --limit 3` → #1 docs/services/scanner.md "Adding a language",
+    #3 crates/parsers/src/lib.rs grammar. The product would have caught
+    o-prime's miss in one call. Defender note sent to Jordan (wdavdaemon
+    ~174 % CPU for 3 h 46 m + dlpdaemon ~48 % — two cores on cargo churn).
