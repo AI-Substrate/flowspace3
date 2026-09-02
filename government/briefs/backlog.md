@@ -3349,3 +3349,17 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     family — a real daemon boot under load exceeds the test's wait);
     rerun that test ALONE once; if it fails alone it is evidence for plan
     017's clobber path (FS3_CONFIG_DIR not honoured), not a 016 defect.
+    PLAN 013 — **REVIEW CLOSED, ALL FIVE ACs TRUE** (carp, ac-0005 on
+    pid 74144, binary identity verified from the envelope keys): eight
+    client-side runs, scoped/unscoped interleaved, open jobs ≤ 2, load1
+    18–20 (hostile, so pessimistic): main-checkout 0.55 / 0.75 / 0.61 s
+    (<1 s bar); the two documented slow queries 0.69 / 0.54 s (<2 s);
+    unscoped doc-heavy from chainglass 0.70 / 0.74 / 0.45 s (<5 s); 8/8
+    ok=true, 10 results, scan_incomplete=false, passes=1 every run (the
+    expansion loop never engages). Ledger 13: 4 fixed / 7 confirmed /
+    2 deferred (f-7b13, f-4d88 → follow-up). Caveats verbatim in the
+    record (hostile load; the two 60 s coder queries not on file, the
+    documented slow ones substituted; client wall incl. CLI startup —
+    server side is ac-0004's 35 ms). DL-004 (two daemons, one key) in the
+    reviewer buffer → vendored. Docs PR for both records opening; then
+    tidy amistad + carp.
