@@ -3381,3 +3381,8 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     serving inside the gate → what the gate provides that a lone run
     lacks is part of the clobber path). Encode: the health test must
     surface the daemon's stderr on failure (row 131 family).
+    PLAN 017 — coder cod ack RULED GO 07:14 (by paste): reproduce-first
+    with a red test naming the writing path; publish unreachable without a
+    bound listener (proof token); truthful 401 with key_newer_than_daemon;
+    FS3_PROD_OWNER / [daemon].owner_root designation; regression; scratch-
+    config two-daemon transcript.
