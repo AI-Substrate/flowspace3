@@ -1,0 +1,21 @@
+government/briefs/backlog.md
+  s_15d888f4b629c1::t_4466ac21b6456e 3366-3373
+government/worker-roster.md
+  s_15d888f4b629c1::t_22a265e6101dbf 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "68b1e644c747e9646ad5948a742d86a00c71a8b1",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
