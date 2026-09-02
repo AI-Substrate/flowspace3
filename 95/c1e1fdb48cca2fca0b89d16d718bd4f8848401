@@ -1,0 +1,16 @@
+docs/plans/014-jobs-retention/assets/reviews/cross-model-review.dd.json
+  h_9e71e8b09f7cf2 1-270
+docs/plans/014-jobs-retention/assets/reviews/cross-model-review.dd.md
+  h_9e71e8b09f7cf2 1-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "95c1e1fdb48cca2fca0b89d16d718bd4f8848401",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
