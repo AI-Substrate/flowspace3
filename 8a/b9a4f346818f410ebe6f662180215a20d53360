@@ -1,0 +1,29 @@
+scratch/review-016/review-016-ack.md
+  s_15d888f4b629c1::t_c1da2aa4d37857 1-75
+scratch/review-016/review-016-prime-reply-001.md
+  s_15d888f4b629c1::t_8d0d526bafa67b 1-22
+scratch/review-016/review-016-status.md
+  s_15d888f4b629c1::t_f2bf3005d31d3f 1
+scratch/review-016/review-016-verdict.md
+  s_15d888f4b629c1::t_3624f8a111dae4 1-79
+scratch/review-016/review-016.dd.json
+  s_15d888f4b629c1::t_2017edb0bd128c 1-296
+scratch/review-016/review-016.dd.md
+  s_15d888f4b629c1::t_1b037529b5e636 1-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8ab9a4f346818f410ebe6f662180215a20d53360",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
