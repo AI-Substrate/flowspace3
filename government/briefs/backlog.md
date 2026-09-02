@@ -2602,3 +2602,14 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
 154. **`~/.git-ai/internal/metrics-db` is 4.38 GB and growing with no visible
     retention policy** (disk agent, flagged not reaped). For the git-ai owner,
     not fs3; noted so it is not rediscovered at the next disk incident.
+    ROW 153 — CAUSE + FIX (pij o-prime, file answer 13:58): pij plan 128
+    (ac87f4a3, ~13:45) bumped the envelope wire 1→2 on both sides with
+    strict equality; the rs daemon was restarted on v2 at 13:52 (pid
+    71772). Any omp started BEFORE the merge holds v1 in memory and now
+    fails the other way. FIX: no hot-reload — exit omp (Ctrl-C) and `omp -c`
+    in the same pane (session continued, same seat id). Claude seats just
+    retry. `pij send` returning "queued" to an unreadable recipient is now
+    a req-0042 item (named outcome: wire-skew / no-live-subscriber). fs3:
+    all four omp seats restarted in place at ~14:00 while idle; card posts
+    again. Lesson for the pij government (recorded by them): a wire bump
+    needs a fleet notice BEFORE the merge.
