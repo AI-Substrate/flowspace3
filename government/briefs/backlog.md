@@ -2431,3 +2431,19 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     same paths with no claim primitive; btrfs trim lag makes a correct
     prune look failed) — rescued to scratch/db-cpu-profile/buffer-coral.md.
     Free space at close: ~714 GB.
+    ROW 126 — POST-FIX MEASUREMENT AT f3aec311 (reviewer cheetah, attributed,
+    :5434): store suite max_concurrent_ddl = **2**, not 1 (n=2; 196/137
+    samples above one); oversize = 1 (342 active samples, zero above
+    one). Isolated per binary: pg_first_light = 2 with clean attribution
+    (foreign_ddl_max 0); pg_conversations 1; pg_store_flows 1. THE CAUSE
+    is the residual the reviewer had rated minor (f-1a0d): the raw
+    `sqlx DROP DATABASE … WITH (FORCE)` at crates/store/tests/
+    pg_first_light.rs:628 takes no permit and carries the test's
+    application_name — one unpermitted drop is the whole difference
+    between the promise kept and not. Reviewer's self-correction, verbatim
+    in spirit: "volume was never the criterion — ac-0001 says at most one
+    in flight, and one unpermitted drop falsifies it." The two one-line
+    swaps already ruled fold-in (pg_first_light.rs:628, daemon/tests/
+    support/mod.rs:110) are therefore the fix, not cosmetics; re-measure
+    on the successor's sha. Also: cargo does not parallelise test
+    binaries (max concurrent binaries of one run = 1, 240 samples).
