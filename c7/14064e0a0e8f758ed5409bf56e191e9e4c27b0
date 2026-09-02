@@ -1,0 +1,31 @@
+government/worker-roster.md
+  s_15d888f4b629c1::t_a0f2779a965818 86-87
+scratch/closeout-014/jobs-retention-ack.md
+  s_15d888f4b629c1::t_c38a3e83b2e555 1-65
+scratch/closeout-014/jobs-retention-ask-001.md
+  s_15d888f4b629c1::t_09e0646e9e7fdc 1-12
+scratch/closeout-014/jobs-retention-ask-002.md
+  s_15d888f4b629c1::t_8c0882891e5413 1-17
+scratch/closeout-014/jobs-retention-pr-body.md
+  s_15d888f4b629c1::t_4d73d1457c316e 1-42
+scratch/closeout-014/jobs-retention-report.md
+  s_15d888f4b629c1::t_f6cec35cfdf3d9 1-60
+scratch/closeout-014/session-buffer.md
+  s_15d888f4b629c1::t_7846ea1ac68ea4 1-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c714064e0a0e8f758ed5409bf56e191e9e4c27b0",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
