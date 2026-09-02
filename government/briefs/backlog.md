@@ -1979,3 +1979,13 @@ TRANSPORT DIAGNOSIS (weasel, 2026-09-02, Jordan's question "why do
     <guid>` checked against the user's own written brief — three-dials
     model and four out-of-scope items correct, zero hallucinated rulings
     ("best result of the day"). Raw: scratch/dogfood-forward-worm-batch-2.md.
+
+RS INBOUND PROVEN (2026-09-02): the 012 coder's `pij send
+    pij-binding-magpie 'RS-PING…'` arrived at o-prime as a NATIVE Claude
+    cross-session-message over the uds socket (/tmp/cc-socks/…) — not
+    tmux send-keys, no swallowed Enter. So: rs child → o-prime is now a
+    real turn; o-prime → rs child is `pij-rs send`; o-prime → legacy
+    peers is `PIJ_DAEMON_GENERATION=legacy pij send`. The packet
+    contract keeps the file channel as the durable record and adds the
+    rs pointer as the instant one. req-0034's blocking half is routed
+    around at o-prime's seat; the spawn defect itself remains weasel's.
