@@ -1,0 +1,19 @@
+crates/daemon/tests/health.rs
+  s_68ab0dade8e508::t_02ab421a0ec0ae 131-134,140,142-143,152,162,224-230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "47e890c08693dc7bd7fe075b29a3a2c29d62d5ea",
+  "prompts": {},
+  "sessions": {
+    "s_68ab0dade8e508": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1cc88fc-b66c-4303-87ea-d5a5f443402a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
