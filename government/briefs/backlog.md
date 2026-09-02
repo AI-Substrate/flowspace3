@@ -3386,3 +3386,9 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     bound listener (proof token); truthful 401 with key_newer_than_daemon;
     FS3_PROD_OWNER / [daemon].owner_root designation; regression; scratch-
     config two-daemon transcript.
+    DRAIN 003 (07:18Z): retro records/retro/2026-09-02/003-plan-013-drain.md
+    — 23 entries (shared buffer 4 + coder 14 + reviewer 5); shared buffer
+    cleared after the record landed. Encode-next top three: rulings state
+    the PROMISE, not the mechanism (pij-team fix-ruling template);
+    truthful 401 when the key is newer than the daemon (rides plan 017);
+    `harness db scratch/drop` (migrated throwaway DB + leak reaper).
