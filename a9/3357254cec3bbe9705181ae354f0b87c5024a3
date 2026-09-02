@@ -1,0 +1,29 @@
+crates/daemon/tests/health.rs
+  s_68ab0dade8e508::t_a2d42276dfbc17 9-10,157-158,172-184
+docs/plans/017-daemon-key-after-bind/assets/tasks/phase-1/execution.log.md
+  s_9e036f908b3c9e::t_246aaf4552077d 59-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a93357254cec3bbe9705181ae354f0b87c5024a3",
+  "prompts": {},
+  "sessions": {
+    "s_68ab0dade8e508": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1cc88fc-b66c-4303-87ea-d5a5f443402a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_9e036f908b3c9e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c80c5019-0a09-4924-8778-c737f7dafff1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
