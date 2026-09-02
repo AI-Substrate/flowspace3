@@ -1955,3 +1955,27 @@ TRANSPORT DIAGNOSIS (weasel, 2026-09-02, Jordan's question "why do
     both ids under one consumer row. Meadowlark's evidence:
     ~/pi-hacking/pij/.harness/temp/meadowlark-delivery-asymmetry-report.md;
     weasel's diagnosis: …/weasel-diagnosis-delivery-asymmetry.md.
+
+138. **P2 — ask's tool view of a file element is cut at 7,000 chars
+    SILENTLY, so the agent re-fetches the same truncated file until the
+    iteration budget dies** (forward-worm dogfood batch 2, 2026-09-02,
+    mechanism measured). CloudPresetLibrary.cs is 8,058 bytes; `get`
+    returns all of it; ask's tool result truncates at 7,000 (line 205)
+    and the method the question needs (`ParseFileName`, :206) sits in
+    the cut tail. Result: scoped and unscoped asks both hit
+    FS3-E-QUERY-ASK-ITERATION-LIMIT — 8 iterations, ~44.5k tokens,
+    115–154 s, no answer — after finding the RIGHT file in iteration 1
+    and re-reading its truncated view seven more times. A narrower ask
+    answered from the unit tests and NAMED the truncation itself (the
+    honest half). ENCODE: (a) the tool result must say "7,000 of 8,058
+    chars shown; tail not available" so the agent stops re-fetching —
+    row 119's family, at the model-facing seam; (b) a windowed read
+    (`get … --lines A-B` / byte range) available to the ask agent, which
+    makes unparsed-language files usable at all; (c) this is the concrete
+    cost of row 136(b): for ask, every unparsed-language file over 7k is
+    unreadable past the fold. Goods recorded from the same batch: the
+    partial-evidence envelope carried the 4 citations + iteration ledger
+    + the config knob (row 71 working as designed); `ask --conversation
+    <guid>` checked against the user's own written brief — three-dials
+    model and four out-of-scope items correct, zero hallucinated rulings
+    ("best result of the day"). Raw: scratch/dogfood-forward-worm-batch-2.md.
