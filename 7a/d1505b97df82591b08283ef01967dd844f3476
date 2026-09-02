@@ -1,0 +1,29 @@
+scratch/closeout-016/hidden-dirs-fa4da2f.md
+  s_15d888f4b629c1::t_2f116f710e8abb 1
+scratch/closeout-016/hidden-dirs-gate-head.md
+  s_15d888f4b629c1::t_5a482517ba4994 1-9
+scratch/closeout-016/hidden-dirs-prime-reply-001.md
+  s_15d888f4b629c1::t_81f7d28a0b8aec 1-18
+scratch/closeout-016/hidden-dirs-prime-reply-005.md
+  s_15d888f4b629c1::t_8a8a8946f7f64b 1-82
+scratch/closeout-016/hidden-dirs-review-fixes.md
+  s_15d888f4b629c1::t_af3542016144c2 1-30
+scratch/closeout-016/session-buffer-dormouse.md
+  s_15d888f4b629c1::t_9ad537f77986d7 1-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7ad1505b97df82591b08283ef01967dd844f3476",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
