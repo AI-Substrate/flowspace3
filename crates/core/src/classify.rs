@@ -78,6 +78,8 @@ const BARE_DECLS: &[&str] = &[
     "class",
     "module",
     "function",
+    // TypeScript namespaces use this bare kind rather than a declaration suffix.
+    "internal_module",
     "atx_heading",
     "setext_heading",
 ];
@@ -180,6 +182,53 @@ mod tests {
         // `mod` is a substring, so guard the near-miss it could catch: a Java /
         // C# `modifiers` node is not a declaration and must stay out.
         assert_eq!(classify("modifiers"), None);
+    }
+
+    #[test]
+    fn typescript_declaration_decisions_are_explicit() {
+        for callable in [
+            "function_declaration",
+            "method_definition",
+            "method_signature",
+            "abstract_method_signature",
+            "function_signature",
+        ] {
+            assert_eq!(
+                classify(callable),
+                Some(ElementKind::Function),
+                "{callable}"
+            );
+        }
+        for container in [
+            "class_declaration",
+            "abstract_class_declaration",
+            "interface_declaration",
+            "enum_declaration",
+            "type_alias_declaration",
+            "internal_module",
+        ] {
+            assert_eq!(
+                classify(container),
+                Some(ElementKind::Container),
+                "{container}"
+            );
+        }
+        for wrapper_or_binding in [
+            "export_statement",
+            "lexical_declaration",
+            "import_statement",
+            "variable_declarator",
+            "public_field_definition",
+            "arrow_function",
+            "function_expression",
+            "generator_function",
+        ] {
+            assert_eq!(
+                classify(wrapper_or_binding),
+                None,
+                "{wrapper_or_binding} is handled by splicing or value shape, not raw kind"
+            );
+        }
     }
 
     /// PRD req 42 / POC learning L2 — the exemplar this whole gate exists for.

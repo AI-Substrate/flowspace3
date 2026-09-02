@@ -6,7 +6,7 @@
 //! wrapper node (a `decorated_definition`, an error-recovery stub, a bare
 //! block) are never lost — they simply attach to the nearest real ancestor.
 
-use fs3_core::{ADDRESS_SEGMENT, Element, Span, classify};
+use fs3_core::{ADDRESS_SEGMENT, Element, ElementKind, Span, classify};
 use tree_sitter::Node;
 
 /// Fields that can carry a node's name, in priority order.
@@ -16,6 +16,16 @@ use tree_sitter::Node;
 /// C++, where trying it early produces elements literally named `void` and
 /// `bool`.
 const NAME_FIELDS: &[&str] = &["name", "declarator", "path", "pattern", "type"];
+
+/// Binding nodes whose `value` field may declare a callable.
+const FUNCTION_BINDINGS: &[&str] = &["variable_declarator", "public_field_definition"];
+
+/// Function-shaped values promoted under their binding's name.
+const FUNCTION_VALUES: &[&str] = &[
+    "arrow_function",
+    "function_expression",
+    "generator_function",
+];
 
 /// Every declaration inside `root`, as a source-ordered forest.
 pub(crate) fn declarations(root: Node<'_>, source: &str, path: &str) -> Vec<Element> {
@@ -42,7 +52,7 @@ fn collect(node: Node<'_>, source: &str, scope: &str, out: &mut Vec<Element>) {
 /// Turn one node into an element, children and all, if it is a declaration.
 fn element_at(node: Node<'_>, source: &str, scope: &str) -> Option<Element> {
     let ts_kind = node.kind();
-    let kind = classify(ts_kind)?;
+    let kind = classify(ts_kind).or_else(|| function_binding_kind(node))?;
     // PRD req 42 wants genuine *named* declarations. A classified node with no
     // name is not one — it is error-recovery debris, or a suffix match on an
     // anonymous construct. Emitting it as `<anonymous>` invented an element
@@ -77,6 +87,17 @@ fn element_at(node: Node<'_>, source: &str, scope: &str) -> Option<Element> {
         )
         .with_children(ordered(children)),
     )
+}
+
+/// Promote a function-valued binding without teaching the walk any language.
+fn function_binding_kind(node: Node<'_>) -> Option<ElementKind> {
+    if !FUNCTION_BINDINGS.contains(&node.kind()) {
+        return None;
+    }
+    let value = node.child_by_field_name("value")?;
+    FUNCTION_VALUES
+        .contains(&value.kind())
+        .then_some(ElementKind::Function)
 }
 
 /// Stamp source order onto a sibling list.

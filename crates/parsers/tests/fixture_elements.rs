@@ -19,10 +19,14 @@ use fs3_parsers::scan;
 const RUST_FIXTURE: &str = include_str!("../fixtures/sample.rs");
 const PYTHON_FIXTURE: &str = include_str!("../fixtures/sample.py");
 const MARKDOWN_FIXTURE: &str = include_str!("../fixtures/sample.md");
+const TYPESCRIPT_FIXTURE: &str = include_str!("../fixtures/sample.ts");
+const TSX_FIXTURE: &str = include_str!("../fixtures/sample.tsx");
 
 const RUST_PATH: &str = "parsers/fixtures/sample.rs";
 const PYTHON_PATH: &str = "parsers/fixtures/sample.py";
 const MARKDOWN_PATH: &str = "parsers/fixtures/sample.md";
+const TYPESCRIPT_PATH: &str = "parsers/fixtures/sample.ts";
+const TSX_PATH: &str = "parsers/fixtures/sample.tsx";
 
 fn tree(path: &str, source: &str) -> ElementTree {
     scan(Path::new(path), source.as_bytes()).expect("fixtures parse")
@@ -166,6 +170,94 @@ fn python_fixture_invents_nothing() {
         1,
         "a decorated def must appear exactly once"
     );
+}
+
+#[test]
+fn typescript_fixture_yields_the_expected_tree() {
+    expect(
+        &tree(TYPESCRIPT_PATH, TYPESCRIPT_FIXTURE),
+        &[
+            "file typescript parsers/fixtures/sample.ts #0 1-48",
+            "  function function_declaration parsers/fixtures/sample.ts::top #0 3-8",
+            "    function function_declaration parsers/fixtures/sample.ts::top::nested #0 4-6",
+            "  container class_declaration parsers/fixtures/sample.ts::Service #1 10-14",
+            "    function method_definition parsers/fixtures/sample.ts::Service::run #0 11-11",
+            "    function public_field_definition parsers/fixtures/sample.ts::Service::field #1 13-13",
+            "  container abstract_class_declaration parsers/fixtures/sample.ts::AbstractStore #2 16-18",
+            "    function abstract_method_signature parsers/fixtures/sample.ts::AbstractStore::load #0 17-17",
+            "  container interface_declaration parsers/fixtures/sample.ts::Runner #3 20-22",
+            "    function method_signature parsers/fixtures/sample.ts::Runner::run #0 21-21",
+            "  container enum_declaration parsers/fixtures/sample.ts::Mode #4 24-26",
+            "  container type_alias_declaration parsers/fixtures/sample.ts::Result #5 28-28",
+            "  function function_signature parsers/fixtures/sample.ts::declared #6 30-30",
+            "  container internal_module parsers/fixtures/sample.ts::Tools #7 32-38",
+            "    function function_declaration parsers/fixtures/sample.ts::Tools::inside #0 33-33",
+            "    container interface_declaration parsers/fixtures/sample.ts::Tools::Nested #1 35-37",
+            "      function method_signature parsers/fixtures/sample.ts::Tools::Nested::call #0 36-36",
+            "  function variable_declarator parsers/fixtures/sample.ts::plain #8 40-40",
+            "  function variable_declarator parsers/fixtures/sample.ts::assigned #9 41-41",
+            "  function variable_declarator parsers/fixtures/sample.ts::exported #10 42-42",
+            "  function variable_declarator parsers/fixtures/sample.ts::asyncTask #11 43-43",
+            "  function variable_declarator parsers/fixtures/sample.ts::generated #12 44-46",
+        ],
+    );
+}
+
+#[test]
+fn tsx_fixture_yields_the_expected_tree() {
+    let tree = tree(TSX_PATH, TSX_FIXTURE);
+    assert!(!tree.has_error, "the JSX-heavy fixture must parse cleanly");
+    expect(
+        &tree,
+        &[
+            "file tsx parsers/fixtures/sample.tsx #0 1-16",
+            "  container interface_declaration parsers/fixtures/sample.tsx::CardProps #0 3-6",
+            "  function function_declaration parsers/fixtures/sample.tsx::Card #1 8-16",
+            "    function variable_declarator parsers/fixtures/sample.tsx::Card::local #0 9-9",
+        ],
+    );
+}
+
+#[test]
+fn typescript_fixtures_invent_nothing_and_never_emit_blank_identity() {
+    let typescript = tree(TYPESCRIPT_PATH, TYPESCRIPT_FIXTURE);
+    let subkinds = subkinds(&typescript);
+    for refused in [
+        "import_statement",
+        "export_statement",
+        "lexical_declaration",
+        "class_heritage",
+    ] {
+        assert!(
+            !subkinds.contains(&refused),
+            "{refused} must not become an element; got {subkinds:?}"
+        );
+    }
+    for refused in ["x", "cfg"] {
+        assert!(
+            typescript
+                .find(&format!("{TYPESCRIPT_PATH}::{refused}"))
+                .is_none(),
+            "non-function binding {refused} must not become an element"
+        );
+    }
+
+    let tsx = tree(TSX_PATH, TSX_FIXTURE);
+    for element in typescript.iter().chain(tsx.iter()) {
+        assert!(
+            !element.name.trim().is_empty(),
+            "{} has an empty name",
+            element.subkind
+        );
+        assert!(
+            !element.address.trim().is_empty()
+                && !element.address.contains("::<anonymous>")
+                && !element.address.contains("::::"),
+            "{} has an invalid address {:?}",
+            element.subkind,
+            element.address
+        );
+    }
 }
 
 #[test]

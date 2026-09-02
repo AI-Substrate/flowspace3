@@ -76,6 +76,7 @@ external = [
   "tree-sitter-md",
   "tree-sitter-python",
   "tree-sitter-rust",
+  "tree-sitter-typescript",
 ]
 
 [crates.fs3-providers]

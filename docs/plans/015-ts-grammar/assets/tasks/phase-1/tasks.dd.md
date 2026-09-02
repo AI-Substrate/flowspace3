@@ -35,10 +35,10 @@ Work top to bottom; stop-and-ask o-prime on anything outside the fence.
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| t1 | Wire tree-sitter-typescript: workspace dep, Language::TypeScript/Tsx, extension map, as_str, grammar() | — | — | [ ] unchecked | — | — | [ ] 0/1 [t1](#t1) | the workspace builds with tree-sitter-typescript 0.23.2 against tree-sitter 0.26; `for_extension("ts"\|"mts"\|"cts")` → TypeScript, `"tsx"` → Tsx; a .ts fixture scans with language typescript | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0004](../../../plan.dd.md#acceptance-criteria) |
-| t2 | Fixtures + golden forests for declarations (class, abstract class, interface, enum, type alias, methods, signatures, default export, namespace) and a JSX-heavy tsx | — | — | [ ] unchecked | — | — | [ ] 0/2 [t2](#t2) | goldens checked in; every declaration kind appears with the expected address and span; tsx parses | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0003](../../../plan.dd.md#acceptance-criteria) |
-| t3 | Generic value-shape rule + classify decisions: variable_declarator / public_field_definition whose `value` is arrow_function\|function_expression\|generator_function → Function named by the binding; internal_module → Container; classify tests enumerate every TS kind decision | — | — | [ ] unchecked | — | — | [ ] 0/2 [t3](#t3) | language-agnostic code in source.rs/classify.rs; six binding shapes pass; mutation receipts recorded | — | [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0003](../../../plan.dd.md#acceptance-criteria) |
-| t4 | Regression + gate | — | — | [ ] unchecked | — | — | [ ] 0/1 [t4](#t4) | rust/python/markdown tests unchanged and green; clippy clean; gate green on the PR sha | — | [ac-0004](../../../plan.dd.md#acceptance-criteria) |
+| t1 | Wire tree-sitter-typescript: workspace dep, Language::TypeScript/Tsx, extension map, as_str, grammar() | — | — | [x] checked | — | cargo build -p fs3-parsers: tree-sitter-typescript 0.23.2 resolved and compiled with tree-sitter 0.26; cargo test -p fs3-parsers --lib: 29 passed | [x] 1/1 [t1](#t1) | the workspace builds with tree-sitter-typescript 0.23.2 against tree-sitter 0.26; `for_extension("ts"\|"mts"\|"cts")` → TypeScript, `"tsx"` → Tsx; a .ts fixture scans with language typescript | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0004](../../../plan.dd.md#acceptance-criteria) |
+| t2 | Fixtures + golden forests for declarations (class, abstract class, interface, enum, type alias, methods, signatures, default export, namespace) and a JSX-heavy tsx | — | — | [x] checked | Fixture/golden contract added; RED is exact on t3 only: internal_module parenting and function-valued bindings | cargo test -p fs3-parsers --test fixture_elements: 13 passed; exact TypeScript/TSX forests, clean JSX parse, namespace addresses, negatives, non-empty identities | [x] 2/2 [t2](#t2) | goldens checked in; every declaration kind appears with the expected address and span; tsx parses | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0003](../../../plan.dd.md#acceptance-criteria) |
+| t3 | Generic value-shape rule + classify decisions: variable_declarator / public_field_definition whose `value` is arrow_function\|function_expression\|generator_function → Function named by the binding; internal_module → Container; classify tests enumerate every TS kind decision | — | — | [x] checked | — | fixture_elements: 13 passed; core classify: 10 passed; deleting value-shape rule removed all 6 binding Functions and failed golden; deleting internal_module rule flattened namespace members and failed addresses; both restored | [x] 2/2 [t3](#t3) | language-agnostic code in source.rs/classify.rs; six binding shapes pass; mutation receipts recorded | — | [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0003](../../../plan.dd.md#acceptance-criteria) |
+| t4 | Regression + gate | — | — | [ ] unchecked | Parser/core 311 green; local full gate timed out exit 124 without assertion failure; o-prime ruled CI green on exact PR SHA as gate | — | [ ] 0/1 [t4](#t4) | rust/python/markdown tests unchanged and green; clippy clean; gate green on the PR sha | — | [ac-0004](../../../plan.dd.md#acceptance-criteria) |
 | t5 | Pre-prod scan receipt + PR | — | — | [ ] unchecked | — | — | [ ] 0/1 [t5](#t5) | per-file element table for ~/pi-hacking/pij/.pi/extensions/pij/**/*.ts before/after in the PR body; the exact prod re-ingest command and search query o-prime will run | — | [ac-0005](../../../plan.dd.md#acceptance-criteria) |
 
 <a id="done-when"></a>
@@ -49,21 +49,21 @@ Work top to bottom; stop-and-ask o-prime on anything outside the fence.
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-30f1 | fixture scan reports language typescript / tsx and a non-empty forest | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
+| dw-30f1 | fixture scan reports language typescript / tsx and a non-empty forest | [x] checked | [bp-0001](../../backpressure.dd.md#rows) |
 
 ### t2
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-30f2 | golden equality per fixture | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
-| dw-30f3 | namespace members carry the namespace segment in their address | [ ] unchecked | [bp-0003](../../backpressure.dd.md#rows) |
+| dw-30f2 | golden equality per fixture | [x] checked | [bp-0001](../../backpressure.dd.md#rows) |
+| dw-30f3 | namespace members carry the namespace segment in their address | [x] checked | [bp-0003](../../backpressure.dd.md#rows) |
 
 ### t3
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-30f4 | six shapes → six Function elements; rule removed → red | [ ] unchecked | [bp-0002](../../backpressure.dd.md#rows) |
-| dw-30f5 | internal_module → Container; removed → red | [ ] unchecked | [bp-0003](../../backpressure.dd.md#rows) |
+| dw-30f4 | six shapes → six Function elements; rule removed → red | [x] checked | [bp-0002](../../backpressure.dd.md#rows) |
+| dw-30f5 | internal_module → Container; removed → red | [x] checked | [bp-0003](../../backpressure.dd.md#rows) |
 
 ### t4
 

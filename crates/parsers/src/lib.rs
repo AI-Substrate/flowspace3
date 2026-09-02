@@ -7,8 +7,8 @@
 //! check refuses tokio and sqlx in this crate — and it is what lets the scanner
 //! be tested with a `&str` and reused from any caller, sync or async.
 //!
-//! Three grammars ship as the exemplar set: **Rust** and **Python** (code) and
-//! **Markdown** (documents). Anything else still scans: a file fs3 has no
+//! Five grammars ship as the exemplar set: **Rust**, **Python**, **TypeScript**,
+//! **TSX** (code), and **Markdown** (documents). Anything else still scans: a file fs3 has no
 //! grammar for yields a one-element tree — the file itself, `language()` of
 //! `unknown`. A missing grammar is an observable outcome (PRD req 43), never an
 //! error and never a silent skip.
@@ -36,6 +36,10 @@ pub enum Language {
     Python,
     /// `tree-sitter-md`. Headings become sections (PRD req 22).
     Markdown,
+    /// `tree-sitter-typescript` using its TypeScript grammar.
+    TypeScript,
+    /// `tree-sitter-typescript` using its TSX grammar.
+    Tsx,
 }
 
 /// What [`ElementTree::language`] reports for a file no grammar covers.
@@ -51,13 +55,19 @@ impl Language {
     /// outcome, which [`scan`] turns into a file-only tree rather than a
     /// failure.
     ///
-    /// Adding a language is this one line plus a grammar crate; the extraction
-    /// walk is generic (PRD req 21).
+    /// Snap-in recipe: add the grammar to the workspace and parser dependencies,
+    /// mirror that edge in `crates/testkit/arch-allowlist.toml`, add a [`Language`]
+    /// variant and extension arm here, return its stable name from [`Self::as_str`],
+    /// and register its tree-sitter constant in [`Self::grammar`]. The source walk
+    /// stays generic; prove the registration with a nested whole-tree fixture
+    /// and an `invents_nothing` negative (PRD req 21).
     pub fn for_extension(extension: &str) -> Option<Self> {
         match extension.to_ascii_lowercase().as_str() {
             "rs" => Some(Language::Rust),
             "py" | "pyi" => Some(Language::Python),
             "md" | "markdown" => Some(Language::Markdown),
+            "ts" | "mts" | "cts" => Some(Language::TypeScript),
+            "tsx" => Some(Language::Tsx),
             _ => None,
         }
     }
@@ -73,6 +83,8 @@ impl Language {
             Language::Rust => "rust",
             Language::Python => "python",
             Language::Markdown => "markdown",
+            Language::TypeScript => "typescript",
+            Language::Tsx => "tsx",
         }
     }
 
@@ -82,6 +94,8 @@ impl Language {
             Language::Rust => tree_sitter_rust::LANGUAGE.into(),
             Language::Python => tree_sitter_python::LANGUAGE.into(),
             Language::Markdown => tree_sitter_md::LANGUAGE.into(),
+            Language::TypeScript => tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into(),
+            Language::Tsx => tree_sitter_typescript::LANGUAGE_TSX.into(),
         }
     }
 }
@@ -149,7 +163,9 @@ pub fn scan(path: &Path, bytes: &[u8]) -> Result<ElementTree, ScanError> {
 
     let children = match language {
         Language::Markdown => markdown::sections(root_node, source, &display),
-        Language::Rust | Language::Python => source::declarations(root_node, source, &display),
+        Language::Rust | Language::Python | Language::TypeScript | Language::Tsx => {
+            source::declarations(root_node, source, &display)
+        }
     };
 
     Ok(ElementTree {
@@ -200,11 +216,34 @@ mod tests {
         assert_eq!(Language::for_extension("rs"), Some(Language::Rust));
         assert_eq!(Language::for_extension("MD"), Some(Language::Markdown));
         assert_eq!(Language::for_extension("py"), Some(Language::Python));
+        assert_eq!(Language::for_extension("ts"), Some(Language::TypeScript));
+        assert_eq!(Language::for_extension("MTS"), Some(Language::TypeScript));
+        assert_eq!(Language::for_extension("cts"), Some(Language::TypeScript));
+        assert_eq!(Language::for_extension("tsx"), Some(Language::Tsx));
         assert_eq!(
             Language::for_path(Path::new("a/b/c.rs")),
             Some(Language::Rust)
         );
         assert_eq!(Language::for_path(Path::new("Makefile")), None);
+    }
+
+    #[test]
+    fn typescript_grammars_scan_source_files() {
+        let typescript = scan(
+            Path::new("src/handler.ts"),
+            b"export function handler(): void {}\n",
+        )
+        .unwrap();
+        assert_eq!(typescript.language(), "typescript");
+        assert!(typescript.len() > 1, "the declaration must be extracted");
+
+        let tsx = scan(
+            Path::new("src/view.tsx"),
+            b"export function View() { return <main>Hello</main>; }\n",
+        )
+        .unwrap();
+        assert_eq!(tsx.language(), "tsx");
+        assert!(tsx.len() > 1, "the declaration must be extracted");
     }
 
     /// PRD req 43: an unsupported file is a reported outcome, not a silent gap
