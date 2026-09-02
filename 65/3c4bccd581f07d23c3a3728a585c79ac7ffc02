@@ -1,0 +1,49 @@
+scratch/closeout-017/daemon-key-ack.md
+  s_15d888f4b629c1::t_297835e24c5fa7 1-28
+scratch/closeout-017/daemon-key-ask-001.md
+  s_15d888f4b629c1::t_c74d2d2d787faf 1-12
+scratch/closeout-017/daemon-key-ci-fix.md
+  s_15d888f4b629c1::t_d096142395e2f9 1-13
+scratch/closeout-017/daemon-key-closeout.md
+  s_15d888f4b629c1::t_a377dd57821d95 1-15
+scratch/closeout-017/daemon-key-pr-body.md
+  s_15d888f4b629c1::t_d3054e79716fe7 1-56
+scratch/closeout-017/daemon-key-prime-reply-002.md
+  s_15d888f4b629c1::t_920983a28bc6f6 1-43
+scratch/closeout-017/daemon-key-prime-reply-003.md
+  s_15d888f4b629c1::t_6108641dfbe6ea 1-37
+scratch/closeout-017/daemon-key-prime-reply-004.md
+  s_15d888f4b629c1::t_1e3a72f0604357 1-44
+scratch/closeout-017/daemon-key-prime-reply-005.md
+  s_15d888f4b629c1::t_d5bf056923922c 1-41
+scratch/closeout-017/daemon-key-real-usage.md
+  s_15d888f4b629c1::t_64947716a9ba04 1-52
+scratch/closeout-017/daemon-key-report.md
+  s_15d888f4b629c1::t_2a9c0ef086af0e 1-53
+scratch/closeout-017/daemon-key-t1.md
+  s_15d888f4b629c1::t_1e9a61163136e9 1-9
+scratch/closeout-017/daemon-key-t2.md
+  s_15d888f4b629c1::t_0ad687ba7bb4c7 1-12
+scratch/closeout-017/daemon-key-t3-t4.md
+  s_15d888f4b629c1::t_fec433ad934935 1-23
+scratch/closeout-017/daemon-key-t5.md
+  s_15d888f4b629c1::t_4cd4f51d6944a5 1-15
+scratch/closeout-017/session-buffer-cod.md
+  s_15d888f4b629c1::t_ae807cf20e22a1 1-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "653c4bccd581f07d23c3a3728a585c79ac7ffc02",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
