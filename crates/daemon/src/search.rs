@@ -183,9 +183,6 @@ pub struct SearchOutcome {
     pub limit: i64,
     /// Whether at least one additional legitimate result existed beyond the cap.
     pub truncated: bool,
-    /// Whether semantic candidate expansion ended at its bounded ceiling or
-    /// after the admitted set stopped growing.
-    pub candidate_limit_exhausted: bool,
     /// Semantic search returned a bounded short page. Independent of
     /// `empty_because`, lexical fusion, and display truncation.
     pub scan_incomplete: bool,
@@ -351,8 +348,7 @@ async fn search_filtered(
         fs3_store::search_lexical(&state.db, query, &filters),
     )
     .map_err(fail)?;
-    let candidate_limit_exhausted = semantic.candidate_limit_exhausted;
-    let scan_incomplete = candidate_limit_exhausted;
+    let scan_incomplete = semantic.candidate_limit_exhausted;
     let passes = semantic.passes;
     let mut hits = semantic.hits;
 
@@ -401,7 +397,6 @@ async fn search_filtered(
             empty_because: None,
             limit,
             truncated,
-            candidate_limit_exhausted,
             scan_incomplete,
             passes,
         });
@@ -414,7 +409,6 @@ async fn search_filtered(
             empty_because: Some(reason),
             limit,
             truncated: false,
-            candidate_limit_exhausted,
             scan_incomplete,
             passes,
         });
@@ -436,7 +430,6 @@ async fn search_filtered(
         empty_because: empty_because(&filters, file_backed, scan_incomplete),
         limit,
         truncated: false,
-        candidate_limit_exhausted,
         scan_incomplete,
         passes,
     })

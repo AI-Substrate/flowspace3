@@ -69,14 +69,16 @@ An earlier production-version guard observed 22→23 and stopped correctly. O-pr
 
 Claude review found a critical selective-scope regression: post-filtering a raw HNSW page could run all nine Rust expansions and return an outage when 12,000 nearer vectors belonged to another repository. The correction pre-resolves both raw and smart scope source keys and applies their hashed membership inside `candidate_vectors`, before `ORDER BY … LIMIT`, so pgvector iterative scan reaches scoped vectors internally. Payload/chooser resolution remains above the page and `admitted_elements` is bounded to raw candidate hashes plus smart candidates' mapped raw hashes.
 
-`search_elements` now returns `SearchPage { hits, passes, candidate_limit_exhausted }`. Candidate and admitted counts travel independently; unchanged admitted growth stops a filtered empty search on pass two. The expansion ceiling returns a short page, never `Err`; `query_embeddings` keeps its existing error. Daemon `SearchOutcome` and HTTP meta add `scan_incomplete`, `candidate_limit_exhausted`, and `passes` without changing existing fields. Empty pages reuse `empty_because.reason = scan_incomplete`.
+`search_elements` now returns internal `SearchPage { hits, passes, candidate_limit_exhausted }`. Candidate and admitted counts travel independently; unchanged admitted growth stops a filtered empty search on pass two. The expansion ceiling returns a short page, never `Err`; `query_embeddings` keeps its existing error. Daemon `SearchOutcome` and HTTP meta publish only `scan_incomplete` and `passes`, without changing existing fields or duplicating the internal exhaustion flag. Empty pages reuse `empty_because.reason = scan_incomplete`.
 
 Discriminating geometry: 12,000 nearer foreign vectors, five farther scoped vectors, limit 10 → all five scoped hits, one pass. Query elapsed under host load varied from 45.811 to 78.659 ms; latest final run was 74.025 ms. The reviewer target was <40 ms, so the exact elapsed target is not claimed green; correctness, one-pass behavior, and production acceptance remain gated by post-bounce AC-0004/0005. Separate no-growth geometry → zero hits, exhausted=true, two passes.
 
 Mutation receipts:
 
-- remove admitted-growth comparison → no-growth test RED (`candidate_limit_exhausted=false`);
+- remove admitted-growth comparison → no-growth test RED (`scan_incomplete` is not raised);
 - restore bound error → bound-decision test RED (`Error` vs `Return { scan_incomplete: true }`);
 - remove shipped JIT setup → JIT guard RED (`on` vs `off`).
 
 Final targeted evidence on `flowspace3-db-test` `:5434`: search-admission 3/3; embedding shape/JIT/bound tests 5/5; store regressions 53/53; daemon regressions 56/56 including Rust and HTTP scan metadata. Shape fixture: 7.322 ms, 3,113 shared hits, HNSW/candidate rows 160, smart-content loops 159.
+
+Final delta diagnostics corrected two new edge cases: a pass that both exhausts the candidate scan and sees unchanged admitted count is complete, so it does not raise `scan_incomplete`; the expansion-bound unit test separately remains incomplete. The HTTP envelope test requires `scan_incomplete` and `passes` and proves the internal `candidate_limit_exhausted` name is not published.

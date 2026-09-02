@@ -100,7 +100,9 @@ fn expansion_decision(
     let expansion_exhausted = admitted_stalled || expansion == MAX_CANDIDATE_EXPANSIONS;
     if hit_count >= requested || candidate_scan_exhausted || expansion_exhausted {
         ExpansionDecision::Return {
-            scan_incomplete: hit_count < requested && expansion_exhausted,
+            scan_incomplete: hit_count < requested
+                && expansion_exhausted
+                && !candidate_scan_exhausted,
         }
     } else {
         ExpansionDecision::Continue
@@ -1037,6 +1039,13 @@ mod tests {
             expansion_decision(1, 10, 10_240, 10_240, 9, Some(8), MAX_CANDIDATE_EXPANSIONS,),
             ExpansionDecision::Return {
                 scan_incomplete: true,
+            }
+        );
+
+        assert_eq!(
+            expansion_decision(1, 10, 100, 160, 5, Some(5), 3),
+            ExpansionDecision::Return {
+                scan_incomplete: false,
             }
         );
     }

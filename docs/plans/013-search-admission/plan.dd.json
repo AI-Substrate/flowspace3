@@ -21,11 +21,11 @@
     {
       "name": "goals",
       "value": [
-        "A search performs O(candidates) work, not O(candidates × elements): the admission predicate is resolved as hash semi-joins (smart_content text_hash→raw_hash resolved ONCE, elements admitted ONCE), never as a correlated per-candidate EXISTS.",
-        "EXPLAIN (ANALYZE, BUFFERS) of the shipped query on prod's corpus shows the smart_content probe with loops < 1,000 and total shared buffer hits under 100,000 for limit=40 / candidate_limit=160 (was 962,792 loops / 3.85M hits).",
+        "A search performs O(candidate page) work, not O(candidates × elements): smart_content text_hash→raw_hash and eligible element representatives are resolved once per page, never as a correlated SubPlan; smart_content loops are explicitly bounded by candidate_limit.",
+        "EXPLAIN (ANALYZE, BUFFERS) of the shipped query on prod's corpus shows smart_content Actual Loops ≤ candidate_limit and < 1,000, with total shared buffer hits under 100,000 for limit=40 / candidate_limit=160 (was 962,792 loops / 3.85M hits).",
         "Ranking parity: the existing search fixtures and the 009 chunk-collapse tests pass unchanged; a new parity test asserts the same top-N addresses and scores (within float tolerance) for the fixture corpus before and after.",
         "Search wall time on prod for the profile's reference query drops from 1.65 s (single pass) to under 300 ms, and a bare `flowspace3 search` from the main checkout completes under 1 s at idle load. Measured, not estimated.",
-        "The candidate_vectors CTE already carries (source_hash, source_kind, chunk_no, distance) only; the EXPLAIN-shape test now asserts that its target list has no vector column. JIT no longer triggers on this query (cost estimate sane), or is explicitly disabled for it with a stated reason."
+        "The candidate_vectors CTE already carries (source_hash, source_kind, chunk_no, distance) only; the EXPLAIN-shape test now asserts that its target list has no vector column. JIT is explicitly disabled transaction-locally because its measured 281 ms startup cannot amortize in this latency-bound query."
       ]
     },
     {
@@ -43,7 +43,7 @@
         {
           "id": "ac-0001",
           "state": "checked",
-          "claim": "Loops bound, mutation-checked: an integration test runs EXPLAIN (ANALYZE, FORMAT JSON) on the shipped query against a seeded corpus with ≥50k elements and ≥10k smart_content rows and asserts the smart_content node's loops ≤ candidate_limit, no Materialize-over-Seq-Scan-on-elements node exists, the candidate_vectors CTE target list carries no vector column, and JIT is not triggered (or is disabled for this statement with the reason stated); the SAME test fails against the old query (keep it under a cfg/feature or a golden-SQL comparison so the mutation is one-line). Mutation stated in the PR body.",
+          "claim": "Loops bound, mutation-checked: an integration test runs EXPLAIN (ANALYZE, FORMAT JSON) on the shipped query against a seeded corpus with ≥50k elements and ≥10k smart_content rows and asserts smart_content text_hash→raw_hash and representative resolution occurs once per page, never as a correlated SubPlan; every smart_content node has Actual Loops ≤ candidate_limit; no Materialize-over-Seq-Scan-on-elements node exists; the candidate_vectors target list carries no vector column; and shipped transaction setup disables JIT. The SAME shape test fails against the old correlated query, and dedicated mutation checks fail when admitted-growth, short-page-at-bound, or JIT guards are removed. Mutations stated in the PR body.",
           "receipt": "PASS after review option-B correction on flowspace3-db-test :5434. Corpus: 50,000 elements, 10,000 smart_content, 20,000 embeddings. Shipped ANALYZE: 7.322 ms, 3,113 shared hits, HNSW/candidate rows 160, smart_content max loops 159 (bounded by candidate page), four target columns, no JIT. Static mutation restores correlated smart_content SubPlan + Materialize/elements. JIT guard is mutation-sensitive: removing shipped SET LOCAL yields on vs expected off."
         },
         {

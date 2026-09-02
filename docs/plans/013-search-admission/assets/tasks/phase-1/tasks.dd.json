@@ -31,7 +31,7 @@
         },
         {
           "id": "tk-0102",
-          "title": "Rewrite candidate_vectors: CTE smart_map AS (SELECT text_hash, raw_hash FROM smart_content …) hash-joined once; admitted elements resolved once with the same filter predicates; candidate admitted via semi-join on raw_hash; CTE selects (source_hash, source_kind, chunk_no, distance) only",
+          "title": "Rewrite candidate admission: pre-resolve raw and smart scope source keys inside the HNSW scan; resolve smart payload and eligible representatives once per candidate page above the LIMIT; carry candidate/admitted counts independently; keep candidate_vectors to source_hash, source_kind, chunk_no, distance",
           "state": "checked",
           "done": "#done_when/tk-0102",
           "success": "EXPLAIN shape test green; red with old SQL",
@@ -63,7 +63,7 @@
           "success": "PR open, CI green",
           "satisfies": [],
           "note": "In progress: request exclusive harness-checks slot, gate, commit final changes, open PR, and await CI.",
-          "receipt": "REQUEST-CHANGES FIX READY: option-B scope keys inside HNSW, page-bounded payload resolution, admitted-growth stop, never-Err filtered bound, SearchPage metadata, additive daemon scan_incomplete/candidate_limit_exhausted/passes. Paired 12k foreign +5 scoped: Ok 5 hits pass1; query elapsed varied 45.811–78.659 ms under host load, latest final 74.025 ms (reviewer <40 ms target not claimed). No-growth: empty/exhausted/pass2. Mutations RED: growth removal, bound Error restoration, JIT removal. Shape 7.322 ms/3,113 hits/159 smart loops; store 3+5+53 green; daemon 56 green. Await exact-SHA CI."
+          "receipt": "DELTA APPROVED at b332f46; final diagnosis patch ready: completed candidate scans no longer set scan_incomplete; bound case still does. Agent envelope publishes only scan_incomplete + passes; candidate_limit_exhausted remains internal. Plan prose says resolution once per page and explicitly asserts smart_content loops ≤ candidate_limit. Unit/HTTP assertions updated. Previous option-B receipts: paired 12k/5 Ok five hits pass1; no-growth empty/exhausted/pass2; growth/no-Err/JIT mutations RED; shape 7.322 ms/3,113 hits/159 loops; store 3+5+53, daemon 56, clippy green. Await final exact-SHA CI."
         },
         {
           "id": "tk-0105",

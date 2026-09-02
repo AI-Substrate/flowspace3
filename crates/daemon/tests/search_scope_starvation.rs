@@ -422,7 +422,6 @@ async fn an_exhausted_semantic_page_reports_scan_incomplete() {
 
     assert!(outcome.results.is_empty());
     assert!(outcome.scan_incomplete);
-    assert!(outcome.candidate_limit_exhausted);
     assert_eq!(outcome.passes, 2);
     assert_eq!(
         outcome
@@ -451,7 +450,7 @@ async fn an_exhausted_semantic_page_reports_scan_incomplete() {
         .await
         .expect("an envelope");
     assert_eq!(envelope["meta"]["scan_incomplete"], true);
-    assert_eq!(envelope["meta"]["candidate_limit_exhausted"], true);
+    assert!(envelope["meta"].get("candidate_limit_exhausted").is_none());
     assert_eq!(envelope["meta"]["passes"], 2);
     assert_eq!(
         envelope["meta"]["empty_because"]["reason"],
