@@ -1,0 +1,21 @@
+scratch/dogfood-brief-antelope.md
+  s_15d888f4b629c1::t_c26aa686a8582d 1-30
+scratch/pij-bug-rs-child-cannot-reach-legacy-parent.md
+  s_15d888f4b629c1::t_b40e8eeca48d76 1-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "189f46a78075a0af9861d2ed1d4af6910f0f500f",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
