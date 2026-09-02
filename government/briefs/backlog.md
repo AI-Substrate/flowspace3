@@ -3255,3 +3255,10 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     the 013 bounce + before/after (pg_stat_statements 10,696 ms mean
     baseline) + carp's ac-0004/0005 pair follow. Delivery status 06:50:
     carp receives again (4 rows, incl. a replay); dormouse still 0 rows.
+    PROD — relaunched 06:48:57Z in pane %50 on the 015 build (pid 33521),
+    healthy at +80 s, sole :7373 holder. Boot log shows the squatter had
+    REGISTERED its own root (~/pi-hacking/fs3-rs-tap-supersedes-legacy) in
+    prod's index (watch error on that root). Left in place (pij dogfoods
+    fs3; removing another government's root is not a small repair) —
+    noted for weasel. 013 bounce running via receipt-013-bounce.sh (bash,
+    exit-code and new-pid asserted this time).
