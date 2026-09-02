@@ -3311,3 +3311,14 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     not. Ledger: 13 entries — 4 fixed, 5 confirmed, 3 deferred, 1
     unchecked. Re-vendored (293f280b). Reviewer answered (c): governance
     holds everything incl. the raw prod plan; docs PR after ac-0005.
+169. **The daemon publishes its boot key to ~/.config/flowspace3/daemon.key
+    BEFORE it owns :7373, so a losing daemon clobbers the winner's key and
+    locks every client out of prod** (16:54:32 local: pij plan-132 seat ran
+    `flowspace3 daemon --json` from ~/pi-hacking/fs3-spawn-reports-bind;
+    could not bind; overwrote the key; `flowspace3 ping` → FS3-E-DAEMON-
+    UNAUTHORIZED, doctor "key stale" — prod unusable for every agent until
+    o-prime bounced it to republish). P1 fix (small): write the key only
+    after the listener binds; better: key path keyed by port, and refuse
+    the prod database without an explicit owner designation (row 165).
+    Second foreign daemon in one hour despite weasel's standing rule
+    (rule in the template, not yet in the running packets).
