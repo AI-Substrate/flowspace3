@@ -3117,3 +3117,13 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     (fusion weight or a name-match leg). Also observed: `flowspace3 get
     <path>::<name>` on a TypeScript address returned nothing in the probe
     (verify the address form the read path expects) — small packet.
+    ROW 166 — correction: `flowspace3 get` expects `el:<repo>/<path>::<name>`
+    (as printed by search hits); o-prime's probe passed the bare address —
+    not a defect. The symbol-name boost point stands.
+    ROW 125 — sharpened for the packet: `DiscoverySettings.include_hidden`
+    exists (discovery.rs:222, default false, honoured at :829 via
+    `.hidden(!include_hidden)`) and has NO caller in daemon/cli/store — the
+    opt-in is unreachable. Packet 016: `flowspace3 add --include-hidden`
+    persisted per root (worktrees table) and threaded into discovery for
+    every scan of that root; `status`/`tree` show the flag; the pij
+    extensions (563 .ts under .pi/) are the real-usage receipt.
