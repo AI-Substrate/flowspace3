@@ -2062,3 +2062,8 @@ RULED OUT with evidence (same report): the 7 idle hass-mcp containers,
     flowspace3-db = 0.51 cores avg, 2.1 peak, 3.2% of 16 cores, while
     load ran 28→76 at ~14% total CPU — the load is 1,309 processes (210
     node) from the fleet, not the database.
+
+DEGRADED-ATTRIBUTION TALLY: SEVEN (2026-09-02, plan 012 coder mad-crocodile,
+    docs receipt commit 05d7d87c — connected ingress, refs/notes/ai note
+    missing after 5 s). Six of seven are docs-only commits from rs-resident
+    omp seats. Still routed to the git-ai owners; the shape has not changed.
