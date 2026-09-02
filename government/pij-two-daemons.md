@@ -104,3 +104,8 @@ write files only; **never type into a prime's pane.**
 sol coder, not as a fluke. Filed upstream as pij **req-0034** (spawn must
 register the child where its parent is or refuse; E-RS must name the route,
 never say "adopt").
+
+## o-prime has TWO names now (2026-09-02, after weasel cleared the gate)
+- **legacy: `pij-instant-lynx`** — for legacy peers (pij-telegram, meadowlark). From o-prime's pane, legacy sends are `PIJ_DAEMON_GENERATION=legacy pij send <legacy-seat> "<text>"` (verified: Telegram received it).
+- **rs: `pij-binding-magpie`** — minted by `pij-rs adopt --harness claude --parent none %21`. **Every rs-resident seat (all our sol coders and Claude reviewers) can `pij send pij-binding-magpie "<text>"` and it lands as a real turn.** The file channel stays the durable record; the rs send is the instant pointer.
+- pij plan 129 (`migrate-seat`) will fold both under one id; until then, two names, one seat, one pane.

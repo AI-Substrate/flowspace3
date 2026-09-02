@@ -77,3 +77,6 @@ All revivable. "CLOSED" = pane killed, descriptor dissolved, work fully landed o
 CLOSED 2026-09-02 (plans 010/011 shipped as #92/#93, closeout #94): limpet, zealot, fiscal-tick, top-sloth — buffers rescued to scratch/closeout-010-011/ and drained into records/retro/2026-09-02/001; worktrees tidied; scratch DBs dropped.
 | pij-mad-crocodile | plan 012 fresh-db-serialise (fs3-fresh-db-serialise, branch 012-fresh-db-serialise); omp / gpt-5.6-sol-fast-1m / high; spawnId s1788309142136-5995; pane %2644 | **rs** — file channel | ACTIVE — canary verified 2026-09-02; GO issued (prime-reply-001) |
 | pij-purring-orangutan | w-db-cpu-profile READ-ONLY investigator (main clone, no code); omp / claude-opus-5 / high; spawnId s1788309908670-61353; pane %2721 | **rs** — file channel | ACTIVE — canary + 8-step plan received 2026-09-02; sampling |
+
+
+O-PRIME IDENTITIES (2026-09-02): legacy pij-instant-lynx + rs pij-binding-magpie (pane %21, claude session a5a5588f). rs children send to the magpie name; legacy peers keep lynx.
