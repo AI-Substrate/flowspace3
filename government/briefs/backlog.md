@@ -2095,3 +2095,16 @@ PLAN 012 REVIEW RECORD (2026-09-02): PR #95 CHANGES REQUESTED at 5c7f7bdb
     forced checkpoints/6 h and the row-124 crash class entirely, and
     makes the row-110 orphan sweep a test-server concern. Compose + one
     config default + docs; no prod restart.
+
+ROW 140 APPLIED (o-prime, 2026-09-02, under the "restart whenever — get the
+    work done" ruling, at a flat queue): ALTER SYSTEM on the live volume —
+    shared_buffers 128MB→4GB, work_mem 4→64MB, maintenance_work_mem
+    64MB→1GB, effective_cache_size 4→16GB, effective_io_concurrency
+    1→200, random_page_cost 4→1.1, max_wal_size 1→8GB, wal_compression
+    on (pglz), track_io_timing on, shared_preload_libraries =
+    pg_stat_statements + CREATE EXTENSION. Container restart: postgres
+    ready in 2 s; daemon reconnected on its own; health 401; 100 roots.
+    First bare search after: 7.4 s (modest, as the profile predicted —
+    search is CPU-bound on the plan, plan 013 owns it). Compose mirror
+    opened as a PR so a fresh volume starts identical. pg_stat_statements
+    is now the profiling surface every future DB question uses first.
