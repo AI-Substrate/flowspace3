@@ -58,9 +58,11 @@ impl Language {
     /// Snap-in recipe: add the grammar to the workspace and parser dependencies,
     /// mirror that edge in `crates/testkit/arch-allowlist.toml`, add a [`Language`]
     /// variant and extension arm here, return its stable name from [`Self::as_str`],
-    /// and register its tree-sitter constant in [`Self::grammar`]. The source walk
-    /// stays generic; prove the registration with a nested whole-tree fixture
-    /// and an `invents_nothing` negative (PRD req 21).
+    /// and register its tree-sitter constant in [`Self::grammar`]. Bump the
+    /// daemon's `scan::PARSER_VERSION` whenever the grammar set changes so
+    /// already-stored blobs are re-parsed. The source walk stays generic; prove
+    /// the registration with a nested whole-tree fixture and an `invents_nothing`
+    /// negative (PRD req 21).
     pub fn for_extension(extension: &str) -> Option<Self> {
         match extension.to_ascii_lowercase().as_str() {
             "rs" => Some(Language::Rust),

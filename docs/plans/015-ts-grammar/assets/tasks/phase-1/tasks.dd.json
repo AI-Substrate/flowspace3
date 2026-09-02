@@ -70,12 +70,13 @@
         {
           "id": "t5",
           "title": "Pre-prod scan receipt + PR",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/t5",
           "success": "per-file element table for ~/pi-hacking/pij/.pi/extensions/pij/**/*.ts before/after in the PR body; the exact prod re-ingest command and search query o-prime will run",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0005"
-          ]
+          ],
+          "receipt": "PR #102 body: 327-row pij TypeScript table, 327 bare-file elements before -> 3,452 after; 284 files with symbols, 0 scan errors; exact prod remove/add/status/search commands included"
         }
       ]
     },
@@ -130,7 +131,7 @@
           {
             "id": "dw-30f7",
             "assertion": "table shows 1 → N for every declaring file",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0005"
           }
         ]

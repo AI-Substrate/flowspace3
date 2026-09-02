@@ -66,10 +66,11 @@ The two tests worth reading first, because they are the contract:
 1. Add the grammar crate to `[workspace.dependencies]` and to `crates/parsers/Cargo.toml`.
 2. Add the crate name to `[crates.fs3-parsers].external` in `crates/testkit/arch-allowlist.toml` — one deliberate line, or the drift check bites.
 3. Add the extension(s) and the `tree_sitter::Language` in `Language::for_extension` / `Language::grammar` (`crates/parsers/src/lib.rs`).
-4. Add a fixture under `crates/parsers/fixtures/` containing nesting and at least one construct that a naive substring classifier would invent an element for.
-5. Add the whole-tree expectation plus an `invents_nothing` negative to `crates/parsers/tests/fixture_elements.rs`.
+4. Bump `PARSER_VERSION` in `crates/daemon/src/scan.rs`. Element trees are keyed by `(blob_sha, parser_version)`; without a bump, already-stored blobs keep the old grammar result and a normal scan correctly reuses it.
+5. Add a fixture under `crates/parsers/fixtures/` containing nesting and at least one construct that a naive substring classifier would invent an element for.
+6. Add the whole-tree expectation plus an `invents_nothing` negative to `crates/parsers/tests/fixture_elements.rs`.
 
-There is normally **no step 6**: extraction is generic. Only reach into `crates/core/src/classify.rs` if the grammar's declaration kinds are shaped unlike every other grammar's — a bare-word declaration (Ruby's `method`/`class`) earns a `BARE_DECLS` entry, and a genuinely new declaration suffix earns a `DECL_SUFFIXES` entry. A per-language branch is never the answer (PRD req 21).
+There is normally **no step 7**: extraction is generic. Only reach into `crates/core/src/classify.rs` if the grammar's declaration kinds are shaped unlike every other grammar's — a bare-word declaration (Ruby's `method`/`class`) earns a `BARE_DECLS` entry, and a genuinely new declaration suffix earns a `DECL_SUFFIXES` entry. A per-language branch is never the answer (PRD req 21).
 
 ## Not done here
 - **File discovery** — `scan` is handed bytes. Choosing which files to hand it is the discovery worker's job, and POC L7 says it is the bigger lever: git-tracked selection took the same 18,628 elements from 11% of the bytes, 13.8× faster.

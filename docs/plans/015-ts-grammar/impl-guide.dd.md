@@ -35,7 +35,7 @@ fs3-parsers owns grammar selection (`Language`) and the generic walk (`source.rs
 
 | id | name | paths | responsibility | interface | test_strategy | depends_on | wave | note |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| u1 | ts-grammar | Cargo.toml, Cargo.lock, crates/parsers/Cargo.toml, crates/parsers/src/lib.rs, crates/parsers/src/source.rs, crates/parsers/tests/**, crates/parsers/tests/fixtures/**, crates/core/src/classify.rs, docs/plans/015-ts-grammar/** | TypeScript/TSX grammars wired; TS node kinds classified; arrow bindings as Function via a generic rule; goldens; pre-prod scan receipt | `Language::{TypeScript,Tsx}` with `for_extension` ts\|mts\|cts\|tsx; `Language::as_str` → "typescript"/"tsx"; `classify()` gains TS decisions; `source.rs` gains the value-shape rule. No store/daemon/CLI change; ElementKind unchanged. | golden element forests per fixture (assert the full forest, not counts); one mutation receipt per rule; classify unit tests per TS kind incl. non-elements; a scan-count integration test over a real TS tree | none | 1 | Prove the dependency resolves FIRST (t1) — if tree-sitter-typescript 0.23.2 cannot link against tree-sitter 0.26, stop-and-ask with the exact cargo error before touching anything else. |
+| u1 | ts-grammar | Cargo.toml; Cargo.lock; crates/parsers/Cargo.toml; crates/parsers/src/lib.rs; crates/parsers/src/source.rs; crates/parsers/tests/**; crates/parsers/tests/fixtures/**; crates/core/src/classify.rs; docs/plans/015-ts-grammar/** | TypeScript/TSX grammars wired; TS node kinds classified; arrow bindings as Function via a generic rule; goldens; pre-prod scan receipt | `Language::{TypeScript,Tsx}` with `for_extension` ts\|mts\|cts\|tsx; `Language::as_str` → "typescript"/"tsx"; `classify()` gains TS decisions; `source.rs` gains the value-shape rule. No store/daemon/CLI change; ElementKind unchanged. | golden element forests per fixture (assert the full forest, not counts); one mutation receipt per rule; classify unit tests per TS kind incl. non-elements; a scan-count integration test over a real TS tree | none | 1 | Prove the dependency resolves FIRST (t1) — if tree-sitter-typescript 0.23.2 cannot link against tree-sitter 0.26, stop-and-ask with the exact cargo error before touching anything else. |
 
 <a id="isolation"></a>
 
@@ -63,7 +63,7 @@ fs3-parsers owns grammar selection (`Language`) and the generic walk (`source.rs
 | Field | Value |
 | --- | --- |
 | when | spawned by o-prime once the PR is up |
-| inputs | golden forests are real (open the fixtures, count declarations by eye against the golden), the value-shape rule is generic (no Language branch) and does not double-emit (a binding inside a function must not also appear at file level), namespace addressing, classify non-element decisions are tested, not implied, the pre-prod scan table is reproducible from the PR |
+| inputs | golden forests are real (open the fixtures, count declarations by eye against the golden); the value-shape rule is generic (no Language branch) and does not double-emit (a binding inside a function must not also appear at file level); namespace addressing; classify non-element decisions are tested, not implied; the pre-prod scan table is reproducible from the PR |
 | model_override | github-copilot/claude-opus-5 (Claude reviews; ruling 2026-09-02) |
 
 <a id="risks"></a>

@@ -41,7 +41,7 @@ You are the coder for plan 015-ts-grammar, a single unit, no PM; o-prime (rs nam
 | i13 | ABSOLUTE PATHS ALWAYS for every file tool (edit/write/read): rooted at YOUR OWN worktree. Never a relative path or bare section header — OMP edit resolves relatives against a session root fixed at spawn, and if that root is wrong your edits land in ANOTHER TREE reporting success (DL-044). Also: do NOT `flowspace3 add` your worktree even when a next_action suggests it — search is a comprehension aid over the main index; bytes are verified in your own tree. |
 | i8b | DDOC MUTATION SURFACE: the GLOBAL `ddocs` CLI on PATH (`ddocs set` / `ddocs add` / `ddocs build &lt;file&gt;`) — NOT node_modules/.bin/dd or ddocs (that skill text is stale). Never hand-edit .dd.json/.dd.md. |
 | i9 | PROD :7373 is never a test target; read-only commands against it are fine and the real-usage criteria REQUIRE them after o-prime's bounce. Per-run test DBs ONLY on the dedicated test postmaster :5434 (FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5434/flowspace3_test, container flowspace3-db-test) — NEVER :5433; one cargo invocation at a time (host load is high); NEVER run harness checks while another seat's gate is running — ask o-prime for the slot. |
-| i10 | Read assets/inputs/evidence.md FIRST: it is the evidence this packet exists for; your ack must cite it. |
+| i10b | Read assets/inputs/evidence.md FIRST: it is the evidence this packet exists for; your ack must cite it. |
 
 <a id="working-with"></a>
 
