@@ -35,11 +35,11 @@ Work top to bottom; stop-and-ask o-prime on anything outside the fence.
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| t1 | Reproduce the clobber and pin the writing path | — | — | [ ] unchecked | — | — | [ ] 0/1 [t1](#t1) | a failing test shows which boot path rewrote daemon.key while another daemon owned the port (normal and --json); the path is named in the execution log | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
-| t2 | Publish strictly after a successful bind on every boot path; no staged temp file survives a bind failure | — | — | [ ] unchecked | — | — | [ ] 0/2 [t2](#t2) | key untouched on bind failure; temp file cleaned; guard mutation red | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0002](../../../plan.dd.md#acceptance-criteria) |
-| t3 | Honest 401 hint when the key is newer than the daemon | — | — | [ ] unchecked | — | — | [ ] 0/1 [t3](#t3) | CLI names the overwrite + restart-the-owner fix | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
-| t4 | Prod-database owner designation (FS3_PROD_OWNER / config owner path) | — | — | [ ] unchecked | — | — | [ ] 0/1 [t4](#t4) | foreign cwd refuses prod URL with a helpful error; designated proceeds | — | [ac-0004](../../../plan.dd.md#acceptance-criteria) |
-| t5 | Regression + gate | — | — | [ ] unchecked | — | — | [ ] 0/1 [t5](#t5) | suites green; clippy clean; CI green on the PR sha | — | [ac-0004](../../../plan.dd.md#acceptance-criteria) |
+| t1 | Reproduce the clobber and pin the writing path | — | — | [x] checked | — | cargo test -p fs3-cli --test boot_contract another_loopback_address_family -- --nocapture --test-threads=1 with FS3_TEST_DATABASE_URL=:5434 anchor: RED 2/2; daemon B bound the other localhost address family and StagedAuth::publish rewrote daemon.key for normal and --json | [x] 1/1 [t1](#t1) | a failing test shows which boot path rewrote daemon.key while another daemon owned the port (normal and --json); the path is named in the execution log | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
+| t2 | Publish strictly after a successful bind on every boot path; no staged temp file survives a bind failure | — | — | [x] checked | — | BoundListener private-field proof required by StagedAuth::publish; localhost canonicalized once to 127.0.0.1 before bind. Clobber tests green 2/2, fs3-daemon lib green 172/172; removing canonicalization made both clobber tests RED. | [x] 2/2 [t2](#t2) | key untouched on bind failure; temp file cleaned; guard mutation red | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0002](../../../plan.dd.md#acceptance-criteria) |
+| t3 | Honest 401 hint when the key is newer than the daemon | — | — | [x] checked | — | Auth records daemon.key mtime immediately after publication and reports key_newer_than_daemon only for strict &gt;; live CLI rewrite test green and generic unchanged-key 401 asserts false. Reversing the mtime comparison made the live render test RED; restored and green. | [x] 1/1 [t3](#t3) | CLI names the overwrite + restart-the-owner fix | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
+| t4 | Prod-database owner designation (FS3_PROD_OWNER / config owner path) | — | — | [x] checked | — | DaemonConfig owner_root resolves from file/FS3_DAEMON__OWNER_ROOT. Boot refuses DatabaseConfig::DEFAULT_URL before staging unless cwd is within owner_root or FS3_PROD_OWNER=1, with FS3-E-PROD-NOT-DESIGNATED and :5434 test URL. Config + guard tests green; bypass mutation made refusal test RED, restored green. | [x] 1/1 [t4](#t4) | foreign cwd refuses prod URL with a helpful error; designated proceeds | — | [ac-0004](../../../plan.dd.md#acceptance-criteria) |
+| t5 | Regression + gate | — | — | [ ] unchecked | — | LOCAL GATE: harness checks =&gt; {command:checks,status:ok,timestamp:2026-09-02T08:08:18.225Z}; fmt/clippy/tests and repo gates green. cargo test -p fs3-daemon --lib =&gt; 175 passed. Exact-PR-sha CI pending until t6 opens PR. | [ ] 0/1 [t5](#t5) | suites green; clippy clean; CI green on the PR sha | — | [ac-0004](../../../plan.dd.md#acceptance-criteria) |
 | t6 | Real-usage transcript on the TEST setup + PR | — | — | [ ] unchecked | — | — | [ ] 0/1 [t6](#t6) | two-daemon transcript with counts/mtimes in the PR body; exact prod commands for o-prime | — | [ac-0005](../../../plan.dd.md#acceptance-criteria) |
 
 <a id="done-when"></a>
@@ -50,26 +50,26 @@ Work top to bottom; stop-and-ask o-prime on anything outside the fence.
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-3111 | test RED on main, names the path | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
+| dw-3111 | test RED on main, names the path | [x] checked | [bp-0001](../../backpressure.dd.md#rows) |
 
 ### t2
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-3112 | A/B test green | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
-| dw-3113 | boot-sequence test green; publish-before-bind mutation red | [ ] unchecked | [bp-0002](../../backpressure.dd.md#rows) |
+| dw-3112 | A/B test green | [x] checked | [bp-0001](../../backpressure.dd.md#rows) |
+| dw-3113 | boot-sequence test green; publish-before-bind mutation red | [x] checked | [bp-0002](../../backpressure.dd.md#rows) |
 
 ### t3
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-3114 | render test green; mtime-check mutation red | [ ] unchecked | [bp-0003](../../backpressure.dd.md#rows) |
+| dw-3114 | render test green; mtime-check mutation red | [x] checked | [bp-0003](../../backpressure.dd.md#rows) |
 
 ### t4
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-3115 | boot test both ways; mutation red | [ ] unchecked | [bp-0004](../../backpressure.dd.md#rows) |
+| dw-3115 | boot test both ways; mutation red | [x] checked | [bp-0004](../../backpressure.dd.md#rows) |
 
 ### t5
 
