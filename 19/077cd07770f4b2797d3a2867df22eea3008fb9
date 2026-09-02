@@ -1,0 +1,42 @@
+scratch/closeout-013/search-admission-ack.md
+  h_9e71e8b09f7cf2 1-61
+scratch/closeout-013/search-admission-ask-001.md
+  h_9e71e8b09f7cf2 1-24
+scratch/closeout-013/search-admission-ask-002.md
+  h_9e71e8b09f7cf2 1-11
+scratch/closeout-013/search-admission-ask-003.md
+  h_9e71e8b09f7cf2 1-38
+scratch/closeout-013/search-admission-ask-004.md
+  h_9e71e8b09f7cf2 1-13
+scratch/closeout-013/search-admission-ask-005.md
+  h_9e71e8b09f7cf2 1-18
+scratch/closeout-013/search-admission-ask-006.md
+  h_9e71e8b09f7cf2 1-22
+scratch/closeout-013/search-admission-ask-007.md
+  h_9e71e8b09f7cf2 1-12
+scratch/closeout-013/search-admission-ask-008.md
+  h_9e71e8b09f7cf2 1-17
+scratch/closeout-013/search-admission-ask-009.md
+  h_9e71e8b09f7cf2 1-11
+scratch/closeout-013/search-admission-ask-010.md
+  h_9e71e8b09f7cf2 1-19
+scratch/closeout-013/search-admission-gate-failure.md
+  h_9e71e8b09f7cf2 1-17
+scratch/closeout-013/search-admission-pr-body.md
+  h_9e71e8b09f7cf2 1-85
+scratch/closeout-013/search-admission-report.md
+  h_9e71e8b09f7cf2 1-89
+scratch/closeout-013/session-buffer.md
+  h_9e71e8b09f7cf2 1-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "19077cd07770f4b2797d3a2867df22eea3008fb9",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
