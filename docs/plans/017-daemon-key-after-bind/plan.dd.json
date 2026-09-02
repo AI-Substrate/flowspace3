@@ -61,7 +61,7 @@
           "id": "ac-0004",
           "state": "checked",
           "claim": "a daemon whose cwd is outside the configured prod root refuses the prod database URL with an error naming FS3_PROD_OWNER and the test URL; setting FS3_PROD_OWNER=1 (or cwd inside the root) proceeds; no regression in `harness checks` / CI on the exact PR sha",
-          "receipt": "Owner-root config file/env tests and boot guard cases green; foreign prod URL refuses with FS3-E-PROD-NOT-DESIGNATED + FS3_PROD_OWNER + :5434 URL; bypass mutation red; local harness checks green and PR #108 CI run 33609408499 green on 04ad9a7."
+          "receipt": "Owner config and boot guard cases green; Config::default owner_root=None + foreign cwd refuses. Exact fail-open mutation is_some_and->map_or(true) RED, restored GREEN. Local harness checks and PR #108 final-head CI green before review fix; new-head CI required."
         },
         {
           "id": "ac-0005",

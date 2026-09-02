@@ -69,3 +69,7 @@ Full transcript: `.harness/temp/agent/daemon-key-real-usage.md`.
 ## Phase complete
 
 All six task rows, seven done-when assertions, five acceptance criteria, and six backpressure rows are checked through global `ddocs`. PR #108 is open against main. After rebasing onto main `689ac27`, focused real-binary health and boot-contract suites were green; CI run `33609408499` was green on implementation head `04ad9a7`. The final commit contains progress receipts only and must receive the same CI gate before the done report.
+
+## Review fix f-17a1 — unset owner fails closed
+
+Reviewer mutation showed the suite covered an explicit foreign `Some(owner_root)` but not production's current `None` state. The existing owner test now calls the guard with `Config::default()`, a foreign cwd, and no explicit designation, and requires an error. Exact mutation `.is_some_and(...)` → `.map_or(true, ...)` now fails at `an unset owner_root must fail closed outside an owner tree`; the predicate was restored and the focused test reconfirmed green.

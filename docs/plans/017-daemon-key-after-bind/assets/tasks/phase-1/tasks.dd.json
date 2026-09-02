@@ -62,7 +62,7 @@
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0004"
           ],
-          "receipt": "DaemonConfig owner_root resolves from file/FS3_DAEMON__OWNER_ROOT. Boot refuses DatabaseConfig::DEFAULT_URL before staging unless cwd is within owner_root or FS3_PROD_OWNER=1, with FS3-E-PROD-NOT-DESIGNATED and :5434 test URL. Config + guard tests green; bypass mutation made refusal test RED, restored green."
+          "receipt": "DaemonConfig owner_root resolves from file/FS3_DAEMON__OWNER_ROOT. Boot refuses DEFAULT_URL before staging unless cwd inside root or FS3_PROD_OWNER=1. Config::default owner_root=None + foreign cwd is explicitly fail-closed; is_some_and->map_or(true) mutation RED, restored GREEN."
         },
         {
           "id": "t5",

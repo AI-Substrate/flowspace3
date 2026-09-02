@@ -52,7 +52,7 @@
           "tier": "computational",
           "proof": "daemon boot test: foreign cwd + prod URL → refusal naming FS3_PROD_OWNER; with the env set → proceeds; mutation: remove the check → red",
           "state": "checked",
-          "receipt": "Foreign-cwd prod guard test refuses with required code/env/test URL; owner-root and explicit override proceed; bypass mutation red."
+          "receipt": "Config::default owner_root=None + foreign cwd + undesignated refuses; explicit root and env designation proceed; exact is_some_and->map_or(true) fail-open mutation RED, restored GREEN."
         },
         {
           "id": "bp-0005",

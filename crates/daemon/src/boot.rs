@@ -910,6 +910,8 @@ mod tests {
     fn production_store_requires_an_owner_root_or_explicit_designation() {
         let owner = tempfile::tempdir().expect("an owner root");
         let foreign = tempfile::tempdir().expect("a foreign cwd");
+        refuse_undesignated_production_store(&fs3_core::Config::default(), foreign.path(), false)
+            .expect_err("an unset owner_root must fail closed outside an owner tree");
         let mut configuration = fs3_core::Config::default();
         configuration.daemon.owner_root = Some(owner.path().to_path_buf());
 
