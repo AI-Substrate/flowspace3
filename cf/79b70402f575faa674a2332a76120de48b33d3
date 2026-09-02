@@ -1,0 +1,22 @@
+scratch/review-013/cross-model-review.dd.json
+  h_9e71e8b09f7cf2 1-223
+scratch/review-013/cross-model-review.dd.md
+  h_9e71e8b09f7cf2 1-53
+scratch/review-013/review-013-ack.md
+  h_9e71e8b09f7cf2 1-126
+scratch/review-013/review-013-verdict.md
+  h_9e71e8b09f7cf2 1-73
+scratch/review-013/session-buffer.md
+  h_9e71e8b09f7cf2 1-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cf79b70402f575faa674a2332a76120de48b33d3",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
