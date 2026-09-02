@@ -1,0 +1,23 @@
+scratch/review-016/packet-reviewer-016.dd.json
+  s_15d888f4b629c1::t_99598f34e4ace1 1-158
+scratch/review-016/packet-reviewer-016.dd.md
+  s_15d888f4b629c1::t_e3be9614e0de5b 1-86
+scratch/review-016/session-buffer-knobbler.md
+  s_15d888f4b629c1::t_895f92d81788e5 1-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "669f1e1ee8b0a4e52253ca36600a7664cc2cf433",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
