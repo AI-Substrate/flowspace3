@@ -1,0 +1,23 @@
+government/briefs/backlog.md
+  s_15d888f4b629c1::t_0114bac3bec97f 2419-2433
+scratch/db-cpu-profile/buffer-coral.md
+  s_15d888f4b629c1::t_6c034fd9f09250 1-108
+scratch/db-cpu-profile/disk-space-report.md
+  s_15d888f4b629c1::t_d03b8dd415e42f 168,170,172-242,246-250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "904f946dc1d8052e8c4bef419b53256dd6ad6405",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
