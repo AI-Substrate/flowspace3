@@ -1,0 +1,16 @@
+docs/plans/015-ts-grammar/assets/reviews/review-015.dd.json
+  h_9e71e8b09f7cf2 1-241
+docs/plans/015-ts-grammar/assets/reviews/review-015.dd.md
+  h_9e71e8b09f7cf2 1-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f46289247a53f61beacafe9b7acc8f3bbbf197db",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
