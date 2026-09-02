@@ -3371,3 +3371,13 @@ ROW 143 ADDENDUM — SEAT LOSS: pij-mad-crocodile (plan 012 coder) lost its
     removed, not shrunk; the bracketing protocol exists because search
     used to swing 156 s → 6 s with queue load. Caveat: sampled range only
     (load1 ≥ 12.9). Record final (PR #105 updated).
+    PLAN 016 — ask-006: full `harness checks` GREEN on the head at
+    07:07:06Z (slot released) but the isolated rerun of health.rs::
+    the_real_binaries_agree_through_a_discovered_config FAILS ("the real
+    daemon never served …/health — did not honour FS3_CONFIG_DIR"; the
+    test swallows the daemon's stderr). RULED: the green gate stands; 016
+    proceeds to t5 + PR; the lone-run failure is handed to plan 017 as
+    t1 evidence (a real daemon under FS3_CONFIG_DIR not serving alone but
+    serving inside the gate → what the gate provides that a lone run
+    lacks is part of the clobber path). Encode: the health test must
+    surface the daemon's stderr on failure (row 131 family).
