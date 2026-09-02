@@ -2167,3 +2167,17 @@ ROW 141 / PLAN 012 — A WRONG METRIC, CAUGHT BY A CODER'S RED (2026-09-02):
     harness-engineering; these are the first three portability
     findings and they came from real use, which is what the prototype
     was for.
+
+ROW 126 — THE CRASH MECHANISM, MEASURED AT THE SERVER (reviewer cheetah,
+    2026-09-02): sampling pg_stat_activity (~5/s) for active
+    CREATE/DROP DATABASE during `cargo test -p fs3-store` at default
+    parallelism: 634 samples, **MAX CONCURRENT DDL = 16**, 177 samples
+    with >1 in flight — against the postmaster that serves prod. The
+    oversize suite, already behind the FreshDatabase lock: 437 samples,
+    MAX = 1, zero above 1. That is the promise of plan 012 measured
+    directly and it is the f-1a01 delta target (16 → 1); the 83-vs-25
+    forced-checkpoint comparison in the previous note is STRUCK as
+    incomparable (different suite, duration, drop count) — checkpoint
+    counts are row 141/124b texture, never a gate. Sixteen concurrent
+    CREATE/DROP explains the four crashes better than any checkpoint
+    volume.
