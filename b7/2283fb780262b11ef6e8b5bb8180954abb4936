@@ -1,0 +1,14 @@
+scratch/plan-014-prod-before.md
+  h_9e71e8b09f7cf2 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b72283fb780262b11ef6e8b5bb8180954abb4936",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
