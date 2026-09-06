@@ -1,0 +1,28 @@
+crates/daemon/src/convo_ingest.rs
+  h_9e71e8b09f7cf2 276-282,302-304,312,373,377-383,802,805-826,832-841,843-849,940-946,1318,1343
+crates/daemon/src/convo_poll.rs
+  h_9e71e8b09f7cf2 3,52-56,65,100,140-143,154-157,160-161,175-177,200,202,204,219,235-245,247,249,251-260,270,274,277,283,288-305,311,333,340-346,349-365,368-375,385-388,409,448-454,462-463,471-494,497-526,578-579,584-587,613-614,620-696,699,812-1181,1273-1281,1624-1627,1634-1643,1661-1675,1690,1692-1694,1709-1711,1716-1724,1776,1778,1780-1787,1789-1791,1793,1797-1812,1814-1816,1819-1839,1841-1868,1870,1873-1874,1932,1961
+crates/daemon/tests/conversation_query.rs
+  h_9e71e8b09f7cf2 17
+crates/daemon/tests/conversation_verify.rs
+  h_9e71e8b09f7cf2 1-180
+crates/store/src/jobs.rs
+  h_9e71e8b09f7cf2 107-120,140-153,164-165,172,174-223,817-933
+crates/store/src/lib.rs
+  h_9e71e8b09f7cf2 64-68
+docs/plans/018-convo-poller/assets/reviews/cross-model-review.md
+  h_9e71e8b09f7cf2 1-292
+docs/plans/018-convo-poller/assets/tasks/phase-1/execution.log.md
+  h_9e71e8b09f7cf2 197-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ed4698e673ed78dbde9c733b09a665050626ed87",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
