@@ -1,0 +1,22 @@
+docs/plans/018-convo-poller/assets/tasks/phase-1/execution.log.md
+  h_9e71e8b09f7cf2 175-180
+docs/plans/018-convo-poller/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 109,115-116
+docs/plans/018-convo-poller/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 45
+docs/plans/018-convo-poller/plan.dd.json
+  h_9e71e8b09f7cf2 89-91
+docs/plans/018-convo-poller/plan.dd.md
+  h_9e71e8b09f7cf2 66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "924aa2ef349e3ebf1876da92013926298c3f034e",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
