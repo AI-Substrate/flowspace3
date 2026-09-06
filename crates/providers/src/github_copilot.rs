@@ -644,10 +644,17 @@ mod tests {
     use super::*;
 
     fn home() -> PathBuf {
+        // pid + millisecond is NOT unique inside one process: cargo's test
+        // threads start sibling tests within the same millisecond, two tests
+        // then share a directory, and one's `remove_dir_all` races the other's
+        // read (PR #115 went red on a docs-only change). The counter makes
+        // every call distinct for the life of the process.
+        static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         std::env::temp_dir().join(format!(
-            "fs3-copilot-credential-{}-{}",
+            "fs3-copilot-credential-{}-{}-{}",
             std::process::id(),
-            now_ms()
+            now_ms(),
+            SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
         ))
     }
 
