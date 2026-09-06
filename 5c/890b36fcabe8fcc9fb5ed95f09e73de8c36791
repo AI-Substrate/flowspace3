@@ -1,0 +1,77 @@
+government/briefs/backlog.md
+  s_15d888f4b629c1::t_704b58880f5542 3797-3995
+scratch/brief-harness-telemetry-standardiser.md
+  s_15d888f4b629c1::t_a7dc2132d0efe4 1-79
+scratch/pij-bug-harness-session-mismatch.md
+  s_15d888f4b629c1::t_f3a0fe3dc11f64 1-95
+scratch/plan-013-015-prod-after.md
+  s_15d888f4b629c1::t_a73827dbeaa2ff 1-114
+scratch/receipt-013-tail.sh
+  s_15d888f4b629c1::t_3c8be23911b187 1-18
+scratch/receipt-016-prod-postbounce.sh
+  s_0ce02639c40511::t_c85e92a839a4e5 1-26
+scratch/reply-to-forward-worm.md
+  s_15d888f4b629c1::t_062b00c1135a04 1-12
+scratch/reply-to-meadowlark-reanchor.md
+  s_15d888f4b629c1::t_c66be62f93b3e6 1-30
+scratch/reply-to-roadrunner-pij-team.md
+  s_087d7b6b5c4b5c::t_6adbcc708898eb 1-22
+scratch/review-018/buffers/fs3-018-convo-poller-session-buffer.md
+  s_15d888f4b629c1::t_69711ece48cf82 1-212
+scratch/review-018/buffers/fs3-review-018-session-buffer.md
+  s_15d888f4b629c1::t_960839bb315e47 1-12
+scratch/review-018/convo-poller-report.md
+  s_15d888f4b629c1::t_c1fb3fa0e261b2 1-69
+scratch/review-018/packet-reviewer.dd.json
+  s_15d888f4b629c1::t_f1c0f175ec97c5 1-150
+scratch/review-claude-session-ingest-2026-09-06.md
+  s_15d888f4b629c1::t_82badfea3069ad 1-166
+scratch/review-git-ai-fidelity-2026-09-06.md
+  s_15d888f4b629c1::t_a5f60e0824b5b8 1-135
+scratch/plan-016-prod-after.md
+  s_15d888f4b629c1::t_8798c3721a8881 1-9
+scratch/receipt-013-bounce.sh
+  s_15d888f4b629c1::t_6e2e942f61c8b5 1-27
+scratch/receipt-015-names.sh
+  s_15d888f4b629c1::t_cfda886ef96058 1-13
+scratch/receipt-015-probe2.sh
+  s_15d888f4b629c1::t_0c1bce30b510a2 1-15
+scratch/receipt-015-scope.sh
+  s_15d888f4b629c1::t_f5ccd639fb107e 1-13
+scratch/receipt-015-tail.sh
+  s_15d888f4b629c1::t_43fc32b3c739a6 1-15
+scratch/whale-drain-rate.csv
+  s_15d888f4b629c1::t_b88da70f5a9b1c 11-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5c890b36fcabe8fcc9fb5ed95f09e73de8c36791",
+  "prompts": {},
+  "sessions": {
+    "s_087d7b6b5c4b5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc1474e6-4159-413b-bfdc-f8d8a2441fcf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_0ce02639c40511": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b95239d-d05a-44e7-ad9d-ecc36e15c1ca",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
