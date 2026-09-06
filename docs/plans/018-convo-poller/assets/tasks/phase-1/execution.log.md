@@ -232,3 +232,9 @@ First D1 full gate, `2026-09-06T11:16:23.171Z`, exited 1: `streaming.rs:207` exp
 O-prime accepted the three receipts and filed the streaming timing flake as backlog row 200; no out-of-fence fix. Publication is pre-authorized if the one rerun exits 0; a second streaming red requires evidence and no third full rerun. The failed streaming database contained exactly four seeded `git:test` raw embed jobs, all done, with no other connections; only that owned :5434 residue was dropped.
 
 Authorized D1 rerun, `2026-09-06T11:28:39.199Z`: `harness checks exited 0`, envelope `"status": "ok"`, `"passed": 11`, `"doc_links_checked": 12`; every gate `"ok": true`, `"code": 0`. Full workspace tests, fmt, clippy, guards and architecture passed. Same sealed HOME/config and :5434; no source change since the 19-test focused pass. Full output remains in `.harness/temp/agent/convo-gate-full.log`. One pre-authorized push follows, then immutable-head handoff and stop.
+
+## Final review record — docs-only closeout
+
+O-prime reported REVIEW CLOSED — APPROVE at `3d35555dd72386e3e4bc26fa9da404c279f95780`, with F1–F4 and D1 confirmed by the reviewer's own runs. Replaced the first review archive with the complete final source, including delta and D1 sections. Source and committed-path MD5 both verify as `0fb0061b8e4121dc75181c8ec8c5cbdc`; copied byte-identically, not edited.
+
+Updated review-related task receipts t1–t5/t7 and t8 through `ddocs set`, regenerating the sibling task document. The cold-fixture description now matches 100 files, and health receipts describe terminal attempts rather than elapsed passes. t8 records PR/review completion; its production bounce/ac-0008 portion remains blocked pending o-prime merge and `assets/inputs/prod-after.md`, with no production acceptance invented. No code changed; approved code remains `3d35555`. Exact requested docs commit and one push preserve the final record before worktree teardown.

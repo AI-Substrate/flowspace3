@@ -290,3 +290,276 @@ I dropped the one my run created. This is pre-existing test hygiene, not this PR
   suites and one full `-p fs3-daemon`. The final gate verdict is o-prime's.
 - **Not re-found, per the known-open list**: copilot polling via metrics-db, the `cwd_of` bounded
   read as a packet correction, ac-0008's production receipt.
+
+---
+
+# Delta re-review — 2026-09-06
+
+| Field | Value |
+| --- | --- |
+| head reviewed | `ed4698e673ed78dbde9c733b09a665050626ed87` |
+| baseline | `159ec8168360108b4b7ce68ea503605cb374b885` (the sha reviewed above) |
+| scope | `git diff 159ec81..ed4698e` only — 8 files, +1539/−230 |
+| coder gate | exit 0, 11/11, 2026-09-06T10:53:55Z |
+
+## Delta verdict
+
+**DELTA APPROVE** — F1, F2, F3 and F4 are all genuinely fixed, each re-derived by me rather
+than read out of the receipt. One new finding, **D1**, introduced by the F1 fix.
+
+## The four originals, re-derived
+
+**F1 — FIXED.** My own 100-file cold-drain probe, jobs deliberately left pending:
+`state=Flowing` on every pass. The named split landed as ruled —
+`convo_poll_cold_start_healthy_catch_up_stays_flowing`,
+`convo_poll_cold_start_pending_queue_is_fair_and_stays_flowing`, and
+`convo_poll_11_and_12_cold_files_remain_flowing_for_six_healthy_passes` on the cap boundary.
+
+The (2b) ratchet I asked for is real, and stronger than I specified —
+`convo_poll_health_counts_terminal_attempts_before_resubmission_and_recovers` drives pending
+for six passes and *running* for six more with `no_progress_attempts` pinned at 0, then one
+completed job → 1, then two failed jobs → 2 and 3 with **`updated_at` forced to a constant**
+so a timestamp collision cannot hide an attempt, `Stalled` at exactly the third, then restart
+amnesia → 0 and `Flowing`. My worry that F1 could be "fixed" by never saying stalled is closed
+by that test, not by argument.
+
+**F2 — FIXED**, and fixed at the right layer. My own probe, the same real abandoned-session
+shape as before, ingest actually run between passes:
+
+```
+pass=1 enqueued=1 behind=1 state=Flowing jobs=[ingest_session:1]
+pass=2 enqueued=0 behind=0 state=Flowing jobs=[ingest_session:1]
+pass=3 enqueued=0 behind=0 state=Flowing jobs=[ingest_session:1]
+pass=4 enqueued=0 behind=0 state=Flowing jobs=[ingest_session:1]
+conversations rows=0
+```
+
+Quiet from pass 2, the job count flat at one, and **zero conversation rows** — the ack was taken
+without minting a header, which was the constraint that made this hard. The sharp check I named
+in advance passes: `NoContentAck` is published from the **ingest outcome**
+(`convo_ingest.rs`, both the headerless early-return path and after `commit_poll`), not from the
+poller's cwd resolution — so the zero-record route is covered and not merely the cwd-less one.
+The ack is stamped before the read and re-verified after it
+(`stamp.identifies(&batch.cursor) && FileStamp::read(path) == Some(stamp)`), so a file appended
+or rotated mid-read is never falsely acknowledged. `ack_epoch` scopes acks to one poller
+lifetime, so the cost is one ingest job per file per process, then silence.
+
+**F3 — FIXED.** `CachedFolder::Missing(stamp)` caches the negative, the retry happens only when
+the stamp changes, the first miss warns and subsequent ones log DEBUG, and the unchanged-miss
+case is skipped *before* it consumes a priority slot. The sticky-`New` pin is gone: `new_pending`
+is cleared on a probe or submission, so a cwd-less file no longer occupies a capped slot forever.
+
+**F4 — FIXED.** `conversation_verify_contract` moved into `crates/daemon/tests/conversation_verify.rs`,
+which contains **exactly one** test; the old binary now has 15 tests and **zero** `set_var` calls.
+Both counted, not assumed. Original assertions preserved.
+
+## The new store helper — my four named checks
+
+| Check | Result |
+| --- | --- |
+| index-backed, not merely key-bounded | **PASS** — `WHERE id = ANY($1)`, and the test asserts on an `EXPLAIN (FORMAT JSON)` that the plan contains `jobs_pkey` and does **not** contain `Seq Scan`, with 4096 unrelated rows and an `ANALYZE` first so the planner has a reason to choose a scan |
+| read before submit | **PASS** — outcomes are fetched near the top of `poll()`, above the submission loop, with the reason in the comment; the (2b) test asserts the terminal state is observed *before* the upsert revives the row (`row.state == "pending"`, `attempts == 0` afterwards) |
+| missing row = no information | **PASS** — `observe()` returns early on `None` ("Retention is not progress"); the unit test proves a purged row neither increments nor clears, and the store test proves a deleted id and `i64::MAX` return nothing |
+| double-count, both directions | **PASS** — revision key is `(id, attempts, is_failed)`, never the timestamp; both tests pin the inverse direction I was worried about, `"equal timestamps must not hide distinct attempts"` |
+
+Also confirmed: SELECT-only, no schema change, chunked at 256 with a 604-id test, and the
+`enqueue_job_id` refactor is safe — the `ON CONFLICT … DO UPDATE` carries no `WHERE`, so
+`RETURNING id` always yields exactly one row and the `execute` → `fetch_one` change on the shared
+enqueue path cannot start erroring for other job kinds.
+
+**My push on the public envelope was taken**: `QueuedIngest` is `pub(crate)` and wraps the
+response; `IngestAccepted` is unchanged and `envelope_goldens` still passes 2/2, so no agent-facing
+contract moved to carry a queue row handle.
+
+## D1 — MEDIUM — `behind` now counts submitted work, and climbs while the backlog drains
+
+**Where**: `convo_poll.rs:497-509` (`summary.behind` counted from the `lag` map), against
+`crates/core/src/views/status.rs:79` and `crates/cli/src/render/surfaces/status.rs:88`.
+
+The F1 fix keys lag on submitted work — correct, and exactly as ruled. But `summary.behind` was
+re-derived from that same `lag` map, so the agent-facing `behind` field no longer means what its
+own doc comment says. `views/status.rs:79` still reads *"Parent sessions needing an append,
+truncation, or replacement read"*, the CLI still renders *"N tracked · N behind"*, and the plan
+goal still defines behind as *"size > cursor"*. None of those moved in the delta.
+
+**Proof** (my probe, 100 cold claude files, cap 10, jobs left pending):
+
+```
+pass=1 enqueued=10 tracked=100 FIELD_behind=10  actually_unsubmitted=90  state=Flowing
+pass=2 enqueued=10 tracked=100 FIELD_behind=20  actually_unsubmitted=80  state=Flowing
+pass=3 enqueued=10 tracked=100 FIELD_behind=30  actually_unsubmitted=70  state=Flowing
+pass=4 enqueued=10 tracked=100 FIELD_behind=40  actually_unsubmitted=60  state=Flowing
+```
+
+The field is **inverted**: it rises 10 → 20 → 30 → 40 as the real backlog falls 90 → 80 → 70 → 60.
+An operator or agent reading `status` during a cold start is told the backlog is 10 when it is 90,
+and watching it "grow" while the daemon is in fact catching up. `state` is correct throughout —
+this is a gauge defect, not a health defect.
+
+It is also what makes the new reason string read oddly: *"10 behind, 10 in flight"* is one set
+counted twice, because after the redefinition `behind` and `in_flight` are nearly the same thing.
+
+To be fair to the coder: this is the ruling implemented faithfully. The gap is that the ruling's
+consequence for the envelope was never carried out to the doc comment, the CLI label, or the plan
+text — so the *number* changed meaning while everything describing it did not.
+
+**Smallest fix** (preferred): let `summary.behind` count every eligible session for which
+`behind(file, cursor, ack)` is true — the true backlog gauge, restoring the documented meaning —
+and surface the lag set separately. `stats.in_flight` is already computed and already in the
+reason string, so nothing new has to be derived, and the stall rule is unaffected because it keys
+on `lag`, never on `summary.behind`. The alternative — keep the value and update the doc comment,
+the CLI label and the plan goal — is honest but strictly worse, because it leaves the operator
+without any number for "how much is left".
+
+## Delta evidence
+
+| Suite | Result |
+| --- | --- |
+| `fs3-daemon --lib convo_poll` | 19 passed |
+| `fs3-daemon --test conversation_query` | 15 passed |
+| `fs3-daemon --test conversation_verify` (new binary) | 1 passed |
+| `fs3-store --lib ingest_outcome` | 1 passed |
+| `fs3-cli --test convo_spend` | 1 passed — counts **identical** to the baseline sha: initial `{embed:3, ingest_session:1, summarize:2}`, rescan `{3,2,2}`, append `{5,3,3}` |
+| `fs3-cli --test envelope_goldens` | 2 passed |
+| ledger-bypass mutation (required: `convo_ingest.rs` moved) | **RED**, exit 101, at `convo_spend.rs:186`, left 4 right 2 — then restored green |
+
+The sealed-HOME two-stage re-run was **not** required: `spawn.rs` and `convo_poll_isolation.rs`
+are not in the delta, so by my own rule the earlier proof still stands.
+
+## Delta negative fence
+
+- **Shared `:5434/flowspace3_test`: 53,416 job rows at the start of the delta pass and 53,416 at
+  the end; native ingest rows 0 and 0.** Identical to the baseline pass — two full review passes
+  have now left the shared database bit-for-bit unchanged.
+- **Scratch**: one database leaked by my deliberately-red bypass run
+  (`fs3_convospend_1788692592…`), dropped. Databases created inside the coder's own gate window
+  (20:49–20:52) and its implementation window (20:29–20:31) were attributed by the epoch embedded
+  in each name and **left alone**.
+- **Code**: `git diff --stat -- crates/` empty; the one mutation restored and re-verified; both
+  delta probes deleted. The author's tests were not modified in this pass either.
+- **Untouched**: `:5433`, `:7373`, production, the real `~/.claude` and `~/.omp` as a poller home,
+  the main checkout, other seats' trees.
+- **Gate not run**: `harness checks` in full remains o-prime's.
+
+---
+
+# D1 hunk re-review — 2026-09-06
+
+| Field | Value |
+| --- | --- |
+| head reviewed | `3d35555dd72386e3e4bc26fa9da404c279f95780` |
+| base | `ed4698e673ed78dbde9c733b09a665050626ed87` |
+| scope | `git diff ed4698e..3d35555` — 2 files, +33/−28 (`convo_poll.rs`, `execution.log.md`) |
+| coder gate | exit 0, 2026-09-06T11:28:39Z |
+
+## Verdict
+
+**APPROVE.** D1 is fixed, the fix is pinned by a mutation, and nothing else moved.
+
+This closes the review: every finding from both passes — F1, F2, F3, F4, D1 — is resolved and
+each resolution was re-derived here rather than accepted from a receipt.
+
+## The four checks I named in advance
+
+**1. `summary.behind` sourced from `behind()`, not the lag map — PASS.** The increment now sits
+inside the true backlog predicate (`convo_poll.rs:368-376`, the `eligible(file) && behind(file,
+cursor, ack)` block) and the twelve-line lag-derived re-derivation after the submission loop is
+deleted outright. One gauge, one source.
+
+**2. Both fixtures assert their two shapes — PASS**, and as the shapes I specified rather than as
+first ruled. `cold_start_state_proof(healthy)` now runs 100 files over ten passes:
+
+- pending branch: `(behind, in_flight) == (100, pass * 10)` — flat backlog, climbing in-flight
+- healthy branch: `(behind, in_flight) == (100 - (pass-1) * 10, 10)` — falling backlog, capped in-flight
+
+with `Flowing` asserted on every pass of both. The fixture also grew from 60 files to 100, so it
+now exercises the plan's actual motivating scale rather than a scaled-down proxy.
+
+**3. Stall rule untouched — PASS.** `stats.stalled` still reads `lag.values().any(|pending|
+pending.no_progress_attempts >= STALL_PASSES)`, unchanged and not in the diff; `in_flight` and
+`unknown` still derive from `lag`. The gauge and the health signal now read from different
+sources, which is the separation the fix exists to create.
+
+**4. cwd-negative first probe reads `(0, 1)` — PASS**, and I agree with the reading: on that pass
+the file has never been read, has no cursor and no ack, so it is genuinely behind. See the NOTE
+below for the one thing this leaves unsaid.
+
+## My own re-derivation
+
+The same 100-file cold drain that found the inverted gauge, re-run independently of the coder's
+fixture — first four passes with jobs left pending, then three passes draining for real:
+
+```
+pending  pass=1 behind=100 in_flight=10 Flowing  "catching up: 100 behind, 10 in flight, 0 outcomes unavailable; 10 submitted this pass"
+pending  pass=2 behind=100 in_flight=20 Flowing
+pending  pass=3 behind=100 in_flight=30 Flowing
+pending  pass=4 behind=100 in_flight=40 Flowing
+draining pass=5 behind=60  in_flight=10 Flowing
+draining pass=6 behind=50  in_flight=10 Flowing
+draining pass=7 behind=40  in_flight=10 Flowing
+```
+
+The gauge no longer inverts: it holds at the true backlog while nothing drains, and falls only as
+cursors advance. The reason string now carries two different numbers measuring two different
+things (`100 behind, 40 in flight`) instead of one set counted twice.
+
+## Mutation — is the fix a ratchet?
+
+I reintroduced D1 exactly: put the lag-derived re-derivation back after the submission loop.
+**16 passed, 3 FAILED**, at the assertions that exist to pin this:
+
+| Test | Failure |
+| --- | --- |
+| `convo_poll_cold_start_healthy_catch_up_stays_flowing` | `:1663` "backlog falls only as cursors advance; in-flight stays capped", left `(10, 10)` right `(100, 10)` |
+| `convo_poll_cold_start_pending_queue_is_fair_and_stays_flowing` | `:1669` "pending work remains behind while unique in-flight jobs grow", left `(10, 10)` right `(100, 10)` |
+| `convo_poll_cwd_negative_cache_reads_once_per_stamp_and_demotes_new` | `:899`, the `(0, 1)` first-probe tuple |
+
+Restored; 19/19 green. A future refactor cannot silently put the inverted gauge back.
+
+Worth noting which test did *not* go red: `convo_poll_11_and_12_cold_files_remain_flowing_for_six_healthy_passes`
+stayed green, because its assertion moved to `in_flight <= 10`. That is correct, not a gap — that
+test guards the health state under the cap, and the gauge is guarded by the three above.
+
+## NOTE — the two different zeroes (backlog row 199)
+
+Not a finding, recorded so the record points at the follow-up rather than leaving it implicit.
+
+`behind = 0` now means two different things. After a no-content ack it means *"I read it and there
+was genuinely nothing to index."* After a cached cwd miss it means *"there is something to index
+and I cannot read it."* Both render identically in the envelope, so a store holding a permanently
+unreadable session is byte-indistinguishable from a healthy quiet one — DL-001's shape in
+miniature.
+
+It does not earn a finding: the census found **zero** cwd-less files across 610 in-window files, so
+it has no reachable instances on this machine, and the first miss does warn. But `stats.skipped`
+still conflates out-of-window with unreadable and never reaches the reason string, so nothing an
+agent reads through the envelope can separate them. Tracked as **backlog row 199** — split
+`skipped` into `out_of_window` / `unreadable`, put the unreadable count in the reason string, and
+give it a doctor line.
+
+## Evidence
+
+| Suite | Result |
+| --- | --- |
+| `fs3-daemon --lib convo_poll` | 19 passed |
+| `fs3-cli --test convo_spend` | 1 passed — counts identical across all three shas: initial `{embed:3, ingest_session:1, summarize:2}`, rescan `{3,2,2}`, append `{5,3,3}` |
+| `fs3-cli --test envelope_goldens` | 2 passed |
+| D1 regression mutation | **RED** on 3 named tests, restored green |
+
+Suites outside the hunk were not re-run: only `convo_poll.rs` moved, and by the rule I set for
+myself that does not oblige the store, verify, query or isolation binaries, whose proofs at
+`ed4698e` and `159ec81` still stand.
+
+## Hunk negative fence
+
+- **Shared `:5434/flowspace3_test`: 53,416 job rows and 0 native ingest rows — at the start and at
+  the end, for the third consecutive review pass.** Three passes, zero perturbation.
+- **Scratch**: five databases leaked by my deliberately-red mutation runs
+  (`fs3_convopoll_1788694419…` ×3, `fs3_convopoll_1788694440…` ×2), all dropped. Databases from
+  the coder's own windows were attributed by the epoch in each name and left alone.
+- **Code**: `git diff --stat -- crates/` empty; mutation restored and re-verified by a green
+  19/19; my probe deleted. The author's tests were not modified in this pass either.
+- **Untouched**: `:5433`, `:7373`, production, the real `~/.claude` and `~/.omp` as a poller home,
+  the main checkout, other seats' trees.
+- **Gate not run**: `harness checks` in full remains o-prime's. The `streaming.rs` timing flake on
+  the coder's first gate run (backlog row 200) is outside this hunk and I did not investigate it.
