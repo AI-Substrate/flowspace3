@@ -1,0 +1,27 @@
+.agents/skills/pij-team/EXPERIENCES.md
+  s_15d888f4b629c1::t_fb62165ce68eeb 908-915
+.agents/skills/pij-team/templates/packet-coder.dd.json
+  s_15d888f4b629c1::t_623c97fa73348c 74-81
+.agents/skills/pij-team/templates/packet-coder.dd.md
+  s_15d888f4b629c1::t_377289272239e0 43-44
+.agents/skills/pij-team/templates/packet-reviewer.dd.json
+  s_15d888f4b629c1::t_352f7ab43b0a52 58-61
+.agents/skills/pij-team/templates/packet-reviewer.dd.md
+  s_15d888f4b629c1::t_d53c9de235e95d 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5b74712d8d8da5c0cfe6bf63a0535d8d434354ad",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
