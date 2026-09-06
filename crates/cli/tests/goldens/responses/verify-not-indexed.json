@@ -1,0 +1,1 @@
+{"ok":false,"command":"conversation verify","v":1,"error":{"code":"FS3-E-QUERY-CONVERSATION-NOT-FOUND","message":"conversation is not indexed","fix":"run `flowspace3 conversation ingest` for the session, then wait for the queue to drain and verify again.","details":{},"retryable":false}}

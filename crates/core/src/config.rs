@@ -111,6 +111,8 @@ pub const REDACTED: &str = "<redacted>";
 /// debounce_seconds = 10
 /// worktree_reconcile_ticks = 6
 /// job_retention_days = 1
+/// conversation_poll_ticks = 12
+/// conversation_lookback_days = 14
 ///
 /// [scan]
 /// max_file_bytes = 2000000
@@ -972,6 +974,8 @@ fn unknown_instance(
 /// debounce_seconds = 10
 /// worktree_reconcile_ticks = 6
 /// job_retention_days = 1
+/// conversation_poll_ticks = 12
+/// conversation_lookback_days = 14
 /// turn_summary_min_bytes = 256
 /// worker_concurrency = 4
 /// summarize_lane = 32
@@ -1007,6 +1011,10 @@ pub struct IndexingConfig {
     /// Thirty seconds also matches the product's probe window while remaining
     /// shorter than the normal create-then-query workflow.
     pub worktree_reconcile_ticks: u32,
+    /// Shared five-second ticks between native conversation polls; 0 disables.
+    pub conversation_poll_ticks: u32,
+    /// Cursorless files older than this many days are skipped; tracked files remain eligible.
+    pub conversation_lookback_days: u32,
 
     /// Days to retain completed jobs before the daemon purges them.
     ///
@@ -1097,6 +1105,13 @@ impl IndexingConfig {
                 "job_retention_days = 1",
             ));
         }
+        if self.conversation_lookback_days == 0 {
+            problems.push(Problem::file(
+                "indexing.conversation_lookback_days",
+                "must be at least 1 — a zero window would ignore every cursorless session",
+                "conversation_lookback_days = 14",
+            ));
+        }
         if self.worker_concurrency == 0 {
             problems.push(Problem::file(
                 "indexing.worker_concurrency",
@@ -1128,6 +1143,8 @@ impl Default for IndexingConfig {
             summary_min_lines: 10,
             debounce_seconds: 10,
             worktree_reconcile_ticks: 6,
+            conversation_poll_ticks: 12,
+            conversation_lookback_days: 14,
             job_retention_days: 1,
             worker_concurrency: 4,
             summarize_lane: 32,
@@ -2212,6 +2229,36 @@ summary_min_lines = 0
         let message = err.to_string();
         assert!(message.contains("indexing.job_retention_days"), "{message}");
         assert!(message.contains("must be at least 1"), "{message}");
+    }
+
+    #[test]
+    fn conversation_poll_config_defaults_disable_and_refuse_zero_lookback() {
+        let default = Config::from_toml_str("").unwrap();
+        assert_eq!(default.indexing.conversation_poll_ticks, 12);
+        assert_eq!(default.indexing.conversation_lookback_days, 14);
+        let disabled = Config::from_toml_str(
+            "[indexing]\nconversation_poll_ticks = 0\nconversation_lookback_days = 2\n",
+        )
+        .unwrap();
+        assert_eq!(disabled.indexing.conversation_poll_ticks, 0);
+        assert_eq!(disabled.indexing.conversation_lookback_days, 2);
+        let mut invalid = default;
+        invalid.indexing.conversation_lookback_days = 0;
+        assert!(
+            invalid
+                .problems()
+                .iter()
+                .any(|problem| problem.key == "indexing.conversation_lookback_days")
+        );
+        assert!(
+            Config::from_toml_str("[indexing]\nconversation_lookback_days = 0\n")
+                .unwrap_err()
+                .to_string()
+                .contains("indexing.conversation_lookback_days")
+        );
+        let rendered = toml::to_string_pretty(&disabled).unwrap();
+        assert!(rendered.contains("conversation_poll_ticks = 0"));
+        assert!(rendered.contains("conversation_lookback_days = 2"));
     }
 
     #[test]

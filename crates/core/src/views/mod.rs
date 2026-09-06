@@ -150,6 +150,7 @@ mod tests {
             roots: Vec::new(),
             queue: Vec::new(),
             retention: None,
+            conversations: None,
             last_error: None,
             inconsistencies: Vec::new(),
             schema_ahead: Vec::new(),

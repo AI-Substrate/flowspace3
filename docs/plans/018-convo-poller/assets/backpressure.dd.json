@@ -1,0 +1,111 @@
+{
+  "dd": {
+    "schema": "builder/backpressure"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Backpressure - convo-poller",
+        "plan": "../plan.dd.json#meta",
+        "certainty": "Confident"
+      }
+    },
+    {
+      "name": "rows",
+      "value": [
+        {
+          "id": "bp-0001",
+          "criterion": "poller enqueues exactly the changed files",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "cargo test -p fs3-daemon convo_poll: first/unchanged/appended passes on a tempdir home; mutation: flip size>cursor → red",
+          "state": "checked",
+          "receipt": "convo_poll_first_unchanged_and_sidecar_append_use_durable_file_cursors; comparison mutation red/restored; final 13-test poller suite and full harness checks green"
+        },
+        {
+          "id": "bp-0002",
+          "criterion": "identity is file-derived, never a seat row",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "cargo test -p fs3-daemon convo_poll_identity: phantom recorded id never enqueued; filename id + cwd_of folder asserted",
+          "state": "checked",
+          "receipt": "convo_poll_identity_ignores_a_phantom_recorded_id_and_caches_actual_cwd; bounded 8MiB cwd counting-reader proof; full harness checks green"
+        },
+        {
+          "id": "bp-0003",
+          "criterion": "cold start is capped and staggered; lookback honoured",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "cargo test -p fs3-daemon convo_poll_cold_start: 60 sessions, cap per pass, staggered not_before, totals; mutation: remove cap → red",
+          "state": "checked",
+          "receipt": "convo_poll_cold_start_caps_staggers_and_progresses_past_pending_work; cap mutation red/restored; fast-cadence delivery bound; live-priority/backlog-reservation stress tests"
+        },
+        {
+          "id": "bp-0004",
+          "criterion": "status block + doctor row say flowing/stalled/disabled",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "cargo test -p fs3-cli envelope_goldens + doctor tests; ticks=0 renders disabled",
+          "state": "checked",
+          "receipt": "poller health boundary/recovery tests; authenticated doctor probe and status render tests; real CLI flowing/disabled smoke; status goldens; full harness checks green"
+        },
+        {
+          "id": "bp-0005",
+          "criterion": "no-session-file is distinguishable from not-indexed",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "cargo test -p fs3-daemon convo_verify_no_file + cli render tests for both codes",
+          "state": "checked",
+          "receipt": "convo_verify_no_file_is_distinct_from_present_but_unindexed; existing verify HTTP contract; two new CLI refusal goldens; real HTTP missing-file status 404"
+        },
+        {
+          "id": "bp-0006",
+          "criterion": "metrics-db path resolves; route fails fast",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "cargo test -p fs3-daemon metrics_db_path: three layouts; synchronous refusal; mutation: swap probe order → red",
+          "state": "checked",
+          "receipt": "metrics_db_path_prefers_native_and_refuses_before_enqueue_when_unopenable; real SQLite fixture layouts; priority probe mutation red/restored; doctor layout tests"
+        },
+        {
+          "id": "bp-0007",
+          "criterion": "config knobs parse, template shows them, zero days refused",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "cargo test -p fs3-core config: defaults 12/14, template, Problem on 0",
+          "state": "checked",
+          "receipt": "conversation_poll_config_defaults_disable_and_refuse_zero_lookback; config_reference 3 passed; boot registration; final harness checks 2026-09-06T08:12:01Z 11/11 gates"
+        },
+        {
+          "id": "bp-0008",
+          "criterion": "prod: sessions advance with nobody typing ingest",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "human-judgement",
+          "proof": "o-prime after bounce: grim-gurgeh omp >110 turns within two cadences; fresh claude session indexed; next pass quiet; cost line read off the log",
+          "state": "unchecked"
+        }
+      ]
+    },
+    {
+      "name": "sensors",
+      "value": [
+        {
+          "id": "sn-0001",
+          "name": "harness checks",
+          "command": "harness checks",
+          "dimension": "correctness",
+          "found_in": "repo harness"
+        }
+      ]
+    }
+  ]
+}

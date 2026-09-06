@@ -3,6 +3,44 @@
   "command": "status",
   "v": 1,
   "data": {
+    "conversations": {
+      "harnesses": [
+        {
+          "behind": 0,
+          "harness": "claude",
+          "newest_ingest": {
+            "address": "conv:806746d4-9ebc-841f-a05c-8b4643109a1e",
+            "at": "2026-09-06T05:59:54.000000Z",
+            "contended": 0,
+            "deduped": 2,
+            "records_read": 2,
+            "rescanned": true,
+            "summarized": 0,
+            "turns_new": 0
+          },
+          "newest_ingest_at": "2026-09-06T05:59:54.000000Z",
+          "tracked": 2
+        },
+        {
+          "behind": 0,
+          "harness": "omp",
+          "newest_ingest": {
+            "address": "conv:2bac847c-0e25-8d78-ae8e-fe414c7cbb96",
+            "at": "2026-09-06T05:59:58.000000Z",
+            "contended": 0,
+            "deduped": 0,
+            "records_read": 1,
+            "rescanned": false,
+            "summarized": 1,
+            "turns_new": 1
+          },
+          "newest_ingest_at": "2026-09-06T05:59:58.000000Z",
+          "tracked": 1
+        }
+      ],
+      "last_poll_at": "2026-09-06T06:00:00.000Z",
+      "state": "flowing"
+    },
     "last_error": null,
     "queue": [
       {

@@ -12,6 +12,7 @@ pub mod boot;
 pub mod config;
 pub mod conversations;
 pub mod convo_ingest;
+pub mod convo_poll;
 pub mod ddoc;
 pub mod debounce;
 pub mod enrich;

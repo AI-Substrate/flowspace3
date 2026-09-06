@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "command": "conversation verify",
+  "v": 1,
+  "error": {
+    "code": "FS3-E-QUERY-CONVERSATION-NO-SESSION-FILE",
+    "message": "no omp session file exists for lazy-session; the harness has not persisted it yet",
+    "fix": "the harness has not persisted this session yet; the conversation poller picks it up when written. There is nothing to ingest yet.",
+    "retryable": false
+  }
+}

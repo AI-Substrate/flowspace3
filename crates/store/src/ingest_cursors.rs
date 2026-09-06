@@ -35,7 +35,7 @@
 //! as TEXT cast to `jsonb`, exactly as `turns.items` does: one definition of
 //! what a cursor is, and it is the Rust type.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use fs3_core::{ConversationId, Harness, SourceCursor};
 use sqlx::Row;
@@ -118,6 +118,41 @@ pub async fn load_cursor(
             })
         })
         .transpose()
+}
+
+/// Read just the discovered session files in one query per harness.
+///
+/// Missing keys remain absent; neither this snapshot nor a queued job advances
+/// the durable cursor. Sidecars must be supplied under their own session IDs.
+///
+/// # Errors
+/// Store query errors or corrupt stored cursor JSON, as for [`load_cursor`].
+pub async fn load_cursors(
+    pool: &PgPool,
+    harness: Harness,
+    session_ids: &[&str],
+) -> Result<BTreeMap<String, SourceCursor>, StoreError> {
+    if session_ids.is_empty() {
+        return Ok(BTreeMap::new());
+    }
+    let rows = sqlx::query(
+        "SELECT session_id, cursor FROM ingest_cursors WHERE harness = $1 AND session_id = ANY($2)",
+    )
+    .bind(harness.as_str())
+    .bind(session_ids)
+    .fetch_all(pool)
+    .await?;
+    rows.into_iter()
+        .map(|row| {
+            let session_id: String = row.try_get("session_id")?;
+            let cursor = serde_json::from_value(row.try_get("cursor")?).map_err(|error| {
+                StoreError::Corrupt(fs3_core::Error::InvalidConfig(format!(
+                    "stored cursor for {harness}/{session_id} is not a source cursor: {error}"
+                )))
+            })?;
+            Ok((session_id, cursor))
+        })
+        .collect()
 }
 
 /// Which of `ordinals` are already stored, and what number the next turn takes.

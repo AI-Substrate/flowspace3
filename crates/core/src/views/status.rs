@@ -12,6 +12,9 @@ pub struct StatusReport {
     /// The daemon-owned done-job retention receipt.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub retention: Option<RetentionStatus>,
+    /// Daemon-computed native conversation polling health.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conversations: Option<ConversationsStatus>,
     /// The most recent failure, when there is one — so a status line can say
     /// what went wrong rather than only that something did.
     pub last_error: Option<LastError>,
@@ -36,6 +39,81 @@ pub struct RetentionStatus {
     pub last_purge_at: Option<String>,
     /// Number of rows removed by that complete sweep.
     pub purged_last_run: u64,
+}
+
+/// The daemon owns this verdict; clients render it rather than re-deriving it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ConversationState {
+    Flowing,
+    Stalled,
+    Disabled,
+}
+
+impl ConversationState {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Flowing => "flowing",
+            Self::Stalled => "stalled",
+            Self::Disabled => "disabled",
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ConversationsStatus {
+    pub state: ConversationState,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub state_reason: Option<String>,
+    pub last_poll_at: Option<String>,
+    pub harnesses: Vec<ConversationHarnessStatus>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ConversationHarnessStatus {
+    pub harness: String,
+    /// Eligible parent sessions, each including its sidecar files.
+    pub tracked: usize,
+    /// Parent sessions needing an append, truncation, or replacement read.
+    pub behind: usize,
+    /// Time of the newest observed ingest report; unknown after daemon restart.
+    pub newest_ingest_at: Option<String>,
+    /// Actual report counters, never inferred from cursor movement.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub newest_ingest: Option<ConversationIngestReceipt>,
+}
+
+/// Totals projected from the existing ingest report for one request, including
+/// any sidecars. `summarized` counts queued summaries, not completed calls or money.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ConversationIngestReceipt {
+    pub at: String,
+    pub address: String,
+    pub records_read: usize,
+    pub turns_new: usize,
+    pub deduped: usize,
+    pub summarized: usize,
+    pub rescanned: bool,
+    pub contended: usize,
+}
+
+impl ConversationIngestReceipt {
+    /// A counter line from this report, shared by human diagnostic surfaces.
+    #[must_use]
+    pub fn describe(&self) -> String {
+        format!(
+            "{} {} · read {} · new {} · deduped {} · summarized {} · rescanned {} · contended {}",
+            self.at,
+            self.address,
+            self.records_read,
+            self.turns_new,
+            self.deduped,
+            self.summarized,
+            self.rescanned,
+            self.contended
+        )
+    }
 }
 
 /// One shared blob whose parsed rows do not form exactly one file tree.

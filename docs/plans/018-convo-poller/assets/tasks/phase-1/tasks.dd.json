@@ -1,0 +1,190 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: the loop that runs the readers",
+        "slug": "phase-1",
+        "status": "ready",
+        "summary": "One coder, tasks in order, every assertion pinned to a backpressure row."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Work top to bottom; stop-and-ask o-prime on anything outside the fence."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "t1",
+          "title": "Poller skeleton + enumeration + size-vs-cursor decision",
+          "state": "checked",
+          "done": "#done_when/t1",
+          "success": "`convo_poll.rs` implements Reconcile with tick counting; enumerates claude/omp stores under an injected home; compares each file's size to its durable cursor; unit tests on a tempdir home (first poll enqueues one per session, unchanged poll enqueues nothing, appended file re-enqueues); mutation: flipped comparison → red",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ],
+          "note": "Complete; evidence in receipt and execution.log.md",
+          "receipt": "Final review APPROVE at 3d35555dd72386e3e4bc26fa9da404c279f95780 (F1-F4 + D1), independently re-run by reviewer. Poller suite 19 passed; stable zero-record ingest ACK and exact existing-header/torn-line cursor behavior proven, including seven files across poller lifetimes. ACK-removal mutation failed on pass 2, then restored green. Final record: ../../reviews/cross-model-review.md; MD5 0fb0061b8e4121dc75181c8ec8c5cbdc."
+        },
+        {
+          "id": "t2",
+          "title": "File-derived identity + submit wiring",
+          "state": "checked",
+          "done": "#done_when/t2",
+          "success": "(harness, session_id) parsed from filename, folder via cwd_of/discover_folder reuse; claude sidecars attributed to the parent request, not enumerated as sessions; phantom recorded id test; submit_after called with the dedupe address",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002"
+          ],
+          "note": "Complete; evidence in receipt and execution.log.md",
+          "receipt": "Final review APPROVE at 3d35555: file-derived identity and parent-sidecar wiring retained; stamped cwd misses read once per revision, warn once then DEBUG, and consume New priority only on actual probe/service. Negative-cache mutation failed, restored green. Queue IDs stay in the private submission seam; public IngestAccepted unchanged. Indexed retained-ID lookup precedes enqueue, deduplicates/chunks 256 IDs, and jobs_pkey EXPLAIN test passed."
+        },
+        {
+          "id": "t3",
+          "title": "Cold-start cap, stagger, lookback",
+          "state": "checked",
+          "done": "#done_when/t3",
+          "success": "per-pass cap + staggered not_before via submit_after; lookback window skips old cursorless files; 100-session pending and healthy fixtures prove cap, fairness and totals; pass log prints enqueued/behind/skipped; mutation: cap removed -> red",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ],
+          "note": "Complete; evidence in receipt and execution.log.md",
+          "receipt": "Final review APPROVE at 3d35555 (D1 included). Shared 100-session fixtures retain cap 10, exact stagger, lookback and fairness assertions. Pending passes: behind stays 100, unique in_flight grows 10..100, state Flowing. Healthy batches execute between passes: behind 100,90,..,10 then 0; in_flight capped at 10; Flowing throughout. Live/fresh priority and reserved cold capacity remain green; original cap mutation receipt retained in execution.log.md."
+        },
+        {
+          "id": "t4",
+          "title": "status block + doctor row",
+          "state": "checked",
+          "done": "#done_when/t4",
+          "success": "additive StatusReport.conversations; CLI rendering; doctor `conversations` step with flowing/stalled/disabled + git-ai path; goldens updated; ticks=0 renders disabled",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ],
+          "note": "Complete; evidence in receipt and execution.log.md",
+          "receipt": "Final review APPROVE at 3d35555, reviewer independently confirmed F1 and D1. Behind counts eligible cursor/stamp/ACK backlog, not submitted lag. Pending/running attempts do not age health; three observed terminal no-progress attempts stall, failed counts once; same terminal reread counts once, equal timestamps preserve distinct attempts, missing rows give no information, restart requires three fresh attempts. Actual ingest receipts retained; envelope and conversation goldens unchanged. Final poller suite 19 passed."
+        },
+        {
+          "id": "t5",
+          "title": "'no session file yet' distinction",
+          "state": "checked",
+          "done": "#done_when/t5",
+          "success": "new catalog code; verify/ingest probe the store for the file before the index; both codes tested; CLI render for both",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ],
+          "note": "Complete; evidence in receipt and execution.log.md",
+          "receipt": "Final review APPROVE at 3d35555 including F4. Existing absent vs present-unindexed refusal contract retained. HOME-mutating conversation_verify_contract moved to its own synchronous one-test binary, setting HOME before runtime creation: 1 passed; remaining conversation_query binary: 15 passed. Envelope goldens: 2 passed; existing conversation goldens unchanged."
+        },
+        {
+          "id": "t6",
+          "title": "metrics-db path probe + fail-fast route",
+          "state": "checked",
+          "done": "#done_when/t6",
+          "success": "probe internal/metrics-db then metrics.sqlite3; submit refuses synchronously when neither opens, naming both; three-layout tests; mutation: probe order swapped → red",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0006"
+          ],
+          "note": "Complete; evidence in receipt and execution.log.md",
+          "receipt": "metrics_db_path targeted test passed on real copied SQLite fixture: native-only, legacy-only, both prefer native, neither synchronous refusal naming both, corrupt synchronous refusal; reversed precedence fails native-wins assertion (artifact://48), restored passes; doctor row layouts passed"
+        },
+        {
+          "id": "t7",
+          "title": "Config knobs + template + gate",
+          "state": "checked",
+          "done": "#done_when/t7",
+          "success": "conversation_poll_ticks (12) and conversation_lookback_days (14) with template + refusal of 0 days; registration in boot.rs; `harness checks` green; execution log complete",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0007"
+          ],
+          "note": "Complete; evidence in receipt and execution.log.md",
+          "receipt": "Final supervised harness checks 2026-09-06T11:28:39.199Z exited 0: status ok, 11/11 gates, 12 documentation links, sealed HOME/config and test DB :5434. Poller 19 passed. Earlier streaming.rs:207 red was independently classified by o-prime as timing flake backlog 200 after three sequential isolated green receipts; one authorized full rerun passed without streaming/runner edits. Config defaults/template/refusal retained; execution.log.md carries receipts."
+        },
+        {
+          "id": "t8",
+          "title": "PR, bounce, prod receipt",
+          "state": "blocked",
+          "done": "#done_when/t8",
+          "success": "open the PR (never merge); o-prime bounces prod and records ac-0008 in assets/inputs/prod-after.md",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0008"
+          ],
+          "note": "REVIEW CLOSED — APPROVE at 3d35555dd72386e3e4bc26fa9da404c279f95780; F1-F4 and D1 confirmed by reviewer runs. Final record archived byte-identically (MD5 0fb0061b8e4121dc75181c8ec8c5cbdc). PR/review portion complete; production bounce and ac-0008 remain o-prime-owned and blocked pending merge and assets/inputs/prod-after.md. Coder never merges.",
+          "receipt": "PR https://github.com/AI-Substrate/flowspace3/pull/118; approved code head 3d35555dd72386e3e4bc26fa9da404c279f95780. Final cross-model review, including delta and D1 sections: ../../reviews/cross-model-review.md, verified source/archive MD5 0fb0061b8e4121dc75181c8ec8c5cbdc. Final local full gate 11/11 green at 2026-09-06T11:28:39.199Z. Docs-only record committed before worktree teardown. No production receipt claimed; ac-0008 remains unchecked pending o-prime."
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {
+        "t1": [
+          {
+            "id": "dw-0181",
+            "assertion": "ac-0001 test(s) green + mutation red",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          }
+        ],
+        "t2": [
+          {
+            "id": "dw-0182",
+            "assertion": "ac-0002 test(s) green",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          }
+        ],
+        "t3": [
+          {
+            "id": "dw-0183",
+            "assertion": "ac-0003 test(s) green + mutation red",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          }
+        ],
+        "t4": [
+          {
+            "id": "dw-0184",
+            "assertion": "ac-0004 test(s) green",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+          }
+        ],
+        "t5": [
+          {
+            "id": "dw-0185",
+            "assertion": "ac-0005 test(s) green",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+          }
+        ],
+        "t6": [
+          {
+            "id": "dw-0186",
+            "assertion": "ac-0006 test(s) green + mutation red",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0006"
+          }
+        ],
+        "t7": [
+          {
+            "id": "dw-0187",
+            "assertion": "ac-0007 test(s) green",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0007"
+          }
+        ],
+        "t8": [
+          {
+            "id": "dw-0188",
+            "assertion": "ac-0008 test(s) green",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0008"
+          }
+        ]
+      }
+    }
+  ]
+}

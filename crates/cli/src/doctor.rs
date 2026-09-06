@@ -34,6 +34,7 @@ use std::time::{Duration, Instant};
 
 use fs3_core::envelope::{Envelope, Failure};
 use fs3_core::views::doctor::{DoctorReport, Step};
+use fs3_core::views::status::{ConversationState, ConversationsStatus, StatusReport};
 use fs3_core::{Config, Effective, Port, ProviderInstance, catalog};
 
 /// Environment variable naming the container engine.
@@ -194,6 +195,8 @@ async fn walk(
     // credential and that the running daemon accepts those exact bytes.
     steps.push(check_daemon(daemon_url, config_dir).await);
     steps.push(check_auth(daemon_url, config_dir).await);
+    let home = std::env::var_os("HOME").map(std::path::PathBuf::from);
+    steps.push(check_conversations(daemon_url, config_dir, home.as_deref()).await);
     steps.push(check_providers(config));
     // req-0054 / req-0059. Both read the store, so they walk after the schema
     // row that guarantees the tables exist, and after `daemon` and `providers`
@@ -746,6 +749,95 @@ async fn check_auth(daemon_url: &str, config_dir: &std::path::Path) -> Step {
     }
 }
 
+async fn check_conversations(
+    daemon_url: &str,
+    config_dir: &std::path::Path,
+    home: Option<&std::path::Path>,
+) -> Step {
+    let started = Instant::now();
+    let metrics = home.and_then(fs3_daemon::convo_ingest::metrics_db_path);
+    let status = async {
+        let client = reqwest::Client::builder()
+            .timeout(DAEMON_PROBE_TIMEOUT)
+            .build()
+            .map_err(|error| error.to_string())?;
+        let mut request = client.get(format!("{}/status", daemon_url.trim_end_matches('/')));
+        if let Ok(key) = std::fs::read_to_string(fs3_core::daemon_key_path(config_dir)) {
+            request = request.bearer_auth(key.trim());
+        }
+        let envelope = request
+            .send()
+            .await
+            .map_err(|error| error.to_string())?
+            .error_for_status()
+            .map_err(|error| error.to_string())?
+            .json::<Envelope<StatusReport>>()
+            .await
+            .map_err(|error| error.to_string())?;
+        if !envelope.ok {
+            return Err(envelope
+                .error
+                .map_or_else(|| "status failed".to_owned(), |error| error.message));
+        }
+        envelope
+            .data
+            .and_then(|report| report.conversations)
+            .ok_or_else(|| "daemon does not report conversation polling health".to_owned())
+    }
+    .await;
+    conversations_row(
+        status.as_ref().map_err(String::as_str),
+        metrics.as_deref(),
+        started,
+    )
+}
+
+fn conversations_row(
+    status: Result<&ConversationsStatus, &str>,
+    metrics: Option<&std::path::Path>,
+    started: Instant,
+) -> Step {
+    let store = metrics.map_or_else(|| "missing".to_owned(), |path| path.display().to_string());
+    let report = match status {
+        Ok(report) => report,
+        Err(error) => {
+            return Step::warn(
+                "conversations",
+                format!("poll state unavailable: {error}; git-ai store {store}"),
+                "fix the daemon/auth rows, or restart the current daemon to expose polling health",
+                started,
+            );
+        }
+    };
+    let reason = report
+        .state_reason
+        .as_deref()
+        .unwrap_or("native session stores caught up");
+    let mut found = format!("{}: {reason}; git-ai store {store}", report.state.as_str());
+    for harness in &report.harnesses {
+        let receipt = harness.newest_ingest.as_ref().map_or_else(
+            || "unavailable (not observed since daemon boot)".to_owned(),
+            |receipt| receipt.describe(),
+        );
+        found.push_str(&format!("; {} newest ingest {receipt}", harness.harness));
+    }
+    match report.state {
+        ConversationState::Flowing => Step::ok("conversations", found, started),
+        ConversationState::Disabled => Step::info(
+            "conversations",
+            found,
+            "set indexing.conversation_poll_ticks to a positive value and restart the daemon to enable polling",
+            started,
+        ),
+        ConversationState::Stalled => Step::warn(
+            "conversations",
+            found,
+            "run `flowspace3 status` and inspect daemon ingest errors; queued jobs do not prove cursor progress",
+            started,
+        ),
+    }
+}
+
 /// Step 6: is a real provider configured, or is everything the offline fake?
 ///
 /// A fresh install is NOT config-less — the defaults ship `[providers.fake]`
@@ -1090,6 +1182,96 @@ fn map_store(error: fs3_store::StoreError) -> Failure {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn conversations_row_renders_daemon_state_and_one_shared_metrics_probe() {
+        let home = tempfile::tempdir().unwrap();
+        let mut report = ConversationsStatus {
+            state: ConversationState::Flowing,
+            state_reason: Some("awaiting the first conversation poll".to_owned()),
+            last_poll_at: None,
+            harnesses: Vec::new(),
+        };
+        let row = conversations_row(Ok(&report), None, Instant::now());
+        assert!(row.found.contains("flowing: awaiting"));
+        assert!(row.found.contains("git-ai store missing"));
+        assert_eq!(row.outcome, "ok");
+        for (state, outcome) in [
+            (ConversationState::Stalled, "warn"),
+            (ConversationState::Disabled, "info"),
+        ] {
+            report.state = state;
+            report.state_reason = Some(format!("daemon says {}", state.as_str()));
+            let row = conversations_row(Ok(&report), None, Instant::now());
+            assert!(row.found.starts_with(state.as_str()));
+            assert_eq!(row.outcome, outcome);
+        }
+        let path = home.path().join(".git-ai/internal/metrics-db");
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, []).unwrap();
+        let resolved = fs3_daemon::convo_ingest::metrics_db_path(home.path());
+        let row = conversations_row(Ok(&report), resolved.as_deref(), Instant::now());
+        assert!(row.found.contains(path.to_str().unwrap()));
+        let legacy = home.path().join(".git-ai/metrics.sqlite3");
+        std::fs::write(&legacy, []).unwrap();
+        std::fs::remove_file(&path).unwrap();
+        let resolved = fs3_daemon::convo_ingest::metrics_db_path(home.path());
+        let row = conversations_row(Ok(&report), resolved.as_deref(), Instant::now());
+        assert!(row.found.contains(legacy.to_str().unwrap()));
+        report.harnesses = serde_json::from_value(serde_json::json!([{
+            "harness":"claude","tracked":1,"behind":0,"newest_ingest_at":"2026-09-06T00:00:00Z",
+            "newest_ingest":{"at":"2026-09-06T00:00:00Z","address":"conv:proof","records_read":2,"turns_new":0,"deduped":2,"summarized":0,"rescanned":true,"contended":0}
+        }])).unwrap();
+        let row = conversations_row(Ok(&report), None, Instant::now());
+        for text in [
+            "newest ingest",
+            "conv:proof",
+            "read 2",
+            "new 0",
+            "deduped 2",
+            "summarized 0",
+        ] {
+            assert!(row.found.contains(text), "{}", row.found);
+        }
+        report.harnesses[0].newest_ingest = None;
+        assert!(
+            conversations_row(Ok(&report), None, Instant::now())
+                .found
+                .contains("unavailable (not observed since daemon boot)")
+        );
+    }
+
+    #[tokio::test]
+    async fn conversations_probe_reads_the_authenticated_status_envelope() {
+        let home = tempfile::tempdir().unwrap();
+        let config = tempfile::tempdir().unwrap();
+        std::fs::write(fs3_core::daemon_key_path(config.path()), "poll-test-key").unwrap();
+        for (state, outcome) in [("flowing", "ok"), ("stalled", "warn"), ("disabled", "info")] {
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let address = listener.local_addr().unwrap();
+            let task = tokio::spawn(async move {
+                let app = axum::Router::new().route("/status", axum::routing::get(move |headers: axum::http::HeaderMap| async move {
+                    assert_eq!(headers.get("authorization").unwrap(), "Bearer poll-test-key");
+                    axum::Json(serde_json::json!({
+                        "ok":true,"command":"status","v":1,
+                        "data":{"roots":[],"queue":[],"last_error":null,"schema_ahead":[],
+                            "conversations":{"state":state,"state_reason":"from daemon","last_poll_at":null,"harnesses":[]}}
+                    }))
+                }));
+                axum::serve(listener, app).await.unwrap();
+            });
+            let step = check_conversations(
+                &format!("http://{address}"),
+                config.path(),
+                Some(home.path()),
+            )
+            .await;
+            task.abort();
+            assert_eq!(step.outcome, outcome, "{step:?}");
+            assert!(step.found.contains(&format!("{state}: from daemon")));
+            assert!(step.found.contains("git-ai store missing"));
+        }
+    }
 
     #[test]
     fn the_engine_is_overridable_and_defaults_to_docker() {

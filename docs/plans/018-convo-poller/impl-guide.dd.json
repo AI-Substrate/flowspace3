@@ -1,0 +1,91 @@
+{
+  "dd": {
+    "schema": "pij-team/impl-guide"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "impl-guide — convo-poller",
+        "plan": "docs/plans/018-convo-poller/plan.dd.json",
+        "mode": "single-coder",
+        "updated": "2026-09-06"
+      }
+    },
+    {
+      "name": "architecture",
+      "value": "The daemon already has the house pattern: `crates/daemon/src/reconcile.rs` defines `Reconcile { name, reconcile() -> Pass }` and `run_forever` runs every implementor on one shared five-second cadence; slower loops count ticks (`retention.rs` is the model: `RETENTION_EVERY_TICKS`, `tick_due`). Registration is one `reconcilers.push(Box::new(...))` in `boot.rs` next to gc/retention (~:735). The poller (`crates/daemon/src/convo_poll.rs`, new) is the fifth implementor. One pass: for each native store root under an INJECTED home path (claude `.claude/projects/<slug>/<uuid>.jsonl` + `<uuid>/subagents/*.jsonl`; omp `.omp/agent/sessions/<slug>/<ts>_<uuid>.jsonl`), stat every session file modified within the lookback window; derive (harness, session_id) from the FILENAME and folder via `convo_ingest::cwd_of`/`discover_folder` logic (reuse, do not duplicate — make them `pub(crate)` if needed); look up the durable cursor (`fs3_store::ingest_cursors` — the byte offset `tail.rs` persists; add a bulk read helper in fs3-store if one is missing, named at ack); if size > cursor offset (or no cursor), call `convo_ingest::submit_after(state, &IngestRequest{harness, session_id, folder}, stagger)`. The queue's dedupe key (`ingest:<harness>/<id>@<folder>`) makes repeat submissions collapse, so over-submitting is cheap and under-submitting is the only bug. A reconciler ENQUEUES and never runs the job (reconcile.rs scope guard). Status/doctor read the same numbers the pass computes (tracked, behind, newest_ingest_at) — store them on the poller and expose via AppState or a small store table; prefer no new migration; if one is needed, name it at ack. The 'no session file yet' distinction lives where `verify`/`ingest` already resolve a session (`convo_ingest.rs:103`, `:550`) by probing the store for the file BEFORE consulting the index: file absent → new code; present but no delivery → existing NOT-FOUND. Metrics-db: replace the hardcoded path at `convo_ingest.rs:538` with a probe of the two candidates and make `submit_after` refuse synchronously when neither opens."
+    },
+    {
+      "name": "fan_out",
+      "value": {
+        "decision": "NO",
+        "rationale": "One unit, one coder (pij-flaky-jerusalem), no PM; o-prime coordinates directly (Jordan, 2026-09-06: 'brief it, get a worktree up and have pij-flaky-jerusalem implement it')."
+      }
+    },
+    {
+      "name": "units",
+      "value": [
+        {
+          "id": "u1",
+          "name": "convo-poller",
+          "paths": "crates/daemon/src/convo_poll.rs (new); crates/daemon/src/convo_ingest.rs (path probe, fail-fast, no-file distinction, pub(crate) helpers); crates/daemon/src/boot.rs (registration lines only); crates/daemon/src/status.rs; crates/core/src/views/status.rs (additive); crates/core/src/config.rs (two knobs + template); crates/core/src/catalog.rs (one new code); crates/cli/src/doctor.rs; crates/cli/src/conversation.rs + status rendering; crates/store/src/** ONLY for a cursor bulk-read helper (name it at ack); crates/daemon/tests/**; crates/cli/tests/** (goldens); docs/plans/018-convo-poller/**",
+          "responsibility": "the loop that runs the existing readers, keyed on files; visibility in status/doctor; the no-file distinction; the metrics-db path fix; config knobs",
+          "interface": "new `Reconcile` implementor `ConvoPoller::new(state: AppState, home: PathBuf, cfg: PollConfig)`; additive `StatusReport.conversations: Option<ConversationsStatus>`; new catalog code (name it `QUERY_CONVERSATION_NO_SESSION_FILE` unless the catalog's naming rules say otherwise); `[indexing].conversation_poll_ticks: u32` (default 12), `conversation_lookback_days: u32` (default 14); metrics-db path resolution function `pub(crate) fn metrics_db_path(home) -> Option<PathBuf>`. Additive envelope changes only; readers and ledger untouched.",
+          "test_strategy": "unit tests with an injected fake home under a tempdir for enumeration, decision, cap/stagger, lookback, identity (ac-0001..0003); status/doctor envelope tests + goldens (ac-0004); verify/ingest tests for both codes + CLI render (ac-0005); path-probe tests for three layouts (ac-0006); config parse/refuse tests (ac-0007); one mutation receipt per rule (comparison flipped, cap removed, probe order swapped); the real-usage receipt is o-prime's after the bounce (ac-0008)",
+          "depends_on": "none",
+          "wave": 1,
+          "note": "NEVER point the poller at the real ~ in a test — every test injects a tempdir home. NEVER run a daemon with the default config: FS3_CONFIG_DIR=<scratch>, :5434, ephemeral port. The poller must not call `flowspace3 add` or touch worktree roots; conversations are unanchored-or-anchored by the existing ingest path, not by the poller."
+        }
+      ]
+    },
+    {
+      "name": "isolation",
+      "value": {
+        "mode": "worktree-per-coder",
+        "note": "Your worktree is /Users/jordanknight/substrate/flowspace/fs3-018-convo-poller on branch 018-convo-poller (created from main at 3ebfd58). Your seat's cwd is the MAIN CLONE — every command and every file path must be rooted at the worktree; never commit on main."
+      }
+    },
+    {
+      "name": "composition",
+      "value": {
+        "composer": "o-prime",
+        "steps": "None — single unit. o-prime squash-merges, bounces prod (daemon/store/cli binary changes), and takes the ac-0008 receipt.",
+        "integration_proof": "ac-0008 measured on prod after the bounce, recorded in assets/inputs/prod-after.md"
+      }
+    },
+    {
+      "name": "review",
+      "value": {
+        "when": "spawned by o-prime once the PR is up",
+        "inputs": "identity must be file-derived with a test that seeds a phantom recorded id; size==cursor must enqueue nothing (mutation red); cold-start cap must be proven with 60 sessions; the doctor row must be able to say STALLED (not just ok/disabled); the new code must not be reachable for a file that exists; the metrics-db probe order and the synchronous refusal must be tested; no reader, ledger, or guid change; no new migration unless named at ack and ruled",
+        "model_override": "github-copilot/claude-opus-5 --thinking=high (cross-model: the coder is not Claude)"
+      }
+    },
+    {
+      "name": "risks",
+      "value": [
+        {
+          "id": "risk-1",
+          "text": "cursor lookup shape: `ingest_cursors` is keyed per session FILE (a claude sidecar has its own); the poller must compare each file to ITS cursor, not the conversation's — read the store module before designing the helper"
+        },
+        {
+          "id": "risk-2",
+          "text": "cold start on this machine is ~100 claude files + omp files in-window; without the cap the first pass would enqueue everything at once and the summarizer would spend real money in one burst (the 58 MB novels session alone was 2,795 summarize jobs) — the cap and stagger are not optional, and the pass log must report enqueued/skipped/behind counts"
+        },
+        {
+          "id": "risk-3",
+          "text": "`cwd_of` reads the first 64 lines of a file to find the folder; on a 190 MB transcript that is cheap but on 100 files per pass it is not free — cache folder per file path within the poller (in-memory, process-lifetime is fine; a restart re-derives)"
+        },
+        {
+          "id": "risk-4",
+          "text": "omp filenames carry `<ts>_<uuid>`; claude subagent sidecars live under `<uuid>/subagents/` and must be attributed to the parent session, not enqueued as their own conversations — reuse `ClaudeSource::resolve` semantics (main + sidecars in ONE ingest request) rather than enumerating sidecars as top-level sessions"
+        },
+        {
+          "id": "risk-5",
+          "text": "`deny_unknown_fields` on IndexingConfig: adding knobs is fine; forgetting the config TEMPLATE/docs is how index_config_formats became unreachable (DL-003) — the template test must show the new keys"
+        }
+      ]
+    }
+  ]
+}

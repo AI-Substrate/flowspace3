@@ -14,11 +14,9 @@ mod support;
 
 use fs3_core::views::read::GetPayload;
 use fs3_core::{
-    Config, DatabaseConfig, ElementKind, Harness, ToolBox, ToolInput, Turn, TurnItem, TurnRole,
-    TurnSource,
+    Config, DatabaseConfig, ElementKind, ToolBox, ToolInput, Turn, TurnItem, TurnRole, TurnSource,
 };
 use fs3_daemon::conversations::{IntakeRequest, intake};
-use fs3_daemon::convo_ingest::{VerifyRequest, conversation_guid, verify};
 use fs3_daemon::read::{GetRequest, TreeRequest};
 use fs3_daemon::scope::{Scope, ScopeSource};
 use fs3_daemon::search::{SearchRequest, search};
@@ -634,109 +632,6 @@ async fn conv_not_found_messages() {
     );
     assert_eq!(absent.details["guid"], absent_guid);
     assert!(!absent.details.contains_key("requested_repo"));
-
-    database.destroy(state.db).await;
-}
-#[tokio::test]
-async fn conversation_verify_contract() {
-    let (database, state) = stack("conversation-verify-contract").await;
-    let session = "01a051b7-3b2c-7000-8987-3e66b28db4b6";
-    let guid = conversation_guid(Harness::Omp, session);
-    store_at(
-        &state,
-        guid.as_str(),
-        Some(ANCHOR),
-        Some("/srv/anchored"),
-        vec![turn(1, "delivered")],
-    )
-    .await;
-
-    let report = verify(
-        &state,
-        &VerifyRequest {
-            pij_id: None,
-            session_id: Some(session.to_string()),
-            harness: Some("omp".to_string()),
-        },
-    )
-    .await
-    .expect("the indexed session was delivered");
-    assert_eq!(report.guid, guid.as_str());
-    assert_eq!(report.address, guid.address());
-    assert_eq!(report.turns, 1);
-    assert_eq!(report.repo.as_deref(), Some(ANCHOR));
-    assert_eq!(report.worktree.as_deref(), Some("/srv/anchored"));
-    assert_eq!(report.last_turn_at, "2026-08-27T09:00:00Z");
-
-    let absent_session = "01a051b7-3b2c-7000-8987-000000000000";
-    let absent_guid = conversation_guid(Harness::Omp, absent_session);
-    let absent = verify(
-        &state,
-        &VerifyRequest {
-            pij_id: None,
-            session_id: Some(absent_session.to_string()),
-            harness: Some("omp".to_string()),
-        },
-    )
-    .await
-    .expect_err("a never-indexed session is not delivered");
-    assert_eq!(absent.code, "FS3-E-QUERY-CONVERSATION-NOT-FOUND");
-    assert_eq!(absent.details["guid"], absent_guid.as_str());
-    assert!(!absent.details.contains_key("turns"));
-
-    let empty_session = "01a051b7-3b2c-7000-8987-111111111111";
-    let empty_guid = conversation_guid(Harness::Omp, empty_session);
-    store_at(&state, empty_guid.as_str(), None, None, Vec::new()).await;
-    let empty = verify(
-        &state,
-        &VerifyRequest {
-            pij_id: None,
-            session_id: Some(empty_session.to_string()),
-            harness: Some("omp".to_string()),
-        },
-    )
-    .await
-    .expect_err("a zero-turn row delivered nothing");
-    assert_eq!(empty.code, "FS3-E-QUERY-CONVERSATION-NOT-FOUND");
-    assert_eq!(empty.details["guid"], empty_guid.as_str());
-    assert_eq!(empty.details["turns"], 0);
-    assert!(empty.message.contains("zero turns"));
-
-    let auth = support::auth("conversation-verify-route");
-    let base = support::spawn(fs3_daemon::router(state.clone(), auth.auth)).await;
-    let envelope: serde_json::Value = reqwest::Client::new()
-        .get(format!(
-            "{base}/conversations/verify?session_id={session}&harness=omp"
-        ))
-        .bearer_auth(&auth.key)
-        .send()
-        .await
-        .expect("verify route answers")
-        .json()
-        .await
-        .expect("verify route returns an envelope");
-    assert_eq!(envelope["ok"], true);
-    assert_eq!(envelope["command"], "conversation verify");
-    assert_eq!(envelope["data"]["guid"], guid.as_str());
-    assert_eq!(envelope["data"]["last_turn_at"], "2026-08-27T09:00:00Z");
-
-    let response = reqwest::Client::new()
-        .get(format!(
-            "{base}/conversations/verify?session_id={absent_session}&harness=omp"
-        ))
-        .bearer_auth(&auth.key)
-        .send()
-        .await
-        .expect("negative verify route answers");
-    assert_eq!(response.status(), reqwest::StatusCode::NOT_FOUND);
-    let negative: serde_json::Value = response
-        .json()
-        .await
-        .expect("negative verify returns an envelope");
-    assert_eq!(
-        negative["error"]["code"],
-        "FS3-E-QUERY-CONVERSATION-NOT-FOUND"
-    );
 
     database.destroy(state.db).await;
 }

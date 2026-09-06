@@ -192,6 +192,7 @@ pub fn flowspace3_binary() -> PathBuf {
 /// For [`TestDatabase::Scratch`], when [`crate::TEST_DATABASE_ENV`] is unset.
 /// For [`TestDatabase::FromConfigFile`], when the fixture does not set
 /// `[database].url`.
+/// When the isolated native-store HOME cannot be created beneath `config_dir`.
 #[must_use]
 pub fn sealed(binary: &Path, config_dir: &Path, database: TestDatabase) -> Command {
     let mut command = Command::new(binary);
@@ -214,6 +215,11 @@ pub fn sealed(binary: &Path, config_dir: &Path, database: TestDatabase) -> Comma
     }
 
     command.env(fs3_core::CONFIG_DIR_ENV, config_dir);
+    // Daemon startup polls native stores: config/DB isolation alone is not
+    // enough. Never let a test enumerate the developer's real transcripts.
+    let home = config_dir.join("home");
+    std::fs::create_dir_all(&home).expect("creating the sealed native-store HOME");
+    command.env("HOME", home);
     if let Some(url) = database.url(config_dir) {
         command.env(DATABASE_URL_ENV, url);
     }
@@ -273,6 +279,11 @@ mod tests {
             set.get(fs3_core::CONFIG_DIR_ENV).map(String::as_str),
             Some("/tmp/fs3-sealed-test")
         );
+        assert_eq!(
+            set.get("HOME").map(String::as_str),
+            Some("/tmp/fs3-sealed-test/home")
+        );
+        assert!(Path::new("/tmp/fs3-sealed-test/home").is_dir());
     }
 
     /// The pins must survive the scrub — a loop that removed by prefix AFTER

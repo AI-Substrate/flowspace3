@@ -164,13 +164,13 @@ pub fn read_lines(path: &Path, cursor: Option<&SourceCursor>) -> Result<TailRead
 /// identity degrades to a constant and rotation is caught only by the
 /// size-below-offset rule — weaker, and deliberately not pretended otherwise.
 #[cfg(unix)]
-fn identity(metadata: &std::fs::Metadata) -> (u64, u64) {
+pub fn identity(metadata: &std::fs::Metadata) -> (u64, u64) {
     use std::os::unix::fs::MetadataExt;
     (metadata.dev(), metadata.ino())
 }
 
 #[cfg(not(unix))]
-fn identity(_metadata: &std::fs::Metadata) -> (u64, u64) {
+pub fn identity(_metadata: &std::fs::Metadata) -> (u64, u64) {
     (0, 0)
 }
 

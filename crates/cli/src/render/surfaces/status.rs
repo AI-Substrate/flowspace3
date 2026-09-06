@@ -73,6 +73,31 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
         ));
     }
 
+    if let Some(conversations) = &report.conversations {
+        out.push_str(&format!(
+            "\n{}conversations {} · last poll {}\n",
+            theme::GUTTER,
+            conversations.state.as_str(),
+            conversations.last_poll_at.as_deref().unwrap_or("pending"),
+        ));
+        if let Some(reason) = &conversations.state_reason {
+            out.push_str(&format!("{}  {reason}\n", theme::GUTTER));
+        }
+        for harness in &conversations.harnesses {
+            out.push_str(&format!(
+                "{}  {}: {} tracked · {} behind · newest ingest {}\n",
+                theme::GUTTER,
+                harness.harness,
+                harness.tracked,
+                harness.behind,
+                harness.newest_ingest.as_ref().map_or_else(
+                    || "unavailable (not observed since daemon boot)".to_owned(),
+                    |receipt| receipt.describe(),
+                ),
+            ));
+        }
+    }
+
     if !report.queue.is_empty() {
         let mut grouped: BTreeMap<&str, BTreeMap<&str, &QueueRow>> = BTreeMap::new();
         for row in &report.queue {
@@ -252,5 +277,48 @@ mod tests {
         assert!(screen.contains("progress"), "{screen}");
         assert!(screen.contains("done"), "{screen}");
         assert!(screen.contains('7'), "{screen}");
+    }
+
+    #[test]
+    fn conversations_render_daemon_state_without_guessing_from_counts() {
+        let home = tempfile::tempdir().unwrap();
+        assert!(home.path().is_dir());
+        for state in ["flowing", "stalled", "disabled"] {
+            let mut value = envelope(json!([]));
+            value.data.as_mut().unwrap()["conversations"] = json!({
+                "state": state, "state_reason": "daemon-authored explanation", "last_poll_at": null,
+                "harnesses": [{"harness":"omp","tracked":3,"behind":2,"newest_ingest_at":"2026-09-01T00:00:00Z"}]
+            });
+            let screen = plain(&render(&value, 100).unwrap());
+            assert!(
+                screen.contains(&format!("conversations {state}")),
+                "{screen}"
+            );
+            assert!(screen.contains("daemon-authored explanation"));
+            assert!(screen.contains("3 tracked · 2 behind"));
+            assert!(screen.contains("last poll pending"));
+            assert!(screen.contains("unavailable (not observed since daemon boot)"));
+        }
+    }
+
+    #[test]
+    fn newest_ingest_renders_actual_rescan_counters() {
+        let mut value = envelope(json!([]));
+        value.data.as_mut().unwrap()["conversations"] = json!({
+            "state":"flowing","last_poll_at":null,
+            "harnesses":[{"harness":"claude","tracked":1,"behind":0,"newest_ingest_at":"2026-09-06T00:00:00Z",
+                "newest_ingest":{"at":"2026-09-06T00:00:00Z","address":"conv:proof","records_read":2,"turns_new":0,"deduped":2,"summarized":0,"rescanned":true,"contended":0}}]
+        });
+        let screen = plain(&render(&value, 100).unwrap());
+        for text in [
+            "conv:proof",
+            "read 2",
+            "new 0",
+            "deduped 2",
+            "summarized 0",
+            "rescanned true",
+        ] {
+            assert!(screen.contains(text), "{screen}");
+        }
     }
 }
