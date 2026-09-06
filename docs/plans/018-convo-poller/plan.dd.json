@@ -86,8 +86,9 @@
         },
         {
           "id": "ac-0008",
-          "state": "unchecked",
-          "claim": "real usage, measured by o-prime on prod after the bounce and recorded in assets/inputs/prod-after.md: grim-gurgeh's omp session advances past 110 turns with no manual ingest within two cadences; a fresh claude session in a new directory is indexed within two cadences; the following pass logs quiet; `status`/`doctor` show the block/row; total summarize jobs enqueued for the catch-up are reported so the cost is visible"
+          "state": "blocked",
+          "claim": "real usage, measured by o-prime on prod after the bounce and recorded in assets/inputs/prod-after.md: grim-gurgeh's omp session advances past 110 turns with no manual ingest within two cadences; a fresh claude session in a new directory is indexed within two cadences; the following pass logs quiet; `status`/`doctor` show the block/row; total summarize jobs enqueued for the catch-up are reported so the cost is visible",
+          "note": "Awaiting o-prime production receipt after PR #118 review, merge and bounce; local smoke is not a substitute."
         }
       ]
     },

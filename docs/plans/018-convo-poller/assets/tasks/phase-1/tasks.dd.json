@@ -106,13 +106,14 @@
         {
           "id": "t8",
           "title": "PR, bounce, prod receipt",
-          "state": "unchecked",
+          "state": "blocked",
           "done": "#done_when/t8",
           "success": "open the PR (never merge); o-prime bounces prod and records ac-0008 in assets/inputs/prod-after.md",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0008"
           ],
-          "note": "In progress: preparing scoped commit and PR; o-prime owns merge, bounce and ac-0008 production receipt"
+          "note": "PR #118 is ready for review. Production acceptance is blocked on o-prime merge/bounce and assets/inputs/prod-after.md; coder never merges.",
+          "receipt": "Implementation commit 7f70291e3965618a9831cfb5b7afc9bfb9c3c285; PR https://github.com/AI-Substrate/flowspace3/pull/118 opened into main; local full gate green; o-prime owns review, merge, bounce and ac-0008 receipt"
         }
       ]
     },

@@ -172,3 +172,9 @@ Code acceptance ac-0001..0007 is complete. ac-0008 remains o-prime's real-produc
 Scratch daemon stopped. Its dedicated :5434 database was dropped. Seven databases left by intentional red mutation runs were identified by this unit's test labels, audited against the exact seeded native identities and tempdir folders, then dropped; audit retained at `.harness/temp/agent/convo-mutation-db-audit.json`. Unrelated databases were not touched. Post-final-gate shared `flowspace3_test.jobs` native-ingest count remains **0**.
 
 All proof logs and harness observations are retained. The observation buffer was listed, never cleared; drain remains o-prime-owned.
+
+## t8 — PR opened; production receipt blocked on o-prime
+
+Implementation committed as `7f70291e3965618a9831cfb5b7afc9bfb9c3c285` (`feat: poll native conversations and surface ingest health`) through `harness commit`; reported mode `direct-verified`, ingress probe connected. Branch pushed and PR opened: https://github.com/AI-Substrate/flowspace3/pull/118.
+
+Task t8 and ac-0008 are explicitly blocked awaiting o-prime's review, merge, production bounce and `assets/inputs/prod-after.md` receipt. Coder does not merge or mutate production. Receipt-only tracking updates follow the implementation commit; no source changes after the final green gate.
