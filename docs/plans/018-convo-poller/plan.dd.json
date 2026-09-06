@@ -1,0 +1,100 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "018 — conversation poller: the daemon runs the readers (DL-002, DL-004, rows 193/194)",
+        "slug": "convo-poller",
+        "ordinal": 18,
+        "status": "ready",
+        "summary": "Conversation ingest is pull-only and nothing schedules it: the daemon has no conversation poller (convo_ingest.rs:249 assumes harness hooks that were never installed), so every transcript is indexed as of the last time a human typed `conversation ingest` and rots from that second — measured: unicorn",
+        "backpressure": "assets/backpressure.dd.json#rows"
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Conversation ingest is pull-only and nothing schedules it: the daemon has no conversation poller (convo_ingest.rs:249 assumes harness hooks that were never installed), so every transcript is indexed as of the last time a human typed `conversation ingest` and rots from that second — measured: unicorn's session 22 turns vs 984 lines over three days; grim-gurgeh's omp session 110 turns vs a 13 MB file; fleet-wide 106 live session files in 7 days against 109 conversations indexed ever. Separately the git-ai metrics-db route opens a file that does not exist (~/.git-ai/metrics.sqlite3 vs ~/.git-ai/internal/metrics-db), so copilot ingest has never worked, and `verify` tells a caller holding a not-yet-persisted session id to 'run ingest'. This packet adds a fifth Reconcile implementor — a daemon-side poller over the NATIVE session stores (claude, omp) keyed on FILES, never on pij seat rows — that enqueues the existing idempotent ingest when a session file has bytes beyond its durable cursor; makes the rot visible in `status` and `doctor`; distinguishes 'no session file yet' from 'not indexed'; and fixes the metrics-db path. The readers already exist and work; this ships the loop that runs them."
+    },
+    {
+      "name": "goals",
+      "value": [
+        "a daemon reconciler (`convo_poll`, fifth `Reconcile` implementor, tick-counted like retention) that every poll cadence enumerates `~/.claude/projects/<slug>/<uuid>.jsonl` (+ `<uuid>/subagents/*.jsonl`) and `~/.omp/agent/sessions/<slug>/<ts>_<uuid>.jsonl`, and for every session file whose on-disk size exceeds its durable ingest cursor (or that has no cursor and was modified within the lookback window) calls `convo_ingest::submit_after` with the file-derived (harness, session_id, folder) — identity comes from the FILE, never from a pij seat row",
+        "the poller is a no-op on an unchanged store (size == cursor enqueues nothing — proven by test) and bounded on a cold start (a per-pass submission cap with a stagger via `submit_after`, so 100+ backlog sessions do not land as one burst)",
+        "`status` gains an additive `conversations` block: last_poll_at, per-harness sessions tracked / behind (size > cursor) / newest_ingest_at; `doctor` gains a `conversations` row that says in one line whether ingest is flowing, stalled, or disabled, and whether the git-ai store exists — so 'quiet because nothing changed' and 'quiet because dead' stop looking identical (DL-001)",
+        "`verify`/`ingest` distinguish 'no session file exists for this id yet' (new catalog code, fix text: the harness has not persisted it; the poller picks it up when written) from 'not indexed' (existing code) — the pij `harness_session` lazy-persist case named in evidence.md §4",
+        "the git-ai metrics-db source resolves its path by probing `~/.git-ai/internal/metrics-db` then `~/.git-ai/metrics.sqlite3`; the ingest ROUTE fails fast with an honest message when neither opens instead of accepting and failing in the job; the doctor row reports the resolved path or its absence",
+        "two config knobs under `[indexing]`: `conversation_poll_ticks` (shared 5s ticks between polls; default 12 = one minute; 0 disables) and `conversation_lookback_days` (default 14; files older than this with no cursor are ignored); both documented in the config template; deny_unknown_fields respected",
+        "real usage on prod after o-prime's bounce: grim-gurgeh's omp session (13 MB, indexed at 110 turns) advances past 110 without anyone typing ingest, within two poll cadences; a fresh claude session started in a new directory is indexed within two cadences; `status` and `doctor` show the block/row; the second poll after catch-up enqueues nothing (log shows `reconciled` quiet)"
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "polling the pij ledger (seat-keyed, not file-keyed) or the git-ai metrics-db for copilot sessions — v1 fixes the metrics-db PATH only; copilot polling is a follow-up once the path fix is proven",
+        "changing the readers, the ordinal/grouping rules (FROZEN — see claude.rs:60-75 and metrics_db.rs), the cursor ledger semantics, or the conversation guid derivation",
+        "a hook-based trigger (harness fs3-convo ingest from a Stop hook) — may coexist later; the enqueue is idempotent, so it is additive and out of scope here",
+        "any change to search, summarisation cost policy, or the runner's job claim loop (a reconciler ENQUEUES, it never runs the job — reconcile.rs scope guard)"
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-0001",
+          "state": "unchecked",
+          "claim": "unit test with an injected fake home (NEVER the real ~): a claude store holding a main file + one subagent sidecar and an omp store holding one session; first poll enqueues exactly one ingest job per session (dedupe keys asserted); a second poll with no file change enqueues nothing; appending bytes to one file makes the next poll enqueue exactly that session; mutation receipt: flip the size>cursor comparison → suite red"
+        },
+        {
+          "id": "ac-0002",
+          "state": "unchecked",
+          "claim": "identity is file-derived: the test seeds a pij-style 'recorded session id' that matches no file and proves the poller never enqueues it, while the file that exists IS enqueued with the id parsed from its name (claude `<uuid>.jsonl`, omp `<ts>_<uuid>.jsonl`) and the folder from `cwd_of`"
+        },
+        {
+          "id": "ac-0003",
+          "state": "unchecked",
+          "claim": "cold-start bound: a fake store with 60 stale-but-in-window sessions is drained over multiple passes at the configured per-pass cap with staggered `not_before`; no pass submits more than the cap; the total equals 60 with no duplicates; files older than `conversation_lookback_days` with no cursor are skipped and counted as skipped in the pass log"
+        },
+        {
+          "id": "ac-0004",
+          "state": "unchecked",
+          "claim": "`GET /status` carries `conversations` {last_poll_at, harnesses:[{harness, tracked, behind, newest_ingest_at}]} and the CLI renders it; `flowspace3 doctor` carries a `conversations` step whose `found` names flowing/stalled/disabled and the git-ai store path or 'missing'; envelope goldens updated; `conversation_poll_ticks = 0` renders as disabled, not as healthy"
+        },
+        {
+          "id": "ac-0005",
+          "state": "unchecked",
+          "claim": "`conversation verify --harness omp --session <id-with-no-file>` (and `ingest`) return the NEW catalog code with the 'not persisted yet' fix text; the same command against an existing-but-unindexed file still returns FS3-E-QUERY-CONVERSATION-NOT-FOUND; CLI render test for both"
+        },
+        {
+          "id": "ac-0006",
+          "state": "unchecked",
+          "claim": "metrics-db path: with a fake home holding `.git-ai/internal/metrics-db` the source opens it; with `.git-ai/metrics.sqlite3` only, it opens that; with neither, `submit` for `--harness metrics-db` fails synchronously with a message naming both probed paths and `accepted` is never true; doctor row reflects each case"
+        },
+        {
+          "id": "ac-0007",
+          "state": "unchecked",
+          "claim": "config: `[indexing] conversation_poll_ticks` and `conversation_lookback_days` parse with defaults 12 and 14, appear in the rendered config template, and `conversation_lookback_days = 0` is refused with a Problem naming the key (a zero window would poll nothing forever)"
+        },
+        {
+          "id": "ac-0008",
+          "state": "unchecked",
+          "claim": "real usage, measured by o-prime on prod after the bounce and recorded in assets/inputs/prod-after.md: grim-gurgeh's omp session advances past 110 turns with no manual ingest within two cadences; a fresh claude session in a new directory is indexed within two cadences; the following pass logs quiet; `status`/`doctor` show the block/row; total summarize jobs enqueued for the catch-up are reported so the cost is visible"
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-018a",
+          "title": "Phase 1: the loop that runs the readers",
+          "brief": "One coder. t1 poller enumeration + size-vs-cursor decision (fake home); t2 file-derived identity + submit wiring; t3 cold-start cap/stagger + lookback; t4 status block + doctor row; t5 'no session file yet' code + verify/ingest + CLI render; t6 metrics-db path probe + fail-fast route; t7 config knobs + template + gate; t8 PR + o-prime bounce + prod receipt.",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,201 @@
+{
+  "dd": {
+    "schema": "pij-team/packet"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Coder packet — convo-poller",
+        "role": "coder",
+        "plan": "docs/plans/018-convo-poller/plan.dd.json",
+        "seat": "pij-flaky-jerusalem",
+        "updated": "2026-09-06"
+      }
+    },
+    {
+      "name": "mission",
+      "value": "You are the coder for plan 018-convo-poller, a single unit, no PM; o-prime (rs name pij-binding-magpie) is your counterpart. Conversation ingest works but nothing runs it: every transcript rots from the moment a human last typed `conversation ingest`. Build the daemon-side poller that runs the EXISTING readers over the native session stores, keyed on FILES (never pij seat rows), bounded on cold start; make the rot visible in `status`/`doctor`; distinguish 'no session file yet' from 'not indexed'; fix the git-ai metrics-db path. Read assets/inputs/evidence.md first — it is why this packet exists and your ack must cite it."
+    },
+    {
+      "name": "instructions",
+      "value": [
+        {
+          "id": "i0",
+          "text": "YOUR TREE: /Users/jordanknight/substrate/flowspace/fs3-018-convo-poller (branch 018-convo-poller). Your seat's cwd is the MAIN CLONE at /Users/jordanknight/substrate/flowspace/flowspace3 — `cd` into the worktree for every shell command and prefix EVERY file-tool path with /Users/jordanknight/substrate/flowspace/fs3-018-convo-poller/. Never commit on main; never `git checkout` in the main clone."
+        },
+        {
+          "id": "i1",
+          "text": "Orient: read the impl-guide (architecture + unit row + risks), the plan (goals, ACs), evidence.md, and the two vendored reviews. Run `harness boot --json` in your worktree before changing anything. DOGFOOD FLOWSPACE: `flowspace3 search \"<question>\"` for every meaning-shaped question before grep (exact identifiers may still grep); report every miss or confusing envelope as friction."
+        },
+        {
+          "id": "i1b",
+          "text": "THE WIRE: o-prime's rs name is pij-binding-magpie — `pij-rs send --from pij-flaky-jerusalem --to pij-binding-magpie --msg-id \"$(uuidgen)\" --body '<one line>'` lands as a real turn; use it for every edge (ack pointer, stop-and-asks, done). Files in .harness/temp/agent/ (<slug>-ack.md / -ask-NNN.md / -report.md) in YOUR worktree stay the durable record. Never pij adopt."
+        },
+        {
+          "id": "i2",
+          "text": "Ack FIRST: reply to o-prime with your read of the unit + a numbered implementation plan before writing code, INCLUDING: the cursor helper you will need (name, crate) or that none is needed; the catalog code name; whether a migration is needed (default: no). Corrections to the packet are welcome — bring evidence."
+        },
+        {
+          "id": "i3",
+          "text": "Implement using the /builder implement discipline: work t1..t8 in order, keep the execution log honest, tests alongside code — every test injects a TEMPDIR HOME; the real ~/.claude and ~/.omp are never read by a test."
+        },
+        {
+          "id": "i4",
+          "text": "Stay inside the fence (scope below). If the work forces you outside it, STOP and ask o-prime — that is a composition concern, not yours to solve unilaterally."
+        },
+        {
+          "id": "i5",
+          "text": "FROZEN, do not touch: the readers' ordinal/grouping rules (claude.rs:60-75, metrics_db.rs header), the cursor ledger semantics in tail.rs / ingest_cursors, `conversation_guid`. Changing any of these silently doubles stored conversations."
+        },
+        {
+          "id": "i6",
+          "text": "Done = `harness checks` green in YOUR worktree + the unit tests proving each AC + one mutation receipt per rule (comparison flipped → red; cap removed → red; probe order swapped → red), restored after. Report done to o-prime with the evidence and open the PR yourself; NEVER merge — o-prime merges and bounces prod."
+        },
+        {
+          "id": "i7",
+          "text": "Capture friction with `harness observe` the moment it bites; list, never clear the buffer."
+        },
+        {
+          "id": "i8",
+          "text": "OMP seat: use your LSP (go-to-definition, find-references, diagnostics) for symbol questions instead of text search; verify every LSP edit by exact read. If the Rust LSP is not configured in your seat, report it at ack rather than silently grepping for the whole packet."
+        },
+        {
+          "id": "i8b",
+          "text": "DDOC MUTATION SURFACE: the GLOBAL `ddocs` CLI on PATH (`ddocs set` / `ddocs add` / `ddocs build <file>`). Never hand-edit .dd.json/.dd.md. Task states move to checked only with a receipt."
+        },
+        {
+          "id": "i9",
+          "text": "PROD :7373 is never a test target; read-only commands against it are fine. Per-run test DBs ONLY on :5434 (FS3_TEST_DATABASE_URL=postgres://flowspace3:flowspace3@127.0.0.1:5434/flowspace3_test, container flowspace3-db-test) — NEVER :5433; any scratch daemon uses FS3_CONFIG_DIR=<scratch> + an ephemeral port; one cargo invocation at a time; NEVER run `harness checks` while another seat's gate is running — ask o-prime for the slot."
+        },
+        {
+          "id": "i10",
+          "text": "TRIPWIRE: `cargo test -p fs3-providers --test conversation_sources` and the conversation goldens in `crates/cli/tests/envelope_goldens.rs` must stay green untouched. A red there means you changed a reader or an envelope you do not own — STOP and report; never investigate it away."
+        },
+        {
+          "id": "i11",
+          "text": "READS DECLARATION: you CONSUME `reconcile.rs` (trait + run_forever), `retention.rs` (tick pattern), `convo_ingest.rs` (submit_after, discover_folder/cwd_of, source_for), `fs3_store::ingest_cursors` and `enqueue_job`, `fs3_providers::conversation_sources::{claude,omp}` (resolve semantics only), `views/status.rs`, `doctor.rs` Step builders, `config.rs` IndexingConfig + Problem. Reading anything else is a stop-and-ask."
+        },
+        {
+          "id": "i12",
+          "text": "COST: the first prod pass will find ~100 in-window session files. Your cap + stagger design must be stated at ack with numbers (e.g. 10 per pass, 6s stagger), and the pass log must print enqueued/behind/skipped so o-prime can read the catch-up cost off the log."
+        },
+        {
+          "id": "i13",
+          "text": "ABSOLUTE PATHS ALWAYS for every file tool (edit/write/read), rooted at YOUR worktree. Do NOT `flowspace3 add` your worktree — search is a comprehension aid over the main index; bytes are verified in your own tree."
+        }
+      ]
+    },
+    {
+      "name": "working_with",
+      "value": [
+        {
+          "id": "w1",
+          "text": "o-prime (pij-binding-magpie) is your interface: ack, stop-and-asks, done report — rs send + file."
+        },
+        {
+          "id": "w2",
+          "text": "DEFER to o-prime: anything outside the fence, migrations, dependency additions, anything that changes a public envelope shape beyond the additive fields named in the interface."
+        },
+        {
+          "id": "w3",
+          "text": "Your evidence outranks the packet: correct it at ack with a measurement."
+        }
+      ]
+    },
+    {
+      "name": "scope",
+      "value": {
+        "worktree": "/Users/jordanknight/substrate/flowspace/fs3-018-convo-poller",
+        "branch": "018-convo-poller",
+        "fence": "crates/daemon/src/convo_poll.rs (new), crates/daemon/src/convo_ingest.rs, crates/daemon/src/boot.rs (registration only), crates/daemon/src/status.rs, crates/core/src/views/status.rs (additive), crates/core/src/config.rs (two knobs + template), crates/core/src/catalog.rs (one code), crates/cli/src/doctor.rs, crates/cli/src/conversation.rs and status rendering, crates/store/src/** ONLY for a cursor bulk-read helper named at ack, crates/daemon/tests/**, crates/cli/tests/**, docs/plans/018-convo-poller/**, .harness/temp/agent/**. Fence is by RESPONSIBILITY: anything touching readers, ledger semantics, search, or the runner's claim loop is out and needs an ask.",
+        "forbidden_note": "Never touch another unit's paths, .harness/government/**, or the plan's flow state. Open the PR yourself when the done-bar is met; NEVER merge it — o-prime merges. ABSOLUTE PATHS FOR EVERY FILE READ AND EDIT, ALWAYS, rooted at the worktree — your seat was spawned in the main clone and a relative path will edit the wrong tree while reporting success (DL-007/008, DL-044)."
+      }
+    },
+    {
+      "name": "done_bar",
+      "value": [
+        {
+          "id": "d1",
+          "text": "Unit implements the interface contract in the impl-guide row, verbatim or with o-prime-ruled amendments."
+        },
+        {
+          "id": "d2",
+          "text": "ac-0001..0007 each have a green test named in the execution log, plus the three mutation receipts (red then restored)."
+        },
+        {
+          "id": "d3",
+          "text": "harness checks green in your worktree — AND prove the change is IN THE TREE YOU BUILT: cite tree-resident evidence (git status in the worktree, the module named in the build)."
+        },
+        {
+          "id": "d4",
+          "text": "The SNAP-IN RECIPE shipped as a doc comment on ConvoPoller (config shape, construction, the boot.rs registration line) even though you wire it yourself — composition verifies rather than re-derives."
+        },
+        {
+          "id": "d5",
+          "text": "Done report to o-prime: what shipped, evidence, deviations, the cold-start numbers, and an explicit ASSUMPTIONS section (what you assumed about cursors, folders, and the runner)."
+        }
+      ]
+    },
+    {
+      "name": "refs",
+      "value": [
+        {
+          "id": "r1",
+          "path": "docs/plans/018-convo-poller/plan.dd.md",
+          "note": "the promises (ac-0001..0008)"
+        },
+        {
+          "id": "r2",
+          "path": "docs/plans/018-convo-poller/impl-guide.dd.md",
+          "note": "architecture, unit row, risks"
+        },
+        {
+          "id": "r3",
+          "path": "docs/plans/018-convo-poller/assets/backpressure.dd.md",
+          "note": "proof per criterion"
+        },
+        {
+          "id": "r4",
+          "path": "docs/plans/018-convo-poller/assets/inputs/evidence.md",
+          "note": "why this packet exists — cite at ack"
+        },
+        {
+          "id": "r5",
+          "path": "docs/plans/018-convo-poller/assets/inputs/review-claude-session-ingest.md",
+          "note": "how ingest works today, end to end, with line refs"
+        },
+        {
+          "id": "r6",
+          "path": "docs/plans/018-convo-poller/assets/inputs/review-git-ai-fidelity.md",
+          "note": "why native stores are primary and git-ai is not"
+        },
+        {
+          "id": "r7",
+          "path": "crates/daemon/src/reconcile.rs",
+          "note": "the trait and run_forever; the scope guard (enqueue, never run)"
+        },
+        {
+          "id": "r8",
+          "path": "crates/daemon/src/retention.rs",
+          "note": "tick-counted slow reconciler — the model to copy"
+        },
+        {
+          "id": "r9",
+          "path": "crates/daemon/src/convo_ingest.rs",
+          "note": "submit_after :283, discover_folder/cwd_of :392, source_for :513 (metrics-db path :538), verify :103, INGEST_SESSION"
+        },
+        {
+          "id": "r10",
+          "path": "crates/daemon/src/boot.rs",
+          "note": "reconciler registration ~:735"
+        },
+        {
+          "id": "r11",
+          "path": "docs/plans/018-convo-poller/assets/inputs/pij-two-daemons.md",
+          "note": "the wire: how to reach o-prime"
+        }
+      ]
+    }
+  ]
+}

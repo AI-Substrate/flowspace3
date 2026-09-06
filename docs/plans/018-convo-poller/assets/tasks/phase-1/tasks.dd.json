@@ -1,0 +1,174 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: the loop that runs the readers",
+        "slug": "phase-1",
+        "status": "ready",
+        "summary": "One coder, tasks in order, every assertion pinned to a backpressure row."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Work top to bottom; stop-and-ask o-prime on anything outside the fence."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "t1",
+          "title": "Poller skeleton + enumeration + size-vs-cursor decision",
+          "state": "unchecked",
+          "done": "#done_when/t1",
+          "success": "`convo_poll.rs` implements Reconcile with tick counting; enumerates claude/omp stores under an injected home; compares each file's size to its durable cursor; unit tests on a tempdir home (first poll enqueues one per session, unchanged poll enqueues nothing, appended file re-enqueues); mutation: flipped comparison → red",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ]
+        },
+        {
+          "id": "t2",
+          "title": "File-derived identity + submit wiring",
+          "state": "unchecked",
+          "done": "#done_when/t2",
+          "success": "(harness, session_id) parsed from filename, folder via cwd_of/discover_folder reuse; claude sidecars attributed to the parent request, not enumerated as sessions; phantom recorded id test; submit_after called with the dedupe address",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002"
+          ]
+        },
+        {
+          "id": "t3",
+          "title": "Cold-start cap, stagger, lookback",
+          "state": "unchecked",
+          "done": "#done_when/t3",
+          "success": "per-pass cap + staggered not_before via submit_after; lookback window skips old cursorless files; 60-session test proves cap and totals; pass log prints enqueued/behind/skipped; mutation: cap removed → red",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
+        },
+        {
+          "id": "t4",
+          "title": "status block + doctor row",
+          "state": "unchecked",
+          "done": "#done_when/t4",
+          "success": "additive StatusReport.conversations; CLI rendering; doctor `conversations` step with flowing/stalled/disabled + git-ai path; goldens updated; ticks=0 renders disabled",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ]
+        },
+        {
+          "id": "t5",
+          "title": "'no session file yet' distinction",
+          "state": "unchecked",
+          "done": "#done_when/t5",
+          "success": "new catalog code; verify/ingest probe the store for the file before the index; both codes tested; CLI render for both",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        },
+        {
+          "id": "t6",
+          "title": "metrics-db path probe + fail-fast route",
+          "state": "unchecked",
+          "done": "#done_when/t6",
+          "success": "probe internal/metrics-db then metrics.sqlite3; submit refuses synchronously when neither opens, naming both; three-layout tests; mutation: probe order swapped → red",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0006"
+          ]
+        },
+        {
+          "id": "t7",
+          "title": "Config knobs + template + gate",
+          "state": "unchecked",
+          "done": "#done_when/t7",
+          "success": "conversation_poll_ticks (12) and conversation_lookback_days (14) with template + refusal of 0 days; registration in boot.rs; `harness checks` green; execution log complete",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0007"
+          ]
+        },
+        {
+          "id": "t8",
+          "title": "PR, bounce, prod receipt",
+          "state": "unchecked",
+          "done": "#done_when/t8",
+          "success": "open the PR (never merge); o-prime bounces prod and records ac-0008 in assets/inputs/prod-after.md",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0008"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {
+        "t1": [
+          {
+            "id": "dw-0181",
+            "assertion": "ac-0001 test(s) green + mutation red",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          }
+        ],
+        "t2": [
+          {
+            "id": "dw-0182",
+            "assertion": "ac-0002 test(s) green",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          }
+        ],
+        "t3": [
+          {
+            "id": "dw-0183",
+            "assertion": "ac-0003 test(s) green + mutation red",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          }
+        ],
+        "t4": [
+          {
+            "id": "dw-0184",
+            "assertion": "ac-0004 test(s) green",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+          }
+        ],
+        "t5": [
+          {
+            "id": "dw-0185",
+            "assertion": "ac-0005 test(s) green",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+          }
+        ],
+        "t6": [
+          {
+            "id": "dw-0186",
+            "assertion": "ac-0006 test(s) green + mutation red",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0006"
+          }
+        ],
+        "t7": [
+          {
+            "id": "dw-0187",
+            "assertion": "ac-0007 test(s) green",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0007"
+          }
+        ],
+        "t8": [
+          {
+            "id": "dw-0188",
+            "assertion": "ac-0008 test(s) green",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0008"
+          }
+        ]
+      }
+    }
+  ]
+}
