@@ -3993,3 +3993,15 @@ under `harness/cli/src/` barely surfaced. Rows 190/191 kin, now with numbers.
 **Encode:** exclude (or heavily down-weight) turns from the calling session's own conversation; when a query
 names a verb/command/file, weight code+doc over turns; expose per-repo code-element counts in `status` so an
 under-indexed root is visible instead of inferred from bad results.
+
+## 203 — a transcript containing the JSON NUL escape (backslash-u-0000) can never be ingested: Postgres rejects the turn insert forever
+
+Seen on the 018 bounce (2026-09-06 22:47Z): ingest:claude/c5adf67d-10a3-4a61-ad74-6750f768ddf9@~/github/home-improvement
+fails with FS3-E-STORE-QUERY-FAILED "unsupported Unicode escape sequence" (jsonb refuses the NUL escape).
+3 attempts, terminal=false, so the runner revives it and it fails again; the session (4,139 lines, live
+today) will never index. Plan 087 added input hygiene for EMBEDDING text; the turn/items insert path has
+none. Correct behaviour observed: the conversations row stays flowing — one poisoned file does not hold
+health hostage — but nothing names the poisoned session to an operator.
+**Encode:** sanitise the NUL escape (and other jsonb-illegal escapes) in prepare_batch / the turn insert
+as 087 does for embeddings; make a store rejection of this class TERMINAL with the session named in
+status.last_error and doctor, not revivable-forever.
