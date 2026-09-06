@@ -872,3 +872,36 @@ we hand the pattern to pij and the harness. Also `harness observe` each one.
   o-prime-owned observation buffer before it can be drained. Rescue (or drain) before teardown; the
   017 reviewer flagged this itself and left a byte-identical copy outside the tree.
 
+
+## Run: plan 018 convo-poller (2026-09-06, coder pij-flaky-jerusalem on omp, single unit, no PM)
+
+- **`harness boot` is gate-class and the packet did not say so.** The coder read the boot extension,
+  saw `cargo build --all-targets`, and cancelled rather than take an unslotted gate — correct, and
+  only because it looked. Encoded as coder-template i15: ask for the slot before boot.
+- **Every new seat's first instruction is a dead link.** CLAUDE.md sends agents to
+  `.harness/government/how-we-work.md`, `worker-roster.md`, `rulings/` — none exist on main; only
+  README.md is tracked. They live on the `prime-governance` branch in a separate worktree. The seat
+  stopped and asked; o-prime authorised a read-only path. Jordan's call whether to commit the manual
+  to main or fix the pointer (CONF-001 in the fs3 buffer).
+- **A seat spawned in the main clone has a blind LSP in its worktree.** rust-analyzer roots at the
+  spawn cwd; go-to-definition returned nothing for every worktree symbol; `didChangeWorkspaceFolders`
+  is notification-only so the one repair attempt returned -32601. Coder-template i8 told an omp seat
+  to be LSP-first and the environment made that impossible. Encoded as i16 (declare, time-box, fall
+  back). CORRECTION at review time: there is no placement fix — `pij-rs spawn --harness omp` REFUSES a
+  linked worktree ("global and project extension links collide and the peer dies before registration —
+  spawn from the main checkout and cd afterwards"), so every omp seat is blind in its worktree until pij or
+  omp changes. The fallback is the design, not a workaround.
+- **Fence-by-file misses generator-owned docs.** Adding a catalog code requires regenerating
+  `docs/reference/error-codes.md` (a contract test diffs it); adding config knobs requires rows in
+  `docs/reference/configuration.md`. Neither was in the fence, and the gate went red on a page the
+  coder never knew existed. Encoded as i14.
+- **A red `harness checks` cannot name its failure.** The one-line JSON error truncated before the
+  test names, the job snapshot omitted error text, and no gate log was written; the coder inferred
+  wrong suspects (tokens.rs/update.rs — successful tail output) and needed a persisted crate-level
+  rerun to learn the truth. Filed in the fs3 buffer; encode: persist per-stage stdout/stderr under
+  `.harness/temp/checks/` and name the first failing tests in the envelope.
+- **What worked, and is worth keeping:** the ack-with-numbered-plan gate caught two ambiguities in
+  o-prime's own brief before code (ac-0005 verify-vs-ingest; lookback scope); "your evidence
+  outranks the packet" produced four accepted corrections (cwd_of whole-file read; size<offset and
+  identity change; GREATEST(not_before) stagger; sealed HOME) — each with a test and a mutation.
+  Cross-model is not the only lever; a coder that is told its evidence wins will use it.
