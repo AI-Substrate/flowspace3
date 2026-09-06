@@ -71,6 +71,14 @@
         {
           "id": "i16",
           "text": "YOUR LSP IS BLIND IN YOUR WORKTREE, BY CONSTRUCTION: pij refuses to spawn omp inside a linked worktree (global and project extension links collide; the peer dies before registration), so every omp seat is spawned in the MAIN CHECKOUT and rust-analyzer roots there — go-to-definition and references in the worktree return nothing while document symbols still work. Say so at ack, time-box ONE workspace-folder repair (10 min; `didChangeWorkspaceFolders` is notification-only, a request returns -32601), then fall back to `flowspace3 search`/`get` for meaning and grep for exact identifiers, with every edit verified by exact read — and declare the fallback in your done report. (From 018, coder AND reviewer.)"
+        },
+        {
+          "id": "i17",
+          "text": "DECLARE YOUR PARENT ON ARRIVAL: a seat the human spawned directly has no parent and rs renders it as a ROOT — run `pij-rs register --parent <the prime that dispatched you>` before your ack (accepted in place, no re-mint); the prime checks `pij-rs state <seat>` shows it when ruling the ack. (From chainglass plan 093, pij-lonely-antelope.)"
+        },
+        {
+          "id": "i18",
+          "text": "A UNIT THAT JOINS TWO SOURCES NEEDS A FIXTURE WITH DISJOINT IDS: if both fake sources share ids the join cannot fail, and the test proves nothing — two HIGH findings hid behind exactly this in chainglass 093. Build the fixture so the ids do NOT overlap, assert the join degrades HONESTLY on the miss (typed reason, no invented match), and add the mutation that makes the ids collide → the honest-degrade assertion must go red. (From chainglass plan 093, pij-lonely-antelope.)"
         }
       ]
     },

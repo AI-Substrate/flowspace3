@@ -905,3 +905,11 @@ we hand the pattern to pij and the harness. Also `harness observe` each one.
   outranks the packet" produced four accepted corrections (cwd_of whole-file read; size<offset and
   identity change; GREATEST(not_before) stagger; sealed HOME) — each with a test and a mutation.
   Cross-model is not the only lever; a coder that is told its evidence wins will use it.
+
+## Cross-repo: chainglass plan 093 (pij-rs reader), second run — reported by pij-lonely-antelope 2026-09-07
+
+Full record (theirs, committed 1575f44): `chainglass/docs/plans/093-pij-rs-reader/assets/findings/pij-team-experiences-093.md`.
+Eight items; the two folded into templates now, with attribution:
+- **Seats the human spawns directly have no parent; rs renders them as roots.** Fix that worked: `pij-rs register --parent <prime>` on arrival, accepted in place. → coder i17; primes check `pij-rs state <seat>` at ack.
+- **A fixture whose two fake sources share ids cannot fail to join** — hid two HIGH findings from every existing test. → coder i18 + reviewer i13: disjoint ids, honest degrade, collide-the-ids mutation.
+Carried, not folded yet (theirs to keep pressing, ours to watch): C3 "compact the peer at completion" is not executable against the rs daemon (no remote-control verbs in v1 send — pij plan 138 sibling); operator-only backpressure rows must be scheduled EARLY, not left last (their F1/F2 were found by Jordan on the running product before the reviewer); "commit now, verify live after" beat holding a 36-file tree for the operator; a mandatory gate carried a wall-clock test against the retired fs2 binary (theirs to move — fs2 retired 2026-09-03); the native code-review-agent runner fails E200 in a sandbox; and a prime citing a requirement id that does not exist (req-0040) — a reminder that ids are checked, never remembered.
