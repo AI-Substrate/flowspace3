@@ -273,6 +273,13 @@ pub struct IngestAccepted {
     pub accepted: bool,
 }
 
+/// Internal scheduling receipt. The public response remains IngestAccepted.
+#[derive(Debug)]
+pub(crate) struct QueuedIngest {
+    pub(crate) response: IngestAccepted,
+    pub(crate) job_id: i64,
+}
+
 /// Validate the addressed store, then enqueue without reading the transcript.
 ///
 /// # Errors
@@ -292,7 +299,9 @@ pub async fn submit_after(
     request: &IngestRequest,
     delay: std::time::Duration,
 ) -> Result<IngestAccepted, Failure> {
-    submit_after_at_home(state, request, delay, home_dir()?).await
+    submit_after_at_home(state, request, delay, home_dir()?)
+        .await
+        .map(|queued| queued.response)
 }
 
 pub(crate) async fn submit_after_at_home(
@@ -300,7 +309,7 @@ pub(crate) async fn submit_after_at_home(
     request: &IngestRequest,
     delay: std::time::Duration,
     home: PathBuf,
-) -> Result<IngestAccepted, Failure> {
+) -> Result<QueuedIngest, Failure> {
     // Validated HERE rather than in the worker, so a mistyped address is a
     // synchronous error the caller can see rather than a job that fails later
     // where a hook will never look.
@@ -361,14 +370,17 @@ pub(crate) async fn submit_after_at_home(
         )
     })?;
 
-    fs3_store::enqueue_job(&state.db, INGEST_SESSION, &dedupe_key, &payload, delay)
+    let job_id = fs3_store::enqueue_job_id(&state.db, INGEST_SESSION, &dedupe_key, &payload, delay)
         .await
         .map_err(fail)?;
 
-    Ok(IngestAccepted {
-        address,
-        dedupe_key,
-        accepted: true,
+    Ok(QueuedIngest {
+        response: IngestAccepted {
+            address,
+            dedupe_key,
+            accepted: true,
+        },
+        job_id,
     })
 }
 
@@ -787,20 +799,54 @@ pub(crate) async fn ingest_at_home(
 
                 // Blocking IO, so off the async thread — exactly as the local ONNX
                 // embedder is handled.
-                let batch = tokio::task::spawn_blocking({
+                let (batch, no_content) = tokio::task::spawn_blocking({
                     let source = source_for(harness, &folder, &home, remote.as_deref())?;
                     let file = file.clone();
-                    move || source.read_incremental(&file, cursor.as_ref())
+                    move || {
+                        let read_started = std::time::Instant::now();
+                        let before = matches!(harness, Harness::Claude | Harness::Omp)
+                            .then(|| crate::convo_poll::FileStamp::read(&file.path).ok())
+                            .flatten();
+                        let batch = source.read_incremental(&file, cursor.as_ref())?;
+                        let no_content = if batch.records.is_empty() {
+                            before
+                                .filter(|stamp| {
+                                    stamp.identifies(&batch.cursor)
+                                        && crate::convo_poll::FileStamp::read(&file.path).ok()
+                                            == Some(*stamp)
+                                })
+                                .map(|stamp| crate::convo_poll::NoContentAck {
+                                    stamp,
+                                    read_started,
+                                })
+                        } else {
+                            None
+                        };
+                        Ok::<_, fs3_core::Error>((batch, no_content))
+                    }
                 })
                 .await
                 .map_err(|error| join_failure(&error))?
                 .map_err(|error| reader_failure(&error.to_string()))?;
 
-                // A session that has produced nothing and has never been stored is not
-                // a conversation yet: creating an empty header and a cursor for it
-                // would leave a row nothing can ever fill in.
-                let known = existing.is_some();
+                // A zero read with a real header can use the ordinary atomic
+                // cursor/empty-ledger commit below. A headerless read cannot
+                // satisfy that FK without inventing started_at: acknowledge
+                // its exact revision in memory instead, never mint a header.
+                let known = existing.is_some()
+                    || (batch.records.is_empty()
+                        && fs3_store::conversation_delivery(&state.db, &guid)
+                            .await
+                            .map_err(fail)?
+                            .is_some());
                 if batch.records.is_empty() && !known {
+                    if let Some(ack) = no_content {
+                        state
+                            .conversations
+                            .write()
+                            .await
+                            .acknowledge_no_content(file.path.clone(), ack);
+                    }
                     log_file_ingest(&guid, 0, 0, 0, 0, batch.rescanned);
                     return Ok(None);
                 }
@@ -891,6 +937,13 @@ pub(crate) async fn ingest_at_home(
                 )
                 .await
                 .map_err(fail)?;
+                if let Some(ack) = no_content {
+                    state
+                        .conversations
+                        .write()
+                        .await
+                        .acknowledge_no_content(file.path.clone(), ack);
+                }
 
                 let identity = remote.clone().unwrap_or_else(|| UNANCHORED.to_string());
                 let summarized =
@@ -1262,6 +1315,7 @@ mod tests {
             )
             .await
             .unwrap()
+            .response
             .accepted
         );
 
@@ -1286,6 +1340,7 @@ mod tests {
             )
             .await
             .unwrap()
+            .response
             .accepted
         );
         let count: i64 =

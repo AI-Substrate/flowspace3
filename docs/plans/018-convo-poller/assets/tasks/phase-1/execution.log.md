@@ -194,3 +194,29 @@ Focused verification after restoring the mutation: poller 13 passed; actual spen
 Per the latest ruling, these changes are committed/pushed before the final supervised full gate. That final verdict and immutable review head will be reported in the retained gate log and coder report; no further push after naming the review head.
 
 The failed spend-mutation database was audited before cleanup: only seeded `018-spend-session` under its tempdir HOME, with ingest=2/summarize=4/embed=6 exactly matching the intentional dedupe bypass. It was dropped; successful real-daemon spend tests stop both process instances and destroy their databases. No production resources or unrelated databases touched.
+
+## Cross-model review delta F1–F4
+
+The reviewed baseline was `159ec8168360108b4b7ce68ea503605cb374b885`. Full review copied byte-identically to `assets/reviews/cross-model-review.md`; both source/archive MD5 are `de1865aa43c2f842d83cc9fbc2a106d7`. The archive is not edited. The review independently confirmed no repeated LLM spend, and identified health/acknowledgment defects plus one test-environment race.
+
+### Final ruled behavior (supersedes elapsed-pass aging)
+
+- F1: only submitted work is behind. Pending/running jobs remain Flowing; their unique count is explicit in the reason. Lag increments only for observed done/failed attempts without cursor/read-ACK progress; failed counts once. Outcome revisions use job ID, attempts and terminal/resubmission transitions, never timestamp uniqueness. Missing/purged rows supply no information and cannot increment or clear counters. ID/lag state is process-local: restart requires three fresh observed attempts.
+- Outcomes are read BEFORE any new enqueue can overwrite them. New SELECT-only `ingest_job_outcomes` uses `jobs_pkey` and chunks/deduplicates ID lists at 256; an EXPLAIN test with representative unrelated rows asserts the PK index and no Seq Scan. Enqueue surfaces the inserted/upserted ID through a shared implementation and the crate-local submission result only; public `IngestAccepted`/conversation goldens are unchanged. Queue claim/retry/parking/priority semantics remain unchanged.
+- F2: a stable actual zero-record read publishes a `(path, FileStamp)` no-content ACK from ingestion. With an existing real header, the ordinary empty-ledger `commit_poll` stores the exact reader cursor. Without a header, the ACK is process-local: no fabricated header/timestamp and no cursor forced past a partial line. An unchanged headerless file costs one job per poller lifetime; a new poller over the same store costs exactly one more, then quiet. Stamp changes invalidate the ACK.
+- F3: cwd misses are cached by stamp, warn once then log DEBUG, and re-read only on change. Actual probe/submission consumes New priority; cap deferral does not. Unchanged negative hits are skipped before spending a slot.
+- F4: `conversation_verify_contract` moved out of the 16-test binary into `conversation_verify.rs`, with one synchronous test setting HOME before constructing runtime/server/database threads. Original assertions preserved.
+
+### Delta evidence
+
+- Poller suite: 19 passed. Named 60-file healthy catch-up now executes each batch and asserts Flowing every pass. Separate original pending-queue fairness case asserts Flowing with the growing in-flight count on all six passes. 11/12-file cases and the 100-file drain assert health as well.
+- Seven zero-record fixtures (five Claude/two OMP) assert no invented rows, job count flat at seven, behind=0/Flowing from pass 2; a new poller adds exactly seven more jobs and returns quiet. Existing-header and torn-line tests preserve exact durable offsets and ingest the later completed turn once.
+- Terminal attempt test covers pending/running over many passes, done and failed attempts, same-row revival observed before upsert, third-attempt Stalled, and restart amnesia. Revision test proves identical rereads count once, equal timestamps/different attempts count separately, and missing rows preserve counters.
+- Store outcome/PK/chunk test: 1 passed; isolated verification binary: 1 passed; remaining conversation-query binary: 15 passed. Envelope goldens: 2 passed. Spend suite remains 1 passed with unchanged initial/rescan/append counts.
+- Mutations: counting in-flight outcomes makes the health test red (Stalled vs Flowing, artifact://165); dropping the actual ingestion ACK makes pass 2 enqueue seven again (artifact://167); bypassing negative-cache hits reopens six times (artifact://169). All restored. Ledger bypass remains red at summarize=4 versus 2 (artifact://173), then restored spend is green.
+
+No reader, normalizer, GUID, ledger-write, migration, or runner execution-policy change. Additional approved store fence is ID-return plumbing plus SELECT-only outcome projection/export/test. Final supervised harness gate is run under the same sealed HOME/:5434 discipline before the one delta push and immutable-head handoff.
+
+Delta mutation cleanup: audited `fs3_convospend_1788690954_000000000000a70318d2b4f237c7f1e0` on :5434. It contained only seeded `018-spend-session` jobs under a temporary HOME, with ingest=2/summarize=4/embed=6 and zero other connections. Dropped only that database through `flowspace3-db-test`. The missing PATH client was captured as DL-009; observations and proof logs remain for o-prime, never cleared.
+
+Final delta gate, `2026-09-06T10:53:55.389Z`: `harness checks exited 0`; envelope `"status": "ok"`, `"passed": 11`, `"doc_links_checked": 12`. All eleven gates have `"ok": true`, `"code": 0`, including fmt, clippy with warnings denied, the complete test-suite orchestrator, both migration guards and architecture. Supervised sealed HOME/config and :5434; full stdout/stderr retained in `.harness/temp/agent/convo-gate-full.log`. No source change after this verdict. One delta push follows for immutable-head rereview; production acceptance remains blocked on o-prime.

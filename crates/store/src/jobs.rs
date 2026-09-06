@@ -104,6 +104,20 @@ pub async fn enqueue_job(
     enqueue_job_with_priority(pool, kind, dedupe_key, payload, delay, JOB_PRIORITY_DEFAULT).await
 }
 
+/// Enqueue using the existing policy and return the inserted/upserted row ID.
+///
+/// # Errors
+/// The same store failures as [`enqueue_job`].
+pub async fn enqueue_job_id(
+    pool: &PgPool,
+    kind: &str,
+    dedupe_key: &str,
+    payload: &serde_json::Value,
+    delay: Duration,
+) -> Result<i64, StoreError> {
+    enqueue_job_with_priority_id(pool, kind, dedupe_key, payload, delay, JOB_PRIORITY_DEFAULT).await
+}
+
 /// Put work on the queue at one of the declared shared priorities.
 ///
 /// A duplicate active row keeps the higher priority: an ordinary re-fire must
@@ -123,7 +137,20 @@ pub async fn enqueue_job_with_priority(
     delay: Duration,
     priority: JobPriority,
 ) -> Result<(), StoreError> {
-    sqlx::query(
+    enqueue_job_with_priority_id(pool, kind, dedupe_key, payload, delay, priority)
+        .await
+        .map(|_| ())
+}
+
+async fn enqueue_job_with_priority_id(
+    pool: &PgPool,
+    kind: &str,
+    dedupe_key: &str,
+    payload: &serde_json::Value,
+    delay: Duration,
+    priority: JobPriority,
+) -> Result<i64, StoreError> {
+    let id = sqlx::query_scalar(
         "INSERT INTO jobs (kind, dedupe_key, payload, not_before, priority)
          VALUES ($1, $2, $3, now() + make_interval(secs => $4), $5)
          ON CONFLICT (dedupe_key) WHERE state IN ('pending', 'running')
@@ -134,16 +161,66 @@ pub async fn enqueue_job_with_priority(
            state      = CASE WHEN jobs.state = 'failed' THEN 'pending' ELSE jobs.state END,
            attempts   = CASE WHEN jobs.state = 'failed' THEN 0 ELSE jobs.attempts END,
            parks      = CASE WHEN jobs.state = 'failed' THEN 0 ELSE jobs.parks END,
-           updated_at = now()",
+           updated_at = now()
+         RETURNING id",
     )
     .bind(kind)
     .bind(dedupe_key)
     .bind(payload)
     .bind(delay.as_secs_f64())
     .bind(priority.0)
-    .execute(pool)
+    .fetch_one(pool)
     .await?;
-    Ok(())
+    Ok(id)
+}
+
+/// Read-only evidence for one retained ingest job. `attempts` counts claims;
+/// enqueue revival can reset it, so consumers also observe state transitions.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct IngestJobOutcome {
+    pub id: i64,
+    pub dedupe_key: String,
+    pub state: String,
+    pub updated_at: String,
+    pub attempts: i32,
+}
+
+const INGEST_JOB_OUTCOMES_SQL: &str =
+    "SELECT id, dedupe_key, state, attempts,
+            to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS updated_at
+       FROM jobs WHERE id = ANY($1) AND kind = 'ingest_session' ORDER BY id";
+
+/// Inspect only submitted IDs via `jobs_pkey`, in chunks of at most 256 IDs.
+/// Read BEFORE enqueue upserts can replace a terminal revision. A missing or
+/// retention-purged row is NO INFORMATION: neither progress nor an attempt.
+/// This query never scans history by the terminal-unindexed dedupe key.
+///
+/// # Errors
+/// Store query/decode failures; no rows are written or changed.
+pub async fn ingest_job_outcomes(
+    pool: &PgPool,
+    job_ids: &[i64],
+) -> Result<Vec<IngestJobOutcome>, StoreError> {
+    let mut ids = job_ids.to_vec();
+    ids.sort_unstable();
+    ids.dedup();
+    let mut outcomes = Vec::new();
+    for chunk in ids.chunks(256) {
+        let rows = sqlx::query(INGEST_JOB_OUTCOMES_SQL)
+            .bind(chunk)
+            .fetch_all(pool)
+            .await?;
+        for row in rows {
+            outcomes.push(IngestJobOutcome {
+                id: row.try_get("id")?,
+                dedupe_key: row.try_get("dedupe_key")?,
+                state: row.try_get("state")?,
+                updated_at: row.try_get("updated_at")?,
+                attempts: row.try_get("attempts")?,
+            });
+        }
+    }
+    Ok(outcomes)
 }
 
 /// Take one ready job of any of `kinds`, or `None` when there is nothing due.
@@ -736,4 +813,121 @@ async fn settle(
     .execute(pool)
     .await?;
     Ok(())
+}
+
+#[cfg(test)]
+mod ingest_outcome_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn ingest_job_outcomes_use_primary_key_and_chunk_ids_without_reading_other_jobs() {
+        let database = fs3_testkit::FreshDatabase::create("ingest-outcomes").await;
+        let pool = crate::connect(&database.url()).await.unwrap();
+        crate::migrate(&pool).await.unwrap();
+        let payload = serde_json::json!({});
+        let first = enqueue_job_id(
+            &pool,
+            "ingest_session",
+            "ingest:claude/outcome-a@fixture",
+            &payload,
+            Duration::ZERO,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            enqueue_job_id(
+                &pool,
+                "ingest_session",
+                "ingest:claude/outcome-a@fixture",
+                &payload,
+                Duration::ZERO
+            )
+            .await
+            .unwrap(),
+            first
+        );
+        let unrelated = enqueue_job_id(&pool, "embed", "unrelated", &payload, Duration::ZERO)
+            .await
+            .unwrap();
+        let second = enqueue_job_id(
+            &pool,
+            "ingest_session",
+            "ingest:omp/outcome-b@fixture",
+            &payload,
+            Duration::ZERO,
+        )
+        .await
+        .unwrap();
+        let claimed = claim_job(&pool, &["ingest_session"])
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(claimed.id, second);
+        complete_job(&pool, second).await.unwrap();
+        let claimed = claim_job(&pool, &["ingest_session"])
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(claimed.id, first);
+        fail_job(&pool, first, "fixture failure", true)
+            .await
+            .unwrap();
+        let outcomes = ingest_job_outcomes(&pool, &[first, second, unrelated, i64::MAX])
+            .await
+            .unwrap();
+        assert_eq!(outcomes.len(), 2);
+        assert_eq!(outcomes[0].id, first);
+        assert_eq!(outcomes[0].state, "failed");
+        assert_eq!(outcomes[0].attempts, 1);
+        assert_eq!(outcomes[1].state, "done");
+        assert_eq!(outcomes[1].attempts, 1);
+        assert!(outcomes.iter().all(|row| row.updated_at.ends_with('Z')));
+        assert_eq!(
+            ingest_job_outcomes(&pool, &[first, second]).await.unwrap(),
+            outcomes
+        );
+        sqlx::query("UPDATE jobs SET attempts=2 WHERE id=$1")
+            .bind(first)
+            .execute(&pool)
+            .await
+            .unwrap();
+        let next = ingest_job_outcomes(&pool, &[first])
+            .await
+            .unwrap()
+            .remove(0);
+        assert_eq!(
+            next.updated_at, outcomes[0].updated_at,
+            "equal timestamps must not hide distinct attempts"
+        );
+        assert_eq!(next.attempts, 2);
+
+        sqlx::query("INSERT INTO jobs(kind,dedupe_key,payload) SELECT 'embed','unrelated-'||n,'{}'::jsonb FROM generate_series(1,4096) AS n")
+            .execute(&pool).await.unwrap();
+        sqlx::query("ANALYZE jobs").execute(&pool).await.unwrap();
+        let plan: serde_json::Value =
+            sqlx::query_scalar(&format!("EXPLAIN (FORMAT JSON) {INGEST_JOB_OUTCOMES_SQL}"))
+                .bind(&[first, second][..])
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        let plan = plan.to_string();
+        assert!(plan.contains("jobs_pkey"), "{plan}");
+        assert!(!plan.contains("Seq Scan"), "{plan}");
+        let mut many: Vec<i64> = (0..600).map(|index| i64::MAX - index).collect();
+        many.extend([first, second, first, unrelated]);
+        assert_eq!(ingest_job_outcomes(&pool, &many).await.unwrap().len(), 2);
+        assert!(ingest_job_outcomes(&pool, &[]).await.unwrap().is_empty());
+        sqlx::query("DELETE FROM jobs WHERE id=$1")
+            .bind(first)
+            .execute(&pool)
+            .await
+            .unwrap();
+        assert!(
+            ingest_job_outcomes(&pool, &[first])
+                .await
+                .unwrap()
+                .is_empty()
+        );
+        database.destroy(pool).await;
+    }
 }
