@@ -1,17 +1,14 @@
 //! The conversation importer: a transcript on disk becomes indexed turns.
 //!
-//! Workshop 005's decision C5 — the import verb ships in v1 and live capture
-//! does not — makes this the intake endpoint's FIRST client, and the reason is
-//! dogfooding: hand-fed transcripts prove search and windowing on real data
-//! with zero live-capture machinery. The live git-ai/harness submitter is a
-//! separate future packet against the same endpoint.
+//! Hand-fed transcripts remain an explicit import path. Native Claude/OMP
+//! capture is scheduled by the daemon's conversation poller and uses the
+//! existing source readers and durable cursors, not this import adapter.
 //!
 //! # Where dialects live
 //!
-//! Here, and nowhere else (workshop 005, open question 3). The schema knows one
-//! shape; a claude or omp transcript is translated INTO it on the way in. A
-//! dialect that reached the tables would be a migration every time a harness
-//! changed its mind about a field name.
+//! This module translates explicit imports into the intake shape. Native
+//! store dialects live in `fs3-providers::conversation_sources`; neither
+//! path makes its dialect part of the stored conversation schema.
 //!
 //! # Why re-importing is the normal case
 //!

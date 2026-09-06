@@ -42,6 +42,13 @@ fn config_for(daemon_url: &str) -> fs3_core::Config {
 
 /// Run doctor against a credential that belongs only to this test invocation.
 async fn run(config: &fs3_core::Config) -> fs3_core::Envelope<DoctorReport> {
+    static HOME: std::sync::OnceLock<tempfile::TempDir> = std::sync::OnceLock::new();
+    HOME.get_or_init(|| {
+        let home = tempfile::tempdir().expect("isolated doctor home");
+        // SAFETY: all doctor tests share one home, initialized before any run.
+        unsafe { std::env::set_var("HOME", home.path()) };
+        home
+    });
     // Doctor now reads the whole `Effective` — it reports how configuration was
     // LOADED as well as what it says. These tests care only about the config,
     // so they wrap it in an otherwise-empty Effective.
@@ -122,29 +129,40 @@ async fn doctor_reports_ok_when_the_daemon_answers() {
         .expect("an ephemeral port");
     let address = listener.local_addr().expect("bound");
     tokio::spawn(async move {
-        let app = axum::Router::new().route(
-            "/health",
-            axum::routing::get(|headers: axum::http::HeaderMap| async move {
-                let accepted = headers
-                    .get(axum::http::header::AUTHORIZATION)
-                    .and_then(|value| value.to_str().ok())
-                    == Some("Bearer doctor-test-key");
-                let status = if accepted {
-                    axum::http::StatusCode::OK
-                } else {
-                    axum::http::StatusCode::UNAUTHORIZED
-                };
-                (
-                    status,
+        let app = axum::Router::new()
+            .route(
+                "/health",
+                axum::routing::get(|headers: axum::http::HeaderMap| async move {
+                    let accepted = headers
+                        .get(axum::http::header::AUTHORIZATION)
+                        .and_then(|value| value.to_str().ok())
+                        == Some("Bearer doctor-test-key");
+                    let status = if accepted {
+                        axum::http::StatusCode::OK
+                    } else {
+                        axum::http::StatusCode::UNAUTHORIZED
+                    };
+                    (
+                        status,
+                        axum::Json(serde_json::json!({
+                            "status": "ok",
+                            "version": "9.9.9",
+                            "embedder": "fake",
+                            "summarizer": "fake"
+                        })),
+                    )
+                }),
+            )
+            .route(
+                "/status",
+                axum::routing::get(|| async {
                     axum::Json(serde_json::json!({
-                        "status": "ok",
-                        "version": "9.9.9",
-                        "embedder": "fake",
-                        "summarizer": "fake"
-                    })),
-                )
-            }),
-        );
+                        "ok":true,"command":"status","v":1,
+                        "data":{"roots":[],"queue":[],"last_error":null,"schema_ahead":[],
+                            "conversations":{"state":"flowing","last_poll_at":null,"harnesses":[]}}
+                    }))
+                }),
+            );
 
         axum::serve(listener, app).await.expect("serves");
     });

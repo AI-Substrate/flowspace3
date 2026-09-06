@@ -220,6 +220,15 @@ The derived conversation is absent from the index or has not delivered any turns
 | retryable | status |
 | --- | --- |
 | false | 404 |
+### `FS3-E-QUERY-CONVERSATION-NO-SESSION-FILE`
+
+No native session file exists for this identity yet.
+
+**Fix**: the harness has not persisted this session yet; the conversation poller picks it up when written. There is nothing to ingest yet.
+
+| retryable | status |
+| --- | --- |
+| false | 404 |
 ### `FS3-E-QUERY-NOT-FOUND`
 
 No repository, file or element in the index answers to the address that was asked for.

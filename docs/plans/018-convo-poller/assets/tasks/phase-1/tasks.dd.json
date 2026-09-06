@@ -22,72 +22,86 @@
         {
           "id": "t1",
           "title": "Poller skeleton + enumeration + size-vs-cursor decision",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/t1",
           "success": "`convo_poll.rs` implements Reconcile with tick counting; enumerates claude/omp stores under an injected home; compares each file's size to its durable cursor; unit tests on a tempdir home (first poll enqueues one per session, unchanged poll enqueues nothing, appended file re-enqueues); mutation: flipped comparison → red",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001"
-          ]
+          ],
+          "note": "Complete; evidence in receipt and execution.log.md",
+          "receipt": "cargo test -p fs3-daemon --lib convo_poll: 2 passed; size > cursor mutated to <=: unchanged-pass assertion failed (changed 2 vs 0); restored: 2 passed; test DB :5434"
         },
         {
           "id": "t2",
           "title": "File-derived identity + submit wiring",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/t2",
           "success": "(harness, session_id) parsed from filename, folder via cwd_of/discover_folder reuse; claude sidecars attributed to the parent request, not enumerated as sessions; phantom recorded id test; submit_after called with the dedupe address",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0002"
-          ]
+          ],
+          "note": "Complete; evidence in receipt and execution.log.md",
+          "receipt": "cargo test -p fs3-daemon --lib convo_poll: 3 passed incl phantom ID and per-path cwd cache; cargo test -p fs3-daemon --lib cwd_lookup: 1 passed, 3MiB first record resolves, 32MiB file limited to 8MiB"
         },
         {
           "id": "t3",
           "title": "Cold-start cap, stagger, lookback",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/t3",
           "success": "per-pass cap + staggered not_before via submit_after; lookback window skips old cursorless files; 60-session test proves cap and totals; pass log prints enqueued/behind/skipped; mutation: cap removed → red",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
-          ]
+          ],
+          "note": "Complete; evidence in receipt and execution.log.md",
+          "receipt": "cargo test -p fs3-daemon --lib convo_poll: 4 passed; 60 sessions scheduled 10/pass over 6 passes with all prior jobs pending; exact 6s not_before stagger; old cursorless skipped before cwd read, tracked-old append eligible; cap removed -> 60 vs 10 failure, restored -> 4 passed"
         },
         {
           "id": "t4",
           "title": "status block + doctor row",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/t4",
           "success": "additive StatusReport.conversations; CLI rendering; doctor `conversations` step with flowing/stalled/disabled + git-ai path; goldens updated; ticks=0 renders disabled",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0004"
-          ]
+          ],
+          "note": "Complete; evidence in receipt and execution.log.md",
+          "receipt": "daemon convo_poll: 6 passed incl flowing at 2 unchanged passes, stalled at 3, stale snapshot 179s/180s, boot pending and disabled; cli conversations_: 4 passed incl authenticated status probe; envelope_goldens: 2 passed, conversation goldens untouched; doctor_daemon: 7 passed"
         },
         {
           "id": "t5",
           "title": "'no session file yet' distinction",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/t5",
           "success": "new catalog code; verify/ingest probe the store for the file before the index; both codes tested; CLI render for both",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0005"
-          ]
+          ],
+          "note": "Complete; evidence in receipt and execution.log.md",
+          "receipt": "daemon --lib convo_: 19 passed including absent vs present-unindexed for Claude/OMP and poll/seam dedupe; existing conversation_verify_contract HTTP test passed; envelope_goldens 2 passed with two new refusal cases, old conversation fixtures untouched"
         },
         {
           "id": "t6",
           "title": "metrics-db path probe + fail-fast route",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/t6",
           "success": "probe internal/metrics-db then metrics.sqlite3; submit refuses synchronously when neither opens, naming both; three-layout tests; mutation: probe order swapped → red",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0006"
-          ]
+          ],
+          "note": "Complete; evidence in receipt and execution.log.md",
+          "receipt": "metrics_db_path targeted test passed on real copied SQLite fixture: native-only, legacy-only, both prefer native, neither synchronous refusal naming both, corrupt synchronous refusal; reversed precedence fails native-wins assertion (artifact://48), restored passes; doctor row layouts passed"
         },
         {
           "id": "t7",
           "title": "Config knobs + template + gate",
-          "state": "unchecked",
+          "state": "checked",
           "done": "#done_when/t7",
           "success": "conversation_poll_ticks (12) and conversation_lookback_days (14) with template + refusal of 0 days; registration in boot.rs; `harness checks` green; execution log complete",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0007"
-          ]
+          ],
+          "note": "Complete; evidence in receipt and execution.log.md",
+          "receipt": "Final harness checks 2026-09-06T08:12:01Z exit 0: 11/11 gates, 12 doc links; config defaults/template/refusal verified; full prioritized poller 13 passed; code and generated docs in assigned worktree"
         },
         {
           "id": "t8",
@@ -97,7 +111,8 @@
           "success": "open the PR (never merge); o-prime bounces prod and records ac-0008 in assets/inputs/prod-after.md",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0008"
-          ]
+          ],
+          "note": "In progress: preparing scoped commit and PR; o-prime owns merge, bounce and ac-0008 production receipt"
         }
       ]
     },
@@ -108,7 +123,7 @@
           {
             "id": "dw-0181",
             "assertion": "ac-0001 test(s) green + mutation red",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0001"
           }
         ],
@@ -116,7 +131,7 @@
           {
             "id": "dw-0182",
             "assertion": "ac-0002 test(s) green",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0002"
           }
         ],
@@ -124,7 +139,7 @@
           {
             "id": "dw-0183",
             "assertion": "ac-0003 test(s) green + mutation red",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0003"
           }
         ],
@@ -132,7 +147,7 @@
           {
             "id": "dw-0184",
             "assertion": "ac-0004 test(s) green",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0004"
           }
         ],
@@ -140,7 +155,7 @@
           {
             "id": "dw-0185",
             "assertion": "ac-0005 test(s) green",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0005"
           }
         ],
@@ -148,7 +163,7 @@
           {
             "id": "dw-0186",
             "assertion": "ac-0006 test(s) green + mutation red",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0006"
           }
         ],
@@ -156,7 +171,7 @@
           {
             "id": "dw-0187",
             "assertion": "ac-0007 test(s) green",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0007"
           }
         ],

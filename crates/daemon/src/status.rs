@@ -72,6 +72,13 @@ pub async fn report(state: &AppState, history: bool) -> Result<StatusReport, Fai
         roots,
         queue,
         retention: Some(retention),
+        conversations: Some(
+            state
+                .conversations
+                .read()
+                .await
+                .report(std::time::Instant::now()),
+        ),
         last_error,
         inconsistencies,
         schema_ahead: crate::schema::ahead_of_us(&state.db).await,

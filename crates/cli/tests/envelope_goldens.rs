@@ -187,6 +187,32 @@ struct Case {
 /// `goldens/PROVENANCE.md` § Not covered.
 const CASES: &[Case] = &[
     Case {
+        name: "verify-no-session-file",
+        args: &[
+            "conversation",
+            "verify",
+            "--harness",
+            "omp",
+            "--session",
+            "lazy-session",
+        ],
+        response: Some("verify-no-session-file.json"),
+        exit: 1,
+    },
+    Case {
+        name: "verify-not-indexed",
+        args: &[
+            "conversation",
+            "verify",
+            "--harness",
+            "omp",
+            "--session",
+            "lazy-session",
+        ],
+        response: Some("verify-not-indexed.json"),
+        exit: 1,
+    },
+    Case {
         name: "status",
         args: &["status"],
         response: Some("status.json"),

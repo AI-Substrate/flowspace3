@@ -1,0 +1,1338 @@
+//! File-driven scheduling of the existing native conversation readers.
+
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant, SystemTime};
+
+use anyhow::{Context, Result};
+use fs3_core::views::status::{ConversationHarnessStatus, ConversationState, ConversationsStatus};
+use fs3_core::{ConversationSource, Harness, IngestInput, SessionFile, SessionKind, SourceCursor};
+use fs3_providers::conversation_sources::claude::ClaudeSource;
+use fs3_store::ingest_cursors;
+
+use crate::convo_ingest::{IngestRequest, cwd_of, submit_after_at_home};
+use crate::{AppState, Pass, Reconcile};
+
+/// Scheduling policy; the shared reconcile runner supplies five-second ticks.
+#[derive(Clone, Copy, Debug)]
+pub struct PollConfig {
+    /// Zero disables discovery and submission altogether.
+    pub every_ticks: u32,
+    /// Only cursorless files outside this window are skipped.
+    pub lookback_days: u32,
+    /// Submission policy, deliberately not another user configuration knob.
+    pub max_per_pass: std::num::NonZeroUsize,
+    /// Upper limit: effective spacing is min(stagger, poll cadence / cap).
+    /// Enqueue upserts use GREATEST(not_before); spacing beyond a cadence
+    /// would let fast repeated polls postpone pending jobs indefinitely.
+    pub stagger: Duration,
+}
+
+impl Default for PollConfig {
+    fn default() -> Self {
+        Self {
+            every_ticks: 12,
+            lookback_days: 14,
+            max_per_pass: std::num::NonZeroUsize::new(10).expect("nonzero poll cap"),
+            stagger: Duration::from_secs(6),
+        }
+    }
+}
+
+impl PollConfig {
+    fn effective_stagger(self) -> Duration {
+        let cadence = Duration::from_secs(u64::from(self.every_ticks) * 5);
+        self.stagger
+            .min(cadence.div_f64(self.max_per_pass.get() as f64))
+    }
+}
+
+/// Stall rule: a behind file whose durable cursor does not advance for THREE
+/// consecutive successful due passes is stalled (two passes still flow).
+/// Independently, THREE configured poll cadences without a successful poll
+/// makes the snapshot stalled. Boot starts flowing-pending; zero ticks is
+/// disabled, including before the first pass. Queue submission is NOT progress.
+const STALL_PASSES: u32 = 3;
+
+#[derive(Debug)]
+pub(crate) struct PollHealth {
+    snapshot: ConversationsStatus,
+    observed: Instant,
+    cadence: Duration,
+}
+
+impl PollHealth {
+    pub(crate) fn new(every_ticks: u32) -> Self {
+        Self {
+            snapshot: ConversationsStatus {
+                state: if every_ticks == 0 {
+                    ConversationState::Disabled
+                } else {
+                    ConversationState::Flowing
+                },
+                state_reason: Some(
+                    if every_ticks == 0 {
+                        "conversation polling is disabled"
+                    } else {
+                        "awaiting the first conversation poll"
+                    }
+                    .to_owned(),
+                ),
+                last_poll_at: None,
+                harnesses: [Harness::Claude, Harness::Omp]
+                    .into_iter()
+                    .map(|harness| ConversationHarnessStatus {
+                        harness: harness.to_string(),
+                        tracked: 0,
+                        behind: 0,
+                        newest_ingest_at: None,
+                    })
+                    .collect(),
+            },
+            observed: Instant::now(),
+            cadence: Duration::from_secs(u64::from(every_ticks) * 5),
+        }
+    }
+
+    pub(crate) fn report(&self, now: Instant) -> ConversationsStatus {
+        let mut report = self.snapshot.clone();
+        if report.state != ConversationState::Disabled
+            && now.saturating_duration_since(self.observed)
+                >= self.cadence.saturating_mul(STALL_PASSES)
+        {
+            report.state = ConversationState::Stalled;
+            report.state_reason =
+                Some("no successful conversation poll within three cadences".to_owned());
+        }
+        report
+    }
+
+    fn record(&mut self, cfg: PollConfig, stats: &PollStats) {
+        self.observed = Instant::now();
+        self.cadence = Duration::from_secs(u64::from(cfg.every_ticks) * 5);
+        self.snapshot = ConversationsStatus {
+            state: if stats.stalled {
+                ConversationState::Stalled
+            } else {
+                ConversationState::Flowing
+            },
+            state_reason: if stats.stalled {
+                Some("a behind session file has made no durable cursor progress for three due passes".to_owned())
+            } else if stats.behind > 0 {
+                Some(format!(
+                    "catching up: {} sessions behind; {} submitted this pass",
+                    stats.behind, stats.enqueued
+                ))
+            } else {
+                None
+            },
+            last_poll_at: Some(crate::wiring::now()),
+            harnesses: stats.harnesses.clone(),
+        };
+    }
+}
+
+/// Runs the existing readers by enqueueing requests, never by running jobs.
+///
+/// Each due pass prioritizes (1) known files changed since the last scan and
+/// (2) files first seen after the boot scan and not yet ingested, newest mtime
+/// first within each tier. At boot, a durable cursor identifies a known live
+/// session. At least one slot is reserved for the rotating cold backlog.
+/// AC-0008: a 13 MB live OMP session must not wait behind 100 stale Claude
+/// files. Path order provides backlog rotation, never a live priority signal.
+///
+/// # Snap-in recipe
+///
+/// `[indexing] conversation_poll_ticks = 12` polls every minute; `0` disables.
+/// `conversation_lookback_days = 14` limits only cursorless files. Inject the
+/// native-store home, never FS3_CONFIG_DIR, and construct:
+/// ```ignore
+/// let poller = ConvoPoller::new(state.clone(), home, PollConfig {
+///     every_ticks: state.config.indexing.conversation_poll_ticks,
+///     lookback_days: state.config.indexing.conversation_lookback_days,
+///     ..PollConfig::default() // at most 10 requests/pass, six-second stagger
+/// });
+/// reconcilers.push(Box::new(poller));
+/// ```
+/// Boot omits the disabled reconciler; AppState still reports disabled.
+pub struct ConvoPoller {
+    state: AppState,
+    home: PathBuf,
+    cfg: PollConfig,
+    ticks: u32,
+    folders: HashMap<PathBuf, PathBuf>,
+    after: Option<PathBuf>,
+    lag: HashMap<(Harness, String), (Option<SourceCursor>, u32)>,
+    observed: Option<HashMap<PathBuf, ObservedFile>>,
+}
+
+impl ConvoPoller {
+    #[must_use]
+    pub fn new(state: AppState, home: PathBuf, cfg: PollConfig) -> Self {
+        Self {
+            state,
+            home,
+            ticks: cfg.every_ticks.saturating_sub(1),
+            cfg,
+            folders: HashMap::new(),
+            after: None,
+            lag: HashMap::new(),
+            observed: None,
+        }
+    }
+
+    fn due(&mut self) -> bool {
+        if self.cfg.every_ticks == 0 {
+            return false;
+        }
+        self.ticks = self.ticks.saturating_add(1);
+        if self.ticks < self.cfg.every_ticks {
+            return false;
+        }
+        self.ticks = 0;
+        true
+    }
+
+    async fn folder(&mut self, path: &Path) -> Result<Option<PathBuf>> {
+        if let Some(folder) = self.folders.get(path) {
+            return Ok(Some(folder.clone()));
+        }
+        let owned = path.to_owned();
+        let folder = tokio::task::spawn_blocking(move || cwd_of(&owned)).await?;
+        if let Some(folder) = &folder {
+            self.folders.insert(path.to_owned(), folder.clone());
+        }
+        Ok(folder)
+    }
+
+    async fn poll(&mut self) -> Result<PollStats> {
+        let home = self.home.clone();
+        // Discovery stats files, not transcript contents. Read cwd only for the
+        // capped selection, so an old archive cannot turn boot into a full read.
+        let sessions = tokio::task::spawn_blocking(move || discover(&home)).await??;
+        let observed: HashMap<_, _> = sessions
+            .iter()
+            .flat_map(|session| &session.files)
+            .map(|file| {
+                let after_boot = self.observed.as_ref().is_some_and(|previous| {
+                    previous
+                        .get(&file.file.path)
+                        .is_none_or(|seen| seen.after_boot)
+                });
+                (
+                    file.file.path.clone(),
+                    ObservedFile {
+                        stamp: file.stamp,
+                        after_boot,
+                    },
+                )
+            })
+            .collect();
+        let now = SystemTime::now();
+        let window = Duration::from_secs(u64::from(self.cfg.lookback_days) * 86_400);
+        let mut stats = PollStats::default();
+        let mut candidates = Vec::new();
+        let mut lag = HashMap::new();
+        for harness in [Harness::Claude, Harness::Omp] {
+            let mut summary = ConversationHarnessStatus {
+                harness: harness.to_string(),
+                tracked: 0,
+                behind: 0,
+                newest_ingest_at: None,
+            };
+            let ids: Vec<&str> = sessions
+                .iter()
+                .filter(|session| session.harness == harness)
+                .flat_map(|session| {
+                    session
+                        .files
+                        .iter()
+                        .map(|file| file.file.session_id.as_str())
+                })
+                .collect();
+            let cursors = ingest_cursors::load_cursors(&self.state.db, harness, &ids).await?;
+            for session in sessions.iter().filter(|session| session.harness == harness) {
+                let eligible = |file: &FileSnapshot| {
+                    cursors.contains_key(&file.file.session_id)
+                        || now.duration_since(file.stamp.modified).unwrap_or_default() <= window
+                };
+                if !session.files.iter().any(eligible) {
+                    stats.skipped += 1;
+                    continue;
+                }
+                summary.tracked += 1;
+                for file in session.files.iter().filter(|file| eligible(file)) {
+                    let progress = cursors.get(&file.file.session_id);
+                    if let Some(progress) = progress
+                        && summary
+                            .newest_ingest_at
+                            .as_ref()
+                            .is_none_or(|newest| progress.last_read_at > *newest)
+                    {
+                        summary.newest_ingest_at = Some(progress.last_read_at.clone());
+                    }
+                    if behind(file, progress.map(|progress| &progress.cursor)) {
+                        let key = (harness, file.file.session_id.clone());
+                        let cursor = progress.map(|progress| progress.cursor.clone());
+                        let passes = self
+                            .lag
+                            .get(&key)
+                            .filter(|(previous, _)| *previous == cursor)
+                            .map_or(1, |(_, passes)| passes.saturating_add(1));
+                        stats.stalled |= passes >= STALL_PASSES;
+                        lag.insert(key, (cursor, passes));
+                    }
+                }
+                if session.files.iter().any(|file| {
+                    eligible(file)
+                        && behind(
+                            file,
+                            cursors
+                                .get(&file.file.session_id)
+                                .map(|progress| &progress.cursor),
+                        )
+                }) {
+                    summary.behind += 1;
+                    let changed = session
+                        .files
+                        .iter()
+                        .any(|file| match self.observed.as_ref() {
+                            None => cursors.contains_key(&file.file.session_id),
+                            Some(previous) => previous
+                                .get(&file.file.path)
+                                .is_some_and(|seen| seen.stamp != file.stamp),
+                        });
+                    let fresh = session.files.iter().any(|file| {
+                        observed[&file.file.path].after_boot
+                            && (!cursors.contains_key(&file.file.session_id)
+                                || self.observed.as_ref().is_some_and(|previous| {
+                                    !previous.contains_key(&file.file.path)
+                                }))
+                    });
+                    let priority = if changed {
+                        Priority::Live
+                    } else if fresh {
+                        Priority::New
+                    } else {
+                        Priority::Backlog
+                    };
+                    candidates.push(Candidate {
+                        session,
+                        priority,
+                        newest: session
+                            .files
+                            .iter()
+                            .map(|file| file.stamp.modified)
+                            .max()
+                            .expect("a session has its main file"),
+                    });
+                }
+            }
+            stats.harnesses.push(summary);
+        }
+        stats.behind = candidates.len();
+        candidates.sort_by(|left, right| {
+            left.priority.cmp(&right.priority).then_with(|| {
+                if left.priority == Priority::Backlog {
+                    left.session.files[0]
+                        .file
+                        .path
+                        .cmp(&right.session.files[0].file.path)
+                } else {
+                    right.newest.cmp(&left.newest)
+                }
+            })
+        });
+        let backlog_start =
+            candidates.partition_point(|candidate| candidate.priority != Priority::Backlog);
+        let cap = self.cfg.max_per_pass.get();
+        let priority_count = backlog_start.min(cap - usize::from(backlog_start < candidates.len()));
+        if let Some(after) = &self.after {
+            let backlog = &mut candidates[backlog_start..];
+            let start =
+                backlog.partition_point(|candidate| candidate.session.files[0].file.path <= *after);
+            backlog.rotate_left(start);
+        }
+        // Pending is not completion: rotate the cold tier even while earlier
+        // jobs remain pending, without allowing live arrivals to consume it all.
+        let (prioritized, backlog) = candidates.split_at(backlog_start);
+        for (index, candidate) in prioritized
+            .iter()
+            .take(priority_count)
+            .chain(backlog)
+            .take(cap)
+            .enumerate()
+        {
+            let session = candidate.session;
+            let path = &session.files[0].file.path;
+            if index >= priority_count {
+                self.after = Some(path.clone());
+            }
+            let Some(folder) = self.folder(path).await? else {
+                tracing::warn!(path = %path.display(), "session has no readable recorded cwd; retrying a later poll");
+                stats.skipped += 1;
+                continue;
+            };
+            let delay = self
+                .cfg
+                .effective_stagger()
+                .saturating_mul(u32::try_from(stats.enqueued).unwrap_or(u32::MAX));
+            submit_after_at_home(
+                &self.state,
+                &session.request(&folder),
+                delay,
+                self.home.clone(),
+            )
+            .await
+            .map_err(|error| anyhow::anyhow!("{error:?}"))?;
+            stats.enqueued += 1;
+        }
+        self.lag = lag;
+        self.observed = Some(observed);
+        self.state
+            .conversations
+            .write()
+            .await
+            .record(self.cfg, &stats);
+        Ok(stats)
+    }
+}
+
+#[async_trait::async_trait]
+impl Reconcile for ConvoPoller {
+    fn name(&self) -> &'static str {
+        "conversations"
+    }
+
+    async fn reconcile(&mut self) -> Result<Pass> {
+        if self.cfg.every_ticks == 0 {
+            *self.state.conversations.write().await = PollHealth::new(0);
+        }
+        if !self.due() {
+            return Ok(Pass::QUIET);
+        }
+        let stats = self.poll().await?;
+        tracing::info!(
+            enqueued = stats.enqueued,
+            behind = stats.behind,
+            skipped = stats.skipped,
+            "polled native conversations"
+        );
+        Ok(Pass::changed(stats.enqueued))
+    }
+}
+
+#[derive(Debug, Default)]
+struct PollStats {
+    enqueued: usize,
+    behind: usize,
+    skipped: usize,
+    harnesses: Vec<ConversationHarnessStatus>,
+    stalled: bool,
+}
+
+fn behind(file: &FileSnapshot, cursor: Option<&SourceCursor>) -> bool {
+    match cursor {
+        Some(SourceCursor::ByteOffset {
+            device,
+            inode,
+            offset,
+        }) => file.stamp.size != *offset || file.stamp.identity != (*device, *inode),
+        // A foreign cursor is left to the reader to diagnose, never mistaken
+        // for an up-to-date native file.
+        _ => true,
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Priority {
+    Live,
+    New,
+    Backlog,
+}
+
+struct Candidate<'a> {
+    session: &'a Session,
+    priority: Priority,
+    newest: SystemTime,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct FileStamp {
+    size: u64,
+    modified: SystemTime,
+    identity: (u64, u64),
+}
+
+struct ObservedFile {
+    stamp: FileStamp,
+    after_boot: bool,
+}
+
+struct FileSnapshot {
+    file: SessionFile,
+    stamp: FileStamp,
+}
+
+struct Session {
+    harness: Harness,
+    id: String,
+    files: Vec<FileSnapshot>,
+}
+
+impl Session {
+    fn request(&self, folder: &Path) -> IngestRequest {
+        IngestRequest {
+            pij_id: None,
+            session_id: Some(self.id.clone()),
+            harness: Some(self.harness.to_string()),
+            folder: Some(folder.to_string_lossy().into_owned()),
+        }
+    }
+}
+
+fn entries(path: &Path) -> Result<Vec<std::fs::DirEntry>> {
+    match std::fs::read_dir(path) {
+        Ok(entries) => entries
+            .collect::<std::io::Result<Vec<_>>>()
+            .with_context(|| format!("listing {}", path.display())),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),
+        Err(error) => Err(error).with_context(|| format!("listing {}", path.display())),
+    }
+}
+
+fn discover(home: &Path) -> Result<Vec<Session>> {
+    let mut sessions = Vec::new();
+    for (harness, root) in [
+        (Harness::Claude, home.join(".claude/projects")),
+        (Harness::Omp, home.join(".omp/agent/sessions")),
+    ] {
+        for directory in entries(&root)? {
+            if !directory.file_type()?.is_dir() {
+                continue;
+            }
+            for entry in entries(&directory.path())? {
+                if !entry.file_type()?.is_file() {
+                    continue;
+                }
+                let path = entry.path();
+                if path
+                    .extension()
+                    .is_none_or(|extension| extension != "jsonl")
+                {
+                    continue;
+                }
+                let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
+                    continue;
+                };
+                let id = match harness {
+                    Harness::Claude => stem,
+                    Harness::Omp => match stem.rsplit_once('_') {
+                        Some((_, id)) if !id.is_empty() => id,
+                        _ => continue,
+                    },
+                    _ => unreachable!(),
+                }
+                .to_owned();
+                let files = if harness == Harness::Claude {
+                    ClaudeSource::new(directory.path()).resolve(&IngestInput::Native {
+                        session_id: id.clone(),
+                        harness,
+                        folder: PathBuf::new(),
+                    })?
+                } else {
+                    vec![SessionFile {
+                        path,
+                        session_id: id.clone(),
+                        parent_session_id: None,
+                        kind: SessionKind::Main,
+                        harness,
+                    }]
+                };
+                let files = files
+                    .into_iter()
+                    .map(|file| {
+                        let metadata = std::fs::metadata(&file.path)?;
+                        Ok(FileSnapshot {
+                            file,
+                            stamp: FileStamp {
+                                size: metadata.len(),
+                                modified: metadata.modified()?,
+                                identity: fs3_providers::conversation_sources::tail::identity(
+                                    &metadata,
+                                ),
+                            },
+                        })
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+                sessions.push(Session { harness, id, files });
+            }
+        }
+    }
+    sessions.sort_by(|left, right| left.files[0].file.path.cmp(&right.files[0].file.path));
+    Ok(sessions)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use fs3_core::{Config, DatabaseConfig};
+    use fs3_testkit::FreshDatabase;
+
+    #[tokio::test]
+    async fn convo_poll_priority_serves_tracked_omp_and_fresh_claude_ahead_of_100_backlog_files() {
+        let home = tempfile::tempdir().unwrap();
+        let cold: Vec<String> = (0..100)
+            .map(|index| format!("backlog-{index:03}"))
+            .collect();
+        for id in &cold {
+            claude_session(home.path(), id);
+        }
+        let folder = home.path().join("workspace");
+        let omp = home
+            .path()
+            .join(".omp/agent/sessions/-workspace/2026-09-06_tracked-omp.jsonl");
+        std::fs::create_dir_all(omp.parent().unwrap()).unwrap();
+        let omp_turn = |id: &str| serde_json::json!({"type":"message","id":id,"timestamp":"2026-09-06T00:00:00Z","message":{"role":"user","content":[{"type":"text","text":"live OMP turn"}]}});
+        std::fs::write(
+            &omp,
+            format!(
+                "{}\n{}\n",
+                serde_json::json!({"type":"session","cwd":folder}),
+                omp_turn("omp-first")
+            ),
+        )
+        .unwrap();
+        let (database, state) = stack().await;
+        crate::convo_ingest::ingest_at_home(
+            &state,
+            &IngestRequest {
+                pij_id: None,
+                harness: Some("omp".to_owned()),
+                session_id: Some("tracked-omp".to_owned()),
+                folder: Some(folder.to_string_lossy().into_owned()),
+            },
+            home.path().to_owned(),
+        )
+        .await
+        .unwrap();
+        let mut poller = ConvoPoller::new(
+            state.clone(),
+            home.path().to_owned(),
+            PollConfig {
+                every_ticks: 1,
+                ..PollConfig::default()
+            },
+        );
+        assert_eq!(poller.reconcile().await.unwrap().changed, 10);
+        let before: i64 = sqlx::query_scalar("SELECT coalesce(max(id),0) FROM jobs")
+            .fetch_one(&state.db)
+            .await
+            .unwrap();
+
+        use std::io::Write;
+        writeln!(
+            std::fs::OpenOptions::new().append(true).open(&omp).unwrap(),
+            "{}",
+            omp_turn("omp-appended")
+        )
+        .unwrap();
+        let fresh_folder = home.path().join("aaa-fresh-project");
+        std::fs::create_dir_all(&fresh_folder).unwrap();
+        let fresh = home
+            .path()
+            .join(".claude/projects")
+            .join(crate::convo_ingest::workspace_slug(
+                Harness::Claude,
+                &fresh_folder,
+                home.path(),
+            ))
+            .join("fresh-claude.jsonl");
+        std::fs::create_dir_all(fresh.parent().unwrap()).unwrap();
+        std::fs::write(&fresh, claude_record(&fresh_folder, "fresh-turn")).unwrap();
+        assert!(
+            fresh < *poller.after.as_ref().unwrap(),
+            "fresh path sorts BEFORE the old rotation cursor"
+        );
+        assert_eq!(poller.reconcile().await.unwrap().changed, 10);
+        let queued: Vec<(String,String)> = sqlx::query_as("SELECT payload->>'harness',payload->>'session_id' FROM jobs WHERE kind = 'ingest_session' AND id > $1 ORDER BY id")
+            .bind(before).fetch_all(&state.db).await.unwrap();
+        assert_eq!(
+            queued[0],
+            ("omp".to_owned(), "tracked-omp".to_owned()),
+            "live OMP must be enqueued on the NEXT due pass"
+        );
+        assert_eq!(
+            queued[1],
+            ("claude".to_owned(), "fresh-claude".to_owned()),
+            "fresh Claude must ignore path order on the NEXT due pass"
+        );
+        assert!(queued.iter().any(|(_, id)| id.starts_with("backlog-")));
+        run_ingests(&state, home.path()).await;
+        for _ in 0..20 {
+            if poller.reconcile().await.unwrap().changed == 0 {
+                break;
+            }
+            run_ingests(&state, home.path()).await;
+        }
+        assert_eq!(poller.poll().await.unwrap().behind, 0);
+        let cold_ids: Vec<&str> = cold.iter().map(String::as_str).collect();
+        assert_eq!(
+            ingest_cursors::load_cursors(&state.db, Harness::Claude, &cold_ids)
+                .await
+                .unwrap()
+                .len(),
+            100
+        );
+        let omp_delivery = fs3_store::conversation_delivery(
+            &state.db,
+            &crate::convo_ingest::conversation_guid(Harness::Omp, "tracked-omp"),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert_eq!(omp_delivery.turns, 2);
+        database.destroy(state.db.clone()).await;
+    }
+
+    #[tokio::test]
+    async fn convo_poll_priority_reserves_a_backlog_slot_during_continuous_new_arrivals() {
+        let home = tempfile::tempdir().unwrap();
+        for index in 0..12 {
+            claude_session(home.path(), &format!("cold-{index:02}"));
+        }
+        let (database, state) = stack().await;
+        let cfg = PollConfig {
+            every_ticks: 1,
+            max_per_pass: std::num::NonZeroUsize::new(3).unwrap(),
+            ..PollConfig::default()
+        };
+        let mut poller = ConvoPoller::new(state.clone(), home.path().to_owned(), cfg);
+        poller.reconcile().await.unwrap();
+        run_ingests(&state, home.path()).await;
+        let base_time = SystemTime::now() - Duration::from_secs(100);
+        for round in 0..3 {
+            let before: i64 = sqlx::query_scalar("SELECT coalesce(max(id),0) FROM jobs")
+                .fetch_one(&state.db)
+                .await
+                .unwrap();
+            for index in 0..3 {
+                let path = claude_session(home.path(), &format!("new-{round}-{index}"));
+                std::fs::File::open(path)
+                    .unwrap()
+                    .set_times(
+                        std::fs::FileTimes::new()
+                            .set_modified(base_time + Duration::from_secs(round * 10 + index * 2)),
+                    )
+                    .unwrap();
+            }
+            assert_eq!(poller.reconcile().await.unwrap().changed, 3);
+            let queued: Vec<String> = sqlx::query_scalar("SELECT payload->>'session_id' FROM jobs WHERE kind='ingest_session' AND id > $1 ORDER BY id")
+                .bind(before).fetch_all(&state.db).await.unwrap();
+            assert_eq!(
+                queued[0],
+                format!("new-{round}-2"),
+                "newest mtime wins, not path order"
+            );
+            assert_eq!(queued[1], format!("new-{round}-1"));
+            assert!(
+                queued[2].starts_with("cold-"),
+                "a continuous live stream cannot starve the reserved backlog slot"
+            );
+            run_ingests(&state, home.path()).await;
+        }
+        for _ in 0..20 {
+            if poller.reconcile().await.unwrap().changed == 0 {
+                break;
+            }
+            run_ingests(&state, home.path()).await;
+        }
+        assert_eq!(
+            poller.poll().await.unwrap().behind,
+            0,
+            "new and cold work both drain"
+        );
+        database.destroy(state.db.clone()).await;
+    }
+
+    async fn stack() -> (FreshDatabase, AppState) {
+        let database = FreshDatabase::create("convo-poll").await;
+        let state = AppState::from_config(Config {
+            database: DatabaseConfig {
+                url: database.url(),
+            },
+            ..Config::default()
+        })
+        .expect("fake stack");
+        fs3_store::migrate(&state.db)
+            .await
+            .expect("migrate isolated database");
+        (database, state)
+    }
+
+    fn claude_record(folder: &Path, ordinal: &str) -> String {
+        format!(
+            "{}\n",
+            serde_json::json!({
+                "type": "user", "uuid": ordinal, "cwd": folder,
+                "timestamp": "2026-09-01T00:00:00Z",
+                "message": { "role": "user", "content": "a user turn" }
+            })
+        )
+    }
+
+    fn claude_session(home: &Path, id: &str) -> PathBuf {
+        let folder = home.join("workspace");
+        std::fs::create_dir_all(&folder).unwrap();
+        let root = home
+            .join(".claude/projects")
+            .join(crate::convo_ingest::workspace_slug(
+                Harness::Claude,
+                &folder,
+                home,
+            ));
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join(format!("{id}.jsonl"));
+        std::fs::write(&path, claude_record(&folder, "main-turn")).unwrap();
+        path
+    }
+
+    async fn run_ingests(state: &AppState, home: &Path) -> Vec<IngestRequest> {
+        let jobs: Vec<(i64, serde_json::Value)> = sqlx::query_as(
+            "SELECT id, payload FROM jobs WHERE kind = 'ingest_session' AND state = 'pending' ORDER BY id"
+        ).fetch_all(&state.db).await.unwrap();
+        let mut requests = Vec::new();
+        for (id, payload) in jobs {
+            let request: IngestRequest = serde_json::from_value(payload).unwrap();
+            crate::convo_ingest::ingest_at_home(state, &request, home.to_owned())
+                .await
+                .expect("existing ingest pipeline");
+            sqlx::query("UPDATE jobs SET state = 'done' WHERE id = $1")
+                .bind(id)
+                .execute(&state.db)
+                .await
+                .unwrap();
+            requests.push(request);
+        }
+        requests
+    }
+
+    #[tokio::test]
+    async fn convo_poll_fast_cadence_delivers_append_within_cadence_plus_spacing() {
+        let home = tempfile::tempdir().unwrap();
+        let first = claude_session(home.path(), "a-active");
+        let appended = claude_session(home.path(), "b-appended");
+        let (database, state) = stack().await;
+        let cfg = PollConfig {
+            every_ticks: 1,
+            ..PollConfig::default()
+        };
+        assert_eq!(cfg.effective_stagger(), Duration::from_millis(500));
+        assert_eq!(
+            PollConfig::default().effective_stagger(),
+            Duration::from_secs(6)
+        );
+        let mut poller = ConvoPoller::new(state.clone(), home.path().to_owned(), cfg);
+        poller.poll().await.unwrap();
+        run_ingests(&state, home.path()).await;
+        use std::io::Write;
+        for path in [appended, first] {
+            std::fs::OpenOptions::new()
+                .append(true)
+                .open(path)
+                .unwrap()
+                .write_all(
+                    claude_record(&home.path().join("workspace"), "appended-turn").as_bytes(),
+                )
+                .unwrap();
+        }
+        let started = Instant::now();
+        let bound = Duration::from_secs(5) + cfg.effective_stagger();
+        assert_eq!(poller.poll().await.unwrap().enqueued, 2);
+        // Unlike run_ingests, this worker claims only ACTUALLY eligible jobs;
+        // the second appended session must wait for its recorded not_before.
+        tokio::time::timeout(bound, async {
+            loop {
+                if let Some(job) =
+                    fs3_store::claim_job(&state.db, &[crate::convo_ingest::INGEST_SESSION])
+                        .await
+                        .unwrap()
+                {
+                    let request: IngestRequest = serde_json::from_value(job.payload).unwrap();
+                    crate::convo_ingest::ingest_at_home(&state, &request, home.path().to_owned())
+                        .await
+                        .unwrap();
+                    sqlx::query("UPDATE jobs SET state = 'done' WHERE id = $1")
+                        .bind(job.id)
+                        .execute(&state.db)
+                        .await
+                        .unwrap();
+                    if request.session_id.as_deref() == Some("b-appended") {
+                        break;
+                    }
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("appended file ingested within 5s cadence + 0.5s spacing");
+        assert!(started.elapsed() <= bound);
+        let delivery = fs3_store::conversation_delivery(
+            &state.db,
+            &crate::convo_ingest::conversation_guid(Harness::Claude, "b-appended"),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert_eq!(delivery.turns, 2);
+        database.destroy(state.db.clone()).await;
+    }
+
+    #[tokio::test]
+    async fn convo_poll_first_unchanged_and_sidecar_append_use_durable_file_cursors() {
+        let home = tempfile::tempdir().unwrap();
+        let main = claude_session(home.path(), "claude-main");
+        let folder = home.path().join("workspace");
+        let sidecar = main
+            .parent()
+            .unwrap()
+            .join("claude-main/subagents/agent-child.jsonl");
+        std::fs::create_dir_all(sidecar.parent().unwrap()).unwrap();
+        std::fs::write(&sidecar, claude_record(&folder, "child-turn")).unwrap();
+        let omp_root = home.path().join(".omp/agent/sessions/-workspace");
+        std::fs::create_dir_all(&omp_root).unwrap();
+        std::fs::write(omp_root.join("2026-09-01T00-00-00_omp-main.jsonl"), format!("{}\n{}\n",
+            serde_json::json!({"type":"session", "cwd":folder}),
+            serde_json::json!({"type":"message","id":"omp-turn","timestamp":"2026-09-01T00:00:00Z","message":{"role":"user","content":[{"type":"text","text":"omp turn"}]}})
+        )).unwrap();
+        let (database, state) = stack().await;
+        let mut poller = ConvoPoller::new(
+            state.clone(),
+            home.path().to_owned(),
+            PollConfig {
+                every_ticks: 1,
+                ..PollConfig::default()
+            },
+        );
+        assert_eq!(poller.reconcile().await.unwrap().changed, 2);
+        let keys: Vec<String> = sqlx::query_scalar(
+            "SELECT dedupe_key FROM jobs WHERE kind = 'ingest_session' ORDER BY dedupe_key",
+        )
+        .fetch_all(&state.db)
+        .await
+        .unwrap();
+        assert_eq!(
+            keys,
+            [
+                format!("ingest:claude/claude-main@{}", folder.display()),
+                format!("ingest:omp/omp-main@{}", folder.display())
+            ]
+        );
+        assert_eq!(run_ingests(&state, home.path()).await.len(), 2);
+        assert_eq!(poller.reconcile().await.unwrap(), Pass::QUIET);
+        let cursors = ingest_cursors::load_cursors(
+            &state.db,
+            Harness::Claude,
+            &["claude-main", "agent-child", "missing"],
+        )
+        .await
+        .unwrap();
+        assert_eq!(cursors.len(), 2);
+        assert!(
+            cursors
+                .values()
+                .all(|progress| progress.last_read_at.ends_with('Z'))
+        );
+        use std::io::Write;
+        std::fs::OpenOptions::new()
+            .append(true)
+            .open(&sidecar)
+            .unwrap()
+            .write_all(claude_record(&folder, "child-appended").as_bytes())
+            .unwrap();
+        assert_eq!(poller.reconcile().await.unwrap().changed, 1);
+        let requests = run_ingests(&state, home.path()).await;
+        assert_eq!(requests[0].session_id.as_deref(), Some("claude-main"));
+        assert_eq!(poller.reconcile().await.unwrap(), Pass::QUIET);
+        database.destroy(state.db.clone()).await;
+    }
+
+    #[tokio::test]
+    async fn convo_poll_disabled_never_discovers_or_connects() {
+        let home = tempfile::tempdir().unwrap();
+        let mut config = Config::default();
+        config.indexing.conversation_poll_ticks = 0;
+        let state = AppState::from_config(config).unwrap();
+        assert_eq!(
+            state
+                .conversations
+                .read()
+                .await
+                .report(Instant::now())
+                .state,
+            ConversationState::Disabled,
+            "disabled before the first poll"
+        );
+        let mut poller = ConvoPoller::new(
+            state,
+            home.path().to_owned(),
+            PollConfig {
+                every_ticks: 0,
+                ..PollConfig::default()
+            },
+        );
+        assert_eq!(poller.reconcile().await.unwrap(), Pass::QUIET);
+    }
+
+    #[tokio::test]
+    async fn convo_poll_identity_ignores_a_phantom_recorded_id_and_caches_actual_cwd() {
+        let home = tempfile::tempdir().unwrap();
+        let path = claude_session(home.path(), "file-session");
+        std::fs::write(home.path().join("pij-sessions.json"),
+            r#"[{"pij_id":"pij-phantom","harness":"claude","harness_session":"recorded-but-never-written"}]"#).unwrap();
+        let (database, state) = stack().await;
+        let mut poller = ConvoPoller::new(
+            state.clone(),
+            home.path().to_owned(),
+            PollConfig {
+                every_ticks: 1,
+                ..PollConfig::default()
+            },
+        );
+        assert_eq!(poller.reconcile().await.unwrap().changed, 1);
+        let requests = run_ingests(&state, home.path()).await;
+        assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0].session_id.as_deref(), Some("file-session"));
+        assert_eq!(requests[0].pij_id, None);
+        assert_eq!(
+            requests[0].folder.as_deref(),
+            home.path().join("workspace").to_str()
+        );
+
+        // A positive cwd lookup is cached per path; no transcript reread on a poll.
+        std::fs::write(&path, "metadata temporarily unavailable\n").unwrap();
+        assert_eq!(
+            poller.folder(&path).await.unwrap(),
+            Some(home.path().join("workspace"))
+        );
+        database.destroy(state.db.clone()).await;
+    }
+
+    #[tokio::test]
+    async fn convo_poll_cold_start_caps_staggers_and_progresses_past_pending_work() {
+        let home = tempfile::tempdir().unwrap();
+        for index in 0..60 {
+            claude_session(home.path(), &format!("session-{index:02}"));
+        }
+        let old = claude_session(home.path(), "old-cursorless");
+        std::fs::File::open(&old)
+            .unwrap()
+            .set_times(std::fs::FileTimes::new().set_modified(SystemTime::UNIX_EPOCH))
+            .unwrap();
+        let (database, state) = stack().await;
+        let mut poller =
+            ConvoPoller::new(state.clone(), home.path().to_owned(), PollConfig::default());
+        let mut total = 0;
+        for pass in 1..=6 {
+            let stats = poller.poll().await.unwrap();
+            assert_eq!(stats.enqueued, 10, "every pass obeys the cold-start cap");
+            assert_eq!(
+                stats.behind, 60,
+                "queued is not ingested; no runner has advanced a cursor"
+            );
+            assert_eq!(
+                stats.skipped, 1,
+                "old cursorless file is visible as skipped"
+            );
+            total += stats.enqueued;
+            let count: i64 =
+                sqlx::query_scalar("SELECT count(*) FROM jobs WHERE kind = 'ingest_session'")
+                    .fetch_one(&state.db)
+                    .await
+                    .unwrap();
+            assert_eq!(
+                count,
+                pass * 10,
+                "later keys progress even while ALL earlier jobs remain pending"
+            );
+        }
+        assert_eq!(total, 60);
+        let delays: Vec<f64> = sqlx::query_scalar("SELECT extract(epoch FROM (not_before - updated_at))::float8 FROM jobs WHERE kind = 'ingest_session' ORDER BY id").fetch_all(&state.db).await.unwrap();
+        for (index, delay) in delays.into_iter().enumerate() {
+            assert_eq!(
+                delay,
+                ((index % 10) * 6) as f64,
+                "stagger recorded in actual queue eligibility"
+            );
+        }
+        assert!(
+            !poller.folders.contains_key(&old),
+            "lookback skips before reading any transcript content"
+        );
+        assert_eq!(run_ingests(&state, home.path()).await.len(), 60);
+        let stats = poller.poll().await.unwrap();
+        assert_eq!(stats.enqueued, 0);
+        assert_eq!(stats.behind, 0);
+        assert_eq!(stats.skipped, 1);
+
+        // Once tracked, age never excludes an appended file from polling.
+        let tracked = old.parent().unwrap().join("session-00.jsonl");
+        use std::io::Write;
+        std::fs::OpenOptions::new()
+            .append(true)
+            .open(&tracked)
+            .unwrap()
+            .write_all(
+                claude_record(&home.path().join("workspace"), "aged-but-new-turn").as_bytes(),
+            )
+            .unwrap();
+        std::fs::File::open(&tracked)
+            .unwrap()
+            .set_times(std::fs::FileTimes::new().set_modified(SystemTime::UNIX_EPOCH))
+            .unwrap();
+        assert_eq!(poller.poll().await.unwrap().enqueued, 1);
+        database.destroy(state.db.clone()).await;
+    }
+
+    #[test]
+    fn convo_poll_health_stale_boundary_and_boot_pending_are_explicit() {
+        let home = tempfile::tempdir().unwrap();
+        assert!(home.path().is_dir());
+        let health = PollHealth::new(12);
+        let pending = health.report(health.observed);
+        assert_eq!(pending.state, ConversationState::Flowing);
+        assert_eq!(pending.last_poll_at, None);
+        assert!(pending.state_reason.unwrap().contains("awaiting"));
+        assert_eq!(
+            health
+                .report(health.observed + Duration::from_secs(179))
+                .state,
+            ConversationState::Flowing
+        );
+        assert_eq!(
+            health
+                .report(health.observed + Duration::from_secs(180))
+                .state,
+            ConversationState::Stalled
+        );
+        let disabled = PollHealth::new(0);
+        assert_eq!(
+            disabled
+                .report(disabled.observed + Duration::from_secs(3600))
+                .state,
+            ConversationState::Disabled
+        );
+    }
+
+    #[tokio::test]
+    async fn convo_poll_health_stalls_at_three_unchanged_due_passes_and_recovers() {
+        let home = tempfile::tempdir().unwrap();
+        claude_session(home.path(), "stalled-session");
+        let (database, state) = stack().await;
+        let mut poller = ConvoPoller::new(
+            state.clone(),
+            home.path().to_owned(),
+            PollConfig {
+                every_ticks: 1,
+                ..PollConfig::default()
+            },
+        );
+        for _ in 0..2 {
+            poller.reconcile().await.unwrap();
+        }
+        let status = crate::status::report(&state, false)
+            .await
+            .unwrap()
+            .conversations
+            .unwrap();
+        assert_eq!(status.state, ConversationState::Flowing);
+        assert_eq!(status.harnesses[0].tracked, 1);
+        assert_eq!(status.harnesses[0].behind, 1);
+        assert_eq!(status.harnesses[0].newest_ingest_at, None);
+        assert!(status.last_poll_at.is_some());
+        poller.reconcile().await.unwrap();
+        assert_eq!(
+            crate::status::report(&state, false)
+                .await
+                .unwrap()
+                .conversations
+                .unwrap()
+                .state,
+            ConversationState::Stalled
+        );
+        run_ingests(&state, home.path()).await;
+        poller.reconcile().await.unwrap();
+        let status = crate::status::report(&state, false)
+            .await
+            .unwrap()
+            .conversations
+            .unwrap();
+        assert_eq!(status.state, ConversationState::Flowing);
+        assert_eq!(status.harnesses[0].behind, 0);
+        assert!(status.harnesses[0].newest_ingest_at.is_some());
+        database.destroy(state.db.clone()).await;
+    }
+
+    #[tokio::test]
+    async fn convo_verify_no_file_is_distinct_from_present_but_unindexed() {
+        use crate::convo_ingest::{VerifyRequest, verify_at_home};
+        let (database, state) = stack().await;
+        for harness in ["claude", "omp"] {
+            let home = tempfile::tempdir().unwrap();
+            let request = IngestRequest {
+                pij_id: None,
+                session_id: Some("lazy-session".to_owned()),
+                harness: Some(harness.to_owned()),
+                folder: None,
+            };
+            let verify = VerifyRequest {
+                pij_id: None,
+                session_id: request.session_id.clone(),
+                harness: request.harness.clone(),
+            };
+            let failure = verify_at_home(&state, &verify, home.path().to_owned())
+                .await
+                .unwrap_err();
+            assert_eq!(failure.code, "FS3-E-QUERY-CONVERSATION-NO-SESSION-FILE");
+            assert!(failure.fix.contains("not persisted"));
+            let failure =
+                submit_after_at_home(&state, &request, Duration::ZERO, home.path().to_owned())
+                    .await
+                    .unwrap_err();
+            assert_eq!(failure.code, "FS3-E-QUERY-CONVERSATION-NO-SESSION-FILE");
+            let pending: i64 =
+                sqlx::query_scalar("SELECT count(*) FROM jobs WHERE kind = 'ingest_session'")
+                    .fetch_one(&state.db)
+                    .await
+                    .unwrap();
+            assert_eq!(pending, if harness == "claude" { 0 } else { 1 });
+            let path = if harness == "claude" {
+                home.path()
+                    .join(".claude/projects/-workspace/lazy-session.jsonl")
+            } else {
+                home.path()
+                    .join(".omp/agent/sessions/-workspace/2026-09-06_lazy-session.jsonl")
+            };
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            // No cwd or content: presence must not depend on successful parsing.
+            std::fs::write(&path, []).unwrap();
+            let failure = verify_at_home(&state, &verify, home.path().to_owned())
+                .await
+                .unwrap_err();
+            assert_eq!(failure.code, "FS3-E-QUERY-CONVERSATION-NOT-FOUND");
+            assert!(
+                submit_after_at_home(&state, &request, Duration::ZERO, home.path().to_owned())
+                    .await
+                    .unwrap()
+                    .accepted
+            );
+        }
+        database.destroy(state.db.clone()).await;
+    }
+
+    #[tokio::test]
+    async fn convo_poll_and_boot_commit_seam_submit_share_one_live_job() {
+        let home = tempfile::tempdir().unwrap();
+        claude_session(home.path(), "shared-session");
+        let (database, state) = stack().await;
+        let mut poller =
+            ConvoPoller::new(state.clone(), home.path().to_owned(), PollConfig::default());
+        assert_eq!(poller.reconcile().await.unwrap().changed, 1);
+        let request = IngestRequest {
+            pij_id: None,
+            session_id: Some("shared-session".to_owned()),
+            harness: Some("claude".to_owned()),
+            folder: Some(home.path().join("workspace").to_string_lossy().into_owned()),
+        };
+        let seam = submit_after_at_home(&state, &request, Duration::ZERO, home.path().to_owned())
+            .await
+            .unwrap();
+        let keys: Vec<String> =
+            sqlx::query_scalar("SELECT dedupe_key FROM jobs WHERE kind = 'ingest_session'")
+                .fetch_all(&state.db)
+                .await
+                .unwrap();
+        assert_eq!(keys, [seam.dedupe_key]);
+        assert_eq!(run_ingests(&state, home.path()).await.len(), 1);
+        assert_eq!(poller.poll().await.unwrap().enqueued, 0);
+        database.destroy(state.db.clone()).await;
+    }
+
+    #[tokio::test]
+    async fn convo_poll_truncated_file_enqueues_then_uses_existing_cursor_reset() {
+        let home = tempfile::tempdir().unwrap();
+        let path = claude_session(home.path(), "truncated-session");
+        let (database, state) = stack().await;
+        let mut poller =
+            ConvoPoller::new(state.clone(), home.path().to_owned(), PollConfig::default());
+        poller.poll().await.unwrap();
+        run_ingests(&state, home.path()).await;
+        assert_eq!(
+            poller.poll().await.unwrap().enqueued,
+            0,
+            "same size and identity are quiet"
+        );
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open(&path)
+            .unwrap()
+            .set_len(0)
+            .unwrap();
+        let stats = poller.poll().await.unwrap();
+        assert_eq!(stats.enqueued, 1);
+        assert_eq!(stats.behind, 1, "truncation is visible as behind");
+        run_ingests(&state, home.path()).await;
+        assert_eq!(poller.poll().await.unwrap().enqueued, 0);
+        let cursor = ingest_cursors::load_cursor(&state.db, Harness::Claude, "truncated-session")
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(matches!(cursor, SourceCursor::ByteOffset { offset: 0, .. }));
+        database.destroy(state.db.clone()).await;
+    }
+
+    // The shared reader's non-Unix identity is (0, 0); only size changes are
+    // detectable there. This proves actual inode replacement where supported.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn convo_poll_same_size_replacement_enqueues_and_same_identity_is_quiet() {
+        let home = tempfile::tempdir().unwrap();
+        let path = claude_session(home.path(), "replaced-session");
+        let (database, state) = stack().await;
+        let mut poller =
+            ConvoPoller::new(state.clone(), home.path().to_owned(), PollConfig::default());
+        poller.poll().await.unwrap();
+        run_ingests(&state, home.path()).await;
+        assert_eq!(poller.poll().await.unwrap().enqueued, 0);
+        let original = std::fs::metadata(&path).unwrap();
+        let replacement = path.with_extension("replacement");
+        std::fs::copy(&path, &replacement).unwrap();
+        std::fs::rename(replacement, &path).unwrap();
+        let replaced = std::fs::metadata(&path).unwrap();
+        assert_eq!(original.len(), replaced.len());
+        assert_ne!(
+            fs3_providers::conversation_sources::tail::identity(&original),
+            fs3_providers::conversation_sources::tail::identity(&replaced)
+        );
+        let stats = poller.poll().await.unwrap();
+        assert_eq!(
+            stats.enqueued, 1,
+            "same-size new identity must reach the reader"
+        );
+        assert_eq!(stats.behind, 1);
+        run_ingests(&state, home.path()).await;
+        assert_eq!(poller.poll().await.unwrap().enqueued, 0);
+        let delivered = fs3_store::conversation_delivery(
+            &state.db,
+            &crate::convo_ingest::conversation_guid(Harness::Claude, "replaced-session"),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert_eq!(
+            delivered.turns, 1,
+            "existing ledger dedupes the unchanged replacement bytes"
+        );
+        database.destroy(state.db.clone()).await;
+    }
+}

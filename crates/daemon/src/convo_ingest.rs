@@ -101,7 +101,16 @@ pub struct VerifyReport {
 /// standard envelope, and have the CLI client send only `pij_id` or the
 /// `session_id` + `harness` pair. No cwd, repository, or path enters this call.
 pub async fn verify(state: &AppState, request: &VerifyRequest) -> Result<VerifyReport, Failure> {
+    verify_at_home(state, request, home_dir()?).await
+}
+
+pub(crate) async fn verify_at_home(
+    state: &AppState,
+    request: &VerifyRequest,
+    home: PathBuf,
+) -> Result<VerifyReport, Failure> {
     let (harness, session_id) = verification_identity(request).await?;
+    require_native_file(harness, &session_id, &home).await?;
     let guid = conversation_guid(harness, &session_id);
     let delivery = fs3_store::conversation_delivery(&state.db, &guid)
         .await
@@ -248,11 +257,9 @@ pub struct IngestReport {
 
 /// The job kind that does the reading.
 ///
-/// Ingest is fired from HARNESS HOOKS, which run often and must not wait: the
-/// route ENQUEUES and returns, and the daemon's own runner does the work. The
-/// queue's dedupe key is the address, and `enqueue_job` upserts among live
-/// jobs, so a burst of hook firings collapses into ONE pending job rather than
-/// one job per firing — the same mechanism the watcher's debounce relies on.
+/// Native stores are polled by the daemon's conversation reconciler. Manual
+/// requests use the same enqueue path; the runner alone reads transcripts.
+/// Active jobs share an address-and-folder dedupe key.
 pub const INGEST_SESSION: &str = "ingest_session";
 
 /// What the route returns, immediately.
@@ -266,7 +273,7 @@ pub struct IngestAccepted {
     pub accepted: bool,
 }
 
-/// Enqueue an ingest and return without touching a session store.
+/// Validate the addressed store, then enqueue without reading the transcript.
 ///
 /// # Errors
 /// [`catalog::QUERY_INVALID`] for an address that is not one of the two
@@ -284,6 +291,15 @@ pub async fn submit_after(
     state: &AppState,
     request: &IngestRequest,
     delay: std::time::Duration,
+) -> Result<IngestAccepted, Failure> {
+    submit_after_at_home(state, request, delay, home_dir()?).await
+}
+
+pub(crate) async fn submit_after_at_home(
+    state: &AppState,
+    request: &IngestRequest,
+    delay: std::time::Duration,
+    home: PathBuf,
 ) -> Result<IngestAccepted, Failure> {
     // Validated HERE rather than in the worker, so a mistyped address is a
     // synchronous error the caller can see rather than a job that fails later
@@ -306,6 +322,35 @@ pub async fn submit_after(
             .retryable(false));
         }
     };
+    let (harness, session_id) = verification_identity(&VerifyRequest {
+        pij_id: request.pij_id.clone(),
+        session_id: request.session_id.clone(),
+        harness: request.harness.clone(),
+    })
+    .await?;
+    require_native_file(harness, &session_id, &home).await?;
+    if harness == Harness::MetricsDb {
+        let request = request.clone();
+        let home = home.clone();
+        tokio::task::spawn_blocking(move || {
+            // Probe before repository resolution so a missing store names both
+            // paths even when the caller has not supplied a checkout yet.
+            metrics_db_path(&home).ok_or_else(|| metrics_store_unavailable(&home))?;
+            let (input, harness) = self::address(&request, &home)?;
+            let folder = input.folder();
+            let remote = remote_url(folder, &home);
+            source_for(harness, folder, &home, remote.as_deref())?
+                .resolve(&input)
+                .map_err(|error| {
+                    reader_failure(&format!(
+                        "git-ai source validation failed before enqueue: {error}"
+                    ))
+                })?;
+            Ok::<(), Failure>(())
+        })
+        .await
+        .map_err(|error| join_failure(&error))??;
+    }
 
     let folder = request.folder.clone().unwrap_or_default();
     let dedupe_key = format!("ingest:{address}@{folder}");
@@ -390,42 +435,126 @@ pub fn next_after_submit(accepted: &IngestAccepted) -> String {
 /// Returns `None` when no store directory holds the id, which is a genuinely
 /// unknown session rather than a misaddressed one.
 fn discover_folder(harness: Harness, session_id: &str, home: &Path) -> Option<PathBuf> {
-    let (root, matches): (PathBuf, fn(&str, &str) -> bool) = match harness {
-        Harness::Omp => (home.join(".omp/agent/sessions"), |name, id| {
-            name.ends_with(&format!("_{id}.jsonl"))
-        }),
-        Harness::Claude => (home.join(".claude/projects"), |name, id| {
-            name == format!("{id}.jsonl")
-        }),
-        // The ledger is addressed by seat and the metrics store is one
-        // database: neither has a workspace-slugged directory to search.
-        Harness::PijLedger | Harness::MetricsDb => return None,
-    };
+    native_session_file(harness, session_id, home)
+        .ok()
+        .flatten()
+        .and_then(|path| cwd_of(&path))
+}
 
-    for slug_dir in std::fs::read_dir(&root).ok()?.flatten() {
-        let Ok(entries) = std::fs::read_dir(slug_dir.path()) else {
+/// Presence is separate from cwd parsing: a present but unreadable or
+/// header-only transcript is never reported as an identity not yet persisted.
+fn native_session_file(
+    harness: Harness,
+    session_id: &str,
+    home: &Path,
+) -> Result<Option<PathBuf>, Failure> {
+    let (root, expected, exact) = match harness {
+        Harness::Claude => (
+            home.join(".claude/projects"),
+            format!("{session_id}.jsonl"),
+            true,
+        ),
+        Harness::Omp => (
+            home.join(".omp/agent/sessions"),
+            format!("_{session_id}.jsonl"),
+            false,
+        ),
+        Harness::PijLedger | Harness::MetricsDb => return Ok(None),
+    };
+    let directories = match std::fs::read_dir(&root) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(reader_failure(&format!(
+                "cannot inspect {}: {error}",
+                root.display()
+            )));
+        }
+    };
+    for directory in directories {
+        let directory = directory.map_err(|error| reader_failure(&error.to_string()))?;
+        if !directory
+            .file_type()
+            .map_err(|error| reader_failure(&error.to_string()))?
+            .is_dir()
+        {
             continue;
+        }
+        let entries = match std::fs::read_dir(directory.path()) {
+            Ok(entries) => entries,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(error) => {
+                return Err(reader_failure(&format!(
+                    "cannot inspect {}: {error}",
+                    directory.path().display()
+                )));
+            }
         };
-        for entry in entries.flatten() {
+        for entry in entries {
+            let entry = entry.map_err(|error| reader_failure(&error.to_string()))?;
             let name = entry.file_name();
             let Some(name) = name.to_str() else { continue };
-            if !matches(name, session_id) {
-                continue;
-            }
-            if let Some(cwd) = cwd_of(&entry.path()) {
-                return Some(cwd);
+            if if exact {
+                name == expected
+            } else {
+                name.ends_with(&expected)
+            } {
+                let path = entry.path();
+                let metadata = std::fs::metadata(&path).map_err(|error| {
+                    reader_failure(&format!("cannot inspect {}: {error}", path.display()))
+                })?;
+                if metadata.is_file() {
+                    return Ok(Some(path));
+                }
             }
         }
     }
-    None
+    Ok(None)
 }
+
+async fn require_native_file(
+    harness: Harness,
+    session_id: &str,
+    home: &Path,
+) -> Result<(), Failure> {
+    if !matches!(harness, Harness::Claude | Harness::Omp) {
+        return Ok(());
+    }
+    let home = home.to_owned();
+    let session = session_id.to_owned();
+    let path = tokio::task::spawn_blocking(move || native_session_file(harness, &session, &home))
+        .await
+        .map_err(|error| join_failure(&error))??;
+    if path.is_some() {
+        return Ok(());
+    }
+    Err(Failure::new(&catalog::QUERY_CONVERSATION_NO_SESSION_FILE,
+        format!("no {harness} session file exists for {session_id}; the harness has not persisted it yet"))
+        .with_detail("harness", harness.as_str())
+        .with_detail("session_id", session_id))
+}
+
+const CWD_READ_LIMIT: u64 = 8 * 1024 * 1024;
 
 /// The working directory a session file records, from the first record that
 /// carries one.
-fn cwd_of(path: &Path) -> Option<PathBuf> {
-    let text = std::fs::read_to_string(path).ok()?;
-    for line in text.lines().take(64) {
-        let Ok(record) = serde_json::from_str::<serde_json::Value>(line) else {
+pub(crate) fn cwd_of(path: &Path) -> Option<PathBuf> {
+    cwd_from(std::fs::File::open(path).ok()?)
+}
+
+fn cwd_from(reader: impl std::io::Read) -> Option<PathBuf> {
+    use std::io::{BufRead, BufReader};
+
+    // Bound bytes as well as lines: a single tool payload may span megabytes.
+    // `take` is INSIDE BufReader so even read-ahead cannot exceed the bound.
+    let mut reader = BufReader::new(reader.take(CWD_READ_LIMIT));
+    let mut line = Vec::new();
+    for _ in 0..64 {
+        line.clear();
+        if reader.read_until(b'\n', &mut line).ok()? == 0 {
+            break;
+        }
+        let Ok(record) = serde_json::from_slice::<serde_json::Value>(&line) else {
             continue;
         };
         if let Some(cwd) = record.get("cwd").and_then(serde_json::Value::as_str) {
@@ -509,6 +638,33 @@ pub fn workspace_slug(harness: Harness, folder: &Path, home: &Path) -> String {
     format!("-{}", trimmed.replace('/', "-"))
 }
 
+/// Resolve the git-ai store read-only, without creating or modifying anything.
+/// Probe order is contractual: `internal/metrics-db` first, then legacy
+/// `metrics.sqlite3`. An absent or unreadable candidate falls through.
+#[must_use]
+pub fn metrics_db_path(home: &Path) -> Option<PathBuf> {
+    metrics_candidates(home)
+        .into_iter()
+        .find(|path| path.is_file() && std::fs::File::open(path).is_ok())
+}
+
+fn metrics_candidates(home: &Path) -> [PathBuf; 2] {
+    [
+        home.join(".git-ai/internal/metrics-db"),
+        home.join(".git-ai/metrics.sqlite3"),
+    ]
+}
+
+fn metrics_store_unavailable(home: &Path) -> Failure {
+    let [primary, legacy] = metrics_candidates(home);
+    reader_failure(&format!(
+        "neither git-ai store opens read-only: {} or {}",
+        primary.display(),
+        legacy.display()
+    ))
+    .with_fix("check git-ai's native store location and read permissions; no ingest job was queued")
+}
+
 /// Build the reader for a store, rooted under `home` and scoped to `folder`.
 fn source_for(
     harness: Harness,
@@ -524,6 +680,7 @@ fn source_for(
         Harness::Omp => Box::new(OmpSource::from_home(home)),
         Harness::PijLedger => Box::new(PijLedgerSource::from_home(home)),
         Harness::MetricsDb => {
+            let database = metrics_db_path(home).ok_or_else(|| metrics_store_unavailable(home))?;
             let remote = remote_url.ok_or_else(|| {
                 Failure::new(
                     &catalog::QUERY_INVALID,
@@ -535,7 +692,7 @@ fn source_for(
                 .retryable(false)
             })?;
             Box::new(MetricsDbSource::new(
-                home.join(".git-ai/metrics.sqlite3"),
+                database,
                 RepoScope::remote_url(remote),
             ))
         }
@@ -548,10 +705,17 @@ fn source_for(
 /// [`catalog::QUERY_INVALID`] for an address this build cannot resolve; store
 /// and reader failures mapped by their own codes.
 pub async fn ingest(state: &AppState, request: &IngestRequest) -> Result<IngestReport, Failure> {
-    let home = home_dir()?;
+    ingest_at_home(state, request, home_dir()?).await
+}
+
+pub(crate) async fn ingest_at_home(
+    state: &AppState,
+    request: &IngestRequest,
+    home: PathBuf,
+) -> Result<IngestReport, Failure> {
     let (input, harness) = address(request, &home)?;
     let folder = input_folder(&input);
-    let remote = remote_url(&folder);
+    let remote = remote_url(&folder, &home);
     let mut folder = folder;
     let mut input = input;
     let mut resolved = tokio::task::spawn_blocking({
@@ -943,8 +1107,9 @@ fn input_folder(input: &IngestInput) -> PathBuf {
 /// yields `None`, which is a REFUSAL for the machine-wide store rather than a
 /// fallback — there is no safe unscoped read of a store that holds every
 /// project on the machine.
-fn remote_url(folder: &Path) -> Option<String> {
+fn remote_url(folder: &Path, home: &Path) -> Option<String> {
     let output = std::process::Command::new("git")
+        .env("HOME", home)
         .arg("-C")
         .arg(folder)
         .args(["remote", "get-url", "origin"])
@@ -979,6 +1144,178 @@ fn reader_failure(message: &str) -> Failure {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn metrics_db_path_prefers_native_and_refuses_before_enqueue_when_unopenable() {
+        const REMOTE: &str = "https://github.com/AI-Substrate/flowspace3";
+        const SESSION: &str = "a5a5588f-0979-439f-a1bf-ddf185a089c7";
+        let home = tempfile::tempdir().unwrap();
+        let database = fs3_testkit::FreshDatabase::create("metrics-preflight").await;
+        let state = AppState::from_config(fs3_core::Config {
+            database: fs3_core::DatabaseConfig {
+                url: database.url(),
+            },
+            ..fs3_core::Config::default()
+        })
+        .unwrap();
+        fs3_store::migrate(&state.db).await.unwrap();
+        let mut request = IngestRequest {
+            pij_id: None,
+            session_id: Some(SESSION.to_owned()),
+            harness: Some("metrics-db".to_owned()),
+            folder: None,
+        };
+        let primary = home.path().join(".git-ai/internal/metrics-db");
+        let legacy = home.path().join(".git-ai/metrics.sqlite3");
+        let missing = submit_after_at_home(
+            &state,
+            &request,
+            std::time::Duration::ZERO,
+            home.path().to_owned(),
+        )
+        .await
+        .unwrap_err();
+        assert!(missing.message.contains(primary.to_str().unwrap()));
+        assert!(missing.message.contains(legacy.to_str().unwrap()));
+        let count: i64 = sqlx::query_scalar("SELECT count(*) FROM jobs")
+            .fetch_one(&state.db)
+            .await
+            .unwrap();
+        assert_eq!(
+            count, 0,
+            "a missing store never returns accepted or queues work"
+        );
+
+        let folder = home.path().join("workspace");
+        std::fs::create_dir_all(&folder).unwrap();
+        for args in [
+            vec!["init", "--quiet"],
+            vec!["remote", "add", "origin", REMOTE],
+        ] {
+            let output = std::process::Command::new("git")
+                .args(args)
+                .current_dir(&folder)
+                .env("HOME", home.path())
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+        request.folder = Some(folder.to_string_lossy().into_owned());
+        let input = IngestInput::Native {
+            session_id: SESSION.to_owned(),
+            harness: Harness::MetricsDb,
+            folder: folder.clone(),
+        };
+        let fixture = fs3_testkit::fixtures_root().join("metrics_db/metrics.sqlite3");
+        std::fs::create_dir_all(primary.parent().unwrap()).unwrap();
+        std::fs::copy(&fixture, &legacy).unwrap();
+        assert_eq!(metrics_db_path(home.path()), Some(legacy.clone()));
+        let resolved = source_for(Harness::MetricsDb, &folder, home.path(), Some(REMOTE))
+            .unwrap()
+            .resolve(&input)
+            .unwrap();
+        assert_eq!(resolved[0].path, legacy);
+        assert!(
+            submit_after_at_home(
+                &state,
+                &request,
+                std::time::Duration::ZERO,
+                home.path().to_owned()
+            )
+            .await
+            .unwrap()
+            .accepted
+        );
+
+        std::fs::copy(&fixture, &primary).unwrap();
+        assert_eq!(
+            metrics_db_path(home.path()),
+            Some(primary.clone()),
+            "native wins when BOTH stores exist"
+        );
+        let resolved = source_for(Harness::MetricsDb, &folder, home.path(), Some(REMOTE))
+            .unwrap()
+            .resolve(&input)
+            .unwrap();
+        assert_eq!(resolved[0].path, primary);
+        std::fs::remove_file(&legacy).unwrap();
+        assert!(
+            submit_after_at_home(
+                &state,
+                &request,
+                std::time::Duration::ZERO,
+                home.path().to_owned()
+            )
+            .await
+            .unwrap()
+            .accepted
+        );
+        let count: i64 =
+            sqlx::query_scalar("SELECT count(*) FROM jobs WHERE kind = 'ingest_session'")
+                .fetch_one(&state.db)
+                .await
+                .unwrap();
+        assert_eq!(count, 1, "repeated valid submissions share the live key");
+
+        std::fs::write(&primary, b"not a sqlite database").unwrap();
+        let corrupt = submit_after_at_home(
+            &state,
+            &request,
+            std::time::Duration::ZERO,
+            home.path().to_owned(),
+        )
+        .await
+        .unwrap_err();
+        assert!(corrupt.message.contains("before enqueue"));
+        assert!(corrupt.message.contains("not a database"));
+        database.destroy(state.db.clone()).await;
+    }
+
+    #[test]
+    fn cwd_lookup_handles_a_multi_megabyte_first_line_without_reading_the_file() {
+        use std::io::{Read, Write};
+        struct Counting<R> {
+            inner: R,
+            read: usize,
+        }
+        impl<R: Read> Read for Counting<R> {
+            fn read(&mut self, bytes: &mut [u8]) -> std::io::Result<usize> {
+                let count = self.inner.read(bytes)?;
+                self.read += count;
+                Ok(count)
+            }
+        }
+        let home = tempfile::tempdir().unwrap();
+        let path = home.path().join("session.jsonl");
+        let mut file = std::fs::File::create(&path).unwrap();
+        let record = serde_json::json!({"payload":"x".repeat(3 * 1024 * 1024),"cwd":home.path()});
+        writeln!(file, "{record}").unwrap();
+        file.set_len(CWD_READ_LIMIT * 4).unwrap();
+        let mut counted = Counting {
+            inner: std::fs::File::open(&path).unwrap(),
+            read: 0,
+        };
+        assert_eq!(cwd_from(&mut counted), Some(home.path().to_owned()));
+        assert!(
+            counted.read < 4 * 1024 * 1024,
+            "stops after the first complete record"
+        );
+        assert_eq!(cwd_of(&path), Some(home.path().to_owned()));
+
+        // No newline, no cwd: even the first record cannot force an unbounded read.
+        let huge = std::fs::File::create(&path).unwrap();
+        huge.set_len(CWD_READ_LIMIT * 4).unwrap();
+        let mut counted = Counting {
+            inner: std::fs::File::open(&path).unwrap(),
+            read: 0,
+        };
+        assert_eq!(cwd_from(&mut counted), None);
+        assert_eq!(counted.read as u64, CWD_READ_LIMIT);
+    }
 
     #[test]
     fn the_two_addressing_routes_derive_the_same_conversation() {

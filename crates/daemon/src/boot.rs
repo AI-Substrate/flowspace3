@@ -738,6 +738,20 @@ async fn serve(
         state.db.clone(),
         state.config.indexing.job_retention_days,
     )));
+    if state.config.indexing.conversation_poll_ticks != 0 {
+        let conversation_home = std::env::var_os("HOME")
+            .map(std::path::PathBuf::from)
+            .context("HOME is required to locate native conversation stores")?;
+        reconcilers.push(Box::new(crate::convo_poll::ConvoPoller::new(
+            state.clone(),
+            conversation_home,
+            crate::convo_poll::PollConfig {
+                every_ticks: state.config.indexing.conversation_poll_ticks,
+                lookback_days: state.config.indexing.conversation_lookback_days,
+                ..crate::convo_poll::PollConfig::default()
+            },
+        )));
+    }
     let reconcile = tokio::spawn(crate::reconcile::run_forever(reconcilers, cadence));
 
     let server = http::serve_listener(state, listener.into_inner(), auth, shutdown).await;

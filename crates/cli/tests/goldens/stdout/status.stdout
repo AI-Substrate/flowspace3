@@ -3,6 +3,24 @@
   "command": "status",
   "v": 1,
   "data": {
+    "conversations": {
+      "harnesses": [
+        {
+          "behind": 0,
+          "harness": "claude",
+          "newest_ingest_at": "2026-09-06T05:59:54.000000Z",
+          "tracked": 2
+        },
+        {
+          "behind": 0,
+          "harness": "omp",
+          "newest_ingest_at": "2026-09-06T05:59:58.000000Z",
+          "tracked": 1
+        }
+      ],
+      "last_poll_at": "2026-09-06T06:00:00.000Z",
+      "state": "flowing"
+    },
     "last_error": null,
     "queue": [
       {

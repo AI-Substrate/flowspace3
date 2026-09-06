@@ -116,6 +116,8 @@ pub struct AppState {
     /// deliberately: the alternative is quadratic, and no cheap corpus-change
     /// detector exists.
     pub ddocs: Arc<RwLock<BTreeMap<i64, Arc<crate::ddoc::DdocTooling>>>>,
+    /// One lightweight snapshot from the native conversation reconciler.
+    pub(crate) conversations: Arc<RwLock<crate::convo_poll::PollHealth>>,
 }
 
 impl std::fmt::Debug for AppState {
@@ -197,6 +199,9 @@ impl AppState {
                 String::new()
             });
 
+        let conversations = Arc::new(RwLock::new(crate::convo_poll::PollHealth::new(
+            config.indexing.conversation_poll_ticks,
+        )));
         Ok(Self {
             embedder,
             summarizer,
@@ -209,6 +214,7 @@ impl AppState {
             config,
             install_path,
             ddocs: Arc::new(RwLock::new(BTreeMap::new())),
+            conversations,
         })
     }
     /// Attach one live watcher to the daemon event fan-out.
@@ -608,7 +614,7 @@ fn openai_compat_config(
 }
 
 /// Current UTC time in the frozen event-wire spelling, without a date crate.
-fn now() -> String {
+pub(crate) fn now() -> String {
     let elapsed = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default();

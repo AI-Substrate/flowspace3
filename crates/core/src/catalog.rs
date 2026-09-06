@@ -171,7 +171,7 @@ impl Code {
     /// Mechanical, from the code's own spelling, so an endpoint author makes
     /// zero judgment calls: `*-UNAUTHORIZED` is missing or stale authentication
     /// (401), `*-INVALID*` is the caller's fault (400), a `*-NOT-FOUND` is
-    /// missing (404), a `*-NOT-IMPLEMENTED` is a feature this build does not
+    /// missing (404), as is `*-NO-SESSION-FILE`; `*-NOT-IMPLEMENTED` is a feature this build does not
     /// have (501), an `*-UNAVAILABLE` is a dependency that may come back (503),
     /// and anything else is ours (500).
     ///
@@ -186,7 +186,7 @@ impl Code {
     pub fn http_status(&self) -> u16 {
         if self.code.ends_with("-UNAUTHORIZED") {
             401
-        } else if self.code.ends_with("-NOT-FOUND") {
+        } else if self.code.ends_with("-NOT-FOUND") || self.code.ends_with("-NO-SESSION-FILE") {
             404
         } else if self.code.ends_with("-NOT-IMPLEMENTED") {
             501
@@ -425,6 +425,15 @@ pub const QUERY_CONVERSATION_NOT_FOUND: Code = Code::new(
     false,
 );
 
+/// A native identity exists before its harness has written a session file.
+pub const QUERY_CONVERSATION_NO_SESSION_FILE: Code = Code::new(
+    "FS3-E-QUERY-CONVERSATION-NO-SESSION-FILE",
+    Area::Query,
+    "No native session file exists for this identity yet.",
+    "the harness has not persisted this session yet; the conversation poller picks it up when written. There is nothing to ingest yet.",
+    false,
+);
+
 /// The address is well formed but nothing in the index answers to it.
 pub const QUERY_NOT_FOUND: Code = Code::new(
     "FS3-E-QUERY-NOT-FOUND",
@@ -564,6 +573,7 @@ pub const ALL: &[Code] = &[
     QUERY_ASK_TOKEN_BUDGET,
     QUERY_NO_INDEX,
     QUERY_CONVERSATION_NOT_FOUND,
+    QUERY_CONVERSATION_NO_SESSION_FILE,
     QUERY_NOT_FOUND,
     QUERY_INVALID_ADDRESS,
     QUERY_INVALID_AMBIGUOUS,
@@ -683,6 +693,7 @@ mod tests {
         assert_eq!(CONFIG_INVALID.http_status(), 400);
         assert_eq!(QUERY_INVALID.http_status(), 400);
         assert_eq!(SCAN_ROOT_NOT_FOUND.http_status(), 404);
+        assert_eq!(QUERY_CONVERSATION_NO_SESSION_FILE.http_status(), 404);
         assert_eq!(STORE_UNAVAILABLE.http_status(), 503);
         assert_eq!(DAEMON_UNAVAILABLE.http_status(), 503);
         assert_eq!(DAEMON_UNAUTHORIZED.http_status(), 401);

@@ -35,14 +35,14 @@ Work top to bottom; stop-and-ask o-prime on anything outside the fence.
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| t1 | Poller skeleton + enumeration + size-vs-cursor decision | — | — | [ ] unchecked | — | — | [ ] 0/1 [t1](#t1) | `convo_poll.rs` implements Reconcile with tick counting; enumerates claude/omp stores under an injected home; compares each file's size to its durable cursor; unit tests on a tempdir home (first poll enqueues one per session, unchanged poll enqueues nothing, appended file re-enqueues); mutation: flipped comparison → red | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
-| t2 | File-derived identity + submit wiring | — | — | [ ] unchecked | — | — | [ ] 0/1 [t2](#t2) | (harness, session_id) parsed from filename, folder via cwd_of/discover_folder reuse; claude sidecars attributed to the parent request, not enumerated as sessions; phantom recorded id test; submit_after called with the dedupe address | — | [ac-0002](../../../plan.dd.md#acceptance-criteria) |
-| t3 | Cold-start cap, stagger, lookback | — | — | [ ] unchecked | — | — | [ ] 0/1 [t3](#t3) | per-pass cap + staggered not_before via submit_after; lookback window skips old cursorless files; 60-session test proves cap and totals; pass log prints enqueued/behind/skipped; mutation: cap removed → red | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
-| t4 | status block + doctor row | — | — | [ ] unchecked | — | — | [ ] 0/1 [t4](#t4) | additive StatusReport.conversations; CLI rendering; doctor `conversations` step with flowing/stalled/disabled + git-ai path; goldens updated; ticks=0 renders disabled | — | [ac-0004](../../../plan.dd.md#acceptance-criteria) |
-| t5 | 'no session file yet' distinction | — | — | [ ] unchecked | — | — | [ ] 0/1 [t5](#t5) | new catalog code; verify/ingest probe the store for the file before the index; both codes tested; CLI render for both | — | [ac-0005](../../../plan.dd.md#acceptance-criteria) |
-| t6 | metrics-db path probe + fail-fast route | — | — | [ ] unchecked | — | — | [ ] 0/1 [t6](#t6) | probe internal/metrics-db then metrics.sqlite3; submit refuses synchronously when neither opens, naming both; three-layout tests; mutation: probe order swapped → red | — | [ac-0006](../../../plan.dd.md#acceptance-criteria) |
-| t7 | Config knobs + template + gate | — | — | [ ] unchecked | — | — | [ ] 0/1 [t7](#t7) | conversation_poll_ticks (12) and conversation_lookback_days (14) with template + refusal of 0 days; registration in boot.rs; `harness checks` green; execution log complete | — | [ac-0007](../../../plan.dd.md#acceptance-criteria) |
-| t8 | PR, bounce, prod receipt | — | — | [ ] unchecked | — | — | [ ] 0/1 [t8](#t8) | open the PR (never merge); o-prime bounces prod and records ac-0008 in assets/inputs/prod-after.md | — | [ac-0008](../../../plan.dd.md#acceptance-criteria) |
+| t1 | Poller skeleton + enumeration + size-vs-cursor decision | — | — | [x] checked | Complete; evidence in receipt and execution.log.md | cargo test -p fs3-daemon --lib convo_poll: 2 passed; size &gt; cursor mutated to &lt;=: unchanged-pass assertion failed (changed 2 vs 0); restored: 2 passed; test DB :5434 | [x] 1/1 [t1](#t1) | `convo_poll.rs` implements Reconcile with tick counting; enumerates claude/omp stores under an injected home; compares each file's size to its durable cursor; unit tests on a tempdir home (first poll enqueues one per session, unchanged poll enqueues nothing, appended file re-enqueues); mutation: flipped comparison → red | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
+| t2 | File-derived identity + submit wiring | — | — | [x] checked | Complete; evidence in receipt and execution.log.md | cargo test -p fs3-daemon --lib convo_poll: 3 passed incl phantom ID and per-path cwd cache; cargo test -p fs3-daemon --lib cwd_lookup: 1 passed, 3MiB first record resolves, 32MiB file limited to 8MiB | [x] 1/1 [t2](#t2) | (harness, session_id) parsed from filename, folder via cwd_of/discover_folder reuse; claude sidecars attributed to the parent request, not enumerated as sessions; phantom recorded id test; submit_after called with the dedupe address | — | [ac-0002](../../../plan.dd.md#acceptance-criteria) |
+| t3 | Cold-start cap, stagger, lookback | — | — | [x] checked | Complete; evidence in receipt and execution.log.md | cargo test -p fs3-daemon --lib convo_poll: 4 passed; 60 sessions scheduled 10/pass over 6 passes with all prior jobs pending; exact 6s not_before stagger; old cursorless skipped before cwd read, tracked-old append eligible; cap removed -&gt; 60 vs 10 failure, restored -&gt; 4 passed | [x] 1/1 [t3](#t3) | per-pass cap + staggered not_before via submit_after; lookback window skips old cursorless files; 60-session test proves cap and totals; pass log prints enqueued/behind/skipped; mutation: cap removed → red | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
+| t4 | status block + doctor row | — | — | [x] checked | Complete; evidence in receipt and execution.log.md | daemon convo_poll: 6 passed incl flowing at 2 unchanged passes, stalled at 3, stale snapshot 179s/180s, boot pending and disabled; cli conversations_: 4 passed incl authenticated status probe; envelope_goldens: 2 passed, conversation goldens untouched; doctor_daemon: 7 passed | [x] 1/1 [t4](#t4) | additive StatusReport.conversations; CLI rendering; doctor `conversations` step with flowing/stalled/disabled + git-ai path; goldens updated; ticks=0 renders disabled | — | [ac-0004](../../../plan.dd.md#acceptance-criteria) |
+| t5 | 'no session file yet' distinction | — | — | [x] checked | Complete; evidence in receipt and execution.log.md | daemon --lib convo_: 19 passed including absent vs present-unindexed for Claude/OMP and poll/seam dedupe; existing conversation_verify_contract HTTP test passed; envelope_goldens 2 passed with two new refusal cases, old conversation fixtures untouched | [x] 1/1 [t5](#t5) | new catalog code; verify/ingest probe the store for the file before the index; both codes tested; CLI render for both | — | [ac-0005](../../../plan.dd.md#acceptance-criteria) |
+| t6 | metrics-db path probe + fail-fast route | — | — | [x] checked | Complete; evidence in receipt and execution.log.md | metrics_db_path targeted test passed on real copied SQLite fixture: native-only, legacy-only, both prefer native, neither synchronous refusal naming both, corrupt synchronous refusal; reversed precedence fails native-wins assertion (artifact://48), restored passes; doctor row layouts passed | [x] 1/1 [t6](#t6) | probe internal/metrics-db then metrics.sqlite3; submit refuses synchronously when neither opens, naming both; three-layout tests; mutation: probe order swapped → red | — | [ac-0006](../../../plan.dd.md#acceptance-criteria) |
+| t7 | Config knobs + template + gate | — | — | [x] checked | Complete; evidence in receipt and execution.log.md | Final harness checks 2026-09-06T08:12:01Z exit 0: 11/11 gates, 12 doc links; config defaults/template/refusal verified; full prioritized poller 13 passed; code and generated docs in assigned worktree | [x] 1/1 [t7](#t7) | conversation_poll_ticks (12) and conversation_lookback_days (14) with template + refusal of 0 days; registration in boot.rs; `harness checks` green; execution log complete | — | [ac-0007](../../../plan.dd.md#acceptance-criteria) |
+| t8 | PR, bounce, prod receipt | — | — | [ ] unchecked | In progress: preparing scoped commit and PR; o-prime owns merge, bounce and ac-0008 production receipt | — | [ ] 0/1 [t8](#t8) | open the PR (never merge); o-prime bounces prod and records ac-0008 in assets/inputs/prod-after.md | — | [ac-0008](../../../plan.dd.md#acceptance-criteria) |
 
 <a id="done-when"></a>
 
@@ -52,43 +52,43 @@ Work top to bottom; stop-and-ask o-prime on anything outside the fence.
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0181 | ac-0001 test(s) green + mutation red | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
+| dw-0181 | ac-0001 test(s) green + mutation red | [x] checked | [bp-0001](../../backpressure.dd.md#rows) |
 
 ### t2
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0182 | ac-0002 test(s) green | [ ] unchecked | [bp-0002](../../backpressure.dd.md#rows) |
+| dw-0182 | ac-0002 test(s) green | [x] checked | [bp-0002](../../backpressure.dd.md#rows) |
 
 ### t3
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0183 | ac-0003 test(s) green + mutation red | [ ] unchecked | [bp-0003](../../backpressure.dd.md#rows) |
+| dw-0183 | ac-0003 test(s) green + mutation red | [x] checked | [bp-0003](../../backpressure.dd.md#rows) |
 
 ### t4
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0184 | ac-0004 test(s) green | [ ] unchecked | [bp-0004](../../backpressure.dd.md#rows) |
+| dw-0184 | ac-0004 test(s) green | [x] checked | [bp-0004](../../backpressure.dd.md#rows) |
 
 ### t5
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0185 | ac-0005 test(s) green | [ ] unchecked | [bp-0005](../../backpressure.dd.md#rows) |
+| dw-0185 | ac-0005 test(s) green | [x] checked | [bp-0005](../../backpressure.dd.md#rows) |
 
 ### t6
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0186 | ac-0006 test(s) green + mutation red | [ ] unchecked | [bp-0006](../../backpressure.dd.md#rows) |
+| dw-0186 | ac-0006 test(s) green + mutation red | [x] checked | [bp-0006](../../backpressure.dd.md#rows) |
 
 ### t7
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0187 | ac-0007 test(s) green | [ ] unchecked | [bp-0007](../../backpressure.dd.md#rows) |
+| dw-0187 | ac-0007 test(s) green | [x] checked | [bp-0007](../../backpressure.dd.md#rows) |
 
 ### t8
 

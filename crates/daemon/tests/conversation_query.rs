@@ -639,6 +639,18 @@ async fn conv_not_found_messages() {
 }
 #[tokio::test]
 async fn conversation_verify_contract() {
+    let home = tempfile::tempdir().expect("isolated native stores");
+    let sessions = home.path().join(".omp/agent/sessions/-workspace");
+    std::fs::create_dir_all(&sessions).unwrap();
+    for id in [
+        "01a051b7-3b2c-7000-8987-3e66b28db4b6",
+        "01a051b7-3b2c-7000-8987-000000000000",
+        "01a051b7-3b2c-7000-8987-111111111111",
+    ] {
+        std::fs::write(sessions.join(format!("2026-09-06_{id}.jsonl")), []).unwrap();
+    }
+    // SAFETY: this is the only test in this binary resolving native HOME.
+    unsafe { std::env::set_var("HOME", home.path()) };
     let (database, state) = stack("conversation-verify-contract").await;
     let session = "01a051b7-3b2c-7000-8987-3e66b28db4b6";
     let guid = conversation_guid(Harness::Omp, session);

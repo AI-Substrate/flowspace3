@@ -44,38 +44,45 @@
       "value": [
         {
           "id": "ac-0001",
-          "state": "unchecked",
-          "claim": "unit test with an injected fake home (NEVER the real ~): a claude store holding a main file + one subagent sidecar and an omp store holding one session; first poll enqueues exactly one ingest job per session (dedupe keys asserted); a second poll with no file change enqueues nothing; appending bytes to one file makes the next poll enqueue exactly that session; mutation receipt: flip the size>cursor comparison → suite red"
+          "state": "checked",
+          "claim": "unit test with an injected fake home (NEVER the real ~): a claude store holding a main file + one subagent sidecar and an omp store holding one session; first poll enqueues exactly one ingest job per session (dedupe keys asserted); a second poll with no file change enqueues nothing; appending bytes to one file makes the next poll enqueue exactly that session; mutation receipt: flip the size>cursor comparison → suite red",
+          "receipt": "convo_poll_first_unchanged_and_sidecar_append_use_durable_file_cursors; comparison mutation red/restored; final 13-test poller suite and full harness checks green"
         },
         {
           "id": "ac-0002",
-          "state": "unchecked",
-          "claim": "identity is file-derived: the test seeds a pij-style 'recorded session id' that matches no file and proves the poller never enqueues it, while the file that exists IS enqueued with the id parsed from its name (claude `<uuid>.jsonl`, omp `<ts>_<uuid>.jsonl`) and the folder from `cwd_of`"
+          "state": "checked",
+          "claim": "identity is file-derived: the test seeds a pij-style 'recorded session id' that matches no file and proves the poller never enqueues it, while the file that exists IS enqueued with the id parsed from its name (claude `<uuid>.jsonl`, omp `<ts>_<uuid>.jsonl`) and the folder from `cwd_of`",
+          "receipt": "convo_poll_identity_ignores_a_phantom_recorded_id_and_caches_actual_cwd; bounded 8MiB cwd counting-reader proof; full harness checks green"
         },
         {
           "id": "ac-0003",
-          "state": "unchecked",
-          "claim": "cold-start bound: a fake store with 60 stale-but-in-window sessions is drained over multiple passes at the configured per-pass cap with staggered `not_before`; no pass submits more than the cap; the total equals 60 with no duplicates; files older than `conversation_lookback_days` with no cursor are skipped and counted as skipped in the pass log"
+          "state": "checked",
+          "claim": "cold-start bound: a fake store with 60 stale-but-in-window sessions is drained over multiple passes at the configured per-pass cap with staggered `not_before`; no pass submits more than the cap; the total equals 60 with no duplicates; files older than `conversation_lookback_days` with no cursor are skipped and counted as skipped in the pass log",
+          "receipt": "convo_poll_cold_start_caps_staggers_and_progresses_past_pending_work; cap mutation red/restored; fast-cadence delivery bound; live-priority/backlog-reservation stress tests"
         },
         {
           "id": "ac-0004",
-          "state": "unchecked",
-          "claim": "`GET /status` carries `conversations` {last_poll_at, harnesses:[{harness, tracked, behind, newest_ingest_at}]} and the CLI renders it; `flowspace3 doctor` carries a `conversations` step whose `found` names flowing/stalled/disabled and the git-ai store path or 'missing'; envelope goldens updated; `conversation_poll_ticks = 0` renders as disabled, not as healthy"
+          "state": "checked",
+          "claim": "`GET /status` carries `conversations` {last_poll_at, harnesses:[{harness, tracked, behind, newest_ingest_at}]} and the CLI renders it; `flowspace3 doctor` carries a `conversations` step whose `found` names flowing/stalled/disabled and the git-ai store path or 'missing'; envelope goldens updated; `conversation_poll_ticks = 0` renders as disabled, not as healthy",
+          "receipt": "poller health boundary/recovery tests; authenticated doctor probe and status render tests; real CLI flowing/disabled smoke; status goldens; full harness checks green"
         },
         {
           "id": "ac-0005",
-          "state": "unchecked",
-          "claim": "`conversation verify --harness omp --session <id-with-no-file>` (and `ingest`) return the NEW catalog code with the 'not persisted yet' fix text; the same command against an existing-but-unindexed file still returns FS3-E-QUERY-CONVERSATION-NOT-FOUND; CLI render test for both"
+          "state": "checked",
+          "claim": "`conversation verify --harness omp --session <id-with-no-file>` (and `ingest`) return the NEW catalog code with the 'not persisted yet' fix text; the same command against an existing-but-unindexed file still returns FS3-E-QUERY-CONVERSATION-NOT-FOUND; CLI render test for both",
+          "receipt": "convo_verify_no_file_is_distinct_from_present_but_unindexed; existing verify HTTP contract; two new CLI refusal goldens; real HTTP missing-file status 404"
         },
         {
           "id": "ac-0006",
-          "state": "unchecked",
-          "claim": "metrics-db path: with a fake home holding `.git-ai/internal/metrics-db` the source opens it; with `.git-ai/metrics.sqlite3` only, it opens that; with neither, `submit` for `--harness metrics-db` fails synchronously with a message naming both probed paths and `accepted` is never true; doctor row reflects each case"
+          "state": "checked",
+          "claim": "metrics-db path: with a fake home holding `.git-ai/internal/metrics-db` the source opens it; with `.git-ai/metrics.sqlite3` only, it opens that; with neither, `submit` for `--harness metrics-db` fails synchronously with a message naming both probed paths and `accepted` is never true; doctor row reflects each case",
+          "receipt": "metrics_db_path_prefers_native_and_refuses_before_enqueue_when_unopenable; real SQLite fixture layouts; priority probe mutation red/restored; doctor layout tests"
         },
         {
           "id": "ac-0007",
-          "state": "unchecked",
-          "claim": "config: `[indexing] conversation_poll_ticks` and `conversation_lookback_days` parse with defaults 12 and 14, appear in the rendered config template, and `conversation_lookback_days = 0` is refused with a Problem naming the key (a zero window would poll nothing forever)"
+          "state": "checked",
+          "claim": "config: `[indexing] conversation_poll_ticks` and `conversation_lookback_days` parse with defaults 12 and 14, appear in the rendered config template, and `conversation_lookback_days = 0` is refused with a Problem naming the key (a zero window would poll nothing forever)",
+          "receipt": "conversation_poll_config_defaults_disable_and_refuse_zero_lookback; config_reference 3 passed; boot registration; final harness checks 2026-09-06T08:12:01Z 11/11 gates"
         },
         {
           "id": "ac-0008",
