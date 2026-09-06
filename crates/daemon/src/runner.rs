@@ -962,6 +962,15 @@ fn subject_of(kind: &str, payload: &serde_json::Value) -> String {
     let field = |name: &str| payload.get(name).and_then(serde_json::Value::as_str);
 
     match kind {
+        INGEST_SESSION => {
+            if let (Some(harness), Some(session)) = (field("harness"), field("session_id"))
+                && let Ok(harness) = harness.parse::<fs3_core::Harness>()
+            {
+                crate::convo_ingest::conversation_guid(harness, session).address()
+            } else {
+                field("pij_id").map_or_else(|| "?".to_owned(), |seat| format!("pij/{seat}"))
+            }
+        }
         SCAN_FILE => field("path").unwrap_or("?").to_string(),
         SUMMARIZE => payload
             .get("element")

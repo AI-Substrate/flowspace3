@@ -120,14 +120,6 @@ pub async fn load_cursor(
         .transpose()
 }
 
-/// Durable progress for one native session file, not its parent conversation.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CursorProgress {
-    pub cursor: SourceCursor,
-    /// UTC timestamp of the last committed read, including a read with no new turns.
-    pub last_read_at: String,
-}
-
 /// Read just the discovered session files in one query per harness.
 ///
 /// Missing keys remain absent; neither this snapshot nor a queued job advances
@@ -139,14 +131,12 @@ pub async fn load_cursors(
     pool: &PgPool,
     harness: Harness,
     session_ids: &[&str],
-) -> Result<BTreeMap<String, CursorProgress>, StoreError> {
+) -> Result<BTreeMap<String, SourceCursor>, StoreError> {
     if session_ids.is_empty() {
         return Ok(BTreeMap::new());
     }
     let rows = sqlx::query(
-        "SELECT session_id, cursor,
-                to_char(last_read_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS last_read_at
-           FROM ingest_cursors WHERE harness = $1 AND session_id = ANY($2)",
+        "SELECT session_id, cursor FROM ingest_cursors WHERE harness = $1 AND session_id = ANY($2)",
     )
     .bind(harness.as_str())
     .bind(session_ids)
@@ -160,13 +150,7 @@ pub async fn load_cursors(
                     "stored cursor for {harness}/{session_id} is not a source cursor: {error}"
                 )))
             })?;
-            Ok((
-                session_id,
-                CursorProgress {
-                    cursor,
-                    last_read_at: row.try_get("last_read_at")?,
-                },
-            ))
+            Ok((session_id, cursor))
         })
         .collect()
 }

@@ -801,6 +801,7 @@ pub(crate) async fn ingest_at_home(
                 // would leave a row nothing can ever fill in.
                 let known = existing.is_some();
                 if batch.records.is_empty() && !known {
+                    log_file_ingest(&guid, 0, 0, 0, 0, batch.rescanned);
                     return Ok(None);
                 }
 
@@ -927,14 +928,47 @@ pub(crate) async fn ingest_at_home(
         let Some(session) = outcome? else {
             continue;
         };
+        log_file_ingest(
+            &guid,
+            session.records_read,
+            session.turns_new,
+            session.deduped,
+            session.summarized,
+            session.rescanned,
+        );
         report.records_read += session.records_read;
         report.turns_new += session.turns_new;
         report.deduped += session.deduped;
         report.summarized += session.summarized;
         report.sessions.push(session);
     }
+    state.conversations.write().await.record_ingest(
+        harness,
+        fs3_core::views::status::ConversationIngestReceipt {
+            at: crate::wiring::now(),
+            address: conversation_guid(harness, session_id_of(&input)).address(),
+            records_read: report.records_read,
+            turns_new: report.turns_new,
+            deduped: report.deduped,
+            summarized: report.summarized,
+            rescanned: report.sessions.iter().any(|session| session.rescanned),
+            contended: report.contended,
+        },
+    );
 
     Ok(report)
+}
+
+fn log_file_ingest(
+    guid: &ConversationId,
+    records_read: usize,
+    turns_new: usize,
+    deduped: usize,
+    summarized: usize,
+    rescanned: bool,
+) {
+    tracing::info!(address = %format_args!("conv:{guid}"), subject = %format_args!("conv:{guid}"),
+        records_read, turns_new, deduped, summarized, rescanned, "ingested session file");
 }
 
 /// Whether the ordinal ledger and the turns table disagree about what is stored.

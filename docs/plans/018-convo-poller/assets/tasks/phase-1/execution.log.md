@@ -178,3 +178,19 @@ All proof logs and harness observations are retained. The observation buffer was
 Implementation committed as `7f70291e3965618a9831cfb5b7afc9bfb9c3c285` (`feat: poll native conversations and surface ingest health`) through `harness commit`; reported mode `direct-verified`, ingress probe connected. Branch pushed and PR opened: https://github.com/AI-Substrate/flowspace3/pull/118.
 
 Task t8 and ac-0008 are explicitly blocked awaiting o-prime's review, merge, production bounce and `assets/inputs/prod-after.md` receipt. Coder does not merge or mutate production. Receipt-only tracking updates follow the implementation commit; no source changes after the final green gate.
+
+## Jordan spend-proof extension after PR #118 opened
+
+Added an actual-daemon test on :5434 with sealed tempdir HOME and fake providers; it asserts database job counts by kind, not inferred cursor positions. Initial two-turn ingestion: ingest_session=1, summarize=2, embed=3 (one raw batch plus two smart embeddings). The unchanged next poll leaves all counts identical. Identity rescan runs one ingest job and yields read=2/new=0/deduped=2/summarized=0 with summarize/embed counts unchanged (2/3). One appended turn changes totals to ingest_session=3, summarize=3, embed=5: precisely one summary and two embedding jobs. Restart leaves counts unchanged and the new report explicitly unavailable until this process observes an ingest.
+
+Mutation: temporarily passed an empty seen set to prepare_batch at its existing call site; the rescan spend assertion failed with 4 summarize jobs versus 2 expected (artifact://140). Restored the actual ledger input; no permanent normalizer, ledger, reader, ordinal or GUID change.
+
+Status and doctor now cite a compact projection of actual IngestReport counters, not cursor timestamps. The latest report is in-memory and explicitly unavailable after restart; no migration. The bulk cursor helper now returns plain SourceCursor values and no longer allocates unused formatted last-read timestamps.
+
+Authorized runner.rs fence addition is logging projection only: the existing subject_of function now derives an ingest address from the payload. No claim, execution, retry, parking or concurrency logic changed. Ingestion emits one INFO receipt per session file with address/subject, records_read, turns_new, deduped, summarized and rescanned. Quiet poll passes emit DEBUG enqueued/behind/skipped; work/behind passes remain INFO. The actual daemon test asserts these lines, populated done subjects, and no quiet INFO spam.
+
+Focused verification after restoring the mutation: poller 13 passed; actual spend test 1 passed; envelope goldens 2 passed; diagnostic group 4 passed; newest-ingest renderer 1 passed (artifact://144). Only status goldens gained receipt fields; existing conversation goldens unchanged. The forced identity-rescan test is Unix-only, consistent with the unchanged non-Unix identity limitation.
+
+Per the latest ruling, these changes are committed/pushed before the final supervised full gate. That final verdict and immutable review head will be reported in the retained gate log and coder report; no further push after naming the review head.
+
+The failed spend-mutation database was audited before cleanup: only seeded `018-spend-session` under its tempdir HOME, with ingest=2/summarize=4/embed=6 exactly matching the intentional dedupe bypass. It was dropped; successful real-daemon spend tests stop both process instances and destroy their databases. No production resources or unrelated databases touched.

@@ -90,7 +90,10 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
                 harness.harness,
                 harness.tracked,
                 harness.behind,
-                harness.newest_ingest_at.as_deref().unwrap_or("none"),
+                harness.newest_ingest.as_ref().map_or_else(
+                    || "unavailable (not observed since daemon boot)".to_owned(),
+                    |receipt| receipt.describe(),
+                ),
             ));
         }
     }
@@ -294,6 +297,28 @@ mod tests {
             assert!(screen.contains("daemon-authored explanation"));
             assert!(screen.contains("3 tracked · 2 behind"));
             assert!(screen.contains("last poll pending"));
+            assert!(screen.contains("unavailable (not observed since daemon boot)"));
+        }
+    }
+
+    #[test]
+    fn newest_ingest_renders_actual_rescan_counters() {
+        let mut value = envelope(json!([]));
+        value.data.as_mut().unwrap()["conversations"] = json!({
+            "state":"flowing","last_poll_at":null,
+            "harnesses":[{"harness":"claude","tracked":1,"behind":0,"newest_ingest_at":"2026-09-06T00:00:00Z",
+                "newest_ingest":{"at":"2026-09-06T00:00:00Z","address":"conv:proof","records_read":2,"turns_new":0,"deduped":2,"summarized":0,"rescanned":true,"contended":0}}]
+        });
+        let screen = plain(&render(&value, 100).unwrap());
+        for text in [
+            "conv:proof",
+            "read 2",
+            "new 0",
+            "deduped 2",
+            "summarized 0",
+            "rescanned true",
+        ] {
+            assert!(screen.contains(text), "{screen}");
         }
     }
 }

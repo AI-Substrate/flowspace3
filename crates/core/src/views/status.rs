@@ -77,8 +77,43 @@ pub struct ConversationHarnessStatus {
     pub tracked: usize,
     /// Parent sessions needing an append, truncation, or replacement read.
     pub behind: usize,
-    /// Newest durable read among their files, not the last enqueue time.
+    /// Time of the newest observed ingest report; unknown after daemon restart.
     pub newest_ingest_at: Option<String>,
+    /// Actual report counters, never inferred from cursor movement.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub newest_ingest: Option<ConversationIngestReceipt>,
+}
+
+/// Totals projected from the existing ingest report for one request, including
+/// any sidecars. `summarized` counts queued summaries, not completed calls or money.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ConversationIngestReceipt {
+    pub at: String,
+    pub address: String,
+    pub records_read: usize,
+    pub turns_new: usize,
+    pub deduped: usize,
+    pub summarized: usize,
+    pub rescanned: bool,
+    pub contended: usize,
+}
+
+impl ConversationIngestReceipt {
+    /// A counter line from this report, shared by human diagnostic surfaces.
+    #[must_use]
+    pub fn describe(&self) -> String {
+        format!(
+            "{} {} · read {} · new {} · deduped {} · summarized {} · rescanned {} · contended {}",
+            self.at,
+            self.address,
+            self.records_read,
+            self.turns_new,
+            self.deduped,
+            self.summarized,
+            self.rescanned,
+            self.contended
+        )
+    }
 }
 
 /// One shared blob whose parsed rows do not form exactly one file tree.

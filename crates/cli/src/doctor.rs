@@ -813,7 +813,14 @@ fn conversations_row(
         .state_reason
         .as_deref()
         .unwrap_or("native session stores caught up");
-    let found = format!("{}: {reason}; git-ai store {store}", report.state.as_str());
+    let mut found = format!("{}: {reason}; git-ai store {store}", report.state.as_str());
+    for harness in &report.harnesses {
+        let receipt = harness.newest_ingest.as_ref().map_or_else(
+            || "unavailable (not observed since daemon boot)".to_owned(),
+            |receipt| receipt.describe(),
+        );
+        found.push_str(&format!("; {} newest ingest {receipt}", harness.harness));
+    }
     match report.state {
         ConversationState::Flowing => Step::ok("conversations", found, started),
         ConversationState::Disabled => Step::info(
@@ -1211,6 +1218,27 @@ mod tests {
         let resolved = fs3_daemon::convo_ingest::metrics_db_path(home.path());
         let row = conversations_row(Ok(&report), resolved.as_deref(), Instant::now());
         assert!(row.found.contains(legacy.to_str().unwrap()));
+        report.harnesses = serde_json::from_value(serde_json::json!([{
+            "harness":"claude","tracked":1,"behind":0,"newest_ingest_at":"2026-09-06T00:00:00Z",
+            "newest_ingest":{"at":"2026-09-06T00:00:00Z","address":"conv:proof","records_read":2,"turns_new":0,"deduped":2,"summarized":0,"rescanned":true,"contended":0}
+        }])).unwrap();
+        let row = conversations_row(Ok(&report), None, Instant::now());
+        for text in [
+            "newest ingest",
+            "conv:proof",
+            "read 2",
+            "new 0",
+            "deduped 2",
+            "summarized 0",
+        ] {
+            assert!(row.found.contains(text), "{}", row.found);
+        }
+        report.harnesses[0].newest_ingest = None;
+        assert!(
+            conversations_row(Ok(&report), None, Instant::now())
+                .found
+                .contains("unavailable (not observed since daemon boot)")
+        );
     }
 
     #[tokio::test]

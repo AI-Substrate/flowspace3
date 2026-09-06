@@ -1,11 +1,13 @@
 //! File-driven scheduling of the existing native conversation readers.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime};
 
 use anyhow::{Context, Result};
-use fs3_core::views::status::{ConversationHarnessStatus, ConversationState, ConversationsStatus};
+use fs3_core::views::status::{
+    ConversationHarnessStatus, ConversationIngestReceipt, ConversationState, ConversationsStatus,
+};
 use fs3_core::{ConversationSource, Harness, IngestInput, SessionFile, SessionKind, SourceCursor};
 use fs3_providers::conversation_sources::claude::ClaudeSource;
 use fs3_store::ingest_cursors;
@@ -59,6 +61,7 @@ pub(crate) struct PollHealth {
     snapshot: ConversationsStatus,
     observed: Instant,
     cadence: Duration,
+    ingests: BTreeMap<&'static str, ConversationIngestReceipt>,
 }
 
 impl PollHealth {
@@ -86,16 +89,37 @@ impl PollHealth {
                         tracked: 0,
                         behind: 0,
                         newest_ingest_at: None,
+                        newest_ingest: None,
                     })
                     .collect(),
             },
             observed: Instant::now(),
             cadence: Duration::from_secs(u64::from(every_ticks) * 5),
+            ingests: BTreeMap::new(),
         }
     }
 
     pub(crate) fn report(&self, now: Instant) -> ConversationsStatus {
         let mut report = self.snapshot.clone();
+        for (harness, receipt) in &self.ingests {
+            let index = report
+                .harnesses
+                .iter()
+                .position(|row| row.harness == *harness)
+                .unwrap_or_else(|| {
+                    // Manual sources can report spend without being polled.
+                    report.harnesses.push(ConversationHarnessStatus {
+                        harness: (*harness).to_owned(),
+                        tracked: 0,
+                        behind: 0,
+                        newest_ingest_at: None,
+                        newest_ingest: None,
+                    });
+                    report.harnesses.len() - 1
+                });
+            report.harnesses[index].newest_ingest_at = Some(receipt.at.clone());
+            report.harnesses[index].newest_ingest = Some(receipt.clone());
+        }
         if report.state != ConversationState::Disabled
             && now.saturating_duration_since(self.observed)
                 >= self.cadence.saturating_mul(STALL_PASSES)
@@ -105,6 +129,10 @@ impl PollHealth {
                 Some("no successful conversation poll within three cadences".to_owned());
         }
         report
+    }
+
+    pub(crate) fn record_ingest(&mut self, harness: Harness, receipt: ConversationIngestReceipt) {
+        self.ingests.insert(harness.as_str(), receipt);
     }
 
     fn record(&mut self, cfg: PollConfig, stats: &PollStats) {
@@ -239,6 +267,7 @@ impl ConvoPoller {
                 tracked: 0,
                 behind: 0,
                 newest_ingest_at: None,
+                newest_ingest: None,
             };
             let ids: Vec<&str> = sessions
                 .iter()
@@ -263,17 +292,9 @@ impl ConvoPoller {
                 summary.tracked += 1;
                 for file in session.files.iter().filter(|file| eligible(file)) {
                     let progress = cursors.get(&file.file.session_id);
-                    if let Some(progress) = progress
-                        && summary
-                            .newest_ingest_at
-                            .as_ref()
-                            .is_none_or(|newest| progress.last_read_at > *newest)
-                    {
-                        summary.newest_ingest_at = Some(progress.last_read_at.clone());
-                    }
-                    if behind(file, progress.map(|progress| &progress.cursor)) {
+                    if behind(file, progress) {
                         let key = (harness, file.file.session_id.clone());
-                        let cursor = progress.map(|progress| progress.cursor.clone());
+                        let cursor = progress.cloned();
                         let passes = self
                             .lag
                             .get(&key)
@@ -283,15 +304,11 @@ impl ConvoPoller {
                         lag.insert(key, (cursor, passes));
                     }
                 }
-                if session.files.iter().any(|file| {
-                    eligible(file)
-                        && behind(
-                            file,
-                            cursors
-                                .get(&file.file.session_id)
-                                .map(|progress| &progress.cursor),
-                        )
-                }) {
+                if session
+                    .files
+                    .iter()
+                    .any(|file| eligible(file) && behind(file, cursors.get(&file.file.session_id)))
+                {
                     summary.behind += 1;
                     let changed = session
                         .files
@@ -406,18 +423,29 @@ impl Reconcile for ConvoPoller {
 
     async fn reconcile(&mut self) -> Result<Pass> {
         if self.cfg.every_ticks == 0 {
-            *self.state.conversations.write().await = PollHealth::new(0);
+            let mut health = self.state.conversations.write().await;
+            health.snapshot.state = ConversationState::Disabled;
+            health.snapshot.state_reason = Some("conversation polling is disabled".to_owned());
         }
         if !self.due() {
             return Ok(Pass::QUIET);
         }
         let stats = self.poll().await?;
-        tracing::info!(
-            enqueued = stats.enqueued,
-            behind = stats.behind,
-            skipped = stats.skipped,
-            "polled native conversations"
-        );
+        if stats.enqueued == 0 && stats.behind == 0 {
+            tracing::debug!(
+                enqueued = stats.enqueued,
+                behind = stats.behind,
+                skipped = stats.skipped,
+                "polled native conversations"
+            );
+        } else {
+            tracing::info!(
+                enqueued = stats.enqueued,
+                behind = stats.behind,
+                skipped = stats.skipped,
+                "polled native conversations"
+            );
+        }
         Ok(Pass::changed(stats.enqueued))
     }
 }
@@ -941,7 +969,7 @@ mod tests {
         assert!(
             cursors
                 .values()
-                .all(|progress| progress.last_read_at.ends_with('Z'))
+                .all(|cursor| matches!(cursor, SourceCursor::ByteOffset { .. }))
         );
         use std::io::Write;
         std::fs::OpenOptions::new()
