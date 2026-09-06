@@ -3794,3 +3794,202 @@ back would silently over-grant. Measured on the working config: a seam question 
 **29 iterations / 266,389 tokens**; a simpler one in **16 / 106,232**.
 **Encode:** allow `max_iterations`/`token_budget` (and any future per-model knob) on the provider
 entry, falling back to `[agent]` — one entry names one model, so per-model bounds belong with it.
+
+## 193 — the git-ai metrics-db route opens a file that does not exist
+
+`crates/daemon/src/convo_ingest.rs:538` hardcodes `~/.git-ai/metrics.sqlite3`; git-ai on this
+machine writes `~/.git-ai/internal/metrics-db` (4.9GB, 1.13M rows, `event_kind=5` rows landing
+today). The fixture was harvested from the real path
+(`testkit/fixtures/conversations/metrics_db/PROVENANCE.md:4`) and saved as
+`metrics_db/metrics.sqlite3` — the fixture's filename leaked into the production constructor.
+Proved on prod 2026-09-06: `conversation ingest --harness metrics-db --session a5a5588f…` was
+ACCEPTED by the route, then the job failed `FS3-E-QUERY-INVALID … cannot open
+/Users/jordanknight/.git-ai/metrics.sqlite3 read-only`. Per `conversation_join.rs:89` this is
+the ONLY store copilot sessions exist in, so github-copilot conversation ingest has never
+worked here; the git-ai route is not a fallback for claude/omp either. Accept-then-fail: the CLI
+prints `queued` and the operator learns only from `status.last_error` or the daemon log. DL-004.
+**Encode:** resolve the path from git-ai (probe `internal/metrics-db`, fall back to
+`metrics.sqlite3`), fail FAST in the route on an unopenable store, and add a doctor row for the
+store's existence and newest-row age.
+
+## 194 — conversation ingest was designed to fire from harness hooks; no hook was ever installed
+
+`convo_ingest.rs:249` and `.harness/extensions/convo/extension.ts:16` both state ingest is
+hook-fired; the enqueue side is built and idempotent (dedupe key = address). `~/.claude/settings.json`
+hooks: `SessionStart` → pij bind, `PostToolUse` → git-ai checkpoint + harness-hook fire,
+`Notification` → chainglass — none call fs3; no repo-local settings carry one; a grep for
+`fs3-convo|conversation ingest` across `.harness/` and `~/.harness/` finds only the extension's own
+source. `cli/src/conversation.rs:6`: "the live git-ai/harness submitter is a separate future
+packet" — never built. This reframes row 192-adjacent DL-002: not "no poller" but "the designed
+trigger never shipped". Measured 2026-09-05: 106 claude session files touched in 7 days, 109
+conversations indexed in total ever, newest 09-02. Review:
+`scratch/review-claude-session-ingest-2026-09-06.md`.
+**Encode:** a daemon-side poller over the native stores keyed on FILES (survives a hook being
+removed, no pij seat-row dependency — see the omp `harness_session` finding), with the hook
+optional on top since the enqueue is idempotent.
+
+**CORRECTION (2026-09-06 06:35Z, o-prime):** "no hook anywhere calls it" is wrong in letter.
+The engineering-harness CLI ships a `convo sync` act (`harness/cli/src/acts/convo.ts`, its plan
+095) wired to two lifecycle seams — `runConvoAfterBoot` and a silent sync inside `harness commit`
+(`app.ts:445-472`) — gated on repo consent (`.harness/settings.json` → `flowspace.ingest.enabled`,
+ON in flowspace3) and on identity from `CLAUDE_CODE_SESSION_ID` or `PIJ_SESSION_ID` via the LEGACY
+pij registry. It writes `.harness/temp/convo-sync.log`; seven firings here since 09-03, six for the
+o-prime session. What stands: it fires only on boot/commit (never on activity), only for the
+session running the command, only where consent is on, and it cannot resolve rs seats or omp
+(jerusalem's boot warned exactly this). So conversations still rot between commits and every
+non-committing seat is never ingested. The poller remains the fix; it must coexist with this seam
+(same idempotent enqueue — a coexistence test was added to 018's scope).
+
+## 195 — flaky test: `github_copilot` credential tests share a tempdir keyed on pid + millisecond
+
+`crates/providers/src/github_copilot.rs:646` `home()` = `temp_dir()/fs3-copilot-credential-<pid>-<now_ms>`.
+Every test in the module runs in ONE process (same pid) and they start within the same
+millisecond under `cargo test`'s thread pool, so two tests share a directory: on PR #115 (a
+docs-only change) `github_copilot_file_is_used_before_the_omp_store` panicked "cannot parse
+…/hosts.json" — a file that test never writes; its sibling
+`environment_precedes_a_github_copilot_file` wrote it and `remove_dir_all`'d it mid-read.
+Main was green at 3ebfd58 by timing luck. Not a product bug; a test-isolation bug.
+**Encode:** give each test its own directory (`tempfile::tempdir()` held for the test's
+lifetime, or an atomic per-process counter in the name); the `now_ms()` suffix is not a
+uniqueness guarantee inside one process.
+
+## 196 — the config TEMPLATE is unfindable by meaning: search returns the code that reads a knob, never the template that documents it
+
+Reported by pij-flaky-jerusalem (plan 018 t7, 2026-09-06): `flowspace3 search` for the
+`worktree_reconcile_ticks` template entry with `--path crates/*` returned only
+`WorktreeSupervisor` code at ~0.59, not the rendered config template in `config.rs`'s doc
+comment / template string, despite that being the only place the knob is explained to a user.
+Same family as row 190 (constants are not elements): the template is a string constant inside a
+doc comment, so it has no element of its own to retrieve. A coder adding two knobs had to fall
+back to exact grep to find where the template lives — the product's own guidance says exact
+identifiers may grep, but "where is the config template" is a meaning question.
+**Encode:** index the config template as its own document-kind element (or emit the rendered
+template into `crates/cli/docs/` where the doc walker already indexes it), so a knob's template
+line is retrievable by the knob's name and by "config template".
+**Amendment (06:50Z):** jerusalem's bounded locator found there is NO dedicated template file —
+defaults serialise through `config show`, rustdoc examples live in `core/config.rs`, and the
+user-facing reference is `docs/reference/configuration.md` (enforced by
+`crates/core/tests/config_reference.rs`). That reference IS under `docs/` and therefore indexed;
+the miss was compounded by the coder's `--path crates/*` filter excluding it. Encode stands, but
+narrower: search's `--path` miss should say "N matching elements exist outside this path" so a
+filter that hides the answer is visible.
+
+## 197 — plan 018 review: "behind" has no notion of "asked, and the answer was nothing" (three defects, one root)
+
+Found by the cross-model reviewer (pij-relieved-grasshopper, claude-opus-5) on PR #118 @ 159ec81 by
+READING, then confirmed by run with temporary probe tests (red-then-restore):
+- **A — false STALLED on a healthy cold start.** `stats.stalled` ORs over every behind file whose
+  cursor did not move for 3 due passes, and a file merely waiting its turn under the cap counts.
+  Probe: 12 cold claude files, cap 10 → pass 1/2 Flowing, pass 3 STALLED while every pass submitted
+  the full cap. The plan's motivating scenario (~100 cold files) would read STALLED for the first
+  ten minutes of every cold start — inverting ac-0004's purpose (DL-001) exactly when an operator
+  is watching. The coder's own 60-file test runs six passes over this state and never asserts state.
+- **B — zero-record sessions are behind forever.** `convo_ingest.rs:802-806` returns before
+  `commit_poll` when a read yields no records for a never-stored session (violating the module's
+  own header: "record the poll … even when nothing was appended"), so no cursor exists, `behind()`
+  is true forever, one `ingest_session` job per cadence for the 14-day lookback, never quiet, and
+  the 3-pass stall trips. Census of the real stores (read-only python, 610 files in window):
+  **7 files** (5 claude, 2 omp) yield zero records → 7 jobs/min = 10,080/day of churn and a
+  permanently lying health row. Zero summarize/embed — Jordan's LLM spend is untouched.
+- **C — latent: no negative cache for cwd-less files.** Re-read ≤8 MiB + `warn!` per pass; a
+  post-boot cwd-less file is pinned in Priority::New via sticky `after_boot`. Reviewer downgraded
+  it against its own interest: 0 such files in the window today.
+**Encode:** a negative acknowledgement keyed on (path, FileStamp) consulted by `behind()` and the lag
+counter (and doubling as the cwd negative cache); B additionally fixed at the contract level by
+committing the poll on a zero-record read. Delta design requested from the coder 2026-09-06 ~09:45Z;
+the reviewer's probe scenarios become permanent tests.
+**Verdict (2026-09-06 ~10:10Z): DELTA APPROVE** — record `scratch/review-018/cross-model-review.md`
+(md5 de1865aa…). F1=A HIGH, F2=B HIGH, F3=C MEDIUM (self-downgraded: 0 cwd-less files in window), plus
+**F4 MEDIUM (new):** `crates/daemon/tests/conversation_query.rs:653` does unsafe `set_var(HOME)` in a
+binary with 16 concurrent tokio tests (edition 2024; tempfile reads TMPDIR in that test) — move it to its
+own binary as `convo_poll_isolation.rs` already does soundly. Spend: re-indexing cannot re-spend, proven
+three ways incl. a real 16 MB / 22-sidecar transcript ingested 3× (+0 summarize/+0 embed on re-runs);
+first ingest of that one session = 3,109 summarize jobs (the per-session bounce cost). Nine hunts clean.
+Negative fence: :5434 jobs 53,416 before/after; native ingest rows 0/0; scratch DBs dropped; diff empty.
+
+## 198 — a GREEN `cargo test -p fs3-daemon` leaks a scratch database (`fs3_worktreelife_*`)
+
+Reported by the 018 reviewer (pre-existing, not #118's doing): after a fully green daemon suite under an
+empty temp HOME, one `fs3_worktreelife_<epoch>` database remained on :5434. The reviewer found 12
+leftover scratch databases from earlier runs when it arrived (attributed by the epoch in each name) and
+left them untouched. Filed as an observation in the shared buffer (listed, not cleared).
+**Encode:** the worktree_lifecycle test's FreshDatabase must drop on success as well as on panic (or the
+test-db check in `fs3-test-suite` should count and name leftovers so the leak is visible at gate time).
+**Design amendment (10:35Z):** the reviewer caught a residual risk in the ruled fix for F1 — a lag counter
+keyed on PASSES since submission reads a saturated runner (the 3,109-summary cold-start burst) as
+Stalled: healthy-but-slow identical to dead, DL-001 one layer down. Ruled: lag keys on ingest ATTEMPTS
+observed (terminal job outcome with cursor unmoved), pending/running is in-flight; Stalled at three such
+attempts; a failed attempt counts. Tests: healthy catch-up Flowing ×6; fairness fixture (nothing runs)
+reads Flowing/catching-up with pending count — not Stalled; new (2b) three unmoved attempts → Stalled;
+(2c) failed job = attempt. Runner-dead stays with `status.queue`. This superseded my own ruling of ten
+minutes earlier; the reviewer's framing was the right one.
+**Design amendment 2 (10:55Z):** terminal ingest outcomes are observed via a SELECT-only store helper
+(no lossy event subscriber during the burst). The reviewer's index check found prod's ONLY
+`dedupe_key` index is `jobs_live_dedupe_idx` — PARTIAL over pending/running — so terminal rows are
+unindexed by key and a per-cadence IN-list would seq-scan (39,366 rows today, bounded by retention).
+Ruled: helper keys on job ID via `jobs_pkey` (`WHERE id = ANY`); `IngestAccepted` gains an additive
+`job_id`; poller reads outcomes by held ids BEFORE submitting (upsert would otherwise overwrite the
+unobserved terminal row); missing row = no information; revision key = monotonic `attempts`, not
+`(id, updated_at)`. Plan-shape assertion required.
+**Delta re-review (11:15Z): DELTA APPROVE at ed4698e** (record md5 aea5e724…). F1–F4 confirmed fixed by
+the reviewer's own runs; F1's ratchet drives pending ×6 and running ×6 at 0 attempts, then completed →1,
+two failed with `updated_at` forced constant →2,3, Stalled at exactly 3, restart amnesia →0. F2 acked
+from the ingest OUTCOME without minting a header; F3 negative cache by stamp; F4 binary has exactly 1
+test, old binary 0 `set_var`. EXPLAIN test asserts `jobs_pkey` + no Seq Scan against 4,096 rows after
+ANALYZE. **D1 MEDIUM (new, o-prime's ruling at fault):** `summary.behind` was re-derived from the lag
+map, so the agent-facing gauge INVERTED — 100 cold files/cap 10: pass 1 behind=10 (90 unsubmitted),
+pass 4 behind=40 (60 unsubmitted). Fixed in-PR: behind = eligible sessions where behind() is true;
+in-flight separate; stall rule untouched; assertion behind 100→90→80…, in_flight 10→20→30.
+*(D1 assertion shape corrected by the reviewer before the coder wrote it: on the PENDING fixture nothing
+runs, so `behind` stays flat at 100 while `in_flight` climbs 10/20/30; the falling 90/80/70 shape belongs
+to the healthy catch-up fixture. Written the wrong way, the test would have pulled the code back toward D1.)*
+
+## 199 — two different zeroes: "read it, nothing to index" and "cannot read it" both render as behind=0
+
+From the 018 delta re-review (reviewer NOTE, deliberately not a finding — zero reachable instances
+today: 0 cwd-less files in the 14-day window across 610). After the F2/F3 fixes, a zero-record
+session (acked: genuinely nothing to index) and a permanently cwd-less session (unreadable: there IS
+content the index lacks) both drop out of `behind` and vanish from the envelope, so a store with an
+unreadable session is byte-identical to a healthy quiet store — DL-001 in miniature. The first miss
+warns once and the file lands in `stats.skipped`, but `skipped` is not in the reason string and
+conflates out-of-window with unreadable.
+**Encode (cheap, separate):** split `skipped` into `out_of_window` and `unreadable`; put the unreadable
+count in the state reason next to `in_flight` and `unknown`, and give doctor a line for it.
+
+## 200 — flaky test: `streaming.rs:207 progress_is_reported_while_the_queue_is_still_draining` reads the log before the embed batch line lands
+
+Red once on the 018 D1 gate (2026-09-06 11:16Z, "the four jobs share one provider line", left 0 /
+right 1), then 3/3 green sequentially in the identical sealed env (0.55–0.64 s each). The test drives
+`runner::drain` directly and counts literal `embed: sent batch` lines; a 0 means the micro-batched embed
+call had not logged by the time the log was read — timing under host load (a full gate + a reviewer's
+suite were sharing the box). File unchanged since #98; main CI 10/10 green on it.
+**Encode:** wait for the drain's completion signal (or poll the log for the expected line with a
+bounded deadline) before counting, rather than reading the log once after `drain` returns.
+**D1 hunk re-review (11:40Z): APPROVE at 3d35555** (record md5 0fb0061b…). Gauge sourced from
+`behind()`, lag re-derivation deleted, both 100-file shapes asserted, stall rule untouched. Ratchet
+proven: reintroducing D1 fails exactly three assertions. Spend counts identical across 159ec81 /
+ed4698e / 3d35555. Fence: `:5434` 53,416 rows / 0 native ingest rows at both ends, third pass running.
+Review CLOSED — five findings (F1–F4, D1), all resolved in-PR; one NOTE (row 199); one flake (row 200).
+
+## 201 — an Xcode update silently breaks the release build: ort-sys keeps a stale clang runtime path
+
+2026-09-06 22:45Z, first release build for the 018 bounce: `ld: library 'clang_rt.osx' not found`,
+linker handed `-L …/XcodeDefault.xctoolchain/usr/lib/clang/17/lib/darwin`. Xcode was updated 5 Sep
+11:43 (clang 17 → 21); `target/release/build/ort-sys-*/output` still carried the clang-17 path and
+`-lclang_rt.osx`, and cargo never reruns a build script whose declared inputs are unchanged. Every
+release build on this box was broken for two days. My first attempt also hid the failure: `exit=$?`
+after `| tail` read tail's status. Fix: `cargo clean -p ort-sys --release` then rebuild.
+**Encode:** a boot check that diffs the active clang version against the clang path baked into cached
+`*-sys` build outputs and names the `cargo clean -p <pkg>` to run; and pipefail on every build recipe.
+
+## 202 — search self-retrieves the calling session's own prompt at score 1.0, and conversation turns crowd out code on verb-shaped queries
+
+From the harness-telemetry research subagent (2026-09-07): of seven `flowspace3 search` queries against the
+indexed harness-engineering repo, two returned the subagent's OWN live prompt turn as the top hit at 1.0
+("pij sessions join telemetry", "telemetry counts-only push"); "telemetry collector ingress socket" returned
+pij transport chatter and never `services/doctor/collector/ingress.ts`; "harness telemetry command" lost to
+an unrelated E100 turn. 70–85 % of all results were `kind: turn` from flowspace3's own conversations; code
+under `harness/cli/src/` barely surfaced. Rows 190/191 kin, now with numbers.
+**Encode:** exclude (or heavily down-weight) turns from the calling session's own conversation; when a query
+names a verb/command/file, weight code+doc over turns; expose per-repo code-element counts in `status` so an
+under-indexed root is visible instead of inferred from bad results.

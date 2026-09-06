@@ -1,0 +1,150 @@
+{
+  "dd": {
+    "schema": "pij-team/packet"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Reviewer packet — convo-poller (plan 018, PR #118)",
+        "role": "reviewer",
+        "plan": "docs/plans/018-convo-poller/plan.dd.json",
+        "seat": "<filled at spawn>",
+        "updated": "2026-09-06"
+      }
+    },
+    {
+      "name": "mission",
+      "value": "You are the cross-model reviewer for plan 018-convo-poller (PR #118, coder pij-flaky-jerusalem on gpt-5.6-sol; you are Claude). The daemon gained a fifth Reconcile implementor that polls the native claude/omp session stores keyed on FILES and enqueues the existing idempotent ingest; status/doctor gained flowing|stalled|disabled; verify gained a 'no session file yet' code (404); the git-ai metrics-db path is probed; the test HOME is now sealed. Judge whether the code makes the plan's promises TRUE — plan fidelity, correctness, composition seams — and above all whether it can ever RE-SPEND LLM money on turns already indexed (Jordan's explicit concern). Read-only on code; write only assets/reviews/ in the plan folder, then copy your record OUTSIDE the worktree before standing down (017 lesson: the record nearly died with the tree)."
+    },
+    {
+      "name": "instructions",
+      "value": [
+        {
+          "id": "i1",
+          "text": "Orient: read the plan (rendered .dd.md), the impl-guide (the intended decomposition + interfaces), and then the full diff of the branch against its base. DOGFOOD FLOWSPACE: use `flowspace3 search` to locate consumers/related code by meaning while reviewing; report misses as friction."
+        },
+        {
+          "id": "i1b",
+          "text": "REVIEW A COMMITTED SHA IN ITS OWN WORKTREE, never a live tree someone is still editing (DL-011, 2026-08-28: a reviewer on a shared moving tree watched a coder's instructed red-proof fail and began writing a blocker for it). A review of a moving tree is not reproducible and its findings cannot be attributed. Your packet must name the sha under review; if it does not, refuse and ask."
+        },
+        {
+          "id": "i2",
+          "text": "Review with the /builder review discipline: verify claims against fresh evidence — run targeted tests yourself, read exit status, never trust a green claim you did not see."
+        },
+        {
+          "id": "i2b",
+          "text": "Your dispatcher OWES you three lists in this packet, and you should refuse to start without them: (1) WHERE THE AUTHOR IS LEAST CONFIDENT (hunt there first), (2) an instruction to DISBELIEVE THE AUTHOR'S OWN RECEIPTS (re-derive, don't audit prose), (3) WHAT IS ALREADY KNOWN-OPEN (spend zero findings re-reporting it). Proven 2026-08-28: this brief shape bought a 4-for-4 all-confirmed zero-noise review, including a defect the author hunted for in writing and could not see from inside. RE-PROVEN 2026-09-02 (fs3 plan 016): list (1) sent the reviewer straight at the live watcher and the tri-state flag; list (2) is the only reason it re-derived the 379-tracked/378-stored counts and the [62,72] span from primary sources instead of reading them out of the coder's report — which is HOW both MEDIUM defects surfaced, and both were LYING AGENT-FACING ENVELOPES (a prune ledger whose `fix` string named a command that provably did not work; `tree` attaching the cwd root's policy to a file in a different root). Neither is visible to a review that reads the receipts."
+        },
+        {
+          "id": "i3",
+          "text": "Priority order: (1) plan promises that are not actually true, (2) composition-seam defects between units, (3) interface drift from the impl-guide, (4) correctness/safety in the changed code, (5) test gaps on the contract. Style noise is unwanted."
+        },
+        {
+          "id": "i4",
+          "text": "Findings: at most the material ones, each with severity (CRITICAL/HIGH/MEDIUM), exact location, the claim, the proof, and the smallest fix. `no_material_findings` is a valid verdict."
+        },
+        {
+          "id": "i5",
+          "text": "Deliver as a ddoc review record in the plan folder (assets/reviews/), build it, and send the PM the path + a one-line verdict."
+        },
+        {
+          "id": "i11",
+          "text": "CLOSE OUT BY STATING YOUR FENCE AS WHAT YOU DID NOT TOUCH. Your verdict must end with the negative account: which shared resources you left exactly as you found them (count them before and after — e.g. 'the shared test DB is exactly 19 roots, unchanged'), which scratch resources you created AND destroyed, what you never went near (production ports, production credentials, another seat's tree), and which gates you did not run because they were not yours to hold. Proven 2026-09-02 (fs3 plan 016): a negative fence is what makes the positive findings trustworthy — a reviewer that can prove it perturbed nothing has proven its measurements describe the code and not its own side effects."
+        },
+        {
+          "id": "i12",
+          "text": "MUTATE THE THING THE CHANGE GUARDS, AND WATCH THE SUITE. A test that passes BOTH with and without the guard is not a ratchet — the behaviour may be correct today while nothing stops a refactor from silently removing it under a green gate. For each promise the change makes, break the implementation in the smallest way that should violate it and record what went red: which assertion, in which test, by name. If the answer is 'nothing went red', that is a finding even when the behaviour is correct. Proven 2026-09-02 (fs3 plan 017): the fail-closed production guard was correct, and mutating it to fail OPEN left 175/175 + 5/5 + 6/6 GREEN — the one untested case was the exact state production was in that night. After the fix, the identical mutation gives 174 passed / 1 FAILED at the named assertion."
+        },
+        {
+          "id": "i20",
+          "text": "THE THREE OWED LISTS AND THE HUNTS (o-prime, from the run's rulings). Work them in order; each hunt is a claim to DISPROVE, with the file:line you checked and the command you ran:\n1. Identity is FILE-derived everywhere: grep the poller for any read of pij seat rows, `pij sessions`, PIJ_SESSION_ID, harness_session — must be none. The phantom-id test must seed an id that matches no file and assert zero enqueue.\n2. size != offset OR identity change is the whole decision; `>` alone would be the original bug. Check truncation (size<offset) AND same-size replacement (unix) tests exist and that the non-unix (0,0) limitation is named on the pub helper.\n3. Cold-start cap/stagger: 60-session test — verify the cap is enforced per PASS (not per boot) and that later candidates progress while earlier jobs are still pending (dedupe is not completion).\n4. Sealed HOME: `fs3_testkit::sealed` now pins HOME to config_dir/home — verify the env contract test AND that no daemon test path constructs the poller from std::env::home_dir / dirs::home_dir directly.\n5. metrics_db_path probe order internal/metrics-db → metrics.sqlite3, synchronous refusal in submit_after naming BOTH candidates; doctor uses the same function (one implementation).\n6. verify vs ingest asymmetry: NO_SESSION_FILE only when the FILE is absent; present-but-unindexed → verify NOT-FOUND, ingest ACCEPTED. A present file lacking cwd must not be classed absent.\n7. status.conversations.state: flowing|stalled|disabled; boot-before-first-poll reads flowing-pending not stalled; ticks=0 reads disabled; stall boundary tested on both sides (N-1 flowing, N stalled).\n\n8. Stagger: effective stagger = min(6s, cadence/cap) because enqueue_job upserts with GREATEST(not_before) — verify the doc comment names that reason and the ticks=1 test bounds append→ingest at one cadence + one stagger. Mutation: restore a fixed 6s and the ticks=1 test must go red.\n\n9. QUERY_CONVERSATION_NO_SESSION_FILE maps to HTTP 404 via catalog::Code::http_status (the mechanical class recognised only -NOT-FOUND before); assert exists; no other mapping changed; docs/reference/error-codes.md diff is exactly one row.\n\n10. Priority tiering: each due pass fills the cap first from changed TRACKED sessions and files first seen after boot (newest mtime first), then cold backlog in rotation with at least ONE backlog slot reserved. Verify the 100-backlog + tracked-omp + fresh-claude test enqueues the live two on the next pass regardless of path order AND the backlog still drains; mutation: remove tiering → red. Path order must never be a priority signal.\n\n11. SPEND (Jordan's explicit concern): re-indexing must be impossible, proven at the JOB level. Verify the spend test exists and asserts by job kind: unchanged file → 0 ingest/summarize/embed jobs; forced rescan (rotation/truncate-regrow) → ingest runs, \"read N / appended 0 / deduped N\", 0 summarize/embed; one appended turn → exactly that turn's summarize+embed. Mutation: bypass ledger dedupe in prepare_batch → red. Then do it yourself on a scratch daemon with a real (copied) transcript: ingest twice, diff the jobs table by kind between runs — second run must add zero summarize/embed rows.\n\n12. Fence audit passed on file names (45 files, all inside the ruled fence) — now audit CONTENT of the three shared-test files: `crates/cli/tests/goldens/responses/status.json` + `stdout/status.stdout` diff must be exactly the additive `conversations` block (no other field re-captured); `crates/cli/tests/envelope_goldens.rs` diff must be only the two new verify fixtures registered; `crates/daemon/tests/conversation_query.rs` — explain every changed line (why did an existing daemon test need to change?).\n\n13. runner.rs was opened for LOGGING PROJECTION ONLY: the diff must be a subject derivation for INGEST_SESSION (mirroring the existing `subject_of(EMBED, …)` at ~:563) and its call site — nothing touching claim order, SKIP LOCKED, concurrency, retry, parking, or terminal policy. Diff runner.rs against main line by line.\n\n## Disbelieve the receipts\n- Re-run each mutation yourself in a detached worktree at the PR sha: flip the size comparison; remove the cap; swap the probe order; drop the identity comparison. Each must go red, then restore green.\n- Re-run the leak audit: full fs3-daemon suite under empty temp HOME, then count :5434 jobs with dedupe_key like 'ingest:claude/%' or 'ingest:omp/%' — must be 0.\n- Check the tripwire goldens (crates/cli/tests/envelope_goldens.rs conversation cases; crates/providers/tests/conversation_sources) are byte-unchanged vs main except the TWO new verify-refusal fixtures.\n\n## Known-open (do not re-find)\n- Copilot polling via metrics-db is a non-goal (path fix only).\n- `cwd_of` bounded read is a packet correction (was read_to_string); the 8 MiB no-newline cap is the coder's number.\n- ac-0008 (prod receipt) is o-prime's after the bounce; not in the PR.\n\n## i11 negative fence — must be untouched\nreaders' grouping/ordinal rules (claude.rs:60-75, metrics_db.rs header), tail.rs bodies (only `pub` visibility added on two helpers), ingest_cursors semantics, conversation_guid, runner claim loop, search.\n\n## i12 mutate-the-guard\nMutate `sealed()` to NOT pin HOME and run the enabled-daemon isolation test — it must go red (the poller would see the ambient store). If it stays green, the test is not testing the guard.\n\n## Prod receipt protocol for ac-0008 (o-prime, after the bounce) — spend-aware\n- Before bounce: snapshot jobs by kind (`select kind,count(*) from jobs group by kind`) and conversations turn totals on prod.\n- After bounce: log every pass line (enqueued/behind/skipped) for the first 30 min; record total ingest, summarize, embed jobs created; expect summarize ≈ new turns above 256 bytes ONLY.\n- Second cadence after catch-up: summarize/embed delta must be 0 while no session is being written; then write one turn in a live session and expect exactly its jobs.\n- Record the numbers in assets/inputs/prod-after.md; the receipt is the delta table, not a green log.\n\n## Baseline measured on prod BEFORE the poller (o-prime, 2026-09-06 08:29Z)\nRe-ingest of a finished, unchanged session (claude 974459cf, 32 turns, file 369,577 bytes):\n- jobs touching it in the window: `ingest_session|done|1` — and NOTHING else (no summarize, no embed)\n- cursor after: offset 369,577 == file size; ledger 32 rows; turns 32 → 32; job ran in 81 ms\n- so today's dedupe path already spends zero LLM on an unchanged session; the spend test pins this so the poller cannot regress it.\n(The 877 summaries / 1,979 embeddings created machine-wide in that window were unicorn's 1,049-turn catch-up plus a pij docs rescan — unrelated, and the reason log-only attribution is insufficient; the per-job report line fixes that.)"
+        }
+      ]
+    },
+    {
+      "name": "working_with",
+      "value": [
+        {
+          "id": "w1",
+          "text": "The PM is your counterpart: verdict and findings go to the PM; the PM may refute findings with evidence — re-judge refutations on the evidence, not on rank."
+        },
+        {
+          "id": "w2",
+          "text": "You do not fix code, commit, or open PRs. If you find something outside the plan's scope, name it as a note for prime rather than expanding the review."
+        }
+      ]
+    },
+    {
+      "name": "scope",
+      "value": {
+        "worktree": "/Users/jordanknight/substrate/flowspace/fs3-review-018 (detached checkout at the PR head sha, created by o-prime; you were spawned INSIDE it so your LSP is rooted correctly)",
+        "branch": "018-convo-poller @ <sha filled at spawn>",
+        "fence": "read-only on code; write only docs/plans/018-convo-poller/assets/reviews/ ; run cargo tests and mutations in THIS worktree only, :5434 only, tempdir HOME only",
+        "forbidden_note": "No code edits that persist (mutations are red-then-restore, verified by git diff --stat == empty at the end), no merges, no government files, never :5433/:7373 as targets, never the real ~/.claude or ~/.omp as a poller home."
+      }
+    },
+    {
+      "name": "done_bar",
+      "value": [
+        {
+          "id": "d1",
+          "text": "Every plan AC judged true/false with evidence cited."
+        },
+        {
+          "id": "d2",
+          "text": "Composition seams between units explicitly examined and reported."
+        },
+        {
+          "id": "d3",
+          "text": "Review record ddoc written, built, and path delivered to the PM with a verdict line."
+        }
+      ]
+    },
+    {
+      "name": "refs",
+      "value": [
+        {
+          "id": "r0",
+          "path": ".agents/skills/pij-team/TENETS.md",
+          "note": "tenet 5: judge diffs against contracts"
+        },
+        {
+          "id": "r1",
+          "path": "docs/plans/018-convo-poller/impl-guide.dd.md",
+          "note": "intended unit, interface, risks; several rulings amended it — see the execution log"
+        },
+        {
+          "id": "r2",
+          "path": "docs/plans/018-convo-poller/plan.dd.md",
+          "note": "the promises ac-0001..0008 (0008 is o-prime's prod receipt, not yours)"
+        },
+        {
+          "id": "r3",
+          "path": "docs/plans/018-convo-poller/assets/tasks/phase-1/execution.log.md",
+          "note": "every packet correction and fence addition o-prime ruled — the contract as amended"
+        },
+        {
+          "id": "r4",
+          "path": "docs/plans/018-convo-poller/assets/inputs/evidence.md",
+          "note": "why the plan exists; §1 was corrected (a boot/commit seam exists)"
+        },
+        {
+          "id": "r5",
+          "path": "crates/daemon/src/convo_poll.rs",
+          "note": "the unit"
+        },
+        {
+          "id": "r6",
+          "path": "crates/daemon/src/reconcile.rs",
+          "note": "scope guard: a reconciler ENQUEUES, never runs the job"
+        },
+        {
+          "id": "r7",
+          "path": "crates/testkit/src/spawn.rs",
+          "note": "sealed(): HOME pin — the guard i12 mutates"
+        }
+      ]
+    }
+  ]
+}
