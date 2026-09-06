@@ -1,0 +1,34 @@
+crates/cli/src/doctor.rs
+  h_9e71e8b09f7cf2 816-823,1221-1241
+crates/cli/src/render/surfaces/status.rs
+  h_9e71e8b09f7cf2 93-96,300-321
+crates/cli/tests/convo_spend.rs
+  h_9e71e8b09f7cf2 1-284
+crates/cli/tests/goldens/responses/status.json
+  h_9e71e8b09f7cf2 1
+crates/cli/tests/goldens/stdout/status.stdout
+  h_9e71e8b09f7cf2 11-20,27-36
+crates/core/src/views/status.rs
+  h_9e71e8b09f7cf2 80,82-116
+crates/daemon/src/convo_ingest.rs
+  h_9e71e8b09f7cf2 804,931-938,945-957,962-973
+crates/daemon/src/convo_poll.rs
+  h_9e71e8b09f7cf2 3,8-10,64,92,98,104-122,134-137,270,295,297,307-311,426-428,434-448,972
+crates/daemon/src/runner.rs
+  h_9e71e8b09f7cf2 965-973
+crates/store/src/ingest_cursors.rs
+  h_9e71e8b09f7cf2 134,139,153
+docs/plans/018-convo-poller/assets/tasks/phase-1/execution.log.md
+  h_9e71e8b09f7cf2 181-196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "159ec8168360108b4b7ce68ea503605cb374b885",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
