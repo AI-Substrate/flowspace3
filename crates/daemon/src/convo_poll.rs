@@ -373,6 +373,7 @@ impl ConvoPoller {
                             acknowledgments.get(&file.file.path),
                         )
                 }) {
+                    summary.behind += 1;
                     let changed = session
                         .files
                         .iter()
@@ -493,18 +494,6 @@ impl ConvoPoller {
                 }
             }
             stats.enqueued += 1;
-        }
-        for summary in &mut stats.harnesses {
-            summary.behind = sessions
-                .iter()
-                .filter(|session| session.harness.as_str() == summary.harness)
-                .filter(|session| {
-                    session
-                        .files
-                        .iter()
-                        .any(|file| lag.contains_key(&file.file.path))
-                })
-                .count();
         }
         stats.behind = stats.harnesses.iter().map(|summary| summary.behind).sum();
         let retained_ids: HashSet<_> = lag.values().map(|pending| pending.job_id).collect();
@@ -894,7 +883,7 @@ mod tests {
         let path = claude_session(home.path(), "missing-cwd");
         std::fs::write(&path, "{\"type\":\"system\"}\n").unwrap();
         let first = poller.poll().await.unwrap();
-        assert_eq!((first.enqueued, first.behind), (0, 0));
+        assert_eq!((first.enqueued, first.behind), (0, 1));
         assert!(!poller.observed.as_ref().unwrap()[&path].new_pending);
         let reads = Arc::new(AtomicUsize::new(0));
         let reader = {
@@ -1155,7 +1144,7 @@ mod tests {
                 ConvoPoller::new(state.clone(), home.path().to_owned(), PollConfig::default());
             for pass in 1..=6 {
                 let stats = poller.poll().await.unwrap();
-                assert!(stats.behind <= 10, "unsubmitted files are not behind");
+                assert!(stats.in_flight <= 10, "in-flight work obeys the cap");
                 assert_eq!(
                     state
                         .conversations
@@ -1642,7 +1631,7 @@ mod tests {
 
     async fn cold_start_state_proof(healthy: bool) {
         let home = tempfile::tempdir().unwrap();
-        for index in 0..60 {
+        for index in 0..100 {
             claude_session(home.path(), &format!("session-{index:02}"));
         }
         let old = claude_session(home.path(), "old-cursorless");
@@ -1654,25 +1643,29 @@ mod tests {
         let mut poller =
             ConvoPoller::new(state.clone(), home.path().to_owned(), PollConfig::default());
         let mut total = 0;
-        for pass in 1..=6 {
+        for pass in 1..=10 {
             let stats = poller.poll().await.unwrap();
             assert_eq!(stats.enqueued, 10, "every pass obeys the cold-start cap");
-            assert_eq!(
-                stats.behind,
-                if healthy {
-                    10
-                } else {
-                    usize::try_from(pass * 10).unwrap()
-                },
-                "only submitted files are behind; cap-deferred files do not count"
-            );
+            if healthy {
+                assert_eq!(
+                    (stats.behind, stats.in_flight),
+                    (100 - usize::try_from((pass - 1) * 10).unwrap(), 10),
+                    "backlog falls only as cursors advance; in-flight stays capped"
+                );
+            } else {
+                assert_eq!(
+                    (stats.behind, stats.in_flight),
+                    (100, usize::try_from(pass * 10).unwrap()),
+                    "pending work remains behind while unique in-flight jobs grow"
+                );
+            }
             let status = state.conversations.read().await.report(Instant::now());
             assert_eq!(status.state, ConversationState::Flowing, "pass {pass}");
             assert!(
                 status
                     .state_reason
                     .unwrap()
-                    .contains(&format!("{} in flight", stats.behind))
+                    .contains(&format!("{} in flight", stats.in_flight))
             );
             assert_eq!(
                 stats.skipped, 1,
@@ -1693,7 +1686,7 @@ mod tests {
                 assert_eq!(run_ingests(&state, home.path()).await.len(), 10);
             }
         }
-        assert_eq!(total, 60);
+        assert_eq!(total, 100);
         let delays: Vec<f64> = sqlx::query_scalar("SELECT extract(epoch FROM (not_before - updated_at))::float8 FROM jobs WHERE kind = 'ingest_session' ORDER BY id").fetch_all(&state.db).await.unwrap();
         for (index, delay) in delays.into_iter().enumerate() {
             assert_eq!(
@@ -1707,7 +1700,7 @@ mod tests {
             "lookback skips before reading any transcript content"
         );
         if !healthy {
-            assert_eq!(run_ingests(&state, home.path()).await.len(), 60);
+            assert_eq!(run_ingests(&state, home.path()).await.len(), 100);
         }
         let stats = poller.poll().await.unwrap();
         assert_eq!(stats.enqueued, 0);
