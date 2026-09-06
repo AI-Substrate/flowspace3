@@ -70,7 +70,7 @@
         },
         {
           "id": "i16",
-          "text": "IF YOUR SEAT WAS NOT SPAWNED INSIDE YOUR WORKTREE, YOUR LSP IS BLIND THERE: rust-analyzer roots at the spawn cwd, so go-to-definition and references in the worktree return nothing while document symbols still work. Say so at ack, time-box ONE workspace-folder repair (10 min), then fall back to `flowspace3 search`/`get` for meaning and grep for exact identifiers, with every edit verified by exact read — and declare the fallback in your done report. (From 018; the fix is o-prime spawning seats in the worktree.)"
+          "text": "YOUR LSP IS BLIND IN YOUR WORKTREE, BY CONSTRUCTION: pij refuses to spawn omp inside a linked worktree (global and project extension links collide; the peer dies before registration), so every omp seat is spawned in the MAIN CHECKOUT and rust-analyzer roots there — go-to-definition and references in the worktree return nothing while document symbols still work. Say so at ack, time-box ONE workspace-folder repair (10 min; `didChangeWorkspaceFolders` is notification-only, a request returns -32601), then fall back to `flowspace3 search`/`get` for meaning and grep for exact identifiers, with every edit verified by exact read — and declare the fallback in your done report. (From 018, coder AND reviewer.)"
         }
       ]
     },

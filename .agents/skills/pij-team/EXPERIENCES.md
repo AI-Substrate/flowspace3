@@ -887,7 +887,10 @@ we hand the pattern to pij and the harness. Also `harness observe` each one.
   spawn cwd; go-to-definition returned nothing for every worktree symbol; `didChangeWorkspaceFolders`
   is notification-only so the one repair attempt returned -32601. Coder-template i8 told an omp seat
   to be LSP-first and the environment made that impossible. Encoded as i16 (declare, time-box, fall
-  back); the real fix is spawning the seat INSIDE the worktree.
+  back). CORRECTION at review time: there is no placement fix — `pij-rs spawn --harness omp` REFUSES a
+  linked worktree ("global and project extension links collide and the peer dies before registration —
+  spawn from the main checkout and cd afterwards"), so every omp seat is blind in its worktree until pij or
+  omp changes. The fallback is the design, not a workaround.
 - **Fence-by-file misses generator-owned docs.** Adding a catalog code requires regenerating
   `docs/reference/error-codes.md` (a contract test diffs it); adding config knobs requires rows in
   `docs/reference/configuration.md`. Neither was in the fence, and the gate went red on a page the
