@@ -1,6 +1,6 @@
 # Brief — a standalone many-to-one reader for agent-harness telemetry & session state
 
-**Working name:** `<NAME>` (Jordan to choose; space-opera lineage — candidates: threepio, geth, dradis, galaxia, greyarea, philotic, ringgate, mentat, arisia, holonet)
+**Name:** `unisphere` (AI-Substrate/Unisphere, private, created 2026-09-06T23:28Z; local checkout `substrate/unisphere/unishpere-main` — note the folder typo). Trademark note: "Unisphere" is a live Dell EMC storage-management software product (and Juniper acquired Unisphere Networks in 2002); fine while private, a naming debt if this goes public.
 **Author:** pij-binding-magpie (flowspace3 o-prime), 2026-09-07
 **For:** the agent that starts the new repo. Read this before writing a line. Everything below was measured; where something is inferred it says so.
 
@@ -77,3 +77,6 @@ Full accounts: `scratch/review-claude-session-ingest-2026-09-06.md` (flowspace3 
 
 ---
 *Next steps for the new agent:* choose the name; `git init` under AI-Substrate with the harness installed (`harness instructions` first); write the plan from §3 with §2 as the acceptance criteria; the first two adapters are claude-code and omp (both stores are on this machine with live data; flowspace3's readers are the reference implementations and its fixtures under `crates/testkit/fixtures/conversations/` are harvested real data with provenance). Copilot CLI third (git-ai metrics-db is its only store today). Cursor last (lazy flush; the harness's liveness design is the reference).
+
+## Addendum 2026-09-07T00:20Z — first in-situ finding from the poller, relevant to this product's design
+Ninety minutes after the bounce the conversations row read `stalled`: eleven sessions whose recorded cwd was under `/tmp/…` could never be resolved because flowspace3 slugs the RECORDED cwd (`-tmp-x`) while omp slugs the REALPATH and wraps non-home paths (`--private-tmp-x--`); and a FAILED terminal attempt carried no negative acknowledgement, so each was resubmitted every pass (backlog row 204). Two lessons for the standardiser: never re-derive a store path from a recorded cwd when you already hold the file's real directory; and every terminal outcome — success-with-nothing AND failure — must produce a stamped acknowledgement, or a permanently unreadable file becomes permanent churn.
