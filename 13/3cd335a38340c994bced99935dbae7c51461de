@@ -1,0 +1,21 @@
+government/briefs/backlog.md
+  s_15d888f4b629c1::t_bef0723f725952 4008-4024
+scratch/review-018/prod-after.md
+  s_15d888f4b629c1::t_159f208519899f 176-200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "133cd335a38340c994bced99935dbae7c51461de",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
