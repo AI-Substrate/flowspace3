@@ -173,3 +173,28 @@ smart_content: 165148  embeddings: 462366
 - **Spend, on the record:** cold start cost **~26.9k summarize + ~5.8k embed jobs in the first 12 minutes**, ~24k more queued — the burst risk-2 and the reviewer predicted (one 16 MB session ~ 3.1k). First-ingest of ~490 in-window sessions, NOT re-indexing: every receipt shows deduped 0 on new sessions; the unchanged-session proof (0 LLM jobs) holds from the review.
 - **"Following pass logs quiet" clause: DEFERRED** until the cold backlog drains (~75 min at ~6/min); a scheduled post-drain probe re-checks it with the reviewer's prediction 1 (the 7 zero-record files cost exactly one job each) -> prod-after-drain.md.
 - **NEW DEFECT (row 203):** ingest:claude/c5adf67d-10a3-4a61-ad74-6750f768ddf9@~/github/home-improvement fails at the store — FS3-E-STORE-QUERY-FAILED "unsupported Unicode escape sequence" (Postgres jsonb rejects the JSON NUL escape, backslash-u-0000) — 3 attempts, terminal=false, revivable, will keep failing. A transcript-hygiene gap in the turn insert path (plan 087 sanitised embeddings input only). State correctly stays flowing — one poisoned file must not hold the row hostage — but the session will never index until sanitised.
+
+## Post-drain (2026-09-06T23:52Z, 57 min after bounce) — from prod-after-drain.md
+
+| measure | T-0 (22:38Z) | T+57m (23:52Z) | delta |
+|---|---|---|---|
+| poller behind | 480 (T+0) | **14** | cold backlog drained at ~10/min under the cap |
+| summarize jobs | 21,107 | **149,543** | **+128,436** — the full cold-start cost of ~490 in-window sessions |
+| embed jobs | 25,451 | 62,481 | +37,030 |
+| ingest_session jobs | 52 | 696 | +644 |
+
+- Top per-session ingest counts (44, 25, 21, 16, 13…) are all LIVE seats (chainglass omp, this o-prime session, chainglass claude, harness-engineering omp, pij prime) — re-enqueued each pass because they grew, with `deduped 0 / turns_new > 0`; live-first priority working as designed, not churn.
+- State honest throughout: `flowing | catching up: 14 behind, 10 in flight, 0 outcomes unavailable`.
+- Quiet-pass clause and the zero-record prediction: settled by prod-after-quiet.md once `behind` reaches 0 (quiet passes log at DEBUG, so the proof is the INFO poll line stopping while status reads behind=0).
+
+## Quiet-pass clause — FAIL on prod, correctly reported (2026-09-07T00:12Z)
+
+`behind` never reached 0: it settled at 15–17 and the row flipped to **`stalled — three completed ingest
+attempts without read progress`**. Cause is row 204: eleven sessions with `/tmp/…` cwds fail their resolve
+terminally every pass (slug mismatch `-tmp-…` vs omp's realpath `--private-tmp-…--`) and no negative ack
+covers a failed attempt, so they are resubmitted forever (13–14 jobs each in 90 min). The reviewer's
+prediction 1 holds for the rest: 479 sessions cost exactly one ingest job. Prediction 2 fails for the
+reason above — and the new health row is what made it visible within 90 minutes of the bounce; before 018
+this churn would have been silent. Live sessions (e.g. `01a0790e…` in `substrate/unisphere`) re-enqueue
+each pass legitimately: cursor == size, `last_read_at` seconds old, file growing.
+Final spend at 00:12Z: summarize 150,392 (+129,285 vs T-0), embed 74,800 (+49,349), ingest_session 860.
