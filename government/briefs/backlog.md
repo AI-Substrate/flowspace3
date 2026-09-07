@@ -4005,3 +4005,20 @@ health hostage — but nothing names the poisoned session to an operator.
 **Encode:** sanitise the NUL escape (and other jsonb-illegal escapes) in prepare_batch / the turn insert
 as 087 does for embeddings; make a store rejection of this class TERMINAL with the session named in
 status.last_error and doctor, not revivable-forever.
+
+## 204 — sessions whose cwd is outside $HOME (e.g. /tmp/…) can never be resolved, fail terminally every pass, and pin the conversations row on STALLED
+
+Seen 90 min after the 018 bounce (2026-09-07 00:12Z): `state: stalled — three completed ingest attempts
+without read progress: 17 behind`. Eleven omp/claude sessions whose recorded cwd is under `/tmp/…`
+(scratchpads, pij gate/compose temp dirs) fail every attempt with `cannot read the omp session directory
+~/.omp/agent/sessions/-tmp-…`. Cause: `session_slug` (`omp.rs:325`) and `workspace_slug`
+(`convo_ingest.rs:642`) slug the RECORDED cwd with `strip_prefix(home)` and no canonicalisation, while omp
+slugs the REALPATH (`/tmp` → `/private/tmp`) and wraps non-home paths in `--…--`: ours `-tmp-x`, omp's
+`--private-tmp-x--`. Second half: a FAILED terminal attempt receives no negative acknowledgement (the F2
+ack covers zero-record SUCCESS only), so the poller resubmits each such file every pass it gets a slot
+(13–14 jobs each in 90 min) and the attempt-keyed lag correctly reads Stalled — forever. The health row
+did its job (this was invisible before 018); the quiet-pass clause of ac-0008 FAILS on prod because of it.
+**Encode (small, two hunks):** (1) the poller already holds the file's real directory — pass the
+session's own slug dir (or canonicalize the folder and mirror omp's wrapping) instead of re-deriving from
+cwd; (2) a terminal FAILED resolve/read yields a stamped negative ack exactly like a zero-record read, so a
+permanently unresolvable file costs one attempt per stamp and is reported under `unreadable`, not churned.
