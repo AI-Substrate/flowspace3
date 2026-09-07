@@ -40,14 +40,14 @@ jobs:
         # cannot be used; readiness is observed by the wait step below.
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # ddocs is not published in the reachable npm feed and has no v0.1.0
       # tag. The immutable commit is the reproducibility anchor; the version
       # assertion below is only a weaker smoke check because ddocs payloads
       # have changed before without moving 0.1.0.
       - name: Check out pinned ddocs source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: AI-Substrate/dd
           ref: de01b77a67d0cff961e31ad8189054dd4b5c686b
