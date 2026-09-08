@@ -100,6 +100,12 @@ pub struct SearchComposition {
 pub struct SearchResults {
     /// Ranked hits, best first.
     pub results: Vec<Hit>,
+    /// Number of ranked hits skipped before this page.
+    #[serde(default)]
+    pub offset: i64,
+    /// Start of the next page when this page filled the requested limit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_offset: Option<i64>,
     /// Source totals within the active score threshold, before top-k truncation.
     #[serde(default)]
     pub composition: SearchComposition,

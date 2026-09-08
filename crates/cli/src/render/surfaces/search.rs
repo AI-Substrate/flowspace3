@@ -14,10 +14,19 @@ const METER_CELLS: usize = 8;
 pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
     let results: SearchResults = serde_json::from_value(envelope.data.clone()?).ok()?;
     let count = results.results.len();
-    let mut out = theme::title(
-        "search",
-        &format!("{count} hit{}", if count == 1 { "" } else { "s" }),
-    );
+    let subtitle = if count == 0 {
+        "0 hits".to_string()
+    } else {
+        let first = results.offset.saturating_add(1);
+        let last = results
+            .offset
+            .saturating_add(i64::try_from(count).unwrap_or(i64::MAX));
+        format!(
+            "{count} hit{} · showing {first}–{last}",
+            if count == 1 { "" } else { "s" }
+        )
+    };
+    let mut out = theme::title("search", &subtitle);
     out.push_str("\n\n");
     if results.results.is_empty() {
         out.push_str(&format!(
@@ -81,7 +90,13 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
                     .join("\n")
             };
             table.add_row([
-                Cell::new(index + 1).set_alignment(CellAlignment::Right),
+                Cell::new(
+                    results
+                        .offset
+                        .saturating_add(i64::try_from(index).unwrap_or(i64::MAX))
+                        .saturating_add(1),
+                )
+                .set_alignment(CellAlignment::Right),
                 Cell::new(theme::score_meter(hit.score, METER_CELLS)),
                 Cell::new(kind),
                 Cell::new(element),
@@ -164,5 +179,22 @@ mod tests {
         let screen = anstream::adapter::strip_str(&render(&envelope, 120).unwrap()).to_string();
         assert!(screen.contains("both"), "{screen}");
         assert!(screen.contains("exact_name"), "{screen}");
+    }
+
+    #[test]
+    fn page_range_and_next_command_are_visible() {
+        let envelope: Envelope<Value> = serde_json::from_str(
+            r#"{"ok":true,"command":"search","v":1,
+                "data":{"results":[{"address":"el:a/b.rs::needle","score":1.0,
+                    "channel":"semantic","match_field":"raw","kind":"function",
+                    "subkind":"function_item","name":"needle","span":[1,1],
+                    "snippet":"fn needle() {}","smart":null,"tags":[],"repo":null,
+                    "path":null,"worktree":null}],"offset":2,"next_offset":3},
+                "next_action":"next page: `flowspace3 search 'needle' --limit 1 --offset 3`"}"#,
+        )
+        .unwrap();
+        let screen = anstream::adapter::strip_str(&render(&envelope, 120).unwrap()).to_string();
+        assert!(screen.contains("showing 3–3"), "{screen}");
+        assert!(screen.contains("--limit 1 --offset 3"), "{screen}");
     }
 }

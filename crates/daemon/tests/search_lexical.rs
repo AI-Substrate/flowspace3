@@ -140,6 +140,60 @@ async fn leopon_verbatim_phrase_hits_are_all_pinned_before_semantic_noise() {
     assert_eq!(outcome.results[3].name, "semantic_distractor");
     assert_eq!(outcome.results[3].channel, SearchChannel::Semantic);
 
+    let page_one = search(
+        &state,
+        &SearchRequest {
+            q: phrase.to_string(),
+            limit: Some(2),
+            offset: Some(0),
+            ..SearchRequest::default()
+        },
+        &Scope::unscoped(),
+    )
+    .await
+    .expect("page one answers");
+    let page_two = search(
+        &state,
+        &SearchRequest {
+            q: phrase.to_string(),
+            limit: Some(2),
+            offset: Some(2),
+            ..SearchRequest::default()
+        },
+        &Scope::unscoped(),
+    )
+    .await
+    .expect("page two answers");
+
+    let first_four = outcome
+        .results
+        .iter()
+        .take(4)
+        .map(|hit| hit.address.clone())
+        .collect::<Vec<_>>();
+    let paged = page_one
+        .results
+        .iter()
+        .chain(&page_two.results)
+        .map(|hit| hit.address.clone())
+        .collect::<Vec<_>>();
+    assert_eq!(paged, first_four, "pages preserve the full ranked order");
+    assert!(
+        page_one.results.iter().all(|first| page_two
+            .results
+            .iter()
+            .all(|second| first.address != second.address)),
+        "adjacent pages are disjoint"
+    );
+    assert_eq!(page_one.offset, 0);
+    assert_eq!(page_one.next_offset, Some(2));
+    assert_eq!(page_two.offset, 2);
+    assert_eq!(page_two.next_offset, Some(4));
+    assert!(
+        outcome.results[..3].iter().all(|hit| hit.score == 1.0),
+        "the fixture deliberately pages through tied lexical scores"
+    );
+
     let pool = state.db.clone();
     database.destroy(pool).await;
 }

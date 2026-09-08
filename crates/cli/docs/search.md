@@ -21,11 +21,18 @@ because the terminal probe otherwise looks human.
 | `--repo <identity>` | one repository, e.g. `git:github.com/org/repo` |
 | `--path <glob>` | paths matching a glob (`crates/store/*`) |
 | `--limit N` | how many hits (1–100, default 10) |
+| `--offset N` | skip the first N ranked hits (default 0) |
 | `--min-score S` | similarity floor, 0.0–1.0 |
 | `--source code\|doc\|conversation\|all` | narrow the content corpus; absent/`all` searches every source |
 
 Filters narrow candidates **in SQL**, beside the index — not after the fact. A
 filter that matches nothing returns nothing rather than a padded list.
+
+Paging is offset-based. `data.offset` always reports the page start;
+`data.next_offset` is present only when the returned page filled `--limit`, and
+equals `offset + results.length`. A full page therefore offers the exact next
+`flowspace3 search … --limit N --offset M` command in `next_action`; an empty
+past-end page has no `next_offset`.
 
 `ask` accepts the same `--path <glob>` spelling and matching rules, but binds the
 filter for the whole agent run: model tool calls cannot replace it, and citations
@@ -78,6 +85,9 @@ vector (`smart`). Both compete internally, and `match_field` reports which won.
   counts code, document, and conversation rows from that same thresholded set
   before the display limit, so a top-k containing only files does not hide a
   relevant conversation below it.
+- **Paging keeps rank order stable.** Apply `--offset` after ranking: page 1 and
+  page 2 are disjoint slices of the same ordered result set. Equal scores use a
+  deterministic element-id tiebreak, so tied rows do not drift between pages.
 - **A weak match teaches without changing the answer.** When results exist but
   the best score is below the named confidence floor, `meta.hint` and
   `next_action` say: "Weak match: describe the component in its own vocabulary
