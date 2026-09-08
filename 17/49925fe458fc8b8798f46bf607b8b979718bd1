@@ -1,0 +1,30 @@
+crates/cli/docs/search.md
+  h_9e71e8b09f7cf2 24,31-36,88-90
+crates/cli/src/main.rs
+  h_9e71e8b09f7cf2 137-139,658,672
+crates/cli/src/render/surfaces/search.rs
+  h_9e71e8b09f7cf2 17-29,93-99,183-199
+crates/core/src/views/mod.rs
+  h_9e71e8b09f7cf2 147-148
+crates/core/src/views/search.rs
+  h_9e71e8b09f7cf2 103-108
+crates/daemon/src/http.rs
+  h_9e71e8b09f7cf2 623,643-644,672-678,686-691,703-740
+crates/daemon/src/search.rs
+  h_9e71e8b09f7cf2 77-79,189-192,300-319,367,413,419-426,428,433-434,447-448,470-471
+crates/daemon/tests/first_light.rs
+  h_9e71e8b09f7cf2 675-708,1122-1128
+crates/daemon/tests/search_lexical.rs
+  h_9e71e8b09f7cf2 143-196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1749925fe458fc8b8798f46bf607b8b979718bd1",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
