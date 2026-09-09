@@ -1,0 +1,28 @@
+.agents/skills/pij-team/EXPERIENCES.md
+  h_9e71e8b09f7cf2 908-934
+crates/cli/src/doctor.rs
+  h_9e71e8b09f7cf2 822-825,1225,1230
+crates/cli/src/render/surfaces/status.rs
+  h_9e71e8b09f7cf2 88,93,291,299
+crates/core/src/views/status.rs
+  h_9e71e8b09f7cf2 80-83
+crates/daemon/src/convo_ingest.rs
+  h_9e71e8b09f7cf2 302,312,352,367,373-376,397-398,426-445,662-663,666-669,707,714-720,755-763,771-777,788,795,847,1306,1349,1359-1360,1374,1385-1386,1406,1530-1533,1607
+crates/daemon/src/convo_poll.rs
+  h_9e71e8b09f7cf2 52-53,92,118,157-158,162-168,210-212,228,299-300,330,364-366,380-390,396-400,403,503-507,520,539-543,592,600,613,696,702,705,713-714,847-1122,1161-1162,1170,1726-1734,2140,2149,2155,2157-2158,2216-2224,2247-2257,2277-2285
+crates/providers/src/conversation_sources/omp.rs
+  h_9e71e8b09f7cf2 10,12-15,25,56-57,62,72,83,87-94,127-133,138,330-335,338-371,374,764
+crates/providers/tests/conversation_sources.rs
+  h_9e71e8b09f7cf2 231-232,438
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b69aab6828a0f52f58cbd8c93bcfc6b342121892",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
