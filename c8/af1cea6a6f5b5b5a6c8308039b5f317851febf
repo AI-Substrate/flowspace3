@@ -1,0 +1,26 @@
+.agents/skills/pij-team/EXPERIENCES.md
+  h_9e71e8b09f7cf2 935-962
+crates/daemon/src/convo_ingest.rs
+  h_9e71e8b09f7cf2 457-461,479-480,482-486,798,800,803-804,1288-1364,1699,1716,1720
+crates/daemon/src/convo_poll.rs
+  h_9e71e8b09f7cf2 885,1066-1073,1094-1105,1107-1114,2123,2176
+crates/providers/src/conversation_sources/omp.rs
+  h_9e71e8b09f7cf2 333-335,375-386
+crates/providers/tests/conversation_sources.rs
+  h_9e71e8b09f7cf2 229
+crates/providers/tests/omp_deleted_cwd.rs
+  h_9e71e8b09f7cf2 1-147
+crates/testkit/fixtures/conversations/omp-directory-shapes.tsv
+  h_9e71e8b09f7cf2 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c8af1cea6a6f5b5b5a6c8308039b5f317851febf",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
