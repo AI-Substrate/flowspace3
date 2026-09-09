@@ -77,6 +77,10 @@ pub struct ConversationHarnessStatus {
     pub tracked: usize,
     /// Parent sessions needing an append, truncation, or replacement read.
     pub behind: usize,
+    /// Parent sessions with an unchanged file whose last terminal read failed.
+    /// These files wait for a revision change and do not contribute to behind.
+    #[serde(default)]
+    pub unreadable: usize,
     /// Time of the newest observed ingest report; unknown after daemon restart.
     pub newest_ingest_at: Option<String>,
     /// Actual report counters, never inferred from cursor movement.

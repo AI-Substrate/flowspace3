@@ -85,11 +85,12 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
         }
         for harness in &conversations.harnesses {
             out.push_str(&format!(
-                "{}  {}: {} tracked · {} behind · newest ingest {}\n",
+                "{}  {}: {} tracked · {} behind · {} unreadable · newest ingest {}\n",
                 theme::GUTTER,
                 harness.harness,
                 harness.tracked,
                 harness.behind,
+                harness.unreadable,
                 harness.newest_ingest.as_ref().map_or_else(
                     || "unavailable (not observed since daemon boot)".to_owned(),
                     |receipt| receipt.describe(),
@@ -287,7 +288,7 @@ mod tests {
             let mut value = envelope(json!([]));
             value.data.as_mut().unwrap()["conversations"] = json!({
                 "state": state, "state_reason": "daemon-authored explanation", "last_poll_at": null,
-                "harnesses": [{"harness":"omp","tracked":3,"behind":2,"newest_ingest_at":"2026-09-01T00:00:00Z"}]
+                "harnesses": [{"harness":"omp","tracked":3,"behind":2,"unreadable":1,"newest_ingest_at":"2026-09-01T00:00:00Z"}]
             });
             let screen = plain(&render(&value, 100).unwrap());
             assert!(
@@ -295,7 +296,7 @@ mod tests {
                 "{screen}"
             );
             assert!(screen.contains("daemon-authored explanation"));
-            assert!(screen.contains("3 tracked · 2 behind"));
+            assert!(screen.contains("3 tracked · 2 behind · 1 unreadable"));
             assert!(screen.contains("last poll pending"));
             assert!(screen.contains("unavailable (not observed since daemon boot)"));
         }
