@@ -940,3 +940,31 @@ Carried, not folded yet (theirs to keep pressing, ours to watch): C3 "compact th
   source contracts passed. Missing-cwd fallback stayed unchanged and passed a
   separate pure-rule test. Final `harness checks` at 2026-09-09T05:02:23.419Z
   exited 0: all 11 gates and 12 documentation links passed.
+
+### PR #122 delta review — read-time paths and independent expectations
+
+- A faithful write-time realpath rule was not a correct read-time resolver:
+  deleted cwds lost their alias prefix while HOME/temp roots stayed canonical.
+  The private 173-pair metadata oracle exposed six failures. Canonicalizing the
+  deepest surviving ancestor repaired 173/173, including all six former failures.
+  The real table stays private; only curated synthetic shapes are committed.
+- The portable ratchet creates its own HOME/temp/absolute symlinks, seeds
+  literal recorded-shape directory names, deletes each cwd, then resolves again.
+  Linux and macOS both execute it. The only substitution is a generated single
+  pathname component; no fs3 encoding helper constructs any expectation.
+- Manual discovery now keeps the found file's directory as well as its cwd.
+  Deleted-cwd plus relocated-directory ingestion proves that fallback still
+  works when the recorded cwd equals the requested cwd. Ignoring that directory
+  is a red mutation, not a source-text assertion.
+- Done-only stall tests now say what they prove. Failed-row ordering assertions
+  live on the failed/unreadable path: failed/attempt1 remains unrevived, a changed
+  revision revives the same row to pending/attempt0, then ingestion completes it.
+  Modeling a prematurely erased failure outcome makes that regression red.
+- The earlier provider-fixture mkdir is removed: independent deleted-cwd
+  coverage makes the shortcut unnecessary. The flat oracle keeps its explicit
+  directory; committed session bytes and ordinal assertions stay untouched.
+- Final delta `harness checks`, 2026-09-09T06:07:09.378Z: exit 0, all 11
+  gates and 12 documentation links passed. Restored targeted checks: provider
+  contracts 16, portable eight-case deletion oracle, poller 24, and manual
+  deleted-cwd/discovered-directory ingest+verify. Temporary private probe and
+  owned mutation databases were removed; no raw oracle data was vendored.

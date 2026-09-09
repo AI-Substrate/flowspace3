@@ -330,8 +330,9 @@ impl OmpSource {
 /// Authoritative fs3 mirror of OMP 18.1.14's `getDefaultSessionDirName`:
 /// <https://github.com/can1357/oh-my-pi/blob/v18.1.14/packages/coding-agent/src/session/session-paths.ts>.
 /// Canonical HOME-relative paths use `-`, temporary-root-relative paths use
-/// `-tmp`, and other absolute paths use `--…--`. OMP's `resolveEquivalentPath`
-/// falls back to the lexically resolved absolute path when realpath fails.
+/// `-tmp`, and other absolute paths use `--…--`. Unlike OMP's write-time
+/// realpath fallback, read-time lookup preserves a deleted workspace's aliases
+/// by canonicalizing its deepest surviving ancestor and appending the tail.
 /// The daemon's `workspace_slug` delegates here; do not duplicate this rule.
 #[must_use]
 pub fn session_slug(folder: &Path, home: &Path) -> String {
@@ -371,7 +372,18 @@ fn equivalent_path(path: &Path) -> PathBuf {
             resolved.push(component.as_os_str());
         }
     }
-    std::fs::canonicalize(&resolved).unwrap_or(resolved)
+    for ancestor in resolved.ancestors() {
+        if let Ok(mut canonical) = std::fs::canonicalize(ancestor) {
+            let remainder = resolved
+                .strip_prefix(ancestor)
+                .expect("an ancestor is a prefix");
+            if !remainder.as_os_str().is_empty() {
+                canonical.push(remainder);
+            }
+            return canonical;
+        }
+    }
+    resolved
 }
 
 /// Every non-empty text block of a message, in order.

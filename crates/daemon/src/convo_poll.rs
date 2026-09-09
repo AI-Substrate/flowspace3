@@ -882,7 +882,7 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn omp_missing_cwd_preserves_upstream_lexical_fallback() {
+    fn omp_missing_cwd_preserves_lexical_suffix() {
         let scratch = tempfile::tempdir().unwrap();
         let root = std::fs::canonicalize(scratch.path()).unwrap();
         let home = root.join("home");
@@ -1063,7 +1063,14 @@ mod tests {
                 .await
                 .unwrap()
                 .remove(0);
-            assert_eq!(row.state, "failed", "unchanged failures are not revived");
+            assert_eq!(
+                row.state, "failed",
+                "classify failure before submission can revive this row"
+            );
+            assert_eq!(
+                row.attempts, 1,
+                "no enqueue may erase the observed failed attempt"
+            );
         }
         use std::io::Write;
         std::fs::OpenOptions::new()
@@ -1084,7 +1091,27 @@ mod tests {
             .unwrap();
         let stats = poller.poll().await.unwrap();
         assert_eq!((stats.enqueued, stats.behind, stats.unreadable), (1, 1, 0));
+        let revived = fs3_store::ingest_job_outcomes(&state.db, &[job.id])
+            .await
+            .unwrap()
+            .remove(0);
+        assert_eq!(
+            revived.state, "pending",
+            "a revision change revives the same failed job"
+        );
+        assert_eq!(
+            revived.attempts, 0,
+            "the revival resets attempts only after failure was classified"
+        );
         assert_eq!(run_ingests(&state, home.path()).await.len(), 1);
+        let completed = fs3_store::ingest_job_outcomes(&state.db, &[job.id])
+            .await
+            .unwrap()
+            .remove(0);
+        assert_eq!(
+            completed.state, "done",
+            "the previously failed row is actually ingested and completed"
+        );
         let stats = poller.poll().await.unwrap();
         assert_eq!((stats.enqueued, stats.behind, stats.unreadable), (0, 0, 0));
         database.destroy(state.db.clone()).await;
@@ -2093,7 +2120,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn convo_poll_health_counts_terminal_attempts_before_resubmission_and_recovers() {
+    async fn convo_poll_health_counts_done_attempts_and_recovers() {
         let home = tempfile::tempdir().unwrap();
         let path = claude_session(home.path(), "stalled-session");
         let (database, state) = stack().await;
@@ -2146,7 +2173,7 @@ mod tests {
             poller.reconcile().await.unwrap();
             assert_eq!(
                 poller.lag[&path].no_progress_attempts, attempt,
-                "successful terminal outcome is observed before another submission"
+                "each successful terminal attempt without read progress is counted"
             );
             let row = fs3_store::ingest_job_outcomes(&state.db, &[job.id])
                 .await

@@ -454,6 +454,11 @@ pub fn next_after_submit(accepted: &IngestAccepted) -> String {
     )
 }
 
+struct DiscoveredFolder {
+    folder: PathBuf,
+    directory: PathBuf,
+}
+
 /// Where a session was ACTUALLY recorded, asked of the store rather than
 /// inferred from a slug.
 ///
@@ -471,11 +476,14 @@ pub fn next_after_submit(accepted: &IngestAccepted) -> String {
 ///
 /// Returns `None` when no store directory holds the id, which is a genuinely
 /// unknown session rather than a misaddressed one.
-fn discover_folder(harness: Harness, session_id: &str, home: &Path) -> Option<PathBuf> {
-    native_session_file(harness, session_id, home)
+fn discover_folder(harness: Harness, session_id: &str, home: &Path) -> Option<DiscoveredFolder> {
+    let path = native_session_file(harness, session_id, home)
         .ok()
-        .flatten()
-        .and_then(|path| cwd_of(&path))
+        .flatten()?;
+    Some(DiscoveredFolder {
+        folder: cwd_of(&path)?,
+        directory: path.parent()?.to_owned(),
+    })
 }
 
 /// Presence is separate from cwd parsing: a present but unreadable or
@@ -787,12 +795,13 @@ pub(crate) async fn ingest_with_directory_at_home(
     if resolved.is_err()
         && omp_session_dir.is_none()
         && let Some(found) = discover_folder(harness, session_id_of(&input), &home)
-        && found != folder
+        && (harness == Harness::Omp || found.folder != folder)
     {
-        folder = found;
+        folder = found.folder;
         input = with_folder(input, folder.clone());
         resolved = tokio::task::spawn_blocking({
-            let source = source_for(harness, &folder, &home, remote.as_deref(), None)?;
+            let directory = (harness == Harness::Omp).then_some(found.directory.as_path());
+            let source = source_for(harness, &folder, &home, remote.as_deref(), directory)?;
             let input = input.clone();
             move || source.resolve(&input)
         })
@@ -1277,6 +1286,83 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    async fn manual_omp_ingest_uses_found_directory_after_cwd_and_layout_change() {
+        let home = tempfile::tempdir().unwrap();
+        let folder = home.path().join("project-alpha");
+        std::fs::create_dir_all(&folder).unwrap();
+        let fixture = std::fs::read_to_string(
+            fs3_testkit::expectations::fixtures_root().join("omp-directory-shapes.tsv"),
+        )
+        .unwrap();
+        let recorded_directory = fixture
+            .lines()
+            .find(|line| line.starts_with("home-project\t"))
+            .unwrap()
+            .split('\t')
+            .nth(3)
+            .unwrap();
+        let store = home.path().join(".omp/agent/sessions");
+        let named = store.join(recorded_directory);
+        std::fs::create_dir_all(&named).unwrap();
+        let session = "manual-deleted-cwd";
+        let filename = format!("2026-09-09T00-00-00_{session}.jsonl");
+        let header = serde_json::json!({"type":"session", "cwd":folder});
+        let record = serde_json::json!({"type":"message","id":"first","timestamp":"2026-09-09T00:00:00Z","message":{"role":"user","content":[{"type":"text","text":"synthetic saved conversation"}]}});
+        std::fs::write(named.join(&filename), format!("{header}\n{record}\n")).unwrap();
+        let actual = store.join("saved-explicit-directory");
+        std::fs::rename(&named, &actual).unwrap();
+        std::fs::remove_dir_all(&folder).unwrap();
+        assert!(!folder.exists());
+        assert!(!named.exists());
+        let found = discover_folder(Harness::Omp, session, home.path()).unwrap();
+        assert_eq!(
+            found.folder, folder,
+            "cwd metadata is unchanged, so inequality cannot drive fallback"
+        );
+        assert_eq!(
+            found.directory, actual,
+            "keep the directory already found by identity"
+        );
+        let database = fs3_testkit::FreshDatabase::create("omp-manual-deleted").await;
+        let state = AppState::from_config(fs3_core::Config {
+            database: fs3_core::DatabaseConfig {
+                url: database.url(),
+            },
+            ..fs3_core::Config::default()
+        })
+        .unwrap();
+        fs3_store::migrate(&state.db).await.unwrap();
+        let request = IngestRequest {
+            pij_id: None,
+            session_id: Some(session.to_owned()),
+            harness: Some("omp".to_owned()),
+            folder: Some(folder.to_string_lossy().into_owned()),
+        };
+        let report = ingest_at_home(&state, &request, home.path().to_owned())
+            .await
+            .unwrap();
+        assert_eq!(report.turns_new, 1);
+        assert_eq!(
+            report.folder,
+            folder.to_string_lossy(),
+            "the native directory is not the workspace"
+        );
+        let verified = verify_at_home(
+            &state,
+            &VerifyRequest {
+                pij_id: None,
+                session_id: request.session_id,
+                harness: request.harness,
+            },
+            home.path().to_owned(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(verified.turns, 1);
+        database.destroy(state.db.clone()).await;
+    }
+
+    #[tokio::test]
     async fn metrics_db_path_prefers_native_and_refuses_before_enqueue_when_unopenable() {
         const REMOTE: &str = "https://github.com/AI-Substrate/flowspace3";
         const SESSION: &str = "a5a5588f-0979-439f-a1bf-ddf185a089c7";
@@ -1610,7 +1696,7 @@ mod tests {
 
         let found = discover_folder(Harness::Omp, session, &home).expect("the session is found");
         assert_eq!(
-            found,
+            found.folder,
             PathBuf::from(worktree),
             "discovery returns the cwd the STORE recorded, not an un-slugged guess"
         );
@@ -1627,11 +1713,11 @@ mod tests {
         let home = omp_home("-substrate-flowspace-fs3-convo-ingest", session, cwd);
         let found = discover_folder(Harness::Omp, session, &home).expect("found");
         assert_ne!(
-            found,
+            found.folder,
             PathBuf::from("/Users/x/substrate/flowspace/fs3/convo/ingest"),
             "an un-slugged path would have split the hyphens into directories"
         );
-        assert_eq!(found, PathBuf::from(cwd));
+        assert_eq!(found.folder, PathBuf::from(cwd));
         std::fs::remove_dir_all(&home).ok();
     }
 

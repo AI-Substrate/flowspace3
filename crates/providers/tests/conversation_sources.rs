@@ -226,10 +226,8 @@ struct OmpFixture {
 impl OmpFixture {
     fn new(prefix: usize) -> Self {
         let root = scratch_root("omp-source");
-        // home/<workspace> so the reader's slug rule has something to strip.
+        // A saved workspace may already be gone; do not create the recorded cwd.
         let folder = root.join("substrate/flowspace/flowspace3");
-        std::fs::create_dir_all(&folder)
-            .expect("native workspace must exist so cwd and HOME canonicalize consistently");
         let sessions = root.join(".omp/agent/sessions/-substrate-flowspace-flowspace3");
         let committed = fixtures_root().join("omp").join(OMP_FILE);
 
