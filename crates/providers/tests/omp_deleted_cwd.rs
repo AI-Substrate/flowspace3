@@ -28,7 +28,7 @@ impl Drop for Cleanup {
 }
 
 #[test]
-fn recorded_directory_shapes_resolve_after_each_cwd_is_deleted() {
+fn recorded_directory_shapes_survive_explicit_cwd_lifetimes() {
     // The platform difference is fixture data, not a skipped test. Every case
     // below runs on both Linux CI and macOS. No fs3 helper constructs expected
     // names; even the fixed scratch-prefix spelling is literal TSV data.
@@ -63,6 +63,8 @@ fn recorded_directory_shapes_resolve_after_each_cwd_is_deleted() {
         tmpdir: std::env::var_os("TMPDIR"),
     };
     let mut branches = [0; 3];
+    let mut deleted = 0;
+    let mut live_roots = 0;
     let fixture = std::fs::read_to_string(
         fs3_testkit::expectations::fixtures_root().join("omp-directory-shapes.tsv"),
     )
@@ -76,7 +78,7 @@ fn recorded_directory_shapes_resolve_after_each_cwd_is_deleted() {
         .enumerate()
     {
         let columns: Vec<_> = line.split('\t').collect();
-        assert_eq!(columns.len(), 5, "fixture row {index}");
+        assert_eq!(columns.len(), 6, "fixture row {index}");
         let name = columns[0];
         let case = root.join(name);
         let home = case.join("home");
@@ -128,20 +130,48 @@ fn recorded_directory_shapes_resolve_after_each_cwd_is_deleted() {
         assert_eq!(before.len(), 1);
         assert_eq!(before[0].path, file);
 
-        std::fs::remove_dir_all(&physical_cwd).unwrap();
-        assert!(!cwd.exists(), "{name}: the cwd must really be gone");
+        if columns[5].is_empty() {
+            assert_eq!(
+                columns[2], ".",
+                "{name}: only explicit root rows are live controls"
+            );
+            assert!(cwd.is_dir(), "{name}: the root must survive");
+            assert_eq!(std::fs::canonicalize(&cwd).unwrap(), physical_cwd);
+            live_roots += 1;
+        } else {
+            let delete_root = std::fs::canonicalize(branch.join(columns[5])).unwrap();
+            let branch_root = std::fs::canonicalize(branch).unwrap();
+            assert!(
+                delete_root.starts_with(&branch_root) && delete_root != branch_root,
+                "{name}: delete only a path below the branch root"
+            );
+            // Nested rows explicitly remove `nested`, leaving all three tail
+            // components missing below the surviving alias.
+            std::fs::remove_dir_all(&delete_root).unwrap();
+            assert!(
+                !delete_root.exists(),
+                "{name}: the whole declared tail must be deleted"
+            );
+            assert!(!cwd.exists(), "{name}: the cwd must really be gone");
+            deleted += 1;
+        }
         let after = source.resolve(&input).unwrap_or_else(|error| {
-            panic!("{name}: deleting cwd must not change recorded directory {expected}: {error}")
+            panic!("{name}: declared cwd lifetime must preserve directory {expected}: {error}")
         });
         assert_eq!(after.len(), 1);
         assert_eq!(
             after[0].path, file,
-            "{name}: the same recorded file survives cwd deletion"
+            "{name}: the same recorded file survives its declared cwd lifetime"
         );
     }
     assert_eq!(
         branches,
-        [3, 3, 2],
+        [4, 4, 3],
         "all naming branches, roots, colon and hyphen cases ran"
+    );
+    assert_eq!(
+        (deleted, live_roots),
+        (9, 2),
+        "exact deletion and live-root control accounting"
     );
 }
