@@ -4006,7 +4006,7 @@ health hostage — but nothing names the poisoned session to an operator.
 as 087 does for embeddings; make a store rejection of this class TERMINAL with the session named in
 status.last_error and doctor, not revivable-forever.
 
-## 204 — sessions whose cwd is outside $HOME (e.g. /tmp/…) can never be resolved, fail terminally every pass, and pin the conversations row on STALLED
+## 204 — RESOLVED 2026-09-11 by PR #122 (852bce3) — sessions whose cwd is outside $HOME (e.g. /tmp/…) can never be resolved, fail terminally every pass, and pin the conversations row on STALLED
 
 Seen 90 min after the 018 bounce (2026-09-07 00:12Z): `state: stalled — three completed ingest attempts
 without read progress: 17 behind`. Eleven omp/claude sessions whose recorded cwd is under `/tmp/…`
@@ -4022,3 +4022,27 @@ did its job (this was invisible before 018); the quiet-pass clause of ac-0008 FA
 session's own slug dir (or canonicalize the folder and mirror omp's wrapping) instead of re-deriving from
 cwd; (2) a terminal FAILED resolve/read yields a stamped negative ack exactly like a zero-record read, so a
 permanently unresolvable file costs one attempt per stamp and is reported under `unreadable`, not churned.
+
+## 205 — ~40k stale FAILED ingest_session job rows accumulated while row 204 cycled; retention never reaps failed jobs
+Found 2026-09-11 after the #122 bounce: `jobs` holds 40,361 `ingest_session` rows in state `failed` (38,061 carrying the pre-#122 slug error, 20 distinct sessions), 0 new since the bounce. `retention.rs` reaps nothing in `failed`. Cost: table bloat, slower `ingest_job_outcomes` lookups, misleading `status.queue` counts. **Encode:** retention pass for terminal `failed` rows older than N days (keep the newest attempt per dedupe_key for the health row); a doctor row when failed rows exceed a threshold. No manual mass-drop — o-prime ruling.
+
+## 206 — a session left terminal-FAILED by an old bug is never retried after the fix ships (negative ack holds until the file changes)
+The #122 negative ack is correct going forward, but the 20 sessions the OLD poller had failed stayed unread after the bounce because their stamps never moved. o-prime resubmitted them by hand via `flowspace3 conversation ingest` (19 indexed, 1 genuinely has no file). **Encode:** on daemon boot with a new binary version, clear the negative-ack cache / requeue terminal-failed ingest rows once; or a `flowspace3 conversation retry --unreadable` verb that resubmits every `unreadable` file one time.
+
+## 207 — QUERY_INVALID fix text for native store IO points at `flowspace3 search --help` (reviewer F2 on #122)
+Pre-existing; #122 removed the slug hint that used to compensate. The refusal names the right directory then gives unrelated advice. **Encode:** a store-IO-specific fix string (which store, which directory, what would make it readable).
+
+## 208 — bin/daemon-restart reports health=failed on every bounce; the daemon passes ping ~110 s later
+Two bounces in a row (2026-09-07, 2026-09-11). HEALTH_POLLS=20 × 0.25 s cannot cover the daemon's pre-serve probe. **Encode:** size the window to the probe (or read the ready log line) so the SUMMARY is truthful; the seat should never have to poll ping by hand.
+
+## 209 — harness boot compose probe passes docker an unsupported `-T` flag from a linked worktree and reports Postgres unavailable while it is healthy
+Hit by two seats on plan #121/#122 (jerusalem log rescued to scratch/review-122-coder-logs/omp-tmp-boot.log). The false negative also suggests `docker compose up -d`, which invites a prod-touching action. **Encode:** probe the configured port; drop `-T` or gate it on compose v2 + TTY.
+
+## 210 — `flowspace3 get --before/--after` is capped at 200; paging a 1,002-turn conversation took five calls
+Found during the Unisphere cross-check (scratch/unisphere-dogfood-receipt-2026-09-11.md). **Encode:** either raise the cap for `--json` callers or emit a `next_action` that names the next window, mirroring #121's `next_offset`.
+
+## 211 — `tree` lists a container once per `impl` block (same address repeated); no merged symbol view
+Jordan asked for a Serena-style outline (2026-09-08). `tree crates/daemon/src/convo_poll.rs` shows `PollConfig` three times (struct + two impl blocks) with identical addresses. Also: the human table caps at 29 rows without `--limit`. **Encode:** merge entries by address with children unioned; default `--limit` to the file's declaration count for file targets. Docs: add an "Outline a file" subsection to `.agents/skills/flowspace/SKILL.md` § 4b and the bundled `read` topic (tree as a lightweight symbol index; iterate with `get`; `--span` for shared addresses).
+
+## 212 — store pool is hard-coded to 8 connections while [indexing] worker_concurrency=32; read verbs time out under ingest load
+`crates/store/src/lib.rs:207` `max_connections(8)`, `CONNECT_TIMEOUT` 5 s. Jordan hit `FS3-E-STORE-QUERY-FAILED pool timed out` on `tree` (2026-09-08) while 32 workers were summarising. **Encode:** derive the pool from `worker_concurrency` plus headroom, or reserve a read-path slice; doctor row on pool saturation.
