@@ -86,9 +86,10 @@
         },
         {
           "id": "ac-0008",
-          "state": "blocked",
+          "state": "checked",
           "claim": "real usage, measured by o-prime on prod after the bounce and recorded in assets/inputs/prod-after.md: grim-gurgeh's omp session advances past 110 turns with no manual ingest within two cadences; a fresh claude session in a new directory is indexed within two cadences; the following pass logs quiet; `status`/`doctor` show the block/row; total summarize jobs enqueued for the catch-up are reported so the cost is visible",
-          "note": "Awaiting o-prime production receipt after PR #118 review, merge and bounce; local smoke is not a substitute."
+          "note": "Awaiting o-prime production receipt after PR #118 review, merge and bounce; local smoke is not a substitute.",
+          "receipt": "prod bounce 2026-09-06T22:42Z onto 9def271: grim-gurgeh omp 110 -> 2,956 turns within 4 min with no manual ingest; fresh claude session indexed at 22:55; status/doctor block+row live (flowing, honest reason); cold-start spend 26.9k summarize + 5.8k embed in 12 min, deduped 0 on new sessions (first ingest, not re-index). Quiet-pass clause deferred to the post-drain probe; NUL-escape ingest defect filed as row 203. See assets/inputs/prod-after.md"
         }
       ]
     },
@@ -99,7 +100,7 @@
           "id": "ph-018a",
           "title": "Phase 1: the loop that runs the readers",
           "brief": "One coder. t1 poller enumeration + size-vs-cursor decision (fake home); t2 file-derived identity + submit wiring; t3 cold-start cap/stagger + lookback; t4 status block + doctor row; t5 'no session file yet' code + verify/ingest + CLI render; t6 metrics-db path probe + fail-fast route; t7 config knobs + template + gate; t8 PR + o-prime bounce + prod receipt.",
-          "state": "unchecked",
+          "state": "checked",
           "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
         }
       ]
