@@ -1,0 +1,16 @@
+crates/providers/tests/omp_deleted_cwd.rs
+  h_9e71e8b09f7cf2 31,66-67,81,133-157,159,164,169,172-176
+crates/testkit/fixtures/conversations/omp-directory-shapes.tsv
+  h_9e71e8b09f7cf2 3-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7de0c216b7d364173027fbe7779bbea6cdde7aa5",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
