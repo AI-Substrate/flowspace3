@@ -1,0 +1,27 @@
+.agents/skills/pij-team/EXPERIENCES.md
+  s_15d888f4b629c1::t_0d677583532d97 971-996
+.agents/skills/pij-team/templates/packet-coder.dd.json
+  s_15d888f4b629c1::t_68d392f3249df7 82-93
+.agents/skills/pij-team/templates/packet-coder.dd.md
+  s_15d888f4b629c1::t_d17c9a495cbf1d 45-47
+.harness/records/retro/2026-09-02/001-plans-012-014-drain.md
+  s_15d888f4b629c1::t_aa2706a0af7156 1-789
+.harness/records/retro/2026-09-10/001-search-offset-and-omp-tmp-slug.md
+  s_15d888f4b629c1::t_3998df3819b807 1-303
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5f84dfe352f469a7389b5f44b95dd09fe73bbdfb",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
