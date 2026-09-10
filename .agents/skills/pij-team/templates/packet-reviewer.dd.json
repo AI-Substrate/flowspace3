@@ -55,6 +55,10 @@
         {
           "id": "i12",
           "text": "MUTATE THE THING THE CHANGE GUARDS, AND WATCH THE SUITE. A test that passes BOTH with and without the guard is not a ratchet — the behaviour may be correct today while nothing stops a refactor from silently removing it under a green gate. For each promise the change makes, break the implementation in the smallest way that should violate it and record what went red: which assertion, in which test, by name. If the answer is 'nothing went red', that is a finding even when the behaviour is correct. Proven 2026-09-02 (fs3 plan 017): the fail-closed production guard was correct, and mutating it to fail OPEN left 175/175 + 5/5 + 6/6 GREEN — the one untested case was the exact state production was in that night. After the fix, the identical mutation gives 174 passed / 1 FAILED at the named assertion."
+        },
+        {
+          "id": "i13",
+          "text": "JOIN FIXTURES: for any unit that joins two sources, check the fixture ids are DISJOINT and that a miss degrades honestly; a fixture whose two sides share ids cannot fail to join and is not evidence. (From chainglass plan 093.)"
         }
       ]
     },
