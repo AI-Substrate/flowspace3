@@ -819,7 +819,10 @@ fn conversations_row(
             || "unavailable (not observed since daemon boot)".to_owned(),
             |receipt| receipt.describe(),
         );
-        found.push_str(&format!("; {} newest ingest {receipt}", harness.harness));
+        found.push_str(&format!(
+            "; {} {} unreadable; newest ingest {receipt}",
+            harness.harness, harness.unreadable
+        ));
     }
     match report.state {
         ConversationState::Flowing => Step::ok("conversations", found, started),
@@ -1219,11 +1222,12 @@ mod tests {
         let row = conversations_row(Ok(&report), resolved.as_deref(), Instant::now());
         assert!(row.found.contains(legacy.to_str().unwrap()));
         report.harnesses = serde_json::from_value(serde_json::json!([{
-            "harness":"claude","tracked":1,"behind":0,"newest_ingest_at":"2026-09-06T00:00:00Z",
+            "harness":"claude","tracked":1,"behind":0,"unreadable":1,"newest_ingest_at":"2026-09-06T00:00:00Z",
             "newest_ingest":{"at":"2026-09-06T00:00:00Z","address":"conv:proof","records_read":2,"turns_new":0,"deduped":2,"summarized":0,"rescanned":true,"contended":0}
         }])).unwrap();
         let row = conversations_row(Ok(&report), None, Instant::now());
         for text in [
+            "1 unreadable",
             "newest ingest",
             "conv:proof",
             "read 2",

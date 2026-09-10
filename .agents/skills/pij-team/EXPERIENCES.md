@@ -913,3 +913,58 @@ Eight items; the two folded into templates now, with attribution:
 - **Seats the human spawns directly have no parent; rs renders them as roots.** Fix that worked: `pij-rs register --parent <prime>` on arrival, accepted in place. → coder i17; primes check `pij-rs state <seat>` at ack.
 - **A fixture whose two fake sources share ids cannot fail to join** — hid two HIGH findings from every existing test. → coder i18 + reviewer i13: disjoint ids, honest degrade, collide-the-ids mutation.
 Carried, not folded yet (theirs to keep pressing, ours to watch): C3 "compact the peer at completion" is not executable against the rs daemon (no remote-control verbs in v1 send — pij plan 138 sibling); operator-only backpressure rows must be scheduled EARLY, not left last (their F1/F2 were found by Jordan on the running product before the reviewer); "commit now, verify live after" beat holding a 36-file tree for the operator; a mandatory gate carried a wall-clock test against the retired fs2 binary (theirs to move — fs2 retired 2026-09-03); the native code-review-agent runner fails E200 in a sandbox; and a prime citing a requirement id that does not exist (req-0040) — a reminder that ids are checked, never remembered.
+
+## Run: OMP tmp-slug + failed-read acknowledgments (2026-09-09)
+
+- A sealed HOME is not a toolchain pin. `cargo --version`/`rustc --version`
+  reported Homebrew 1.95.0, but `cargo fmt` dispatched a CARGO_HOME rustup
+  plugin and downloaded stable 1.98.1 into the scratch HOME. Setting
+  `RUSTUP_TOOLCHAIN` to the existing physical Homebrew 1.95.0 toolchain made
+  the proxy report rustfmt 1.9.0 without syncing. No shared toolchain changed.
+  Proposed owner-fold: prove formatter dispatch in the environment actually used.
+- The numbered ack caught a contradictory unchanged-test requirement: the
+  previous test explicitly required failed-row revival and Stalled-on-failed,
+  while the new contract required failed-to-unreadable acknowledgment. O-prime
+  authorized only superseded assertions to move; done-only stall/restart and
+  unchanged intake/verify contracts stayed covered.
+- OMP 18.1.14 source has three naming branches (HOME, process temp root, other
+  absolute path), not just home stripping. The adjacent npm source was older
+  than the executable, so the exact executable-version tag was read. Its naming
+  entry point also migrates native directories: reading the source was safe;
+  invoking it on the real store would not have been. Polling now carries the
+  observed directory; the fixed rule is authoritative only for manual derivation.
+- The full provider contract sweep exposed two fixture assumptions: a native
+  cwd that was never created, and a flat oracle directory addressed through
+  the old empty HOME-itself slug. Creating the cwd and supplying the explicit
+  flat directory preserved every committed byte and oracle assertion; all 16
+  source contracts passed. Missing-cwd fallback stayed unchanged and passed a
+  separate pure-rule test. Final `harness checks` at 2026-09-09T05:02:23.419Z
+  exited 0: all 11 gates and 12 documentation links passed.
+
+### PR #122 delta review — read-time paths and independent expectations
+
+- A faithful write-time realpath rule was not a correct read-time resolver:
+  deleted cwds lost their alias prefix while HOME/temp roots stayed canonical.
+  The private 173-pair metadata oracle exposed six failures. Canonicalizing the
+  deepest surviving ancestor repaired 173/173, including all six former failures.
+  The real table stays private; only curated synthetic shapes are committed.
+- The portable ratchet creates its own HOME/temp/absolute symlinks, seeds
+  literal recorded-shape directory names, deletes each cwd, then resolves again.
+  Linux and macOS both execute it. The only substitution is a generated single
+  pathname component; no fs3 encoding helper constructs any expectation.
+- Manual discovery now keeps the found file's directory as well as its cwd.
+  Deleted-cwd plus relocated-directory ingestion proves that fallback still
+  works when the recorded cwd equals the requested cwd. Ignoring that directory
+  is a red mutation, not a source-text assertion.
+- Done-only stall tests now say what they prove. Failed-row ordering assertions
+  live on the failed/unreadable path: failed/attempt1 remains unrevived, a changed
+  revision revives the same row to pending/attempt0, then ingestion completes it.
+  Modeling a prematurely erased failure outcome makes that regression red.
+- The earlier provider-fixture mkdir is removed: independent deleted-cwd
+  coverage makes the shortcut unnecessary. The flat oracle keeps its explicit
+  directory; committed session bytes and ordinal assertions stay untouched.
+- Final delta `harness checks`, 2026-09-09T06:07:09.378Z: exit 0, all 11
+  gates and 12 documentation links passed. Restored targeted checks: provider
+  contracts 16, portable eight-case deletion oracle, poller 24, and manual
+  deleted-cwd/discovered-directory ingest+verify. Temporary private probe and
+  owned mutation databases were removed; no raw oracle data was vendored.

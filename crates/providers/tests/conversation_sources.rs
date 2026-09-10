@@ -226,7 +226,7 @@ struct OmpFixture {
 impl OmpFixture {
     fn new(prefix: usize) -> Self {
         let root = scratch_root("omp-source");
-        // home/<workspace> so the reader's slug rule has something to strip.
+        // A saved workspace may already be gone; do not create the recorded cwd.
         let folder = root.join("substrate/flowspace/flowspace3");
         let sessions = root.join(".omp/agent/sessions/-substrate-flowspace-flowspace3");
         let committed = fixtures_root().join("omp").join(OMP_FILE);
@@ -433,7 +433,7 @@ fn omp_ordinals_are_a_subsequence_of_the_store() {
 #[test]
 fn the_omp_reader_emits_exactly_what_the_committed_store_implies() {
     let root = fs3_testkit::expectations::fixtures_root().join("omp");
-    let source = OmpSource::new(&root, root.clone());
+    let source = OmpSource::new(&root, root.clone()).with_session_directory(&root);
     let files = source
         .resolve(&IngestInput::Native {
             session_id: OMP_SESSION.to_string(),

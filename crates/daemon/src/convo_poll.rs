@@ -49,8 +49,8 @@ impl PollConfig {
     }
 }
 
-/// Stall means THREE observed terminal ingest attempts without cursor/read-ACK
-/// progress; failures count once. Pending/running jobs never age into stalled.
+/// Stall means THREE successful terminal ingest attempts without cursor/read-ACK
+/// progress. Failed revisions are unreadable; pending/running never age into stalled.
 /// IDs and attempt history are process-local: after restart, three FRESH
 /// attempts are required. A retained ID with no row is NO INFORMATION, never
 /// progress or an attempt. The separate three-cadence poll watchdog is unchanged.
@@ -89,6 +89,7 @@ impl PollHealth {
                         harness: harness.to_string(),
                         tracked: 0,
                         behind: 0,
+                        unreadable: 0,
                         newest_ingest_at: None,
                         newest_ingest: None,
                     })
@@ -114,6 +115,7 @@ impl PollHealth {
                         harness: (*harness).to_owned(),
                         tracked: 0,
                         behind: 0,
+                        unreadable: 0,
                         newest_ingest_at: None,
                         newest_ingest: None,
                     });
@@ -152,13 +154,18 @@ impl PollHealth {
             },
             state_reason: if stats.stalled {
                 Some(format!(
-                    "three completed ingest attempts without read progress: {} behind, {} in flight, {} outcomes unavailable",
-                    stats.behind, stats.in_flight, stats.unknown
+                    "three completed ingest attempts without read progress: {} behind, {} in flight, {} outcomes unavailable, {} unreadable",
+                    stats.behind, stats.in_flight, stats.unknown, stats.unreadable
                 ))
             } else if stats.behind > 0 {
                 Some(format!(
-                    "catching up: {} behind, {} in flight, {} outcomes unavailable; {} submitted this pass",
-                    stats.behind, stats.in_flight, stats.unknown, stats.enqueued
+                    "catching up: {} behind, {} in flight, {} outcomes unavailable, {} unreadable; {} submitted this pass",
+                    stats.behind, stats.in_flight, stats.unknown, stats.unreadable, stats.enqueued
+                ))
+            } else if stats.unreadable > 0 {
+                Some(format!(
+                    "{} unreadable; waiting for a file change",
+                    stats.unreadable
                 ))
             } else {
                 None
@@ -200,6 +207,9 @@ pub struct ConvoPoller {
     folders: HashMap<PathBuf, CachedFolder>,
     after: Option<PathBuf>,
     lag: HashMap<PathBuf, SubmittedRead>,
+    /// Process-local negative read ACKs, invalidated like NoContentAck by the
+    /// attempted file revision, never by the unrelated cwd-probe cache.
+    unreadable: HashMap<PathBuf, FileStamp>,
     observed: Option<HashMap<PathBuf, ObservedFile>>,
     ack_epoch: Instant,
 }
@@ -215,6 +225,7 @@ impl ConvoPoller {
             folders: HashMap::new(),
             after: None,
             lag: HashMap::new(),
+            unreadable: HashMap::new(),
             observed: None,
             ack_epoch: Instant::now(),
         }
@@ -285,6 +296,8 @@ impl ConvoPoller {
                 )
             })
             .collect();
+        self.unreadable
+            .retain(|path, stamp| observed.get(path).is_some_and(|file| file.stamp == *stamp));
         let acknowledgments: HashMap<_, _> = self
             .state
             .conversations
@@ -314,6 +327,7 @@ impl ConvoPoller {
                 harness: harness.to_string(),
                 tracked: 0,
                 behind: 0,
+                unreadable: 0,
                 newest_ingest_at: None,
                 newest_ingest: None,
             };
@@ -347,6 +361,9 @@ impl ConvoPoller {
                 for file in session.files.iter().filter(|file| eligible(file)) {
                     let progress = cursors.get(&file.file.session_id);
                     let ack = acknowledgments.get(&file.file.path);
+                    if !behind(file, progress, ack) {
+                        self.unreadable.remove(&file.file.path);
+                    }
                     if ack.is_some_and(|ack| ack.stamp == file.stamp) {
                         observed
                             .get_mut(&file.file.path)
@@ -360,13 +377,30 @@ impl ConvoPoller {
                             ack.read_started >= previous.submitted_at || ack.stamp == previous.stamp
                         })
                     {
+                        if outcomes
+                            .get(&previous.job_id)
+                            .is_some_and(|row| row.state == "failed")
+                        {
+                            // A file may have changed since submission. A failure
+                            // acknowledges only that attempted revision, not the
+                            // newer bytes discovered by this poll.
+                            self.unreadable
+                                .insert(file.file.path.clone(), previous.stamp);
+                            continue;
+                        }
                         let mut pending = previous.clone();
                         pending.observe(outcomes.get(&pending.job_id));
                         lag.insert(file.file.path.clone(), pending);
                     }
                 }
                 if session.files.iter().any(|file| {
+                    eligible(file) && self.unreadable.get(&file.file.path) == Some(&file.stamp)
+                }) {
+                    summary.unreadable += 1;
+                }
+                if session.files.iter().any(|file| {
                     eligible(file)
+                        && self.unreadable.get(&file.file.path) != Some(&file.stamp)
                         && behind(
                             file,
                             cursors.get(&file.file.session_id),
@@ -466,6 +500,11 @@ impl ConvoPoller {
                 &session.request(&folder),
                 delay,
                 self.home.clone(),
+                if session.harness == Harness::Omp {
+                    path.parent()
+                } else {
+                    None
+                },
             )
             .await
             .map_err(|error| anyhow::anyhow!("{error:?}"))?;
@@ -478,6 +517,7 @@ impl ConvoPoller {
                     .new_pending = false;
                 let cursor = cursors.get(&file.file.session_id);
                 if is_eligible(file, cursor, now, window)
+                    && self.unreadable.get(&file.file.path) != Some(&file.stamp)
                     && behind(file, cursor, acknowledgments.get(&file.file.path))
                 {
                     let pending =
@@ -496,6 +536,11 @@ impl ConvoPoller {
             stats.enqueued += 1;
         }
         stats.behind = stats.harnesses.iter().map(|summary| summary.behind).sum();
+        stats.unreadable = stats
+            .harnesses
+            .iter()
+            .map(|summary| summary.unreadable)
+            .sum();
         let retained_ids: HashSet<_> = lag.values().map(|pending| pending.job_id).collect();
         stats.in_flight = retained_ids
             .iter()
@@ -544,6 +589,7 @@ impl Reconcile for ConvoPoller {
             tracing::debug!(
                 enqueued = stats.enqueued,
                 behind = stats.behind,
+                unreadable = stats.unreadable,
                 skipped = stats.skipped,
                 "polled native conversations"
             );
@@ -551,6 +597,7 @@ impl Reconcile for ConvoPoller {
             tracing::info!(
                 enqueued = stats.enqueued,
                 behind = stats.behind,
+                unreadable = stats.unreadable,
                 skipped = stats.skipped,
                 "polled native conversations"
             );
@@ -563,6 +610,7 @@ impl Reconcile for ConvoPoller {
 struct PollStats {
     enqueued: usize,
     behind: usize,
+    unreadable: usize,
     skipped: usize,
     in_flight: usize,
     unknown: usize,
@@ -645,16 +693,16 @@ struct SubmittedRead {
     submitted_at: Instant,
     job_id: i64,
     no_progress_attempts: u32,
-    last_outcome: Option<(i64, i32, bool)>,
+    last_outcome: Option<(i64, i32)>,
 }
 
 impl SubmittedRead {
     fn observe(&mut self, outcome: Option<&fs3_store::IngestJobOutcome>) {
         let Some(outcome) = outcome else { return }; // Retention is not progress.
-        if outcome.id != self.job_id || !matches!(outcome.state.as_str(), "done" | "failed") {
+        if outcome.id != self.job_id || outcome.state != "done" {
             return;
         }
-        let revision = (outcome.id, outcome.attempts, outcome.state == "failed");
+        let revision = (outcome.id, outcome.attempts);
         if self.last_outcome != Some(revision) {
             self.no_progress_attempts = self.no_progress_attempts.saturating_add(1);
             self.last_outcome = Some(revision);
@@ -662,10 +710,8 @@ impl SubmittedRead {
     }
 
     fn resubmitted(&mut self, job_id: i64, stamp: FileStamp, submitted_at: Instant) {
-        // A failed live row is revived in place and resets attempts to zero.
-        // Its observed terminal -> successful re-enqueue transition starts a
-        // new revision even if the next failure has the same counter/time.
-        if self.last_outcome.is_some_and(|(id, _, _)| id == job_id) {
+        // A newly submitted attempt must not inherit a consumed terminal revision.
+        if self.last_outcome.is_some_and(|(id, _)| id == job_id) {
             self.last_outcome = None;
         }
         self.job_id = job_id;
@@ -798,6 +844,309 @@ mod tests {
     use fs3_core::{Config, DatabaseConfig};
     use fs3_testkit::FreshDatabase;
 
+    #[cfg(unix)]
+    #[test]
+    fn omp_manual_slug_matches_native_home_temp_and_absolute_rules() {
+        let home = tempfile::tempdir().unwrap();
+        let workspace = home.path().join("project-with-hyphens:tag");
+        std::fs::create_dir(&workspace).unwrap();
+        let temporary = tempfile::tempdir().unwrap();
+        let cases = [
+            (home.path(), "-".to_owned()),
+            (workspace.as_path(), "-project-with-hyphens-tag".to_owned()),
+            (
+                temporary.path(),
+                format!(
+                    "-tmp-{}",
+                    temporary.path().file_name().unwrap().to_string_lossy()
+                ),
+            ),
+            (
+                Path::new("/fs3-abs-project-with-hyphens"),
+                "--fs3-abs-project-with-hyphens--".to_owned(),
+            ),
+        ];
+        for (folder, expected) in cases {
+            assert_eq!(
+                fs3_providers::conversation_sources::omp::session_slug(folder, home.path()),
+                expected,
+                "OMP 18.1.14 native naming rule for {}",
+                folder.display()
+            );
+            assert_eq!(
+                crate::convo_ingest::workspace_slug(Harness::Omp, folder, home.path()),
+                expected
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn omp_missing_cwd_preserves_lexical_suffix() {
+        let scratch = tempfile::tempdir().unwrap();
+        let root = std::fs::canonicalize(scratch.path()).unwrap();
+        let home = root.join("home");
+        std::fs::create_dir(&home).unwrap();
+        let missing = root.join("never-created/../missing-project");
+        assert!(std::fs::canonicalize(&missing).is_err());
+        let expected = format!(
+            "-tmp-{}-missing-project",
+            root.file_name().unwrap().to_string_lossy()
+        );
+        assert_eq!(
+            fs3_providers::conversation_sources::omp::session_slug(&missing, &home),
+            expected
+        );
+        assert_eq!(
+            crate::convo_ingest::workspace_slug(Harness::Omp, &missing, &home),
+            expected
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[tokio::test]
+    async fn convo_poll_omp_tmp_uses_observed_directory_and_manual_slug() {
+        let config = tempfile::tempdir().unwrap();
+        let (database, state) = stack().await;
+        std::fs::write(
+            config.path().join("config.toml"),
+            format!("[database]\nurl = {:?}\n", database.url()),
+        )
+        .unwrap();
+        let sealed = fs3_testkit::sealed(
+            &std::env::current_exe().unwrap(),
+            config.path(),
+            fs3_testkit::TestDatabase::FromConfigFile,
+        );
+        let home = PathBuf::from(
+            sealed
+                .get_envs()
+                .find(|(key, _)| *key == "HOME")
+                .unwrap()
+                .1
+                .unwrap(),
+        );
+        let workspace = tempfile::Builder::new()
+            .prefix("fs3-omp-tmp-")
+            .tempdir_in("/tmp")
+            .unwrap();
+        let physical = std::fs::canonicalize(workspace.path()).unwrap();
+        assert!(physical.starts_with("/private/tmp"));
+        let root = home.join(".omp/agent/sessions");
+        let native = root.join(format!(
+            "--{}--",
+            physical
+                .to_string_lossy()
+                .trim_start_matches('/')
+                .replace('/', "-")
+        ));
+        std::fs::create_dir_all(&native).unwrap();
+        let filename = "2026-09-09T00-00-00_tmp-session.jsonl";
+        let path = native.join(filename);
+        let header = serde_json::json!({"type":"session", "cwd":workspace.path()});
+        let turn = |id: &str| serde_json::json!({"type":"message","id":id,"timestamp":"2026-09-09T00:00:00Z","message":{"role":"user","content":[{"type":"text","text":"a real tmp workspace turn"}]}});
+        let initial = format!("{header}\n{}\n", turn("first"));
+        std::fs::write(&path, &initial).unwrap();
+        let old = root.join(format!(
+            "-{}",
+            workspace
+                .path()
+                .to_string_lossy()
+                .trim_start_matches('/')
+                .replace('/', "-")
+        ));
+        assert!(!old.exists(), "the old cwd-derived directory never existed");
+        let mut poller = ConvoPoller::new(state.clone(), home.clone(), PollConfig::default());
+        assert_eq!(poller.poll().await.unwrap().enqueued, 1);
+        let payload: serde_json::Value =
+            sqlx::query_scalar("SELECT payload FROM jobs WHERE kind='ingest_session'")
+                .fetch_one(&state.db)
+                .await
+                .unwrap();
+        assert_eq!(
+            payload["omp_session_dir"],
+            native.to_string_lossy().as_ref()
+        );
+        assert_eq!(run_ingests(&state, &home).await.len(), 1);
+        assert_eq!(poller.poll().await.unwrap().behind, 0);
+
+        // Explicit session-dir layouts need not match today's derived slug.
+        // Moving the native directory proves the queue actually carries it.
+        let explicit = root.join("explicit-session-directory");
+        std::fs::rename(&native, &explicit).unwrap();
+        std::fs::write(
+            explicit.join(filename),
+            format!("{initial}{}\n", turn("second")),
+        )
+        .unwrap();
+        assert_eq!(poller.poll().await.unwrap().enqueued, 1);
+        assert_eq!(run_ingests(&state, &home).await.len(), 1);
+        assert_eq!(poller.poll().await.unwrap().behind, 0);
+        let delivered = fs3_store::conversation_delivery(
+            &state.db,
+            &crate::convo_ingest::conversation_guid(Harness::Omp, "tmp-session"),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert_eq!(delivered.turns, 2);
+
+        let manual_dir = root.join(crate::convo_ingest::workspace_slug(
+            Harness::Omp,
+            workspace.path(),
+            &home,
+        ));
+        std::fs::create_dir_all(&manual_dir).unwrap();
+        std::fs::write(
+            manual_dir.join("2026-09-09T00-00-00_manual-tmp.jsonl"),
+            format!("{header}\n{}\n", turn("manual")),
+        )
+        .unwrap();
+        let request = IngestRequest {
+            pij_id: None,
+            session_id: Some("manual-tmp".to_owned()),
+            harness: Some("omp".to_owned()),
+            folder: Some(workspace.path().to_string_lossy().into_owned()),
+        };
+        let report = crate::convo_ingest::ingest_at_home(&state, &request, home.clone())
+            .await
+            .unwrap();
+        assert_eq!(report.turns_new, 1);
+        crate::convo_ingest::verify_at_home(
+            &state,
+            &crate::convo_ingest::VerifyRequest {
+                pij_id: None,
+                session_id: request.session_id,
+                harness: request.harness,
+            },
+            home,
+        )
+        .await
+        .unwrap();
+        database.destroy(state.db.clone()).await;
+    }
+
+    #[tokio::test]
+    async fn convo_poll_failed_revision_is_unreadable_until_it_changes() {
+        let home = tempfile::tempdir().unwrap();
+        let bad = claude_session(home.path(), "a-unreadable");
+        let good = claude_session(home.path(), "z-progressing");
+        let (database, state) = stack().await;
+        let mut poller =
+            ConvoPoller::new(state.clone(), home.path().to_owned(), PollConfig::default());
+        assert_eq!(poller.poll().await.unwrap().enqueued, 2);
+        let job = fs3_store::claim_job(&state.db, &[crate::convo_ingest::INGEST_SESSION])
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(job.payload["session_id"], "a-unreadable");
+        fs3_store::fail_job(&state.db, job.id, "fixture unreadable source", false)
+            .await
+            .unwrap();
+        assert_eq!(run_ingests(&state, home.path()).await.len(), 1);
+        for _ in 0..6 {
+            let stats = poller.poll().await.unwrap();
+            assert_eq!(
+                (
+                    stats.enqueued,
+                    stats.behind,
+                    stats.in_flight,
+                    stats.unreadable
+                ),
+                (0, 0, 0, 1)
+            );
+            let status = state.conversations.read().await.report(Instant::now());
+            assert_eq!(status.state, ConversationState::Flowing);
+            assert_eq!(status.harnesses[0].unreadable, 1);
+            assert!(status.state_reason.unwrap().contains("1 unreadable"));
+            let row = fs3_store::ingest_job_outcomes(&state.db, &[job.id])
+                .await
+                .unwrap()
+                .remove(0);
+            assert_eq!(
+                row.state, "failed",
+                "classify failure before submission can revive this row"
+            );
+            assert_eq!(
+                row.attempts, 1,
+                "no enqueue may erase the observed failed attempt"
+            );
+        }
+        use std::io::Write;
+        std::fs::OpenOptions::new()
+            .append(true)
+            .open(good)
+            .unwrap()
+            .write_all(claude_record(&home.path().join("workspace"), "good-append").as_bytes())
+            .unwrap();
+        let stats = poller.poll().await.unwrap();
+        assert_eq!((stats.enqueued, stats.behind, stats.unreadable), (1, 1, 1));
+        assert!(!stats.stalled);
+        assert_eq!(run_ingests(&state, home.path()).await.len(), 1);
+        std::fs::OpenOptions::new()
+            .append(true)
+            .open(bad)
+            .unwrap()
+            .write_all(claude_record(&home.path().join("workspace"), "recovered").as_bytes())
+            .unwrap();
+        let stats = poller.poll().await.unwrap();
+        assert_eq!((stats.enqueued, stats.behind, stats.unreadable), (1, 1, 0));
+        let revived = fs3_store::ingest_job_outcomes(&state.db, &[job.id])
+            .await
+            .unwrap()
+            .remove(0);
+        assert_eq!(
+            revived.state, "pending",
+            "a revision change revives the same failed job"
+        );
+        assert_eq!(
+            revived.attempts, 0,
+            "the revival resets attempts only after failure was classified"
+        );
+        assert_eq!(run_ingests(&state, home.path()).await.len(), 1);
+        let completed = fs3_store::ingest_job_outcomes(&state.db, &[job.id])
+            .await
+            .unwrap()
+            .remove(0);
+        assert_eq!(
+            completed.state, "done",
+            "the previously failed row is actually ingested and completed"
+        );
+        let stats = poller.poll().await.unwrap();
+        assert_eq!((stats.enqueued, stats.behind, stats.unreadable), (0, 0, 0));
+        database.destroy(state.db.clone()).await;
+    }
+
+    #[tokio::test]
+    async fn convo_poll_failed_old_attempt_does_not_ack_newer_bytes() {
+        let home = tempfile::tempdir().unwrap();
+        let path = claude_session(home.path(), "changing");
+        let (database, state) = stack().await;
+        let mut poller =
+            ConvoPoller::new(state.clone(), home.path().to_owned(), PollConfig::default());
+        assert_eq!(poller.poll().await.unwrap().enqueued, 1);
+        let job = fs3_store::claim_job(&state.db, &[crate::convo_ingest::INGEST_SESSION])
+            .await
+            .unwrap()
+            .unwrap();
+        fs3_store::fail_job(&state.db, job.id, "old revision failed", false)
+            .await
+            .unwrap();
+        use std::io::Write;
+        std::fs::OpenOptions::new()
+            .append(true)
+            .open(path)
+            .unwrap()
+            .write_all(claude_record(&home.path().join("workspace"), "newer").as_bytes())
+            .unwrap();
+        let stats = poller.poll().await.unwrap();
+        assert_eq!((stats.enqueued, stats.behind, stats.unreadable), (1, 1, 0));
+        assert!(!stats.stalled);
+        assert_eq!(run_ingests(&state, home.path()).await.len(), 1);
+        assert_eq!(poller.poll().await.unwrap().behind, 0);
+        database.destroy(state.db.clone()).await;
+    }
+
     #[test]
     fn terminal_attempt_revisions_ignore_time_collisions_and_missing_rows_are_unknown() {
         let home = tempfile::tempdir().unwrap();
@@ -836,8 +1185,8 @@ mod tests {
         row.attempts = 3;
         pending.observe(Some(&row));
         assert_eq!(
-            pending.no_progress_attempts, 3,
-            "failed counts once, not double"
+            pending.no_progress_attempts, 2,
+            "failed attempts are unreadable, not successful no-progress attempts"
         );
         row.state = "running".to_owned();
         row.attempts = 4;
@@ -845,7 +1194,7 @@ mod tests {
         row.state = "pending".to_owned();
         pending.observe(Some(&row));
         assert_eq!(
-            pending.no_progress_attempts, 3,
+            pending.no_progress_attempts, 2,
             "in-flight states are not completed attempts"
         );
     }
@@ -1401,10 +1750,15 @@ mod tests {
         ).fetch_all(&state.db).await.unwrap();
         let mut requests = Vec::new();
         for (id, payload) in jobs {
-            let request: IngestRequest = serde_json::from_value(payload).unwrap();
-            crate::convo_ingest::ingest_at_home(state, &request, home.to_owned())
-                .await
-                .expect("existing ingest pipeline");
+            let (request, directory) = crate::convo_ingest::decode_job(payload).unwrap();
+            crate::convo_ingest::ingest_with_directory_at_home(
+                state,
+                &request,
+                home.to_owned(),
+                directory,
+            )
+            .await
+            .expect("existing ingest pipeline");
             sqlx::query("UPDATE jobs SET state = 'done' WHERE id = $1")
                 .bind(id)
                 .execute(&state.db)
@@ -1766,7 +2120,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn convo_poll_health_counts_terminal_attempts_before_resubmission_and_recovers() {
+    async fn convo_poll_health_counts_done_attempts_and_recovers() {
         let home = tempfile::tempdir().unwrap();
         let path = claude_session(home.path(), "stalled-session");
         let (database, state) = stack().await;
@@ -1810,14 +2164,7 @@ mod tests {
                 .await
                 .unwrap()
                 .unwrap();
-            fs3_store::fail_job(
-                &state.db,
-                job.id,
-                "fixture completed attempt without cursor progress",
-                false,
-            )
-            .await
-            .unwrap();
+            fs3_store::complete_job(&state.db, job.id).await.unwrap();
             sqlx::query("UPDATE jobs SET updated_at='2026-09-06T00:00:00Z' WHERE id=$1")
                 .bind(job.id)
                 .execute(&state.db)
@@ -1826,16 +2173,16 @@ mod tests {
             poller.reconcile().await.unwrap();
             assert_eq!(
                 poller.lag[&path].no_progress_attempts, attempt,
-                "terminal outcome must be observed BEFORE the upsert revives the row"
+                "each successful terminal attempt without read progress is counted"
             );
             let row = fs3_store::ingest_job_outcomes(&state.db, &[job.id])
                 .await
                 .unwrap()
                 .remove(0);
-            assert_eq!(row.state, "pending");
+            assert_eq!(row.state, "done");
             assert_eq!(
-                row.attempts, 0,
-                "existing enqueue revival policy remains unchanged"
+                row.attempts, 1,
+                "completed rows remain terminal; the next attempt has its own job"
             );
             let status = state.conversations.read().await.report(Instant::now());
             assert_eq!(
@@ -1893,10 +2240,15 @@ mod tests {
                 .unwrap_err();
             assert_eq!(failure.code, "FS3-E-QUERY-CONVERSATION-NO-SESSION-FILE");
             assert!(failure.fix.contains("not persisted"));
-            let failure =
-                submit_after_at_home(&state, &request, Duration::ZERO, home.path().to_owned())
-                    .await
-                    .unwrap_err();
+            let failure = submit_after_at_home(
+                &state,
+                &request,
+                Duration::ZERO,
+                home.path().to_owned(),
+                None,
+            )
+            .await
+            .unwrap_err();
             assert_eq!(failure.code, "FS3-E-QUERY-CONVERSATION-NO-SESSION-FILE");
             let pending: i64 =
                 sqlx::query_scalar("SELECT count(*) FROM jobs WHERE kind = 'ingest_session'")
@@ -1919,11 +2271,17 @@ mod tests {
                 .unwrap_err();
             assert_eq!(failure.code, "FS3-E-QUERY-CONVERSATION-NOT-FOUND");
             assert!(
-                submit_after_at_home(&state, &request, Duration::ZERO, home.path().to_owned())
-                    .await
-                    .unwrap()
-                    .response
-                    .accepted
+                submit_after_at_home(
+                    &state,
+                    &request,
+                    Duration::ZERO,
+                    home.path().to_owned(),
+                    None
+                )
+                .await
+                .unwrap()
+                .response
+                .accepted
             );
         }
         database.destroy(state.db.clone()).await;
@@ -1943,9 +2301,15 @@ mod tests {
             harness: Some("claude".to_owned()),
             folder: Some(home.path().join("workspace").to_string_lossy().into_owned()),
         };
-        let seam = submit_after_at_home(&state, &request, Duration::ZERO, home.path().to_owned())
-            .await
-            .unwrap();
+        let seam = submit_after_at_home(
+            &state,
+            &request,
+            Duration::ZERO,
+            home.path().to_owned(),
+            None,
+        )
+        .await
+        .unwrap();
         let keys: Vec<String> =
             sqlx::query_scalar("SELECT dedupe_key FROM jobs WHERE kind = 'ingest_session'")
                 .fetch_all(&state.db)

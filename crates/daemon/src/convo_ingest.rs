@@ -299,7 +299,7 @@ pub async fn submit_after(
     request: &IngestRequest,
     delay: std::time::Duration,
 ) -> Result<IngestAccepted, Failure> {
-    submit_after_at_home(state, request, delay, home_dir()?)
+    submit_after_at_home(state, request, delay, home_dir()?, None)
         .await
         .map(|queued| queued.response)
 }
@@ -309,6 +309,7 @@ pub(crate) async fn submit_after_at_home(
     request: &IngestRequest,
     delay: std::time::Duration,
     home: PathBuf,
+    omp_session_dir: Option<&Path>,
 ) -> Result<QueuedIngest, Failure> {
     // Validated HERE rather than in the worker, so a mistyped address is a
     // synchronous error the caller can see rather than a job that fails later
@@ -348,7 +349,7 @@ pub(crate) async fn submit_after_at_home(
             let (input, harness) = self::address(&request, &home)?;
             let folder = input.folder();
             let remote = remote_url(folder, &home);
-            source_for(harness, folder, &home, remote.as_deref())?
+            source_for(harness, folder, &home, remote.as_deref(), None)?
                 .resolve(&input)
                 .map_err(|error| {
                     reader_failure(&format!(
@@ -363,12 +364,16 @@ pub(crate) async fn submit_after_at_home(
 
     let folder = request.folder.clone().unwrap_or_default();
     let dedupe_key = format!("ingest:{address}@{folder}");
-    let payload = serde_json::to_value(request).map_err(|error| {
+    let mut payload = serde_json::to_value(request).map_err(|error| {
         Failure::new(
             &catalog::QUERY_INVALID,
             format!("the ingest request is not serialisable: {error}"),
         )
     })?;
+    if let Some(directory) = omp_session_dir {
+        payload["omp_session_dir"] = serde_json::to_value(directory)
+            .map_err(|error| reader_failure(&format!("invalid omp session directory: {error}")))?;
+    }
 
     let job_id = fs3_store::enqueue_job_id(&state.db, INGEST_SESSION, &dedupe_key, &payload, delay)
         .await
@@ -389,8 +394,8 @@ pub(crate) async fn submit_after_at_home(
 /// # Errors
 /// Whatever [`ingest`] returns; a malformed payload is terminal.
 pub async fn run(state: &AppState, payload: serde_json::Value) -> Result<(), Failure> {
-    let request: IngestRequest = crate::runner::payload(payload)?;
-    let report = ingest(state, &request).await?;
+    let (request, directory) = decode_job(payload)?;
+    let report = ingest_with_directory_at_home(state, &request, home_dir()?, directory).await?;
 
     // A contended file was NOT read by this run, and the poll that held the
     // lock may have read BEFORE the bytes this job was fired for existed.
@@ -418,6 +423,26 @@ pub async fn run(state: &AppState, payload: serde_json::Value) -> Result<(), Fai
     Ok(())
 }
 
+/// Queue-only metadata is removed before parsing the unchanged public request.
+/// Manual jobs retain their original flat payload; HTTP callers cannot choose
+/// native store directories through IngestRequest.
+pub(crate) fn decode_job(
+    mut payload: serde_json::Value,
+) -> Result<(IngestRequest, Option<PathBuf>), Failure> {
+    let directory = payload
+        .as_object_mut()
+        .and_then(|object| object.remove("omp_session_dir"))
+        .map(crate::runner::payload::<PathBuf>)
+        .transpose()?;
+    let request: IngestRequest = crate::runner::payload(payload)?;
+    if directory.is_some() && request.harness.as_deref() != Some("omp") {
+        return Err(reader_failure(
+            "only omp jobs carry a discovered session directory",
+        ));
+    }
+    Ok((request, directory))
+}
+
 /// What to tell an operator who just submitted one.
 #[must_use]
 pub fn next_after_submit(accepted: &IngestAccepted) -> String {
@@ -427,6 +452,11 @@ pub fn next_after_submit(accepted: &IngestAccepted) -> String {
          firings of this address collapse into one job while it is still pending.",
         accepted.address
     )
+}
+
+struct DiscoveredFolder {
+    folder: PathBuf,
+    directory: PathBuf,
 }
 
 /// Where a session was ACTUALLY recorded, asked of the store rather than
@@ -446,11 +476,14 @@ pub fn next_after_submit(accepted: &IngestAccepted) -> String {
 ///
 /// Returns `None` when no store directory holds the id, which is a genuinely
 /// unknown session rather than a misaddressed one.
-fn discover_folder(harness: Harness, session_id: &str, home: &Path) -> Option<PathBuf> {
-    native_session_file(harness, session_id, home)
+fn discover_folder(harness: Harness, session_id: &str, home: &Path) -> Option<DiscoveredFolder> {
+    let path = native_session_file(harness, session_id, home)
         .ok()
-        .flatten()
-        .and_then(|path| cwd_of(&path))
+        .flatten()?;
+    Some(DiscoveredFolder {
+        folder: cwd_of(&path)?,
+        directory: path.parent()?.to_owned(),
+    })
 }
 
 /// Presence is separate from cwd parsing: a present but unreadable or
@@ -634,18 +667,14 @@ pub fn conversation_guid(harness: Harness, session_id: &str) -> ConversationId {
 
 /// The workspace-slug directory name a store uses for `folder`.
 ///
-/// The two conventions differ and the difference is measured, not assumed
-/// (impl-guide, MEASURED 2026-08-28): claude slugs the ABSOLUTE path, while omp
-/// strips the home prefix first — `-substrate-flowspace-flowspace3` rather than
-/// `-Users-jordanknight-substrate-flowspace-flowspace3`.
+/// Claude keeps its absolute-path convention. OMP delegates to the provider's
+/// authoritative `session_slug`, including canonical HOME/temp-root handling.
 #[must_use]
 pub fn workspace_slug(harness: Harness, folder: &Path, home: &Path) -> String {
-    let path = if harness == Harness::Omp {
-        folder.strip_prefix(home).unwrap_or(folder)
-    } else {
-        folder
-    };
-    let text = path.to_string_lossy();
+    if harness == Harness::Omp {
+        return fs3_providers::conversation_sources::omp::session_slug(folder, home);
+    }
+    let text = folder.to_string_lossy();
     let trimmed = text.trim_start_matches('/');
     format!("-{}", trimmed.replace('/', "-"))
 }
@@ -683,13 +712,20 @@ fn source_for(
     folder: &Path,
     home: &Path,
     remote_url: Option<&str>,
+    omp_session_dir: Option<&Path>,
 ) -> Result<Box<dyn ConversationSource>, Failure> {
     Ok(match harness {
         Harness::Claude => Box::new(ClaudeSource::new(
             home.join(".claude/projects")
                 .join(workspace_slug(Harness::Claude, folder, home)),
         )),
-        Harness::Omp => Box::new(OmpSource::from_home(home)),
+        Harness::Omp => {
+            let source = OmpSource::from_home(home);
+            Box::new(match omp_session_dir {
+                Some(directory) => source.with_session_directory(directory),
+                None => source,
+            })
+        }
         Harness::PijLedger => Box::new(PijLedgerSource::from_home(home)),
         Harness::MetricsDb => {
             let database = metrics_db_path(home).ok_or_else(|| metrics_store_unavailable(home))?;
@@ -725,13 +761,28 @@ pub(crate) async fn ingest_at_home(
     request: &IngestRequest,
     home: PathBuf,
 ) -> Result<IngestReport, Failure> {
+    ingest_with_directory_at_home(state, request, home, None).await
+}
+
+pub(crate) async fn ingest_with_directory_at_home(
+    state: &AppState,
+    request: &IngestRequest,
+    home: PathBuf,
+    omp_session_dir: Option<PathBuf>,
+) -> Result<IngestReport, Failure> {
     let (input, harness) = address(request, &home)?;
     let folder = input_folder(&input);
     let remote = remote_url(&folder, &home);
     let mut folder = folder;
     let mut input = input;
     let mut resolved = tokio::task::spawn_blocking({
-        let source = source_for(harness, &folder, &home, remote.as_deref())?;
+        let source = source_for(
+            harness,
+            &folder,
+            &home,
+            remote.as_deref(),
+            omp_session_dir.as_deref(),
+        )?;
         let input = input.clone();
         move || source.resolve(&input)
     })
@@ -742,13 +793,15 @@ pub(crate) async fn ingest_at_home(
     // Ask the store where the session actually lives, then resolve again. Only
     // once: a second miss is a session no store holds.
     if resolved.is_err()
+        && omp_session_dir.is_none()
         && let Some(found) = discover_folder(harness, session_id_of(&input), &home)
-        && found != folder
+        && (harness == Harness::Omp || found.folder != folder)
     {
-        folder = found;
+        folder = found.folder;
         input = with_folder(input, folder.clone());
         resolved = tokio::task::spawn_blocking({
-            let source = source_for(harness, &folder, &home, remote.as_deref())?;
+            let directory = (harness == Harness::Omp).then_some(found.directory.as_path());
+            let source = source_for(harness, &folder, &home, remote.as_deref(), directory)?;
             let input = input.clone();
             move || source.resolve(&input)
         })
@@ -800,7 +853,7 @@ pub(crate) async fn ingest_at_home(
                 // Blocking IO, so off the async thread — exactly as the local ONNX
                 // embedder is handled.
                 let (batch, no_content) = tokio::task::spawn_blocking({
-                    let source = source_for(harness, &folder, &home, remote.as_deref())?;
+                    let source = source_for(harness, &folder, &home, remote.as_deref(), None)?;
                     let file = file.clone();
                     move || {
                         let read_started = std::time::Instant::now();
@@ -1233,6 +1286,83 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    async fn manual_omp_ingest_uses_found_directory_after_cwd_and_layout_change() {
+        let home = tempfile::tempdir().unwrap();
+        let folder = home.path().join("project-alpha");
+        std::fs::create_dir_all(&folder).unwrap();
+        let fixture = std::fs::read_to_string(
+            fs3_testkit::expectations::fixtures_root().join("omp-directory-shapes.tsv"),
+        )
+        .unwrap();
+        let recorded_directory = fixture
+            .lines()
+            .find(|line| line.starts_with("home-project\t"))
+            .unwrap()
+            .split('\t')
+            .nth(3)
+            .unwrap();
+        let store = home.path().join(".omp/agent/sessions");
+        let named = store.join(recorded_directory);
+        std::fs::create_dir_all(&named).unwrap();
+        let session = "manual-deleted-cwd";
+        let filename = format!("2026-09-09T00-00-00_{session}.jsonl");
+        let header = serde_json::json!({"type":"session", "cwd":folder});
+        let record = serde_json::json!({"type":"message","id":"first","timestamp":"2026-09-09T00:00:00Z","message":{"role":"user","content":[{"type":"text","text":"synthetic saved conversation"}]}});
+        std::fs::write(named.join(&filename), format!("{header}\n{record}\n")).unwrap();
+        let actual = store.join("saved-explicit-directory");
+        std::fs::rename(&named, &actual).unwrap();
+        std::fs::remove_dir_all(&folder).unwrap();
+        assert!(!folder.exists());
+        assert!(!named.exists());
+        let found = discover_folder(Harness::Omp, session, home.path()).unwrap();
+        assert_eq!(
+            found.folder, folder,
+            "cwd metadata is unchanged, so inequality cannot drive fallback"
+        );
+        assert_eq!(
+            found.directory, actual,
+            "keep the directory already found by identity"
+        );
+        let database = fs3_testkit::FreshDatabase::create("omp-manual-deleted").await;
+        let state = AppState::from_config(fs3_core::Config {
+            database: fs3_core::DatabaseConfig {
+                url: database.url(),
+            },
+            ..fs3_core::Config::default()
+        })
+        .unwrap();
+        fs3_store::migrate(&state.db).await.unwrap();
+        let request = IngestRequest {
+            pij_id: None,
+            session_id: Some(session.to_owned()),
+            harness: Some("omp".to_owned()),
+            folder: Some(folder.to_string_lossy().into_owned()),
+        };
+        let report = ingest_at_home(&state, &request, home.path().to_owned())
+            .await
+            .unwrap();
+        assert_eq!(report.turns_new, 1);
+        assert_eq!(
+            report.folder,
+            folder.to_string_lossy(),
+            "the native directory is not the workspace"
+        );
+        let verified = verify_at_home(
+            &state,
+            &VerifyRequest {
+                pij_id: None,
+                session_id: request.session_id,
+                harness: request.harness,
+            },
+            home.path().to_owned(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(verified.turns, 1);
+        database.destroy(state.db.clone()).await;
+    }
+
+    #[tokio::test]
     async fn metrics_db_path_prefers_native_and_refuses_before_enqueue_when_unopenable() {
         const REMOTE: &str = "https://github.com/AI-Substrate/flowspace3";
         const SESSION: &str = "a5a5588f-0979-439f-a1bf-ddf185a089c7";
@@ -1259,6 +1389,7 @@ mod tests {
             &request,
             std::time::Duration::ZERO,
             home.path().to_owned(),
+            None,
         )
         .await
         .unwrap_err();
@@ -1301,7 +1432,7 @@ mod tests {
         std::fs::create_dir_all(primary.parent().unwrap()).unwrap();
         std::fs::copy(&fixture, &legacy).unwrap();
         assert_eq!(metrics_db_path(home.path()), Some(legacy.clone()));
-        let resolved = source_for(Harness::MetricsDb, &folder, home.path(), Some(REMOTE))
+        let resolved = source_for(Harness::MetricsDb, &folder, home.path(), Some(REMOTE), None)
             .unwrap()
             .resolve(&input)
             .unwrap();
@@ -1311,7 +1442,8 @@ mod tests {
                 &state,
                 &request,
                 std::time::Duration::ZERO,
-                home.path().to_owned()
+                home.path().to_owned(),
+                None,
             )
             .await
             .unwrap()
@@ -1325,7 +1457,7 @@ mod tests {
             Some(primary.clone()),
             "native wins when BOTH stores exist"
         );
-        let resolved = source_for(Harness::MetricsDb, &folder, home.path(), Some(REMOTE))
+        let resolved = source_for(Harness::MetricsDb, &folder, home.path(), Some(REMOTE), None)
             .unwrap()
             .resolve(&input)
             .unwrap();
@@ -1336,7 +1468,8 @@ mod tests {
                 &state,
                 &request,
                 std::time::Duration::ZERO,
-                home.path().to_owned()
+                home.path().to_owned(),
+                None,
             )
             .await
             .unwrap()
@@ -1356,6 +1489,7 @@ mod tests {
             &request,
             std::time::Duration::ZERO,
             home.path().to_owned(),
+            None,
         )
         .await
         .unwrap_err();
@@ -1479,7 +1613,10 @@ mod tests {
     fn a_folder_outside_home_still_slugs_for_omp() {
         let home = Path::new("/Users/jordanknight");
         let folder = Path::new("/opt/work/repo");
-        assert_eq!(workspace_slug(Harness::Omp, folder, home), "-opt-work-repo");
+        assert_eq!(
+            workspace_slug(Harness::Omp, folder, home),
+            "--opt-work-repo--"
+        );
     }
 
     /// A scratch home holding one omp session under `slug`, whose `session`
@@ -1553,13 +1690,13 @@ mod tests {
         let from_pij = Path::new("/Users/x/substrate/flowspace/flowspace3");
         assert_eq!(
             workspace_slug(Harness::Omp, from_pij, &home),
-            "-Users-x-substrate-flowspace-flowspace3",
+            "--Users-x-substrate-flowspace-flowspace3--",
             "the clone-derived slug is not where the session lives"
         );
 
         let found = discover_folder(Harness::Omp, session, &home).expect("the session is found");
         assert_eq!(
-            found,
+            found.folder,
             PathBuf::from(worktree),
             "discovery returns the cwd the STORE recorded, not an un-slugged guess"
         );
@@ -1576,11 +1713,11 @@ mod tests {
         let home = omp_home("-substrate-flowspace-fs3-convo-ingest", session, cwd);
         let found = discover_folder(Harness::Omp, session, &home).expect("found");
         assert_ne!(
-            found,
+            found.folder,
             PathBuf::from("/Users/x/substrate/flowspace/fs3/convo/ingest"),
             "an un-slugged path would have split the hyphens into directories"
         );
-        assert_eq!(found, PathBuf::from(cwd));
+        assert_eq!(found.folder, PathBuf::from(cwd));
         std::fs::remove_dir_all(&home).ok();
     }
 

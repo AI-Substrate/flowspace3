@@ -1,0 +1,14 @@
+# Synthetic OMP 18.1.14 shapes validated against the private review-122-oracle-pairs.tsv (173 directories).
+# No real filesystem map or session bytes are included. {NS} is one unique scratch-name component, not an encoded path.
+# case	branch	cwd below branch alias	literal Linux directory	literal macOS directory	delete target below alias (empty means live root control)
+home-project	home	project-alpha	-project-alpha	-project-alpha	project-alpha
+home-itself	home	.	-	-	
+home-punctuation	home	project-with-hyphen:notes	-project-with-hyphen-notes	-project-with-hyphen-notes	project-with-hyphen:notes
+temp-project	temp	job-beta	-tmp-job-beta	-tmp-job-beta	job-beta
+temp-itself	temp	.	-tmp	-tmp	
+temp-punctuation	temp	job-with-hyphen:notes	-tmp-job-with-hyphen-notes	-tmp-job-with-hyphen-notes	job-with-hyphen:notes
+absolute-project	absolute	project-gamma	--tmp-{NS}-absolute-project-private-tmp-project-gamma--	--private-tmp-{NS}-absolute-project-private-tmp-project-gamma--	project-gamma
+absolute-punctuation	absolute	project-with-hyphen:notes	--tmp-{NS}-absolute-punctuation-private-tmp-project-with-hyphen-notes--	--private-tmp-{NS}-absolute-punctuation-private-tmp-project-with-hyphen-notes--	project-with-hyphen:notes
+home-nested	home	nested/deep/project-delta	-nested-deep-project-delta	-nested-deep-project-delta	nested
+temp-nested	temp	nested/deep/project-delta	-tmp-nested-deep-project-delta	-tmp-nested-deep-project-delta	nested
+absolute-nested	absolute	nested/deep/project-delta	--tmp-{NS}-absolute-nested-private-tmp-nested-deep-project-delta--	--private-tmp-{NS}-absolute-nested-private-tmp-nested-deep-project-delta--	nested

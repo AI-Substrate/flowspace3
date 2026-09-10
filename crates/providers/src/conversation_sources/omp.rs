@@ -7,14 +7,12 @@
 //! pairing, the spilled-output resolution and the first-class compaction
 //! record.
 //!
-//! # The slug is not claude's slug
+//! # Directory identity belongs to the store
 //!
-//! Measured while harvesting the fixtures (2026-08-28), correcting recipe §0:
-//! omp's session directory STRIPS the home prefix. A workspace at
-//! `/Users/agent/substrate/flowspace/flowspace3` is stored under
-//! `-substrate-flowspace-flowspace3`, not the `-Users-agent-substrate-...` form
-//! claude uses. A resolver built from the claude rule finds no directory at all,
-//! which is a silent empty ingest rather than an error.
+//! Polling can supply the directory it actually discovered. Manual resolution
+//! uses [`session_slug`], the authoritative mirror of OMP's canonical HOME,
+//! temporary-root and absolute-path naming rules. Neither path migrates or
+//! renames native directories.
 //!
 //! # Unknown record types are dropped, never fatal
 //!
@@ -24,6 +22,7 @@
 //! errors on one turns a routine harness upgrade into a dead ingest. Unknown
 //! types are skipped and the surrounding records still parse.
 
+use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
 use fs3_core::{
@@ -54,13 +53,13 @@ const PEER_PREFIX_WINDOW: usize = 200;
 
 /// Reads conversations out of an omp sessions root.
 ///
-/// Both the sessions root and the home directory are injected rather than
-/// discovered: the slug is derived by stripping home, and a slug that depends
-/// on who is running the test is a slug that passes on exactly one machine.
+/// The native root and home are injected. A discovered directory can override
+/// derivation without changing the ConversationSource contract.
 #[derive(Clone, Debug)]
 pub struct OmpSource {
     sessions_root: PathBuf,
     home: PathBuf,
+    session_directory: Option<PathBuf>,
 }
 
 impl OmpSource {
@@ -70,6 +69,7 @@ impl OmpSource {
         Self {
             sessions_root: sessions_root.into(),
             home: home.into(),
+            session_directory: None,
         }
     }
 
@@ -80,7 +80,16 @@ impl OmpSource {
         Self {
             sessions_root: home.join(".omp/agent/sessions"),
             home,
+            session_directory: None,
         }
+    }
+
+    /// Resolve inside an already discovered native directory, irrespective of
+    /// the recorded cwd or the naming scheme used when the file was created.
+    #[must_use]
+    pub fn with_session_directory(mut self, directory: impl Into<PathBuf>) -> Self {
+        self.session_directory = Some(directory.into());
+        self
     }
 
     /// The sessions root this reader was built over.
@@ -115,15 +124,18 @@ impl ConversationSource for OmpSource {
 
     fn resolve(&self, input: &IngestInput) -> Result<Vec<SessionFile>> {
         let session_id = self.session_id(input)?;
-        let directory = self
-            .sessions_root
-            .join(session_slug(input.folder(), &self.home));
+        let directory = match &self.session_directory {
+            Some(directory) => Cow::Borrowed(directory.as_path()),
+            None => Cow::Owned(
+                self.sessions_root
+                    .join(session_slug(input.folder(), &self.home)),
+            ),
+        };
 
         // Re-read on EVERY call, per the trait: a session directory is live.
         let entries = std::fs::read_dir(&directory).map_err(|error| {
             Error::Provider(format!(
-                "{}: cannot read the omp session directory: {error} — note that omp strips \
-                 the home prefix from its slug, so claude's `-Users-...` form finds nothing",
+                "{}: cannot read the omp session directory: {error}",
                 directory.display()
             ))
         })?;
@@ -315,23 +327,63 @@ impl OmpSource {
     }
 }
 
-/// omp's directory name for a workspace.
-///
-/// The absolute path with the home prefix removed and each component prefixed
-/// by `-`, so `/Users/agent/substrate/flowspace/flowspace3` under home
-/// `/Users/agent` becomes `-substrate-flowspace-flowspace3`. A folder outside
-/// `home` keeps its whole path, which is the same rule with nothing to strip.
+/// Authoritative fs3 mirror of OMP 18.1.14's `getDefaultSessionDirName`:
+/// <https://github.com/can1357/oh-my-pi/blob/v18.1.14/packages/coding-agent/src/session/session-paths.ts>.
+/// Canonical HOME-relative paths use `-`, temporary-root-relative paths use
+/// `-tmp`, and other absolute paths use `--…--`. Unlike OMP's write-time
+/// realpath fallback, read-time lookup preserves a deleted workspace's aliases
+/// by canonicalizing its deepest surviving ancestor and appending the tail.
+/// The daemon's `workspace_slug` delegates here; do not duplicate this rule.
 #[must_use]
 pub fn session_slug(folder: &Path, home: &Path) -> String {
-    let relative = folder.strip_prefix(home).unwrap_or(folder);
-    let mut slug = String::with_capacity(1 + relative.as_os_str().len());
-    for component in relative.components() {
-        if let std::path::Component::Normal(part) = component {
-            slug.push('-');
-            slug.push_str(&part.to_string_lossy());
+    let folder = equivalent_path(folder);
+    let home = equivalent_path(home);
+    let temporary = equivalent_path(&std::env::temp_dir());
+    for (root, prefix) in [(&home, "-"), (&temporary, "-tmp")] {
+        if let Ok(relative) = folder.strip_prefix(root)
+            && !relative.to_string_lossy().starts_with("..")
+        {
+            let encoded = relative.to_string_lossy().replace(['/', '\\', ':'], "-");
+            return if encoded.is_empty() {
+                prefix.to_owned()
+            } else if prefix.ends_with('-') {
+                format!("{prefix}{encoded}")
+            } else {
+                format!("{prefix}-{encoded}")
+            };
         }
     }
-    slug
+    format!(
+        "--{}--",
+        folder
+            .to_string_lossy()
+            .trim_start_matches(['/', '\\'])
+            .replace(['/', '\\', ':'], "-")
+    )
+}
+
+fn equivalent_path(path: &Path) -> PathBuf {
+    let absolute = std::path::absolute(path).unwrap_or_else(|_| path.to_owned());
+    let mut resolved = PathBuf::new();
+    for component in absolute.components() {
+        if component == std::path::Component::ParentDir {
+            resolved.pop();
+        } else {
+            resolved.push(component.as_os_str());
+        }
+    }
+    for ancestor in resolved.ancestors() {
+        if let Ok(mut canonical) = std::fs::canonicalize(ancestor) {
+            let remainder = resolved
+                .strip_prefix(ancestor)
+                .expect("an ancestor is a prefix");
+            if !remainder.as_os_str().is_empty() {
+                canonical.push(remainder);
+            }
+            return canonical;
+        }
+    }
+    resolved
 }
 
 /// Every non-empty text block of a message, in order.
@@ -721,7 +773,7 @@ mod tests {
     fn a_folder_outside_home_keeps_its_whole_path() {
         assert_eq!(
             session_slug(Path::new("/srv/checkouts/fs3"), Path::new("/Users/agent")),
-            "-srv-checkouts-fs3"
+            "--srv-checkouts-fs3--"
         );
     }
 
