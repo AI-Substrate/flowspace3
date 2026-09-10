@@ -144,6 +144,8 @@ mod tests {
         });
         round_trip!(search::SearchResults {
             results: Vec::new(),
+            offset: 0,
+            next_offset: None,
             composition: search::SearchComposition::default(),
         });
         round_trip!(status::StatusReport {

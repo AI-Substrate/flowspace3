@@ -134,6 +134,9 @@ enum Command {
         /// How many hits.
         #[arg(long, value_name = "N")]
         limit: Option<i64>,
+        /// Skip this many ranked hits before returning a page.
+        #[arg(long, value_name = "N")]
+        offset: Option<i64>,
         /// Similarity floor, 0.0-1.0.
         #[arg(long, value_name = "SCORE")]
         min_score: Option<f64>,
@@ -652,6 +655,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             repo,
             path,
             limit,
+            offset,
             min_score,
             source,
             id_kind,
@@ -665,6 +669,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             push(&mut params, "repo", repo);
             push(&mut params, "path", path);
             push(&mut params, "limit", limit.map(|v| v.to_string()));
+            push(&mut params, "offset", offset.map(|v| v.to_string()));
             push(&mut params, "min_score", min_score.map(|v| v.to_string()));
             push(&mut params, "source", source);
             push_ddoc_search_filters(&mut params, id_kind, gate_open, gate_closed, ddoc_schema);

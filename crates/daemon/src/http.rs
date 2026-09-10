@@ -620,7 +620,7 @@ async fn search(
             // suspects: guessing out loud next to a fact we hold is how a user
             // ends up rephrasing a query that was never the problem.
             let ddoc_notice = ddoc_degradation_notice(&state, &scope).await;
-            let next = next_after_search(&outcome);
+            let next = next_after_search(&outcome, &request);
             let next = match ddoc_notice {
                 Some(notice) => format!("{notice} — {next}"),
                 None => next,
@@ -640,6 +640,8 @@ async fn search(
             }
             let results = SearchResults {
                 results: outcome.results,
+                offset: outcome.offset,
+                next_offset: outcome.next_offset,
                 composition: outcome.composition,
             };
             let next = crate::scope::steer(&scope, &next);
@@ -667,7 +669,13 @@ async fn search(
             .into(),
     }
 }
-fn next_after_search(outcome: &SearchOutcome) -> String {
+fn next_after_search(outcome: &SearchOutcome, request: &SearchRequest) -> String {
+    if let Some(next_offset) = outcome.next_offset {
+        return format!(
+            "next page: `{}`",
+            next_page_command(request, outcome.limit, next_offset)
+        );
+    }
     if let Some(reason) = &outcome.empty_because {
         return match &reason.hint {
             Some(hint) => format!("{} — {hint}", reason.detail),
@@ -675,6 +683,12 @@ fn next_after_search(outcome: &SearchOutcome) -> String {
         };
     }
     if outcome.results.is_empty() {
+        if outcome.offset > 0 {
+            return format!(
+                "offset {} is past the available results — restart with `--offset 0`",
+                outcome.offset
+            );
+        }
         return "nothing matched — widen with a shorter query, drop --min-score, check \
                 `flowspace3 status` in case indexing has not finished, or run `flowspace3 \
                 doctor`: a search only reads vectors written by the ACTIVE embedder, so a \
@@ -684,6 +698,44 @@ fn next_after_search(outcome: &SearchOutcome) -> String {
     "read a hit in full with `flowspace3 get <address>`, browse its file with \
      `flowspace3 tree <address>`, or narrow with --path/--repo"
         .to_string()
+}
+
+fn next_page_command(request: &SearchRequest, limit: i64, next_offset: i64) -> String {
+    let mut args = vec![
+        "flowspace3".to_string(),
+        "search".to_string(),
+        shell_word(&request.q),
+        "--limit".to_string(),
+        limit.to_string(),
+        "--offset".to_string(),
+        next_offset.to_string(),
+    ];
+    for (flag, value) in [
+        ("--repo", request.repo.as_deref()),
+        ("--path", request.path.as_deref()),
+        ("--source", request.source.as_deref()),
+        ("--id-kind", request.id_kind.as_deref()),
+        ("--ddoc-schema", request.ddoc_schema.as_deref()),
+    ] {
+        if let Some(value) = value {
+            args.push(flag.to_string());
+            args.push(shell_word(value));
+        }
+    }
+    if let Some(min_score) = request.min_score {
+        args.push("--min-score".to_string());
+        args.push(min_score.to_string());
+    }
+    match request.gate_open {
+        Some(true) => args.push("--gate-open".to_string()),
+        Some(false) => args.push("--gate-closed".to_string()),
+        None => {}
+    }
+    args.join(" ")
+}
+
+fn shell_word(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\"'\"'"))
 }
 
 /// Report unavailable ddocs tooling only when the request maps to one exact worktree.

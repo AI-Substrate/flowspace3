@@ -672,6 +672,40 @@ async fn add_scan_enrich_and_search_answer_end_to_end() {
         .clone();
     assert!(!results.is_empty(), "the question must find something");
 
+    let page_one = call(
+        &stack.state,
+        "GET",
+        "/search?q=validate%20an%20expired%20session%20token&limit=2&offset=0",
+        None,
+    )
+    .await;
+    let page_one_data = page_one.data.as_ref().expect("page one carries data");
+    assert_eq!(page_one_data["offset"], 0);
+    assert_eq!(page_one_data["next_offset"], 2);
+    assert!(
+        page_one
+            .next_action
+            .as_deref()
+            .is_some_and(|next| next.contains("--limit 2 --offset 2")),
+        "a full page names the exact next-page command: {:?}",
+        page_one.next_action
+    );
+
+    let past_end = call(
+        &stack.state,
+        "GET",
+        "/search?q=validate%20an%20expired%20session%20token&limit=2&offset=1000",
+        None,
+    )
+    .await;
+    let past_end_data = past_end.data.as_ref().expect("past-end page carries data");
+    assert_eq!(past_end_data["offset"], 1000);
+    assert_eq!(past_end_data["results"].as_array().map(Vec::len), Some(0));
+    assert!(
+        past_end_data.get("next_offset").is_none(),
+        "an empty page must not offer another offset: {past_end_data}"
+    );
+
     let best = &results[0];
     assert_eq!(
         best["path"], "src/auth.rs",
@@ -1084,6 +1118,13 @@ async fn an_empty_query_is_refused_with_a_usable_fix() {
     let error = refused.error.expect("a failure carries an error");
     assert_eq!(error.code, "FS3-E-QUERY-INVALID");
     assert!(error.fix.contains("flowspace3 search"));
+
+    let negative = call(&stack.state, "GET", "/search?q=anything&offset=-1", None).await;
+    assert!(!negative.ok);
+    assert_eq!(negative.http_status(), 400);
+    let error = negative.error.expect("negative offset is catalogued");
+    assert_eq!(error.code, "FS3-E-QUERY-INVALID");
+    assert!(error.fix.contains("--offset 0"));
 
     stack.destroy().await;
 }

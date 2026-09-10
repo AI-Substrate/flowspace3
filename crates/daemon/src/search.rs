@@ -74,6 +74,9 @@ pub struct SearchRequest {
     /// How many hits.
     #[serde(default)]
     pub limit: Option<i64>,
+    /// How many ranked hits to skip before returning the page.
+    #[serde(default)]
+    pub offset: Option<i64>,
     /// Restrict ddoc rows to one raw minted-id prefix.
     #[serde(default)]
     pub id_kind: Option<String>,
@@ -183,6 +186,10 @@ pub struct SearchOutcome {
     pub limit: i64,
     /// Whether at least one additional legitimate result existed beyond the cap.
     pub truncated: bool,
+    /// Number of ranked hits skipped before this page.
+    pub offset: i64,
+    /// The next page start when this page filled the caller-visible limit.
+    pub next_offset: Option<i64>,
     /// Semantic search returned a bounded short page. Independent of
     /// `empty_because`, lexical fusion, and display truncation.
     pub scan_incomplete: bool,
@@ -290,6 +297,26 @@ async fn search_filtered(
         ));
     }
 
+    let offset = request.offset.unwrap_or(0);
+    if offset < 0 {
+        return Err(Failure::new(
+            &catalog::QUERY_INVALID,
+            format!("--offset must be 0 or greater, got {offset}"),
+        )
+        .with_fix("use `--offset 0` for the first page, or a positive offset for a later page"));
+    }
+    let page_end = offset
+        .checked_add(limit)
+        .ok_or_else(|| Failure::new(&catalog::QUERY_INVALID, "--offset is too large"))?;
+    let offset_index = usize::try_from(offset)
+        .map_err(|_| Failure::new(&catalog::QUERY_INVALID, "--offset is too large"))?;
+    let page_end_index = usize::try_from(page_end)
+        .map_err(|_| Failure::new(&catalog::QUERY_INVALID, "--offset is too large"))?;
+    let fetch_limit = page_end
+        .checked_add(1)
+        .ok_or_else(|| Failure::new(&catalog::QUERY_INVALID, "--offset is too large"))?
+        .max(MAX_LIMIT + 1);
+
     // `source` is the content corpus. The absent/default and `all` search the
     // complete corpus; narrower values keep ranking identical while selecting
     // one stable source group before the scored-set limit.
@@ -337,7 +364,7 @@ async fn search_filtered(
         source: None,
         kinds,
         max_distance,
-        limit: MAX_LIMIT + 1,
+        limit: fetch_limit,
         ..SearchFilters::default()
     };
 
@@ -383,20 +410,28 @@ async fn search_filtered(
         !scoped || resolved
     });
 
-    let mut ranked = fuse(
+    let ranked = fuse(
         lexical_hits.iter().map(render_lexical),
         hits.iter().map(render),
     );
     let composition = composition(&ranked);
-    let truncated = ranked.len() > limit as usize;
     if !ranked.is_empty() {
-        ranked.truncate(limit as usize);
+        let truncated = ranked.len() > page_end_index;
+        let results: Vec<_> = ranked
+            .into_iter()
+            .skip(offset_index)
+            .take(usize::try_from(limit).expect("validated positive limit fits usize"))
+            .collect();
+        let returned = i64::try_from(results.len()).expect("page length fits i64");
+        let next_offset = (returned == limit).then_some(offset + returned);
         return Ok(SearchOutcome {
-            results: ranked,
+            results,
             composition,
             empty_because: None,
             limit,
             truncated,
+            offset,
+            next_offset,
             scan_incomplete,
             passes,
         });
@@ -409,6 +444,8 @@ async fn search_filtered(
             empty_because: Some(reason),
             limit,
             truncated: false,
+            offset,
+            next_offset: None,
             scan_incomplete,
             passes,
         });
@@ -430,6 +467,8 @@ async fn search_filtered(
         empty_because: empty_because(&filters, file_backed, scan_incomplete),
         limit,
         truncated: false,
+        offset,
+        next_offset: None,
         scan_incomplete,
         passes,
     })
