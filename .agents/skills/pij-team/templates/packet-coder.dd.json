@@ -79,6 +79,18 @@
         {
           "id": "i18",
           "text": "A UNIT THAT JOINS TWO SOURCES NEEDS A FIXTURE WITH DISJOINT IDS: if both fake sources share ids the join cannot fail, and the test proves nothing — two HIGH findings hid behind exactly this in chainglass 093. Build the fixture so the ids do NOT overlap, assert the join degrades HONESTLY on the miss (typed reason, no invented match), and add the mutation that makes the ids collide → the honest-degrade assertion must go red. (From chainglass plan 093, pij-lonely-antelope.)"
+        },
+        {
+          "id": "i19",
+          "text": "AN OMP SEAT SPAWNED IN THE MAIN CHECKOUT AND TOLD TO WORK IN A WORKTREE MUST USE ABSOLUTE PATHS FOR EVERY EDIT: its editor resolves relative paths against the spawn checkout, so the first hunks land on main (caught before commit on #121, 2026-09-08). The packet names the worktree as an absolute path, the seat cd's first, and every Edit/Write target is absolute; the prime checks git status on main after the first edit receipt. (flowspace3 #121, pij-super-gore.)"
+        },
+        {
+          "id": "i20",
+          "text": "A FIXTURE DRAWN FROM A REAL STORE IS CURATED AND SYNTHETIC BY DEFAULT; THE REAL TABLE STAYS IN scratch/ AND IS CITED, NEVER COMMITTED: a 173-row cwd->directory oracle is a map of the operator's filesystem, and the repo is public — the reviewer escalated before commit after the prime had told the coder to vendor it (#122, 2026-09-09). Expectations in the curated fixture are literal values from the external tool's own output, never computed by the code under test; the real table is used only for local validation and named in the test comment. (flowspace3 #122, pij-relieved-grasshopper.)"
+        },
+        {
+          "id": "i21",
+          "text": "WHEN A GATE TIMES OUT, CHECK THE BOX BEFORE THE CODE: run uptime and top-by-CPU first; an antivirus or indexer at 400% turned an unchanged green gate into an 821 s exit-124 (#121, 2026-09-08). Rerun the exact timed-out test alone, then the unchanged gate; never loosen a timeout. Report load + top consumer in the receipt so the prime can rule environment vs code. (flowspace3 #121/#122.)"
         }
       ]
     },
