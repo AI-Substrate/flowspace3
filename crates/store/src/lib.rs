@@ -40,7 +40,8 @@ pub mod updates;
 pub use admin::{
     DROP_DATABASE_IF_IDLE_SQL, SchemaStatus, create_database, database_exists,
     database_names_with_prefix, database_url, drop_database, drop_database_if_idle,
-    idle_database_names_with_prefix, is_missing_database, maintenance_url, schema_current,
+    idle_database_names_with_prefix, is_data_exception, is_missing_database, maintenance_url,
+    schema_current,
 };
 pub use conversations::{
     AnchorFilter, Appended, ConversationDelivery, ConversationSummary, Removed, TurnOutline,

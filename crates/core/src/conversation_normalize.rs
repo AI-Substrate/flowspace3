@@ -36,7 +36,7 @@
 
 use std::collections::BTreeSet;
 
-use crate::conversation::{ToolInput, Turn, TurnItem};
+use crate::conversation::{Conversation, ToolInput, Turn, TurnItem};
 use crate::conversation_source::RawRecord;
 
 /// How much of a tool result is kept (workshop 005, C2).
@@ -219,6 +219,31 @@ pub fn shape_turn(mut turn: Turn) -> Turn {
 /// row 203: a 174 MB session stalled at 4 MB). U+FFFD rather than deletion, so
 /// the stored text still shows that something was there.
 pub const NUL_REPLACEMENT: char = '\u{FFFD}';
+
+/// Apply the stored-text rule to a conversation header.
+///
+/// The header is the other row an import writes, and its text is not only
+/// ours: `conversation import` derives the title from the first turn's prose,
+/// and a header line may carry any title, worktree or sha it likes. One NUL
+/// there failed the header upsert, and the turns behind it never got a row to
+/// hang from. Same rule as [`shape_turn`], so the two cannot disagree about
+/// what a NUL becomes.
+#[must_use]
+pub fn shape_conversation(mut conversation: Conversation) -> Conversation {
+    for text in [
+        &mut conversation.repo_identity,
+        &mut conversation.worktree,
+        &mut conversation.base_sha,
+        &mut conversation.title,
+    ]
+    .into_iter()
+    .flatten()
+    {
+        scrub_nul(text);
+    }
+    scrub_nul(&mut conversation.started_at);
+    conversation
+}
 
 /// Replace every NUL in place; allocation-free when there is none.
 fn scrub_nul(text: &mut String) {
