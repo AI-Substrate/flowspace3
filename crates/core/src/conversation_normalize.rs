@@ -164,9 +164,19 @@ pub fn normalize_record(record: &RawRecord, turn_no: u32) -> Turn {
 /// lets the importer shape cheaply and intake enforce without double-cutting.
 #[must_use]
 pub fn shape_turn(mut turn: Turn) -> Turn {
+    scrub_nul(&mut turn.body);
+    scrub_nul(&mut turn.at);
+    if let Some(sha) = turn.head_sha.as_mut() {
+        scrub_nul(sha);
+    }
     for item in &mut turn.items {
         match item {
             TurnItem::ToolCall { tool, input } => {
+                scrub_nul(tool);
+                match input {
+                    ToolInput::Verbatim { text } => scrub_nul(text),
+                    ToolInput::Elided { path, .. } => scrub_nul(path),
+                }
                 if let ToolInput::Verbatim { text } = input
                     && is_write_family(tool)
                 {
@@ -177,11 +187,13 @@ pub fn shape_turn(mut turn: Turn) -> Turn {
                 }
             }
             TurnItem::ToolResult {
+                tool,
                 head,
                 total_bytes,
                 truncated,
-                ..
             } => {
+                scrub_nul(tool);
+                scrub_nul(head);
                 // `total_bytes` describes the WHOLE result, so it is only ours
                 // to set when this is the first cut: a client that already
                 // truncated knows a number we cannot recover.
@@ -196,6 +208,23 @@ pub fn shape_turn(mut turn: Turn) -> Turn {
         }
     }
     turn
+}
+
+/// What a NUL character becomes in stored text.
+///
+/// Postgres refuses NUL in `text` and refuses the `\u0000` escape in `jsonb`,
+/// so a transcript carrying one (a tool that printed a binary file, a pasted
+/// C string) failed its turn insert with "unsupported Unicode escape sequence"
+/// on EVERY attempt, and everything after that record was never read (backlog
+/// row 203: a 174 MB session stalled at 4 MB). U+FFFD rather than deletion, so
+/// the stored text still shows that something was there.
+pub const NUL_REPLACEMENT: char = '\u{FFFD}';
+
+/// Replace every NUL in place; allocation-free when there is none.
+fn scrub_nul(text: &mut String) {
+    if text.contains('\0') {
+        *text = text.replace('\0', &NUL_REPLACEMENT.to_string());
+    }
 }
 
 /// Whether this tool's input is a file body we are about to commit anyway.
@@ -591,5 +620,59 @@ mod tests {
         };
         assert_eq!(head.len(), OUTPUT_HEAD_BYTES);
         assert!(*truncated);
+    }
+    /// Backlog row 203: Postgres refuses NUL in `text` and the `\u0000` escape
+    /// in `jsonb`, so one NUL anywhere in a turn stalled its whole session.
+    #[test]
+    fn nul_characters_become_replacement_characters_everywhere_a_turn_stores_text() {
+        let mut raw = record("nul-1", "before\0after");
+        raw.items = vec![
+            TurnItem::ToolCall {
+                tool: "ba\0sh".to_string(),
+                input: ToolInput::Verbatim {
+                    text: "cat \0bin".to_string(),
+                },
+            },
+            TurnItem::ToolResult {
+                tool: "bash".to_string(),
+                head: "ELF\0\0\0".to_string(),
+                total_bytes: 6,
+                truncated: false,
+            },
+        ];
+        let turn = normalize_record(&raw, 1);
+        let stored = serde_json::to_string(&turn).expect("turn serialises");
+        assert!(
+            !stored.contains("\\u0000"),
+            "no NUL escape may reach the jsonb cast: {stored}"
+        );
+        assert_eq!(turn.body, "before\u{FFFD}after");
+        let TurnItem::ToolResult { head, .. } = &turn.items[1] else {
+            panic!("second item is the result");
+        };
+        assert_eq!(head, "ELF\u{FFFD}\u{FFFD}\u{FFFD}");
+        assert_eq!(shape_turn(turn.clone()), turn, "scrubbing stays idempotent");
+    }
+
+    /// A write-family body carrying a NUL is elided to its path, and the path
+    /// is scrubbed too.
+    #[test]
+    fn a_nul_in_a_write_family_path_is_scrubbed_before_elision() {
+        let mut raw = record("nul-2", "wrote it");
+        raw.items = vec![TurnItem::ToolCall {
+            tool: "Write".to_string(),
+            input: ToolInput::Verbatim {
+                text: "src/a\0b.rs\nbody".to_string(),
+            },
+        }];
+        let turn = normalize_record(&raw, 1);
+        let TurnItem::ToolCall {
+            input: ToolInput::Elided { path, .. },
+            ..
+        } = &turn.items[0]
+        else {
+            panic!("write-family input is elided");
+        };
+        assert_eq!(path, "src/a\u{FFFD}b.rs");
     }
 }
