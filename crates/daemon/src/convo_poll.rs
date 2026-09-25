@@ -90,6 +90,7 @@ impl PollHealth {
                         tracked: 0,
                         behind: 0,
                         unreadable: 0,
+                        unreadable_sessions: Vec::new(),
                         newest_ingest_at: None,
                         newest_ingest: None,
                     })
@@ -116,6 +117,7 @@ impl PollHealth {
                         tracked: 0,
                         behind: 0,
                         unreadable: 0,
+                        unreadable_sessions: Vec::new(),
                         newest_ingest_at: None,
                         newest_ingest: None,
                     });
@@ -328,6 +330,7 @@ impl ConvoPoller {
                 tracked: 0,
                 behind: 0,
                 unreadable: 0,
+                unreadable_sessions: Vec::new(),
                 newest_ingest_at: None,
                 newest_ingest: None,
             };
@@ -397,6 +400,9 @@ impl ConvoPoller {
                     eligible(file) && self.unreadable.get(&file.file.path) == Some(&file.stamp)
                 }) {
                     summary.unreadable += 1;
+                    summary
+                        .unreadable_sessions
+                        .push(main.file.session_id.clone());
                 }
                 if session.files.iter().any(|file| {
                     eligible(file)
@@ -1058,6 +1064,11 @@ mod tests {
             let status = state.conversations.read().await.report(Instant::now());
             assert_eq!(status.state, ConversationState::Flowing);
             assert_eq!(status.harnesses[0].unreadable, 1);
+            assert_eq!(
+                status.harnesses[0].unreadable_sessions,
+                ["a-unreadable"],
+                "the count names the session it counts"
+            );
             assert!(status.state_reason.unwrap().contains("1 unreadable"));
             let row = fs3_store::ingest_job_outcomes(&state.db, &[job.id])
                 .await

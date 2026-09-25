@@ -130,7 +130,7 @@ pub async fn intake(state: &AppState, request: IntakeRequest) -> Result<IntakeRe
         .clone()
         .unwrap_or_else(|| UNANCHORED.to_string());
 
-    let header = Conversation {
+    let header = fs3_core::shape_conversation(Conversation {
         guid: guid.clone(),
         repo_identity: request.repo_identity,
         worktree: request.worktree,
@@ -140,7 +140,7 @@ pub async fn intake(state: &AppState, request: IntakeRequest) -> Result<IntakeRe
         // The transcript-import surface knows nothing about session sidecars;
         // the parent link is established by the ingest path (plan 005).
         parent: None,
-    };
+    });
 
     fs3_store::upsert_conversation(&state.db, &header)
         .await

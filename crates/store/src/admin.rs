@@ -482,6 +482,28 @@ pub fn is_missing_database(error: &StoreError) -> bool {
         == Some(INVALID_CATALOG_NAME)
 }
 
+/// Whether an error is a Postgres data exception (SQLSTATE class 22).
+///
+/// Class 22 is the server refusing a VALUE: a NUL in `text`, a `\u0000` escape
+/// in `jsonb`, a timestamp that does not parse. The same statement with the
+/// same input fails the same way on every attempt, so a caller that retries it
+/// only spends its budget. Backlog row 203: one such value in a transcript
+/// retried until the session looked stuck forever. Every other class keeps
+/// its own verdict.
+#[must_use]
+pub fn is_data_exception(error: &StoreError) -> bool {
+    /// The two-character class prefix Postgres gives every data exception.
+    const DATA_EXCEPTION: &str = "22";
+
+    let StoreError::Query(inner) = error else {
+        return false;
+    };
+    inner
+        .as_database_error()
+        .and_then(|db| db.code())
+        .is_some_and(|code| code.starts_with(DATA_EXCEPTION))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

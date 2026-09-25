@@ -921,7 +921,7 @@ pub(crate) async fn ingest_with_directory_at_home(
                 // dating already exists — so the upsert is SKIPPED rather than fed a
                 // number.
                 if let Some(first) = batch.records.first() {
-                    let header = Conversation {
+                    let header = fs3_core::shape_conversation(Conversation {
                         guid: guid.clone(),
                         repo_identity: remote.clone(),
                         worktree: Some(folder.to_string_lossy().to_string()),
@@ -938,7 +938,7 @@ pub(crate) async fn ingest_with_directory_at_home(
                             .parent_session_id
                             .as_deref()
                             .map(|parent| conversation_guid(harness, parent)),
-                    };
+                    });
                     fs3_store::upsert_conversation(&state.db, &header)
                         .await
                         .map_err(fail)?;
@@ -1284,6 +1284,164 @@ fn reader_failure(message: &str) -> Failure {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A synthetic claude session under `home`, one jsonl line per record.
+    fn claude_fixture(home: &Path, session: &str, lines: &[serde_json::Value]) -> PathBuf {
+        let folder = home.join("workspace");
+        std::fs::create_dir_all(&folder).unwrap();
+        let root =
+            home.join(".claude/projects")
+                .join(workspace_slug(Harness::Claude, &folder, home));
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join(format!("{session}.jsonl"));
+        let text: String = lines.iter().map(|line| format!("{line}\n")).collect();
+        std::fs::write(&path, text).unwrap();
+        path
+    }
+
+    async fn ingest_stack(label: &str) -> (fs3_testkit::FreshDatabase, AppState) {
+        let database = fs3_testkit::FreshDatabase::create(label).await;
+        let state = AppState::from_config(fs3_core::Config {
+            database: fs3_core::DatabaseConfig {
+                url: database.url(),
+            },
+            ..fs3_core::Config::default()
+        })
+        .unwrap();
+        fs3_store::migrate(&state.db).await.unwrap();
+        (database, state)
+    }
+
+    fn claude_request(session: &str) -> IngestRequest {
+        IngestRequest {
+            pij_id: None,
+            session_id: Some(session.to_owned()),
+            harness: Some("claude".to_owned()),
+            folder: None,
+        }
+    }
+
+    /// Backlog row 203, end to end: a native claude session whose jsonl
+    /// carries the `\u0000` escape in a user message AND in a tool result goes
+    /// reader -> prepare_batch -> store, the cursor moves past it, the record
+    /// after it is stored too, and every stored copy shows U+FFFD instead.
+    #[tokio::test]
+    async fn a_claude_session_carrying_nul_escapes_ingests_past_them() {
+        let home = tempfile::tempdir().unwrap();
+        let session = "synthetic-nul-session";
+        let folder = home.path().join("workspace");
+        let at = "2026-09-24T07:20:00Z";
+        let path = claude_fixture(
+            home.path(),
+            session,
+            &[
+                serde_json::json!({"type":"user","uuid":"u-nul","cwd":folder,"timestamp":at,
+                    "message":{"role":"user","content":"before\u{0}after"}}),
+                serde_json::json!({"type":"assistant","uuid":"a-call","parentUuid":"u-nul","cwd":folder,"timestamp":at,
+                    "message":{"id":"msg_nul","role":"assistant","content":[
+                        {"type":"tool_use","id":"toolu_nul","name":"Bash","input":{"command":"cat a.bin"}}]}}),
+                serde_json::json!({"type":"user","uuid":"r-nul","parentUuid":"a-call","cwd":folder,"timestamp":at,
+                    "message":{"role":"user","content":[
+                        {"type":"tool_result","tool_use_id":"toolu_nul","content":"ELF\u{0}\u{0}tail"}]}}),
+                serde_json::json!({"type":"user","uuid":"u-after","parentUuid":"r-nul","cwd":folder,"timestamp":at,
+                    "message":{"role":"user","content":"the record after the nul"}}),
+            ],
+        );
+        assert!(
+            std::fs::read_to_string(&path).unwrap().contains("\\u0000"),
+            "the fixture carries the escape exactly as claude writes it"
+        );
+        let (database, state) = ingest_stack("nul-claude").await;
+
+        let report = ingest_at_home(&state, &claude_request(session), home.path().to_owned())
+            .await
+            .expect("a NUL no longer fails the turn insert");
+        assert!(report.turns_new >= 3, "{report:?}");
+
+        let stored: Vec<(String, String)> =
+            sqlx::query_as("SELECT body, items::text FROM turns ORDER BY turn_no")
+                .fetch_all(&state.db)
+                .await
+                .unwrap();
+        let everything: String = stored
+            .iter()
+            .map(|(body, items)| format!("{body}\n{items}\n"))
+            .collect();
+        assert!(!everything.contains('\0'), "{everything}");
+        assert!(everything.contains("before\u{FFFD}after"), "{everything}");
+        assert!(
+            everything.contains("ELF\u{FFFD}\u{FFFD}tail"),
+            "{everything}"
+        );
+        assert!(
+            stored
+                .iter()
+                .any(|(body, _)| body == "the record after the nul"),
+            "the record behind the NUL is no longer stalled: {everything}"
+        );
+
+        let cursors =
+            fs3_store::ingest_cursors::load_cursors(&state.db, Harness::Claude, &[session])
+                .await
+                .unwrap();
+        let Some(fs3_core::SourceCursor::ByteOffset { offset, .. }) = cursors.get(session) else {
+            panic!("a claude cursor is a byte offset: {cursors:?}");
+        };
+        assert_eq!(
+            *offset,
+            std::fs::metadata(&path).unwrap().len(),
+            "the cursor moved past every NUL line"
+        );
+
+        let payloads: Vec<String> = sqlx::query_scalar("SELECT payload::text FROM jobs")
+            .fetch_all(&state.db)
+            .await
+            .unwrap();
+        assert!(
+            payloads
+                .iter()
+                .any(|payload| payload.contains("before\u{FFFD}after")),
+            "enrichment jobs carry the shaped text, not the NUL: {payloads:?}"
+        );
+        database.destroy(state.db.clone()).await;
+    }
+
+    /// The second half of row 203: a value Postgres refuses (here a timestamp
+    /// that does not parse, SQLSTATE 22007) ends the attempt on its FIRST try,
+    /// so the runner settles it terminal and the poller's negative ack applies,
+    /// instead of three spent attempts and a revivable row.
+    #[tokio::test]
+    async fn a_refused_value_ends_the_ingest_attempt_instead_of_retrying() {
+        let home = tempfile::tempdir().unwrap();
+        let session = "synthetic-bad-timestamp";
+        let folder = home.path().join("workspace");
+        claude_fixture(
+            home.path(),
+            session,
+            &[
+                serde_json::json!({"type":"user","uuid":"u-bad","cwd":folder,"timestamp":"not-a-time",
+                "message":{"role":"user","content":"a turn with an unparseable timestamp"}}),
+            ],
+        );
+        let (database, state) = ingest_stack("class22-claude").await;
+
+        let failure = ingest_at_home(&state, &claude_request(session), home.path().to_owned())
+            .await
+            .expect_err("Postgres refuses the timestamp");
+        assert_eq!(failure.code, catalog::STORE_QUERY_FAILED.as_str());
+        assert!(!failure.retryable, "{failure:?}");
+        assert_eq!(
+            crate::runner::verdict(&failure, 1, 0),
+            crate::runner::Verdict::Fail,
+            "the first attempt is the last one"
+        );
+        let cursors =
+            fs3_store::ingest_cursors::load_cursors(&state.db, Harness::Claude, &[session])
+                .await
+                .unwrap();
+        assert!(cursors.is_empty(), "nothing was committed: {cursors:?}");
+        database.destroy(state.db.clone()).await;
+    }
 
     #[tokio::test]
     async fn manual_omp_ingest_uses_found_directory_after_cwd_and_layout_change() {
