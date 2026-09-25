@@ -1,0 +1,21 @@
+crates/core/src/conversation_normalize.rs
+  s_15d888f4b629c1::t_30c26539e606db 167-171,175-179,190,195-196,213-229,624-677
+crates/store/tests/pg_conversations.rs
+  s_15d888f4b629c1::t_855f5282087aff 513-538
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a75c0673e657bf52b7522043f19366e280febcd6",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
