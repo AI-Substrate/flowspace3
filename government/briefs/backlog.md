@@ -4049,3 +4049,21 @@ Jordan asked for a Serena-style outline (2026-09-08). `tree crates/daemon/src/co
 
 ## 213 — `conversation verify/ingest --pij <seat>` broken by the pij-rs cutover: fs3 expects a legacy row array from `pij sessions --json`, rs returns a v2 envelope
 Found 2026-09-16 answering "can users search conversations by pij id". `IngestInput::Pij` resolves seat → (harness, native session id) through the `pij sessions` join (`crates/daemon/src/convo_ingest.rs`, `conversation_source.rs:106`); the join now fails with `FS3-E-QUERY-INVALID … pij sessions output is not a row array: invalid type: map`. Search/get/ask never had a `--pij` filter; seat ids are only findable as literal text in transcripts. **Encode:** parse the v2 envelope (`data[]`), keep accepting the legacy array, contract-test against a pinned `pij sessions` fixture, and fix the error's fix text (it points at `search --help`). Consider a `--pij` filter on `search`/`conversation list` that resolves through the same join, since seats are how operators think about conversations.
+
+## 214 — claude reader drops queued mid-turn human messages (`attachment` / `queued_command`, `origin.kind: human`)
+Unasphere dogfood 2026-09-28 (cicada, `~/games/unasphere/scratch/flowspace3-dogfood-2026-09-28.md`): a verbatim Jordan quote typed while the agent was mid-turn was unfindable. The record is `type: "attachment"`, `attachment.type: "queued_command"`, `origin.kind: "human"`, `humanTurn: true`, with its own timestamp; `claude.rs` matches only `user`/`assistant` (`:466`, `:496`), so the words never become a turn. These are Jordan's words, the thing searched for most. **Encode:** map human-origin `queued_command` attachments to `TurnRole::Human`/`TurnSource::Human`; check whether claude also writes a later `user` record for the same text and dedupe if so; synthetic fixture only (repo is public).
+
+## 215 — doctor's `flowspace3 daemon &` fix fails outside the owner root, and the refusal does not name it
+Same dogfood: run from another repo, the daemon refuses `FS3-E-PROD-NOT-DESIGNATED` because `[daemon].owner_root` is the flowspace3 checkout. **Encode:** doctor's fix and the refusal's fix both print `cd <owner_root> && flowspace3 daemon`.
+
+## 216 — a 402 from a provider (out of credit) is reported with a credentials fix
+Same dogfood: `ask` via OpenRouter 402 "can only afford 4990 tokens"; the fix points at credentials. **Encode:** map HTTP 402 to "provider account out of credit; top up or switch the [agent] provider" (the GitHub Copilot provider is a proven alternative, 2026-09-10).
+
+## 217 — daemon start takes ~4 min after a reboot with no "starting" signal
+Same dogfood, plus o-prime's own bounces (~84–110 s normally, row 208). While the pre-serve probe runs, ping and doctor say only "not answering", so agents give up or start a second daemon. **Encode:** a boot-phase file the CLI reads to report "starting, phase X, typically N s".
+
+## 218 — ingest reads `$HOME` directly, so no test can drive an ingest job through the runner against a temp home
+From PR #126 (row 203 fix): `convo_ingest::run` reads `$HOME`; the terminal-failure path was proven at `Failure.retryable` + `runner::verdict` instead of end to end. **Encode:** thread `home` through `AppState` (or a config override) so runner-level ingest tests use a tempdir.
+
+## 219 — follow-ons found while fixing row 203 (PR #126 out-of-scope list)
+(a) `looks_binary` sniffs only a file head, so a code file with a NUL later can reach `elements.raw_text` (now terminal + named, still not scrubbed). (b) A claude line with an unparseable `timestamp` fails its whole session terminally; a MISSING one silently becomes the epoch; both want a reader-side rule. (c) NUL inside a claude `uuid` or `cwd` is not scrubbed (fails terminally and named). (d) Human `status` shows only the unreadable count; session names are in `--json` and doctor only.
