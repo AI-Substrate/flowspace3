@@ -4061,6 +4061,7 @@ Same dogfood: `ask` via OpenRouter 402 "can only afford 4990 tokens"; the fix po
 
 ## 217 — daemon start takes ~4 min after a reboot with no "starting" signal
 Same dogfood, plus o-prime's own bounces (~84–110 s normally, row 208). While the pre-serve probe runs, ping and doctor say only "not answering", so agents give up or start a second daemon. **Encode:** a boot-phase file the CLI reads to report "starting, phase X, typically N s".
+**Cause found 2026-09-28:** the boot step `probed ddocs tooling for registered roots roots=136` took 3 min 16 s (23:29:29 → 23:32:45Z) with the daemon idle (0% CPU, no Postgres activity). **Encode first:** probe roots concurrently with a bound, or lazily on first ddocs use, instead of serially before listening.
 
 ## 218 — ingest reads `$HOME` directly, so no test can drive an ingest job through the runner against a temp home
 From PR #126 (row 203 fix): `convo_ingest::run` reads `$HOME`; the terminal-failure path was proven at `Failure.retryable` + `runner::verdict` instead of end to end. **Encode:** thread `home` through `AppState` (or a config override) so runner-level ingest tests use a tempdir.
