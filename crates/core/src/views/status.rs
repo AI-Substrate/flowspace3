@@ -81,6 +81,10 @@ pub struct ConversationHarnessStatus {
     /// These files wait for a revision change and do not contribute to behind.
     #[serde(default)]
     pub unreadable: usize,
+    /// The session ids behind `unreadable`, so the count can be acted on
+    /// without a query: pair one with the failed `ingest:` job that names it.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub unreadable_sessions: Vec<String>,
     /// Time of the newest observed ingest report; unknown after daemon restart.
     pub newest_ingest_at: Option<String>,
     /// Actual report counters, never inferred from cursor movement.

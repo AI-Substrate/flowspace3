@@ -510,6 +510,32 @@ async fn a_window_is_ordered_and_honest_at_both_edges() {
     database.destroy(pool).await;
 }
 
+/// Backlog row 203: a turn carrying a NUL once failed this insert forever
+/// ("unsupported Unicode escape sequence") and stalled its whole session. The
+/// shaped turn — what every ingest path hands the store — must now land.
+#[tokio::test]
+async fn a_shaped_turn_containing_nul_characters_is_stored() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+    let guid = id('3');
+
+    let mut raw = turn(1, "printed a binary: ELF\0\0");
+    raw.items = vec![TurnItem::ToolResult {
+        tool: "bash".to_string(),
+        head: "\0\u{1}\0".to_string(),
+        total_bytes: 3,
+        truncated: false,
+    }];
+    let shaped = fs3_core::shape_turn(raw);
+    store_conversation(&pool, &guid, std::slice::from_ref(&shaped)).await;
+
+    let stored = window(&pool, &guid, 1, 0, 0).await.expect("reading back");
+    assert_eq!(stored[0].body, "printed a binary: ELF\u{FFFD}\u{FFFD}");
+    assert_eq!(stored[0].items, shaped.items);
+
+    database.destroy(pool).await;
+}
+
 /// Typed sub-items survive the JSONB round trip as typed values, which is what
 /// makes the payload policy a contract rather than a formatting convention.
 #[tokio::test]

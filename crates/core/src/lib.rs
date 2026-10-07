@@ -62,7 +62,8 @@ pub use conversation_join::{
     SeatBinding, SessionRow, parse_rows, resolve_seat, store_for, uuid_version,
 };
 pub use conversation_normalize::{
-    OUTPUT_HEAD_BYTES, PreparedBatch, normalize_record, prepare_batch, shape_turn,
+    OUTPUT_HEAD_BYTES, PreparedBatch, normalize_record, prepare_batch, shape_conversation,
+    shape_turn,
 };
 pub use conversation_source::{
     ConversationSource, Harness, IngestInput, RawRecord, ReadBatch, SessionFile, SessionKind,

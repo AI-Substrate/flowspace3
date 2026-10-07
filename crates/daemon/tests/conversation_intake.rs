@@ -410,3 +410,35 @@ async fn a_malformed_guid_is_refused_with_a_fix() {
 
     database.destroy(state.db).await;
 }
+
+/// Backlog row 203, the header half: `conversation import` derives the title
+/// from the first turn's prose, so a NUL there reached the header upsert and
+/// the whole post failed before any turn was stored. The header takes the same
+/// U+FFFD rule as the turns.
+#[tokio::test]
+async fn a_nul_in_the_header_and_the_turns_is_stored_as_a_replacement_character() {
+    let (database, state) = stack("intake-nul").await;
+    let mut posted = request(GUID, vec![turn(1, "a pasted C string: abc\0def")]);
+    posted.title = Some("a pasted C string: abc\0def".to_string());
+    posted.worktree = Some("/srv/any\0where".to_string());
+
+    let report = intake(&state, posted)
+        .await
+        .expect("a NUL no longer fails the post");
+    assert_eq!(report.accepted, 1);
+
+    let (title, worktree): (String, String) =
+        sqlx::query_as("SELECT title, worktree FROM conversations WHERE guid = $1::uuid")
+            .bind(GUID)
+            .fetch_one(&state.db)
+            .await
+            .unwrap();
+    assert_eq!(title, "a pasted C string: abc\u{FFFD}def");
+    assert_eq!(worktree, "/srv/any\u{FFFD}where");
+    let body: String = sqlx::query_scalar("SELECT body FROM turns WHERE turn_no = 1")
+        .fetch_one(&state.db)
+        .await
+        .unwrap();
+    assert_eq!(body, "a pasted C string: abc\u{FFFD}def");
+    database.destroy(state.db.clone()).await;
+}

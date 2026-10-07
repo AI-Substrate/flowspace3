@@ -90,6 +90,16 @@ impl IntoFailure for StoreError {
                 Failure::new(&catalog::PROVIDER_DIMENSIONS, self.to_string())
             }
             StoreError::InvalidName(_) => Failure::new(&catalog::CONFIG_INVALID, self.to_string()),
+            // A refused VALUE fails identically on every attempt, so it ends
+            // the attempt instead of retrying toward the same wall (row 203).
+            other if fs3_store::is_data_exception(&other) => {
+                Failure::new(&catalog::STORE_QUERY_FAILED, other.to_string())
+                    .with_fix(
+                        "the input carries a value Postgres refuses, so repeating it fails the \
+                         same way; the failed job's key names the input",
+                    )
+                    .retryable(false)
+            }
             other => Failure::new(&catalog::STORE_QUERY_FAILED, other.to_string()),
         }
     }
@@ -245,5 +255,49 @@ mod tests {
             !failure.retryable,
             "retrying cannot change a vector's width"
         );
+    }
+
+    /// Backlog row 203: a value Postgres refuses (SQLSTATE class 22) fails the
+    /// same way on every attempt, so it must end the attempt rather than retry.
+    /// Every other class keeps today's retry verdict. Real server errors, not
+    /// hand-built ones, so the SQLSTATE is the one Postgres actually sends.
+    #[tokio::test]
+    async fn a_refused_value_is_final_and_every_other_store_failure_still_retries() {
+        let database = fs3_testkit::FreshDatabase::create("answer-sqlstate").await;
+        let pool = fs3_store::connect(&database.url()).await.unwrap();
+        let cases = [
+            // The prod failure: the `\u0000` escape in jsonb.
+            (r#"SELECT '"a\u0000b"'::jsonb"#, "22P05", false),
+            ("SELECT 'not-a-time'::timestamptz", "22007", false),
+            ("SELECT 1 / 0", "22012", false),
+            ("SELECT * FROM no_such_table", "42P01", true),
+            ("SELECT 1 FROM", "42601", true),
+            (
+                "CREATE TEMP TABLE once (id int PRIMARY KEY); \
+                 INSERT INTO once VALUES (1), (1)",
+                "23505",
+                true,
+            ),
+        ];
+        for (sql, sqlstate, retryable) in cases {
+            let error = StoreError::from(sqlx::raw_sql(sql).execute(&pool).await.unwrap_err());
+            let code = match &error {
+                StoreError::Query(inner) => inner
+                    .as_database_error()
+                    .and_then(|db| db.code())
+                    .map(|code| code.into_owned()),
+                _ => None,
+            };
+            assert_eq!(code.as_deref(), Some(sqlstate), "{sql}");
+            let failure = error.into_failure();
+            assert_eq!(failure.code, "FS3-E-STORE-QUERY-FAILED", "{sql}");
+            assert_eq!(failure.retryable, retryable, "{sqlstate}: {sql}");
+            assert_eq!(
+                crate::runner::verdict(&failure, 1, 0) == crate::runner::Verdict::Fail,
+                !retryable,
+                "{sqlstate}: only a refused value ends the first attempt"
+            );
+        }
+        database.destroy(pool).await;
     }
 }
