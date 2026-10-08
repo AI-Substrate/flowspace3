@@ -904,3 +904,84 @@ async fn sqlx_flags(pool: &PgPool, statement: &str) -> Vec<(String, bool)> {
         .await
         .expect("reading rows back")
 }
+
+/// What `elements.turn_class` holds for each turn of `guid`, in order.
+async fn stored_classes(pool: &PgPool, guid: &ConversationId) -> Vec<Option<String>> {
+    sqlx::query_scalar(
+        "SELECT turn_class FROM elements
+          WHERE kind = 'turn' AND strpos(address, 'conv:' || $1 || '#t') = 1
+          ORDER BY span_start",
+    )
+    .bind(guid.as_str())
+    .fetch_all(pool)
+    .await
+    .expect("reading turn classes")
+}
+
+fn tool_turn(turn_no: u32, role: TurnRole, item: TurnItem) -> Turn {
+    Turn {
+        role,
+        items: vec![item],
+        ..turn(turn_no, "")
+    }
+}
+
+#[tokio::test]
+async fn appended_turns_are_classified_and_a_result_pairs_across_appends() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+    let guid = id('c');
+
+    let search = TurnItem::ToolCall {
+        tool: "Bash".to_string(),
+        input: ToolInput::Verbatim {
+            text: r#"{"command":"flowspace3 search \"where is retry\" --json | head -c 4000"}"#
+                .to_string(),
+        },
+    };
+    let piped_output = TurnItem::ToolResult {
+        tool: "Bash".to_string(),
+        head: "conv:x t4 0.98\nconv:y t9 0.91".to_string(),
+        total_bytes: 30,
+        truncated: false,
+    };
+    let build = TurnItem::ToolCall {
+        tool: "Bash".to_string(),
+        input: ToolInput::Verbatim {
+            text: "cargo build".to_string(),
+        },
+    };
+
+    // The call lands in one append and its piped output in the next: the
+    // result can only be recognised by remembering the call.
+    store_conversation(
+        &pool,
+        &guid,
+        &[
+            turn(1, "where is the retry policy?"),
+            tool_turn(2, TurnRole::Agent, search),
+        ],
+    )
+    .await;
+    append_turns(
+        &pool,
+        &guid,
+        &[
+            tool_turn(3, TurnRole::Human, piped_output),
+            tool_turn(4, TurnRole::Agent, build),
+        ],
+        gate,
+    )
+    .await
+    .expect("appending the second batch");
+
+    assert_eq!(
+        stored_classes(&pool, &guid).await,
+        vec![
+            Some("work".to_string()),
+            Some("retrieval_call".to_string()),
+            Some("retrieval_result".to_string()),
+            Some("tool_call".to_string()),
+        ]
+    );
+}
