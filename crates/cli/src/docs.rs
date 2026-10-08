@@ -111,6 +111,12 @@ pub const TOPICS: &[Topic] = &[
         text: include_str!("../docs/providers.md"),
         related: &["config", "search"],
     },
+    Topic {
+        name: "prompt-search",
+        title: "fs3 prompts: a Claude Code hook that searches before the agent's turn",
+        text: include_str!("../docs/prompt-search.md"),
+        related: &["search", "conversations"],
+    },
 ];
 
 /// A topic as `docs list` reports it.
