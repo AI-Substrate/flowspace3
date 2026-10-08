@@ -1,0 +1,19 @@
+crates/providers/src/openai_compat.rs
+  s_15d888f4b629c1::t_e4976af4d3ac60 751-790,878-880,909-969
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8639590a8c0752aa451d37761b79a9318f986a96",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
