@@ -190,3 +190,4 @@ rather than answering, silently, from an unrelated repository.
 `flowspace3 docs get doctor` — what doctor checks and repairs.
 `flowspace3 docs get providers` — registering a real model, from scratch.
 `flowspace3 docs get config` — configuration and its layers.
+`flowspace3 docs get prompt-search` — `fs3 "…"` prompts: search before the agent's turn.
