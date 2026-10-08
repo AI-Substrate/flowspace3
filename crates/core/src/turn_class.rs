@@ -233,32 +233,141 @@ fn is_retrieval_call(tool: &str, input: &ToolInput) -> bool {
     }
 }
 
-/// Whether a command line runs `flowspace3 <retrieval verb>`.
+/// Whether a tool input actually RUNS `flowspace3 <retrieval verb>`.
 ///
-/// The binary must sit at a command boundary (start, whitespace, quote, path
-/// separator or shell operator) so a word like `myflowspace3` does not match,
-/// and global flags may come between it and the verb.
+/// Measured on the live index, mentioning the command is common and is not
+/// running it: a `pij send` whose message quotes a search, a brief written
+/// through `cat > brief.md <<EOF` that documents one, a commit message. Those
+/// turns are real work, so the binary only counts in COMMAND POSITION — the
+/// start of the input, after a shell separator or keyword, as a JSON
+/// `"command"` value, or first in an argument list
+/// (`subprocess.run(["flowspace3","search",q])`) — and never inside the body
+/// of a heredoc that is written to a file.
+///
+/// Tool inputs are often stored as JSON, so escaped newlines and quotes are
+/// read as the characters they encode before scanning.
 fn invokes_retrieval(text: &str) -> bool {
-    let mut rest = text;
-    while let Some(at) = rest.find(BINARY) {
-        let before = rest[..at].chars().next_back();
-        let after = &rest[at + BINARY.len()..];
-        rest = after;
-        let boundary = before.is_none_or(|c| {
-            c.is_whitespace() || matches!(c, '"' | '\'' | '/' | ';' | '|' | '&' | '(' | '`' | '=')
-        });
-        if !boundary || !after.starts_with(|c: char| c.is_whitespace()) {
+    let decoded = text
+        .replace("\\n", "\n")
+        .replace("\\t", "\t")
+        .replace("\\\"", "\"");
+    let mut file_heredoc: Option<String> = None;
+    for line in decoded.lines() {
+        if let Some(terminator) = &file_heredoc {
+            if line.trim() == terminator {
+                file_heredoc = None;
+            }
+            continue;
+        }
+        if runs_retrieval(line) {
+            return true;
+        }
+        file_heredoc = heredoc_written_to_file(line);
+    }
+    false
+}
+
+/// Whether one line runs a retrieval verb.
+fn runs_retrieval(line: &str) -> bool {
+    let mut searched = 0;
+    while let Some(found) = line[searched..].find(BINARY) {
+        let at = searched + found;
+        let after = &line[at + BINARY.len()..];
+        searched = at + BINARY.len();
+        if !in_command_position(&line[..at]) || !after.starts_with(is_argument_separator) {
             continue;
         }
         let verb = after
-            .split_whitespace()
-            .map(|word| word.trim_matches(|c| matches!(c, '"' | '\'' | '\\')))
-            .find(|word| !word.starts_with('-'));
+            .split(|c: char| c.is_whitespace() || c == ',')
+            .map(|word| word.trim_matches(|c| matches!(c, '"' | '\'' | '\\' | ')' | ']')))
+            .find(|word| !word.is_empty() && !word.starts_with('-'));
         if verb.is_some_and(|verb| RETRIEVAL_VERBS.contains(&verb)) {
             return true;
         }
     }
     false
+}
+
+/// Whether a command name may start right after `prefix`.
+fn in_command_position(prefix: &str) -> bool {
+    // An absolute or relative path to the binary: judge where the path starts.
+    let mut rest = prefix;
+    if rest.ends_with('/') {
+        rest = rest.trim_end_matches(|c: char| {
+            !c.is_whitespace() && !matches!(c, '"' | '\'' | '[' | '(' | ';' | '|' | '&')
+        });
+    }
+    let mut rest = rest.trim_end();
+    // `FS3_OUTPUT=json flowspace3 …`: leading assignments are transparent.
+    // The token is split at a quote as well as whitespace, so the assignment in
+    // `{"command":"FS3_OUTPUT=json flowspace3 …` is seen; the quote stays with
+    // what precedes it.
+    loop {
+        let split = rest.rfind(|c: char| c.is_whitespace() || matches!(c, '"' | '\''));
+        let (head, last) = match split {
+            Some(at) => {
+                let boundary = at + rest[at..].chars().next().map_or(1, char::len_utf8);
+                (&rest[..boundary], &rest[boundary..])
+            }
+            None => ("", rest),
+        };
+        if is_assignment(last) {
+            rest = head.trim_end();
+        } else {
+            break;
+        }
+    }
+    if rest.is_empty() {
+        return true;
+    }
+    const SEPARATORS: &[&str] = &[
+        ";", "&&", "||", "|", "(", "$(", "{", "!", ":\"", ": \"", "[\"", "['", "[", "(\"", "('",
+    ];
+    if SEPARATORS.iter().any(|separator| rest.ends_with(separator)) {
+        return true;
+    }
+    const KEYWORDS: &[&str] = &[
+        "do", "then", "else", "time", "exec", "nohup", "sudo", "command",
+    ];
+    let last_word = rest.rsplit(char::is_whitespace).next().unwrap_or(rest);
+    KEYWORDS.contains(&last_word)
+}
+
+/// `NAME=value` — a shell assignment prefixing a command.
+fn is_assignment(word: &str) -> bool {
+    let Some((name, _)) = word.split_once('=') else {
+        return false;
+    };
+    !name.is_empty()
+        && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+        && !name.starts_with(|c: char| c.is_ascii_digit())
+}
+
+/// The terminator of a heredoc this line writes to a file, if it opens one.
+///
+/// `cat > f <<'EOF'`, `cat <<EOF >> f`, `tee f <<-EOF`. A heredoc fed to an
+/// interpreter (`python3 - <<'EOF'`) is code that may run the CLI, so it is
+/// scanned like any other command text.
+fn heredoc_written_to_file(line: &str) -> Option<String> {
+    let at = line.find("<<")?;
+    let writes = line.contains('>') || line.split_whitespace().any(|word| word == "tee");
+    let command = line.split_whitespace().next().unwrap_or("");
+    if !(writes && matches!(command, "cat" | "tee")) && !line.contains("cat >") {
+        return None;
+    }
+    let terminator: String = line[at + 2..]
+        .trim_start_matches('-')
+        .trim_start()
+        .trim_start_matches(['\'', '"'])
+        .chars()
+        .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+        .collect();
+    (!terminator.is_empty()).then_some(terminator)
+}
+
+/// Whether `c` can separate a command name from its first argument.
+fn is_argument_separator(c: char) -> bool {
+    c.is_whitespace() || matches!(c, '"' | '\'' | '\\' | ',')
 }
 
 /// Whether a result head is an fs3 envelope from a retrieval verb.
@@ -482,6 +591,64 @@ mod tests {
         assert!(!invokes_retrieval("flowspace3 status"));
         assert!(!invokes_retrieval("cargo build -p flowspace3"));
         assert!(!invokes_retrieval("grep -rn search crates/flowspace3-cli"));
+        assert!(!invokes_retrieval(
+            r#"{"command":"ls","cwd":"/src/flowspace3","i":"Searching"}"#
+        ));
+    }
+
+    #[test]
+    fn tool_inputs_stored_as_json_still_reveal_the_command() {
+        // A heredoc script then the search, newline JSON-escaped.
+        assert!(invokes_retrieval(
+            r#"{"command":"cat > sum.py <<'EOF'\nprint(1)\nEOF\nflowspace3 search \"x\" | python3 sum.py"}"#
+        ));
+        // A script driving the CLI through an argument list.
+        assert!(invokes_retrieval(
+            r#"{"command":"python3 - <<'EOF'\nsubprocess.run([\"flowspace3\",\"search\",q,\"--limit\",\"20\"])\nEOF"}"#
+        ));
+        assert!(!invokes_retrieval(
+            r#"subprocess.run(["flowspace3","status"])"#
+        ));
+    }
+
+    #[test]
+    fn mentioning_the_command_is_not_running_it() {
+        // Each of these was real work misread as retrieval on the live index.
+        assert!(!invokes_retrieval(
+            r#"{"command":"pij send pij-x 'Both explained: run flowspace3 search \"x\" to see'"}"#
+        ));
+        assert!(!invokes_retrieval(
+            "cat > brief.md <<'EOF'\n# Brief\nflowspace3 search \"pricing\"\nEOF"
+        ));
+        assert!(!invokes_retrieval(
+            r#"{"command":"cat >> backlog.md <<'EOF'\nflowspace3 get conv:1#t2\nEOF\ngit add backlog.md"}"#
+        ));
+        assert!(!invokes_retrieval(
+            r#"git commit -m "fix: flowspace3 search hides echoes""#
+        ));
+        assert!(!invokes_retrieval("echo \"flowspace3 search x\""));
+        assert!(!invokes_retrieval("see `flowspace3 search` in the docs"));
+        // …but a search after the heredoc closes still counts.
+        assert!(invokes_retrieval(
+            "cat > q.txt <<'EOF'\npricing\nEOF\nflowspace3 search \"$(cat q.txt)\""
+        ));
+    }
+
+    #[test]
+    fn command_positions_cover_how_agents_really_call_it() {
+        for text in [
+            "flowspace3 search x",
+            "cd /repo && flowspace3 search x",
+            "for q in a b; do flowspace3 search \"$q\"; done",
+            "FS3_OUTPUT=json FOO=1 flowspace3 search x",
+            "/usr/local/bin/flowspace3 --json get conv:1",
+            r#"{"command":"flowspace3 search \"x\" --json","cwd":"/repo"}"#,
+            "out=$(flowspace3 ask \"why\")",
+            "time flowspace3 search x",
+            r#"{"command":"FS3_OUTPUT=json flowspace3 docs list","cwd":"/repo"}"#,
+        ] {
+            assert!(invokes_retrieval(text), "{text}");
+        }
     }
 
     #[test]
