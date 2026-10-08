@@ -1225,6 +1225,14 @@ mod tests {
             .bind(Option::<&str>::None)
             .bind(Option::<&str>::None)
             .bind(160_i64)
+            // The daemon's default: retrieval echoes hidden. The plan is
+            // checked with the filter the shipped search actually runs.
+            .bind(Some(
+                fs3_core::TurnClass::HIDDEN_BY_DEFAULT
+                    .iter()
+                    .map(|class| class.as_str())
+                    .collect::<Vec<_>>(),
+            ))
             .fetch_one(&mut *connection)
             .await?;
         Ok(row.try_get::<Json<serde_json::Value>, _>(0)?.0)
