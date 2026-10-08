@@ -155,6 +155,11 @@ enum Command {
         /// Only deterministic-document rows declaring this schema.
         #[arg(long, value_name = "SCHEMA")]
         ddoc_schema: Option<String>,
+        /// Also show fs3's own retrieval traffic: conversation turns that are
+        /// only a `flowspace3 search/get/ask` call or the output one printed.
+        /// Hidden by default because they echo the query back.
+        #[arg(long)]
+        include_retrieval: bool,
         /// Override the daemon URL from configuration.
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
@@ -662,6 +667,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             gate_open,
             gate_closed,
             ddoc_schema,
+            include_retrieval,
             daemon_url,
         } => {
             let client = client_for(daemon_url)?;
@@ -673,6 +679,9 @@ async fn run(command: Command) -> Result<ExitCode> {
             push(&mut params, "min_score", min_score.map(|v| v.to_string()));
             push(&mut params, "source", source);
             push_ddoc_search_filters(&mut params, id_kind, gate_open, gate_closed, ddoc_schema);
+            if include_retrieval {
+                params.push(("include_retrieval".to_string(), "true".to_string()));
+            }
             push(&mut params, "cwd", here());
             emit(&client.search(&params).await)
         }

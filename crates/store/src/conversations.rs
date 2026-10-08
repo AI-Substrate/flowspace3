@@ -30,7 +30,10 @@
 use std::str::FromStr;
 
 use fs3_core::conversation::PARSER_VERSION;
-use fs3_core::{Conversation, ConversationId, Element, ElementKind, Turn, TurnRole, TurnSource};
+use fs3_core::{
+    Conversation, ConversationId, Element, ElementKind, Turn, TurnClass, TurnClassifier, TurnRole,
+    TurnSource,
+};
 use sqlx::Row;
 use sqlx::postgres::PgRow;
 
@@ -266,6 +269,13 @@ pub async fn append_turns(
 
     let mut tx = pool.begin().await?;
 
+    // Classified in sequence, picking up after the turn already stored before
+    // this batch: a result is paired with the call that produced it, and the
+    // two can arrive in different appends.
+    let previous = turn_before(&mut tx, conversation, turns[0].turn_no).await?;
+    let mut classifier = TurnClassifier::after(previous.as_ref());
+    let classes: Vec<TurnClass> = turns.iter().map(|turn| classifier.classify(turn)).collect();
+
     let accepted_ordinals: Vec<i32> = sqlx::query_scalar(
         "INSERT INTO turns
            (conversation_id, turn_no, role, source, head_sha, at, body, items, blob_sha)
@@ -290,15 +300,16 @@ pub async fn append_turns(
     .await?;
     let accepted_ordinals: std::collections::HashSet<i32> = accepted_ordinals.into_iter().collect();
 
-    let accepted: Vec<Element> = elements
+    let (accepted, accepted_classes): (Vec<Element>, Vec<TurnClass>) = elements
         .into_iter()
+        .zip(classes)
         .zip(&ordinals)
         .filter(|(_, ordinal)| accepted_ordinals.contains(*ordinal))
-        .map(|(element, _)| element)
-        .collect();
+        .map(|(pair, _)| pair)
+        .unzip();
 
     if !accepted.is_empty() {
-        write_turn_elements(&mut tx, &accepted, &enrich).await?;
+        write_turn_elements(&mut tx, &accepted, &accepted_classes, &enrich).await?;
     }
 
     tx.commit().await?;
@@ -316,6 +327,7 @@ pub async fn append_turns(
 async fn write_turn_elements(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     accepted: &[Element],
+    classes: &[TurnClass],
     enrich: &impl Fn(&Element) -> bool,
 ) -> Result<(), StoreError> {
     let addresses: Vec<&str> = accepted
@@ -340,22 +352,24 @@ async fn write_turn_elements(
         .collect();
     let hashes: Vec<&str> = accepted.iter().map(Element::raw_hash).collect();
     let verdicts: Vec<bool> = accepted.iter().map(enrich).collect();
+    let class_names: Vec<&str> = classes.iter().map(|class| class.as_str()).collect();
 
     sqlx::query(
         "INSERT INTO elements
            (blob_sha, parser_version, parent_id, kind, subkind, name, address,
-            span_start, span_end, sibling_order, raw_text, raw_hash, enrich)
+            span_start, span_end, sibling_order, raw_text, raw_hash, enrich, turn_class)
          SELECT e.raw_hash, $1, NULL, $2, e.subkind, e.name, e.address,
-                e.span, e.span, 0, e.raw_text, e.raw_hash, e.enrich
+                e.span, e.span, 0, e.raw_text, e.raw_hash, e.enrich, e.turn_class
            FROM unnest($3::text[], $4::text[], $5::text[], $6::int[],
-                       $7::text[], $8::text[], $9::bool[])
-             AS e(subkind, name, address, span, raw_text, raw_hash, enrich)
+                       $7::text[], $8::text[], $9::bool[], $10::text[])
+             AS e(subkind, name, address, span, raw_text, raw_hash, enrich, turn_class)
          ON CONFLICT (blob_sha, parser_version, address, span_start) DO UPDATE SET
-           subkind  = EXCLUDED.subkind,
-           name     = EXCLUDED.name,
-           raw_text = EXCLUDED.raw_text,
-           raw_hash = EXCLUDED.raw_hash,
-           enrich   = EXCLUDED.enrich",
+           subkind    = EXCLUDED.subkind,
+           name       = EXCLUDED.name,
+           raw_text   = EXCLUDED.raw_text,
+           raw_hash   = EXCLUDED.raw_hash,
+           enrich     = EXCLUDED.enrich,
+           turn_class = EXCLUDED.turn_class",
     )
     .bind(PARSER_VERSION)
     .bind(ElementKind::Turn.as_str())
@@ -366,10 +380,141 @@ async fn write_turn_elements(
     .bind(&texts)
     .bind(&hashes)
     .bind(&verdicts)
+    .bind(&class_names)
     .execute(&mut **tx)
     .await?;
 
     Ok(())
+}
+
+/// Turns read per statement while backfilling one conversation.
+const BACKFILL_WINDOW: i64 = 1_000;
+
+/// Classify the turns stored before migration 0025, a few conversations at a
+/// time.
+///
+/// Turns arrive in conversation order, and the classifier needs that order
+/// (a result is paired with its call), so the unit of work is a whole
+/// conversation, read in bounded windows and written window by window. Only
+/// rows still NULL are written, so a pass racing a live append, or a pass
+/// repeated after a crash, changes nothing that is already decided.
+///
+/// Returns how many turn elements this pass classified; zero means the
+/// backfill is complete.
+///
+/// # Errors
+/// [`StoreError::Query`] when a read or write fails; [`StoreError::Corrupt`]
+/// when a stored turn cannot be decoded. Windows already written stay written.
+pub async fn backfill_turn_classes(pool: &PgPool, conversations: u32) -> Result<u64, StoreError> {
+    let mut classified = 0_u64;
+    for _ in 0..conversations {
+        // One row through the partial index: the queue of unclassified turns.
+        let pending: Option<String> = sqlx::query_scalar(
+            "SELECT substring(address FROM 6 FOR 36)
+               FROM elements
+              WHERE kind = 'turn' AND turn_class IS NULL
+              LIMIT 1",
+        )
+        .fetch_optional(pool)
+        .await?;
+        let Some(guid) = pending else {
+            break;
+        };
+        let conversation = ConversationId::new(guid).map_err(corrupt)?;
+        let written = classify_conversation(pool, &conversation).await?;
+        if written == 0 {
+            // Every unclassified row of this conversation belongs to no stored
+            // turn (a half-removed conversation). Label them so the queue
+            // drains instead of returning the same address forever.
+            sqlx::query(
+                "UPDATE elements SET turn_class = 'work'
+                  WHERE kind = 'turn' AND turn_class IS NULL
+                    AND strpos(address, 'conv:' || $1 || '#t') = 1",
+            )
+            .bind(conversation.as_str())
+            .execute(pool)
+            .await?;
+        }
+        classified += written;
+    }
+    Ok(classified)
+}
+
+/// Classify every stored turn of one conversation and write the verdicts that
+/// are still missing.
+async fn classify_conversation(
+    pool: &PgPool,
+    conversation: &ConversationId,
+) -> Result<u64, StoreError> {
+    let mut classifier = TurnClassifier::new();
+    let mut after = 0_i64;
+    let mut written = 0_u64;
+    loop {
+        let rows = sqlx::query(&format!(
+            "SELECT turn_no, role, source, head_sha, body, items,
+                    to_char(at AT TIME ZONE 'UTC', {AS_TEXT}) AS at
+               FROM turns
+              WHERE conversation_id = $1::uuid
+                AND turn_no > $2
+              ORDER BY turn_no
+              LIMIT $3"
+        ))
+        .bind(conversation.as_str())
+        .bind(after)
+        .bind(BACKFILL_WINDOW)
+        .fetch_all(pool)
+        .await?;
+        if rows.is_empty() {
+            return Ok(written);
+        }
+        let turns: Vec<Turn> = rows.iter().map(turn_from_row).collect::<Result<_, _>>()?;
+        let addresses: Vec<String> = turns
+            .iter()
+            .map(|turn| conversation.turn_address(turn.turn_no))
+            .collect();
+        let classes: Vec<&str> = turns
+            .iter()
+            .map(|turn| classifier.classify(turn).as_str())
+            .collect();
+        after = turns.last().map_or(after, |turn| i64::from(turn.turn_no));
+
+        let updated = sqlx::query(
+            "UPDATE elements e
+                SET turn_class = c.class
+               FROM unnest($1::text[], $2::text[]) AS c(address, class)
+              WHERE e.kind = 'turn'
+                AND e.address = c.address
+                AND e.turn_class IS NULL",
+        )
+        .bind(&addresses)
+        .bind(&classes)
+        .execute(pool)
+        .await?;
+        written += updated.rows_affected();
+    }
+}
+
+/// The stored turn immediately before `turn_no`, if there is one.
+async fn turn_before(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    conversation: &ConversationId,
+    turn_no: u32,
+) -> Result<Option<Turn>, StoreError> {
+    if turn_no <= 1 {
+        return Ok(None);
+    }
+    let row = sqlx::query(&format!(
+        "SELECT turn_no, role, source, head_sha, body, items,
+                to_char(at AT TIME ZONE 'UTC', {AS_TEXT}) AS at
+           FROM turns
+          WHERE conversation_id = $1::uuid
+            AND turn_no = $2"
+    ))
+    .bind(conversation.as_str())
+    .bind(i64::from(turn_no) - 1)
+    .fetch_optional(&mut **tx)
+    .await?;
+    row.as_ref().map(turn_from_row).transpose()
 }
 
 /// The contiguous run of turns around `turn_no`, in order.

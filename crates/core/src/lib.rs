@@ -36,6 +36,7 @@ pub mod output;
 pub mod ports;
 pub mod skew;
 pub mod tokens;
+pub mod turn_class;
 pub mod update;
 pub mod views;
 
@@ -92,4 +93,5 @@ pub use ports::{
 };
 pub use skew::{SCHEMA_SOURCE, SchemaSkew};
 pub use tokens::{BYTES_PER_TOKEN, estimate_tokens, fit_to_cap};
+pub use turn_class::{TurnClass, TurnClassifier};
 pub use update::{UPDATE_SOURCE, UpdateState, Version, is_upgrade};

@@ -40,7 +40,7 @@
 
 use fs3_core::catalog;
 use fs3_core::envelope::Failure;
-use fs3_core::{ConversationId, DdocAddress, DdocMeta, Element, ElementKind};
+use fs3_core::{ConversationId, DdocAddress, DdocMeta, Element, ElementKind, TurnClass};
 use fs3_store::{LexicalHit, PathFilterProbe, SearchFilters, SearchHit};
 use serde::{Deserialize, Serialize};
 
@@ -87,6 +87,51 @@ pub struct SearchRequest {
     /// Restrict ddoc rows to one declared schema, verbatim.
     #[serde(default)]
     pub ddoc_schema: Option<String>,
+    /// Also return fs3's own retrieval traffic: turns that are only a
+    /// `flowspace3 search/get/ask` call, or only the output one printed.
+    /// Hidden by default because they echo the query back at score 1.0.
+    #[serde(default)]
+    pub include_retrieval: bool,
+}
+
+/// The CLI flag that turns retrieval-turn hiding off.
+pub const INCLUDE_RETRIEVAL_FLAG: &str = "--include-retrieval";
+
+/// What search left out, and how to get it back (`meta.filtered`).
+///
+/// Always present on a search answer, so a consumer reads one stable shape:
+/// `retrieval_turns` is zero when nothing was hidden, and `include_flag` is
+/// `null` when the caller already asked for everything.
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
+pub struct FilteredDisclosure {
+    /// Matching turns hidden because they are fs3 retrieval calls or their
+    /// output — at least this many distinct contents among the candidates
+    /// this search considered.
+    pub retrieval_turns: u64,
+    /// The flag that shows them, or `None` when it is already set.
+    pub include_flag: Option<&'static str>,
+}
+
+impl FilteredDisclosure {
+    /// The `next_action` / footer clause, when something was hidden.
+    ///
+    /// The ONE wording of this disclosure: other hints compose it rather than
+    /// re-deriving it.
+    #[must_use]
+    pub fn clause(&self) -> Option<String> {
+        let flag = self.include_flag?;
+        (self.retrieval_turns > 0).then(|| {
+            let noun = if self.retrieval_turns == 1 {
+                "turn"
+            } else {
+                "turns"
+            };
+            format!(
+                "{} retrieval {noun} hidden (`{flag}` to show fs3 search calls and their output)",
+                self.retrieval_turns
+            )
+        })
+    }
 }
 
 /// The largest `--limit` a caller may ask for.
@@ -154,7 +199,8 @@ fn weak_match_score(best: Option<f64>) -> bool {
 /// and only one of them is an answer.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct EmptyBecause {
-    /// The machine-readable cause: `below_floor`, `scan_incomplete`, or `path_unmatched`.
+    /// The machine-readable cause: `below_floor`, `scan_incomplete`, `path_unmatched`,
+    /// or `retrieval_hidden`.
     pub reason: &'static str,
     /// One sentence stating what is actually known, for a human or an agent.
     pub detail: String,
@@ -195,6 +241,8 @@ pub struct SearchOutcome {
     pub scan_incomplete: bool,
     /// Number of semantic candidate pages examined.
     pub passes: usize,
+    /// What the turn-class filter hid (`meta.filtered`).
+    pub filtered: FilteredDisclosure,
 }
 
 impl SearchOutcome {
@@ -365,16 +413,26 @@ async fn search_filtered(
         kinds,
         max_distance,
         limit: fetch_limit,
+        hidden_turn_classes: (!request.include_retrieval)
+            .then(|| TurnClass::HIDDEN_BY_DEFAULT.to_vec()),
         ..SearchFilters::default()
     };
 
     apply_ddoc_filters(&mut filters, request);
 
-    let (semantic, mut lexical_hits) = tokio::try_join!(
+    let (semantic, lexical) = tokio::try_join!(
         fs3_store::search_elements(&state.db, &model_key, &vector, &filters),
-        fs3_store::search_lexical(&state.db, query, &filters),
+        fs3_store::search_lexical_page(&state.db, query, &filters),
     )
     .map_err(fail)?;
+    // The two channels count different things (distinct contents vs matching
+    // rows) over overlapping sets, so their sum would double-count; the larger
+    // is a floor on what was hidden.
+    let filtered = FilteredDisclosure {
+        retrieval_turns: semantic.hidden_turns.max(lexical.hidden_turns),
+        include_flag: (!request.include_retrieval).then_some(INCLUDE_RETRIEVAL_FLAG),
+    };
+    let mut lexical_hits = lexical.hits;
     let scan_incomplete = semantic.candidate_limit_exhausted;
     let passes = semantic.passes;
     let mut hits = semantic.hits;
@@ -434,6 +492,30 @@ async fn search_filtered(
             next_offset,
             scan_incomplete,
             passes,
+            filtered,
+        });
+    }
+
+    // Everything that matched was the index looking at itself. Saying so is
+    // the difference between "no answer" and "the answer is behind a flag".
+    if let Some(clause) = filtered.clause() {
+        return Ok(SearchOutcome {
+            results: Vec::new(),
+            composition: SearchComposition::default(),
+            empty_because: Some(EmptyBecause {
+                reason: "retrieval_hidden",
+                detail: format!("every match was fs3 retrieval traffic: {clause}"),
+                hint: Some(format!(
+                    "rerun with `{INCLUDE_RETRIEVAL_FLAG}` to see those turns"
+                )),
+            }),
+            limit,
+            truncated: false,
+            offset,
+            next_offset: None,
+            scan_incomplete,
+            passes,
+            filtered,
         });
     }
 
@@ -448,6 +530,7 @@ async fn search_filtered(
             next_offset: None,
             scan_incomplete,
             passes,
+            filtered,
         });
     }
 
@@ -471,6 +554,7 @@ async fn search_filtered(
         next_offset: None,
         scan_incomplete,
         passes,
+        filtered,
     })
 }
 

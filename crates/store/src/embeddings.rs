@@ -466,6 +466,12 @@ pub struct SearchFilters {
     pub gate_open: Option<bool>,
     /// Only ddoc rows declaring this schema, verbatim.
     pub ddoc_schema: Option<String>,
+    /// Turn classes left out of the results. `None` hides nothing.
+    ///
+    /// The daemon defaults this to [`fs3_core::TurnClass::HIDDEN_BY_DEFAULT`]
+    /// — fs3's own retrieval traffic — and a caller widens it explicitly. An
+    /// unclassified turn (`turn_class IS NULL`) is never hidden.
+    pub hidden_turn_classes: Option<Vec<fs3_core::TurnClass>>,
     /// How many hits to return.
     pub limit: i64,
 }
@@ -513,8 +519,18 @@ impl Default for SearchFilters {
             id_kinds: None,
             gate_open: None,
             ddoc_schema: None,
+            hidden_turn_classes: None,
             limit: 10,
         }
+    }
+}
+
+impl SearchFilters {
+    /// The hidden classes in their storage spelling, as one SQL array bind.
+    pub(crate) fn hidden_turn_class_names(&self) -> Option<Vec<&'static str>> {
+        self.hidden_turn_classes
+            .as_ref()
+            .map(|classes| classes.iter().map(|class| class.as_str()).collect())
     }
 }
 
@@ -544,6 +560,9 @@ pub struct SearchPage {
     /// The scan returned a short page because admitted candidates stopped
     /// growing or the configured expansion ceiling was reached.
     pub candidate_limit_exhausted: bool,
+    /// Distinct contents the turn-class filter removed from this page's
+    /// candidates — what a disclosure reports as hidden.
+    pub hidden_turns: u64,
 }
 
 fn page_from_rows(
@@ -566,10 +585,16 @@ fn page_from_rows(
         })
         .filter_map(Result::transpose)
         .collect::<Result<Vec<_>, StoreError>>()?;
+    let hidden_turns = rows
+        .first()
+        .map(|row| row.try_get::<i64, _>("hidden_count"))
+        .transpose()?
+        .map_or(0, |count| u64::try_from(count).unwrap_or(0));
     Ok(SearchPage {
         hits,
         passes,
         candidate_limit_exhausted,
+        hidden_turns,
     })
 }
 
@@ -642,8 +667,9 @@ candidate_raw_hashes AS MATERIALIZED (
       JOIN smart_content smart ON smart.text_hash = candidate.source_hash
      WHERE candidate.source_kind = 'smart'
 ),
-admitted_elements AS MATERIALIZED (
-    SELECT admitted.id, admitted.raw_hash
+admitted_scoped AS MATERIALIZED (
+    SELECT admitted.id, admitted.raw_hash,
+           COALESCE(admitted.turn_class = ANY($15::text[]), FALSE) AS hidden
       FROM elements admitted
       JOIN candidate_raw_hashes page ON page.raw_hash = admitted.raw_hash
      WHERE ($8::text[] IS NULL OR admitted.kind = ANY($8))
@@ -679,6 +705,21 @@ admitted_elements AS MATERIALIZED (
                     AND ($6::text IS NULL OR c.repo_identity = $6)
                     AND ($7::text IS NULL OR c.worktree LIKE $7)
                     AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)))
+),
+admitted_elements AS MATERIALIZED (
+    SELECT id, raw_hash
+      FROM admitted_scoped
+     WHERE NOT hidden
+),
+-- What the turn-class filter took out of this page's candidates: content that
+-- would have been admitted and has no visible occurrence left. Counted in the
+-- same pass so disclosure costs no second query.
+hidden_meta AS (
+    SELECT count(DISTINCT hidden.raw_hash)::bigint AS hidden_count
+      FROM admitted_scoped hidden
+     WHERE hidden.hidden
+       AND NOT EXISTS (SELECT 1 FROM admitted_elements visible
+                        WHERE visible.raw_hash = hidden.raw_hash)
 ),
 admitted_representatives AS MATERIALIZED (
     SELECT DISTINCT ON (raw_hash) id, raw_hash
@@ -777,9 +818,11 @@ SELECT h.source_kind, h.distance,
        h.blob_sha, h.parser_version, h.kind, h.subkind, h.name,
        h.address, h.span_start, h.span_end, h.sibling_order, h.raw_text,
        h.ddoc, h.identity, h.root_path, h.path,
-       candidate.candidate_count, admitted.admitted_count, h.element_id
+       candidate.candidate_count, admitted.admitted_count, hidden.hidden_count,
+       h.element_id
   FROM candidate_meta candidate
   CROSS JOIN admitted_meta admitted
+  CROSS JOIN hidden_meta hidden
   LEFT JOIN final_hits h ON TRUE
  ORDER BY h.distance, h.element_id"#;
 
@@ -818,7 +861,7 @@ pub async fn search_elements(
     // One statement text for every filter combination. Bind map: $1 vector,
     // $2 model, $3 element limit, $4 source, $5 distance, $6 repo, $7 path,
     // $8 kinds, $9 worktree, $10 id_kinds, $11 gate_open, $12 ddoc_schema,
-    // $13 conversation, $14 vector candidate limit.
+    // $13 conversation, $14 vector candidate limit, $15 hidden turn classes.
     let mut candidate_limit = filters.limit.saturating_mul(INITIAL_CANDIDATE_MULTIPLIER);
     let mut previous_admitted = None;
     for expansion in 0..=MAX_CANDIDATE_EXPANSIONS {
@@ -842,6 +885,7 @@ pub async fn search_elements(
             .bind(filters.ddoc_schema.as_deref())
             .bind(filters.conversation.as_deref())
             .bind(candidate_limit)
+            .bind(filters.hidden_turn_class_names())
             .fetch_all(&mut *tx)
             .await?;
 
@@ -1181,6 +1225,14 @@ mod tests {
             .bind(Option::<&str>::None)
             .bind(Option::<&str>::None)
             .bind(160_i64)
+            // The daemon's default: retrieval echoes hidden. The plan is
+            // checked with the filter the shipped search actually runs.
+            .bind(Some(
+                fs3_core::TurnClass::HIDDEN_BY_DEFAULT
+                    .iter()
+                    .map(|class| class.as_str())
+                    .collect::<Vec<_>>(),
+            ))
             .fetch_one(&mut *connection)
             .await?;
         Ok(row.try_get::<Json<serde_json::Value>, _>(0)?.0)
