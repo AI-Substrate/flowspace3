@@ -621,6 +621,12 @@ async fn search(
             // ends up rephrasing a query that was never the problem.
             let ddoc_notice = ddoc_degradation_notice(&state, &scope).await;
             let next = next_after_search(&outcome, &request);
+            // Retrieval hiding is disclosed beside whatever the next step is,
+            // except when it already IS the reason the page is empty.
+            let next = match outcome.filtered.clause() {
+                Some(clause) if outcome.empty_because.is_none() => format!("{next}; {clause}"),
+                _ => next,
+            };
             let next = match ddoc_notice {
                 Some(notice) => format!("{notice} — {next}"),
                 None => next,
@@ -634,6 +640,7 @@ async fn search(
                 },
                 "scan_incomplete": outcome.scan_incomplete,
                 "passes": outcome.passes,
+                "filtered": outcome.filtered,
             });
             if weak_match {
                 meta["hint"] = serde_json::Value::String(WEAK_MATCH_HINT.to_string());
@@ -730,6 +737,9 @@ fn next_page_command(request: &SearchRequest, limit: i64, next_offset: i64) -> S
         Some(true) => args.push("--gate-open".to_string()),
         Some(false) => args.push("--gate-closed".to_string()),
         None => {}
+    }
+    if request.include_retrieval {
+        args.push(crate::search::INCLUDE_RETRIEVAL_FLAG.to_string());
     }
     args.join(" ")
 }

@@ -911,3 +911,170 @@ async fn listing_narrows_and_removing_forgets_exactly_one() {
 
     database.destroy(state.db).await;
 }
+
+fn tool(turn_no: u32, role: TurnRole, item: TurnItem) -> Turn {
+    Turn {
+        role,
+        items: vec![item],
+        ..turn(turn_no, "")
+    }
+}
+
+fn search_call(text: &str) -> TurnItem {
+    TurnItem::ToolCall {
+        tool: "Bash".to_string(),
+        input: ToolInput::Verbatim {
+            text: text.to_string(),
+        },
+    }
+}
+
+fn printed(head: &str) -> TurnItem {
+    TurnItem::ToolResult {
+        tool: "Bash".to_string(),
+        head: head.to_string(),
+        total_bytes: head.len() as u64,
+        truncated: false,
+    }
+}
+
+/// An agent asking fs3 the question, and the envelope it got back, must not
+/// outrank the conversation that holds the answer — and hiding them is said
+/// out loud, with the flag that shows them.
+#[tokio::test]
+async fn retrieval_echoes_are_hidden_by_default_and_disclosed() {
+    let (database, state) = stack("conv-query-echoes").await;
+    store(
+        &state,
+        GUID,
+        vec![
+            turn(1, "what sets the retry backoff ceiling?"),
+            tool(
+                2,
+                TurnRole::Agent,
+                search_call(r#"{"command":"flowspace3 search \"retry backoff ceiling\" --json"}"#),
+            ),
+            tool(
+                3,
+                TurnRole::Human,
+                printed(
+                    "{\"ok\": true, \"command\": \"search\", \"v\": 1, \"data\": {\"q\": \"retry backoff ceiling\"}}",
+                ),
+            ),
+            turn(4, "The retry backoff ceiling is thirty seconds, set by the runner."),
+        ],
+    )
+    .await;
+    drain(&state).await;
+
+    let hidden = search(
+        &state,
+        &ask("retry backoff ceiling", Some("conversation")),
+        &Scope::unscoped(),
+    )
+    .await
+    .expect("search answers");
+    let addresses: Vec<&str> = hidden
+        .results
+        .iter()
+        .map(|hit| hit.address.as_str())
+        .collect();
+    assert!(
+        addresses.contains(&format!("conv:{GUID}#t4").as_str()),
+        "{addresses:?}"
+    );
+    assert!(
+        addresses.contains(&format!("conv:{GUID}#t1").as_str()),
+        "{addresses:?}"
+    );
+    for echo in [2, 3] {
+        let address = format!("conv:{GUID}#t{echo}");
+        assert!(
+            !addresses.contains(&address.as_str()),
+            "{address} leaked: {addresses:?}"
+        );
+    }
+    assert!(
+        hidden.filtered.retrieval_turns >= 2,
+        "{:?}",
+        hidden.filtered
+    );
+    assert_eq!(hidden.filtered.include_flag, Some("--include-retrieval"));
+    assert!(
+        hidden
+            .filtered
+            .clause()
+            .is_some_and(|clause| clause.contains("--include-retrieval")),
+        "the disclosure names the flag"
+    );
+
+    let everything = search(
+        &state,
+        &SearchRequest {
+            include_retrieval: true,
+            ..ask("retry backoff ceiling", Some("conversation"))
+        },
+        &Scope::unscoped(),
+    )
+    .await
+    .expect("search answers");
+    let addresses: Vec<&str> = everything
+        .results
+        .iter()
+        .map(|hit| hit.address.as_str())
+        .collect();
+    for turn_no in 1..=4 {
+        let address = format!("conv:{GUID}#t{turn_no}");
+        assert!(
+            addresses.contains(&address.as_str()),
+            "{address} missing: {addresses:?}"
+        );
+    }
+    assert_eq!(everything.filtered.retrieval_turns, 0);
+    assert_eq!(everything.filtered.include_flag, None);
+
+    drop(database);
+}
+
+/// When every match is retrieval traffic the page is empty for a reason the
+/// caller can act on, not "nothing matched".
+#[tokio::test]
+async fn a_page_of_only_echoes_says_so() {
+    let (database, state) = stack("conv-query-only-echoes").await;
+    store(
+        &state,
+        GUID,
+        vec![
+            tool(
+                1,
+                TurnRole::Agent,
+                search_call("flowspace3 search \"zebra quokka manifold\""),
+            ),
+            tool(
+                2,
+                TurnRole::Human,
+                printed("no hits for zebra quokka manifold"),
+            ),
+        ],
+    )
+    .await;
+    drain(&state).await;
+
+    let outcome = search(
+        &state,
+        &ask("zebra quokka manifold", Some("conversation")),
+        &Scope::unscoped(),
+    )
+    .await
+    .expect("search answers");
+    assert!(outcome.results.is_empty(), "{:?}", outcome.results);
+    let reason = outcome.empty_because.expect("the emptiness is explained");
+    assert_eq!(reason.reason, "retrieval_hidden");
+    assert!(
+        reason
+            .hint
+            .is_some_and(|hint| hint.contains("--include-retrieval"))
+    );
+
+    drop(database);
+}

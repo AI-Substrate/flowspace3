@@ -69,7 +69,7 @@ pub use jobs::{
     queue_depth_history, record_job_retention, requeue_failed, requeue_running,
     retire_empty_embed_jobs, retry_job,
 };
-pub use lexical::{LexicalHit, LexicalMatch, search_lexical};
+pub use lexical::{LexicalHit, LexicalMatch, LexicalPage, search_lexical, search_lexical_page};
 pub use messages::{ack_message, live_messages, sync_messages};
 pub use read::{
     IndexedFile, count_files_under, files_at_path, files_under, latest_summary,

@@ -56,22 +56,46 @@ pub async fn search_lexical(
     query: &str,
     filters: &SearchFilters,
 ) -> Result<Vec<LexicalHit>, StoreError> {
+    Ok(search_lexical_page(pool, query, filters).await?.hits)
+}
+
+/// Exact lexical hits plus what the turn-class filter hid from them.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct LexicalPage {
+    /// The visible hits, structural names first.
+    pub hits: Vec<LexicalHit>,
+    /// Matches left out because their turn class is hidden, counted within
+    /// the window the page was cut from.
+    pub hidden_turns: u64,
+}
+
+/// [`search_lexical`], also reporting how many matches the turn-class filter
+/// hid.
+///
+/// # Errors
+/// As [`search_lexical`].
+pub async fn search_lexical_page(
+    pool: &PgPool,
+    query: &str,
+    filters: &SearchFilters,
+) -> Result<LexicalPage, StoreError> {
     // pg_trgm cannot derive an index key below three characters. Skipping the
     // lexical leg keeps a tiny query from turning into a whole-table scan;
     // the semantic leg still answers it.
     if query.chars().take(3).count() < 3 {
-        return Ok(Vec::new());
+        return Ok(LexicalPage::default());
     }
     let pattern = contains_pattern(query);
     // Bind map: $1 pattern, $2 limit, $3 repo, $4 path, $5 kinds,
     // $6 worktree, $7 id_kinds, $8 gate_open, $9 ddoc_schema,
-    // $10 conversation.
+    // $10 conversation, $11 hidden turn classes.
     let rows = sqlx::query(
-        r#"WITH candidates AS (
+        r#"WITH scoped AS (
              SELECT el.id, el.blob_sha, el.parser_version, el.kind, el.subkind,
                     el.name, el.address, el.span_start, el.span_end,
                     el.sibling_order, el.raw_text, el.ddoc,
-                    lower(el.name) LIKE $1 ESCAPE '\' AS name_match
+                    lower(el.name) LIKE $1 ESCAPE '\' AS name_match,
+                    COALESCE(el.turn_class = ANY($11::text[]), FALSE) AS hidden
                FROM elements el
               WHERE lower(el.name || E'\n' || el.raw_text) LIKE $1 ESCAPE '\'
                 AND ($5::text[] IS NULL OR el.kind = ANY($5))
@@ -113,13 +137,26 @@ pub async fn search_lexical(
                              AND ($4::text IS NULL OR c.worktree LIKE $4)
                              AND ($6::text IS NULL OR c.worktree IS NULL OR c.worktree = $6)))
               ORDER BY name_match DESC, length(el.raw_text), el.id
+              -- A window wider than the page, so hidden echoes cannot starve
+              -- it and the disclosure has something to count.
+              LIMIT $2 * 10
+         ),
+         candidates AS (
+             SELECT * FROM scoped WHERE NOT hidden
+              ORDER BY name_match DESC, length(raw_text), id
               LIMIT $2
+         ),
+         hidden_meta AS (
+             SELECT count(*)::bigint AS hidden_count FROM scoped WHERE hidden
          )
-         SELECT candidate.*,
+         -- Driven from the count, so a page whose every match was hidden
+         -- still reports how many: one row with a NULL candidate.
+         SELECT candidate.*, hidden.hidden_count,
                 COALESCE(live.identity, anchored.identity) AS identity,
                 COALESCE(live.root_path, anchored.root_path) AS root_path,
                 live.path
-           FROM candidates candidate
+           FROM hidden_meta hidden
+           LEFT JOIN candidates candidate ON TRUE
            LEFT JOIN LATERAL (
                 SELECT r.identity, w.root_path, f.path
                   FROM worktree_files f
@@ -161,10 +198,18 @@ pub async fn search_lexical(
     .bind(filters.gate_open)
     .bind(filters.ddoc_schema.as_deref())
     .bind(filters.conversation.as_deref())
+    .bind(filters.hidden_turn_class_names())
     .fetch_all(pool)
     .await?;
 
-    rows.iter()
+    let hidden_turns = rows
+        .first()
+        .map(|row| row.try_get::<i64, _>("hidden_count"))
+        .transpose()?
+        .map_or(0, |count| u64::try_from(count).unwrap_or(0));
+    let hits = rows
+        .iter()
+        .filter(|row| matches!(row.try_get::<Option<i64>, _>("id"), Ok(Some(_))))
         .map(|row| {
             Ok(LexicalHit {
                 element: crate::elements::element_from_row(row)?,
@@ -180,7 +225,8 @@ pub async fn search_lexical(
                 },
             })
         })
-        .collect()
+        .collect::<Result<Vec<_>, StoreError>>()?;
+    Ok(LexicalPage { hits, hidden_turns })
 }
 
 fn contains_pattern(query: &str) -> String {
