@@ -748,6 +748,46 @@ struct AgentUsage {
     total_tokens: u64,
 }
 
+/// One assistant turn assembled from EVERY choice in the response.
+///
+/// OpenAI sends one choice per requested completion, so with `n` unset the
+/// first choice is the whole turn. GitHub Copilot does not: for Claude models
+/// it splits a single turn across several choices — the prose in one, and each
+/// parallel tool call in its own (observed 2026-10-08 against
+/// `claude-sonnet-5.5`: choice 0 "I'll search the code index…" with no calls,
+/// choices 1 and 2 one distinct `search` call each). Reading only the first
+/// choice turned that planning sentence into the final answer and dropped
+/// every tool call, so `ask` answered "I need the function name." after one
+/// search. Merging is a no-op for a single-choice response.
+///
+/// Text from every non-blank choice is joined with a newline; tool calls are
+/// kept in order and deduplicated by id, so a provider that repeats a call
+/// across choices cannot make the agent run it twice.
+fn merge_choices(choices: Vec<AgentChoice>) -> Option<AgentResponseMessage> {
+    if choices.is_empty() {
+        return None;
+    }
+    let mut texts: Vec<String> = Vec::new();
+    let mut tool_calls: Vec<AgentToolCall> = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for choice in choices {
+        if let Some(text) = choice.message.content
+            && !text.trim().is_empty()
+        {
+            texts.push(text);
+        }
+        for call in choice.message.tool_calls {
+            if seen.insert(call.id.clone()) {
+                tool_calls.push(call);
+            }
+        }
+    }
+    Some(AgentResponseMessage {
+        content: (!texts.is_empty()).then(|| texts.join("\n")),
+        tool_calls,
+    })
+}
+
 fn agent_message(message: &fs3_core::ChatMessage) -> AgentMessage {
     match message {
         fs3_core::ChatMessage::System(content) => AgentMessage {
@@ -835,16 +875,9 @@ impl fs3_core::ChatProvider for OpenAiCompatChatClient {
         .map_err(PostFailure::into_error)?;
 
         let usage = response.usage.map(|usage| usage.total_tokens);
-        let message = response
-            .choices
-            .into_iter()
-            .next()
-            .map(|choice| choice.message)
-            .ok_or_else(|| {
-                Error::Provider(
-                    "openai-compat chat returned no choices; nothing to answer with".into(),
-                )
-            })?;
+        let message = merge_choices(response.choices).ok_or_else(|| {
+            Error::Provider("openai-compat chat returned no choices; nothing to answer with".into())
+        })?;
         Ok(fs3_core::ChatTurn {
             content: message.content,
             tool_calls: message
@@ -872,6 +905,67 @@ impl fs3_core::ChatProvider for OpenAiCompatChatClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn copilot_response(json: &str) -> AgentResponseMessage {
+        let response: AgentResponse = serde_json::from_str(json).expect("response parses");
+        merge_choices(response.choices).expect("at least one choice")
+    }
+
+    /// The shape GitHub Copilot sends for a Claude model (2026-10-08): the
+    /// planning sentence alone in choice 0, each parallel tool call in its own
+    /// choice. All of it is one assistant turn.
+    #[test]
+    fn a_turn_split_across_choices_keeps_every_tool_call() {
+        let merged = copilot_response(
+            r#"{"choices":[
+              {"finish_reason":"tool_calls","message":{"role":"assistant","content":"I'll search the index."}},
+              {"finish_reason":"tool_calls","message":{"role":"assistant","content":"","tool_calls":[
+                {"id":"call_a","type":"function","function":{"name":"search","arguments":"{\"query\":\"one\"}"}}]}},
+              {"finish_reason":"tool_calls","message":{"role":"assistant","content":null,"tool_calls":[
+                {"id":"call_b","type":"function","function":{"name":"search","arguments":"{\"query\":\"two\"}"}}]}}
+            ],"usage":{"total_tokens":42}}"#,
+        );
+        let ids: Vec<&str> = merged
+            .tool_calls
+            .iter()
+            .map(|call| call.id.as_str())
+            .collect();
+        assert_eq!(ids, ["call_a", "call_b"], "no tool call may be dropped");
+        assert_eq!(merged.content.as_deref(), Some("I'll search the index."));
+    }
+
+    /// A single-choice response (OpenAI, Azure, OpenRouter) is unchanged.
+    #[test]
+    fn a_single_choice_response_is_unchanged() {
+        let merged = copilot_response(
+            r#"{"choices":[{"message":{"role":"assistant","content":"the answer","tool_calls":[]}}]}"#,
+        );
+        assert_eq!(merged.content.as_deref(), Some("the answer"));
+        assert!(merged.tool_calls.is_empty());
+    }
+
+    /// A call repeated across choices runs once; blank text is not an answer.
+    #[test]
+    fn a_repeated_call_id_is_kept_once_and_blank_text_is_dropped() {
+        let call =
+            r#"{"id":"same","type":"function","function":{"name":"search","arguments":"{}"}}"#;
+        let merged = copilot_response(&format!(
+            r#"{{"choices":[
+              {{"message":{{"content":"  ","tool_calls":[{call}]}}}},
+              {{"message":{{"content":null,"tool_calls":[{call}]}}}}
+            ]}}"#
+        ));
+        assert_eq!(merged.tool_calls.len(), 1);
+        assert_eq!(
+            merged.content, None,
+            "whitespace-only text must not become an answer"
+        );
+    }
+
+    #[test]
+    fn no_choices_is_no_turn() {
+        assert!(merge_choices(Vec::new()).is_none());
+    }
 
     #[test]
     fn the_refusal_names_the_endpoint_and_a_way_forward() {
