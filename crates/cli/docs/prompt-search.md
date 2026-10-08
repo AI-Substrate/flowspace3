@@ -70,13 +70,15 @@ With no message after the quotes, the agent summarises what the hits say. You
 do not see the raw hits yourself; the agent does. A hook cannot rewrite your
 prompt, so the agent also sees the `fs3 "…"` line as you typed it.
 
-Two things are left out, each with a note to the agent saying how many:
+One thing is left out and one is marked, each with a note to the agent saying
+how many:
 
-- **Noise.** Conversation turns with no summary that are tool output or under
-  160 characters (process exit lines, pane names). `-raw` keeps them.
-- **This chat's last 100 turns.** They are already in the agent's context, so a
-  search never echoes the conversation you are having. Older turns from this
-  chat still appear, and `-this` searches all of it.
+- **Noise is left out.** Conversation turns with no summary that are tool
+  output or under 160 characters (process exit lines, pane names). `-raw` keeps
+  them.
+- **This chat's last 100 turns are marked, never hidden.** They are tagged
+  `THIS CHAT` so the agent knows it may already have them; after a compaction,
+  search may be its only copy of them.
 
 ## Limits
 

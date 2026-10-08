@@ -40,7 +40,7 @@ MAX_LIMIT = 25
 OVERFETCH = 3  # fetch this many times the limit so dropping noise still leaves enough hits
 SESSION_PAGES = 3  # `search` has no per-conversation filter: over-fetch and keep this chat's turns
 NOISE_CHARS = 160  # an unsummarised turn shorter than this carries no meaning on its own
-RECENT_TURNS = 100  # this chat's newest turns are already in the agent's context: never echo them back
+RECENT_TURNS = 100  # this chat's newest turns are tagged, never hidden: after a compaction fs3 may hold the only copy
 
 LONG = {"all": "all", "code": "code", "convo": "convo", "convos": "convo", "this": "this",
         "quick": "quick", "raw": "raw", "help": "help"}
@@ -271,10 +271,8 @@ def search(query, opts, cwd, session_id):
     if opts["what"] != "code" and session_id:
         recent = recent_turns_of_this_chat(cwd, session_id)
         if recent:
-            kept = [r for r in hits if not recent(r["address"])]
-            if len(kept) < len(hits):
-                problems.append(f"left out {len(hits) - len(kept)} hit(s) from this chat's last {RECENT_TURNS} turns, already in your context")
-            hits = kept
+            for r in hits:
+                r["_recent"] = recent(r["address"])
     if not opts["raw"]:
         kept = [r for r in hits if not is_noise(r)]
         if len(kept) < len(hits):
@@ -282,7 +280,12 @@ def search(query, opts, cwd, session_id):
         hits = kept
     what = {"both": "code + docs + conversations", "code": "code + docs",
             "convo": "conversations"}[opts["what"]]
-    return hits[: opts["limit"]], f"{where}, {what}", problems
+    hits = hits[: opts["limit"]]
+    tagged = sum(1 for r in hits if r.get("_recent"))
+    if tagged:
+        problems.append(f"{tagged} hit(s) are from this chat's last {RECENT_TURNS} turns (tagged THIS CHAT): "
+                        "you may already have them in context, unless a compaction removed them")
+    return hits, f"{where}, {what}", problems
 
 
 def grouped(hits):
@@ -329,6 +332,8 @@ def render(query, scope, hits, problems, message, quick, fumbles=()):
             block = []
         for rank, hit in members:
             kind = (hit.get("kind") or "") + (f"/{hit['subkind']}" if hit.get("subkind") else "")
+            if hit.get("_recent"):
+                kind += " THIS CHAT"
             label = hit["address"] if not key.startswith("conv:") else "#" + hit["address"].split("#", 1)[1]
             path = f" {hit['path']}" if hit.get("path") else ""
             head = f"[{rank}] {label}" + ("" if key.startswith("conv:") else f"  repo={repo}{path}") \
