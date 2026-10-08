@@ -738,6 +738,9 @@ async fn serve(
         state.db.clone(),
         state.config.indexing.job_retention_days,
     )));
+    reconcilers.push(Box::new(
+        crate::turn_class_backfill::TurnClassBackfill::new(state.db.clone()),
+    ));
     if state.config.indexing.conversation_poll_ticks != 0 {
         let conversation_home = std::env::var_os("HOME")
             .map(std::path::PathBuf::from)

@@ -32,6 +32,7 @@ pub mod scope;
 pub mod search;
 pub mod skew;
 pub mod status;
+pub mod turn_class_backfill;
 pub mod update;
 pub mod watch;
 pub mod wiring;

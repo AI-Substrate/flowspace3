@@ -23,10 +23,10 @@ use fs3_core::{
     ToolInput, Turn, TurnItem, TurnRole, TurnSource, earns_summary,
 };
 use fs3_store::{
-    AnchorFilter, PgPool, append_turns, collect_garbage, conversation_delivery,
-    delete_conversation, enqueue_job, get_elements, get_smart_content, list_conversations, outline,
-    put_smart_content, raw_hash_is_referenced, register_worktree, remove_root, sync_worktree_files,
-    upsert_conversation, upsert_element_tree, window,
+    AnchorFilter, PgPool, append_turns, backfill_turn_classes, collect_garbage,
+    conversation_delivery, delete_conversation, enqueue_job, get_elements, get_smart_content,
+    list_conversations, outline, put_smart_content, raw_hash_is_referenced, register_worktree,
+    remove_root, sync_worktree_files, upsert_conversation, upsert_element_tree, window,
 };
 use std::collections::BTreeMap;
 use std::time::Duration;
@@ -984,4 +984,61 @@ async fn appended_turns_are_classified_and_a_result_pairs_across_appends() {
             Some("tool_call".to_string()),
         ]
     );
+}
+
+#[tokio::test]
+async fn the_backfill_classifies_pre_migration_turns_exactly_like_ingest() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+    let guid = id('d');
+
+    let search = TurnItem::ToolCall {
+        tool: "bash".to_string(),
+        input: ToolInput::Verbatim {
+            text: "flowspace3 get 'conv:1#t3' --after 5".to_string(),
+        },
+    };
+    let output = TurnItem::ToolResult {
+        tool: "bash".to_string(),
+        head: "t3 human: hello".to_string(),
+        total_bytes: 15,
+        truncated: false,
+    };
+    store_conversation(
+        &pool,
+        &guid,
+        &[
+            turn(1, "find the earlier discussion"),
+            tool_turn(2, TurnRole::Agent, search),
+            tool_turn(3, TurnRole::Agent, output),
+            turn(4, "It was about retries."),
+        ],
+    )
+    .await;
+    let at_ingest = stored_classes(&pool, &guid).await;
+
+    // Turns written before migration 0025 carry no class.
+    sqlx::query("UPDATE elements SET turn_class = NULL WHERE kind = 'turn'")
+        .execute(&pool)
+        .await
+        .expect("forgetting the classes");
+
+    let first = backfill_turn_classes(&pool, 10).await.expect("backfilling");
+    assert_eq!(
+        first, 4,
+        "every unclassified turn is classified in one pass"
+    );
+    assert_eq!(stored_classes(&pool, &guid).await, at_ingest);
+    assert_eq!(
+        at_ingest,
+        vec![
+            Some("work".to_string()),
+            Some("retrieval_call".to_string()),
+            Some("retrieval_result".to_string()),
+            Some("work".to_string()),
+        ]
+    );
+
+    let again = backfill_turn_classes(&pool, 10).await.expect("re-running");
+    assert_eq!(again, 0, "a finished backfill reports nothing left to do");
 }
