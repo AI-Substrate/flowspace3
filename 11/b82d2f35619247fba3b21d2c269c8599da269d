@@ -1,0 +1,23 @@
+crates/daemon/src/http.rs
+  s_15d888f4b629c1::t_b7724b46944a29 648-657,675-680,726-784,1078-1118
+crates/daemon/src/search.rs
+  s_15d888f4b629c1::t_1a8c76fd886540 48,246-249,252-313,460,474-475,492-495,499-512,514-526,528-531,533-545,554-555,557-560,645,661,686,1216-1263
+crates/daemon/tests/conversation_query.rs
+  s_15d888f4b629c1::t_74ee86f9a1d51a 321-395
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "11b82d2f35619247fba3b21d2c269c8599da269d",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
