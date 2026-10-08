@@ -318,6 +318,81 @@ async fn default_scope_admits_only_its_repository_conversations() {
     database.destroy(state.db).await;
 }
 
+/// A cwd-scoped search says what the same query ranks in OTHER repositories;
+/// a named `--repo`, a later page, or an unscoped search does not.
+#[tokio::test]
+async fn a_cwd_scoped_search_counts_what_other_repositories_hold() {
+    let (database, state) = stack("conv-query-elsewhere").await;
+    let repo_a = "git:github.com/fs3/repo-a";
+    let repo_b = "git:github.com/fs3/repo-b";
+    store_at(
+        &state,
+        GUID,
+        Some(repo_a),
+        None,
+        vec![turn(1, "shared search topic from repository alpha")],
+    )
+    .await;
+    store_at(
+        &state,
+        OTHER,
+        Some(repo_b),
+        None,
+        vec![turn(1, "shared search topic from repository beta")],
+    )
+    .await;
+    drain(&state).await;
+
+    let from_cwd = Scope {
+        repo: Some(repo_a.to_string()),
+        source: ScopeSource::Cwd,
+        ..Scope::unscoped()
+    };
+    let mine = search(&state, &ask("shared search topic", None), &from_cwd)
+        .await
+        .expect("cwd-scoped search");
+    assert_eq!(mine.results.len(), 1, "the page itself stays scoped");
+    let elsewhere = mine
+        .elsewhere
+        .expect("the other repository's hit is counted");
+    assert_eq!(elsewhere.hits, 1);
+    assert_eq!(elsewhere.repos.len(), 1);
+    assert_eq!(elsewhere.repos[0].repo, repo_b);
+    assert_eq!(elsewhere.of_top, 20);
+
+    let named = search(&state, &ask("shared search topic", None), &scoped(repo_a))
+        .await
+        .expect("named-repo search");
+    assert!(
+        named.elsewhere.is_none(),
+        "--repo meant exactly that repository"
+    );
+
+    let mut later = ask("shared search topic", None);
+    later.offset = Some(1);
+    let page_two = search(&state, &later, &from_cwd)
+        .await
+        .expect("second page");
+    assert!(
+        page_two.elsewhere.is_none(),
+        "only the first page carries the hint"
+    );
+
+    let everything = search(
+        &state,
+        &ask("shared search topic", None),
+        &Scope::unscoped(),
+    )
+    .await
+    .expect("unscoped search");
+    assert!(
+        everything.elsewhere.is_none(),
+        "nothing is elsewhere when all was searched"
+    );
+
+    database.destroy(state.db).await;
+}
+
 /// Conversation imports historically stored the remote without the identity
 /// scheme, while query scopes use the canonical `git:` identity. Both forms
 /// name the same repository and must meet at one normalization seam.

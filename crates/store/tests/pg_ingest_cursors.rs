@@ -63,6 +63,7 @@ fn record(ordinal: &str, body: &str) -> RawRecord {
         body: body.to_string(),
         items: Vec::new(),
         head_sha: None,
+        model: None,
     }
 }
 

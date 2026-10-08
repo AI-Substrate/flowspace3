@@ -235,6 +235,12 @@ pub struct RawRecord {
     pub items: Vec<TurnItem>,
     /// Repo HEAD at time-of-record, when the store knows it.
     pub head_sha: Option<String>,
+    /// The model that wrote this record, when the store names it: claude and
+    /// omp assistant messages do; human turns and the ledger/metrics stores do
+    /// not. Additive (2026-10-09, conversation recall item 1): it fills the
+    /// frozen contract's record, it does not widen the trait.
+    #[serde(default)]
+    pub model: Option<String>,
 }
 
 /// One incremental read: what was new, where to resume, and whether the file

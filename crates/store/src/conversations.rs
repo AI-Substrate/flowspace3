@@ -31,8 +31,8 @@ use std::str::FromStr;
 
 use fs3_core::conversation::PARSER_VERSION;
 use fs3_core::{
-    Conversation, ConversationId, Element, ElementKind, Turn, TurnClass, TurnClassifier, TurnRole,
-    TurnSource,
+    Conversation, ConversationAgent, ConversationId, Element, ElementKind, Turn, TurnClass,
+    TurnClassifier, TurnRole, TurnSource,
 };
 use sqlx::Row;
 use sqlx::postgres::PgRow;
@@ -98,6 +98,8 @@ pub struct ConversationSummary {
     pub turns: i64,
     /// The conversation this is a child of, for a claude subagent sidecar.
     pub parent: Option<ConversationId>,
+    /// Who had it: harness, models, pij seat — whatever is known.
+    pub agent: ConversationAgent,
 }
 
 /// The index-wide facts needed to decide whether one derived conversation was delivered.
@@ -106,6 +108,7 @@ pub struct ConversationDelivery {
     pub guid: ConversationId,
     pub repo_identity: Option<String>,
     pub worktree: Option<String>,
+    pub agent: ConversationAgent,
     pub turns: i64,
     pub last_turn_at: Option<String>,
 }
@@ -617,7 +620,8 @@ pub async fn list_conversations(
         "SELECT c.guid::text AS guid, c.repo_identity, c.worktree, c.base_sha, c.title,
                 c.parent_conversation_id::text AS parent,
                 to_char(c.started_at AT TIME ZONE 'UTC', {AS_TEXT}) AS started_at,
-                (SELECT count(*) FROM turns t WHERE t.conversation_id = c.guid) AS turns
+                (SELECT count(*) FROM turns t WHERE t.conversation_id = c.guid) AS turns,
+                c.agent_harness, c.agent_models, c.pij_seat
            FROM conversations c
           WHERE ($1::text IS NULL OR c.repo_identity = $1)
             AND ($2::text IS NULL OR strpos(coalesce(c.worktree, ''), $2) = 1)
@@ -645,6 +649,7 @@ pub async fn list_conversations(
                     .map(ConversationId::new)
                     .transpose()
                     .map_err(corrupt)?,
+                agent: agent_of(row)?,
             })
         })
         .collect()
@@ -660,6 +665,7 @@ pub async fn conversation_delivery(
 ) -> Result<Option<ConversationDelivery>, StoreError> {
     let row = sqlx::query(&format!(
         "SELECT c.guid::text AS guid, c.repo_identity, c.worktree,
+                c.agent_harness, c.agent_models, c.pij_seat,
                 count(t.turn_no) AS turns,
                 to_char(max(t.at) AT TIME ZONE 'UTC', {AS_TEXT}) AS last_turn_at
            FROM conversations c
@@ -676,11 +682,111 @@ pub async fn conversation_delivery(
             guid: ConversationId::new(row.try_get::<String, _>("guid")?).map_err(corrupt)?,
             repo_identity: row.try_get("repo_identity")?,
             worktree: row.try_get("worktree")?,
+            agent: agent_of(&row)?,
             turns: row.try_get("turns")?,
             last_turn_at: row.try_get("last_turn_at")?,
         })
     })
     .transpose()
+}
+
+/// Record who had a conversation: its harness, newly seen models, and seat.
+///
+/// Additive like [`upsert_conversation`]: a poll that learns nothing new
+/// (`None`, an empty model list) erases nothing an earlier poll recorded, and
+/// a model already listed is not appended twice. A missing header is a no-op —
+/// the agent rides on the conversation, never creates one.
+///
+/// # Errors
+/// [`StoreError::Query`] when the statement fails.
+pub async fn record_agent(
+    pool: &PgPool,
+    guid: &ConversationId,
+    harness: Option<&str>,
+    models: &[String],
+    seat: Option<&str>,
+) -> Result<(), StoreError> {
+    sqlx::query(
+        "UPDATE conversations
+            SET agent_harness = COALESCE($2, agent_harness),
+                agent_models = agent_models || ARRAY(
+                    SELECT model
+                      FROM unnest($3::text[]) WITH ORDINALITY AS seen(model, position)
+                     WHERE NOT model = ANY(agent_models)
+                     ORDER BY position),
+                pij_seat = COALESCE($4, pij_seat)
+          WHERE guid = $1::uuid",
+    )
+    .bind(guid.as_str())
+    .bind(harness)
+    .bind(models)
+    .bind(seat)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// Set `pij_seat` on each listed conversation that has none yet.
+///
+/// `guids` and `seats` are parallel. Conversations that already name a seat
+/// keep it; guids with no header are ignored. Returns the rows changed.
+///
+/// # Errors
+/// [`StoreError::Query`] when the statement fails.
+pub async fn backfill_seats(
+    pool: &PgPool,
+    guids: &[String],
+    seats: &[String],
+) -> Result<u64, StoreError> {
+    let done = sqlx::query(
+        "UPDATE conversations c
+            SET pij_seat = bound.seat
+           FROM unnest($1::uuid[], $2::text[]) AS bound(guid, seat)
+          WHERE c.guid = bound.guid
+            AND c.pij_seat IS NULL",
+    )
+    .bind(guids)
+    .bind(seats)
+    .execute(pool)
+    .await?;
+    Ok(done.rows_affected())
+}
+
+/// The agent columns of a `conversations` row selected with
+/// `agent_harness, agent_models, pij_seat`.
+fn agent_of(row: &PgRow) -> Result<ConversationAgent, StoreError> {
+    Ok(ConversationAgent {
+        harness: row.try_get("agent_harness")?,
+        models: row.try_get("agent_models")?,
+        seat: row.try_get("pij_seat")?,
+    })
+}
+
+/// Who had each of these conversations, keyed by guid text. Conversations
+/// with nothing recorded are left out rather than mapped to an empty agent.
+///
+/// # Errors
+/// [`StoreError::Query`] when the statement fails.
+pub async fn conversation_agents(
+    pool: &PgPool,
+    guids: &[String],
+) -> Result<std::collections::HashMap<String, ConversationAgent>, StoreError> {
+    if guids.is_empty() {
+        return Ok(std::collections::HashMap::new());
+    }
+    let rows = sqlx::query(
+        "SELECT guid::text AS guid, agent_harness, agent_models, pij_seat
+           FROM conversations
+          WHERE guid = ANY($1::uuid[])
+            AND (agent_harness IS NOT NULL OR pij_seat IS NOT NULL
+                 OR cardinality(agent_models) > 0)",
+    )
+    .bind(guids)
+    .fetch_all(pool)
+    .await?;
+    rows.iter()
+        .map(|row| Ok((row.try_get::<String, _>("guid")?, agent_of(row)?)))
+        .collect()
 }
 
 /// Remove a conversation, its turns and its turn elements.

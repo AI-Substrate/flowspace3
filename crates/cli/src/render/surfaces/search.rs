@@ -67,6 +67,13 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
                 format!("[{}-{}]", hit.span[0], hit.span[1]).bright_black(),
                 hit.address.bright_black()
             ));
+            if let Some(agent) = hit
+                .agent
+                .as_ref()
+                .and_then(fs3_core::ConversationAgent::label)
+            {
+                element.push_str(&format!("\n{}", agent.magenta()));
+            }
             if let Some(blurb) = hit
                 .smart
                 .as_deref()

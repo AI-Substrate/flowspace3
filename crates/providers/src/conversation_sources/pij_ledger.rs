@@ -303,6 +303,7 @@ fn record(seq: u64, value: &serde_json::Value) -> Option<RawRecord> {
         body,
         items,
         head_sha: None,
+        model: None,
     })
 }
 

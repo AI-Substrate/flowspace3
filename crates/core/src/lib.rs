@@ -57,7 +57,8 @@ pub use config::{
     env_overrides, parse_env_file, redact_url_password, resolve, resolve_config_dir,
 };
 pub use conversation::{
-    Conversation, ConversationId, ToolInput, Turn, TurnItem, TurnRole, TurnSource, earns_summary,
+    Conversation, ConversationAgent, ConversationId, ToolInput, Turn, TurnItem, TurnRole,
+    TurnSource, earns_summary,
 };
 pub use conversation_join::{
     SeatBinding, SessionRow, parse_rows, resolve_seat, store_for, uuid_version,

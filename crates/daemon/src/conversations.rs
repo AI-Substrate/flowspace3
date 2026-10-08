@@ -36,7 +36,7 @@
 
 use fs3_core::conversation::earns_summary;
 use fs3_core::envelope::Failure;
-use fs3_core::{Address, Conversation, ConversationId, Element, Turn, catalog};
+use fs3_core::{Address, Conversation, ConversationAgent, ConversationId, Element, Turn, catalog};
 use serde::{Deserialize, Serialize};
 
 use crate::enrich;
@@ -202,6 +202,9 @@ pub struct ConversationRow {
     /// subagent sidecar. Absent for everything else.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent: Option<String>,
+    /// Who had it — harness, models, pij seat — when any of it is known.
+    #[serde(skip_serializing_if = "ConversationAgent::is_empty")]
+    pub agent: ConversationAgent,
 }
 
 /// What `conversation list` answers with.
@@ -262,6 +265,7 @@ pub async fn list(state: &AppState, request: &ListRequest) -> Result<Conversatio
                 // and `tree` take, so a child's parent is one copy-paste away
                 // rather than a guid the caller has to re-address.
                 parent: row.parent.as_ref().map(ConversationId::address),
+                agent: row.agent,
             })
             .collect(),
     })
@@ -637,6 +641,7 @@ mod tests {
                 turns: 1,
                 started_at: "2026-08-30T00:00:00Z".to_string(),
                 parent: None,
+                agent: ConversationAgent::default(),
             }],
         });
         assert!(next.contains("ask \"<question>\" --conversation <guid>"));

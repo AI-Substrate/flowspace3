@@ -82,6 +82,10 @@ pub struct Hit {
     /// on code hits so the shipped code-hit envelope stays unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ddoc: Option<DdocHit>,
+    /// Who had the conversation a turn hit came from: harness, models, pij
+    /// seat. Absent, including the key, on every other hit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<crate::ConversationAgent>,
 }
 
 /// Counts from the scored set before the caller's display limit is applied.

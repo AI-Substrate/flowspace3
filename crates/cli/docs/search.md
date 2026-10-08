@@ -133,6 +133,15 @@ Standing somewhere fs3 has never indexed puts a warning in `scope.warnings` and
 at the front of `next_action`, naming `flowspace3 add <path>` — rather than
 answering from an unrelated repository and letting you believe it was yours.
 
+A scoped search also tells you what it did NOT show. On the first page of a
+search scoped by your working directory, the same query is ranked across every
+repository alongside it, and when that top page holds hits from other
+repositories, `meta.elsewhere` counts them (`hits`, `of_top`, per-repository
+`repos`, and the `command` to see them) and `next_action` leads with them:
+"this searched only the repository you are in; the top 10 across all
+repositories include 6 from others (pij 5, chainglass 1)". A named `--repo`
+never carries it — that scope was asked for exactly.
+
 ## Weak-match calibration
 
 The advisory floor is the named `WEAK_MATCH_SCORE_FLOOR` constant beside its

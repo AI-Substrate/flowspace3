@@ -45,7 +45,7 @@ use fs3_store::{LexicalHit, PathFilterProbe, SearchFilters, SearchHit};
 use serde::{Deserialize, Serialize};
 
 use crate::runner::fail;
-use crate::scope::Scope;
+use crate::scope::{Scope, ScopeSource};
 use crate::wiring::AppState;
 use fs3_core::views::search::{DdocHit, Hit, SearchChannel, SearchComposition};
 
@@ -243,7 +243,73 @@ pub struct SearchOutcome {
     pub passes: usize,
     /// What the turn-class filter hid (`meta.filtered`).
     pub filtered: FilteredDisclosure,
+    /// What the same query ranks highly in OTHER repositories, when this search
+    /// was scoped by the caller's working directory. `None` when it was not, or
+    /// when the unscoped top page holds nothing from elsewhere.
+    pub elsewhere: Option<Elsewhere>,
 }
+
+/// Hits from other repositories in the unscoped top page of a cwd-scoped search.
+///
+/// A bare search scopes to the repository the caller stands in (workshop 003
+/// D6), and that default stays. But a conversation that answers the question
+/// often happened in another repository — measured 2026-10-09: a blind eval's
+/// target ranked first under `--repo all` and was invisible from cwd, and the
+/// steer offered only paging. Counting from ONE unscoped page, rather than
+/// triggering on a low scoped score, is deliberate: echo turns pin the top
+/// score near 1.0, so a score trigger would never fire when it matters.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct Elsewhere {
+    /// Hits from other repositories among the unscoped top page.
+    pub hits: usize,
+    /// The size of the unscoped page they were counted in.
+    pub of_top: i64,
+    /// Per repository identity, most hits first.
+    pub repos: Vec<RepoHits>,
+}
+
+/// One repository's share of [`Elsewhere::hits`].
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct RepoHits {
+    /// The repository identity.
+    pub repo: String,
+    /// Its hits in the unscoped top page.
+    pub hits: usize,
+}
+
+/// Count the unscoped top page's hits that belong to a repository other than
+/// `scoped`. A hit with no repository (a conversation anchored nowhere) counts
+/// under `(none)`: it is still content the scoped search could not show.
+fn tally_elsewhere(scoped: &str, ranked: &[Hit], limit: i64) -> Option<Elsewhere> {
+    let page = usize::try_from(limit).unwrap_or(usize::MAX);
+    let mut repos: Vec<RepoHits> = Vec::new();
+    for hit in ranked.iter().take(page) {
+        let repo = hit.repo.as_deref().unwrap_or("(none)");
+        if repo == scoped {
+            continue;
+        }
+        match repos.iter_mut().find(|entry| entry.repo == repo) {
+            Some(entry) => entry.hits += 1,
+            None => repos.push(RepoHits {
+                repo: repo.to_string(),
+                hits: 1,
+            }),
+        }
+    }
+    let hits: usize = repos.iter().map(|entry| entry.hits).sum();
+    if hits == 0 {
+        return None;
+    }
+    repos.sort_by(|a, b| b.hits.cmp(&a.hits).then_with(|| a.repo.cmp(&b.repo)));
+    Some(Elsewhere {
+        hits,
+        of_top: limit,
+        repos,
+    })
+}
+
+/// A search slower than this logs where its time went (embed vs store).
+const SLOW_SEARCH: std::time::Duration = std::time::Duration::from_secs(5);
 
 impl SearchOutcome {
     /// Whether the best available result falls below the calibrated floor.
@@ -391,6 +457,7 @@ async fn search_filtered(
     // embedder — the same rule whether the repository was named or inferred.
     let repo_key = scope.repo.clone().unwrap_or_default();
     let model_key = state.embedder_key(&repo_key);
+    let started = std::time::Instant::now();
     let vector = state
         .embedder_for(&repo_key)
         .embed(&[query.to_string()])
@@ -403,6 +470,8 @@ async fn search_filtered(
                 "the embedder returned no vector for the query",
             )
         })?;
+
+    let embedded = started.elapsed();
 
     let mut filters = SearchFilters {
         repo: scope.repo.clone(),
@@ -420,11 +489,60 @@ async fn search_filtered(
 
     apply_ddoc_filters(&mut filters, request);
 
-    let (semantic, lexical) = tokio::try_join!(
-        fs3_store::search_elements(&state.db, &model_key, &vector, &filters),
-        fs3_store::search_lexical_page(&state.db, query, &filters),
-    )
-    .map_err(fail)?;
+    // The "more in other repositories" pass: the same vector, unscoped, run
+    // alongside the scoped legs so it adds no embedding call and no serial
+    // latency. Only for a cwd-inferred scope (a named `--repo` meant exactly
+    // that repository), only on the first page, never inside one transcript,
+    // and only when the unscoped search would use the same vector space. It
+    // carries the same filters, retrieval hiding included, so it counts what
+    // the scoped page would have shown.
+    let widen = scope.source == ScopeSource::Cwd
+        && scope.repo.is_some()
+        && conversation.is_none()
+        && offset == 0
+        && state.embedder_key("") == model_key;
+    let wide_filters = widen.then(|| SearchFilters {
+        repo: None,
+        worktree: None,
+        ..filters.clone()
+    });
+    let wide_pass = async {
+        let filters = wide_filters.as_ref()?;
+        match tokio::try_join!(
+            fs3_store::search_elements(&state.db, &model_key, &vector, filters),
+            fs3_store::search_lexical_page(&state.db, query, filters),
+        ) {
+            Ok(found) => Some(found),
+            Err(error) => {
+                // The hint is advice; a failure here never fails the search.
+                tracing::warn!(%error, "unscoped hint pass failed; answering without it");
+                None
+            }
+        }
+    };
+    let (scoped_pass, wide) = tokio::join!(
+        async {
+            tokio::try_join!(
+                fs3_store::search_elements(&state.db, &model_key, &vector, &filters),
+                fs3_store::search_lexical_page(&state.db, query, &filters),
+            )
+        },
+        wide_pass,
+    );
+    let (semantic, lexical) = scoped_pass.map_err(fail)?;
+    let total = started.elapsed();
+    if total >= SLOW_SEARCH {
+        // An outlier is unexplainable after the fact without the split: a
+        // 40 s `--repo all` search on 2026-10-09 logged nothing at all.
+        tracing::warn!(
+            embed_ms = embedded.as_millis(),
+            store_ms = (total - embedded).as_millis(),
+            passes = semantic.passes,
+            widened = widen,
+            repo = ?scope.repo,
+            "slow search"
+        );
+    }
     // The two channels count different things (distinct contents vs matching
     // rows) over overlapping sets, so their sum would double-count; the larger
     // is a floor on what was hidden.
@@ -433,6 +551,13 @@ async fn search_filtered(
         include_flag: (!request.include_retrieval).then_some(INCLUDE_RETRIEVAL_FLAG),
     };
     let mut lexical_hits = lexical.hits;
+    let elsewhere = wide.and_then(|(wide_semantic, wide_lexical)| {
+        let ranked = fuse(
+            wide_lexical.hits.iter().map(render_lexical),
+            wide_semantic.hits.iter().map(render),
+        );
+        tally_elsewhere(scope.repo.as_deref()?, &ranked, limit)
+    });
     let scan_incomplete = semantic.candidate_limit_exhausted;
     let passes = semantic.passes;
     let mut hits = semantic.hits;
@@ -480,6 +605,8 @@ async fn search_filtered(
             .skip(offset_index)
             .take(usize::try_from(limit).expect("validated positive limit fits usize"))
             .collect();
+        let mut results = results;
+        attach_agents(state, &mut results).await;
         let returned = i64::try_from(results.len()).expect("page length fits i64");
         let next_offset = (returned == limit).then_some(offset + returned);
         return Ok(SearchOutcome {
@@ -493,6 +620,7 @@ async fn search_filtered(
             scan_incomplete,
             passes,
             filtered,
+            elsewhere,
         });
     }
 
@@ -516,6 +644,7 @@ async fn search_filtered(
             scan_incomplete,
             passes,
             filtered,
+            elsewhere,
         });
     }
 
@@ -531,6 +660,7 @@ async fn search_filtered(
             scan_incomplete,
             passes,
             filtered,
+            elsewhere,
         });
     }
 
@@ -555,6 +685,7 @@ async fn search_filtered(
         scan_incomplete,
         passes,
         filtered,
+        elsewhere,
     })
 }
 
@@ -834,6 +965,37 @@ async fn anchor_not_indexed(
     )
 }
 
+/// Name the agent behind each conversation hit on the page: harness, models
+/// and pij seat, so "which agent did this" is answered on the hit itself
+/// rather than by a second lookup per guid. Advice, like the hint: a failed
+/// lookup leaves the hits as they were.
+async fn attach_agents(state: &AppState, results: &mut [Hit]) {
+    let guid_of = |hit: &Hit| {
+        hit.address
+            .strip_prefix(fs3_core::address::CONVERSATION_SCHEME)
+            .and_then(|rest| rest.split('#').next())
+            .map(str::to_string)
+    };
+    let mut guids: Vec<String> = results.iter().filter_map(guid_of).collect();
+    guids.sort();
+    guids.dedup();
+    if guids.is_empty() {
+        return;
+    }
+    let agents = match fs3_store::conversation_agents(&state.db, &guids).await {
+        Ok(agents) => agents,
+        Err(error) => {
+            tracing::warn!(%error, "conversation agents unavailable; hits go without them");
+            return;
+        }
+    };
+    for hit in results.iter_mut() {
+        if let Some(guid) = guid_of(hit) {
+            hit.agent = agents.get(&guid).cloned();
+        }
+    }
+}
+
 /// Turn a store hit into a workshop-003 row.
 fn render(hit: &SearchHit) -> Hit {
     let element = &hit.similar.element;
@@ -862,6 +1024,8 @@ fn render(hit: &SearchHit) -> Hit {
             .ddoc
             .as_deref()
             .map(|meta| ddoc_hit(meta, hit.path.as_deref())),
+        // Filled for conversation turns once the page is known: see `attach_agents`.
+        agent: None,
     }
 }
 
@@ -887,6 +1051,8 @@ fn render_lexical(hit: &LexicalHit) -> Hit {
             .ddoc
             .as_deref()
             .map(|meta| ddoc_hit(meta, hit.path.as_deref())),
+        // Filled for conversation turns once the page is known: see `attach_agents`.
+        agent: None,
     }
 }
 
@@ -1084,6 +1250,55 @@ pub(crate) fn path_matches_glob(path: &str, glob: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+
+    fn located(repo: Option<&str>) -> Hit {
+        Hit {
+            address: "conv:x#t1".to_string(),
+            score: 0.5,
+            channel: SearchChannel::Semantic,
+            match_field: "raw".to_string(),
+            kind: "turn".to_string(),
+            subkind: "agent".to_string(),
+            name: "t1".to_string(),
+            span: [1, 1],
+            snippet: String::new(),
+            smart: None,
+            tags: Vec::new(),
+            repo: repo.map(str::to_string),
+            path: None,
+            worktree: None,
+            ddoc: None,
+            agent: None,
+        }
+    }
+
+    #[test]
+    fn elsewhere_counts_only_other_repositories_inside_the_page() {
+        let ranked = vec![
+            located(Some("git:a")),
+            located(Some("git:b")),
+            located(Some("git:c")),
+            located(Some("git:b")),
+            located(None),
+            located(Some("git:c")), // beyond the page of 5
+        ];
+        let found = tally_elsewhere("git:a", &ranked, 5).expect("other repos hold hits");
+        assert_eq!(found.hits, 4);
+        assert_eq!(found.of_top, 5);
+        let repos: Vec<(&str, usize)> = found
+            .repos
+            .iter()
+            .map(|entry| (entry.repo.as_str(), entry.hits))
+            .collect();
+        assert_eq!(repos, vec![("git:b", 2), ("(none)", 1), ("git:c", 1)]);
+    }
+
+    #[test]
+    fn elsewhere_is_none_when_the_page_is_all_the_scoped_repository() {
+        let ranked = vec![located(Some("git:a")), located(Some("git:a"))];
+        assert!(tally_elsewhere("git:a", &ranked, 10).is_none());
+        assert!(tally_elsewhere("git:a", &[], 10).is_none());
+    }
     use super::*;
     use fs3_core::DerivedState;
     use fs3_store::SourceKind;
@@ -1163,6 +1378,7 @@ mod tests {
             path: None,
             worktree: None,
             ddoc: None,
+            agent: None,
         }
     }
 

@@ -28,6 +28,7 @@ use fs3_store::{
     list_conversations, outline, put_smart_content, raw_hash_is_referenced, register_worktree,
     remove_root, sync_worktree_files, upsert_conversation, upsert_element_tree, window,
 };
+use fs3_store::{backfill_seats, conversation_agents, record_agent};
 use std::collections::BTreeMap;
 use std::time::Duration;
 use support::{FreshDatabase, PARSER_VERSION, unique_blob};
@@ -83,6 +84,95 @@ async fn store_conversation(pool: &PgPool, guid: &ConversationId, turns: &[Turn]
     append_turns(pool, guid, turns, gate)
         .await
         .expect("appending turns");
+}
+
+/// The agent behind a conversation accumulates: models append once each in
+/// first-seen order, and a poll that knows less erases nothing.
+#[tokio::test]
+async fn the_agent_accumulates_and_never_forgets() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+    let guid = id('a');
+    let silent = id('b');
+    upsert_conversation(&pool, &conversation(&guid, Some("github.com/x/agent")))
+        .await
+        .expect("storing the header");
+    upsert_conversation(&pool, &conversation(&silent, None))
+        .await
+        .expect("storing a second header");
+
+    let opus = "claude-opus-5-5".to_string();
+    let sonnet = "claude-sonnet-5-5".to_string();
+    record_agent(
+        &pool,
+        &guid,
+        Some("claude"),
+        std::slice::from_ref(&opus),
+        Some("pij-prior-python"),
+    )
+    .await
+    .expect("first poll");
+    record_agent(&pool, &guid, None, &[sonnet.clone(), opus.clone()], None)
+        .await
+        .expect("a later poll that knows less");
+    record_agent(
+        &pool,
+        &id('c'),
+        Some("claude"),
+        std::slice::from_ref(&opus),
+        None,
+    )
+    .await
+    .expect("an agent for a missing header is a no-op, not an error");
+
+    let agents = conversation_agents(
+        &pool,
+        &[guid.as_str().to_string(), silent.as_str().to_string()],
+    )
+    .await
+    .expect("reading agents");
+    assert_eq!(
+        agents.len(),
+        1,
+        "a conversation with nothing recorded is left out"
+    );
+    let agent = &agents[guid.as_str()];
+    assert_eq!(agent.harness.as_deref(), Some("claude"));
+    assert_eq!(agent.seat.as_deref(), Some("pij-prior-python"));
+    assert_eq!(agent.models, vec![opus.clone(), sonnet.clone()]);
+
+    let listed = list_conversations(&pool, AnchorFilter::default())
+        .await
+        .expect("listing");
+    let row = listed.iter().find(|row| row.guid == guid).expect("listed");
+    assert_eq!(&row.agent, agent);
+    let delivery = conversation_delivery(&pool, &guid)
+        .await
+        .expect("probing")
+        .expect("exists");
+    assert_eq!(&delivery.agent, agent);
+
+    let filled = backfill_seats(
+        &pool,
+        &[guid.as_str().to_string(), silent.as_str().to_string()],
+        &["pij-other".to_string(), "pij-silent".to_string()],
+    )
+    .await
+    .expect("backfilling seats");
+    assert_eq!(filled, 1, "a seat already recorded is kept");
+    let after = conversation_agents(
+        &pool,
+        &[guid.as_str().to_string(), silent.as_str().to_string()],
+    )
+    .await
+    .expect("re-reading agents");
+    assert_eq!(
+        after[guid.as_str()].seat.as_deref(),
+        Some("pij-prior-python")
+    );
+    assert_eq!(after[silent.as_str()].seat.as_deref(), Some("pij-silent"));
+
+    database.destroy(pool).await;
 }
 
 #[tokio::test]

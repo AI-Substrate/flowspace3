@@ -237,6 +237,14 @@ impl OmpSource {
             items,
             // omp records no repo HEAD.
             head_sha: None,
+            // An assistant `message` names its model; `model_change` records
+            // are not turns, so the per-message field is the one to trust.
+            model: value
+                .get("message")
+                .and_then(|message| message.get("model"))
+                .and_then(serde_json::Value::as_str)
+                .filter(|model| !model.is_empty())
+                .map(str::to_owned),
         })
     }
 

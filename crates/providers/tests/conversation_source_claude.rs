@@ -778,3 +778,29 @@ fn a_foreign_cursor_is_refused() {
          conversation"
     );
 }
+
+// ----------------------------------------------------------------- model
+
+#[test]
+fn assistant_records_carry_their_model_and_human_records_do_not() {
+    let (_scratch, root) = scratch_store("model");
+    let records = read_all(&ClaudeSource::new(&root), &native(MAIN));
+
+    let agent_models: Vec<&str> = records
+        .iter()
+        .filter(|record| record.role == fs3_core::TurnRole::Agent)
+        .filter_map(|record| record.model.as_deref())
+        .collect();
+    assert!(
+        !agent_models.is_empty(),
+        "the fixture's assistant lines name a model"
+    );
+    assert!(agent_models.iter().all(|model| *model == "claude-fable-5"));
+    assert!(
+        records
+            .iter()
+            .filter(|record| record.role == fs3_core::TurnRole::Human)
+            .all(|record| record.model.is_none()),
+        "a human turn names no model"
+    );
+}

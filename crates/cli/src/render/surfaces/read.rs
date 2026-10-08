@@ -52,6 +52,9 @@ pub fn get(envelope: &Envelope<Value>, width: u16) -> Option<String> {
                     .unwrap_or(&window.address)
                     .bright_white()
             ));
+            if let Some(agent) = window.agent.label() {
+                out.push_str(&format!("{}{}\n", theme::GUTTER, agent.magenta()));
+            }
             for turn in window.window {
                 out.push_str(&format!(
                     "\n{}{} #{}  {}\n",

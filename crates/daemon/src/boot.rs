@@ -745,6 +745,16 @@ async fn serve(
         let conversation_home = std::env::var_os("HOME")
             .map(std::path::PathBuf::from)
             .context("HOME is required to locate native conversation stores")?;
+        // Seats for conversations no poll will touch again: a finished
+        // session's header predates agent recording and would otherwise never
+        // learn which pij seat had it. Once per start, off the boot path.
+        tokio::spawn({
+            let state = state.clone();
+            async move {
+                let filled = crate::convo_ingest::backfill_seats(&state).await;
+                tracing::info!(filled, "recorded pij seats on existing conversations");
+            }
+        });
         reconcilers.push(Box::new(crate::convo_poll::ConvoPoller::new(
             state.clone(),
             conversation_home,

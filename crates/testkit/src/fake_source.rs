@@ -205,6 +205,7 @@ fn parse(line: &str) -> Result<RawRecord> {
         body: value["body"].as_str().unwrap_or_default().to_owned(),
         items: Vec::new(),
         head_sha: None,
+        model: None,
     })
 }
 
@@ -219,6 +220,7 @@ fn recovered(line: &str) -> RawRecord {
         body: line.to_owned(),
         items: Vec::new(),
         head_sha: None,
+        model: None,
     }
 }
 

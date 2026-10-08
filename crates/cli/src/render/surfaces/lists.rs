@@ -77,12 +77,16 @@ fn conversations(envelope: &Envelope<Value>, width: u16) -> Option<String> {
             theme::header("started"),
         ]);
         for row in rows {
+            let mut title = row
+                .get("title")
+                .and_then(Value::as_str)
+                .unwrap_or("untitled")
+                .to_string();
+            if let Some(agent) = agent_label(row) {
+                title.push_str(&format!("\n{}", agent.magenta()));
+            }
             table.add_row([
-                Cell::new(
-                    row.get("title")
-                        .and_then(Value::as_str)
-                        .unwrap_or("untitled"),
-                ),
+                Cell::new(title),
                 Cell::new(row.get("address")?.as_str()?),
                 theme::right(row.get("turns")?.as_i64()?.to_string()),
                 Cell::new(row.get("started_at")?.as_str()?),
@@ -92,6 +96,13 @@ fn conversations(envelope: &Envelope<Value>, width: u16) -> Option<String> {
     }
     append_next(&mut out, envelope, width);
     Some(out)
+}
+
+/// The `agent` object of a conversation row or report, as one line.
+fn agent_label(row: &Value) -> Option<String> {
+    serde_json::from_value::<fs3_core::ConversationAgent>(row.get("agent")?.clone())
+        .ok()?
+        .label()
 }
 
 fn conversation_verify(envelope: &Envelope<Value>, width: u16) -> Option<String> {
@@ -133,6 +144,9 @@ fn conversation_verify(envelope: &Envelope<Value>, width: u16) -> Option<String>
     ] {
         facts.add_row([Cell::new(label), Cell::new(value)]);
     }
+    if let Some(agent) = agent_label(report) {
+        facts.add_row([Cell::new("agent"), Cell::new(agent)]);
+    }
     out.push_str(&theme::block(&facts));
     append_next(&mut out, envelope, width);
     Some(out)
@@ -153,7 +167,7 @@ mod tests {
     #[test]
     fn conversation_verify_view_carries_the_consumer_contract() {
         let envelope = serde_json::from_str(
-            r#"{"ok":true,"command":"conversation verify","v":1,"data":{"guid":"abc","address":"conv:abc","turns":2,"repo":"git:example/repo","worktree":"/srv/repo","last_turn_at":"2026-09-02T00:00:00Z"}}"#,
+            r#"{"ok":true,"command":"conversation verify","v":1,"data":{"guid":"abc","address":"conv:abc","turns":2,"repo":"git:example/repo","worktree":"/srv/repo","last_turn_at":"2026-09-02T00:00:00Z","agent":{"harness":"claude","models":["claude-opus-5-5"],"seat":"pij-prior-python"}}}"#,
         )
         .unwrap();
         let screen = render(&envelope, 100).expect("verify has a human view");
@@ -162,6 +176,7 @@ mod tests {
             "conv:abc",
             "git:example/repo",
             "2026-09-02T00:00:00Z",
+            "pij-prior-python · claude · claude-opus-5-5",
         ] {
             assert!(screen.contains(expected), "missing {expected}: {screen}");
         }

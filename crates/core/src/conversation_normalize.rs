@@ -306,6 +306,7 @@ mod tests {
             body: body.to_string(),
             items: Vec::new(),
             head_sha: Some("abc123".to_string()),
+            model: None,
         }
     }
 

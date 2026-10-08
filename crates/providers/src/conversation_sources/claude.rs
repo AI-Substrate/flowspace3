@@ -355,6 +355,7 @@ struct Origin {
 struct Message {
     id: Option<String>,
     content: Option<Content>,
+    model: Option<String>,
 }
 
 /// `message.content` is a bare string for a typed user turn and a block array
@@ -730,5 +731,10 @@ fn record(
         // Claude's records carry `gitBranch` but never a commit sha, and a
         // branch name is not the thing `head_sha` promises.
         head_sha: None,
+        // Assistant lines name the model that wrote them; human lines do not.
+        model: line
+            .message
+            .as_ref()
+            .and_then(|message| message.model.clone()),
     }
 }

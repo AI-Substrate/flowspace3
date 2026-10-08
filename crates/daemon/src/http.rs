@@ -645,6 +645,16 @@ async fn search(
             if weak_match {
                 meta["hint"] = serde_json::Value::String(WEAK_MATCH_HINT.to_string());
             }
+            let elsewhere = outcome.elsewhere.as_ref().map(|found| {
+                let command = widen_command(&request);
+                meta["elsewhere"] = serde_json::json!({
+                    "hits": found.hits,
+                    "of_top": found.of_top,
+                    "repos": found.repos,
+                    "command": command,
+                });
+                elsewhere_clause(found, &command)
+            });
             let results = SearchResults {
                 results: outcome.results,
                 offset: outcome.offset,
@@ -661,6 +671,12 @@ async fn search(
                 format!("{WEAK_MATCH_HINT} — then: {next}")
             } else {
                 next.to_string()
+            };
+            // Leads the steer: a consumer reading only `next_action` must still
+            // learn that the answer may live in a repository it did not search.
+            let next = match elsewhere {
+                Some(clause) => format!("{clause} — then: {next}"),
+                None => next,
             };
             ok(&state, COMMAND, results)
                 .await
@@ -705,6 +721,65 @@ fn next_after_search(outcome: &SearchOutcome, request: &SearchRequest) -> String
     "read a hit in full with `flowspace3 get <address>`, browse its file with \
      `flowspace3 tree <address>`, or narrow with --path/--repo"
         .to_string()
+}
+
+/// The steer for [`crate::search::Elsewhere`]: how many, where, and the command.
+fn elsewhere_clause(found: &crate::search::Elsewhere, command: &str) -> String {
+    let repos: Vec<String> = found
+        .repos
+        .iter()
+        .map(|entry| {
+            let short = if entry.repo == "(none)" {
+                "no repo"
+            } else {
+                entry.repo.rsplit('/').next().unwrap_or(&entry.repo)
+            };
+            format!("{short} {}", entry.hits)
+        })
+        .collect();
+    format!(
+        "this searched only the repository you are in; the top {} across all repositories \
+         include {} from others ({}): `{command}`",
+        found.of_top,
+        found.hits,
+        repos.join(", ")
+    )
+}
+
+/// The same search, widened to every repository.
+fn widen_command(request: &SearchRequest) -> String {
+    let mut args = vec![
+        "flowspace3".to_string(),
+        "search".to_string(),
+        shell_word(&request.q),
+        "--repo".to_string(),
+        "all".to_string(),
+    ];
+    if let Some(limit) = request.limit {
+        args.push("--limit".to_string());
+        args.push(limit.to_string());
+    }
+    for (flag, value) in [
+        ("--path", request.path.as_deref()),
+        ("--source", request.source.as_deref()),
+        ("--id-kind", request.id_kind.as_deref()),
+        ("--ddoc-schema", request.ddoc_schema.as_deref()),
+    ] {
+        if let Some(value) = value {
+            args.push(flag.to_string());
+            args.push(shell_word(value));
+        }
+    }
+    if let Some(min_score) = request.min_score {
+        args.push("--min-score".to_string());
+        args.push(min_score.to_string());
+    }
+    match request.gate_open {
+        Some(true) => args.push("--gate-open".to_string()),
+        Some(false) => args.push("--gate-closed".to_string()),
+        None => {}
+    }
+    args.join(" ")
 }
 
 fn next_page_command(request: &SearchRequest, limit: i64, next_offset: i64) -> String {
@@ -998,5 +1073,46 @@ pub(crate) async fn serve_listener(
             tracing::warn!("forced shutdown abandoned active HTTP requests");
             Ok(())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::search::{Elsewhere, RepoHits};
+
+    #[test]
+    fn the_elsewhere_steer_names_short_repos_and_the_widened_command() {
+        let request = SearchRequest {
+            q: "llm pricing".to_string(),
+            source: Some("conversation".to_string()),
+            limit: Some(5),
+            ..SearchRequest::default()
+        };
+        let command = widen_command(&request);
+        assert_eq!(
+            command,
+            "flowspace3 search 'llm pricing' --repo all --limit 5 --source 'conversation'"
+        );
+        let found = Elsewhere {
+            hits: 3,
+            of_top: 5,
+            repos: vec![
+                RepoHits {
+                    repo: "git:github.com/AI-Substrate/pij".to_string(),
+                    hits: 2,
+                },
+                RepoHits {
+                    repo: "(none)".to_string(),
+                    hits: 1,
+                },
+            ],
+        };
+        assert_eq!(
+            elsewhere_clause(&found, &command),
+            "this searched only the repository you are in; the top 5 across all repositories \
+             include 3 from others (pij 2, no repo 1): `flowspace3 search 'llm pricing' --repo all \
+             --limit 5 --source 'conversation'`"
+        );
     }
 }
