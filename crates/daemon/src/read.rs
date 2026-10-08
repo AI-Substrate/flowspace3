@@ -158,7 +158,7 @@ pub async fn get(
         Address::Conversation(conversation) => {
             let window = conversation_window(state, &conversation, request, scope).await?;
             return Ok((
-                GetPayload::Conversation(window),
+                GetPayload::Conversation(Box::new(window)),
                 CONVERSATION_SOURCE.to_string(),
             ));
         }
@@ -934,6 +934,7 @@ async fn conversation_window(
         base_sha: summary.base_sha,
         title: summary.title,
         turns: summary.turns,
+        agent: summary.agent,
         around,
         window: turns
             .into_iter()

@@ -396,6 +396,45 @@ pub struct Conversation {
     pub parent: Option<ConversationId>,
 }
 
+/// Who had a conversation: the harness that wrote it, the models seen in it,
+/// and the pij seat bound to its session (conversation recall, 2026-10-09).
+///
+/// Every field is optional: an imported transcript, a harness that never names
+/// its model, and a session no pij seat claimed are all normal. The surfaces
+/// show what is known and nothing for the rest.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ConversationAgent {
+    /// `claude`, `omp`, `pij`, `metrics-db` — the store ingest read it from.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub harness: Option<String>,
+    /// Every model seen in the conversation, in first-seen order.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub models: Vec<String>,
+    /// The pij seat bound to the session, e.g. `pij-prior-python`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub seat: Option<String>,
+}
+
+impl ConversationAgent {
+    /// Whether nothing at all is known.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.harness.is_none() && self.models.is_empty() && self.seat.is_none()
+    }
+
+    /// One line for a person: `seat · harness · model, model`, known parts only.
+    #[must_use]
+    pub fn label(&self) -> Option<String> {
+        let mut parts: Vec<String> = Vec::new();
+        parts.extend(self.seat.clone());
+        parts.extend(self.harness.clone());
+        if !self.models.is_empty() {
+            parts.push(self.models.join(", "));
+        }
+        (!parts.is_empty()).then(|| parts.join(" · "))
+    }
+}
+
 /// Whether a turn's stored form earns its own LLM summary (workshop 005).
 ///
 /// A byte floor, not the line floor code uses ([`crate::needs_summary`]): a
@@ -718,5 +757,32 @@ mod tests {
             items,
             "items are stored as JSONB and read back as typed values"
         );
+    }
+}
+
+#[cfg(test)]
+mod agent_tests {
+    use super::ConversationAgent;
+
+    #[test]
+    fn the_label_shows_only_what_is_known() {
+        assert_eq!(ConversationAgent::default().label(), None);
+        let agent = ConversationAgent {
+            harness: Some("claude".to_string()),
+            models: vec![
+                "claude-opus-5-5".to_string(),
+                "claude-sonnet-5-5".to_string(),
+            ],
+            seat: Some("pij-prior-python".to_string()),
+        };
+        assert_eq!(
+            agent.label().as_deref(),
+            Some("pij-prior-python · claude · claude-opus-5-5, claude-sonnet-5-5")
+        );
+        let harness_only = ConversationAgent {
+            harness: Some("omp".to_string()),
+            ..ConversationAgent::default()
+        };
+        assert_eq!(harness_only.label().as_deref(), Some("omp"));
     }
 }

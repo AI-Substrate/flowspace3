@@ -90,6 +90,9 @@ pub struct VerifyReport {
     pub repo: Option<String>,
     pub worktree: Option<String>,
     pub last_turn_at: String,
+    /// Who had it — harness, models, pij seat — when any of it is known.
+    #[serde(skip_serializing_if = "fs3_core::ConversationAgent::is_empty")]
+    pub agent: fs3_core::ConversationAgent,
 }
 
 /// Resolve the consumer's identity and report whether that exact conversation delivered turns.
@@ -132,6 +135,7 @@ pub(crate) async fn verify_at_home(
         repo: delivery.repo_identity,
         worktree: delivery.worktree,
         last_turn_at,
+        agent: delivery.agent,
     })
 }
 
@@ -170,15 +174,13 @@ fn verify_seat(rows: &[SessionRow], seat: &str) -> Result<(Harness, String), Fai
         return Err(Failure::new(
             &catalog::QUERY_INVALID,
             format!(
-                "`pij sessions` is a legacy-only join and does not know seat {seat:?}; rs seats cannot be verified until pij req-0033"
+                "`pij sessions` does not know seat {seat:?}: it was never registered, or never bound a native session"
             ),
         )
         .with_fix(
-            "pass the native identity with `--session <id> --harness <name>` when it is available",
+            "check the seat id with `pij list`, or pass the native identity with `--session <id> --harness <name>`",
         )
         .with_detail("pij", seat)
-        .with_detail("join", "legacy-only")
-        .with_detail("upstream", "pij req-0033")
         .retryable(false));
     }
     let bound = fs3_core::resolve_seat(rows, seat).map_err(|error| {
@@ -942,6 +944,22 @@ pub(crate) async fn ingest_with_directory_at_home(
                     fs3_store::upsert_conversation(&state.db, &header)
                         .await
                         .map_err(fail)?;
+                    // Who was talking. A sidecar's own session id is no
+                    // seat's, so only the main file can name one.
+                    let seat = if file.parent_session_id.is_none() {
+                        seat_for(harness, &file.session_id).await
+                    } else {
+                        None
+                    };
+                    fs3_store::record_agent(
+                        &state.db,
+                        &guid,
+                        Some(harness.as_str()),
+                        &models_seen(&batch.records),
+                        seat.as_deref(),
+                    )
+                    .await
+                    .map_err(fail)?;
                 }
 
                 let ordinals: Vec<&str> = batch
@@ -1204,6 +1222,106 @@ fn address(request: &IngestRequest, home: &Path) -> Result<(IngestInput, Harness
 }
 
 /// The `pij sessions` join table, read once per ingest.
+/// Every model the records name, once each, in first-seen order.
+fn models_seen(records: &[fs3_core::RawRecord]) -> Vec<String> {
+    let mut models: Vec<String> = Vec::new();
+    for model in records.iter().filter_map(|record| record.model.as_deref()) {
+        if !models.iter().any(|seen| seen == model) {
+            models.push(model.to_string());
+        }
+    }
+    models
+}
+
+/// How long one `pij sessions` read answers seat lookups. A poll pass ingests
+/// many sessions; one registry read every few minutes serves them all, and a
+/// seat bound since the last read is picked up on a later poll.
+const SEAT_TTL: std::time::Duration = std::time::Duration::from_secs(300);
+
+/// The longest a seat lookup may wait on `pij`. Ingest never stalls on it: a
+/// slow or absent registry just records no seat this time.
+const SEAT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+
+type SeatMap = std::collections::HashMap<(Harness, String), String>;
+
+static SEATS: std::sync::Mutex<Option<(std::time::Instant, std::sync::Arc<SeatMap>)>> =
+    std::sync::Mutex::new(None);
+
+/// The pij seat bound to a native session, if pij is installed and knows it.
+async fn seat_for(harness: Harness, session_id: &str) -> Option<String> {
+    seat_map()
+        .await
+        .get(&(harness, session_id.to_string()))
+        .cloned()
+}
+
+async fn seat_map() -> std::sync::Arc<SeatMap> {
+    if let Ok(cached) = SEATS.lock()
+        && let Some((read_at, map)) = cached.as_ref()
+        && read_at.elapsed() < SEAT_TTL
+    {
+        return map.clone();
+    }
+    let rows =
+        match tokio::time::timeout(SEAT_TIMEOUT, tokio::task::spawn_blocking(pij_sessions)).await {
+            Ok(Ok(Ok(rows))) => rows,
+            outcome => {
+                tracing::debug!(
+                    ?outcome,
+                    "no pij seat registry this pass; seats stay unrecorded"
+                );
+                Vec::new()
+            }
+        };
+    let map = std::sync::Arc::new(seat_index(&rows));
+    if let Ok(mut cached) = SEATS.lock() {
+        *cached = Some((std::time::Instant::now(), map.clone()));
+    }
+    map
+}
+
+/// Fill the pij seat on conversations that have none, from the registry.
+///
+/// The guid is a pure function of `(harness, session id)`, so every bound seat
+/// names its conversation without a lookup; one statement fills them all.
+/// Returns how many conversations gained a seat. A missing registry or a
+/// store error fills nothing and is logged, never fatal.
+pub async fn backfill_seats(state: &AppState) -> u64 {
+    let seats = seat_map().await;
+    if seats.is_empty() {
+        return 0;
+    }
+    let (guids, names): (Vec<String>, Vec<String>) = seats
+        .iter()
+        .map(|((harness, session), seat)| {
+            (
+                conversation_guid(*harness, session).as_str().to_string(),
+                seat.clone(),
+            )
+        })
+        .unzip();
+    match fs3_store::backfill_seats(&state.db, &guids, &names).await {
+        Ok(filled) => filled,
+        Err(error) => {
+            tracing::warn!(%error, "pij seat backfill failed; seats fill as sessions are polled");
+            0
+        }
+    }
+}
+
+/// `(store, native session id) -> seat`, for rows that bound a session to a
+/// store fs3 reads. Built from the registry's own harness field, never the
+/// uuid shape (see `fs3_core::conversation_join`).
+fn seat_index(rows: &[SessionRow]) -> SeatMap {
+    rows.iter()
+        .filter_map(|row| {
+            let harness = fs3_core::store_for(&row.harness).ok()?;
+            let session = row.harness_session_id.clone()?;
+            Some(((harness, session), row.pij_id.clone()))
+        })
+        .collect()
+}
+
 fn pij_sessions() -> Result<Vec<fs3_core::SessionRow>, Failure> {
     let output = std::process::Command::new("pij")
         .args(["sessions", "--json"])
@@ -1733,7 +1851,72 @@ mod tests {
     }
 
     #[test]
-    fn verify_pij_uses_the_legacy_join_and_names_an_rs_miss() {
+    fn the_seat_index_keys_by_store_and_session_and_skips_unbound_rows() {
+        let rows = [
+            SessionRow {
+                pij_id: "pij-omp-seat".to_string(),
+                harness: "pi".to_string(),
+                harness_session_id: Some("01a045f4-edc2-7000-8dc7-47d6d5677147".to_string()),
+                git_common_dir: None,
+            },
+            SessionRow {
+                pij_id: "pij-never-bound".to_string(),
+                harness: "claude".to_string(),
+                harness_session_id: None,
+                git_common_dir: None,
+            },
+            SessionRow {
+                pij_id: "pij-codex".to_string(),
+                harness: "codex".to_string(),
+                harness_session_id: Some("c5967bc2-f25c-438e-a23f-a61c15de973e".to_string()),
+                git_common_dir: None,
+            },
+        ];
+        let index = seat_index(&rows);
+        assert_eq!(
+            index.len(),
+            1,
+            "unbound and unreadable-store rows are skipped"
+        );
+        assert_eq!(
+            index.get(&(
+                Harness::Omp,
+                "01a045f4-edc2-7000-8dc7-47d6d5677147".to_string()
+            )),
+            Some(&"pij-omp-seat".to_string())
+        );
+    }
+
+    #[test]
+    fn models_are_listed_once_in_first_seen_order() {
+        let record = |model: Option<&str>| fs3_core::RawRecord {
+            ordinal: "x".to_string(),
+            parent_ordinal: None,
+            at: "2026-10-09T00:00:00Z".to_string(),
+            role: fs3_core::TurnRole::Agent,
+            source: fs3_core::TurnSource::Peer,
+            body: String::new(),
+            items: Vec::new(),
+            head_sha: None,
+            model: model.map(str::to_string),
+        };
+        let records = [
+            record(None),
+            record(Some("claude-opus-5-5")),
+            record(Some("claude-sonnet-5-5")),
+            record(Some("claude-opus-5-5")),
+        ];
+        assert_eq!(
+            models_seen(&records),
+            vec![
+                "claude-opus-5-5".to_string(),
+                "claude-sonnet-5-5".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn verify_pij_resolves_a_registered_seat_and_names_a_miss() {
         let rows = [SessionRow {
             pij_id: "pij-legacy-seat".to_string(),
             harness: "pi".to_string(),
@@ -1744,10 +1927,9 @@ mod tests {
         assert_eq!(harness, Harness::Omp);
         assert_eq!(session, "01a045f4-edc2-7000-8dc7-47d6d5677147");
 
-        let failure = verify_seat(&rows, "pij-rs-only-seat").expect_err("the fake join misses");
-        assert!(failure.message.contains("legacy-only"));
-        assert!(failure.message.contains("req-0033"));
-        assert_eq!(failure.details["pij"], "pij-rs-only-seat");
+        let failure = verify_seat(&rows, "pij-unknown-seat").expect_err("the join misses");
+        assert!(failure.message.contains("does not know seat"));
+        assert_eq!(failure.details["pij"], "pij-unknown-seat");
     }
 
     #[test]

@@ -327,7 +327,10 @@ def render(query, scope, hits, problems, message, quick, fumbles=()):
         repo = (first.get("repo") or "").rsplit("/", 1)[-1] or "(none)"
         if key.startswith("conv:"):
             turns = ", ".join(f"[{rank}] #{hit['address'].split('#', 1)[1]}" for rank, hit in members)
-            block = [f"{key}  repo={repo}  turns: {turns}"]
+            agent = first.get("agent") or {}
+            who = " · ".join(filter(None, [agent.get("seat"), agent.get("harness"),
+                                           ", ".join(agent.get("models") or [])]))
+            block = [f"{key}  repo={repo}" + (f"  agent={who}" if who else "") + f"  turns: {turns}"]
         else:
             block = []
         for rank, hit in members:

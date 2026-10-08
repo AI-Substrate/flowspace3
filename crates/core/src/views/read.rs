@@ -50,7 +50,7 @@ pub enum GetPayload {
     /// An `el:` address: one element, with its content and neighbours.
     Element(Box<GetResult>),
     /// A `conv:` address: a contiguous run of turns.
-    Conversation(ConversationWindow),
+    Conversation(Box<ConversationWindow>),
 }
 
 /// A contiguous run of turns around one ordinal.
@@ -68,6 +68,9 @@ pub struct ConversationWindow {
     pub title: Option<String>,
     /// How many turns the conversation holds in total.
     pub turns: i64,
+    /// Who had it — harness, models, pij seat — when any of it is known.
+    #[serde(default, skip_serializing_if = "crate::ConversationAgent::is_empty")]
+    pub agent: crate::ConversationAgent,
     /// The ordinal the window is centred on.
     pub around: u32,
     /// The turns themselves, in order.

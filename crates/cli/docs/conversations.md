@@ -45,7 +45,7 @@ forms are mutually exclusive:
 
 ```bash
 flowspace3 conversation verify --harness <claude|omp|pij|metrics-db> --session <id>
-flowspace3 conversation verify --pij <legacy-seat>
+flowspace3 conversation verify --pij <seat>
 ```
 
 Success is exit 0 with `ok: true` and
@@ -55,9 +55,22 @@ a header with zero turns exits non-zero with
 `details.turns: 0`. The command has no `--repo` or `--path` flag, so a consumer
 cannot accidentally turn "outside my cwd" into "not delivered".
 
-`--pij` uses the existing `pij sessions` join. That join is legacy-only. An rs
-seat absent from it is refused with a message naming `pij req-0033`; use the
-native `--harness`/`--session` form when that identity is available.
+`--pij` resolves the seat through `pij sessions --json`, which lists both legacy
+and rs seats with their native session ids. A seat the registry does not know,
+or one that never bound a session, is refused by name; the native
+`--harness`/`--session` form needs no join at all.
+
+## Which agent had it
+
+Ingest records who was talking: the harness it read (`claude`, `omp`, …),
+every model the session's assistant messages name, in first-seen order, and
+the pij seat bound to the session (from `pij sessions`, when pij is installed).
+`conversation list` rows, `conversation verify`, a `get conv:` window and every
+conversation search hit carry it as `agent: {harness, models, seat}`, with only
+the known parts present; the human views show it as one line,
+`pij-prior-python · claude · claude-opus-5-5`. Models are recorded as turns are
+read, so a conversation ingested before this shows its harness and seat but
+lists models only from turns read since. Imported transcripts carry no agent.
 
 ## Conversations in the default search
 

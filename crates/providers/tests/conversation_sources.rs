@@ -700,3 +700,26 @@ fn resolve_stamps_every_file_with_its_own_store() {
     let files: Vec<SessionFile> = pij.source.resolve(&pij.input()).expect("resolve");
     assert!(files.iter().all(|file| file.harness == Harness::PijLedger));
 }
+
+// ---------------------------------------------------------------- model
+
+#[test]
+fn omp_assistant_records_carry_the_model_their_message_names() {
+    let records = read_everything(&omp_whole());
+    let models: std::collections::BTreeSet<&str> = records
+        .iter()
+        .filter_map(|record| record.model.as_deref())
+        .collect();
+    assert_eq!(
+        models.into_iter().collect::<Vec<_>>(),
+        vec!["/models/Qwen3.8-27B-ABLITERATED-Q4_K_M.gguf"],
+        "the per-message model, not the `model_change` record's provider-prefixed one"
+    );
+    assert!(
+        records
+            .iter()
+            .filter(|record| record.role == fs3_core::TurnRole::Human)
+            .all(|record| record.model.is_none()),
+        "a human message names no model"
+    );
+}

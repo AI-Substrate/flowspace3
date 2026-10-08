@@ -628,6 +628,7 @@ fn claude_row(row: &Row, records: &mut Vec<RawRecord>, open_groups: &mut BTreeMa
         // This store records a repo remote and a branch, never a HEAD sha.
         // Claiming one would be an invention; the orchestrator supplies it.
         head_sha: None,
+        model: None,
     });
 
     if let Some(group) = group {
@@ -938,6 +939,7 @@ fn copilot_record(
         body,
         items,
         head_sha: None,
+        model: None,
     })
 }
 

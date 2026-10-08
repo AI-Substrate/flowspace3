@@ -1323,6 +1323,7 @@ mod tests {
             path: Some("src/lib.rs".to_string()),
             worktree: Some(worktree.to_string()),
             ddoc: None,
+            agent: None,
         }
     }
 

@@ -77,9 +77,26 @@ pub struct SeatBinding {
 /// [`Error::InvalidConfig`] when the payload is not the array of rows the
 /// registry documents.
 pub fn parse_rows(json: &str) -> Result<Vec<SessionRow>> {
-    serde_json::from_str(json).map_err(|err| {
-        Error::InvalidConfig(format!("pij sessions output is not a row array: {err}"))
-    })
+    /// The bare array the legacy CLI printed, or the pij-rs envelope that
+    /// wraps it as `data.rows` (backlog row 213: the join broke when pij-rs
+    /// started answering, because only the array was accepted).
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Shape {
+        Rows(Vec<SessionRow>),
+        Envelope { data: Data },
+    }
+    #[derive(Deserialize)]
+    struct Data {
+        rows: Vec<SessionRow>,
+    }
+    match serde_json::from_str(json) {
+        Ok(Shape::Rows(rows)) => Ok(rows),
+        Ok(Shape::Envelope { data }) => Ok(data.rows),
+        Err(err) => Err(Error::InvalidConfig(format!(
+            "pij sessions output is neither a row array nor an envelope with data.rows: {err}"
+        ))),
+    }
 }
 
 /// Which store holds conversations for a harness pij names.
@@ -227,6 +244,17 @@ mod tests {
             5,
             "every row parsed despite boundModel and prime"
         );
+    }
+
+    #[test]
+    fn the_pij_rs_envelope_parses_to_the_same_rows() {
+        let envelope =
+            format!(r#"{{"ok":true,"command":"sessions","v":2,"data":{{"rows":{REGISTRY}}}}}"#);
+        assert_eq!(
+            parse_rows(&envelope).expect("the rs envelope parses"),
+            registry()
+        );
+        assert!(parse_rows(r#"{"ok":true,"data":{}}"#).is_err());
     }
 
     #[test]

@@ -605,6 +605,8 @@ async fn search_filtered(
             .skip(offset_index)
             .take(usize::try_from(limit).expect("validated positive limit fits usize"))
             .collect();
+        let mut results = results;
+        attach_agents(state, &mut results).await;
         let returned = i64::try_from(results.len()).expect("page length fits i64");
         let next_offset = (returned == limit).then_some(offset + returned);
         return Ok(SearchOutcome {
@@ -963,6 +965,37 @@ async fn anchor_not_indexed(
     )
 }
 
+/// Name the agent behind each conversation hit on the page: harness, models
+/// and pij seat, so "which agent did this" is answered on the hit itself
+/// rather than by a second lookup per guid. Advice, like the hint: a failed
+/// lookup leaves the hits as they were.
+async fn attach_agents(state: &AppState, results: &mut [Hit]) {
+    let guid_of = |hit: &Hit| {
+        hit.address
+            .strip_prefix(fs3_core::address::CONVERSATION_SCHEME)
+            .and_then(|rest| rest.split('#').next())
+            .map(str::to_string)
+    };
+    let mut guids: Vec<String> = results.iter().filter_map(guid_of).collect();
+    guids.sort();
+    guids.dedup();
+    if guids.is_empty() {
+        return;
+    }
+    let agents = match fs3_store::conversation_agents(&state.db, &guids).await {
+        Ok(agents) => agents,
+        Err(error) => {
+            tracing::warn!(%error, "conversation agents unavailable; hits go without them");
+            return;
+        }
+    };
+    for hit in results.iter_mut() {
+        if let Some(guid) = guid_of(hit) {
+            hit.agent = agents.get(&guid).cloned();
+        }
+    }
+}
+
 /// Turn a store hit into a workshop-003 row.
 fn render(hit: &SearchHit) -> Hit {
     let element = &hit.similar.element;
@@ -991,6 +1024,8 @@ fn render(hit: &SearchHit) -> Hit {
             .ddoc
             .as_deref()
             .map(|meta| ddoc_hit(meta, hit.path.as_deref())),
+        // Filled for conversation turns once the page is known: see `attach_agents`.
+        agent: None,
     }
 }
 
@@ -1016,6 +1051,8 @@ fn render_lexical(hit: &LexicalHit) -> Hit {
             .ddoc
             .as_deref()
             .map(|meta| ddoc_hit(meta, hit.path.as_deref())),
+        // Filled for conversation turns once the page is known: see `attach_agents`.
+        agent: None,
     }
 }
 
@@ -1231,6 +1268,7 @@ mod tests {
             path: None,
             worktree: None,
             ddoc: None,
+            agent: None,
         }
     }
 
@@ -1340,6 +1378,7 @@ mod tests {
             path: None,
             worktree: None,
             ddoc: None,
+            agent: None,
         }
     }
 
