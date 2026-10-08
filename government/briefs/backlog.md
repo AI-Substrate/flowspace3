@@ -4068,3 +4068,12 @@ From PR #126 (row 203 fix): `convo_ingest::run` reads `$HOME`; the terminal-fail
 
 ## 219 — follow-ons found while fixing row 203 (PR #126 out-of-scope list)
 (a) `looks_binary` sniffs only a file head, so a code file with a NUL later can reach `elements.raw_text` (now terminal + named, still not scrubbed). (b) A claude line with an unparseable `timestamp` fails its whole session terminally; a MISSING one silently becomes the epoch; both want a reader-side rule. (c) NUL inside a claude `uuid` or `cwd` is not scrubbed (fails terminally and named). (d) Human `status` shows only the unreadable count; session names are in `--json` and doctor only.
+
+## 220 — search hits carry no time, so a conversation hit cannot be judged stale
+A `turn` hit has no timestamp in the search envelope, so an agent reading "we decided X" cannot tell a ruling from last week from one superseded months ago. Found building the `fs3 "…"` Claude prompt hook (2026-10-09): the hook tells the agent to treat conversations as history, but cannot show when each turn was said. Want: `at` on every turn hit (and the conversation's last turn time), in JSON and the human footer.
+
+## 221 — short tool-output turns rank among the top conversation hits
+`fs3 "-all -convo openrouter tps"` (2026-10-09): 6 of the top 8 hits were tool output or fragments with no summary (`[tool-result Bash] 15 bytes %306 openrouter`, process exit lines); the one answer ranked 7th. The prompt hook now drops unsummarised turns that are tool output or under 160 chars (`-raw` keeps them) — a client-side patch. Want: search itself down-ranks unsummarised tool-result turns, or a `--no-tool-output` filter.
+
+## 222 — `search` has no per-conversation filter (`ask` has `--conversation`)
+`search` cannot scope to one conversation, so the prompt hook's `-this` reads up to 300 all-repo conversation hits and keeps one chat's; a query whose hits all sit in other chats returns empty. Want: `search --conversation <guid>` mirroring `ask`.
