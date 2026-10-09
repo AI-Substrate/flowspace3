@@ -128,8 +128,12 @@ pub async fn search_lexical_page(
     let pattern = contains_pattern(query);
     let terms = query_terms(query);
 
+    // The WHERE clause must use the indexed expression byte for byte; the
+    // score reads the same text lowered ONCE per row (`lc`), because the
+    // expression copies the whole element and a CASE that re-evaluated it per
+    // LIKE doubled the cost of a common-word query.
     let text = "lower(el.name || E'\\n' || el.raw_text)";
-    let phrase = format!("{text} LIKE $1 ESCAPE '\\'");
+    let phrase = "lc.t LIKE $1 ESCAPE '\\'".to_string();
     let each = |column: &str| -> String {
         (0..terms.len())
             .map(|i| format!("{column} LIKE ${} ESCAPE '\\'", 13 + i))
@@ -139,14 +143,14 @@ pub async fn search_lexical_page(
     // Every term must occur. With no term long enough to index, the phrase
     // alone decides, exactly as before.
     let matches = if terms.is_empty() {
-        phrase.clone()
+        format!("{text} LIKE $1 ESCAPE '\\'")
     } else {
         each(text)
     };
     let name_has_every_term = if terms.is_empty() {
         "FALSE".to_string()
     } else {
-        each("lower(el.name)")
+        each("lc.n")
     };
 
     // Bind map: $1 phrase pattern, $2 limit, $3 repo, $4 path, $5 kinds,
@@ -158,17 +162,24 @@ pub async fn search_lexical_page(
              SELECT el.id, el.blob_sha, el.parser_version, el.kind, el.subkind,
                     el.name, el.address, el.span_start, el.span_end,
                     el.sibling_order, el.raw_text, el.ddoc,
-                    lower(el.name) LIKE $1 ESCAPE '\' AS name_match,
+                    lc.n LIKE $1 ESCAPE '\' AS name_match,
                     {phrase} AS phrase_match,
                     COALESCE(el.turn_class = ANY($11::text[]), FALSE) AS hidden,
                     (CASE
-                       WHEN el.kind <> 'turn' AND (lower(el.name) = $12 OR {phrase})
+                       WHEN el.kind <> 'turn' AND (lc.n = $12 OR {phrase})
                          THEN 1.0
                        WHEN {name_has_every_term} THEN 0.90 + {DENSITY_SQL}
                        WHEN {phrase} THEN 0.80 + {DENSITY_SQL}
                        ELSE 0.65 + {DENSITY_SQL}
                      END)::float8 AS score
                FROM elements el
+              CROSS JOIN LATERAL (
+                   SELECT lower(el.name || E'\n' || el.raw_text) AS t,
+                          lower(el.name) AS n
+                   -- A fence: without it the planner inlines these back into
+                   -- every reference and recomputes them per LIKE.
+                   OFFSET 0
+              ) lc
               WHERE {matches}
                 AND ($5::text[] IS NULL OR el.kind = ANY($5))
                 AND ($7::text[] IS NULL OR el.ddoc->>'id_kind' = ANY($7))
