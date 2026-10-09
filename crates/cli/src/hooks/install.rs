@@ -556,9 +556,106 @@ fn claude_rewrite(
     if text.is_some_and(|t| claude_root(Some(t)).ok().as_ref() == Some(&root)) {
         return Ok(text.unwrap_or_default().to_string()); // no semantic change: keep the bytes
     }
-    serde_json::to_string_pretty(&root)
+    let shape = text.and_then(|t| serde_json::from_str::<Keys>(t).ok());
+    serde_json::to_string_pretty(&Shaped(&root, shape.as_ref()))
         .map(|s| s + "\n")
         .map_err(|e| e.to_string())
+}
+
+/// The key order of a JSON document, at every depth. `serde_json::Value`
+/// sorts keys (the workspace must not turn on `preserve_order`: envelopes are
+/// byte-pinned), so a rewritten settings file borrows its order from here.
+enum Keys {
+    Object(Vec<(String, Keys)>),
+    Array(Vec<Keys>),
+    Leaf,
+}
+
+impl<'de> serde::Deserialize<'de> for Keys {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct Visit;
+        impl<'de> serde::de::Visitor<'de> for Visit {
+            type Value = Keys;
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("any JSON value")
+            }
+            fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<Keys, A::Error> {
+                let mut keys = Vec::new();
+                while let Some((key, inner)) = map.next_entry::<String, Keys>()? {
+                    keys.push((key, inner));
+                }
+                Ok(Keys::Object(keys))
+            }
+            fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut seq: A) -> Result<Keys, A::Error> {
+                let mut items = Vec::new();
+                while let Some(inner) = seq.next_element::<Keys>()? {
+                    items.push(inner);
+                }
+                Ok(Keys::Array(items))
+            }
+            fn visit_bool<E>(self, _: bool) -> Result<Keys, E> {
+                Ok(Keys::Leaf)
+            }
+            fn visit_i64<E>(self, _: i64) -> Result<Keys, E> {
+                Ok(Keys::Leaf)
+            }
+            fn visit_u64<E>(self, _: u64) -> Result<Keys, E> {
+                Ok(Keys::Leaf)
+            }
+            fn visit_f64<E>(self, _: f64) -> Result<Keys, E> {
+                Ok(Keys::Leaf)
+            }
+            fn visit_str<E>(self, _: &str) -> Result<Keys, E> {
+                Ok(Keys::Leaf)
+            }
+            fn visit_unit<E>(self) -> Result<Keys, E> {
+                Ok(Keys::Leaf)
+            }
+        }
+        deserializer.deserialize_any(Visit)
+    }
+}
+
+/// A value serialised in the key order `Keys` recorded; keys it has never
+/// seen follow, sorted.
+struct Shaped<'a>(&'a Value, Option<&'a Keys>);
+
+impl serde::Serialize for Shaped<'_> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::{SerializeMap as _, SerializeSeq as _};
+        match (self.0, self.1) {
+            (Value::Object(map), shape) => {
+                let known: &[(String, Keys)] = match shape {
+                    Some(Keys::Object(keys)) => keys,
+                    _ => &[],
+                };
+                let mut out = serializer.serialize_map(Some(map.len()))?;
+                for (key, inner) in known {
+                    if let Some(value) = map.get(key) {
+                        out.serialize_entry(key, &Shaped(value, Some(inner)))?;
+                    }
+                }
+                for (key, value) in map {
+                    if !known.iter().any(|(k, _)| k == key) {
+                        out.serialize_entry(key, &Shaped(value, None))?;
+                    }
+                }
+                out.end()
+            }
+            (Value::Array(items), shape) => {
+                let known: &[Keys] = match shape {
+                    Some(Keys::Array(items)) => items,
+                    _ => &[],
+                };
+                let mut out = serializer.serialize_seq(Some(items.len()))?;
+                for (index, item) in items.iter().enumerate() {
+                    out.serialize_element(&Shaped(item, known.get(index)))?;
+                }
+                out.end()
+            }
+            (value, _) => value.serialize(serializer),
+        }
+    }
 }
 
 // ---- Codex: config.toml ---------------------------------------------------
@@ -624,7 +721,7 @@ pub fn trust_hash(command: &str) -> String {
         "event_name": CODEX_EVENT_SNAKE,
         "hooks": [{"async": false, "command": command, "timeout": CODEX_DEFAULT_TIMEOUT, "type": "command"}],
     });
-    // serde_json's map preserves insertion order; the literal above is already sorted.
+    // serde_json's map sorts its keys: exactly the canonical form Codex hashes.
     let bytes = serde_json::to_vec(&identity).unwrap_or_default();
     let digest = Sha256::digest(&bytes);
     format!(
@@ -859,8 +956,20 @@ mod tests {
             "git-ai checkpoint"
         );
         assert_eq!(v["model"], "opus");
-        let keys: Vec<&String> = v.as_object().unwrap().keys().collect();
-        assert_eq!(keys, ["model", "hooks"], "key order is preserved");
+        let written = std::fs::read_to_string(&path).unwrap();
+        let at = |needle: &str| written.find(needle).unwrap();
+        assert!(
+            at("\"model\"") < at("\"hooks\""),
+            "top-level key order is kept"
+        );
+        assert!(
+            at("\"UserPromptSubmit\"") < at("\"PostToolUse\""),
+            "nested key order is kept"
+        );
+        assert!(
+            at("\"matcher\"") < at("\"git-ai checkpoint\""),
+            "inner key order is kept"
+        );
         assert_eq!(
             audit(&s.places, &s.binary, Harness::Claude, Scope::User).state,
             "installed"

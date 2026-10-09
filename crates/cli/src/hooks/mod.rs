@@ -223,98 +223,6 @@ pub fn stdin_payload(flags: &Payload) -> Option<String> {
     Some(raw)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    struct Never;
-    impl Backend for Never {
-        async fn search(&self, _: Vec<(String, String)>) -> Value {
-            json!({"ok": true, "data": {"results": []}})
-        }
-        async fn status(&self) -> Value {
-            json!({"ok": false})
-        }
-        async fn verify(&self, _: &str, _: &str) -> Value {
-            json!({"ok": false})
-        }
-    }
-
-    fn claude_payload(prompt: &str) -> String {
-        json!({"prompt": prompt, "session_id": "s", "cwd": "/", "transcript_path": "/t.jsonl",
-               "hook_event_name": "UserPromptSubmit"})
-        .to_string()
-    }
-
-    #[tokio::test]
-    async fn claude_and_codex_get_hook_json() {
-        for harness in [Harness::Claude, Harness::Codex] {
-            let out = run_prompt(
-                &Never,
-                harness,
-                Some(&claude_payload("fs3 \"x\"")),
-                Payload::default(),
-            )
-            .await
-            .unwrap();
-            let v: Value = serde_json::from_str(&out).unwrap();
-            assert_eq!(v["hookSpecificOutput"]["hookEventName"], "UserPromptSubmit");
-            assert!(
-                v["hookSpecificOutput"]["additionalContext"]
-                    .as_str()
-                    .unwrap()
-                    .contains("Search: \"x\"")
-            );
-        }
-    }
-
-    #[tokio::test]
-    async fn extensions_get_plain_text_from_flags() {
-        let flags = Payload {
-            prompt: Some("fs3 \"x\"".into()),
-            session: Some("s".into()),
-            cwd: Some("/".into()),
-        };
-        let out = run_prompt(&Never, Harness::Pi, None, flags).await.unwrap();
-        assert!(out.starts_with("flowspace3 search results"));
-    }
-
-    #[tokio::test]
-    async fn copilot_payload_under_the_claude_hook_steps_aside() {
-        let copilot = json!({"prompt": "fs3 \"x\"", "sessionId": "s", "cwd": "/", "timestamp": 1})
-            .to_string();
-        assert_eq!(
-            run_prompt(&Never, Harness::Claude, Some(&copilot), Payload::default()).await,
-            None
-        );
-        let pascal = json!({"prompt": "fs3 \"x\"", "session_id": "s", "cwd": "/",
-                            "hook_event_name": "UserPromptSubmit", "timestamp": "2026-10-09T00:00:00Z"})
-        .to_string();
-        assert_eq!(
-            run_prompt(&Never, Harness::Claude, Some(&pascal), Payload::default()).await,
-            None
-        );
-    }
-
-    #[tokio::test]
-    async fn non_fs3_and_garbage_print_nothing() {
-        assert_eq!(
-            run_prompt(
-                &Never,
-                Harness::Claude,
-                Some(&claude_payload("hi")),
-                Payload::default()
-            )
-            .await,
-            None
-        );
-        assert_eq!(
-            run_prompt(&Never, Harness::Codex, Some("not json"), Payload::default()).await,
-            None
-        );
-    }
-}
-
 /// The repo a `--scope project` install writes into: the nearest directory
 /// at or above the working directory that holds `.git`, else the working
 /// directory itself.
@@ -462,4 +370,96 @@ pub fn summary(rows: &[install::HookStatus], harness: Harness) -> (&'static str,
         }
     }
     ("missing", None)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct Never;
+    impl Backend for Never {
+        async fn search(&self, _: Vec<(String, String)>) -> Value {
+            json!({"ok": true, "data": {"results": []}})
+        }
+        async fn status(&self) -> Value {
+            json!({"ok": false})
+        }
+        async fn verify(&self, _: &str, _: &str) -> Value {
+            json!({"ok": false})
+        }
+    }
+
+    fn claude_payload(prompt: &str) -> String {
+        json!({"prompt": prompt, "session_id": "s", "cwd": "/", "transcript_path": "/t.jsonl",
+               "hook_event_name": "UserPromptSubmit"})
+        .to_string()
+    }
+
+    #[tokio::test]
+    async fn claude_and_codex_get_hook_json() {
+        for harness in [Harness::Claude, Harness::Codex] {
+            let out = run_prompt(
+                &Never,
+                harness,
+                Some(&claude_payload("fs3 \"x\"")),
+                Payload::default(),
+            )
+            .await
+            .unwrap();
+            let v: Value = serde_json::from_str(&out).unwrap();
+            assert_eq!(v["hookSpecificOutput"]["hookEventName"], "UserPromptSubmit");
+            assert!(
+                v["hookSpecificOutput"]["additionalContext"]
+                    .as_str()
+                    .unwrap()
+                    .contains("Search: \"x\"")
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn extensions_get_plain_text_from_flags() {
+        let flags = Payload {
+            prompt: Some("fs3 \"x\"".into()),
+            session: Some("s".into()),
+            cwd: Some("/".into()),
+        };
+        let out = run_prompt(&Never, Harness::Pi, None, flags).await.unwrap();
+        assert!(out.starts_with("flowspace3 search results"));
+    }
+
+    #[tokio::test]
+    async fn copilot_payload_under_the_claude_hook_steps_aside() {
+        let copilot = json!({"prompt": "fs3 \"x\"", "sessionId": "s", "cwd": "/", "timestamp": 1})
+            .to_string();
+        assert_eq!(
+            run_prompt(&Never, Harness::Claude, Some(&copilot), Payload::default()).await,
+            None
+        );
+        let pascal = json!({"prompt": "fs3 \"x\"", "session_id": "s", "cwd": "/",
+                            "hook_event_name": "UserPromptSubmit", "timestamp": "2026-10-09T00:00:00Z"})
+        .to_string();
+        assert_eq!(
+            run_prompt(&Never, Harness::Claude, Some(&pascal), Payload::default()).await,
+            None
+        );
+    }
+
+    #[tokio::test]
+    async fn non_fs3_and_garbage_print_nothing() {
+        assert_eq!(
+            run_prompt(
+                &Never,
+                Harness::Claude,
+                Some(&claude_payload("hi")),
+                Payload::default()
+            )
+            .await,
+            None
+        );
+        assert_eq!(
+            run_prompt(&Never, Harness::Codex, Some("not json"), Payload::default()).await,
+            None
+        );
+    }
 }

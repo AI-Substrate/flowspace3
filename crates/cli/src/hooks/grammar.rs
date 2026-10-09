@@ -235,10 +235,10 @@ fn longest_match(
 ) -> (usize, usize, usize) {
     let (mut besti, mut bestj, mut bestsize) = (alo, blo, 0);
     let mut prev = vec![0usize; b.len() + 1];
-    for i in alo..ahi {
+    for (i, ai) in a.iter().enumerate().take(ahi).skip(alo) {
         let mut next = vec![0usize; b.len() + 1];
-        for j in blo..bhi {
-            if a[i] == b[j] {
+        for (j, bj) in b.iter().enumerate().take(bhi).skip(blo) {
+            if ai == bj {
                 let k = if j > 0 { prev[j - 1] } else { 0 } + 1;
                 next[j] = k;
                 if k > bestsize {

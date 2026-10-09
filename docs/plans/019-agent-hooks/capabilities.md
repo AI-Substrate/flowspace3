@@ -31,3 +31,32 @@ and vendor docs. Nothing was installed or edited under `~`.
 4. **pi/omp could strip the `fs3 "…"` line** via `input` transform, so the agent sees only the message. That would be better than Claude, which can't. *Recommend parity (no rewrite)* for v1: the same grammar and the same agent view everywhere.
 5. **Python hook:** *recommend* turning it into a 3-line shim (`exec flowspace3 hook prompt --harness claude`) for one release, so existing curl installs keep working; `hooks install` then rewrites the registration to the binary and reports the Python one as stale. Delete the shim in the release after.
 6. **Copilot also reads a repo's `.claude/settings.json` hooks.** A project-scope Claude install therefore also fires inside Copilot: a wasted search whose output is dropped, which can add up to 25s of latency. *Recommend* that `hooks install` defaults to **user scope**, and that the subcommand exits immediately when it detects it is running under Copilot (an environment probe, verified during the build).
+
+## Rulings (2026-10-09)
+
+Jordan ruled 1 and 3; o-prime took the recommendation on the rest.
+
+1. The Codex hook is pre-approved by writing its `trusted_hash`. The recipe
+   reproduces a real approved git-ai entry byte for byte; a unit test pins it.
+2. Copilot gets a bundled `extension.mjs`.
+3. On pi and omp the hits are hidden (`display:false`).
+4. Parity: no prompt is rewritten in v1.
+5. The Python hook is a one-release shim; `hooks install` reports its
+   registration as stale and replaces it in place.
+6. User scope is the default. The Claude hook steps aside when the payload is
+   Copilot's (`timestamp` or `sessionId`, or no `transcript_path`).
+
+## Not yet proven in a live harness
+
+The unit and binary tests run the real `flowspace3` against temp homes. What
+has not been run is each harness actually loading the result, because that
+needs an install on a real machine (o-prime is asking Jordan). Check these
+first:
+
+- Codex accepts our `trusted_hash` without a review prompt.
+- Copilot loads `~/.copilot/extensions/flowspace3/extension.mjs`, and its
+  `additionalContext` reaches the model.
+- pi and omp load `extensions/flowspace3.ts`, and a `display:false` custom
+  message reaches the model. omp's project path `.omp/extensions` comes from
+  the 17.x docs.
+- omp fires `before_agent_start` for prompts typed while the agent is running.
