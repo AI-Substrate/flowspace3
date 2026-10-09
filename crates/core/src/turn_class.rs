@@ -23,7 +23,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::conversation::{ToolInput, Turn, TurnItem};
+use crate::conversation::{ToolInput, Turn, TurnItem, TurnRole};
 use crate::error::{Error, Result};
 
 /// The read-only fs3 verbs whose output is the index's own content played back.
@@ -175,7 +175,12 @@ impl TurnClassifier {
             })
             .collect();
 
-        let class = if has_prose(turn) || (calls.is_empty() && results.is_empty()) {
+        let class = if turn.items.is_empty() && is_prompt_hook_search(turn) {
+            // A person's whole turn is `fs3 "…"`: the prompt hook runs that
+            // search and injects its results. Nothing else was said, so the
+            // turn is a retrieval call like any agent's `flowspace3 search`.
+            TurnClass::RetrievalCall
+        } else if has_prose(turn) || (calls.is_empty() && results.is_empty()) {
             TurnClass::Work
         } else if !calls.is_empty() {
             if calls.iter().all(|&retrieval| retrieval)
@@ -202,6 +207,36 @@ impl TurnClassifier {
 
         class
     }
+}
+
+/// Whether a person's turn is ONLY an `fs3 "…"` prompt-hook search.
+///
+/// The whole body, trimmed, must be `fs3` followed by one quoted string and
+/// nothing after it. A prompt that also asks for something (`fix the
+/// watcher, fs3 "debounce"`) is prose, and prose is never hidden.
+fn is_prompt_hook_search(turn: &Turn) -> bool {
+    if turn.role != TurnRole::Human {
+        return false;
+    }
+    let body = turn.body.trim();
+    if body.contains('\n') {
+        return false;
+    }
+    let Some(rest) = body.strip_prefix("fs3") else {
+        return false;
+    };
+    if !rest.starts_with(char::is_whitespace) {
+        return false;
+    }
+    let quoted = rest.trim_start();
+    [('"', '"'), ('\'', '\''), ('\u{201c}', '\u{201d}')]
+        .iter()
+        .any(|&(open, close)| {
+            quoted.len() >= 2
+                && quoted.starts_with(open)
+                && quoted.ends_with(close)
+                && quoted.chars().filter(|&c| c == open || c == close).count() == 2
+        })
 }
 
 /// Whether the turn says something in its own words.
@@ -406,7 +441,7 @@ fn floor_char_boundary(text: &str, index: usize) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::conversation::{TurnRole, TurnSource};
+    use crate::conversation::TurnSource;
 
     fn turn(role: TurnRole, body: &str, items: Vec<TurnItem>) -> Turn {
         Turn {
@@ -685,6 +720,47 @@ mod tests {
         let mut classifier = TurnClassifier::after(Some(&asked));
         let output = turn(TurnRole::Human, "", vec![result("Bash", "rows")]);
         assert_eq!(classifier.classify(&output), TurnClass::RetrievalResult);
+    }
+
+    #[test]
+    fn a_prompt_that_is_only_an_fs3_search_is_a_retrieval_call() {
+        let mut classifier = TurnClassifier::new();
+        for prompt in [
+            "fs3 \"which agent compared LLM pricing models\"",
+            "  fs3 \"-all -convo openrouter tps\"  ",
+            "fs3 'haiku tps'",
+            "fs3 \u{201c}smart quotes from a phone\u{201d}",
+        ] {
+            assert_eq!(
+                classifier.classify(&turn(TurnRole::Human, prompt, vec![])),
+                TurnClass::RetrievalCall,
+                "{prompt}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_fs3_search_inside_a_real_request_stays_work() {
+        let mut classifier = TurnClassifier::new();
+        for prompt in [
+            "fix the watcher, fs3 \"debounce\"",
+            "fs3 \"debounce\" and then fix it",
+            "fs3 \"a\" \"b\"",
+            "fs3 \"line one\nline two\"",
+            "fs3",
+            "fs3search \"x\"",
+        ] {
+            assert_eq!(
+                classifier.classify(&turn(TurnRole::Human, prompt, vec![])),
+                TurnClass::Work,
+                "{prompt}"
+            );
+        }
+        // An agent writing the same text is quoting it, not running the hook.
+        assert_eq!(
+            classifier.classify(&turn(TurnRole::Agent, "fs3 \"x\"", vec![])),
+            TurnClass::Work
+        );
     }
 
     #[test]
