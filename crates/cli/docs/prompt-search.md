@@ -26,7 +26,7 @@ switch stays part of the search when it follows the search text.
 | `-this` | `-s` | only this chat's own conversation, in any repo |
 | `-n 15` | | how many hits (default 8, max 25) |
 | `-quick` | `-q` | the agent answers from the hits alone, without reading further |
-| `-raw` | | keep short tool-output turns, which are dropped as noise by default |
+| `-raw` | | keep tool calls, tool output and short fragments, which are left out by default |
 | `-help` | `-h` | no search: the agent explains this page |
 
 Where (`-all`, `-repo`) and what (`-code`, `-convo`) combine; short switches can
@@ -56,15 +56,25 @@ fs3 "-help"
 The hook adds the hits as context for that one turn, under a budget of about
 9,000 characters. Hits from one conversation are grouped under it, in rank
 order; each carries its address, repo, path, kind, score and its summary or
-snippet. Alongside the hits the agent is told to:
+snippet. Alongside the hits the agent is told that you typed `fs3` because you
+want the answer from flowspace3, so it should use flowspace3 before the web,
+memory or other tools, and to:
 
-- judge relevance first and say which hits it ignored;
+- judge relevance first and say which hits it ignored; if none bear on the
+  question, the search missed, so search flowspace3 again before anything else;
 - read around the strongest hits with `flowspace3 get <address>` before
   answering (`-quick` turns this off), and treat conversations as history to
   check against current code;
 - dig further itself if it needs to: `flowspace3 search` with `--repo`,
   `--source`, `--path` and `--offset`, `flowspace3 tree conv:<guid>`, and
   `flowspace3 docs list`.
+
+When the results look weak (no hit contains the search words, outside this
+chat's own turns, and the best meaning match scores under 0.55), the agent is
+told so plainly. It must then run at least two or three more flowspace3 searches
+before saying there is nothing, and it gets ready-to-run commands: your message
+as a full question, each key word alone, and the same search across every repo
+and source.
 
 With no message after the quotes, the agent summarises what the hits say. You
 do not see the raw hits yourself; the agent does. A hook cannot rewrite your
@@ -73,9 +83,11 @@ prompt, so the agent also sees the `fs3 "…"` line as you typed it.
 One thing is left out and one is marked, each with a note to the agent saying
 how many:
 
-- **Noise is left out.** Conversation turns with no summary that are tool
-  output or under 160 characters (process exit lines, pane names). `-raw` keeps
-  them.
+- **Tool calls, tool output and fragments are left out.** Conversation turns
+  with no summary that are a tool call, tool output, or under 160 characters
+  (process exit lines, pane names). Commands rarely answer a question; the prose
+  around them does. The note counts each kind. `-raw` keeps them, and plain
+  `flowspace3 search` never drops them.
 - **This chat's last 100 turns are marked, never hidden.** They are tagged
   `THIS CHAT` so the agent knows it may already have them; after a compaction,
   search may be its only copy of them.

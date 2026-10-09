@@ -14,7 +14,7 @@ Switches (anywhere inside the quotes):
     -this     / -s      only this chat's own conversation
     -n N                how many hits (default 8, max 25)
     -quick    / -q      answer from the hits alone, no further reading
-    -raw                keep short tool-output turns (dropped as noise by default)
+    -raw                keep tool calls, tool output and fragments (left out by default)
     -help     / -h      the agent explains this grammar
 
 Short switches combine (`-ac`); `--all` style works too. A near-miss switch
@@ -197,11 +197,54 @@ def resolve_repo(name, cwd):
 
 
 def is_noise(hit):
-    """A short, unsummarised turn: tool output or a fragment that means nothing alone."""
+    """Why an unsummarised turn is left out, or None to keep it. Tool calls and their output
+    are commands, not answers: the agent's prose around them says what they meant."""
     if hit.get("kind") != "turn" or hit.get("smart"):
-        return False
+        return None
     text = (hit.get("snippet") or "").strip()
-    return "[tool-result" in text or len(text) < NOISE_CHARS
+    if text.startswith("[tool-call"):
+        return "tool call"
+    if "[tool-result" in text:
+        return "tool output"
+    return "fragment" if len(text) < NOISE_CHARS else None
+
+
+def noise_note(dropped):
+    """One note naming what was left out, by kind, so the agent knows the hits are filtered."""
+    counts = {}
+    for reason in dropped:
+        counts[reason] = counts.get(reason, 0) + 1
+    parts = ", ".join(f"{n} {reason}{'s' if n > 1 else ''}" for reason, n in counts.items())
+    return (f"left out {parts}: tool calls, tool output and short fragments rarely answer a question, "
+            "the prose turns around them do. `-raw` keeps them; `flowspace3 search` itself never drops them")
+
+
+STOPWORDS = {"the", "and", "for", "what", "how", "why", "did", "does", "was", "were", "with", "from",
+             "this", "that", "about", "into", "when", "where", "which", "who", "our", "you", "are"}
+WEAK_SCORE = 0.55  # a meaning-only best hit under this rarely bears on the search
+
+
+def is_weak(hits):
+    """No hit contains the search words (outside this chat's own echoes) and none scores well."""
+    if not hits:
+        return True
+    worded = any(h.get("channel") in ("lexical", "both") and not h.get("_recent") for h in hits)
+    return not worded and max(h.get("score") or 0 for h in hits) < WEAK_SCORE
+
+
+def follow_ups(query, message, flags):
+    """Ready-to-run flowspace3 searches for when the first pass misses."""
+    scope = " ".join(flags)
+    asks = []
+    if message:
+        asks.append(" ".join(message.replace('"', "'").split())[:160])
+    words = [w.strip(".,?!:;'\"()").lower() for w in query.split()]
+    terms = sorted({w for w in words if len(w) >= 3 and w not in STOPWORDS}, key=len, reverse=True)
+    asks += terms[:2]
+    lines = [f'  flowspace3 search "{ask}" {scope}'.rstrip() for ask in asks]
+    if "all" not in flags:
+        lines.append(f'  flowspace3 search "{query}" --repo all --source all')
+    return lines
 
 
 def recent_turns_of_this_chat(cwd, session_id):
@@ -223,26 +266,34 @@ def recent_turns_of_this_chat(cwd, session_id):
 def search_this_chat(query, opts, cwd, session_id):
     verify = run_fs3(["conversation", "verify", "--harness", "claude", "--session", session_id], cwd)
     if not verify.get("ok"):
-        return [], "this chat", [f"this chat is not indexed yet: {failure_text(verify)}"]
+        return [], "this chat", [f"this chat is not indexed yet: {failure_text(verify)}"], ["--repo", "all", "--source", "conversation"]
     guid = verify["data"]["guid"]
     prefix = f"conv:{guid}#"
-    hits, problems = [], []
+    hits, problems, dropped = [], [], []
     for page in range(SESSION_PAGES):
         env = run_fs3(["search", query, "--repo", "all", "--source", "conversation",
                        "--limit", "100", "--offset", str(page * 100)], cwd)
         if not env.get("ok"):
             problems.append(failure_text(env))
             break
-        hits += [r for r in env["data"]["results"]
-                 if r["address"].startswith(prefix) and (opts["raw"] or not is_noise(r))]
+        for r in env["data"]["results"]:
+            if not r["address"].startswith(prefix):
+                continue
+            reason = None if opts["raw"] else is_noise(r)
+            if reason:
+                dropped.append(reason)
+            else:
+                hits.append(r)
         if len(hits) >= opts["limit"] or not env["data"].get("next_offset"):
             break
+    if dropped:
+        problems.append(noise_note(dropped))
     scope = f"this chat only (conv:{guid}, indexed through {verify['data'].get('last_turn_at')})"
-    return hits[: opts["limit"]], scope, problems
+    return hits[: opts["limit"]], scope, problems, ["--repo", "all", "--source", "conversation"]
 
 
 def search(query, opts, cwd, session_id):
-    """Return (hits, scope description, problems)."""
+    """Return (hits, scope description, problems, the scope flags to search again with)."""
     if opts["this"]:
         return search_this_chat(query, opts, cwd, session_id)
     problems = []
@@ -274,10 +325,10 @@ def search(query, opts, cwd, session_id):
             for r in hits:
                 r["_recent"] = recent(r["address"])
     if not opts["raw"]:
-        kept = [r for r in hits if not is_noise(r)]
-        if len(kept) < len(hits):
-            problems.append(f"dropped {len(hits) - len(kept)} short tool-output/fragment turn(s) as noise (-raw keeps them)")
-        hits = kept
+        dropped = [reason for reason in map(is_noise, hits) if reason]
+        if dropped:
+            problems.append(noise_note(dropped))
+        hits = [r for r in hits if not is_noise(r)]
     what = {"both": "code + docs + conversations", "code": "code + docs",
             "convo": "conversations"}[opts["what"]]
     hits = hits[: opts["limit"]]
@@ -285,7 +336,9 @@ def search(query, opts, cwd, session_id):
     if tagged:
         problems.append(f"{tagged} hit(s) are from this chat's last {RECENT_TURNS} turns (tagged THIS CHAT): "
                         "you may already have them in context, unless a compaction removed them")
-    return hits, f"{where}, {what}", problems
+    flags = base[4:] + {"both": [], "code": ["--source", "code"],
+                        "convo": ["--source", "conversation"]}[opts["what"]]
+    return hits, f"{where}, {what}", problems, flags
 
 
 def grouped(hits):
@@ -301,17 +354,36 @@ def grouped(hits):
     return groups
 
 
-def render(query, scope, hits, problems, message, quick, fumbles=()):
+def render(query, scope, hits, problems, message, quick, fumbles=(), flags=()):
+    weak = is_weak(hits)
     lines = [
         "flowspace3 search results the user asked for with an `fs3` prompt.",
+        "The user typed `fs3` because they want this answered from flowspace3 (they build it and use it on "
+        "purpose): use flowspace3 (`search`, `get`, `tree`) before the web, memory or other tools.",
         f'Search: "{query}" | scope: {scope} | {len(hits)} hit(s).',
         f"A hook ran `flowspace3 search` before your turn; you did not run it. Grammar: {GUIDE}.",
         (f"The user's message about these results: {message}" if message else
          "The user added no message: summarise what the results say about the search, citing addresses."),
-        "Judge relevance first: build on the hits that bear on the search and say in one line which you ignored.",
+        "Judge relevance first: build on the hits that bear on the search and say in one line which you ignored. "
+        "If none bear on it, the search missed, not the index: search flowspace3 again before anything else.",
     ]
     lines += list(fumbles)
-    if quick:
+    if weak:
+        best = max((h.get("score") or 0 for h in hits), default=0)
+        why = ("no hits" if not hits else
+               f"no hit contains the search words and the best meaning match scores only {best:.2f}")
+        if quick:
+            lines.append(f"WEAK RESULTS: {why}. The user asked for a quick answer (-quick): say plainly "
+                         "that these hits miss rather than guessing, and offer to search further.")
+        else:
+            lines.append(f"WEAK RESULTS: {why}, so these probably miss. Do not stop here or go to the web: "
+                         "run at least 2-3 more flowspace3 searches first, then read around any hit that fits. "
+                         "Rephrase as a full question and try each key word alone, for example:")
+            lines += follow_ups(query, message, list(flags))
+            lines.append("Only when those miss too, tell the user flowspace3 had nothing on it, "
+                         "then use other sources.")
+            lines.append(TIP)
+    elif quick:
         lines.append("The user asked for a quick answer (-quick): answer from these hits alone, no further reading.")
     else:
         lines.append("Before answering, read around the strongest hit(s) with `flowspace3 get <address>` "
@@ -369,8 +441,8 @@ def build_context(event):
         return (f"The user typed an `fs3` prompt but {why}, so no search ran. "
                 f"Tell them that in one line and show them the usage plainly; the full guide is {GUIDE}.\n\n"
                 + __doc__)
-    hits, scope, problems = search(query, opts, event.get("cwd") or ".", event.get("session_id") or "")
-    return render(query, scope, hits, problems, message, opts["quick"], issue_lines(issues))
+    hits, scope, problems, flags = search(query, opts, event.get("cwd") or ".", event.get("session_id") or "")
+    return render(query, scope, hits, problems, message, opts["quick"], issue_lines(issues), flags)
 
 
 def main():
