@@ -11,6 +11,13 @@ fs3 "<switches> <search text>" <your message to the agent>
 The quotes hold the search. Everything after the closing quote is your message,
 and the agent reads it with the hits in front of it.
 
+The search can also sit anywhere in the prompt as one quoted piece that starts
+with `fs3`; the rest of the prompt, before and after it, is your message:
+
+```text
+okay lets talk about the pij --fyi feature "fs3 -a pij fyi"
+```
+
 ## Switches
 
 Switches go anywhere inside the quotes; a word starting with `-` that is not a

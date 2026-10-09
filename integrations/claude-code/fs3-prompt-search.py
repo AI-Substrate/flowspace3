@@ -78,12 +78,12 @@ def failure_text(env):
 def split_prompt(prompt):
     """Return (search_part, message) or None when the prompt is not an fs3 prompt."""
     text = prompt.strip()
+    closers = {'"': '"', "'": "'", "“": "”", "‘": "’"}  # straight or smart quotes
     if text.lower() == "fs3":
         return "", ""
     if not text.lower().startswith("fs3 "):
-        return None
+        return embedded(text, closers)
     rest = text[4:].lstrip()
-    closers = {'"': '"', "'": "'", "“": "”", "‘": "’"}  # straight or smart quotes
     if rest[:1] in closers:
         close = closers[rest[0]]
         end = rest.find(close, 1)
@@ -91,6 +91,22 @@ def split_prompt(prompt):
             return rest[1:], ""
         return rest[1:end], rest[end + 1:].strip()
     return rest, ""  # unquoted: the whole remainder is the search
+
+
+def embedded(text, closers):
+    """A quoted `"fs3 <switches> <search>"` anywhere in the prompt; the rest is the message."""
+    for opener, close in closers.items():
+        start = 0
+        while (at := text.find(opener, start)) >= 0:
+            end = text.find(close, at + 1)
+            if end < 0:
+                break
+            inner = text[at + 1:end].strip()
+            if inner.lower() == "fs3" or inner.lower().startswith("fs3 "):
+                message = " ".join((text[:at] + " " + text[end + 1:]).split())
+                return inner[3:].strip(), message
+            start = end + 1
+    return None
 
 
 def match_switch(name):
