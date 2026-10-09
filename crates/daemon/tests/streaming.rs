@@ -12,61 +12,13 @@
 
 mod support;
 
-use std::sync::{Arc, Mutex};
-
 use fs3_core::{Config, DatabaseConfig, EventKind};
 use fs3_daemon::Reconcile;
 use fs3_daemon::retention::RetentionSupervisor;
 use fs3_daemon::runner;
 use fs3_daemon::wiring::AppState;
 use serde_json::json;
-use tracing::subscriber::DefaultGuard;
-use tracing_subscriber::fmt::MakeWriter;
-
-/// A writer that keeps everything written to it, so a test can read the log a
-/// human would have read.
-#[derive(Clone, Default)]
-struct Captured(Arc<Mutex<Vec<u8>>>);
-
-impl Captured {
-    /// Install as the subscriber for THIS thread only, so tests running in
-    /// parallel cannot read each other's lines.
-    fn install(&self) -> DefaultGuard {
-        let subscriber = tracing_subscriber::fmt()
-            .with_writer(self.clone())
-            .with_max_level(tracing::Level::INFO)
-            .with_ansi(false)
-            .finish();
-        tracing::subscriber::set_default(subscriber)
-    }
-
-    fn lines(&self) -> Vec<String> {
-        String::from_utf8(self.0.lock().expect("the log is not poisoned").clone())
-            .expect("log output is utf-8")
-            .lines()
-            .map(str::to_string)
-            .collect()
-    }
-}
-
-impl std::io::Write for Captured {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.0.lock().expect("the log is not poisoned").extend(buf);
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        Ok(())
-    }
-}
-
-impl<'a> MakeWriter<'a> for Captured {
-    type Writer = Self;
-
-    fn make_writer(&'a self) -> Self::Writer {
-        self.clone()
-    }
-}
+use support::capture::Captured;
 
 /// The value of a `key=value` field on a log line, if it has one.
 fn field(line: &str, key: &str) -> Option<String> {
