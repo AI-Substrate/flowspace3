@@ -26,6 +26,7 @@ Full guide: `flowspace3 docs get prompt-search`.
 """
 import difflib
 import json
+import re
 import shlex
 import subprocess
 import sys
@@ -47,6 +48,7 @@ LONG = {"all": "all", "code": "code", "convo": "convo", "convos": "convo", "this
 SHORT = {"a": "all", "f": "code", "c": "convo", "s": "this", "q": "quick", "h": "help"}
 VALUED = {"n", "r", "repo"}
 GUIDE = "`flowspace3 docs get prompt-search`"
+MACHINE_PROMPTS = ("<cross-session-message", "<task-notification", "<system-reminder")
 TIP = ("To dig further yourself: `flowspace3 search \"<a question>\"` with `--repo all`, "
        "`--source code|doc|conversation`, `--path <glob>` or `--offset N` for the next page "
        "(`flowspace3 search --help` lists every flag); `flowspace3 get <address> --before 3 --after 10` "
@@ -78,6 +80,8 @@ def failure_text(env):
 def split_prompt(prompt):
     """Return (search_part, message) or None when the prompt is not an fs3 prompt."""
     text = prompt.strip()
+    if text.startswith(MACHINE_PROMPTS):
+        return None  # a peer message or harness notice that merely mentions fs3, not a request
     closers = {'"': '"', "'": "'", "“": "”", "‘": "’"}  # straight or smart quotes
     if text.lower() == "fs3":
         return "", ""
@@ -102,7 +106,7 @@ def embedded(text, closers):
             if end < 0:
                 break
             inner = text[at + 1:end].strip()
-            if inner.lower() == "fs3" or inner.lower().startswith("fs3 "):
+            if inner.lower().startswith("fs3 ") and re.search(r"\w", inner[3:]):
                 message = " ".join((text[:at] + " " + text[end + 1:]).split())
                 return inner[3:].strip(), message
             start = end + 1
