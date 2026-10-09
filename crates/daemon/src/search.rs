@@ -458,18 +458,9 @@ async fn search_filtered(
     let repo_key = scope.repo.clone().unwrap_or_default();
     let model_key = state.embedder_key(&repo_key);
     let started = std::time::Instant::now();
-    let vector = state
-        .embedder_for(&repo_key)
-        .embed(&[query.to_string()])
-        .await
-        .map_err(fail)?
-        .pop()
-        .ok_or_else(|| {
-            Failure::new(
-                &catalog::PROVIDER_FAILED,
-                "the embedder returned no vector for the query",
-            )
-        })?;
+    // Cached for a repeated query, and otherwise sent ahead of any background
+    // embedding on the same provider instance (`crate::embed_governor`).
+    let vector = state.embed_query(&repo_key, query).await.map_err(fail)?;
 
     let embedded = started.elapsed();
 

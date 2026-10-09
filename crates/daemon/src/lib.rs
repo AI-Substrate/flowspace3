@@ -15,6 +15,7 @@ pub mod convo_ingest;
 pub mod convo_poll;
 pub mod ddoc;
 pub mod debounce;
+pub mod embed_governor;
 pub mod enrich;
 pub mod gc;
 pub mod github_copilot;

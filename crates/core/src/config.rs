@@ -980,6 +980,7 @@ fn unknown_instance(
 /// worker_concurrency = 4
 /// summarize_lane = 32
 /// embed_lane = 10
+/// embed_tokens_per_minute = 4000000
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -1080,6 +1081,23 @@ pub struct IndexingConfig {
     ///
     /// [`Embedder::concurrency_ceiling`]: crate::ports::Embedder::concurrency_ceiling
     pub embed_lane: usize,
+
+    /// Tokens per minute BACKGROUND embedding may send to one embedder
+    /// instance. `0` turns pacing off.
+    ///
+    /// A provider's real limit is tokens per minute, not requests in flight.
+    /// Measured 2026-10-09: the Azure deployment reports
+    /// `x-ratelimit-limit-tokens: 6850000`, and the embed lane was sending ten
+    /// ~200k-token batches at once with three attempts each. That drew 1,884
+    /// rate-limit responses in a day, and every search's query embed waited
+    /// 20-29 s behind the deployment's `Retry-After`.
+    ///
+    /// Searches are never paced: the query embed bypasses this budget, and
+    /// background work pauses while one is in flight. The default leaves about
+    /// 40% of that deployment's quota as headroom for them. The budget halves
+    /// on a rate-limit response and recovers on success, so a smaller
+    /// deployment converges instead of storming.
+    pub embed_tokens_per_minute: u64,
 }
 
 impl IndexingConfig {
@@ -1149,6 +1167,7 @@ impl Default for IndexingConfig {
             worker_concurrency: 4,
             summarize_lane: 32,
             embed_lane: 10,
+            embed_tokens_per_minute: 4_000_000,
         }
     }
 }

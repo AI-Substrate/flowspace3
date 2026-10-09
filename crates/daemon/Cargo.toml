@@ -54,6 +54,9 @@ tracing-subscriber.workspace = true
 # (dw-0109 proves behind-db -> rejection -> doctor -> success as one loop).
 fs3-cli.workspace = true
 sqlx.workspace = true
+# Paused virtual time for the embed governor's pacing tests: a minute of
+# budget is proven in milliseconds, deterministically.
+tokio = { workspace = true, features = ["test-util"] }
 
 # The `prodguard` gate in `harness checks`: snapshots the schema version of the
 # CONFIGURED (production) database either side of `cargo test --all`, so a test
