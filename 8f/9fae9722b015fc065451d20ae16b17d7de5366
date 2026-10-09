@@ -1,0 +1,21 @@
+integrations/claude-code/fs3-prompt-search.py
+  s_15d888f4b629c1::t_5317b9dd14a58d 109
+  s_15d888f4b629c1::t_7120c7e2f6874e 83-84
+  s_15d888f4b629c1::t_2e0a16c9871fac 29,51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8f9fae9722b015fc065451d20ae16b17d7de5366",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
