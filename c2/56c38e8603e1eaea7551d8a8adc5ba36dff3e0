@@ -1,0 +1,40 @@
+crates/daemon/src/runner.rs
+  s_7759b95b7c85f1::t_1551aa18d620f9 485,514-518
+  s_7759b95b7c85f1::t_60e2df7694969a 30,38,147-173,271-273,277-290,294-295,311,324-330,384-387,396,438,440-446,477,482-484,486,500-513,519-560
+  s_7759b95b7c85f1::t_dc762d3227ed2d 180-182,184-185,452-453,463-467
+crates/daemon/tests/lanes.rs
+  s_7759b95b7c85f1::t_098629edcbe8d1 685-789
+  s_7759b95b7c85f1::t_cce6063c35691a 608,642,790-850
+crates/store/tests/pg_daemon_shutdown.rs
+  s_7759b95b7c85f1::t_09739d04c39f93 1-94
+.harness/extensions/daemon/instructions.md
+  s_7759b95b7c85f1::t_644a9f430218df 16
+crates/cli/docs/daemon.md
+  s_7759b95b7c85f1::t_6b12d59593adce 8-14,40-42
+crates/cli/tests/daemon_shutdown.rs
+  s_7759b95b7c85f1::t_040559ec141dc3 224-230,328,330,335-347,388-456
+crates/daemon/src/boot.rs
+  s_7759b95b7c85f1::t_3a4ef9c130ee5c 150,153-167,303,363-376,378,535,569-588,608-609,850,855-856,860-888,892,903,909,916,923,925,930-970
+crates/store/src/jobs.rs
+  s_7759b95b7c85f1::t_a65ad6b0072f07 514-587
+crates/store/src/lib.rs
+  s_7759b95b7c85f1::t_c03dab70e124a1 66-68,70-71
+docs/how/database.md
+  s_7759b95b7c85f1::t_a563b5773a71f7 121-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c256c38e8603e1eaea7551d8a8adc5ba36dff3e0",
+  "prompts": {},
+  "sessions": {
+    "s_7759b95b7c85f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dacb2e6c-5b32-4254-86f1-bceb29f6aa86",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
