@@ -1,0 +1,38 @@
+crates/daemon/src/embed_governor.rs
+  s_7759b95b7c85f1::t_945546f1ee07eb 279-282,284-285
+  s_7759b95b7c85f1::t_22c268ce0b2ad4 1-278,283,286-363
+  s_7759b95b7c85f1::t_b63df7dce8ccfb 364-385
+crates/daemon/tests/embed_priority.rs
+  s_7759b95b7c85f1::t_385f11e4e9cb90 1-207
+  s_7759b95b7c85f1::t_4a98839d024816 208-237
+crates/core/src/config.rs
+  s_7759b95b7c85f1::t_c981076a5ceee0 983,1084-1100,1170
+crates/daemon/Cargo.toml
+  s_7759b95b7c85f1::t_91f0eff0d1bcf8 57-59
+crates/daemon/src/enrich.rs
+  s_7759b95b7c85f1::t_631d4813c53255 823-825,827-834,836-844
+crates/daemon/src/lib.rs
+  s_7759b95b7c85f1::t_8c4005c11ccad1 18
+crates/daemon/src/search.rs
+  s_7759b95b7c85f1::t_6a48047b3acd1a 461-463
+crates/daemon/src/wiring.rs
+  s_7759b95b7c85f1::t_f781feede5d9cf 62-63,123-128,226-229,268-321
+docs/reference/configuration.md
+  s_7759b95b7c85f1::t_4e57b31dc79fab 181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2c0ad8e1b600fa13e5d4ca55c990b43a671c96d7",
+  "prompts": {},
+  "sessions": {
+    "s_7759b95b7c85f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dacb2e6c-5b32-4254-86f1-bceb29f6aa86",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
