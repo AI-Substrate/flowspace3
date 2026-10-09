@@ -605,7 +605,7 @@ async fn a_busy_general_lane_releases_a_partial_embed_batch_after_the_max_wait()
 }
 
 #[tokio::test]
-async fn first_shutdown_signal_finishes_in_flight_without_dequeueing_more() {
+async fn draining_finishes_in_flight_without_dequeueing_more() {
     const BACKLOG: usize = 4;
     let (database, state, blocker) = blocked_runner("shutdown-drain", BACKLOG).await;
     let (shutdown_tx, shutdown) = watch::channel(runner::Shutdown::Running);
@@ -639,7 +639,7 @@ async fn first_shutdown_signal_finishes_in_flight_without_dequeueing_more() {
 }
 
 #[tokio::test]
-async fn second_shutdown_signal_cancels_in_flight_without_claiming_more() {
+async fn a_forced_shutdown_cancels_in_flight_without_claiming_more() {
     const BACKLOG: usize = 4;
     let (database, state, blocker) = blocked_runner("shutdown-force", BACKLOG).await;
     let (shutdown_tx, shutdown) = watch::channel(runner::Shutdown::Running);
@@ -785,5 +785,66 @@ async fn a_stuck_embed_call_does_not_stop_summaries() {
         .await
         .expect("runner stops")
         .expect("runner task succeeds");
+    database.destroy(state.db.clone()).await;
+}
+
+/// DL-023: a shutdown during a provider call that has not answered stops at
+/// once rather than waiting the call out, and the job it abandoned is resumed
+/// by the next start — claimable straight away, its attempt refunded, done
+/// exactly once.
+#[tokio::test]
+async fn a_shutdown_abandons_a_slow_call_and_the_next_start_resumes_it() {
+    let (database, state, blocker) = blocked_runner("shutdown-resume", 1).await;
+    let (shutdown_tx, shutdown) = watch::channel(runner::Shutdown::Running);
+    let handle = tokio::spawn(runner::run_until_shutdown(state.clone(), 1, shutdown));
+
+    // The summarizer is called and does not answer.
+    blocker.wait_for_calls(1).await;
+    let stopping = std::time::Instant::now();
+    shutdown_tx
+        .send(runner::Shutdown::Forced)
+        .expect("runner observes shutdown");
+    tokio::time::timeout(Duration::from_secs(5), handle)
+        .await
+        .expect("shutdown does not wait for the provider")
+        .expect("runner task succeeds");
+    assert!(
+        stopping.elapsed() < Duration::from_secs(2),
+        "stopped in {:?}",
+        stopping.elapsed()
+    );
+
+    // What `serve` does once the runner has stopped.
+    let released = fs3_store::release_running(&state.db)
+        .await
+        .expect("releases claims");
+    assert_eq!(released, vec![(SUMMARIZE.to_string(), 1)]);
+    let (job_state, attempts): (String, i32) =
+        sqlx::query_as("SELECT state, attempts FROM jobs WHERE kind = $1")
+            .bind(SUMMARIZE)
+            .fetch_one(&state.db)
+            .await
+            .expect("reads the job");
+    assert_eq!(
+        (job_state.as_str(), attempts),
+        ("pending", 0),
+        "claimable, with no attempt lost"
+    );
+
+    // The next start: the provider answers this time.
+    blocker.release(1);
+    runner::drain(&state, 1).await;
+    let (job_state, attempts): (String, i32) =
+        sqlx::query_as("SELECT state, attempts FROM jobs WHERE kind = $1")
+            .bind(SUMMARIZE)
+            .fetch_one(&state.db)
+            .await
+            .expect("reads the job");
+    assert_eq!((job_state.as_str(), attempts), ("done", 1));
+    assert_eq!(
+        blocker.calls().len(),
+        2,
+        "the abandoned call and the one that finished it"
+    );
     database.destroy(state.db.clone()).await;
 }

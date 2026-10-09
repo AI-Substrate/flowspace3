@@ -13,7 +13,7 @@ auditable command. It is operational: it builds and may stop a running daemon.
 3. Resolves the effective daemon URL, finds its listener with `lsof`, and maps
    that PID to its owning tmux pane by process ancestry. Pane IDs are never
    hardcoded.
-4. Sends Ctrl-C to stop dequeueing and drain in-flight work, waits boundedly for
+4. Sends Ctrl-C (in-flight work is handed back to the queue), waits boundedly for
    the listener to disappear, and relaunches the new release binary in the same
    pane. A cold bounce creates a daemon pane. A listener with no discoverable
    pane is not touched; the failure returns the exact launch command instead of

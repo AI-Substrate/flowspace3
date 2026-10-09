@@ -177,9 +177,12 @@ pub enum Shutdown {
     /// Accept requests and dequeue work.
     #[default]
     Running,
-    /// Stop dequeueing and finish only work already in flight.
+    /// Stop dequeueing and finish only work already in flight. No signal
+    /// sends this since DL-023 (a drain could wait minutes on a provider);
+    /// it remains for callers that want in-flight work finished.
     Draining,
-    /// A second signal: cancel remaining work and unwind through cleanup.
+    /// A shutdown signal: abandon in-flight work and unwind through cleanup.
+    /// `serve` then hands the abandoned jobs back to the queue.
     Forced,
 }
 
@@ -446,7 +449,8 @@ pub async fn run_until_shutdown(
             while *reporter_shutdown.borrow() == Shutdown::Running
                 && reporter_shutdown.changed().await.is_ok()
             {}
-            if *reporter_shutdown.borrow() != Shutdown::Running {
+            let phase = *reporter_shutdown.borrow();
+            if phase != Shutdown::Running {
                 let in_flight = fs3_store::queue_depth(&reporter_state.db)
                     .await
                     .map(|rows| {
@@ -456,7 +460,11 @@ pub async fn run_until_shutdown(
                             .sum::<i64>()
                     })
                     .unwrap_or(0);
-                tracing::info!(in_flight, "draining {in_flight} in-flight");
+                if phase == Shutdown::Forced {
+                    tracing::info!(in_flight, "abandoning {in_flight} in-flight");
+                } else {
+                    tracing::info!(in_flight, "draining {in_flight} in-flight");
+                }
             }
         }
     );

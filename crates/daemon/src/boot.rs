@@ -147,19 +147,24 @@ pub fn run() -> Result<()> {
         );
     }
 
-    tokio::runtime::Builder::new_multi_thread()
+    let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
-        .context("starting the Tokio runtime")?
-        .block_on(serve(
-            configuration.config,
-            address,
-            logging,
-            auth,
-            None,
-            None,
-            None,
-        ))
+        .context("starting the Tokio runtime")?;
+    let outcome = runtime.block_on(serve(
+        configuration.config,
+        address,
+        logging,
+        auth,
+        None,
+        None,
+        None,
+    ));
+    // Bounded, not a plain drop: dropping a runtime waits for every blocking
+    // task, and an abandoned parse would hold the exit for as long as it runs.
+    // Its job was already released, so nothing is lost by not waiting.
+    runtime.shutdown_timeout(Duration::from_secs(1));
+    outcome
 }
 
 /// How many worktrees are probed at once. Each probe is a handful of short
@@ -295,7 +300,7 @@ pub fn run_sandbox() -> Result<()> {
         .context("starting the Tokio runtime")?;
 
     let (database, outcome) = runtime.block_on(async move {
-        let shutdown = shutdown_context()?;
+        let shutdown = shutdown_context(Exit::Structured)?;
         let listener = tokio::net::TcpListener::from_std(listener)
             .context("adopting the reserved sandbox daemon port")?;
         let database = fs3_testkit::FreshDatabase::create_from(&base_database_url, "sandbox")
@@ -355,9 +360,22 @@ struct ShutdownContext {
     task: tokio::task::JoinHandle<()>,
 }
 
-fn shutdown_context() -> Result<ShutdownContext> {
+/// How the process may leave once a shutdown signal has arrived.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Exit {
+    /// A second signal exits at once, and a hard cap ends a stuck shutdown.
+    Immediate,
+    /// Always unwind through cleanup: a sandbox must drop its database, and an
+    /// early exit would leak it.
+    Structured,
+}
+
+/// How long a shutdown may take before the process exits anyway (DL-023).
+const SHUTDOWN_HARD_CAP: Duration = Duration::from_secs(10);
+
+fn shutdown_context(exit: Exit) -> Result<ShutdownContext> {
     let (sender, receiver) = tokio::sync::watch::channel(crate::runner::Shutdown::Running);
-    let task = install_shutdown_handler(sender)?;
+    let task = install_shutdown_handler(sender, exit)?;
     Ok(ShutdownContext { receiver, task })
 }
 
@@ -514,7 +532,7 @@ async fn serve(
         task: signal_task,
     } = match shutdown {
         Some(shutdown) => shutdown,
-        None => shutdown_context()?,
+        None => shutdown_context(Exit::Immediate)?,
     };
 
     let state = AppState::from_config(configuration).context("wiring the composition root")?;
@@ -548,6 +566,26 @@ async fn serve(
         Err(error) => tracing::debug!(%error, "could not compare schema versions before migrating"),
     }
 
+    // One daemon per database, taken before this process changes anything. A
+    // second daemon, or a restart racing a daemon that is still exiting, would
+    // otherwise requeue the first one's live claims below, and both would work
+    // the same jobs. Held until `serve` returns; the process ending drops it.
+    let store_lock = match fs3_store::take_daemon_lock(&state.db).await {
+        Ok(Some(lock)) => lock,
+        Ok(None) => bail!(
+            "another flowspace3 daemon is serving {database}, or is still shutting down. \
+             Stop it, or wait for it to exit, then start this one"
+        ),
+        Err(error) => {
+            return Err(error).with_context(|| {
+                format!(
+                    "taking the daemon lock on {database} — if the store is not running: {}",
+                    fs3_store::COMPOSE_UP
+                )
+            });
+        }
+    };
+
     // The daemon is the single writer, so startup is the only migration point.
     // It is also the only moment where refusing to run is cheaper than running:
     // a writer that cannot reach its own schema has nothing useful to serve, so
@@ -567,8 +605,8 @@ async fn serve(
     // that file. One SIGKILL during a large index would otherwise make those
     // files permanently unindexable, reported as success.
     //
-    // Sound only here: fs3 is the single writer (PRD req 20), so at this
-    // instant no worker exists to be holding a claim.
+    // Sound only here: fs3 is the single writer (PRD req 20), enforced by the
+    // lock above, so at this instant no worker exists to be holding a claim.
     match fs3_store::requeue_running(&state.db).await {
         Ok(0) => {}
         Ok(swept) => tracing::warn!(
@@ -809,16 +847,49 @@ async fn serve(
     }
     let reconcile = tokio::spawn(crate::reconcile::run_forever(reconcilers, cadence));
 
+    let db = state.db.clone();
     let server = http::serve_listener(state, listener.into_inner(), auth, shutdown).await;
     runner.await.context("joining the job runner")?;
     reconcile.abort();
     signal_task.abort();
+    release_claims(&db).await;
+    drop(store_lock);
     server
+}
+
+/// Hand back the claims a fast shutdown abandoned, refunding their attempts,
+/// and say in one line what was abandoned.
+///
+/// The runner has stopped, and the daemon lock is still held, so every
+/// `running` row is this process's own. A row this fails to release is not
+/// lost: the next boot requeues it, at the cost of one attempt.
+async fn release_claims(db: &fs3_store::PgPool) {
+    match fs3_store::release_running(db).await {
+        Ok(released) if released.is_empty() => {
+            tracing::info!("shutdown abandoned no in-flight work");
+        }
+        Ok(released) => {
+            let counts = released
+                .iter()
+                .map(|(kind, count)| format!("{kind}={count}"))
+                .collect::<Vec<_>>()
+                .join(" ");
+            tracing::info!(
+                "abandoned in-flight work at shutdown {counts}; released for the next start, \
+                 attempts refunded"
+            );
+        }
+        Err(error) => tracing::error!(
+            %error,
+            "cannot release in-flight work at shutdown; the next start requeues it"
+        ),
+    }
 }
 
 #[cfg(unix)]
 fn install_shutdown_handler(
     shutdown: tokio::sync::watch::Sender<crate::runner::Shutdown>,
+    exit: Exit,
 ) -> Result<tokio::task::JoinHandle<()>> {
     use tokio::signal::unix::{SignalKind, signal};
 
@@ -829,40 +900,72 @@ fn install_shutdown_handler(
             _ = interrupt.recv() => "SIGINT",
             _ = terminate.recv() => "SIGTERM",
         };
-        tracing::info!(signal = first, "shutdown requested");
-        let _ = shutdown.send(crate::runner::Shutdown::Draining);
+        begin_shutdown(&shutdown, first, exit);
 
         let second = tokio::select! {
             _ = interrupt.recv() => "SIGINT",
             _ = terminate.recv() => "SIGTERM",
         };
-        tracing::warn!(
-            signal = second,
-            "second shutdown signal; cancelling in-flight work"
-        );
-        let _ = shutdown.send(crate::runner::Shutdown::Forced);
+        second_signal(second, exit);
     }))
 }
 
 #[cfg(not(unix))]
 fn install_shutdown_handler(
     shutdown: tokio::sync::watch::Sender<crate::runner::Shutdown>,
+    exit: Exit,
 ) -> Result<tokio::task::JoinHandle<()>> {
     Ok(tokio::spawn(async move {
         if let Err(error) = tokio::signal::ctrl_c().await {
             tracing::error!(%error, "cannot listen for shutdown signal");
             return;
         }
-        tracing::info!(signal = "Ctrl-C", "shutdown requested");
-        let _ = shutdown.send(crate::runner::Shutdown::Draining);
+        begin_shutdown(&shutdown, "Ctrl-C", exit);
         if tokio::signal::ctrl_c().await.is_ok() {
-            tracing::warn!(
-                signal = "Ctrl-C",
-                "second shutdown signal; cancelling in-flight work"
-            );
-            let _ = shutdown.send(crate::runner::Shutdown::Forced);
+            second_signal("Ctrl-C", exit);
         }
     }))
+}
+
+/// The first signal: stop now (DL-023). In-flight provider calls are abandoned
+/// rather than awaited, which could take minutes. Their jobs are released at
+/// the end of `serve`, so the next start resumes them.
+fn begin_shutdown(
+    shutdown: &tokio::sync::watch::Sender<crate::runner::Shutdown>,
+    signal: &str,
+    exit: Exit,
+) {
+    tracing::info!(
+        signal,
+        "shutdown requested; abandoning in-flight work for the next start to resume"
+    );
+    let _ = shutdown.send(crate::runner::Shutdown::Forced);
+    if exit == Exit::Immediate {
+        // A plain OS thread, so a wedged runtime cannot stop it from firing.
+        std::thread::spawn(|| {
+            std::thread::sleep(SHUTDOWN_HARD_CAP);
+            tracing::error!(
+                seconds = SHUTDOWN_HARD_CAP.as_secs(),
+                "shutdown did not finish in time; exiting anyway. Jobs still marked running \
+                 are requeued at the next start"
+            );
+            std::process::exit(1);
+        });
+    }
+}
+
+/// The second signal: the person wants out now.
+fn second_signal(signal: &str, exit: Exit) {
+    match exit {
+        Exit::Immediate => {
+            tracing::warn!(signal, "second shutdown signal; exiting now");
+            std::process::exit(130);
+        }
+        Exit::Structured => tracing::warn!(
+            signal,
+            "second shutdown signal; the sandbox still drops its database before exiting"
+        ),
+    }
 }
 
 /// Turn the configured daemon URL into a bind address, refusing any host that

@@ -118,9 +118,9 @@ flowspace3 daemon --sandbox
 The command creates a unique migrated child database, loads only its own minted
 configuration, forces fake embedding, summarization, and agent providers,
 reserves a free loopback port, and prints its ready line only after wiring,
-bind, and key publication succeed. SIGINT and SIGTERM stop new dequeueing and
-drop the child database; a second signal cancels remaining in-flight work but
-still runs cleanup. If cleanup fails, the exit names the database and prints a
+bind, and key publication succeed. SIGINT and SIGTERM stop at once: in-flight
+work is abandoned and handed back to the queue, then the child database is
+dropped. A second signal still runs that cleanup. If cleanup fails, the exit names the database and prints a
 host-tool-independent fallback using `docker exec flowspace3-db psql ...`.
 
 The former manual four-seam recipe—empty config directory, disposable database,
