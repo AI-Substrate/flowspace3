@@ -206,9 +206,20 @@ async fn a_hit_on_text_shared_with_code_resolves_to_the_turn() {
     let code = search(&state, &ask("collect garbage", None), &Scope::unscoped())
         .await
         .expect("a code search");
-    assert_eq!(code.results.len(), 1);
-    assert_eq!(code.results[0].kind, "function");
-    assert!(code.results[0].address.starts_with("el:"));
+    // Since keyword search matches every term (2026-10-09), the turn that
+    // quotes the code is a legitimate second hit in its own right; what must
+    // hold is that the CODE row resolves to the code element, exactly once.
+    let functions: Vec<_> = code
+        .results
+        .iter()
+        .filter(|hit| hit.kind == "function")
+        .collect();
+    assert_eq!(functions.len(), 1, "{:#?}", code.results);
+    assert!(functions[0].address.starts_with("el:"));
+    assert_eq!(
+        code.results[0].kind, "function",
+        "verbatim code still leads"
+    );
 
     database.destroy(state.db).await;
 }

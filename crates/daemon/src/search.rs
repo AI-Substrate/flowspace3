@@ -553,8 +553,11 @@ async fn search_filtered(
     let mut lexical_hits = lexical.hits;
     let elsewhere = wide.and_then(|(wide_semantic, wide_lexical)| {
         let ranked = fuse(
-            wide_lexical.hits.iter().map(render_lexical),
-            wide_semantic.hits.iter().map(render),
+            wide_lexical
+                .hits
+                .iter()
+                .map(|hit| render_lexical(hit, query)),
+            wide_semantic.hits.iter().map(|hit| render(hit, query)),
         );
         tally_elsewhere(scope.repo.as_deref()?, &ranked, limit)
     });
@@ -594,8 +597,8 @@ async fn search_filtered(
     });
 
     let ranked = fuse(
-        lexical_hits.iter().map(render_lexical),
-        hits.iter().map(render),
+        lexical_hits.iter().map(|hit| render_lexical(hit, query)),
+        hits.iter().map(|hit| render(hit, query)),
     );
     let composition = composition(&ranked);
     if !ranked.is_empty() {
@@ -997,12 +1000,14 @@ async fn attach_agents(state: &AppState, results: &mut [Hit]) {
 }
 
 /// Turn a store hit into a workshop-003 row.
-fn render(hit: &SearchHit) -> Hit {
+fn render(hit: &SearchHit, query: &str) -> Hit {
     let element = &hit.similar.element;
     Hit {
         address: address_of(hit),
         // Cosine distance to score, once, at the boundary.
-        score: 1.0 - hit.similar.distance,
+        // Capped at 1.0: a float rounding of an identical vector must not
+        // out-sort verbatim lexical identity, which ties at exactly 1.0.
+        score: damp_restated_question((1.0 - hit.similar.distance).min(1.0), element, query),
         channel: SearchChannel::Semantic,
         match_field: hit.similar.source_kind.as_str().to_string(),
         kind: element.kind.as_str().to_string(),
@@ -1029,14 +1034,17 @@ fn render(hit: &SearchHit) -> Hit {
     }
 }
 
-fn render_lexical(hit: &LexicalHit) -> Hit {
+fn render_lexical(hit: &LexicalHit, query: &str) -> Hit {
     let element = &hit.element;
     Hit {
         address: address_of_element(element, hit.identity.as_deref(), hit.path.as_deref()),
-        // Exact substring identity is the lexical score; this is not cosine.
-        score: 1.0,
+        // Graded by the store (see `fs3_store::search_lexical_page`); not cosine.
+        score: damp_restated_question(hit.score, element, query),
         channel: SearchChannel::Lexical,
-        match_field: format!("exact_{}", hit.matched.as_str()),
+        match_field: match hit.matched {
+            fs3_store::LexicalMatch::Terms => "terms".to_string(),
+            matched => format!("exact_{}", matched.as_str()),
+        },
         kind: element.kind.as_str().to_string(),
         subkind: element.subkind.clone(),
         name: element.name.clone(),
@@ -1072,12 +1080,50 @@ fn fuse(
         if let Some(existing) = fused.iter_mut().find(|existing| same_hit(existing, &hit)) {
             if existing.channel == SearchChannel::Lexical {
                 existing.channel = SearchChannel::Both;
+                existing.score = both_channels(existing.score, hit.score);
             }
         } else {
             fused.push(hit);
         }
     }
+    // One order for both channels, by score. Lexical scores are graded rather
+    // than a flat 1.0, so this ranks a quote of the question below the answer
+    // instead of pinning every keyword hit first. The sort is stable, so equal
+    // scores keep lexical-then-semantic order — verbatim code identity (1.0)
+    // still leads.
+    fused.sort_by(|left, right| right.score.total_cmp(&left.score));
     fused
+}
+
+/// The score of a hit both channels found: the stronger, plus a tenth of the
+/// weaker as corroboration, never above 1.0. A negative cosine is no evidence
+/// at all, so corroboration only ever adds.
+fn both_channels(left: f64, right: f64) -> f64 {
+    (left.max(right) + 0.1 * left.min(right).max(0.0)).min(1.0)
+}
+
+/// The score a person's restatement of the question can reach on either
+/// channel. Found by both, corroboration can add a tenth of that again (0.495
+/// at most), still below the 0.65 band of any genuine keyword match.
+const RESTATED_QUESTION_CEILING: f64 = 0.45;
+
+/// A HUMAN turn that is little more than the query itself is the question
+/// being asked again, not an answer to it. Measured 2026-10-09: the same
+/// prompt asked in four sessions filled the top of its own search at 1.0,
+/// lexically and (near-identical text) semantically. Capped on both channels,
+/// before fusion, so neither can carry it back to the top.
+fn damp_restated_question(score: f64, element: &Element, query: &str) -> f64 {
+    let query = query.trim().to_lowercase();
+    let restates = element.kind == ElementKind::Turn
+        && element.subkind == "human"
+        && !query.is_empty()
+        && element.raw_text.len() < query.len().saturating_mul(4)
+        && element.raw_text.to_lowercase().contains(&query);
+    if restates {
+        score.min(RESTATED_QUESTION_CEILING)
+    } else {
+        score
+    }
 }
 
 fn same_hit(left: &Hit, right: &Hit) -> bool {
@@ -1398,6 +1444,63 @@ mod tests {
     }
 
     #[test]
+    fn fusion_orders_by_graded_score_not_by_channel() {
+        let hits = fuse(
+            [
+                ranked("quote-of-question", SearchChannel::Lexical, 0.45),
+                ranked("scattered-terms", SearchChannel::Lexical, 0.66),
+            ],
+            [ranked("strong-meaning", SearchChannel::Semantic, 0.70)],
+        );
+        let order: Vec<&str> = hits.iter().map(|hit| hit.address.as_str()).collect();
+        assert_eq!(
+            order,
+            ["strong-meaning", "scattered-terms", "quote-of-question"]
+        );
+    }
+
+    #[test]
+    fn corroboration_adds_a_tenth_and_never_subtracts() {
+        assert!((both_channels(0.80, 0.50) - 0.85).abs() < 1e-9);
+        assert!((both_channels(1.0, -1e-9) - 1.0).abs() < f64::EPSILON);
+        assert!(
+            (both_channels(0.99, 0.9) - 1.0).abs() < f64::EPSILON,
+            "capped at 1.0"
+        );
+    }
+
+    #[test]
+    fn only_a_short_human_restatement_is_damped() {
+        let turn = |role: &str, text: &str| {
+            fs3_core::Element::new(
+                ElementKind::Turn,
+                role,
+                "t1",
+                "conv:x#t1",
+                fs3_core::Span::new(1, 1),
+                text,
+            )
+        };
+        let query = "compared haiku pricing";
+        let question = turn("human", "which agent COMPARED haiku pricing?");
+        assert!(
+            (damp_restated_question(0.9, &question, query) - RESTATED_QUESTION_CEILING).abs()
+                < 1e-9
+        );
+        // An agent quoting the question, a long human brief, and a turn
+        // without the phrase are all left alone.
+        let agent = turn("agent", "which agent compared haiku pricing?");
+        assert!((damp_restated_question(0.9, &agent, query) - 0.9).abs() < 1e-9);
+        let brief = turn(
+            "human",
+            &format!("compared haiku pricing. {}", "context ".repeat(40)),
+        );
+        assert!((damp_restated_question(0.9, &brief, query) - 0.9).abs() < 1e-9);
+        let other = turn("human", "haiku is cheap");
+        assert!((damp_restated_question(0.9, &other, query) - 0.9).abs() < 1e-9);
+    }
+
+    #[test]
     fn either_leg_is_visible_when_the_other_is_empty() {
         let lexical = fuse(
             [ranked("lexical", SearchChannel::Lexical, 1.0)],
@@ -1452,7 +1555,7 @@ mod tests {
             "criterion",
         )
         .with_ddoc(meta);
-        let row = serde_json::to_value(render(&hit(row))).expect("row hit serializes");
+        let row = serde_json::to_value(render(&hit(row), "")).expect("row hit serializes");
         assert_eq!(
             row["address"],
             "docs/plan.dd.json#acceptance_criteria/ac-0001"
@@ -1472,7 +1575,7 @@ mod tests {
             fs3_core::Span::new(1, 1),
             "fn run() {}",
         );
-        let code = serde_json::to_value(render(&hit(code))).expect("code hit serializes");
+        let code = serde_json::to_value(render(&hit(code), "")).expect("code hit serializes");
         assert!(
             code.get("ddoc").is_none(),
             "the shipped code-hit wire shape must omit ddoc entirely: {code}"
@@ -1505,12 +1608,12 @@ mod tests {
                 .clone()
         };
 
-        let declared = serde_json::to_value(render(&hit(row(Some(&facts)))))
+        let declared = serde_json::to_value(render(&hit(row(Some(&facts))), ""))
             .expect("schema-declared row serializes");
         assert_eq!(declared["ddoc"]["embed_basis"], "schema_declared");
 
         let fallback =
-            serde_json::to_value(render(&hit(row(None)))).expect("fallback row serializes");
+            serde_json::to_value(render(&hit(row(None)), "")).expect("fallback row serializes");
         assert_eq!(fallback["ddoc"]["embed_basis"], "fallback");
 
         let code = fs3_core::Element::new(
@@ -1521,7 +1624,7 @@ mod tests {
             fs3_core::Span::new(1, 1),
             "fn run() {}",
         );
-        let code = serde_json::to_value(render(&hit(code))).expect("code hit serializes");
+        let code = serde_json::to_value(render(&hit(code), "")).expect("code hit serializes");
         assert!(code.get("ddoc").is_none());
         assert!(!code.to_string().contains("embed_basis"));
     }
