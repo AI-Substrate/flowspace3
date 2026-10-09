@@ -174,11 +174,27 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
         ));
     }
     if let Some(last) = &report.last_error {
+        let mut when = Vec::new();
+        if let Some(age) = last.age_secs {
+            when.push(age_ago(age));
+        }
+        if let Some(at) = &last.at {
+            when.push(at.clone());
+        }
+        if let Some(id) = last.job_id {
+            when.push(format!("job {id}"));
+        }
+        let when = if when.is_empty() {
+            String::new()
+        } else {
+            format!(" · {}", when.join(" · "))
+        };
         out.push_str(&format!(
-            "\n{}{} {}\n{}  {}\n",
+            "\n{}{} {}{}\n{}  {}\n",
             theme::GUTTER,
             "last error".bright_black(),
             last.job,
+            when.bright_black(),
             theme::GUTTER,
             last.error.bright_red()
         ));
@@ -189,6 +205,16 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
         out.push('\n');
     }
     Some(out)
+}
+
+/// The largest whole unit, so a two-week-old failure cannot pass for a live one.
+fn age_ago(secs: i64) -> String {
+    match secs {
+        ..60 => "just now".to_string(),
+        60..3_600 => format!("{}m ago", secs / 60),
+        3_600..86_400 => format!("{}h ago", secs / 3_600),
+        _ => format!("{}d ago", secs / 86_400),
+    }
 }
 
 #[cfg(test)]
@@ -321,5 +347,49 @@ mod tests {
         ] {
             assert!(screen.contains(text), "{screen}");
         }
+    }
+
+    #[test]
+    fn last_error_says_when_it_failed_and_which_job() {
+        let mut value = envelope(json!([]));
+        value.data.as_mut().unwrap()["last_error"] = json!({
+            "job": "ingest:claude/a5a5588f@/srv/repo",
+            "error": "FS3-E-STORE-QUERY-FAILED unsupported Unicode escape sequence",
+            "job_id": 3_237_054,
+            "at": "2026-09-25T04:11:09.000Z",
+            "age_secs": 14 * 86_400 + 3_600
+        });
+        let screen = plain(&render(&value, 120).unwrap());
+        assert!(
+            screen.contains(
+                "last error ingest:claude/a5a5588f@/srv/repo · 14d ago · 2026-09-25T04:11:09.000Z · job 3237054"
+            ),
+            "{screen}"
+        );
+        assert!(
+            screen.contains("unsupported Unicode escape sequence"),
+            "{screen}"
+        );
+    }
+
+    #[test]
+    fn last_error_from_an_older_daemon_still_renders() {
+        let mut value = envelope(json!([]));
+        value.data.as_mut().unwrap()["last_error"] =
+            json!({"job": "scan:broken", "error": "FS3-E-QUEUE-JOB-FAILED"});
+        let screen = plain(&render(&value, 100).unwrap());
+        assert!(screen.contains("last error scan:broken\n"), "{screen}");
+    }
+
+    #[test]
+    fn age_uses_the_largest_whole_unit() {
+        assert_eq!(age_ago(0), "just now");
+        assert_eq!(age_ago(59), "just now");
+        assert_eq!(age_ago(60), "1m ago");
+        assert_eq!(age_ago(3_599), "59m ago");
+        assert_eq!(age_ago(3_600), "1h ago");
+        assert_eq!(age_ago(86_399), "23h ago");
+        assert_eq!(age_ago(86_400), "1d ago");
+        assert_eq!(age_ago(14 * 86_400), "14d ago");
     }
 }

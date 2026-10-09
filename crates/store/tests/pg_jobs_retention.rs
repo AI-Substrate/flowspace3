@@ -2,7 +2,7 @@ mod support;
 
 use std::{num::NonZeroU32, time::Duration};
 
-use fs3_store::jobs::LIVE_QUEUE_DEPTH_SQL;
+use fs3_store::jobs::{COMPLETE_JOB_SQL, LAST_FAILURE_SQL, LIVE_QUEUE_DEPTH_SQL};
 use serde_json::Value;
 use support::FreshDatabase;
 
@@ -103,16 +103,16 @@ async fn queue_depth_plan_is_live_only_and_never_scans_done_history() {
         "bounded purge must start from the retention index: {purge_plan:#}"
     );
 
-    let failure_plan = explain(
-        &pool,
-        "SELECT dedupe_key, last_error FROM jobs
-          WHERE state = 'failed' AND last_error IS NOT NULL
-          ORDER BY updated_at DESC LIMIT 1",
-    )
-    .await;
+    let failure_plan = explain(&pool, LAST_FAILURE_SQL).await;
     assert!(
         has_job_node(&failure_plan, "Index Scan", Some("jobs_failed_recent_idx")),
         "latest failure must use its ordered partial index: {failure_plan:#}"
+    );
+
+    let complete_plan = explain(&pool, &COMPLETE_JOB_SQL.replace("$1", "1")).await;
+    assert!(
+        !has_job_node(&complete_plan, "Seq Scan", None),
+        "completing a job must not scan history to find what it supersedes: {complete_plan:#}"
     );
 
     let old_plan = explain(&pool, OLD_QUEUE_DEPTH_SQL).await;

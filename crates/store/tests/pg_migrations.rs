@@ -618,3 +618,43 @@ async fn migration_0021_canonicalizes_registered_conversation_anchors_only() {
 
     database.destroy(pool).await;
 }
+
+#[tokio::test]
+async fn migration_0027_supersedes_only_failures_a_retained_later_success_fixed() {
+    let database = FreshDatabase::create().await;
+    let pool = database.pool().await;
+    apply_migrations(&pool, 1..=26).await;
+
+    sqlx::query(
+        "INSERT INTO jobs (kind, dedupe_key, payload, state, terminal, last_error, updated_at)
+         VALUES ('ingest_session', 'fixed', '{}', 'failed', true, 'old', now() - interval '14 days'),
+                ('ingest_session', 'fixed', '{}', 'done',   false, NULL, now() - interval '1 hour'),
+                ('ingest_session', 'refailed', '{}', 'done',   false, NULL, now() - interval '14 days'),
+                ('ingest_session', 'refailed', '{}', 'failed', true, 'new', now() - interval '1 hour'),
+                ('embed',          'other-kind', '{}', 'failed', true, 'old', now() - interval '14 days'),
+                ('scan_file',      'other-kind', '{}', 'done',   false, NULL, now() - interval '1 hour')",
+    )
+    .execute(&pool)
+    .await
+    .expect("seed pre-0027 history");
+
+    apply_migrations(&pool, 27..=27).await;
+
+    let marked: Vec<(String, String, bool)> = sqlx::query_as(
+        "SELECT dedupe_key, kind, superseded_by IS NOT NULL FROM jobs
+          WHERE state = 'failed' ORDER BY dedupe_key",
+    )
+    .fetch_all(&pool)
+    .await
+    .expect("read marks");
+    assert_eq!(
+        marked,
+        [
+            ("fixed".to_string(), "ingest_session".to_string(), true),
+            ("other-kind".to_string(), "embed".to_string(), false),
+            ("refailed".to_string(), "ingest_session".to_string(), false),
+        ]
+    );
+
+    database.destroy(pool).await;
+}

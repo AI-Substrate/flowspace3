@@ -330,16 +330,43 @@ pub async fn claim_jobs(pool: &PgPool, kind: &str, limit: i64) -> Result<Vec<Job
         .collect()
 }
 
+/// Canonical completion SQL, public so the integration plan test cannot drift
+/// away from the statement it protects. `$1` is the job id.
+pub const COMPLETE_JOB_SQL: &str = "WITH done AS (
+             UPDATE jobs
+                SET state = 'done', last_error = NULL, terminal = false,
+                    superseded_by = NULL, updated_at = now()
+              WHERE id = $1
+             RETURNING id, kind, dedupe_key
+         )
+         UPDATE jobs AS failed
+            SET superseded_by = done.id
+           FROM done
+          WHERE failed.state = 'failed'
+            AND failed.superseded_by IS NULL
+            AND failed.dedupe_key = done.dedupe_key
+            AND failed.kind = done.kind
+            AND failed.id <> done.id";
+
 /// Mark a claimed job finished.
 ///
 /// This is also what frees its `dedupe_key`: the live-jobs unique index stops
 /// covering the row, so the next edit to that file enqueues a new job rather
 /// than colliding with this one's history.
 ///
+/// It also marks every earlier failure of the same kind and key as superseded
+/// by this job, in the same statement. A terminal failure keeps its row for
+/// good while the next enqueue mints a fresh one, so without this mark a
+/// failure the next run fixed would be [`last_failure`] for as long as nothing
+/// newer failed. The mark lives on the failed row because this done row is
+/// purged after the retention window, and evidence that is purged cannot
+/// supersede anything.
+///
 /// # Errors
 /// [`StoreError::Query`] when the statement fails.
 pub async fn complete_job(pool: &PgPool, id: i64) -> Result<(), StoreError> {
-    settle(pool, id, "done", None, false).await
+    sqlx::query(COMPLETE_JOB_SQL).bind(id).execute(pool).await?;
+    Ok(())
 }
 
 /// Mark a claimed job failed, recording why and whether it can ever succeed.
@@ -777,22 +804,52 @@ pub async fn job_retention_receipt(pool: &PgPool) -> Result<JobRetentionReceipt,
     })
 }
 
+/// Canonical latest-failure SQL, public so the integration plan test cannot
+/// drift away from the production query it protects.
+pub const LAST_FAILURE_SQL: &str = "SELECT id, dedupe_key, last_error,
+                to_char(updated_at AT TIME ZONE 'UTC',
+                        'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS at,
+                greatest(0, extract(epoch FROM now() - updated_at))::bigint AS age_secs
+           FROM jobs
+          WHERE state = 'failed' AND last_error IS NOT NULL AND superseded_by IS NULL
+          ORDER BY updated_at DESC LIMIT 1";
+
+/// The newest failure that nothing has fixed since.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LastFailure {
+    /// Row id of the failed job.
+    pub job_id: i64,
+    /// The dedupe key: names the file, content, or session.
+    pub dedupe_key: String,
+    /// What it said.
+    pub error: String,
+    /// When it failed, UTC.
+    pub at: String,
+    /// Seconds between the failure and this read, by the database clock.
+    pub age_secs: i64,
+}
+
 /// The most recent error from a failed job, for a status report that says what
 /// went wrong rather than only that something did.
 ///
+/// A failure superseded by a later successful job of the same kind and key
+/// (see [`complete_job`]) is left out: it is history, not something to act on.
+///
 /// # Errors
 /// [`StoreError::Query`] when the read fails.
-pub async fn last_failure(pool: &PgPool) -> Result<Option<(String, String)>, StoreError> {
-    let row = sqlx::query(
-        "SELECT dedupe_key, last_error FROM jobs
-          WHERE state = 'failed' AND last_error IS NOT NULL
-          ORDER BY updated_at DESC LIMIT 1",
-    )
-    .fetch_optional(pool)
-    .await?;
+pub async fn last_failure(pool: &PgPool) -> Result<Option<LastFailure>, StoreError> {
+    let row = sqlx::query(LAST_FAILURE_SQL).fetch_optional(pool).await?;
 
-    row.map(|row| Ok((row.try_get("dedupe_key")?, row.try_get("last_error")?)))
-        .transpose()
+    row.map(|row| {
+        Ok(LastFailure {
+            job_id: row.try_get("id")?,
+            dedupe_key: row.try_get("dedupe_key")?,
+            error: row.try_get("last_error")?,
+            at: row.try_get("at")?,
+            age_secs: row.try_get("age_secs")?,
+        })
+    })
+    .transpose()
 }
 
 async fn settle(
@@ -803,7 +860,8 @@ async fn settle(
     terminal: bool,
 ) -> Result<(), StoreError> {
     sqlx::query(
-        "UPDATE jobs SET state = $2, last_error = $3, terminal = $4, updated_at = now()
+        "UPDATE jobs SET state = $2, last_error = $3, terminal = $4, superseded_by = NULL,
+                         updated_at = now()
           WHERE id = $1",
     )
     .bind(id)
