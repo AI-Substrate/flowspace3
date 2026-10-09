@@ -27,6 +27,7 @@
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::Duration;
 
 use fs3_core::catalog;
@@ -34,7 +35,7 @@ use fs3_core::envelope::Failure;
 use fs3_core::events::{EventKind, QueueDepth as EventQueueDepth};
 use fs3_store::{Job, PgPool};
 
-use tokio::sync::{Semaphore, watch};
+use tokio::sync::{Notify, Semaphore, watch};
 use tokio::task::JoinSet;
 
 use crate::answer::IntoFailure;
@@ -143,6 +144,33 @@ const EMBED_ACCUMULATE: usize = 16;
 /// Maximum time ready embeds wait while general work remains in flight.
 const EMBED_MAX_WAIT: Duration = Duration::from_secs(1);
 
+/// Completed summaries waiting for the embed lane, and the bell that wakes it.
+///
+/// The general lane rings it; the embed lane, a separate loop, listens. They
+/// share nothing else, which is the point: neither can block the other.
+#[derive(Debug, Default)]
+struct EmbedSignal {
+    waiting: AtomicUsize,
+    wake: Notify,
+}
+
+impl EmbedSignal {
+    /// Record finished summaries; enough of them wakes the embed lane now.
+    fn summaries_done(&self, completed: usize) {
+        if completed == 0 {
+            return;
+        }
+        if self.waiting.fetch_add(completed, Ordering::AcqRel) + completed >= EMBED_ACCUMULATE {
+            self.wake.notify_one();
+        }
+    }
+
+    /// The embed lane just drained: start counting afresh.
+    fn reset(&self) {
+        self.waiting.store(0, Ordering::Release);
+    }
+}
+
 /// The process-wide shutdown phase shared by HTTP and every queue lane.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Shutdown {
@@ -237,17 +265,31 @@ impl SummaryReport {
 pub async fn drain(state: &AppState, workers: usize) -> Drained {
     let (_shutdown_tx, shutdown) = watch::channel(Shutdown::Running);
     let mut general_shutdown = shutdown.clone();
-    let mut ingest_shutdown = shutdown;
+    let mut ingest_shutdown = shutdown.clone();
+    let mut embed_shutdown = shutdown;
+    let signal = EmbedSignal::default();
     let mut total = Drained::default();
 
     loop {
-        let (general, ingest) = tokio::join!(
-            drain_general(state, workers, &mut general_shutdown),
-            drain_ingest(state, workers, &mut ingest_shutdown)
+        // The embed lane runs alongside, as it does in the daemon, and stops
+        // once the other two are finished and it finds nothing more.
+        let others_idle = AtomicBool::new(false);
+        let ((general, ingest), embedded) = tokio::join!(
+            async {
+                let pair = tokio::join!(
+                    drain_general(state, workers, &mut general_shutdown, &signal),
+                    drain_ingest(state, workers, &mut ingest_shutdown)
+                );
+                others_idle.store(true, Ordering::Release);
+                signal.wake.notify_one();
+                pair
+            },
+            embed_lane(state, &mut embed_shutdown, &signal, Some(&others_idle))
         );
         total.absorb(general);
         total.absorb(ingest);
-        if general.total() == 0 && ingest.total() == 0 {
+        total.absorb(embedded);
+        if general.total() == 0 && ingest.total() == 0 && embedded.total() == 0 {
             report_progress(state, "idle").await;
             return total;
         }
@@ -263,6 +305,7 @@ async fn drain_general(
     state: &AppState,
     workers: usize,
     shutdown: &mut watch::Receiver<Shutdown>,
+    embed_signal: &EmbedSignal,
 ) -> Drained {
     let mut total = Drained::default();
     let mut tasks = JoinSet::new();
@@ -275,29 +318,18 @@ async fn drain_general(
     let mut summarize_lanes: BTreeMap<usize, Arc<Semaphore>> = BTreeMap::new();
     let mut summary_report = SummaryReport::default();
 
-    // Embed work is deliberately NOT claimed after every summary. Sixteen
-    // completed summaries fill the fs2-proven shape; the timer bounds
-    // staleness while a busy general lane never goes idle; an actually idle
-    // lane drains immediately below. Starting due also recovers embed-only
-    // work left ready across a daemon restart without waiting a second.
-    let mut summaries_waiting = 0usize;
-    let mut next_embed = tokio::time::Instant::now();
+    // Embedding is NOT done here. It used to be, inline: when due, this loop
+    // awaited a whole embed drain (up to 64 jobs, every batch to completion),
+    // and while it waited it claimed no scan or summary and settled none that
+    // had finished. With a slow or paced embedder that stopped indexing dead:
+    // on 2026-10-09 summarize groups went from a 2.9 s median to ~366 s, then
+    // to zero completions. The embed lane is its own loop now
+    // (`run_embed_forever`); this lane only tells it when summaries finish.
 
     loop {
         if *shutdown.borrow() == Shutdown::Forced {
             tasks.shutdown().await;
             return total;
-        }
-
-        let embed_due =
-            summaries_waiting >= EMBED_ACCUMULATE || tokio::time::Instant::now() >= next_embed;
-        let mut embedded = Drained::default();
-        if embed_due && *shutdown.borrow() == Shutdown::Running {
-            summary_report.flush();
-            embedded = drain_embed(state, shutdown).await;
-            total.absorb(embedded);
-            summaries_waiting = 0;
-            next_embed = tokio::time::Instant::now() + EMBED_MAX_WAIT;
         }
 
         let mut general_exhausted = *shutdown.borrow() != Shutdown::Running;
@@ -346,22 +378,10 @@ async fn drain_general(
 
         if tasks.is_empty() && general_exhausted {
             summary_report.flush();
-            // No general work can add another item: flush a partial batch now
-            // rather than making an idle daemon wait for the max-wait clock.
-            if !embed_due && *shutdown.borrow() == Shutdown::Running {
-                embedded = drain_embed(state, shutdown).await;
-                total.absorb(embedded);
-                summaries_waiting = 0;
-                next_embed = tokio::time::Instant::now() + EMBED_MAX_WAIT;
-            }
-            if embedded.total() == 0 || *shutdown.borrow() != Shutdown::Running {
-                return total;
-            }
-            if last_report.is_none_or(|at| at.elapsed() >= PROGRESS_EVERY) {
-                report_progress(state, "working").await;
-                last_report = Some(std::time::Instant::now());
-            }
-            continue;
+            // Nothing more for this lane: wake the embed lane for any partial
+            // batch rather than leaving it to the max-wait clock.
+            embed_signal.wake.notify_one();
+            return total;
         }
 
         tokio::select! {
@@ -370,7 +390,7 @@ async fn drain_general(
                     match result {
                         Ok((kind, started, outcome)) => {
                             if kind == SUMMARIZE {
-                                summaries_waiting += outcome.completed;
+                                embed_signal.summaries_done(outcome.completed);
                                 summary_report.record(started, outcome);
                             }
                             total.absorb(outcome);
@@ -380,7 +400,6 @@ async fn drain_general(
                     }
                 }
             }
-            () = tokio::time::sleep_until(next_embed), if *shutdown.borrow() == Shutdown::Running => {}
             changed = shutdown.changed() => {
                 if changed.is_err() || *shutdown.borrow() == Shutdown::Forced {
                     tasks.shutdown().await;
@@ -389,11 +408,6 @@ async fn drain_general(
             }
         }
 
-        // Reported here rather than inside the per-job branch, because an
-        // embed-only workload settles entirely in the batched pass above and
-        // spawns no tasks at all — reporting only after `join_next` would give
-        // a long embedding run no progress line, which is the exact bug this
-        // cadence was moved into the loop to fix.
         if last_report.is_none_or(|at| at.elapsed() >= PROGRESS_EVERY) {
             report_progress(state, "working").await;
             last_report = Some(std::time::Instant::now());
@@ -418,8 +432,15 @@ pub async fn run_until_shutdown(
 ) {
     let reporter_state = state.clone();
     let mut reporter_shutdown = shutdown.clone();
+    let embed_signal = Arc::new(EmbedSignal::default());
     tokio::join!(
-        run_general_forever(state.clone(), workers, shutdown.clone()),
+        run_general_forever(
+            state.clone(),
+            workers,
+            shutdown.clone(),
+            Arc::clone(&embed_signal)
+        ),
+        run_embed_forever(state.clone(), shutdown.clone(), embed_signal),
         run_ingest_forever(state, workers, shutdown),
         async move {
             while *reporter_shutdown.borrow() == Shutdown::Running
@@ -445,11 +466,16 @@ async fn run_general_forever(
     state: AppState,
     workers: usize,
     mut shutdown: watch::Receiver<Shutdown>,
+    embed_signal: Arc<EmbedSignal>,
 ) {
     let mut worked = false;
 
     while *shutdown.borrow() == Shutdown::Running {
-        if drain_general(&state, workers, &mut shutdown).await.total() == 0 {
+        if drain_general(&state, workers, &mut shutdown, &embed_signal)
+            .await
+            .total()
+            == 0
+        {
             if std::mem::take(&mut worked) {
                 report_progress(&state, "idle").await;
             }
@@ -461,6 +487,67 @@ async fn run_general_forever(
         }
         worked = true;
     }
+}
+
+/// The embed lane: its own loop, so a slow or paced embedder can never stop
+/// scans and summaries (and a busy general lane can never stop embedding).
+///
+/// Batching is kept: it drains when enough summaries have finished to fill a
+/// batch (`EMBED_ACCUMULATE`), when the general lane goes idle, or after
+/// `EMBED_MAX_WAIT` at the latest — the same triggers it had inline. Pacing
+/// and the right of way for searches stay where #137 put them, in
+/// `embed_items`.
+async fn run_embed_forever(
+    state: AppState,
+    mut shutdown: watch::Receiver<Shutdown>,
+    signal: Arc<EmbedSignal>,
+) {
+    embed_lane(&state, &mut shutdown, &signal, None).await;
+}
+
+/// The embed loop shared by the daemon and `drain`.
+///
+/// With `until_idle`, it returns once that flag was set (general and ingest
+/// are finished) before a pass that found nothing; without it, it runs until
+/// shutdown.
+async fn embed_lane(
+    state: &AppState,
+    shutdown: &mut watch::Receiver<Shutdown>,
+    signal: &EmbedSignal,
+    until_idle: Option<&AtomicBool>,
+) -> Drained {
+    let mut total = Drained::default();
+    let mut last_report: Option<std::time::Instant> = None;
+    while *shutdown.borrow() == Shutdown::Running {
+        let others_idle = until_idle.is_some_and(|idle| idle.load(Ordering::Acquire));
+        let drained = drain_embed(state, shutdown).await;
+        signal.reset();
+        total.absorb(drained);
+        if drained.total() > 0 && last_report.is_none_or(|at| at.elapsed() >= PROGRESS_EVERY) {
+            // An embed-only workload spawns no general tasks, so without this
+            // a long embedding run would print no progress at all.
+            report_progress(state, "working").await;
+            last_report = Some(std::time::Instant::now());
+        }
+        if others_idle && drained.total() == 0 {
+            break;
+        }
+        // A full claim means a backlog (a restart, a reindex): go straight
+        // back for more rather than idling a second per 64 jobs.
+        if drained.total() >= EMBED_CLAIM as usize {
+            continue;
+        }
+        tokio::select! {
+            () = signal.wake.notified() => {}
+            () = tokio::time::sleep(EMBED_MAX_WAIT) => {}
+            changed = shutdown.changed() => {
+                if changed.is_err() {
+                    break;
+                }
+            }
+        }
+    }
+    total
 }
 
 async fn run_ingest_forever(

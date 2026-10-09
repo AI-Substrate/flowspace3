@@ -682,3 +682,108 @@ fn claude_record(session: &str, ordinal: u32, text: &str) -> String {
         "{{\"type\":\"user\",\"uuid\":\"00000000-0000-4000-8000-{ordinal:012}\",\"parentUuid\":null,\"sessionId\":\"{session}\",\"cwd\":\"/srv/work/repo\",\"timestamp\":\"2026-08-28T06:00:{ordinal:02}Z\",\"message\":{{\"role\":\"user\",\"content\":[{{\"type\":\"text\",\"text\":\"{text}\"}}]}}}}\n"
     )
 }
+
+/// An embed provider that blocks every call until released.
+#[derive(Debug, Default)]
+struct StuckEmbedder {
+    calls: AtomicUsize,
+    release: Notify,
+}
+
+#[async_trait]
+impl Embedder for StuckEmbedder {
+    async fn embed(&self, texts: &[String]) -> Result<Vec<Vec<f32>>> {
+        self.calls.fetch_add(1, Ordering::SeqCst);
+        self.release.notified().await;
+        Ok(texts
+            .iter()
+            .map(|_| vec![0.05f32; fs3_store::EMBEDDING_DIMENSIONS])
+            .collect())
+    }
+
+    fn key(&self) -> String {
+        format!("stuck@{}", fs3_store::EMBEDDING_DIMENSIONS)
+    }
+
+    fn concurrency_ceiling(&self) -> usize {
+        usize::MAX
+    }
+
+    fn max_input_tokens(&self) -> usize {
+        usize::MAX
+    }
+}
+
+/// Measured on prod 2026-10-09: with a slow embedder, the general lane sat
+/// inside an inline embed drain and completed zero scans or summaries for
+/// over an hour. Embedding is its own lane now: a provider call that never
+/// returns must not stop summaries from completing.
+#[tokio::test]
+async fn a_stuck_embed_call_does_not_stop_summaries() {
+    const SUMMARIES: usize = 6;
+    let (database, mut state, blocker) = blocked_runner("embed-starve", SUMMARIES).await;
+    // Summaries answer at once; embedding never does until released.
+    blocker.release(SUMMARIES * 4);
+    let stuck = Arc::new(StuckEmbedder::default());
+    state.embedder = stuck.clone();
+
+    let items = support::items(30_000..30_001);
+    support::hold(&state, "embed-starve-embed", &items).await;
+    let (hash, text) = &items[0];
+    fs3_store::enqueue_job(
+        &state.db,
+        "embed",
+        "embed:starve:0",
+        &json!({"identity": "git:starve", "source": "raw", "items": [[hash, text]]}),
+        Duration::ZERO,
+    )
+    .await
+    .expect("enqueues an embed job");
+
+    let (shutdown_tx, shutdown) = watch::channel(runner::Shutdown::Running);
+    let handle = tokio::spawn(runner::run_until_shutdown(state.clone(), 2, shutdown));
+
+    // The embed call starts and hangs…
+    tokio::time::timeout(Duration::from_secs(10), async {
+        while stuck.calls.load(Ordering::SeqCst) == 0 {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("the embed lane reaches the provider");
+
+    // …and every summary still completes while it hangs.
+    tokio::time::timeout(Duration::from_secs(15), async {
+        loop {
+            let rows = fs3_store::queue_depth(&state.db)
+                .await
+                .expect("queue depth");
+            let open: i64 = rows
+                .iter()
+                .filter(|row| row.kind == SUMMARIZE && row.state != "done")
+                .map(|row| row.depth)
+                .sum();
+            if open == 0 {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    })
+    .await
+    .expect("summaries complete while the embed call is stuck");
+    assert_eq!(
+        stuck.calls.load(Ordering::SeqCst),
+        1,
+        "the embed call is still the one stuck call"
+    );
+
+    stuck.release.notify_waiters();
+    shutdown_tx
+        .send(runner::Shutdown::Forced)
+        .expect("runner observes shutdown");
+    tokio::time::timeout(Duration::from_secs(10), handle)
+        .await
+        .expect("runner stops")
+        .expect("runner task succeeds");
+    database.destroy(state.db.clone()).await;
+}
