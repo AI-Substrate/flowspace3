@@ -135,7 +135,11 @@ pub fn parse_graph(json: &str) -> Result<DdocGraph, DdocEnvelopeError> {
 /// Parse dd's schema-resolution answer.
 pub fn parse_schema_show(json: &str) -> Result<DdocSchemaRef, DdocEnvelopeError> {
     let envelope = parse_envelope(json, "ddocs schema show")?;
-    allow_ok_status(&envelope)?;
+    // `degraded` is a usable answer: ddocs reports it whenever a checkout's
+    // `.dd/` schema shadows a `~/.dd/` copy, with the winning schema in full.
+    // Requiring `ok` indexed ZERO schema facts in every such checkout, silently
+    // (measured in the dd repo by its prime, 2026-10-09: 7 schemas, 5 shadowing).
+    allow_data_status(&envelope)?;
     let data = data(&envelope)?;
     let gate_terminal = data
         .get("gate_terminal")
@@ -406,6 +410,20 @@ mod tests {
         let graph = parse_graph(GRAPH_FILE_KIND).unwrap();
         assert_eq!(graph.edges[0].kind, DdocRel::KIND_FILE);
         assert!(!graph.edges[0].to.starts_with('/'));
+    }
+
+    #[test]
+    fn a_degraded_schema_resolution_is_still_used() {
+        // What ddocs answers when the checkout's schema shadows a ~/.dd copy.
+        let degraded = SCHEMA_SHOW.replacen("\"status\":\"ok\"", "\"status\":\"degraded\"", 1);
+        assert!(
+            degraded.contains("\"degraded\""),
+            "the fixture's status was rewritten"
+        );
+        let resolved = parse_schema_show(&degraded).expect("degraded carries usable data");
+        assert_eq!(resolved, parse_schema_show(SCHEMA_SHOW).unwrap());
+        let unusable = SCHEMA_SHOW.replacen("\"status\":\"ok\"", "\"status\":\"error\"", 1);
+        assert!(parse_schema_show(&unusable).is_err());
     }
 
     #[test]

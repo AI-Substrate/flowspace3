@@ -171,6 +171,12 @@ async fn finish(fixture: Fixture) {
 #[tokio::test]
 async fn unchanged_ddoc_reenriches_after_tooling_returns() {
     let fixture = fixture("ddoc_reenrich_present").await;
+    // Absent, stated: an UNPROBED worktree is now probed by its first ddoc
+    // scan, which would read whatever `ddocs` this machine has installed.
+    fixture
+        .state
+        .set_ddoc_tooling(fixture.worktree_id, DdocTooling::absent())
+        .await;
     scan::run(&fixture.state, fixture.job.clone())
         .await
         .expect("initial absent-tooling scan indexes rows");
@@ -295,5 +301,34 @@ async fn unchanged_current_snapshot_reparse_preserves_row_text_and_hashes() {
     let after = row_content(&stored(&fixture).await);
     assert_eq!(after, before);
 
+    finish(fixture).await;
+}
+
+/// Boot only prefetches ddocs snapshots in the background, so a catch-up scan
+/// can reach a `.dd.json` first. It probes for itself rather than indexing the
+/// rows without edges: whatever `ddocs` this machine has, the worktree has a
+/// snapshot (present or absent) once the scan is done.
+#[tokio::test]
+async fn an_unprobed_worktree_is_probed_by_its_first_ddoc_scan() {
+    let fixture = fixture("ddoc_probe_on_demand").await;
+    assert!(
+        fixture
+            .state
+            .ddoc_snapshot(fixture.worktree_id)
+            .await
+            .is_none(),
+        "nothing has probed the fresh worktree"
+    );
+    scan::run(&fixture.state, fixture.job.clone())
+        .await
+        .expect("the scan indexes the rows");
+    assert!(
+        fixture
+            .state
+            .ddoc_snapshot(fixture.worktree_id)
+            .await
+            .is_some(),
+        "the ddoc scan probed its worktree on demand"
+    );
     finish(fixture).await;
 }

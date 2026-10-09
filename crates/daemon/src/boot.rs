@@ -162,6 +162,59 @@ pub fn run() -> Result<()> {
         ))
 }
 
+/// How many worktrees are probed at once. Each probe is a handful of short
+/// `ddocs` processes; eight keeps the machine responsive and still finishes
+/// ~160 worktrees in well under a minute.
+const DDOC_PROBE_CONCURRENCY: usize = 8;
+
+/// Fill the ddocs tooling snapshot for every registered worktree, a few at a
+/// time, off the boot path. A worktree a scan already probed is left alone.
+async fn prefetch_ddoc_tooling(state: AppState) {
+    let started = std::time::Instant::now();
+    let worktrees = match fs3_store::list_worktrees(&state.db).await {
+        Ok(worktrees) => worktrees,
+        Err(error) => {
+            tracing::warn!(%error, "cannot list worktrees to probe ddocs tooling; searches will not claim binary absence for unprobed roots");
+            return;
+        }
+    };
+    let total = worktrees.len();
+    let mut pending = worktrees.into_iter();
+    let mut probes = tokio::task::JoinSet::new();
+    loop {
+        while probes.len() < DDOC_PROBE_CONCURRENCY {
+            let Some(worktree) = pending.next() else {
+                break;
+            };
+            if state.ddoc_snapshot(worktree.id).await.is_some() {
+                continue;
+            }
+            probes.spawn(async move {
+                let tooling = crate::ddoc::probe(std::path::Path::new(&worktree.root_path)).await;
+                (worktree.id, tooling)
+            });
+        }
+        let Some(done) = probes.join_next().await else {
+            break;
+        };
+        match done {
+            Ok((id, tooling)) => {
+                if state.ddoc_snapshot(id).await.is_none() {
+                    state.set_ddoc_tooling(id, tooling).await;
+                }
+            }
+            Err(error) => {
+                tracing::warn!(%error, "a ddocs probe task failed; that root stays unprobed")
+            }
+        }
+    }
+    tracing::info!(
+        roots = total,
+        elapsed_ms = started.elapsed().as_millis(),
+        "probed ddocs tooling for registered roots"
+    );
+}
+
 /// Recover enrichment jobs the queue's own memory has written off, in the one
 /// order that works: retire the unrunnable, THEN revive the rest.
 ///
@@ -525,31 +578,20 @@ async fn serve(
         Err(error) => tracing::error!(%error, "cannot requeue jobs left running"),
     }
 
-    // Probe every registered worktree's ddocs tooling BEFORE serving, because
-    // the snapshot map starts empty and is otherwise only filled by add_root
-    // or rescan_root. Without this, a daemon restarted against an already
-    // indexed corpus reports "the ddocs binary is unavailable" on every search
-    // until someone happens to run a scan — a false explanation, and exactly
-    // the confident-wrong-answer this feature exists to remove.
+    // Probe every registered worktree's ddocs tooling IN THE BACKGROUND. The
+    // snapshot map starts empty and is otherwise only filled by add_root,
+    // rescan_root, or the first `.dd.json` scan of a worktree (scan.rs probes
+    // on demand), so this is a prefetch, not a precondition.
     //
-    // Best-effort: a worktree that cannot be probed is left unprobed rather
-    // than recorded as absent, so a missing entry never becomes a claim about
-    // the binary. Failure here must not stop the daemon serving.
-    match fs3_store::list_worktrees(&state.db).await {
-        Ok(worktrees) => {
-            for worktree in &worktrees {
-                let tooling = crate::ddoc::probe(std::path::Path::new(&worktree.root_path)).await;
-                state.set_ddoc_tooling(worktree.id, tooling).await;
-            }
-            tracing::info!(
-                roots = worktrees.len(),
-                "probed ddocs tooling for registered roots"
-            );
-        }
-        Err(error) => {
-            tracing::warn!(%error, "cannot list worktrees to probe ddocs tooling; searches will not claim binary absence for unprobed roots");
-        }
-    }
+    // It used to run here, serially, before the listener: ~12 `ddocs`
+    // processes per worktree at ~0.1 s each, 3 min 17 s for 157 worktrees on
+    // 2026-10-09 — the daemon answered nothing for that long while it sat idle
+    // (backlog row 217). Nothing on the serving path needs it: an unprobed
+    // worktree only means the "ddocs binary unavailable" search notice stays
+    // silent (it never claims absence for `None`), and a ddoc scan probes for
+    // itself. Best-effort as before: a worktree that cannot be probed is left
+    // unprobed rather than recorded as absent.
+    tokio::spawn(prefetch_ddoc_tooling(state.clone()));
 
     recover_enrichment_jobs(&state.db).await;
 
