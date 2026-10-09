@@ -175,7 +175,18 @@ pub async fn run(state: &AppState, value: serde_json::Value) -> Result<(), Failu
     let enrich_policy = |element: &Element| earns_enrichment(element, min_lines);
     let path = Path::new(&job.path);
     let is_ddoc = fs3_parsers::is_ddoc_source(path);
-    let tooling = state.ddoc_tooling(job.worktree_id).await;
+    // A ddoc scan needs its worktree's tooling snapshot (edges, gate facts).
+    // Boot only PREFETCHES snapshots in the background, so a catch-up scan can
+    // arrive first: probe on demand rather than index the row without edges.
+    let tooling = match state.ddoc_snapshot(job.worktree_id).await {
+        Some(tooling) => tooling,
+        None if is_ddoc => {
+            let probed = ddoc::probe(Path::new(&worktree.root_path)).await;
+            state.set_ddoc_tooling(job.worktree_id, probed).await;
+            state.ddoc_tooling(job.worktree_id).await
+        }
+        None => state.ddoc_tooling(job.worktree_id).await,
+    };
     let tooling = tooling.as_ref();
 
     // The skip. Cheap, and correct for every branch and checkout at once: these

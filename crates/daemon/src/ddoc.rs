@@ -119,8 +119,16 @@ async fn probe_with_binary(root: &Path, binary: &OsStr) -> DdocTooling {
 async fn schema_names(binary: &OsStr, root: &Path) -> Option<Vec<String>> {
     let json = run(binary, root, &["--json", "schema", "list"]).await?;
     let envelope: Value = serde_json::from_str(&json).ok()?;
-    if envelope.get("status")?.as_str()? != "ok" {
-        return None;
+    // `degraded` (a checkout schema shadowing a `~/.dd/` copy) still lists
+    // every schema; only an answer without usable data is refused.
+    match envelope.get("status")?.as_str()? {
+        "ok" => {}
+        "degraded" => tracing::debug!(
+            root = %root.display(),
+            next_action = envelope.get("next_action").and_then(serde_json::Value::as_str).unwrap_or(""),
+            "ddocs schema list is degraded; using its schemas"
+        ),
+        _ => return None,
     }
     envelope
         .pointer("/data/schemas")?
