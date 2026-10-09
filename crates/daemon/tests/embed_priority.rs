@@ -33,10 +33,10 @@ struct Recorder {
 impl Embedder for Recorder {
     async fn embed(&self, texts: &[String]) -> Result<Vec<Vec<f32>>> {
         self.calls.fetch_add(1, Ordering::SeqCst);
-        if let Some((query, release)) = &self.hold_query {
-            if texts.first() == Some(query) {
-                release.notified().await;
-            }
+        if let Some((query, release)) = &self.hold_query
+            && texts.first() == Some(query)
+        {
+            release.notified().await;
         }
         Ok(texts
             .iter()
