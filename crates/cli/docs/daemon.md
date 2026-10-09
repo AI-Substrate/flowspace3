@@ -97,7 +97,16 @@ is retryable** — re-running a job whose cause is a missing API key costs three
 times as much and fails three times. Ordinary `flowspace3 status` counts only
 failed non-terminal work in the live queue; terminal failure counts appear only
 with `--history`. The most recent failure remains visible as `last error` in
-either mode.
+either mode, with when it happened and its job id: `.data.last_error` carries
+`job` (the dedupe key), `error`, `job_id`, `at` (UTC) and `age_secs`, and the
+terminal view prints the age (`14d ago`) next to the key.
+
+A failure stops being the `last error` once a later job of the same kind and
+key finishes `done`. A session that failed to ingest once and has ingested
+cleanly since is not broken, so `status` does not say it is. The success is
+recorded on the failed row (`superseded_by`), so it still counts after the
+done row has been purged. A failure that nothing has fixed since stays
+reported, however old it is: check `age_secs` before treating it as live.
 
 Completed jobs are retained for `indexing.job_retention_days` (default 1), then
 the daemon purges them in bounded batches at boot and hourly. Ordinary

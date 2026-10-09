@@ -1330,11 +1330,11 @@ async fn a_terminal_failure_is_not_retried_and_records_why() {
         .await
         .expect("the failure is recorded")
         .expect("there is one");
-    assert_eq!(last.0, "scan:broken");
+    assert_eq!(last.dedupe_key, "scan:broken");
     assert!(
-        last.1.contains("FS3-E-QUEUE-JOB-FAILED"),
+        last.error.contains("FS3-E-QUEUE-JOB-FAILED"),
         "the row keeps the CODE, so status can explain itself: {}",
-        last.1
+        last.error
     );
 
     stack.destroy().await;

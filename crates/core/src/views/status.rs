@@ -15,8 +15,9 @@ pub struct StatusReport {
     /// Daemon-computed native conversation polling health.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conversations: Option<ConversationsStatus>,
-    /// The most recent failure, when there is one — so a status line can say
-    /// what went wrong rather than only that something did.
+    /// The most recent failure that no later success of the same job kind and
+    /// key has superseded, when there is one — so a status line can say what
+    /// went wrong rather than only that something did.
     pub last_error: Option<LastError>,
     /// Dirty element-tree shapes found without failing this read.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -166,11 +167,24 @@ pub struct QueueRow {
     pub with_error: i64,
 }
 
-/// The most recent failed job.
+/// The most recent failed job that nothing has fixed since.
+///
+/// A failure followed by a successful job of the same kind and key is not
+/// reported at all: it is history, and showing it here read as a live bug.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LastError {
     /// Which job — the dedupe key names the file or the content.
     pub job: String,
     /// What it said.
     pub error: String,
+    /// Row id of the failed job. Absent only from a daemon that predates it.
+    #[serde(default)]
+    pub job_id: Option<i64>,
+    /// When it failed, UTC. Absent only from a daemon that predates it.
+    #[serde(default)]
+    pub at: Option<String>,
+    /// Seconds from the failure to this report, so a reader sees how stale it is
+    /// without a clock. Absent only from a daemon that predates it.
+    #[serde(default)]
+    pub age_secs: Option<i64>,
 }

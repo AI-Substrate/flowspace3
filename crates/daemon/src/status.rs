@@ -54,7 +54,13 @@ pub async fn report(state: &AppState, history: bool) -> Result<StatusReport, Fai
     let last_error = fs3_store::last_failure(&state.db)
         .await
         .map_err(IntoFailure::into_failure)?
-        .map(|(job, error)| LastError { job, error });
+        .map(|failure| LastError {
+            job: failure.dedupe_key,
+            error: failure.error,
+            job_id: Some(failure.job_id),
+            at: Some(failure.at),
+            age_secs: Some(failure.age_secs),
+        });
 
     let inconsistencies = fs3_store::element_tree_inconsistencies(&state.db)
         .await

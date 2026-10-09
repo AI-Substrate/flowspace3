@@ -201,9 +201,15 @@ failed non-terminal work. Settled history is available only through
 `queue_depth_history()`, which `flowspace3 status --history` requests
 explicitly; daemon progress and ordinary `/status` never scan done rows.
 `purge_done_jobs()` removes only old `done` rows in bounded statements, and the
-daemon records the completed sweep for `/status`. `last_failure()` remains the
-most recent `last_error`, so a status line can say what went wrong rather than
-only that something did.
+daemon records the completed sweep for `/status`. `last_failure()` returns the
+most recent `last_error` that nothing has fixed since, with its job id, `at` and
+age, so a status line can say what went wrong, and when, rather than only that
+something did. `complete_job()` marks every earlier failed row of the same kind
+and dedupe key `superseded_by` the job that just finished (migration 0027), in
+the same statement. The mark lives on the failed row because the done row is
+purged after `indexing.job_retention_days`. A terminal failure keeps its row
+forever and a rerun gets a fresh one, so without the mark a failure the next
+run fixed would be reported as current for as long as nothing newer failed.
 
 **Ref layer.** `register_worktree(identity, root_path, ref_name)` is idempotent
 by `(repo_id, root_path)` — `flowspace3 add` on an existing root is a re-scan
