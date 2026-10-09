@@ -92,6 +92,60 @@ impl RepoIdentity {
         })
     }
 
+    /// The stored key for an identity someone typed or a transcript recorded.
+    ///
+    /// Stored keys (`git:…`, `path:…`) come back unchanged. A remote URL in any
+    /// common spelling becomes the key a checkout of that remote would get, so
+    /// a conversation recorded as `https://github.com/o/r.git` and the root
+    /// `git:github.com/o/r` are one repository:
+    ///
+    /// ```text
+    /// https://github.com/AI-Substrate/Unisphere.git  ->  git:github.com/AI-Substrate/Unisphere
+    /// git@github.com:AI-Substrate/Unisphere.git      ->  git:github.com/AI-Substrate/Unisphere
+    /// ssh://git@github.com:22/AI-Substrate/Unisphere ->  git:github.com/AI-Substrate/Unisphere
+    /// github.com/AI-Substrate/Unisphere              ->  git:github.com/AI-Substrate/Unisphere
+    /// ```
+    ///
+    /// Anything else (a bare word, `all`) is returned trimmed and otherwise
+    /// untouched: guessing would invent an identity nobody has.
+    #[must_use]
+    pub fn normalise_key(text: &str) -> String {
+        let text = text.trim();
+        // `git://host/…` is a transport URL, not a stored `git:` key.
+        if (text.starts_with("git:") && !text.starts_with("git://")) || text.starts_with("path:") {
+            return text.to_string();
+        }
+        let remote = if let Some((scheme, rest)) = text.split_once("://") {
+            let rest = rest.split_once('@').map_or(rest, |(_, after)| after);
+            let (authority, path) = rest.split_once('/').unwrap_or((rest, ""));
+            let host = authority.split(':').next().unwrap_or_default();
+            if scheme.eq_ignore_ascii_case("file") {
+                Self::from_remote_parts(None, &format!("/{path}"))
+            } else {
+                Self::from_remote_parts(Some(host), path)
+            }
+        } else if let Some((user_host, path)) = text.split_once(':')
+            && user_host.contains('@')
+            && !user_host.contains('/')
+        {
+            // scp-like `git@host:owner/name`.
+            let host = user_host
+                .rsplit_once('@')
+                .map_or(user_host, |(_, host)| host);
+            Self::from_remote_parts(Some(host), path)
+        } else if let Some((host, path)) = text.split_once('/')
+            && host.contains('.')
+            && !host.contains(':')
+            && !path.is_empty()
+        {
+            // `github.com/owner/name`, as a forge shows it.
+            Self::from_remote_parts(Some(host), path)
+        } else {
+            None
+        };
+        remote.map_or_else(|| text.to_string(), |identity| identity.key)
+    }
+
     /// Build the fallback identity from an **already absolute** path.
     ///
     /// Resolving symlinks and relative segments is IO, so it happens in fs3-git;
@@ -321,6 +375,45 @@ pub fn diff(old: &TreeSnapshot, new: &TreeSnapshot) -> Result<ChangedSet> {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn typed_and_recorded_identities_normalise_to_the_stored_key() {
+        let want = "git:github.com/AI-Substrate/Unisphere";
+        for text in [
+            "git:github.com/AI-Substrate/Unisphere",
+            "https://github.com/AI-Substrate/Unisphere.git",
+            "https://github.com/AI-Substrate/Unisphere",
+            "https://GitHub.com/AI-Substrate/Unisphere/",
+            "http://github.com/AI-Substrate/Unisphere.git",
+            "https://user:token@github.com/AI-Substrate/Unisphere.git",
+            "git@github.com:AI-Substrate/Unisphere.git",
+            "ssh://git@github.com/AI-Substrate/Unisphere.git",
+            "ssh://git@github.com:22/AI-Substrate/Unisphere",
+            "git://github.com/AI-Substrate/Unisphere.git",
+            "github.com/AI-Substrate/Unisphere",
+            "  https://github.com/AI-Substrate/Unisphere.git  ",
+        ] {
+            assert_eq!(RepoIdentity::normalise_key(text), want, "{text}");
+        }
+    }
+
+    #[test]
+    fn keys_and_words_that_are_not_remotes_pass_through() {
+        for text in [
+            "path:/srv/repo",
+            "git:/srv/git/flowspace3",
+            "all",
+            "unanchored",
+            "",
+        ] {
+            assert_eq!(RepoIdentity::normalise_key(text), text.trim());
+        }
+        assert_eq!(
+            RepoIdentity::normalise_key("file:///srv/git/flowspace3.git"),
+            "git:/srv/git/flowspace3"
+        );
+    }
+
     use super::*;
 
     fn blob(hex: &str) -> BlobRef {

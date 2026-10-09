@@ -105,6 +105,11 @@ JSONL. An optional header on the first line, then one turn per line:
 {"role":"assistant","content":"because embed payloads carry items, not raw_hash","items":[{"kind":"tool_result","tool":"bash","head":"Reclaimed { jobs: 1 }","total_bytes":24,"truncated":false}]}
 ```
 
+`repo_identity` may be the `git:` key or the remote URL in any common form
+(`https://github.com/you/repo.git`, `git@github.com:you/repo.git`); it is
+stored as the `git:` key either way, the same normalisation every ingested
+transcript gets, so `--repo` finds the conversation by either spelling.
+
 Everything except the prose is optional:
 
 | field | default |

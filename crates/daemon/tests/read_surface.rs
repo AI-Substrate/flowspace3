@@ -673,9 +673,12 @@ async fn zero_match_ddoc_filter_does_not_claim_the_repo_is_unindexed() {
     );
     assert_eq!(data(&closed)["results"], serde_json::json!([]));
     let meta = closed.meta.as_ref().expect("search scope metadata");
-    assert!(
-        meta["empty_because"].is_null(),
-        "a selective content filter does not prove ANN starvation: {meta}"
+    // A selective content filter does not prove ANN starvation. This scope is
+    // small enough to be compared in full, so the empty page is an answer
+    // about it.
+    assert_eq!(
+        meta["empty_because"]["reason"], "scope_unmatched",
+        "a small scope compared in full says it holds no match: {meta}"
     );
     let next = closed.next_action.as_deref().expect("empty search steers");
     assert!(!next.contains("scan_incomplete"));
@@ -1368,5 +1371,218 @@ async fn a_get_from_an_unindexed_directory_leads_its_steer_with_the_warning() {
         "the warning must LEAD the steer, the way search and tree do:\n  steer: {steer}\n  \
          warning: {warning}"
     );
+    stack.destroy().await;
+}
+
+// ---------------------------------------------------------------------------
+// worktrees of one repository (DL-022)
+
+/// A main checkout plus one linked worktree whose README differs.
+fn main_and_linked(label: &str, remote: &str) -> (Fixture, String) {
+    let main = Fixture::create(label, Some(remote));
+    let linked = support::temp_dir(&format!("{label}-linked"));
+    std::fs::remove_dir(&linked).expect("git worktree add wants a fresh path");
+    let linked_text = linked.to_string_lossy().to_string();
+    git(
+        &main.root,
+        &["worktree", "add", "--quiet", "-b", "other", &linked_text],
+    );
+    write(&linked, "README.md", "# The linked worktree's own README\n");
+    let linked = std::fs::canonicalize(&linked)
+        .expect("the worktree exists")
+        .to_string_lossy()
+        .to_string();
+    (main, linked)
+}
+
+/// `get` on a path whose content differs between the worktrees of one
+/// repository failed as ambiguous, and its fix said `--repo`, which cannot
+/// separate checkouts that share an identity. It now answers from the main
+/// checkout and says so.
+#[tokio::test]
+async fn a_path_that_differs_across_worktrees_reads_the_main_checkout_and_says_so() {
+    let stack = Stack::create("read_get_main_checkout").await;
+    let (main, linked) = main_and_linked(
+        "read-get-main-checkout",
+        "https://github.com/fixture/worktrees.git",
+    );
+    stack.index(&main.path()).await;
+    stack.index(&linked).await;
+
+    let envelope = stack
+        .get(&[("address", "el:git:github.com/fixture/worktrees/README.md")])
+        .await;
+
+    let element = data(&envelope);
+    assert_eq!(element["root_path"], main.path());
+    let choice = element["checkout_choice"]
+        .as_str()
+        .expect("a pick among differing checkouts says it was one");
+    assert!(choice.contains("main checkout"), "{choice}");
+    assert!(choice.contains("--worktree"), "{choice}");
+    assert!(
+        choice.contains(&linked),
+        "it names the other checkout: {choice}"
+    );
+    assert!(
+        envelope
+            .next_action
+            .as_deref()
+            .is_some_and(|next| next.contains("--worktree")),
+        "{:?}",
+        envelope.next_action
+    );
+    stack.destroy().await;
+}
+
+/// `--worktree` names the checkout to read.
+#[tokio::test]
+async fn worktree_picks_the_named_checkout() {
+    let stack = Stack::create("read_get_worktree_flag").await;
+    let (main, linked) = main_and_linked(
+        "read-get-worktree-flag",
+        "https://github.com/fixture/worktree-flag.git",
+    );
+    stack.index(&main.path()).await;
+    stack.index(&linked).await;
+
+    let envelope = stack
+        .get(&[
+            (
+                "address",
+                "el:git:github.com/fixture/worktree-flag/README.md",
+            ),
+            ("worktree", linked.as_str()),
+        ])
+        .await;
+
+    let element = data(&envelope);
+    assert_eq!(element["root_path"], linked);
+    assert!(
+        element["raw_text"]
+            .as_str()
+            .is_some_and(|text| text.contains("linked worktree's own README")),
+        "{element}"
+    );
+    assert!(
+        element.get("checkout_choice").is_none(),
+        "nothing was chosen for the caller"
+    );
+
+    let elsewhere = stack
+        .get(&[
+            (
+                "address",
+                "el:git:github.com/fixture/worktree-flag/README.md",
+            ),
+            ("worktree", "/srv/not-a-checkout"),
+        ])
+        .await;
+    assert_eq!(code(&elsewhere), "FS3-E-QUERY-NOT-FOUND");
+    let fix = elsewhere.error.as_ref().expect("a failure").fix.clone();
+    assert!(fix.contains(&linked) && fix.contains(&main.path()), "{fix}");
+    stack.destroy().await;
+}
+
+/// Two independent clones are both main checkouts, so there is no default to
+/// pick. The failure's fix names `--worktree` with a runnable example, not the
+/// `--repo` flag that cannot help.
+#[tokio::test]
+async fn two_clones_with_differing_content_are_ambiguous_and_the_fix_names_worktree() {
+    let stack = Stack::create("read_get_two_clones").await;
+    let remote = "https://github.com/fixture/two-clones.git";
+    let first = Fixture::create("read-get-two-clones-a", Some(remote));
+    let second = Fixture::create("read-get-two-clones-b", Some(remote));
+    stack.index(&first.path()).await;
+    stack.index(&second.path()).await;
+
+    let envelope = stack
+        .get(&[("address", "el:git:github.com/fixture/two-clones/README.md")])
+        .await;
+
+    assert_eq!(code(&envelope), "FS3-E-QUERY-INVALID-AMBIGUOUS");
+    let fix = envelope.error.as_ref().expect("a failure").fix.clone();
+    assert!(fix.contains("--worktree"), "{fix}");
+    assert!(
+        fix.contains("flowspace3 get"),
+        "the fix is a command: {fix}"
+    );
+    stack.destroy().await;
+}
+
+// ---------------------------------------------------------------------------
+// repository identities (DL-022)
+
+/// An agent copied a hit's `repo` field, a remote URL, into `--repo`. Every
+/// common spelling of a remote names the stored repository.
+#[tokio::test]
+async fn a_remote_url_names_the_repository_its_checkout_is_stored_under() {
+    let stack = Stack::create("read_scope_url").await;
+    let fixture = Fixture::create(
+        "read-scope-url",
+        Some("https://github.com/fixture/read-url.git"),
+    );
+    stack.index(&fixture.path()).await;
+
+    for spelling in [
+        "https://github.com/fixture/read-url.git",
+        "git@github.com:fixture/read-url.git",
+        "github.com/fixture/read-url",
+    ] {
+        let envelope = stack
+            .search(&[("q", "the area of a rectangle"), ("repo", spelling)])
+            .await;
+        let scope = &envelope.meta.as_ref().expect("meta")["scope"];
+        assert_eq!(
+            scope["repo"], "git:github.com/fixture/read-url",
+            "{spelling}"
+        );
+        assert!(scope.get("warnings").is_none(), "{spelling}: {scope}");
+    }
+    stack.destroy().await;
+}
+
+/// Conversations stored before the fix under a remote URL are rewritten at
+/// boot to the repository key, and a repository known only through its
+/// conversations is a real scope, not "no repository with identity".
+#[tokio::test]
+async fn stored_conversation_urls_are_normalised_and_scope_without_a_checkout() {
+    let stack = Stack::create("read_conversation_identity").await;
+    let guid = "0b0e7a8e-4b2c-4d55-9a8c-3a1f2b6c7d8e";
+    fs3_store::upsert_conversation(
+        &stack.state.db,
+        &fs3_core::Conversation {
+            guid: fs3_core::ConversationId::new(guid).expect("a guid"),
+            repo_identity: Some("https://github.com/fixture/talked-about.git".to_string()),
+            worktree: Some("/srv/unregistered".to_string()),
+            base_sha: None,
+            title: None,
+            started_at: "2026-10-09T00:00:00Z".to_string(),
+            parent: None,
+        },
+    )
+    .await
+    .expect("a pre-fix header, stored as the transcript spelled it");
+
+    fs3_daemon::boot::normalise_conversation_identities(&stack.state.db).await;
+    fs3_daemon::boot::normalise_conversation_identities(&stack.state.db).await;
+
+    let stored: String =
+        sqlx::query_scalar("SELECT repo_identity FROM conversations WHERE guid = $1::uuid")
+            .bind(guid)
+            .fetch_one(&stack.state.db)
+            .await
+            .expect("the header");
+    assert_eq!(stored, "git:github.com/fixture/talked-about");
+
+    let envelope = stack
+        .search(&[
+            ("q", "anything"),
+            ("repo", "https://github.com/fixture/talked-about.git"),
+        ])
+        .await;
+    let scope = &envelope.meta.as_ref().expect("meta")["scope"];
+    assert_eq!(scope["repo"], "git:github.com/fixture/talked-about");
+    assert!(scope.get("warnings").is_none(), "{scope}");
     stack.destroy().await;
 }

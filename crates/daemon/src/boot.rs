@@ -261,6 +261,25 @@ pub async fn recover_enrichment_jobs(db: &fs3_store::PgPool) {
     }
 }
 
+/// Rewrite conversation identities stored as remote URLs to the repository key.
+///
+/// Claude sessions recorded `https://github.com/o/r.git` while every checkout
+/// is `git:github.com/o/r`, so `--repo` could not name both (DL-022). New
+/// headers are normalised on the way in; this reaches the rows already stored,
+/// with the same function. Idempotent, and a no-op once nothing is left.
+pub async fn normalise_conversation_identities(db: &fs3_store::PgPool) {
+    match fs3_store::normalise_conversation_identities(db, fs3_core::RepoIdentity::normalise_key)
+        .await
+    {
+        Ok(0) => {}
+        Ok(changed) => tracing::info!(
+            changed,
+            "normalised conversation repository identities to their repository keys"
+        ),
+        Err(error) => tracing::error!(%error, "cannot normalise conversation identities"),
+    }
+}
+
 /// Run an isolated daemon until it is asked to stop.
 ///
 /// Only the ambient database location is reused, narrowly, to choose the
@@ -594,6 +613,7 @@ async fn serve(
     tokio::spawn(prefetch_ddoc_tooling(state.clone()));
 
     recover_enrichment_jobs(&state.db).await;
+    normalise_conversation_identities(&state.db).await;
 
     // Re-enqueue vectors that were never bought, also BEFORE the runner starts.
     //

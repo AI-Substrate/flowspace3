@@ -228,8 +228,17 @@ pub const NUL_REPLACEMENT: char = '\u{FFFD}';
 /// there failed the header upsert, and the turns behind it never got a row to
 /// hang from. Same rule as [`shape_turn`], so the two cannot disagree about
 /// what a NUL becomes.
+///
+/// The repository identity is normalised here too, for the same reason: every
+/// header passes through, so a transcript that recorded its remote as
+/// `https://github.com/o/r.git` is stored as `git:github.com/o/r`, the key its
+/// checkout has, and `--repo` finds both.
 #[must_use]
 pub fn shape_conversation(mut conversation: Conversation) -> Conversation {
+    conversation.repo_identity = conversation
+        .repo_identity
+        .as_deref()
+        .map(crate::git::RepoIdentity::normalise_key);
     for text in [
         &mut conversation.repo_identity,
         &mut conversation.worktree,
@@ -295,6 +304,24 @@ fn floor_char_boundary(text: &str, limit: usize) -> usize {
 mod tests {
     use super::*;
     use crate::conversation::{TurnRole, TurnSource};
+
+    #[test]
+    fn a_header_recorded_with_a_remote_url_is_stored_under_the_repository_key() {
+        let shaped = shape_conversation(Conversation {
+            guid: crate::conversation::ConversationId::new("0b0e7a8e-4b2c-4d55-9a8c-3a1f2b6c7d8e")
+                .expect("a guid"),
+            repo_identity: Some("https://github.com/AI-Substrate/Unisphere.git".to_string()),
+            worktree: None,
+            base_sha: None,
+            title: None,
+            started_at: "2026-10-09T00:00:00Z".to_string(),
+            parent: None,
+        });
+        assert_eq!(
+            shaped.repo_identity.as_deref(),
+            Some("git:github.com/AI-Substrate/Unisphere")
+        );
+    }
 
     fn record(ordinal: &str, body: &str) -> RawRecord {
         RawRecord {

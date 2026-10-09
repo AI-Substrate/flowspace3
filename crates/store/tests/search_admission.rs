@@ -555,14 +555,69 @@ async fn scoped_search_passes_twelve_thousand_nearer_foreign_vectors() {
 }
 
 #[tokio::test]
-async fn admitted_growth_stops_an_empty_content_filter_after_two_passes() {
+async fn admitted_growth_stops_an_empty_post_filter_after_two_passes() {
     let database =
         FreshDatabase::create_from(&fs3_testkit::test_database_url(), "search-no-growth")
             .await
             .expect("create migrated no-growth database");
+    // The index path, where a filter applied after the candidate LIMIT can
+    // stall. A scope this small is otherwise compared in full.
+    let admin = database.pool().await;
+    sqlx::query(
+        "DO $$ BEGIN EXECUTE format('ALTER DATABASE %I SET fs3.exact_scope_limit = 0', \
+         current_database()); END $$;",
+    )
+    .execute(&admin)
+    .await
+    .unwrap();
+    admin.close().await;
     let pool = database.pool().await;
     let scoped = RepoIdentity::from_remote_parts(Some("github.com"), "fixtures/no-growth").unwrap();
     let worktree = register_worktree(&pool, &scoped, "/fixtures/no-growth", Some("main"))
+        .await
+        .unwrap();
+    let query = vector(0.0);
+    seed_geometry(&pool, worktree, "function", 200, &query, 0.10).await;
+
+    let page = search_elements(
+        &pool,
+        EMBEDDER,
+        &query,
+        &SearchFilters {
+            repo: Some(scoped.key().to_string()),
+            source: Some(SourceKind::Raw),
+            // Code carries no gate, and the gate is checked at admission only.
+            gate_open: Some(true),
+            limit: 10,
+            ..SearchFilters::default()
+        },
+    )
+    .await
+    .expect("admission exhaustion returns an empty page, never an outage");
+
+    database.destroy(pool).await;
+    assert!(page.hits.is_empty());
+    assert!(page.candidate_limit_exhausted);
+    assert!(!page.exact_scan);
+    assert_eq!(
+        page.passes, 2,
+        "unchanged admitted count must stop pass three"
+    );
+}
+
+/// A kind filter narrows the scope itself, so a scope with nothing of that
+/// kind is answered exactly and completely in one pass: an empty page there is
+/// the truth, not a scan that gave up.
+#[tokio::test]
+async fn a_kind_filter_matching_nothing_in_scope_is_a_complete_empty_answer() {
+    let database =
+        FreshDatabase::create_from(&fs3_testkit::test_database_url(), "search-kind-scope")
+            .await
+            .expect("create migrated kind-scope database");
+    let pool = database.pool().await;
+    let scoped =
+        RepoIdentity::from_remote_parts(Some("github.com"), "fixtures/kind-scope").unwrap();
+    let worktree = register_worktree(&pool, &scoped, "/fixtures/kind-scope", Some("main"))
         .await
         .unwrap();
     let query = vector(0.0);
@@ -581,13 +636,96 @@ async fn admitted_growth_stops_an_empty_content_filter_after_two_passes() {
         },
     )
     .await
-    .expect("admission exhaustion returns an empty page, never an outage");
+    .expect("an empty scope is an answer");
 
     database.destroy(pool).await;
     assert!(page.hits.is_empty());
-    assert!(page.candidate_limit_exhausted);
-    assert_eq!(
-        page.passes, 2,
-        "unchanged admitted count must stop pass three"
-    );
+    assert!(page.exact_scan);
+    assert!(!page.candidate_limit_exhausted);
+    assert_eq!(page.passes, 1);
+}
+
+/// Latency of scoped and unscoped search, for the PR that added the exact
+/// small-scope scan. Not a gate: `cargo test -p fs3-store --test
+/// search_admission -- --ignored --nocapture scope_latency`.
+///
+/// One 60,000-vector foreign repository plus three scopes, all at nearby but
+/// distinct distances. Each case runs on a fresh pool after `ALTER DATABASE …
+/// SET fs3.exact_scope_limit`, so `default` is the shipped threshold and `ann`
+/// forces the index path. Run the same file on main for the "before" column.
+#[tokio::test]
+#[ignore = "benchmark, run by hand"]
+async fn scope_latency() {
+    let database = FreshDatabase::create_from(&fs3_testkit::test_database_url(), "scope-latency")
+        .await
+        .expect("create migrated benchmark database");
+    let pool = database.pool().await;
+    let query = vector(0.0);
+    let mut scopes = Vec::new();
+    for (name, count, distance) in [
+        ("foreign", 60_000, 0.30_f32),
+        ("small", 300, 0.32),
+        ("medium", 4_500, 0.34),
+        ("large", 20_000, 0.36),
+    ] {
+        let identity =
+            RepoIdentity::from_remote_parts(Some("github.com"), &format!("bench/{name}")).unwrap();
+        let worktree = register_worktree(&pool, &identity, &format!("/bench/{name}"), Some("main"))
+            .await
+            .unwrap();
+        seed_geometry(&pool, worktree, name, count, &query, distance).await;
+        scopes.push((name, count, Some(identity.key().to_string())));
+    }
+    scopes.push(("unscoped", 84_800, None));
+    sqlx::query("ANALYZE elements, worktree_files, embeddings_1024")
+        .execute(&pool)
+        .await
+        .unwrap();
+    pool.close().await;
+
+    println!("scope     sources  mode     hits passes  p50_ms  p95_ms");
+    for (mode, limit) in [("default", None), ("ann", Some(0))] {
+        let setting = limit.map_or_else(|| "DEFAULT".to_string(), |n: i64| n.to_string());
+        let admin = database.pool().await;
+        sqlx::query(&format!(
+            "DO $$ BEGIN EXECUTE format('ALTER DATABASE %I SET fs3.exact_scope_limit = {setting}', \
+             current_database()); END $$;"
+        ))
+        .execute(&admin)
+        .await
+        .unwrap();
+        admin.close().await;
+        let pool = database.pool().await;
+        for (name, count, repo) in &scopes[1..] {
+            let filters = SearchFilters {
+                repo: repo.clone(),
+                source: Some(SourceKind::Raw),
+                limit: 10,
+                ..SearchFilters::default()
+            };
+            let mut samples = Vec::new();
+            let mut last = None;
+            for run in 0..23 {
+                let started = std::time::Instant::now();
+                let page = search_elements(&pool, EMBEDDER, &query, &filters)
+                    .await
+                    .unwrap();
+                if run >= 3 {
+                    samples.push(started.elapsed().as_secs_f64() * 1000.0);
+                }
+                last = Some(page);
+            }
+            samples.sort_by(f64::total_cmp);
+            let page = last.unwrap();
+            println!(
+                "{name:<9} {count:>7}  {mode:<7} {:>5} {:>6} {:>7.1} {:>7.1}",
+                page.hits.len(),
+                page.passes,
+                samples[samples.len() / 2],
+                samples[samples.len() * 95 / 100]
+            );
+        }
+        pool.close().await;
+    }
+    database.destroy_force().await;
 }

@@ -205,6 +205,12 @@ enum Command {
         /// Resolve a repo-less element here, or explicitly filter a conversation anchor.
         #[arg(long, value_name = "IDENTITY")]
         repo: Option<String>,
+        /// Read from this registered checkout when the path holds different
+        /// content in several worktrees of one repository. Without it, `get`
+        /// answers from the checkout you are in, else the main checkout, and
+        /// says which.
+        #[arg(long, value_name = "PATH")]
+        worktree: Option<String>,
         /// Override the daemon URL from configuration.
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
@@ -799,6 +805,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             before,
             after,
             repo,
+            worktree,
             daemon_url,
         } => {
             let client = client_for(daemon_url)?;
@@ -808,6 +815,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             push(&mut params, "before", before.map(|v| v.to_string()));
             push(&mut params, "after", after.map(|v| v.to_string()));
             push(&mut params, "repo", repo);
+            push(&mut params, "worktree", worktree);
             push(&mut params, "cwd", here());
             emit(&client.get(&params).await)
         }

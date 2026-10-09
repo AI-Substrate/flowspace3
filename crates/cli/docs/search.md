@@ -18,7 +18,7 @@ because the terminal probe otherwise looks human.
 
 | flag | effect |
 |---|---|
-| `--repo <identity>` | one repository, e.g. `git:github.com/org/repo` |
+| `--repo <identity>` | one repository, e.g. `git:github.com/org/repo`; a remote URL (`https://github.com/org/repo.git`, `git@github.com:org/repo.git`, `github.com/org/repo`) names the same repository |
 | `--path <glob>` | paths matching a glob (`crates/store/*`) |
 | `--limit N` | how many hits (1–100, default 10) |
 | `--offset N` | skip the first N ranked hits (default 0) |
@@ -96,9 +96,12 @@ vector (`smart`). Both compete internally, and `match_field` reports which won.
 - **Empty results are a real answer — but the surface will tell you when they
   are not.** `meta.empty_because` carries the reason whenever one is known:
   `below_floor` means rows were found and your `--min-score` rejected them, and
-  names the floor; `scan_incomplete` means content IS indexed under this scope
-  and the ranking stopped before reaching it, which is what a narrow scope over
-  a large index does; `path_unmatched` means the requested `--path` glob
+  names the floor; `scope_unmatched` means the scope was small enough to
+  compare every one of its vectors and nothing in it matched your content
+  filters (`--source`, `--kind`, `--schema`): an answer about that scope, not
+  a scan that gave up; `scan_incomplete` means content IS indexed under this
+  scope and the approximate ranking stopped before reaching it, which only a
+  large scope can still hit; `path_unmatched` means the requested `--path` glob
   matches zero indexed paths in the scope. That last reason includes a `hint`
   naming indexed top-level entries so the glob can be corrected without
   treating an unsatisfiable filter as code absence. A scope holding nothing at
@@ -109,12 +112,22 @@ vector (`smart`). Both compete internally, and `match_field` reports which won.
   the one that built the index** — that one looks exactly like a broken search,
   because vectors are only read under the `model_key` that wrote them.
   `flowspace3 doctor` names the active providers.
-- **Ranking is approximate, and narrowing costs recall.** The similarity index
-  is HNSW: it examines a bounded candidate set rather than every vector, and
-  filters apply to what it examined. fs3 keeps scanning until your `--limit` is
-  filled, so a scoped search returns as many hits as it was asked for — but the
-  ordering is still nearest-so-far, not provably the global nearest. Dropping
-  `--repo`/`--path` searches a bigger candidate pool.
+- **A small scope is searched exactly; a large one approximately.** When
+  `--repo`, `--path`, a worktree or a conversation narrows the search to at
+  most 5,000 distinct texts, fs3 compares the query with every vector in that
+  scope: the hits are the true nearest, and an empty page means the scope holds
+  no match (`meta.passes` is 1). A larger scope, and an unscoped search, use
+  the HNSW index, which examines a bounded candidate set (pgvector's
+  `hnsw.max_scan_tuples`, 20,000 by default) and keeps scanning until your
+  `--limit` is filled. The ordering there is nearest-so-far, not provably the
+  global nearest. The cut-off is `fs3.exact_scope_limit`, settable per
+  database (`ALTER DATABASE … SET fs3.exact_scope_limit = N`).
+- **Content filters narrow the scope before ranking.** In a scoped search,
+  `--source`, `--kind` and the ddoc id-kind and schema filters choose which of
+  the scope's texts are candidates at all, so a doc search in a repository
+  whose nearest content is conversation or code still reaches its docs. The
+  same filters on an unscoped search are applied to the nearest candidates,
+  which is why a narrow filter over the whole index can still come back short.
 - **Vectors are only comparable within one model.** Changing the embedding
   model means a new `model_key`; old rows survive but are not searched by the
   new one. Re-index to move them.
@@ -129,6 +142,13 @@ remains visible. Every hit names the serving checkout in `worktree`.
 
 `meta.scope` says which repository and worktree answered and how the scope was
 chosen; `--repo all` explicitly widens back to every indexed repository.
+
+Repository identities are stored in one form, `git:<host>/<owner>/<name>`, the
+key a checkout of that remote gets. Conversations whose transcript recorded the
+remote as a URL are stored under the same key (and older rows are rewritten
+when the daemon starts), so `--repo` with either spelling finds both the code
+and the conversations about it. A repository known only through conversations,
+with no checkout added, is a valid `--repo` too.
 Standing somewhere fs3 has never indexed puts a warning in `scope.warnings` and
 at the front of `next_action`, naming `flowspace3 add <path>` — rather than
 answering from an unrelated repository and letting you believe it was yours.

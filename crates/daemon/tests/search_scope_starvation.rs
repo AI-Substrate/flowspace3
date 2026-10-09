@@ -202,6 +202,28 @@ async fn seed(
     distance: f32,
     base: &[f32],
 ) {
+    seed_kind(
+        state,
+        worktree,
+        prefix,
+        count,
+        distance,
+        base,
+        ElementKind::Function,
+    )
+    .await;
+}
+
+/// [`seed`], with elements of `kind`: a `section` is a doc, a `function` code.
+async fn seed_kind(
+    state: &AppState,
+    worktree: i64,
+    prefix: &str,
+    count: usize,
+    distance: f32,
+    base: &[f32],
+    kind: ElementKind,
+) {
     let model_key = state.embedder_key("");
     let mut files = Vec::new();
     let mut vectors = Vec::with_capacity(count);
@@ -224,8 +246,8 @@ async fn seed(
                     *index as u64 + prefix.len() as u64,
                 ));
                 Element::new(
-                    ElementKind::Function,
-                    "function_item",
+                    kind,
+                    kind.as_str(),
                     format!("{prefix}_{index}"),
                     format!("{path}::{prefix}_{index}"),
                     Span::new(1, 1),
@@ -407,14 +429,18 @@ async fn a_scoped_search_is_not_starved_by_a_crowded_neighbour_repository() {
 
 #[tokio::test]
 async fn an_exhausted_semantic_page_reports_scan_incomplete() {
-    let (database, state) = stack("search-starvation-meta", &[]).await;
+    // The ANN path's own report. This scope is small enough for the exact
+    // scan, which would answer it in full, so turn that off here. The gate
+    // filter is applied after the candidate LIMIT (code has no gate), so the
+    // admitted count stalls; `--source` would be applied to the scope itself.
+    let (database, state) = stack("search-starvation-meta", &["fs3.exact_scope_limit = 0"]).await;
     let base = question_vector().await;
     let (identity, worktree) = repo(&state, TARGET_REPO).await;
     seed(&state, worktree, "meta-target", 1_000, 0.2, &base).await;
     pin_to_the_index_plan(&state).await;
     let identity = identity.to_string();
     let mut request = ask(Some(&identity), None, 10);
-    request.source = Some("doc".to_string());
+    request.gate_open = Some(true);
 
     let outcome = search(&state, &request, &scoped(&identity))
         .await
@@ -440,7 +466,7 @@ async fn an_exhausted_semantic_page_reports_scan_incomplete() {
         .query(&[
             ("q", QUESTION),
             ("repo", identity.as_str()),
-            ("source", "doc"),
+            ("gate_open", "true"),
             ("limit", "10"),
         ])
         .send()
@@ -764,6 +790,121 @@ async fn the_envelope_carries_the_explanation_for_an_empty_answer() {
     assert!(
         !next.contains("run `flowspace3 doctor`"),
         "and stops listing suspects it has already ruled out: {next}"
+    );
+
+    database.destroy(state.db).await;
+}
+
+/// Code crowded around the question, the docs the question is about further
+/// out, all in one repository.
+async fn docs_behind_code(
+    label: &str,
+    extra: &[&str],
+) -> (support::FreshDatabase, AppState, String) {
+    let (database, state) = stack(label, extra).await;
+    let base = question_vector().await;
+    let (identity, worktree) = repo(&state, TARGET_REPO).await;
+    seed(&state, worktree, "crowding-code", 1_000, 0.05, &base).await;
+    // A second checkout of the same repository: seeding replaces a
+    // worktree's whole file map, so the docs need their own.
+    let docs = fs3_store::register_worktree(&state.db, &identity, "/srv/target-docs", Some("main"))
+        .await
+        .expect("registering the docs checkout");
+    seed_kind(
+        &state,
+        docs,
+        "target-docs",
+        5,
+        0.6,
+        &base,
+        ElementKind::Section,
+    )
+    .await;
+    pin_to_the_index_plan(&state).await;
+    (database, state, identity.to_string())
+}
+
+/// DL-022: a doc search scoped to a repository whose nearest content was all
+/// of another kind answered nothing. The content filter ran after the
+/// candidate LIMIT, every candidate was code, the admitted count stalled, and
+/// the search gave up with `scan_incomplete`. The filter now narrows the
+/// scope itself, on both the exact and the index path.
+#[tokio::test]
+async fn docs_in_a_scope_crowded_with_code_are_found_by_a_doc_search() {
+    for (label, extra) in [
+        ("search-docs-behind-code-exact", &[][..]),
+        (
+            "search-docs-behind-code-ann",
+            &["fs3.exact_scope_limit = 0"][..],
+        ),
+    ] {
+        let (database, state, identity) = docs_behind_code(label, extra).await;
+        let mut request = ask(Some(&identity), None, 10);
+        request.source = Some("doc".to_string());
+
+        let outcome = search(&state, &request, &scoped(&identity))
+            .await
+            .expect("a populated scope answers");
+
+        // Exact ranking finds all five. The HNSW path is approximate and may
+        // miss one; before the fix it found none at all.
+        if extra.is_empty() {
+            assert_eq!(
+                outcome.results.len(),
+                5,
+                "{label}: five docs behind a thousand nearer code elements"
+            );
+        } else {
+            assert!(
+                !outcome.results.is_empty(),
+                "{label}: the docs are reachable"
+            );
+        }
+        assert!(
+            outcome.results.iter().all(|hit| hit.kind == "section"),
+            "{label}: {:?}",
+            outcome
+                .results
+                .iter()
+                .map(|hit| &hit.kind)
+                .collect::<Vec<_>>()
+        );
+        assert!(!outcome.scan_incomplete, "{label}");
+
+        database.destroy(state.db).await;
+    }
+}
+
+/// CONF-010: a scope with no content of the asked-for type was reported as
+/// "content IS indexed ... the scan stopped before it reached that content".
+/// A small scope is compared in full, so the answer is that the scope holds
+/// no match.
+#[tokio::test]
+async fn a_small_scope_with_no_matching_content_says_so_instead_of_blaming_the_scan() {
+    let (database, state) = stack("search-small-scope-unmatched", &[]).await;
+    let base = question_vector().await;
+    let (identity, worktree) = repo(&state, TARGET_REPO).await;
+    seed(&state, worktree, "code-only", 1_000, 0.2, &base).await;
+    pin_to_the_index_plan(&state).await;
+    let identity = identity.to_string();
+    let mut request = ask(Some(&identity), None, 10);
+    request.source = Some("doc".to_string());
+
+    let outcome = search(&state, &request, &scoped(&identity))
+        .await
+        .expect("an empty scope is an answer, not an outage");
+
+    assert!(outcome.results.is_empty());
+    assert!(!outcome.scan_incomplete);
+    assert_eq!(outcome.passes, 1);
+    let reason = outcome
+        .empty_because
+        .expect("an empty page explains itself");
+    assert_eq!(reason.reason, "scope_unmatched");
+    assert!(
+        !reason.detail.contains("stopped before"),
+        "{}",
+        reason.detail
     );
 
     database.destroy(state.db).await;
