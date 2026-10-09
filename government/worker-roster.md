@@ -1,5 +1,13 @@
 # Worker roster — flowspace3
-**Maintained by**: pij-instant-lynx (o-prime) · **Updated**: 2026-08-27 (keep current: update on every seat add/release/revive)
+**Maintained by**: the current o-prime, **pij-spatial-skink** (claude, since 2026-09; earlier o-primes: pij-instant-lynx, pij-binding-magpie) · **Updated**: 2026-10-09 (keep current: update on every seat add/release/revive)
+
+## Peer primes in other repos (who to message)
+
+| Repo | Prime seat | Retired ids that mean the same seat |
+|---|---|---|
+| dd (`ddocs`) | **pij-genetic-hippopotamus** | pij-mental-dajeil, pij-joyous-rooster (dead; no alias, per dd `consumer-contracts.md`, 2026-10-09) |
+
+Historical briefs and plans keep the ids that were live when they were written; route new messages by this table.
 
 **2026-08-27 fleet close-out (Jordan's order)**: all 13 task/specialist workers CLOSED after the v0.2.0 ship and retro-prep reports landed. Every seat filed its retro observations into the shared buffer first (drain still pending, o-prime-owned). Revive any seat with `pij revive <id> --print`; native session ids below are the harness-level resume keys captured at canary time.
 
