@@ -18,6 +18,10 @@ with `fs3`; the rest of the prompt, before and after it, is your message:
 okay lets talk about the pij --fyi feature "fs3 -a pij fyi"
 ```
 
+The quoted piece needs real search words after `fs3`. Messages that other agents
+and the harness inject (cross-session messages, task notifications, system
+reminders) never trigger it, even when they quote an fs3 example.
+
 ## Switches
 
 Switches go anywhere inside the quotes; a word starting with `-` that is not a
@@ -64,11 +68,11 @@ The hook adds the hits as context for that one turn, under a budget of about
 9,000 characters. Hits from one conversation are grouped under it, in rank
 order; each carries its address, repo, path, kind, score and its summary or
 snippet. Alongside the hits the agent is told that you typed `fs3` because you
-want the answer from flowspace3, so it should use flowspace3 before the web,
+want the answer from flowspace3, so it should use it before the web,
 memory or other tools, and to:
 
 - judge relevance first and say which hits it ignored; if none bear on the
-  question, the search missed, so search flowspace3 again before anything else;
+  question, the search missed, so run another `flowspace3 search` before anything else;
 - read around the strongest hits with `flowspace3 get <address>` before
   answering (`-quick` turns this off), and treat conversations as history to
   check against current code;
@@ -78,7 +82,7 @@ memory or other tools, and to:
 
 When the results look weak (no hit contains the search words, outside this
 chat's own turns, and the best meaning match scores under 0.55), the agent is
-told so plainly. It must then run at least two or three more flowspace3 searches
+told so plainly. It must then run at least two or three more searches with flowspace3
 before saying there is nothing, and it gets ready-to-run commands: your message
 as a full question, each key word alone, and the same search across every repo
 and source.
