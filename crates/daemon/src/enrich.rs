@@ -820,9 +820,28 @@ pub async fn embed_items(
     let mut pending = budget_prepared(prepared, texts);
     let mut completed = Vec::new();
     let mut vectors = Vec::new();
+    // Background embedding is paced by tokens per minute and yields to any
+    // search in flight on this instance (see `crate::embed_governor`).
+    let governor = state.embed_governor_for(identity);
     while let Some(mut call) = pending.pop_front() {
+        // Charged from the texts themselves: a re-split call can carry a zero
+        // estimate, and the budget must see what is actually sent.
+        let cost: usize = call
+            .texts
+            .iter()
+            .map(|text| fs3_core::estimate_tokens(text))
+            .sum();
+        governor.admit_background(cost).await;
         let started = std::time::Instant::now();
-        match embedder.embed(&call.texts).await {
+        let result = embedder.embed(&call.texts).await;
+        match &result {
+            Ok(_) => governor.succeeded(),
+            Err(fs3_core::Error::RateLimited { retry_after, .. }) => {
+                governor.rate_limited(*retry_after);
+            }
+            Err(_) => {}
+        }
+        match result {
             Ok(returned) => {
                 tracing::info!(
                     kind = EMBED,

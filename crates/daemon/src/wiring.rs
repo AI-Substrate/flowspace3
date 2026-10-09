@@ -59,6 +59,8 @@ const EVENT_CAPACITY: usize = 256;
 use fs3_testkit::{FakeChatProvider, FakeEmbedder, FakeSummarizer};
 use tokio::sync::RwLock;
 
+use crate::embed_governor::{EmbedGovernor, QUERY_CACHE_ENTRIES, QueryVectorCache};
+
 /// Everything an HTTP handler or worker needs, wired once at startup.
 #[derive(Clone)]
 pub struct AppState {
@@ -118,6 +120,12 @@ pub struct AppState {
     pub ddocs: Arc<RwLock<BTreeMap<i64, Arc<crate::ddoc::DdocTooling>>>>,
     /// One lightweight snapshot from the native conversation reconciler.
     pub(crate) conversations: Arc<RwLock<crate::convo_poll::PollHealth>>,
+    /// Background-embedding pacing, one governor per embedder INSTANCE,
+    /// created on first use (see [`crate::embed_governor`]).
+    embed_governors: Arc<std::sync::Mutex<BTreeMap<usize, Arc<EmbedGovernor>>>>,
+    /// Recently embedded query vectors, so a repeated search skips the
+    /// provider.
+    query_vectors: Arc<std::sync::Mutex<QueryVectorCache>>,
 }
 
 impl std::fmt::Debug for AppState {
@@ -215,6 +223,10 @@ impl AppState {
             install_path,
             ddocs: Arc::new(RwLock::new(BTreeMap::new())),
             conversations,
+            embed_governors: Arc::new(std::sync::Mutex::new(BTreeMap::new())),
+            query_vectors: Arc::new(std::sync::Mutex::new(QueryVectorCache::new(
+                QUERY_CACHE_ENTRIES,
+            ))),
         })
     }
     /// Attach one live watcher to the daemon event fan-out.
@@ -251,6 +263,60 @@ impl AppState {
     #[must_use]
     pub fn embedder_for(&self, repo: &str) -> &Arc<dyn Embedder> {
         self.repo_embedders.get(repo).unwrap_or(&self.embedder)
+    }
+
+    /// The background-embedding governor for `repo`'s embedder instance.
+    ///
+    /// Keyed by the `Arc`'s identity, exactly like the embed lane: one
+    /// instance is one provider budget, however many repos select it.
+    #[must_use]
+    pub fn embed_governor_for(&self, repo: &str) -> Arc<EmbedGovernor> {
+        let instance = Arc::as_ptr(self.embedder_for(repo)).cast::<()>() as usize;
+        let mut governors = self
+            .embed_governors
+            .lock()
+            .expect("embed governor map poisoned");
+        Arc::clone(governors.entry(instance).or_insert_with(|| {
+            Arc::new(EmbedGovernor::new(
+                self.config.indexing.embed_tokens_per_minute,
+            ))
+        }))
+    }
+
+    /// Embed a search query for `repo`: from the cache when this exact text
+    /// was embedded by this model recently, otherwise ahead of any background
+    /// embedding on the same instance.
+    ///
+    /// # Errors
+    /// The provider's failure, or an empty response.
+    pub async fn embed_query(&self, repo: &str, query: &str) -> fs3_core::Result<Vec<f32>> {
+        let model_key = self.embedder_key(repo);
+        if let Some(vector) = self
+            .query_vectors
+            .lock()
+            .expect("query vector cache poisoned")
+            .get(&model_key, query)
+        {
+            return Ok(vector);
+        }
+        let governor = self.embed_governor_for(repo);
+        let vector = {
+            let _right_of_way = governor.interactive();
+            self.embedder_for(repo)
+                .embed(&[query.to_string()])
+                .await?
+                .pop()
+                .ok_or_else(|| {
+                    fs3_core::Error::Provider(
+                        "the embedder returned no vector for the query".to_string(),
+                    )
+                })?
+        };
+        self.query_vectors
+            .lock()
+            .expect("query vector cache poisoned")
+            .put(&model_key, query, vector.clone());
+        Ok(vector)
     }
 
     /// The summarizer to use for `repo` — its override, or the active default.
