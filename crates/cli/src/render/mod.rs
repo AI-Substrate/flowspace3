@@ -56,6 +56,8 @@ fn render_at_width(envelope: &Envelope<Value>, width: u16) -> Option<String> {
         "tree" => surfaces::read::tree(envelope, width),
         "remove" => surfaces::remove::remove(envelope, width),
         "gc" => surfaces::remove::gc(envelope, width),
+        "hooks install" | "hooks uninstall" => surfaces::hooks::changes(envelope, width),
+        "hooks status" => surfaces::hooks::status(envelope, width),
         "conversation list" | "conversation verify" | "docs" | "agents-start-here" => {
             surfaces::lists::render(envelope, width)
         }

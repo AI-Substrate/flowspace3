@@ -38,7 +38,21 @@ whole stack works — including search — before you have any API keys.
 - Secrets: `~/.config/flowspace3/secrets.env`, loaded into the environment at
   startup. Config files name variables; they never hold key values.
 - Data: Postgres, on `127.0.0.1:5433` by default.
-- The repositories you index: **nothing**. fs3 writes no files into them.
+- The repositories you index: **nothing**. fs3 writes no files into them
+  (the one opt-in exception is `flowspace3 hooks install --scope project`).
+- Agent harness configs: only when you run `flowspace3 hooks install`, which
+  lists every file it changes and backs each one up first.
+
+## Prompt hooks for your agents (optional)
+
+```bash
+flowspace3 hooks install
+```
+
+Wires `fs3 "<search>" <message>` prompts into every agent harness you have
+(Claude Code, Codex, Copilot CLI, pi, omp): the search runs before the agent's
+turn and the agent gets the hits. `flowspace3 doctor` shows a `hooks:<harness>`
+row for each harness, and `flowspace3 docs get prompt-search` is the guide.
 
 ## Verifying an install
 

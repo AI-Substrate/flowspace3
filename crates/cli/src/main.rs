@@ -316,6 +316,13 @@ enum Command {
         #[command(subcommand)]
         command: DocsCommand,
     },
+    /// Prompt hooks for agent harnesses: `fs3 "<search>" <message>` runs a
+    /// flowspace3 search before the agent's turn (`flowspace3 docs get
+    /// prompt-search`).
+    Hooks {
+        #[command(subcommand)]
+        command: HooksCommand,
+    },
     /// Inspect fs3's configuration.
     Config {
         #[command(subcommand)]
@@ -467,6 +474,76 @@ enum ConfigCommand {
         #[arg(long, value_name = "DIR")]
         config_dir: Option<PathBuf>,
     },
+}
+
+/// `flowspace3 hooks …`.
+#[derive(Subcommand)]
+enum HooksCommand {
+    /// Wire the prompt hook into each harness's config: merged, backed up,
+    /// idempotent. Prints every file it changed.
+    Install {
+        /// Which harness; `all` installs into every harness this user has.
+        #[arg(long, value_enum, default_value = "all")]
+        harness: HarnessArg,
+        /// `user` (every repo) or `project` (this repo only).
+        #[arg(long, value_enum, default_value = "user")]
+        scope: fs3_cli::hooks::install::Scope,
+    },
+    /// Report whether each harness has the hook: installed, missing or stale.
+    Status {
+        #[arg(long, value_enum, default_value = "all")]
+        harness: HarnessArg,
+    },
+    /// Remove the prompt hook, leaving every other hook in place.
+    Uninstall {
+        #[arg(long, value_enum, default_value = "all")]
+        harness: HarnessArg,
+        #[arg(long, value_enum, default_value = "user")]
+        scope: fs3_cli::hooks::install::Scope,
+    },
+    /// The hook itself, as a harness runs it: read the prompt (stdin JSON, or
+    /// the flags), search if it is an `fs3` prompt, print the harness's shape.
+    ///
+    /// Never fails and never blocks a prompt; prints nothing for other prompts.
+    Prompt {
+        /// Which harness is calling: decides the input and output shape.
+        #[arg(long, value_enum)]
+        harness: fs3_cli::hooks::Harness,
+        /// The prompt, when the caller cannot use stdin.
+        #[arg(long)]
+        prompt: Option<String>,
+        /// The harness's session id.
+        #[arg(long)]
+        session: Option<String>,
+        /// The working directory the prompt was typed in.
+        #[arg(long)]
+        cwd: Option<String>,
+    },
+}
+
+/// `--harness` for the management verbs: one harness, or all of them.
+#[derive(Clone, Copy, clap::ValueEnum)]
+enum HarnessArg {
+    All,
+    Claude,
+    Codex,
+    Copilot,
+    Pi,
+    Omp,
+}
+
+impl HarnessArg {
+    fn harnesses(self) -> Vec<fs3_cli::hooks::Harness> {
+        use fs3_cli::hooks::Harness;
+        match self {
+            Self::All => Harness::ALL.to_vec(),
+            Self::Claude => vec![Harness::Claude],
+            Self::Codex => vec![Harness::Codex],
+            Self::Copilot => vec![Harness::Copilot],
+            Self::Pi => vec![Harness::Pi],
+            Self::Omp => vec![Harness::Omp],
+        }
+    }
 }
 
 /// Subcommands of `doctor` that are not the diagnostic walk.
@@ -893,6 +970,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             };
             emit(&fs3_cli::github_copilot::models(&provider, &dir).await?)
         }
+        Command::Hooks { command } => hooks(command).await,
         // Routed before the runtime was built; see `main`.
         Command::Daemon { .. } => unreachable!("the daemon verb is handled in main"),
     }
@@ -1066,6 +1144,63 @@ fn here() -> Option<String> {
             .to_string_lossy()
             .to_string(),
     )
+}
+
+async fn hooks(command: HooksCommand) -> Result<ExitCode> {
+    use fs3_cli::hooks;
+    if let HooksCommand::Prompt {
+        harness,
+        prompt,
+        session,
+        cwd,
+    } = command
+    {
+        let flags = hooks::Payload {
+            prompt,
+            session,
+            cwd,
+        };
+        let stdin = hooks::stdin_payload(&flags);
+        let output = match client_for(None) {
+            Ok(client) => hooks::run_prompt(&client, harness, stdin.as_deref(), flags).await,
+            Err(error) => {
+                let backend = hooks::Unreachable(format!("{error:#}"));
+                hooks::run_prompt(&backend, harness, stdin.as_deref(), flags).await
+            }
+        };
+        if let Some(text) = output {
+            // A reader that walked away is not this hook's failure.
+            let _ = writeln!(io::stdout(), "{text}");
+        }
+        return Ok(ExitCode::SUCCESS);
+    }
+    let places = hooks::install::Places::from_env(hooks::project_root())
+        .context("HOME is not set, so no harness config can be located")?;
+    let binary = hooks::install::resolve_binary();
+    match command {
+        HooksCommand::Install { harness, scope } => emit(&hooks::install_envelope(
+            &places,
+            &binary,
+            &harness.harnesses(),
+            scope,
+            matches!(harness, HarnessArg::All),
+            true,
+        )),
+        HooksCommand::Uninstall { harness, scope } => emit(&hooks::install_envelope(
+            &places,
+            &binary,
+            &harness.harnesses(),
+            scope,
+            false,
+            false,
+        )),
+        HooksCommand::Status { harness } => emit(&hooks::status_envelope(
+            &places,
+            &binary,
+            &harness.harnesses(),
+        )),
+        HooksCommand::Prompt { .. } => unreachable!("handled above"),
+    }
 }
 
 fn client_for(override_url: Option<String>) -> Result<DaemonClient> {

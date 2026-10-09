@@ -34,9 +34,11 @@ ratatui = "0.29"
 # fs3-core, so this adds no Cargo.lock churn.
 sha2.workspace = true
 serde.workspace = true
-serde_json.workspace = true
-tokio.workspace = true
+serde_json = { workspace = true, features = ["preserve_order"] }
+tokio = { workspace = true, features = ["time"] }
 toml.workspace = true
+# `hooks install` edits Codex's config.toml in place, keeping comments and layout.
+toml_edit = "0.23"
 
 # The binary is `flowspace3` (PRD req 28), not the package name.
 [[bin]]
@@ -55,3 +57,5 @@ fs3-testkit.workspace = true
 # DEV only: the daemon log-file test needs a throwaway config directory and a
 # throwaway log directory, and must never write to the user's real ones.
 tempfile.workspace = true
+# The prompt hook's timeout test runs on paused time.
+tokio = { workspace = true, features = ["test-util"] }

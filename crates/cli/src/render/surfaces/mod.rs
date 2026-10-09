@@ -1,6 +1,7 @@
 pub mod ask;
 pub mod doctor;
 pub mod failure;
+pub mod hooks;
 pub mod lists;
 pub mod read;
 pub mod remove;
