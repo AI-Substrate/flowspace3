@@ -968,3 +968,29 @@ Carried, not folded yet (theirs to keep pressing, ours to watch): C3 "compact th
   contracts 16, portable eight-case deletion oracle, poller 24, and manual
   deleted-cwd/discovered-directory ingest+verify. Temporary private probe and
   owned mutation databases were removed; no raw oracle data was vendored.
+
+## 2026-09-11 — o-prime close-out of #121 (search --offset) and #122 (omp /tmp slug + failed-attempt ack)
+
+- **A real store beats a fixture as an oracle, and must never become one.** The
+  reviewer ran the new slug rule over the 173 directories omp itself had written
+  and found 6 defects every green suite missed (F1); then found that the fixture
+  the prime had ruled into existence was precisely what hid them. The same
+  reviewer escalated when the prime told the coder to vendor that table into a
+  public repo. Encoded as i20. (pij-relieved-grasshopper, pij-flaky-jerusalem.)
+- **Rows that appear to exercise a fix and do not.** F4 (no multi-component
+  tail) and the root-row decoration were one family: the suite failed at row
+  one under mutation, so later rows were never reached and their emptiness was
+  invisible. Reorder-then-mutate exposed it. A reviewer that names its own miss
+  and proves it by experiment is worth more than one that quietly corrects.
+- **Relative edit paths from an omp seat spawned in main dirtied main** before
+  its first commit; caught by the seat, verified clean by the prime. Encoded as i19.
+- **Gate timeouts under host load** (Defender + Spotlight at 400%): the exact
+  timed-out test passed alone in 1.25 s; the unchanged gate passed later.
+  Encoded as i21; Jordan added Defender exclusions for the build trees.
+- **A fix that stops churn does not retry what the old bug already failed.**
+  The #122 negative ack correctly holds a failed row until its file changes, so
+  20 sessions the old poller had failed stayed unread after the bounce until the
+  prime resubmitted them by hand (backlog 206).
+- **Both merge guards earned their keep**: #122 needed a docs-only rebase over
+  EXPERIENCES.md (this file — two PRs appended to it), verified byte-identical
+  outside that file and confirmed by blob hash by the reviewer.
