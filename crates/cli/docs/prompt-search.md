@@ -1,8 +1,10 @@
-# fs3 prompts: search before the agent's turn (Claude Code)
+# fs3 prompts: search before the agent's turn
 
-Type a prompt that starts with `fs3` and a Claude Code hook runs a flowspace3
-search first, then hands the hits to the agent together with your message. The
-agent never has to decide to search. It is search only, never `ask`.
+Type a prompt that starts with `fs3` and a hook runs a flowspace3 search first,
+then hands the hits to the agent together with your message. The agent never
+has to decide to search. It is search only, never `ask`. It works the same in
+Claude Code, Codex, GitHub Copilot CLI, pi and omp; install it with
+`flowspace3 hooks install` (see [Install](#install)).
 
 ```text
 fs3 "<switches> <search text>" <your message to the agent>
@@ -112,36 +114,52 @@ how many:
   A rare query whose hits all come from other chats can come back empty.
 - **The hook never blocks a prompt.** A failed search, an unknown switch, or a
   stopped daemon is reported to the agent with the hits it did get.
-- **Claude Code only.** The hook reads Claude Code's `UserPromptSubmit` input
-  (`prompt`, `cwd`, `session_id`).
+- **`-this` needs a harness whose chats are indexed.** That is Claude
+  Code and omp today. In Codex, Copilot CLI and pi, `-this` says so instead of
+  searching, and no hit is tagged `THIS CHAT`.
 
 ## Install
 
-The hook is a single Python 3 script in the GitHub repository AI-Substrate/flowspace3, at
-`integrations/claude-code/fs3-prompt-search.py`.
-
 ```bash
-mkdir -p ~/.claude/hooks
-curl -fsSL https://raw.githubusercontent.com/AI-Substrate/flowspace3/main/integrations/claude-code/fs3-prompt-search.py \
-  -o ~/.claude/hooks/fs3-prompt-search.py
-chmod +x ~/.claude/hooks/fs3-prompt-search.py
+flowspace3 hooks install            # every harness you have, for every repo
+flowspace3 hooks status             # installed, missing or stale, per harness
+flowspace3 hooks uninstall          # remove it again
 ```
 
-Then register it in `~/.claude/settings.json` (every repo) or a project's
-`.claude/settings.local.json` (one repo), next to any hooks already there:
+`--harness claude|codex|copilot|pi|omp` picks one harness (`all` is the
+default, and skips harnesses you do not have). `--scope project` writes into
+this repo instead of your user config. Every write merges into what is
+already there: other tools' hooks (git-ai's included) are left alone, a
+changed config file is first copied to `<file>.fs3-backup-<time>` (the extension
+files are wholly flowspace3's and are regenerated instead), and a second run
+changes nothing. The envelope lists every file it touched. `flowspace3 doctor`
+shows one `hooks:<harness>` row per harness you have, and its `next_action`
+is the exact install command when one is missing or stale.
 
-```json
-{
-  "hooks": {
-    "UserPromptSubmit": [
-      { "hooks": [ { "type": "command",
-                     "command": "$HOME/.claude/hooks/fs3-prompt-search.py",
-                     "timeout": 40 } ] }
-    ]
-  }
-}
-```
+The hook is this binary: each harness runs `flowspace3 hooks prompt --harness
+<h>`, which reads the prompt, searches, and prints the shape that harness
+reads. It never blocks a prompt and prints nothing for prompts that are not
+fs3 prompts. If you move or reinstall the binary, `hooks status` reports the
+hook stale and `hooks install` repoints it.
 
-Claude Code usually picks up settings changes in a running session; if it
-does not, open `/hooks` once or restart the session. Prompts that do not start with `fs3`
-pass through untouched.
+| harness | where it goes (user scope / `--scope project`) | how the hits arrive |
+|---|---|---|
+| Claude Code | `~/.claude/settings.json` / `.claude/settings.local.json`, a `UserPromptSubmit` command hook | `additionalContext` |
+| Codex | `~/.codex/config.toml` / `.codex/config.toml`, an inline `UserPromptSubmit` hook, pre-approved with its `trusted_hash` | `additionalContext` |
+| Copilot CLI | `~/.copilot/extensions/flowspace3/extension.mjs` / `.github/extensions/flowspace3/` | the extension's `additionalContext` (Copilot drops command-hook output, so it is an extension) |
+| pi | `~/.pi/agent/extensions/flowspace3.ts` / `.pi/extensions/` | a hidden session message from `before_agent_start` |
+| omp | `~/.omp/agent/extensions/flowspace3.ts` / `.omp/extensions/` | a hidden session message from `before_agent_start` |
+
+When to expect it: Claude Code picks up settings changes in a running session
+(open `/hooks` once if it does not). Restart Codex. Copilot, pi and omp load
+extensions when a session starts. Codex and pi load project-scope hooks only
+in a project you have trusted.
+
+Copilot CLI also runs a repo's `.claude/settings*.json` hooks. The Claude hook
+recognises Copilot's input and steps aside at once, so a project-scope Claude
+install costs Copilot nothing.
+
+The old Python script (`integrations/claude-code/fs3-prompt-search.py`) is now
+a shim that runs `flowspace3 hooks prompt --harness claude`; it will be
+removed in the next release. `hooks status` reports a registration of it as
+stale, and `hooks install` replaces it in place.

@@ -213,6 +213,9 @@ async fn walk(
     // right: a reader with no daemon running is told to start one before being
     // told where it would have written its logs.
     steps.push(check_logs(config));
+    // One row per harness this user has: is the fs3 prompt hook wired in?
+    // Informational like the skills row — doctor never installs it.
+    steps.extend(check_hooks());
     // req-0053: the skills row walks LAST — informational, never degrading, and
     // the one row reporting state doctor will never itself change. Anything new
     // goes ABOVE it; `doctor_walks_the_skills_row_last_and_informationally`
@@ -1038,6 +1041,72 @@ fn check_skills() -> Step {
         )
         .with_steer(SKILL_MISSING_STEER),
     }
+}
+
+/// One row per detected harness: the prompt hook installed, missing, or stale.
+///
+/// Never writes. `$HOME` and the binary path are the only impure steps; the
+/// shaping is `hooks_rows`, pure and tested.
+fn check_hooks() -> Vec<Step> {
+    let started = Instant::now();
+    let project = crate::hooks::project_root();
+    match crate::hooks::install::Places::from_env(project) {
+        Some(places) => hooks_rows(&places, &crate::hooks::install::resolve_binary(), started),
+        None => Vec::new(),
+    }
+}
+
+fn hooks_rows(
+    places: &crate::hooks::install::Places,
+    binary: &std::path::Path,
+    started: Instant,
+) -> Vec<Step> {
+    use crate::hooks::{Harness, install};
+    let mut rows = Vec::new();
+    for harness in Harness::ALL {
+        if !places.detected(harness) {
+            continue;
+        }
+        let audits: Vec<install::HookStatus> = [install::Scope::User, install::Scope::Project]
+            .into_iter()
+            .map(|scope| install::audit(places, binary, harness, scope))
+            .collect();
+        let check = format!("hooks:{}", harness.slug());
+        let command = crate::hooks::install_command(&[harness]);
+        let (state, detail) = crate::hooks::summary(&audits, harness);
+        let where_ = detail.map(|d| format!(": {d}")).unwrap_or_default();
+        rows.push(match state {
+            "installed" => Step::ok(
+                &check,
+                format!("the fs3 prompt hook is installed for {}{where_}", harness.name()),
+                started,
+            ),
+            "missing" => Step::info(
+                &check,
+                format!(
+                    "{} has no fs3 prompt hook (`fs3 \"<search>\" <message>` searches before the agent's turn)",
+                    harness.name()
+                ),
+                format!("Run: `{command}`"),
+                started,
+            )
+            .with_steer(format!("install the fs3 prompt hook: `{command}`")),
+            "disabled" => Step::warn(
+                &check,
+                format!("the fs3 prompt hook is installed for {} but cannot run{where_}", harness.name()),
+                "turn the harness's hooks back on; doctor will not change that setting",
+                started,
+            ),
+            other => Step::warn(
+                &check,
+                format!("the fs3 prompt hook for {} is {other}{where_}", harness.name()),
+                format!("Run: `{command}`"),
+                started,
+            )
+            .with_steer(format!("refresh the fs3 prompt hook: `{command}`")),
+        });
+    }
+    rows
 }
 
 /// The name doctor writes and deletes to prove a log directory is writable.

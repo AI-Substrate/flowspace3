@@ -1,0 +1,12 @@
+flowspace3
+Copyright (c) the flowspace3 authors. Licensed under the MIT License (see LICENSE).
+
+This product includes work derived from git-ai
+(https://github.com/git-ai-project/git-ai), licensed under the Apache License,
+Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0):
+
+- crates/cli/src/hooks/install.rs: the harness config locations, the
+  merge-without-clobbering rules for hook files, and the Codex hook trust-hash
+  recipe follow git-ai's hook installers (src/mdm/hook_installer.rs and
+  src/mdm/agents/{claude_code,codex,github_copilot,pi}.rs). flowspace3 does
+  not include git-ai source code verbatim.
