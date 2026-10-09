@@ -1,0 +1,37 @@
+crates/cli/Cargo.toml
+  s_1c66091db3466f::t_6f762fb6ec111a 37
+crates/cli/src/hooks/grammar.rs
+  s_c956856521bd6a::t_2c73717a19b30d 238,240-241
+crates/cli/src/hooks/install.rs
+  s_1c66091db3466f::t_0e873d028b7e1c 559-560,565-660,724,959-972
+crates/cli/src/hooks/mod.rs
+  s_1c66091db3466f::t_b34f08824e23d2 374-465
+crates/testkit/arch-allowlist.toml
+  s_1c66091db3466f::t_107ed1c33e632a 261-263
+docs/plans/019-agent-hooks/capabilities.md
+  s_1c66091db3466f::t_c4f9d8970b6e0d 34-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7b04849fbf8e2d48fdbb9fb43d7cebdcdf6b0c8d",
+  "prompts": {},
+  "sessions": {
+    "s_1c66091db3466f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be947090-7fd5-40be-9c2c-61dc8b274f6c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_c956856521bd6a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e83b4b34-ede6-4d29-8260-e87fe12f1fdf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
