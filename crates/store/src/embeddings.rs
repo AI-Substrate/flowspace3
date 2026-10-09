@@ -674,6 +674,8 @@ candidate_vectors AS MATERIALIZED (
     -- and the true nearest $14 are kept. The ANN scan below gives up after
     -- `hnsw.max_scan_tuples`, and a scope that is a small share of the index
     -- can sit past that. `+ 0` keeps the planner off the HNSW index here.
+    -- Exactly one arm runs, so the outer LIMIT only tells the planner that.
+    SELECT * FROM (
     (SELECT e.source_hash, e.source_kind, e.chunk_no,
            e.vector <=> $1 AS distance
       FROM admitted_sources a
@@ -701,6 +703,8 @@ candidate_vectors AS MATERIALIZED (
                  SELECT source_hash FROM admitted_sources WHERE source_kind = 'smart')))
      ORDER BY e.vector <=> $1
      LIMIT $14)
+    ) arms
+    LIMIT $14
 ),
 candidate_meta AS (
     SELECT count(*)::bigint AS candidate_count,
@@ -1251,10 +1255,16 @@ mod tests {
             .map(|line| format!("       {line}"))
             .collect::<Vec<_>>()
             .join("\n");
-        let old = without_join.replacen(
-            distance_filter,
-            &format!("{distance_filter}\n{old_admission}"),
-            1,
+        // The last distance filter is the HNSW arm's; the exact arm's comes first.
+        let (at, _) = without_join
+            .match_indices(distance_filter)
+            .last()
+            .expect("distance filter marker drifted");
+        let at = at + distance_filter.len();
+        let old = format!(
+            "{}\n{old_admission}{}",
+            &without_join[..at],
+            &without_join[at..]
         );
         assert_ne!(old, without_join, "distance filter marker drifted");
         old
@@ -1294,6 +1304,7 @@ mod tests {
                     .map(|class| class.as_str())
                     .collect::<Vec<_>>(),
             ))
+            .bind(EXACT_SCOPE_SOURCES)
             .fetch_one(&mut *connection)
             .await?;
         Ok(row.try_get::<Json<serde_json::Value>, _>(0)?.0)
