@@ -124,9 +124,10 @@ jobs:
       # Postgres-backed unit tests (testkit FreshDatabase), which refuse to run
       # without FS3_TEST_DATABASE_URL. The mac runner has no Postgres, so they
       # failed every release from v0.5.0 on (24 tests, all fs3-daemon). They run
-      # with a database in the Linux CI gate on every PR.
+      # with a database in the Linux CI gate on every PR. fs3-testkit likewise
+      # (fresh_database tests need a live server; local mac repro 2026-10-09).
       - name: Fast test tier (${{ matrix.target }})
-        run: cargo test --workspace --lib --exclude fs3-store --exclude fs3-daemon
+        run: cargo test --workspace --lib --exclude fs3-store --exclude fs3-daemon --exclude fs3-testkit
 
       - uses: actions/upload-artifact@v4
         with:
