@@ -1,0 +1,27 @@
+crates/store/src/lexical.rs
+  s_7759b95b7c85f1::t_5c6dcc9904c3aa 8-21,28-34,40,42-43,52,67-68,71,91,101-114,129-152,154-156,162-170,172,211,218,256-282,293-299,307-308,315-332,348,356-367
+  s_7759b95b7c85f1::t_12594b74b5785b 368-376
+crates/daemon/tests/keyword_ranking.rs
+  s_7759b95b7c85f1::t_3720e33eff61a7 1-227
+  s_7759b95b7c85f1::t_0695586b2cdec6 228-265
+crates/daemon/src/search.rs
+  s_7759b95b7c85f1::t_67cb984d7555ca 556-560,600-601,1003,1008-1010,1037,1041-1042,1044-1047,1083,1089-1094,1098-1128,1446-1502,1558,1578,1611,1616,1627
+crates/daemon/tests/conversation_query.rs
+  s_7759b95b7c85f1::t_bbc1b4b36612ff 209-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "fbdd82051b2dbb61e45a51c68cabc806d75fddca",
+  "prompts": {},
+  "sessions": {
+    "s_7759b95b7c85f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dacb2e6c-5b32-4254-86f1-bceb29f6aa86",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
