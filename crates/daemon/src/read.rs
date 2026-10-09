@@ -103,6 +103,12 @@ pub struct GetRequest {
     /// The caller's working directory (workshop 003 D6).
     #[serde(default)]
     pub cwd: Option<String>,
+    /// Read from this registered checkout when the path is in several.
+    ///
+    /// `--repo` cannot separate the worktrees of one repository: they share
+    /// an identity. This names the one root to answer from.
+    #[serde(default)]
+    pub worktree: Option<String>,
 }
 
 /// What `GET /tree` was asked for.
@@ -132,6 +138,8 @@ struct Located {
     parser_version: String,
     root: Element,
     inconsistencies: Vec<fs3_core::views::status::ElementTreeInconsistency>,
+    /// Why this checkout answered, when the path differed across several.
+    choice: Option<String>,
 }
 
 /// Fetch one address.
@@ -184,7 +192,12 @@ pub async fn get(
     };
     let repo = parts.repo.clone().or_else(|| scope.repo.clone());
 
-    let located = locate(state, &parts, &path, repo.as_deref(), scope).await?;
+    let pinned = request
+        .worktree
+        .as_deref()
+        .map(|root| root.trim().trim_end_matches('/'))
+        .filter(|root| !root.is_empty());
+    let located = locate(state, &parts, &path, repo.as_deref(), scope, pinned).await?;
     let (chain, node) = if whole_file {
         (Vec::new(), &located.root)
     } else {
@@ -225,6 +238,7 @@ pub async fn get(
                 .collect()
         },
         inconsistencies: located.inconsistencies.clone(),
+        checkout_choice: located.choice.clone(),
     };
 
     Ok((
@@ -410,7 +424,7 @@ async fn file_tree(
     depth: u32,
     scope: &Scope,
 ) -> Result<TreeResult, Failure> {
-    let file = choose_file(files, path, scope)?;
+    let (file, _) = choose_file(files, path, scope, None, is_main_checkout)?;
     let include_hidden = fs3_store::find_worktree(&state.db, &file.root_path)
         .await
         .map_err(fail)?
@@ -472,6 +486,7 @@ async fn locate(
     path: &str,
     repo: Option<&str>,
     scope: &Scope,
+    pinned: Option<&str>,
 ) -> Result<Located, Failure> {
     if path.is_empty() {
         return Err(Failure::new(
@@ -490,43 +505,110 @@ async fn locate(
         return Err(missing_path(state, repo, path, scope).await);
     }
 
-    let file = choose_file(files, path, scope)?;
+    let (file, choice) = choose_file(files, path, scope, pinned, is_main_checkout)?;
     let (parser_version, root, inconsistencies) = parse_tree(state, &file).await?;
     Ok(Located {
         file,
         parser_version,
         root,
         inconsistencies,
+        choice,
     })
 }
 
-/// Pick one of several checkouts holding the same path.
+/// Is `root` a repository's main checkout rather than a linked worktree?
+///
+/// Git's own distinction: the main checkout's `.git` is a directory, a linked
+/// worktree's is a file pointing back at it.
+fn is_main_checkout(root: &str) -> bool {
+    std::path::Path::new(root).join(".git").is_dir()
+}
+
+/// Pick one of several checkouts holding the same path, and say why when
+/// there was a choice to make.
 ///
 /// Identical bytes are not a choice at all — every candidate answers the same
-/// thing, so the first is the answer. Different bytes ARE a choice, and the
-/// only non-arbitrary tiebreak is where the caller is standing; failing that,
-/// the candidates are reported rather than one being picked silently.
-fn choose_file(files: Vec<IndexedFile>, path: &str, scope: &Scope) -> Result<IndexedFile, Failure> {
+/// thing, so the first is the answer. Different bytes ARE a choice. In order:
+/// the checkout the caller pinned with `--worktree`, the one they are standing
+/// in, then the repository's main checkout when exactly one candidate is one.
+/// The main checkout is the copy a reader means by "the repository" when they
+/// name no branch, and the answer says it was picked so a reader of another
+/// worktree is not misled. Failing all three, the candidates are reported,
+/// with the exact command.
+fn choose_file(
+    files: Vec<IndexedFile>,
+    path: &str,
+    scope: &Scope,
+    pinned: Option<&str>,
+    is_main: impl Fn(&str) -> bool,
+) -> Result<(IndexedFile, Option<String>), Failure> {
+    if let Some(root) = pinned {
+        return files
+            .iter()
+            .find(|file| file.root_path.trim_end_matches('/') == root)
+            .cloned()
+            .map(|file| (file, None))
+            .ok_or_else(|| {
+                let roots: Vec<String> = files.iter().map(|file| file.root_path.clone()).collect();
+                Failure::new(
+                    &catalog::QUERY_NOT_FOUND,
+                    format!("{path} is not indexed in the checkout {root}"),
+                )
+                .with_detail("path", path)
+                .with_detail("worktree", root)
+                .with_fix(format!(
+                    "pick a checkout that holds it with `--worktree <path>`: {}",
+                    roots.join(", ")
+                ))
+                .with_detail("candidates", roots)
+            });
+    }
+
     let mut blobs: Vec<&str> = files.iter().map(|file| file.blob_sha.as_str()).collect();
     blobs.sort_unstable();
     blobs.dedup();
 
     if blobs.len() <= 1 {
-        return files.into_iter().next().ok_or_else(|| {
-            Failure::new(&catalog::QUERY_NOT_FOUND, format!("{path} is not indexed"))
-        });
+        return files
+            .into_iter()
+            .next()
+            .map(|file| (file, None))
+            .ok_or_else(|| {
+                Failure::new(&catalog::QUERY_NOT_FOUND, format!("{path} is not indexed"))
+            });
     }
 
     if let Some(root) = scope.worktree.as_deref()
         && let Some(here) = files.iter().find(|file| file.root_path == root)
     {
-        return Ok(here.clone());
+        return Ok((here.clone(), None));
+    }
+
+    let mains: Vec<&IndexedFile> = files
+        .iter()
+        .filter(|file| is_main(&file.root_path))
+        .collect();
+    if let [main] = mains.as_slice() {
+        let others: Vec<&str> = files
+            .iter()
+            .filter(|file| file.root_path != main.root_path)
+            .map(|file| file.root_path.as_str())
+            .collect();
+        let choice = format!(
+            "{path} differs across {} checkouts; this is the main checkout {}. Read another \
+             with `--worktree <path>`: {}",
+            files.len(),
+            main.root_path,
+            others.join(", ")
+        );
+        return Ok(((*main).clone(), Some(choice)));
     }
 
     let candidates: Vec<String> = files
         .iter()
         .map(|file| format!("{} at {}", file.identity, file.root_path))
         .collect();
+    let first = files[0].root_path.clone();
     Err(Failure::new(
         &catalog::QUERY_INVALID_AMBIGUOUS,
         format!(
@@ -537,10 +619,11 @@ fn choose_file(files: Vec<IndexedFile>, path: &str, scope: &Scope) -> Result<Ind
     )
     .with_detail("path", path)
     .with_detail("candidates", candidates)
-    .with_fix(
-        "name the repository with `--repo <identity>`, or run the command from inside the \
-         checkout you mean",
-    ))
+    .with_fix(format!(
+        "name the checkout with `--worktree <path>`, e.g. `flowspace3 get <address> --worktree \
+         {first}`, or run the command from inside the checkout you mean. `--repo` cannot \
+         separate them: they are one repository"
+    )))
 }
 
 /// Read the element tree for one indexed file, current parser version first.
@@ -1217,6 +1300,17 @@ fn target_label(repo: Option<&str>, prefix: &str) -> String {
 /// What a caller typically does after a `get`.
 #[must_use]
 pub fn next_after_get(payload: &GetPayload) -> String {
+    let next = next_step(payload);
+    match payload {
+        GetPayload::Element(element) => match &element.checkout_choice {
+            Some(choice) => format!("{choice} — then: {next}"),
+            None => next,
+        },
+        GetPayload::Conversation(_) => next,
+    }
+}
+
+fn next_step(payload: &GetPayload) -> String {
     let result = match payload {
         GetPayload::Conversation(window) => {
             let first = window.window.first().map_or(1, |turn| turn.turn_no);

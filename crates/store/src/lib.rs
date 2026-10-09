@@ -46,8 +46,8 @@ pub use admin::{
 pub use conversations::{
     AnchorFilter, Appended, ConversationDelivery, ConversationSummary, Removed, TurnOutline,
     append_turns, backfill_seats, backfill_turn_classes, conversation_agents,
-    conversation_delivery, delete_conversation, list_conversations, outline, record_agent,
-    upsert_conversation, window,
+    conversation_delivery, conversations_anchored_to, delete_conversation, list_conversations,
+    normalise_conversation_identities, outline, record_agent, upsert_conversation, window,
 };
 pub use ddoc::{
     DdocCitation, DdocFileRef, FileRefOutcome, replace_file_refs, rows_citing, rows_referencing,

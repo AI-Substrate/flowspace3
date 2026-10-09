@@ -44,7 +44,8 @@ standing in.
 | `--depth N` | levels of children to outline (default 1, 0 for none) |
 | `--span <line>` | pick one of several elements sharing an address |
 | `--before N` / `--after N` | conversation turns surrounding the addressed turn |
-| `--repo <identity>` | resolve a repo-less element here; on `conv:` explicitly require this anchor repository; `all` removes the filter |
+| `--repo <identity>` | resolve a repo-less element here; on `conv:` explicitly require this anchor repository; `all` removes the filter. A remote URL names the same repository as its `git:` key |
+| `--worktree <path>` | read from this registered checkout when the path is in several worktrees of one repository |
 
 Returns the element's own `raw_text` — for a file address, the whole file as
 indexed, served from the file element rather than stitched together from its
@@ -80,6 +81,25 @@ flowspace3 tree /abs/path/to/checkout    # an absolute path works too
 Directories are **derived from the paths that are indexed**, not read from
 disk: a directory full of files fs3 was told to ignore does not appear. That is
 the honest answer for a browser over an index.
+
+## One path, several checkouts
+
+Every worktree of a repository shares its identity, so `el:git:github.com/o/r/src/lib.rs`
+can name a file that differs between checkouts. Identical bytes are not a
+choice. When the content differs, `get` reads from, in order:
+
+1. the checkout named with `--worktree <path>`;
+2. the checkout you are standing in;
+3. the repository's main checkout (the one whose `.git` is a directory, not a
+   linked worktree), when exactly one candidate is one. The answer says so in
+   `checkout_choice` and at the front of `next_action`, and lists the other
+   checkouts.
+
+Otherwise (two independent clones, say) it fails with
+`FS3-E-QUERY-INVALID-AMBIGUOUS`, listing the candidates and a runnable
+`flowspace3 get <address> --worktree <path>`. `--repo` cannot separate the
+candidates: they are one repository. A `--worktree` that does not hold the
+path is `FS3-E-QUERY-NOT-FOUND`, naming the checkouts that do.
 
 ## One address, two elements
 

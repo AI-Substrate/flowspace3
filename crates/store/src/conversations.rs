@@ -726,6 +726,60 @@ pub async fn record_agent(
     Ok(())
 }
 
+/// Does any conversation record `identity` as its repository?
+///
+/// A repository can be known only through conversations about it, with no
+/// checkout registered, and a `--repo` naming it is a real scope.
+///
+/// # Errors
+/// [`StoreError::Query`] when the read fails.
+pub async fn conversations_anchored_to(pool: &PgPool, identity: &str) -> Result<bool, StoreError> {
+    Ok(
+        sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM conversations WHERE repo_identity = $1)")
+            .bind(identity)
+            .fetch_one(pool)
+            .await?,
+    )
+}
+
+/// Rewrite each stored conversation identity that `normalise` maps to another
+/// spelling. Returns the rows changed.
+///
+/// Only identities that are not already stored keys (`git:`/`path:`) are read,
+/// so after the first run this is one indexed probe that finds nothing. The
+/// rule itself lives with the caller, so the stored rows and every new header
+/// are normalised by the same function.
+///
+/// # Errors
+/// [`StoreError::Query`] when a statement fails.
+pub async fn normalise_conversation_identities(
+    pool: &PgPool,
+    normalise: impl Fn(&str) -> String,
+) -> Result<u64, StoreError> {
+    let spellings: Vec<String> = sqlx::query_scalar(
+        "SELECT DISTINCT repo_identity FROM conversations
+          WHERE repo_identity IS NOT NULL
+            AND repo_identity NOT LIKE 'git:%'
+            AND repo_identity NOT LIKE 'path:%'",
+    )
+    .fetch_all(pool)
+    .await?;
+    let mut changed = 0;
+    for spelling in spellings {
+        let key = normalise(&spelling);
+        if key != spelling {
+            changed +=
+                sqlx::query("UPDATE conversations SET repo_identity = $2 WHERE repo_identity = $1")
+                    .bind(&spelling)
+                    .bind(&key)
+                    .execute(pool)
+                    .await?
+                    .rows_affected();
+        }
+    }
+    Ok(changed)
+}
+
 /// Set `pij_seat` on each listed conversation that has none yet.
 ///
 /// `guids` and `seats` are parallel. Conversations that already name a seat

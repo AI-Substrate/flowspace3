@@ -61,6 +61,17 @@ async fn configure_search_transaction(
     Ok(())
 }
 
+/// The largest scope, in distinct source texts, that search compares in full
+/// instead of through the HNSW index.
+///
+/// An exact scan of a scope costs one distance per vector in it, and it is
+/// complete. The iterative ANN scan stops after `hnsw.max_scan_tuples` (20,000
+/// by default) whatever it has found, so a scope that is a small share of the
+/// index can sit entirely beyond it. That got worse as the index grew.
+/// Measured in the PR that added this; override per database or session with
+/// `fs3.exact_scope_limit`.
+pub const EXACT_SCOPE_SOURCES: i64 = 5_000;
+
 /// Start with enough vectors for ordinary two- or three-chunk elements while
 /// keeping the common ANN scan small.
 const INITIAL_CANDIDATE_MULTIPLIER: i64 = 4;
@@ -563,12 +574,17 @@ pub struct SearchPage {
     /// Distinct contents the turn-class filter removed from this page's
     /// candidates — what a disclosure reports as hidden.
     pub hidden_turns: u64,
+    /// The scope was ranked exactly and every one of its vectors was within
+    /// the candidate window, so this page is complete: a short or empty one
+    /// means the scope holds nothing more that matches.
+    pub exact_scan: bool,
 }
 
 fn page_from_rows(
     rows: &[sqlx::postgres::PgRow],
     passes: usize,
     candidate_limit_exhausted: bool,
+    exact_scan: bool,
 ) -> Result<SearchPage, StoreError> {
     let hits = rows
         .iter()
@@ -595,6 +611,7 @@ fn page_from_rows(
         passes,
         candidate_limit_exhausted,
         hidden_turns,
+        exact_scan,
     })
 }
 
@@ -623,11 +640,18 @@ const SEARCH_ELEMENTS_SQL: &str = r#"WITH scope_blobs AS MATERIALIZED (
        AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)
        AND ($13::text IS NULL OR c.guid = $13::uuid)
 ),
+-- The content filters apply here as well as at admission. A scope's nearest
+-- vectors can all be of the wrong kind (a repository known mostly through
+-- conversations, searched with `--source doc`), and filtering only after the
+-- candidate LIMIT stalled the expansion before it reached content that matched.
 scope_representatives AS MATERIALIZED (
     SELECT DISTINCT scoped.raw_hash
       FROM elements scoped
       JOIN scope_blobs scope ON scope.blob_sha = scoped.blob_sha
      WHERE ($13::text IS NULL OR strpos(scoped.address, 'conv:' || $13 || '#t') = 1)
+       AND ($8::text[] IS NULL OR scoped.kind = ANY($8))
+       AND ($10::text[] IS NULL OR scoped.ddoc->>'id_kind' = ANY($10))
+       AND ($12::text IS NULL OR scoped.ddoc->>'schema' = $12)
 ),
 admitted_sources AS MATERIALIZED (
     SELECT raw_hash AS source_hash, 'raw'::text AS source_kind
@@ -637,11 +661,38 @@ admitted_sources AS MATERIALIZED (
       FROM smart_content smart
       JOIN scope_representatives scoped ON scoped.raw_hash = smart.raw_hash
 ),
+scope_size AS MATERIALIZED (
+    SELECT ($6::text IS NOT NULL OR $7::text IS NOT NULL
+            OR $9::text IS NOT NULL OR $13::text IS NOT NULL)
+           AND count(*) <= COALESCE(
+                   NULLIF(current_setting('fs3.exact_scope_limit', true), '')::bigint,
+                   $16) AS exact
+      FROM admitted_sources
+),
 candidate_vectors AS MATERIALIZED (
-    SELECT e.source_hash, e.source_kind, e.chunk_no,
+    -- A small scope is ranked exactly: every one of its vectors is compared,
+    -- and the true nearest $14 are kept. The ANN scan below gives up after
+    -- `hnsw.max_scan_tuples`, and a scope that is a small share of the index
+    -- can sit past that. `+ 0` keeps the planner off the HNSW index here.
+    -- Exactly one arm runs, so the outer LIMIT only tells the planner that.
+    SELECT * FROM (
+    (SELECT e.source_hash, e.source_kind, e.chunk_no,
+           e.vector <=> $1 AS distance
+      FROM admitted_sources a
+      JOIN embeddings_1024 e
+        ON e.source_hash = a.source_hash AND e.source_kind = a.source_kind
+     WHERE (SELECT exact FROM scope_size)
+       AND e.model_key = $2
+       AND ($4::text IS NULL OR e.source_kind = $4)
+       AND ($5::float8 IS NULL OR (e.vector <=> $1) <= $5)
+     ORDER BY (e.vector <=> $1) + 0
+     LIMIT $14)
+    UNION ALL
+    (SELECT e.source_hash, e.source_kind, e.chunk_no,
            e.vector <=> $1 AS distance
       FROM embeddings_1024 e
-     WHERE e.model_key = $2
+     WHERE NOT (SELECT exact FROM scope_size)
+       AND e.model_key = $2
        AND ($4::text IS NULL OR e.source_kind = $4)
        AND ($5::float8 IS NULL OR (e.vector <=> $1) <= $5)
        AND (($6::text IS NULL AND $7::text IS NULL
@@ -651,10 +702,13 @@ candidate_vectors AS MATERIALIZED (
             OR (e.source_kind = 'smart' AND e.source_hash IN (
                  SELECT source_hash FROM admitted_sources WHERE source_kind = 'smart')))
      ORDER BY e.vector <=> $1
-     LIMIT $14
+     LIMIT $14)
+    ) arms
+    LIMIT $14
 ),
 candidate_meta AS (
-    SELECT count(*)::bigint AS candidate_count
+    SELECT count(*)::bigint AS candidate_count,
+           (SELECT exact FROM scope_size) AS exact_scan
       FROM candidate_vectors
 ),
 candidate_raw_hashes AS MATERIALIZED (
@@ -818,7 +872,8 @@ SELECT h.source_kind, h.distance,
        h.blob_sha, h.parser_version, h.kind, h.subkind, h.name,
        h.address, h.span_start, h.span_end, h.sibling_order, h.raw_text,
        h.ddoc, h.identity, h.root_path, h.path,
-       candidate.candidate_count, admitted.admitted_count, hidden.hidden_count,
+       candidate.candidate_count, candidate.exact_scan,
+       admitted.admitted_count, hidden.hidden_count,
        h.element_id
   FROM candidate_meta candidate
   CROSS JOIN admitted_meta admitted
@@ -861,7 +916,8 @@ pub async fn search_elements(
     // One statement text for every filter combination. Bind map: $1 vector,
     // $2 model, $3 element limit, $4 source, $5 distance, $6 repo, $7 path,
     // $8 kinds, $9 worktree, $10 id_kinds, $11 gate_open, $12 ddoc_schema,
-    // $13 conversation, $14 vector candidate limit, $15 hidden turn classes.
+    // $13 conversation, $14 vector candidate limit, $15 hidden turn classes,
+    // $16 the default exact-scan ceiling.
     let mut candidate_limit = filters.limit.saturating_mul(INITIAL_CANDIDATE_MULTIPLIER);
     let mut previous_admitted = None;
     for expansion in 0..=MAX_CANDIDATE_EXPANSIONS {
@@ -886,9 +942,16 @@ pub async fn search_elements(
             .bind(filters.conversation.as_deref())
             .bind(candidate_limit)
             .bind(filters.hidden_turn_class_names())
+            .bind(EXACT_SCOPE_SOURCES)
             .fetch_all(&mut *tx)
             .await?;
 
+        let passes = expansion + 1;
+        let exact = rows
+            .first()
+            .map(|row| row.try_get::<bool, _>("exact_scan"))
+            .transpose()?
+            .unwrap_or(false);
         let scanned = candidate_count(&rows)?;
         let admitted: i64 = rows
             .first()
@@ -900,7 +963,6 @@ pub async fn search_elements(
                 .map(|element_id| count + i64::from(element_id.is_some()))
                 .map_err(StoreError::from)
         })?;
-        let passes = expansion + 1;
         match expansion_decision(
             hit_count,
             filters.limit,
@@ -912,7 +974,10 @@ pub async fn search_elements(
         ) {
             ExpansionDecision::Return { scan_incomplete } => {
                 tx.commit().await?;
-                return page_from_rows(&rows, passes, scan_incomplete);
+                // Exact AND the window held the whole scope: nothing in it
+                // was left unranked, so a short page is complete.
+                let exact_scan = exact && scanned < candidate_limit;
+                return page_from_rows(&rows, passes, scan_incomplete, exact_scan);
             }
             ExpansionDecision::Continue => {}
         }
@@ -1190,10 +1255,16 @@ mod tests {
             .map(|line| format!("       {line}"))
             .collect::<Vec<_>>()
             .join("\n");
-        let old = without_join.replacen(
-            distance_filter,
-            &format!("{distance_filter}\n{old_admission}"),
-            1,
+        // The last distance filter is the HNSW arm's; the exact arm's comes first.
+        let (at, _) = without_join
+            .match_indices(distance_filter)
+            .last()
+            .expect("distance filter marker drifted");
+        let at = at + distance_filter.len();
+        let old = format!(
+            "{}\n{old_admission}{}",
+            &without_join[..at],
+            &without_join[at..]
         );
         assert_ne!(old, without_join, "distance filter marker drifted");
         old
@@ -1233,6 +1304,7 @@ mod tests {
                     .map(|class| class.as_str())
                     .collect::<Vec<_>>(),
             ))
+            .bind(EXACT_SCOPE_SOURCES)
             .fetch_one(&mut *connection)
             .await?;
         Ok(row.try_get::<Json<serde_json::Value>, _>(0)?.0)

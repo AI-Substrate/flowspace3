@@ -553,6 +553,7 @@ async fn search_filtered(
         tally_elsewhere(scope.repo.as_deref()?, &ranked, limit)
     });
     let scan_incomplete = semantic.candidate_limit_exhausted;
+    let exact_scan = semantic.exact_scan;
     let passes = semantic.passes;
     let mut hits = semantic.hits;
 
@@ -671,7 +672,7 @@ async fn search_filtered(
     Ok(SearchOutcome {
         results: Vec::new(),
         composition: SearchComposition::default(),
-        empty_because: empty_because(&filters, file_backed, scan_incomplete),
+        empty_because: empty_because(&filters, file_backed, scan_incomplete, exact_scan),
         limit,
         truncated: false,
         offset,
@@ -724,6 +725,7 @@ fn empty_because(
     filters: &SearchFilters,
     code: bool,
     scan_incomplete: bool,
+    exact_scan: bool,
 ) -> Option<EmptyBecause> {
     if let Some(distance) = filters.max_distance
         && distance < 1.0
@@ -743,6 +745,26 @@ fn empty_because(
         return None;
     }
 
+    // A small scope is compared in full, so an empty page there is an answer.
+    // Saying "the scan stopped early" about it sent an agent hunting for a bug.
+    if exact_scan {
+        let anchor = scope_anchor(filters)?;
+        return Some(EmptyBecause {
+            reason: "scope_unmatched",
+            detail: format!(
+                "every indexed vector under {anchor} was compared (the scope is small enough \
+                 for an exact scan), and none of it matched the content filters \
+                 (--source/--kind/--schema). This is an absence of matches in that scope, not \
+                 a scan that stopped early"
+            ),
+            hint: Some(
+                "drop the content filters to see what the scope does hold, or drop --repo/--path \
+                 to search the whole index"
+                    .to_string(),
+            ),
+        });
+    }
+
     if !scan_incomplete
         && (filters.source.is_some()
             || filters.id_kinds.is_some()
@@ -752,20 +774,7 @@ fn empty_because(
         return None;
     }
 
-    let anchor = match (
-        filters.worktree.as_deref(),
-        filters.repo.as_deref(),
-        filters.path.as_deref(),
-    ) {
-        (Some(worktree), Some(repo), Some(path)) => {
-            format!("checkout {worktree} of {repo} under paths matching {path}")
-        }
-        (Some(worktree), Some(repo), None) => format!("checkout {worktree} of {repo}"),
-        (Some(worktree), None, _) => format!("checkout {worktree}"),
-        (None, Some(repo), _) => repo.to_string(),
-        (None, None, Some(path)) => format!("paths matching {path}"),
-        (None, None, None) => return None,
-    };
+    let anchor = scope_anchor(filters)?;
 
     Some(EmptyBecause {
         reason: "scan_incomplete",
@@ -777,6 +786,26 @@ fn empty_because(
         ),
         hint: None,
     })
+}
+
+/// The scope a search was narrowed to, in words; `None` when it was not.
+fn scope_anchor(filters: &SearchFilters) -> Option<String> {
+    Some(
+        match (
+            filters.worktree.as_deref(),
+            filters.repo.as_deref(),
+            filters.path.as_deref(),
+        ) {
+            (Some(worktree), Some(repo), Some(path)) => {
+                format!("checkout {worktree} of {repo} under paths matching {path}")
+            }
+            (Some(worktree), Some(repo), None) => format!("checkout {worktree} of {repo}"),
+            (Some(worktree), None, _) => format!("checkout {worktree}"),
+            (None, Some(repo), _) => repo.to_string(),
+            (None, None, Some(path)) => format!("paths matching {path}"),
+            (None, None, None) => return None,
+        },
+    )
 }
 
 /// Diagnose a path filter that cannot reach any indexed path in its ownership scope.
@@ -1687,7 +1716,8 @@ mod tests {
         /// envelope says so.
         #[test]
         fn an_anchored_search_with_no_floor_blames_the_scan_and_names_the_scope() {
-            let reason = empty_because(&anchored(), true, false).expect("a claim is available");
+            let reason =
+                empty_because(&anchored(), true, false, false).expect("a claim is available");
             assert_eq!(reason.reason, "scan_incomplete");
             assert!(reason.detail.contains("git:example.com/one"));
             assert!(
@@ -1706,7 +1736,7 @@ mod tests {
                 max_distance: Some(0.3),
                 ..anchored()
             };
-            let reason = empty_because(&filters, true, false).expect("a claim is available");
+            let reason = empty_because(&filters, true, false, false).expect("a claim is available");
             assert_eq!(reason.reason, "below_floor");
             assert!(
                 reason.detail.contains("0.700"),
@@ -1725,7 +1755,7 @@ mod tests {
                 ..anchored()
             };
             assert_eq!(
-                empty_because(&filters, true, false)
+                empty_because(&filters, true, false, false)
                     .expect("a claim is available")
                     .reason,
                 "scan_incomplete"
@@ -1740,8 +1770,8 @@ mod tests {
                 kinds: Some(CODE_KINDS.to_vec()),
                 ..SearchFilters::default()
             };
-            assert!(empty_because(&filters, false, false).is_none());
-            assert!(empty_because(&filters, true, false).is_none());
+            assert!(empty_because(&filters, false, false, false).is_none());
+            assert!(empty_because(&filters, true, false, false).is_none());
         }
 
         /// A conversation search is answered from turns, which have no
@@ -1749,7 +1779,7 @@ mod tests {
         /// never ran, so the claim is not available.
         #[test]
         fn a_conversation_search_makes_no_claim_about_file_content() {
-            assert!(empty_because(&anchored(), false, false).is_none());
+            assert!(empty_because(&anchored(), false, false, false).is_none());
         }
 
         /// A `--path` filter is an anchor too, and the report names what was
@@ -1762,9 +1792,28 @@ mod tests {
                 kinds: Some(CODE_KINDS.to_vec()),
                 ..SearchFilters::default()
             };
-            let reason = empty_because(&filters, true, false).expect("a claim is available");
+            let reason = empty_because(&filters, true, false, false).expect("a claim is available");
             assert_eq!(reason.reason, "scan_incomplete");
             assert!(reason.detail.contains("crates/store/%"));
+        }
+
+        /// An exact scan compared the whole scope, so an empty page is an
+        /// answer about the scope, never "the scan stopped early".
+        #[test]
+        fn an_exact_scan_says_the_scope_holds_no_match_rather_than_blaming_the_scan() {
+            let reason =
+                empty_because(&anchored(), true, false, true).expect("a claim is available");
+            assert_eq!(reason.reason, "scope_unmatched");
+            assert!(
+                reason.detail.contains("git:example.com/one"),
+                "{}",
+                reason.detail
+            );
+            assert!(
+                !reason.detail.contains("stopped before"),
+                "{}",
+                reason.detail
+            );
         }
     }
 }

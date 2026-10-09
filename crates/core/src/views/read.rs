@@ -36,6 +36,10 @@ pub struct GetResult {
     /// Dirty element-tree shapes encountered while serving this result.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub inconsistencies: Vec<super::status::ElementTreeInconsistency>,
+    /// Why this checkout answered, when the path holds different content in
+    /// several checkouts of the repository and none was named.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub checkout_choice: Option<String>,
 }
 
 /// What `get` answers with — an element, or a window of turns.

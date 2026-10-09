@@ -129,6 +129,10 @@ pub async fn resolve(state: &AppState, repo: Option<&str>, cwd: Option<&str>) ->
         if named.eq_ignore_ascii_case(ALL) {
             return Scope::everything(cwd);
         }
+        // `--repo https://github.com/o/r.git` and `git@github.com:o/r` mean the
+        // repository stored as `git:github.com/o/r`; a hit's own field may
+        // carry either spelling, and agents copy it.
+        let named = &fs3_core::RepoIdentity::normalise_key(named);
         let scope = Scope {
             repo: Some(named.to_string()),
             source: ScopeSource::Flag,
@@ -136,7 +140,11 @@ pub async fn resolve(state: &AppState, repo: Option<&str>, cwd: Option<&str>) ->
             worktree: None,
             warnings: Vec::new(),
         };
-        if identities.iter().any(|identity| identity == named) {
+        if identities.iter().any(|identity| identity == named)
+            || fs3_store::conversations_anchored_to(&state.db, named)
+                .await
+                .unwrap_or(false)
+        {
             return scope;
         }
         return scope.warn(format!(

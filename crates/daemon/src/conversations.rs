@@ -125,10 +125,10 @@ pub async fn intake(state: &AppState, request: IntakeRequest) -> Result<IntakeRe
     // Anchored conversations are enriched by their repository's provider;
     // everything else by the default, via a reserved identity nothing can
     // collide with.
-    let identity = request
-        .repo_identity
-        .clone()
-        .unwrap_or_else(|| UNANCHORED.to_string());
+    let identity = request.repo_identity.as_deref().map_or_else(
+        || UNANCHORED.to_string(),
+        fs3_core::RepoIdentity::normalise_key,
+    );
 
     let header = fs3_core::shape_conversation(Conversation {
         guid: guid.clone(),
@@ -239,10 +239,14 @@ pub struct RemoveReport {
 /// # Errors
 /// Store failures mapped by their own codes.
 pub async fn list(state: &AppState, request: &ListRequest) -> Result<ConversationList, Failure> {
+    let repo = request
+        .repo
+        .as_deref()
+        .map(fs3_core::RepoIdentity::normalise_key);
     let rows = fs3_store::list_conversations(
         &state.db,
         fs3_store::AnchorFilter {
-            repo: request.repo.as_deref(),
+            repo: repo.as_deref(),
             path_prefix: request.path.as_deref(),
             guid: None,
         },
