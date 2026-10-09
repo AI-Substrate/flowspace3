@@ -5,7 +5,13 @@ flowspace3 daemon
 ```
 
 Runs the indexer in the foreground: HTTP on `daemon.url`, the job queue, and
-the workers that drain it. Stop it with Ctrl-C.
+the workers that drain it. Stop it with Ctrl-C or SIGTERM. It exits within a
+few seconds (at most 10): provider calls still in flight are abandoned rather
+than waited out, and their jobs go back to the queue with the attempt refunded,
+so the next start resumes them. One log line names what was abandoned, by kind.
+A second signal exits at once. Only one daemon can serve a database at a time:
+a second one, or a restart racing a daemon that is still exiting, refuses to
+start and says so.
 
 It lives inside the `flowspace3` binary rather than shipping separately — one
 file to install, one version, and no way for a CLI and a daemon of different
@@ -31,9 +37,9 @@ succeed:
 sandbox=true embedder=fake summarizer=fake db=fs3_sandbox_<unique> port=<n> config=<dir>
 ```
 
-SIGINT and SIGTERM both stop dequeueing immediately, finish only jobs already
-in flight, then drop the database. A second signal cancels the remaining
-in-flight jobs but still unwinds through database cleanup. Every exit reports
+SIGINT and SIGTERM both stop at once, abandon in-flight jobs (handing them back
+to the queue), then drop the database. A second signal still unwinds through
+database cleanup. Every exit reports
 whether the database was dropped; a failed drop names it and prints the
 `docker exec flowspace3-db psql ...` cleanup command. Point a client at the
 printed port and set `FS3_CONFIG_DIR` to the printed directory so it reads this

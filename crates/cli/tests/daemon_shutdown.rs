@@ -221,6 +221,13 @@ async fn a_port_race_loser_never_replaces_the_winners_published_key() {
     std::fs::remove_dir_all(config).ok();
 }
 
+/// Whether the shutdown said what it handed back: the one line `serve` logs
+/// after releasing claims.
+fn released_at_shutdown(log: &str) -> bool {
+    log.contains("abandoned in-flight work at shutdown")
+        || log.contains("shutdown abandoned no in-flight work")
+}
+
 async fn sandbox_session(label: &str, force: bool) {
     let base = FreshDatabase::create(label).await;
     let ambient = temp_dir(label);
@@ -318,12 +325,26 @@ active = "ambient-paid"
         tokio::time::sleep(Duration::from_millis(5)).await;
     }
 
+    let stopping = Instant::now();
     signal(&daemon, "TERM");
-    wait_for_log(&mut daemon, "draining ").await;
+    wait_for_log(&mut daemon, "abandoning ").await;
     if force {
         signal(&daemon, "INT");
     }
     let status = wait_for_exit(&mut daemon).await;
+    // DL-023: busy work is abandoned, not waited out. The bound is loose for
+    // CI; the sandbox also drops its database inside it.
+    assert!(
+        stopping.elapsed() < Duration::from_secs(10),
+        "shutdown took {:?}; log:\n{}",
+        stopping.elapsed(),
+        log(&daemon)
+    );
+    assert!(
+        released_at_shutdown(&log(&daemon)),
+        "no release line; log:\n{}",
+        log(&daemon)
+    );
     assert!(
         status.success(),
         "{} shutdown failed: {status}",
@@ -363,4 +384,73 @@ async fn sandbox_ready_sigterm_busy_drain_and_database_drop_compose() {
 #[tokio::test]
 async fn a_second_signal_cancels_busy_work_but_still_drops_the_database() {
     sandbox_session("sandbox-second-signal", true).await;
+}
+
+/// One daemon per database. Before the store lock, only the port stood
+/// between two daemons, and a second one on another port would boot and
+/// requeue the first one's live claims as if they were a crash's leftovers.
+#[tokio::test]
+async fn a_second_daemon_on_the_same_database_is_refused() {
+    let database = FreshDatabase::create("daemon-store-lock").await;
+    let pool = database.pool().await;
+    fs3_store::migrate(&pool)
+        .await
+        .expect("pre-migrating private database");
+    pool.close().await;
+
+    let binary = fs3_testkit::flowspace3_binary();
+    let configure = |label: &str| {
+        let config = temp_dir(label);
+        let port = free_port();
+        std::fs::write(
+            config.join(fs3_core::CONFIG_FILE_NAME),
+            format!(
+                "[daemon]\nurl = \"http://127.0.0.1:{port}\"\n\n[database]\nurl = \"{}\"\n",
+                database.url()
+            ),
+        )
+        .expect("writing isolated daemon config");
+        (config, port)
+    };
+
+    let (first_config, first_port) = configure("daemon-store-lock-first");
+    let mut command = fs3_testkit::sealed(&binary, &first_config, TestDatabase::FromConfigFile);
+    command.arg("daemon");
+    let mut first = spawn(command, first_config.join("first.log"));
+    wait_for_health(
+        &mut [&mut first],
+        first_port,
+        &fs3_core::daemon_key_path(&first_config),
+    )
+    .await;
+
+    let (second_config, _) = configure("daemon-store-lock-second");
+    let mut command = fs3_testkit::sealed(&binary, &second_config, TestDatabase::FromConfigFile);
+    command.arg("daemon");
+    let mut second = spawn(command, second_config.join("second.log"));
+    let refused = wait_for_exit(&mut second).await;
+    assert!(!refused.success(), "the second daemon must not start");
+    assert!(
+        log(&second).contains("another flowspace3 daemon is serving"),
+        "the refusal names the reason; log:\n{}",
+        log(&second)
+    );
+    assert!(
+        !log(&second).contains("requeued jobs left running"),
+        "a refused daemon touches nothing"
+    );
+
+    let stopping = Instant::now();
+    signal(&first, "TERM");
+    assert!(wait_for_exit(&mut first).await.success());
+    assert!(
+        stopping.elapsed() < Duration::from_secs(10),
+        "shutdown took {:?}",
+        stopping.elapsed()
+    );
+    assert!(released_at_shutdown(&log(&first)), "log:\n{}", log(&first));
+
+    database.cleanup().await.expect("dropping private database");
+    std::fs::remove_dir_all(first_config).ok();
+    std::fs::remove_dir_all(second_config).ok();
 }

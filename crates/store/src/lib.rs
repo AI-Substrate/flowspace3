@@ -63,12 +63,12 @@ pub use embeddings::{
     search_elements,
 };
 pub use jobs::{
-    IngestJobOutcome, JOB_PRIORITY_DEFAULT, JOB_PRIORITY_NEW_WORKTREE_SCAN, Job, JobPriority,
-    JobRetentionReceipt, LastFailure, QueueDepth, claim_job, claim_jobs, complete_job, enqueue_job,
-    enqueue_job_id, enqueue_job_with_priority, fail_job, ingest_job_outcomes,
+    DaemonLock, IngestJobOutcome, JOB_PRIORITY_DEFAULT, JOB_PRIORITY_NEW_WORKTREE_SCAN, Job,
+    JobPriority, JobRetentionReceipt, LastFailure, QueueDepth, claim_job, claim_jobs, complete_job,
+    enqueue_job, enqueue_job_id, enqueue_job_with_priority, fail_job, ingest_job_outcomes,
     job_retention_receipt, jobs_remaining, last_failure, park_job, purge_done_jobs, queue_depth,
-    queue_depth_history, record_job_retention, requeue_failed, requeue_running,
-    retire_empty_embed_jobs, retry_job,
+    queue_depth_history, record_job_retention, release_running, requeue_failed, requeue_running,
+    retire_empty_embed_jobs, retry_job, take_daemon_lock,
 };
 pub use lexical::{LexicalHit, LexicalMatch, LexicalPage, search_lexical, search_lexical_page};
 pub use messages::{ack_message, live_messages, sync_messages};

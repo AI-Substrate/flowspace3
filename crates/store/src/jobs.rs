@@ -511,6 +511,80 @@ pub async fn requeue_running(pool: &PgPool) -> Result<u64, StoreError> {
     Ok(swept)
 }
 
+/// Hand back every claim this daemon holds as it shuts down, refunding the
+/// attempt the claim spent.
+///
+/// A fast shutdown abandons in-flight provider calls rather than waiting
+/// minutes for them (DL-023). An abandoned call stored nothing, so the job is
+/// not done and must be claimable again; and because [`claim_job`] already
+/// counted an attempt, leaving it at that would let a few restarts fail a
+/// healthy job for good. Returns how many were released, by kind, for the one
+/// shutdown log line.
+///
+/// Sound only at shutdown and only because fs3 is the single writer, which
+/// the daemon's store lock now enforces: no other worker can be holding one
+/// of these claims.
+///
+/// # Errors
+/// [`StoreError::Query`] when the statement fails.
+pub async fn release_running(pool: &PgPool) -> Result<Vec<(String, u64)>, StoreError> {
+    let kinds: Vec<String> = sqlx::query_scalar(
+        "UPDATE jobs
+            SET state      = 'pending',
+                attempts   = GREATEST(attempts - 1, 0),
+                last_error = 'released at shutdown: abandoned in flight, attempt refunded',
+                updated_at = now()
+          WHERE state = 'running'
+      RETURNING kind",
+    )
+    .fetch_all(pool)
+    .await?;
+    let mut counts: Vec<(String, u64)> = Vec::new();
+    for kind in kinds {
+        match counts.iter_mut().find(|(known, _)| *known == kind) {
+            Some((_, count)) => *count += 1,
+            None => counts.push((kind, 1)),
+        }
+    }
+    counts.sort();
+    Ok(counts)
+}
+
+/// The advisory-lock key a serving daemon holds, in the two-int key space so it
+/// can never collide with a single-`bigint` key such as a conversation's.
+const DAEMON_LOCK: (i32, i32) = (0x6673_3364, 1); // "fs3d", 1
+
+/// This process's hold on its database as the one serving daemon. It lasts as
+/// long as the value does.
+///
+/// Boot requeues every `running` job and shutdown releases every one. Both are
+/// correct only if no other daemon holds claims on the same database, and
+/// before this lock only the port bind stood in the way. The listener closes
+/// early in shutdown, so a restart could boot a second daemon that requeued
+/// the first one's live claims. The lock is a session advisory lock on a
+/// connection of its own, so it ends when the process ends, however it ends,
+/// and a crash cannot wedge it.
+pub struct DaemonLock {
+    _session: sqlx::PgConnection,
+}
+
+/// Become the one daemon serving this database. Returns `None` if another
+/// process already is, including one that is still shutting down.
+///
+/// # Errors
+/// [`StoreError::Query`] when the connection or the lock statement fails.
+pub async fn take_daemon_lock(pool: &PgPool) -> Result<Option<DaemonLock>, StoreError> {
+    // Detached, so the lock never occupies a pool slot, and dropping it closes
+    // the session.
+    let mut session = pool.acquire().await?.detach();
+    let taken: bool = sqlx::query_scalar("SELECT pg_try_advisory_lock($1, $2)")
+        .bind(DAEMON_LOCK.0)
+        .bind(DAEMON_LOCK.1)
+        .fetch_one(&mut session)
+        .await?;
+    Ok(taken.then_some(DaemonLock { _session: session }))
+}
+
 /// Permanently retire failed embed jobs whose payload contains only blank text.
 ///
 /// The payload is inspected rather than matching a known empty-content hash:
