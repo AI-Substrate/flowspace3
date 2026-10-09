@@ -1,0 +1,19 @@
+crates/daemon/tests/embed_priority.rs
+  s_7759b95b7c85f1::t_6144a720518c3a 36-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ec68085db23dedbdc77ac279e40b595dae311ce9",
+  "prompts": {},
+  "sessions": {
+    "s_7759b95b7c85f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dacb2e6c-5b32-4254-86f1-bceb29f6aa86",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
