@@ -1,0 +1,67 @@
+Cargo.lock
+  s_1c66091db3466f::t_5d3aa2d3b56199 1223,4908-4920,5814-5816
+NOTICE
+  s_1c66091db3466f::t_6ad6cc1843a1dd 1-12
+crates/cli/Cargo.toml
+  s_1c66091db3466f::t_8a6a21f9b2a5a7 37-38,40-41,60-61
+crates/cli/docs/agents.md
+  s_1c66091db3466f::t_3fb023f540a6ff 193-194
+crates/cli/docs/install.md
+  s_1c66091db3466f::t_c83c597b9c236d 41-55
+crates/cli/docs/prompt-search.md
+  s_1c66091db3466f::t_f56e2168c40014 1,3-7,117-119,124-126,129-165
+crates/cli/src/doctor.rs
+  s_1c66091db3466f::t_1c3cfc1e32ec0a 216-218,1046-1111
+crates/cli/src/hooks/extensions/copilot.mjs
+  s_1c66091db3466f::t_7e383837ed5a7e 1-38
+crates/cli/src/hooks/extensions/pi.ts
+  s_1c66091db3466f::t_f425f1abfa61e9 1-25
+crates/cli/src/lib.rs
+  s_1c66091db3466f::t_2f1972582e3b7c 12
+crates/cli/src/render/mod.rs
+  s_1c66091db3466f::t_a71b06ffcb18ab 59-60
+crates/cli/src/render/surfaces/mod.rs
+  s_1c66091db3466f::t_27573e4b962543 4
+docs/plans/019-agent-hooks/capabilities.md
+  s_1c66091db3466f::t_62037c5c7734e1 1-33
+integrations/claude-code/fs3-prompt-search.py
+  s_1c66091db3466f::t_ea560cf9423232 2,4-6,8-9,17-19,21-22
+crates/cli/src/hooks/grammar.rs
+  s_15d888f4b629c1::t_c7834f4aaa148f 1-502
+crates/cli/src/hooks/install.rs
+  s_15d888f4b629c1::t_6182ca14ad69ac 1-1155
+crates/cli/src/hooks/mod.rs
+  s_15d888f4b629c1::t_09e345ab6fcf4f 1-465
+crates/cli/src/hooks/prompt.rs
+  s_15d888f4b629c1::t_5da3defd66f7df 1-1033
+crates/cli/src/main.rs
+  s_15d888f4b629c1::t_ad811c39ccfd05 319-325,479-548,973,1149-1205
+crates/cli/src/render/surfaces/hooks.rs
+  s_15d888f4b629c1::t_fcd8de99c143b6 1-84
+crates/cli/tests/hooks_cli.rs
+  s_15d888f4b629c1::t_b3f899875269ff 1-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c78819230df33977bae0ab4e374eb87338463e1d",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_1c66091db3466f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be947090-7fd5-40be-9c2c-61dc8b274f6c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
