@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.7.0](https://github.com/AI-Substrate/flowspace3/compare/v0.6.0...v0.7.0) (2026-10-09)
+
+
+### Features
+
+* **cli:** fs3 prompt hooks for Claude Code, Codex, Copilot CLI, pi and omp, with an installer ([#139](https://github.com/AI-Substrate/flowspace3/issues/139)) ([7bddf2e](https://github.com/AI-Substrate/flowspace3/commit/7bddf2e3a7618d5e7737e3bb7c7fc4348d3ee0aa))
+* **daemon:** stop within seconds, hand abandoned work back, and refuse a second daemon on one database ([#144](https://github.com/AI-Substrate/flowspace3/issues/144)) ([3b5cc03](https://github.com/AI-Substrate/flowspace3/commit/3b5cc031a617175bba6e22bf3e93499ce8cf9598))
+* **search:** keyword hits match every term and rank by how well they match ([#138](https://github.com/AI-Substrate/flowspace3/issues/138)) ([de23649](https://github.com/AI-Substrate/flowspace3/commit/de236497d3119689e7768bb24b1410e0ac0156eb))
+
+
+### Bug Fixes
+
+* **daemon:** run embedding as its own lane so a slow embedder cannot starve scans and summaries ([#143](https://github.com/AI-Substrate/flowspace3/issues/143)) ([9e0691e](https://github.com/AI-Substrate/flowspace3/commit/9e0691eba349d8109dda82355ed2a41735a29d04))
+* **release:** leave the database-backed testkit tests out of the mac tier too ([#142](https://github.com/AI-Substrate/flowspace3/issues/142)) ([507afb8](https://github.com/AI-Substrate/flowspace3/commit/507afb816363d46db4a34ca04cab4812514d0e5f))
+* **search,get:** scoped searches reach their content, one repo identity form, get --worktree ([#145](https://github.com/AI-Substrate/flowspace3/issues/145)) ([6c50c3d](https://github.com/AI-Substrate/flowspace3/commit/6c50c3d08bad8e67453a2938c2484ba1d9aa102f))
+
+
 ## [0.6.0](https://github.com/AI-Substrate/flowspace3/compare/v0.5.0...v0.6.0) (2026-10-09)
 
 
