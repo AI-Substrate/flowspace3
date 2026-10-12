@@ -218,10 +218,11 @@ impl OmpSource {
                 let body = string(value, "content").unwrap_or_default();
                 // Since 2026-09-07 omp delivers pij messages as a `pij` custom
                 // message rather than a `user` one. A delivered message is a
-                // peer speaking, as it was before; the session's own adoption
-                // notice under the same type is still the harness.
+                // peer speaking, as it was before, and OPENS with its envelope;
+                // the session's adoption notice under the same type quotes the
+                // envelope in its first lines and is still the harness.
                 let delivered = matches!(text(value, "customType"), Some("pij" | "pij-fyi"))
-                    && is_peer_injected(&body);
+                    && opens_with_envelope(&body);
                 if delivered {
                     (TurnRole::Human, TurnSource::Peer, body, Vec::new())
                 } else {
@@ -435,6 +436,13 @@ pub fn prose(message: &serde_json::Value) -> String {
         body.push_str(chunk);
     }
     body
+}
+
+/// Whether a turn opens with a pij envelope, as a delivered message does.
+#[must_use]
+pub fn opens_with_envelope(body: &str) -> bool {
+    let body = body.trim_start();
+    PEER_PREFIXES.iter().any(|prefix| body.starts_with(prefix))
 }
 
 /// Whether a user turn was injected by a peer rather than typed by a person.
@@ -801,7 +809,7 @@ mod tests {
             "type": "custom_message", "customType": "pij", "display": true,
             "attribution": "agent", "id": "e1", "parentId": "e0",
             "timestamp": "2026-09-08T06:33:18.412Z",
-            "content": "You are pij session pij-b (PEER). This is context only — no action is required.",
+            "content": "You are pij session pij-b (PEER). This is context only — no action is required.\nPeers can reach you; their messages arrive inline as \"[pij-rs from <id>]\" on its own line, then the body, then \"[/pij]\".",
         });
         let nudge = serde_json::json!({
             "type": "custom_message", "customType": "mid-run-todo-nudge", "display": true,
