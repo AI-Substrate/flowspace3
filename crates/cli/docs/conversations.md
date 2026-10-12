@@ -145,7 +145,7 @@ outputs. So (workshop 005):
 |---|---|
 | human and agent prose | verbatim — it is the gold, and it is small |
 | peer-injected turns | verbatim, marked `source: peer` — measured equal to human turns in count |
-| tool inputs | verbatim, EXCEPT write/edit-family: path and byte length only |
+| tool inputs | verbatim, EXCEPT write/edit-family: path and byte length only. A JSON input (claude's and omp's) gives its `file_path`/`path`/`filePath`, or omp's hashline `[path#HASH]` target; one naming no path stores no path |
 | tool outputs | first 512 bytes, plus `total_bytes` and `truncated` |
 | thinking blocks | dropped |
 
@@ -157,6 +157,25 @@ front-load — at 36% of the bytes.
 **The policy is enforced at intake, not trusted from the client.** An importer
 that forgets to shape a payload is an ordinary bug; a store that believed it
 would be a permanent one.
+
+## Who a turn speaks for
+
+Every harness's turns are stored on the same two axes. Count by `source` to
+compare harnesses: it is the same rule everywhere.
+
+| turn | `role` | `source` |
+|---|---|---|
+| a person typing | `human` | `human` |
+| a peer's message (a pij delivery, a cross-session or coordinator message) | `human` | `peer` |
+| a harness notice (claude `<task-notification>`, a usage-limit reset, a compaction summary, a skill or meta row) | the slot the harness wrote it in: `human` for claude, `agent` for omp | `system` |
+| the agent's prose and tool calls | `agent` | `system` |
+| a tool result | `agent` | `system` |
+
+A tool result is the harness reporting to the agent, so it is the agent's turn
+whichever slot the harness's store puts it in. omp delivers pij messages as a
+`pij` custom message since 2026-09-07; they are peer turns like the `user`
+messages that carried them before, under either the `[pij from` or the
+`[pij-rs from` envelope.
 
 ## The anchor is a pointer, not ownership
 

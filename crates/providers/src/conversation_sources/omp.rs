@@ -43,7 +43,8 @@ const XD_SCHEME: &str = "xd://";
 /// user record that does not match falls through to a plain human turn rather
 /// than erroring — when the convention eventually does not hold, the reader
 /// should degrade to a slightly less precise turn, not refuse the conversation.
-const PEER_PREFIX: &str = "[pij from";
+/// `[pij-rs from` is the same envelope from the rs transport.
+const PEER_PREFIXES: [&str; 2] = ["[pij from", "[pij-rs from"];
 
 /// How far into a user turn the peer marker is looked for.
 ///
@@ -213,12 +214,20 @@ impl OmpSource {
                 string(value, "summary").unwrap_or_default(),
                 Vec::new(),
             ),
-            "custom_message" => (
-                TurnRole::Agent,
-                TurnSource::System,
-                string(value, "content").unwrap_or_default(),
-                Vec::new(),
-            ),
+            "custom_message" => {
+                let body = string(value, "content").unwrap_or_default();
+                // Since 2026-09-07 omp delivers pij messages as a `pij` custom
+                // message rather than a `user` one. A delivered message is a
+                // peer speaking, as it was before; the session's own adoption
+                // notice under the same type is still the harness.
+                let delivered = matches!(text(value, "customType"), Some("pij" | "pij-fyi"))
+                    && is_peer_injected(&body);
+                if delivered {
+                    (TurnRole::Human, TurnSource::Peer, body, Vec::new())
+                } else {
+                    (TurnRole::Agent, TurnSource::System, body, Vec::new())
+                }
+            }
             // `session`, `model_change`, `thinking_level_change` are not turns;
             // `custom`/`tool_execution_start` is the MIRROR of a call that is
             // already carried by the assistant record, and emitting both is
@@ -435,7 +444,7 @@ pub fn is_peer_injected(body: &str) -> bool {
         .char_indices()
         .nth(PEER_PREFIX_WINDOW)
         .map_or(body.len(), |(index, _)| index)];
-    window.contains(PEER_PREFIX)
+    PEER_PREFIXES.iter().any(|prefix| window.contains(prefix))
 }
 
 /// Turn one assistant `toolCall` content block into a [`TurnItem`].
@@ -739,6 +748,73 @@ mod tests {
             )
             .expect("a toolResult is a turn");
         assert_eq!(record.at, "2026-08-26T07:46:01.430Z");
+    }
+
+    fn role_and_source(record: &serde_json::Value) -> (TurnRole, TurnSource) {
+        let record = source()
+            .record(Path::new("/tmp/s.jsonl"), record)
+            .expect("a turn");
+        (record.role, record.source)
+    }
+
+    /// omp delivered a pij message as a `user` message until 2026-09-07 and as
+    /// a `pij` custom message since; both are a peer speaking, under either
+    /// envelope spelling.
+    #[test]
+    fn a_pij_delivery_is_a_peer_turn_in_both_omp_shapes() {
+        let before = serde_json::json!({
+            "type": "message", "id": "a1", "parentId": "a0",
+            "timestamp": "2026-09-01T09:37:03.000Z",
+            "message": {"role": "user", "content": [{"type": "text",
+                        "text": "[pij from pij-a]\nImplement the mapper.\n[/pij]"}]},
+        });
+        let after = serde_json::json!({
+            "type": "custom_message", "customType": "pij", "display": true,
+            "details": {"pijMessageId": "2b53b0a8-0000-4000-8000-000000000000"},
+            "attribution": "agent", "id": "b1", "parentId": "b0",
+            "timestamp": "2026-09-08T06:33:39.868Z",
+            "content": "[pij-rs from pij-a]\nImplement the mapper.\n[/pij]",
+        });
+        let fyi = serde_json::json!({
+            "type": "custom_message", "customType": "pij-fyi", "display": true,
+            "id": "c1", "parentId": "c0", "timestamp": "2026-09-08T06:40:00.000Z",
+            "content": "[pij-rs from pij-a]\nfyi: done\n[/pij]",
+        });
+        let typed_rs = serde_json::json!({
+            "type": "message", "id": "d1", "parentId": "d0",
+            "timestamp": "2026-09-10T09:00:00.000Z",
+            "message": {"role": "user", "content": [{"type": "text",
+                        "text": "[pij-rs from pij-a]\ngo\n[/pij]"}]},
+        });
+        for record in [&before, &after, &fyi, &typed_rs] {
+            assert_eq!(
+                role_and_source(record),
+                (TurnRole::Human, TurnSource::Peer),
+                "{record}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_harness_own_custom_messages_stay_system() {
+        let adoption = serde_json::json!({
+            "type": "custom_message", "customType": "pij", "display": true,
+            "attribution": "agent", "id": "e1", "parentId": "e0",
+            "timestamp": "2026-09-08T06:33:18.412Z",
+            "content": "You are pij session pij-b (PEER). This is context only — no action is required.",
+        });
+        let nudge = serde_json::json!({
+            "type": "custom_message", "customType": "mid-run-todo-nudge", "display": true,
+            "id": "f1", "parentId": "f0", "timestamp": "2026-09-08T06:40:00.000Z",
+            "content": "[pij-rs from pij-a] quoted inside a nudge",
+        });
+        for record in [&adoption, &nudge] {
+            assert_eq!(
+                role_and_source(record),
+                (TurnRole::Agent, TurnSource::System),
+                "{record}"
+            );
+        }
     }
 
     #[test]

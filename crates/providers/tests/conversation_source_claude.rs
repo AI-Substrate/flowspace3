@@ -119,6 +119,16 @@ fn read_all(source: &ClaudeSource, input: &IngestInput) -> Vec<RawRecord> {
         .records
 }
 
+/// An assistant message's turn. Tool results are the agent's turns too, but
+/// they are the store's `user` lines, not its assistant messages.
+fn is_assistant(record: &RawRecord) -> bool {
+    record.role == fs3_core::TurnRole::Agent
+        && !record
+            .items
+            .iter()
+            .any(|item| matches!(item, TurnItem::ToolResult { .. }))
+}
+
 fn native(session_id: &str) -> IngestInput {
     IngestInput::Native {
         session_id: session_id.to_owned(),
@@ -298,7 +308,7 @@ fn assistant_blocks_merge_by_message_id_to_the_count_the_fixture_pins() {
 
     let merged = records
         .iter()
-        .filter(|record| record.role == fs3_core::TurnRole::Agent)
+        .filter(|record| is_assistant(record))
         .count();
 
     assert_eq!(assistant_records, 38, "the fixture's own arithmetic");
@@ -384,7 +394,7 @@ fn an_adjacent_run_fold_cannot_pass_this() {
 
     let agent: Vec<&str> = records
         .iter()
-        .filter(|record| record.role == fs3_core::TurnRole::Agent)
+        .filter(|record| is_assistant(record))
         .map(|record| record.ordinal.as_str())
         .collect();
 
@@ -803,4 +813,88 @@ fn assistant_records_carry_their_model_and_human_records_do_not() {
             .all(|record| record.model.is_none()),
         "a human turn names no model"
     );
+}
+
+/// One synthetic `user` line with an optional `origin.kind`.
+fn user_line(uuid: &str, kind: Option<&str>, content: &serde_json::Value) -> String {
+    let mut line = serde_json::json!({
+        "parentUuid": null, "isSidechain": false, "type": "user",
+        "message": {"role": "user", "content": content},
+        "uuid": uuid, "timestamp": "2026-10-13T01:00:00.000Z",
+        "sessionId": "c0ffee00-0000-4000-8000-000000000001",
+    });
+    if let Some(kind) = kind {
+        line["origin"] = serde_json::json!({"kind": kind});
+    }
+    format!("{line}\n")
+}
+
+/// Who each user record speaks for: a person, a peer, or the harness, and a
+/// tool result is the agent's turn as every other harness records it.
+#[test]
+fn harness_notices_are_system_peers_are_peers_and_tool_results_belong_to_the_agent() {
+    use fs3_core::{TurnRole, TurnSource};
+    const SESSION: &str = "c0ffee00-0000-4000-8000-000000000001";
+    let scratch = Scratch::new("origins");
+    let root = scratch.0.join("projects");
+    std::fs::create_dir_all(&root).expect("scratch store");
+    let text = |s: &str| serde_json::Value::String(s.to_owned());
+    let assistant = serde_json::json!({
+        "parentUuid": null, "isSidechain": false, "type": "assistant",
+        "message": {"id": "msg_1", "role": "assistant", "model": "claude-fable-5",
+                    "content": [{"type": "tool_use", "id": "toolu_1", "name": "Bash",
+                                 "input": {"command": "ls"}}]},
+        "uuid": "u-call", "timestamp": "2026-10-13T01:00:00.000Z", "sessionId": SESSION,
+    });
+    let result = serde_json::json!([{"type": "tool_result", "tool_use_id": "toolu_1",
+                                     "content": "Cargo.toml"}]);
+    let lines = [
+        user_line("u-human", Some("human"), &text("fix the watcher")),
+        user_line(
+            "u-peer",
+            Some("peer"),
+            &text("Another Claude session sent a message:\n<cross-session-message from=\"uds:/tmp/a.sock\">go</cross-session-message>"),
+        ),
+        user_line("u-coord", Some("coordinator"), &text("The coordinator sent a message while you were working:\nThanks.")),
+        user_line(
+            "u-task",
+            Some("task-notification"),
+            &text("<task-notification>\n<task-id>b1</task-id>\n<status>completed</status>\n</task-notification>"),
+        ),
+        user_line(
+            "u-limit",
+            Some("auto-continuation"),
+            &text("Your claude.ai usage limit has reset. Continue the task you were working on."),
+        ),
+        user_line("u-novel", Some("a-kind-not-seen-yet"), &text("something the harness says")),
+        format!("{assistant}\n"),
+        user_line("u-result", None, &result),
+        user_line("u-typed", None, &text("thanks")),
+    ];
+    append(&root.join(format!("{SESSION}.jsonl")), &lines.concat());
+
+    let records = read_all(&ClaudeSource::new(&root), &native(SESSION));
+    let of = |uuid: &str| {
+        let record = records
+            .iter()
+            .find(|record| record.ordinal == uuid)
+            .unwrap_or_else(|| panic!("{uuid} is a turn"));
+        (record.role, record.source)
+    };
+    assert_eq!(of("u-human"), (TurnRole::Human, TurnSource::Human));
+    assert_eq!(of("u-peer"), (TurnRole::Human, TurnSource::Peer));
+    assert_eq!(of("u-coord"), (TurnRole::Human, TurnSource::Peer));
+    for notice in ["u-task", "u-limit", "u-novel"] {
+        assert_eq!(
+            of(notice),
+            (TurnRole::Human, TurnSource::System),
+            "{notice}: a harness notice is not a peer message"
+        );
+    }
+    assert_eq!(
+        of("u-result"),
+        (TurnRole::Agent, TurnSource::System),
+        "a tool result is the agent's turn, as omp records it"
+    );
+    assert_eq!(of("u-typed"), (TurnRole::Human, TurnSource::Human));
 }

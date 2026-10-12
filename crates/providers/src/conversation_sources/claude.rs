@@ -499,8 +499,8 @@ fn merge_records(
                 if body.is_empty() && items.is_empty() {
                     continue;
                 }
-                let source = user_source(line, &items);
-                out.push(record(line, TurnRole::Human, source, body, items));
+                let (role, source) = user_turn(line, &items);
+                out.push(record(line, role, source, body, items));
             }
             // Every other type is store bookkeeping. Unknown types land here
             // too, by construction.
@@ -511,34 +511,39 @@ fn merge_records(
     out
 }
 
-/// Where a user record came from.
+/// Who a user record speaks for, and where it came from.
 ///
-/// `origin.kind` is the store's own answer where it has one. Otherwise: a
-/// record carrying tool results, a compaction summary or a harness meta row is
-/// the harness talking, and anything left is a person typing.
+/// `origin.kind` is the store's own answer where it has one: `human` is a
+/// person, `peer` and `coordinator` are another agent, and every other kind
+/// (`task-notification`, `auto-continuation` after a usage limit, and kinds not
+/// seen yet) is the harness. Otherwise: a record carrying tool results is the
+/// harness reporting to the agent, so it is the agent's turn as every other
+/// harness records it; a compaction summary or a harness meta row is the
+/// harness in the person's slot; and anything left is a person typing.
 ///
 /// Claude's store has no signal for a peer-injected turn — a `pij send` and a
 /// typed message are byte-identical here — so [`TurnSource::Peer`] is only ever
 /// reported when `origin.kind` says so. Guessing from message text would be
 /// dialect invention, not dialect reading.
-fn user_source(line: &Line, items: &[TurnItem]) -> TurnSource {
+fn user_turn(line: &Line, items: &[TurnItem]) -> (TurnRole, TurnSource) {
     match line
         .origin
         .as_ref()
         .and_then(|origin| origin.kind.as_deref())
     {
-        Some("human") => TurnSource::Human,
-        Some(_) => TurnSource::Peer,
+        Some("human") => (TurnRole::Human, TurnSource::Human),
+        Some("peer" | "coordinator") => (TurnRole::Human, TurnSource::Peer),
+        Some(_) => (TurnRole::Human, TurnSource::System),
         None => {
-            if line.is_meta
-                || line.is_compact_summary
-                || items
-                    .iter()
-                    .any(|item| matches!(item, TurnItem::ToolResult { .. }))
+            if items
+                .iter()
+                .any(|item| matches!(item, TurnItem::ToolResult { .. }))
             {
-                TurnSource::System
+                (TurnRole::Agent, TurnSource::System)
+            } else if line.is_meta || line.is_compact_summary {
+                (TurnRole::Human, TurnSource::System)
             } else {
-                TurnSource::Human
+                (TurnRole::Human, TurnSource::Human)
             }
         }
     }
