@@ -1,0 +1,16 @@
+tools/conv-atlas/export/src/conv_atlas/readme.py
+  h_9e71e8b09f7cf2 4-8,13-14,17-238,242,246-283,286-289,292-295,297,300-306,315
+tools/conv-atlas/export/tests/test_readme.py
+  h_9e71e8b09f7cf2 1-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "05de252d6a7c9aeed74e7d204ad1c91207974189",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
