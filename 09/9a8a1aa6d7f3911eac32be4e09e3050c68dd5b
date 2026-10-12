@@ -1,0 +1,19 @@
+crates/providers/src/conversation_sources/omp.rs
+  s_c956856521bd6a::t_3286758aedfde7 221-223,225,441-447,812
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "099a8a1aa6d7f3911eac32be4e09e3050c68dd5b",
+  "prompts": {},
+  "sessions": {
+    "s_c956856521bd6a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e83b4b34-ede6-4d29-8260-e87fe12f1fdf",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
