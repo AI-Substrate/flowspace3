@@ -1,0 +1,39 @@
+tools/conv-atlas/app/src/views/chronos/Overview.tsx
+  s_cd6a23c36d0f97::t_64c5df65b6f25f 11,37-49,165-188,197,319-323,325-332
+tools/conv-atlas/app/src/views/chronos/River.tsx
+  s_6cf91163d2d08b::t_7a72862db47054 67-68,80,83,351,359-360,379-386,394-402
+tools/conv-atlas/app/src/views/chronos/Tags.tsx
+  s_285f51450317ed::t_59e400d784f10c 38-39,42-43,80-81,83,85-95,142-143,154,203-212,214,222-322
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "35c00c44e88ee2d738786edd9bf04328eb3ba55d",
+  "prompts": {},
+  "sessions": {
+    "s_285f51450317ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0bce4fdc-587f-4c46-82d7-0b1cdbc60145",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_6cf91163d2d08b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e758ac12-9c91-46a2-a3be-cbe78bd24f1b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_cd6a23c36d0f97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0db27c61-04ec-4f97-95bb-969cfb287d7e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
