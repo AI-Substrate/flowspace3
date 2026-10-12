@@ -1,0 +1,16 @@
+tools/conv-atlas/export/src/conv_atlas/cli.py
+  h_9e71e8b09f7cf2 48,50,55-63
+tools/conv-atlas/export/src/conv_atlas/fixture.py
+  h_9e71e8b09f7cf2 20,421-466
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "877b6ce1c0ac7f673144459040e7b9858252e9f0",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
