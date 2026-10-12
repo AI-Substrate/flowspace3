@@ -1,0 +1,29 @@
+tools/conv-atlas/export/src/conv_atlas/model.py
+  s_9749a3ee9e2592::t_c43c1653f0c98b 34-35,165-166,170-176,182-285,292-295,303,308-312,314,318-319,325-327,472-474,520-521,726,840-841,843,845-847,943-944
+tools/conv-atlas/export/tests/test_model.py
+  s_abd2ae2234354c::t_5ec529cbb6e755 26-28,35,53,296-298,416,418-423,426-456
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1b1d3766579b5328c39243589d97212836a87274",
+  "prompts": {},
+  "sessions": {
+    "s_9749a3ee9e2592": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c59bbcb2-b448-48f2-89bd-3b38c1b9e81a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_abd2ae2234354c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a426f20-831b-4988-a683-14c0bc5bdae7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
