@@ -1,0 +1,73 @@
+.gitignore
+  s_236b6ea430b3ea::t_3259523b88dc5b 27-40
+tools/conv-atlas/app/package.json
+  s_236b6ea430b3ea::t_d144e0065612df 1-38
+tools/conv-atlas/app/src/contract/types.ts
+  s_cd6a23c36d0f97::t_94b93f42eb8d75 1-163
+tools/conv-atlas/app/src/core/semantics.test.ts
+  s_cd6a23c36d0f97::t_16956f3a5af74a 1-78
+tools/conv-atlas/app/tsconfig.json
+  s_cd6a23c36d0f97::t_3b171d5f1e669d 1-20
+tools/conv-atlas/app/vite.config.ts
+  s_cd6a23c36d0f97::t_6e0f5b7be88deb 1-9
+tools/conv-atlas/check.sh
+  s_cd6a23c36d0f97::t_eb138860ec40bc 1-10
+tools/conv-atlas/contract/README.md
+  s_cd6a23c36d0f97::t_b4edff7c0c8b67 1-75
+tools/conv-atlas/contract/bundle.schema.json
+  s_61dfe47e9838df::t_a391cc7b7b429b 1-403
+tools/conv-atlas/export/pyproject.toml
+  s_236b6ea430b3ea::t_1b1cc6de2fc165 1-39
+tools/conv-atlas/export/src/conv_atlas/bundle.py
+  s_cd6a23c36d0f97::t_19a05d8d7e9239 1-198
+tools/conv-atlas/export/src/conv_atlas/contract.py
+  s_cd6a23c36d0f97::t_3559f5566cc9c0 1-305
+tools/conv-atlas/export/src/conv_atlas/paths.py
+  s_cd6a23c36d0f97::t_9aadf47ce85073 1-31
+tools/conv-atlas/export/src/conv_atlas/view.py
+  s_61dfe47e9838df::t_fbd2ce8f44b695 1-304
+tools/conv-atlas/export/tests/test_bundle.py
+  s_cd6a23c36d0f97::t_7af88b7b215242 1-56
+tools/conv-atlas/export/uv.lock
+  s_abd2ae2234354c::t_fa44565769eea7 1-616
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "99b4dba883e831b941a08ec3625fe5447d6b2c19",
+  "prompts": {},
+  "sessions": {
+    "s_236b6ea430b3ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8029f851-2223-4b78-b2d2-a52d73465917",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_61dfe47e9838df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cbe08128-4097-4473-9f99-71e9415824f6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_abd2ae2234354c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a426f20-831b-4988-a683-14c0bc5bdae7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_cd6a23c36d0f97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0db27c61-04ec-4f97-95bb-969cfb287d7e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
