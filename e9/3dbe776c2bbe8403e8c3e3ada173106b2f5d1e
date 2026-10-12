@@ -1,0 +1,14 @@
+tools/conv-atlas/app/src/views/chronos/Composition.tsx
+  h_9e71e8b09f7cf2 12,144-145,148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e93dbe776c2bbe8403e8c3e3ada173106b2f5d1e",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
