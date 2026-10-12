@@ -1,0 +1,65 @@
+tools/conv-atlas/app/src/design/primitives/Legend.tsx
+  s_285f51450317ed::t_27257657fc5006 13-14,47
+tools/conv-atlas/app/src/views/atlas/forceLayout.ts
+  s_6cf91163d2d08b::t_777129df60a323 6-10,18-19,24-25,27,29,32-33,43-44,53,56
+tools/conv-atlas/app/src/views/atlas/galaxy/Galaxy.tsx
+  s_285f51450317ed::t_89f68ca52683f0 7,9,20-35,47-48,58-59,61,84-89,106-129
+tools/conv-atlas/app/src/views/atlas/galaxy/engine.ts
+  s_236b6ea430b3ea::t_4b1797446191ca 19,108-111,172-189,496,499-500,510,514-518,554-563,566-574
+tools/conv-atlas/app/src/views/atlas/graph/SimilarityGraph.tsx
+  s_285f51450317ed::t_79c4636f6cd764 39-44
+tools/conv-atlas/app/src/views/atlas/graph/engine.ts
+  s_236b6ea430b3ea::t_8e82af4d58a462 20,31-32,94,96-97,104-107,332-334,363,388-389,400,412-415,417-426,434-435
+tools/conv-atlas/app/src/views/atlas/lib/coloring.ts
+  s_cd6a23c36d0f97::t_3c4621c3827b1c 25-29,37-38,107-108,112-120
+tools/conv-atlas/app/src/views/atlas/lib/seatsModel.test.ts
+  s_236b6ea430b3ea::t_6a1229f17118bc 24,53-56
+tools/conv-atlas/app/src/views/atlas/lib/seatsModel.ts
+  s_236b6ea430b3ea::t_86a39d89952911 30-31,37,50-52,56,61-63,65,74-75,78
+tools/conv-atlas/app/src/views/atlas/seats/Seats.tsx
+  s_236b6ea430b3ea::t_d113c47aaba621 44,70-72,87-104
+tools/conv-atlas/app/src/views/atlas/seats/engine.ts
+  s_236b6ea430b3ea::t_2db41adbc09ade 29,31-32,36-37,254-263,301,433,440,443-451
+tools/conv-atlas/app/src/views/atlas/shared.tsx
+  s_285f51450317ed::t_23f4541959d6e3 68-69,113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b3cf5594bbbad78ef0118add83b726199dc7cac3",
+  "prompts": {},
+  "sessions": {
+    "s_236b6ea430b3ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8029f851-2223-4b78-b2d2-a52d73465917",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_285f51450317ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0bce4fdc-587f-4c46-82d7-0b1cdbc60145",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_6cf91163d2d08b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e758ac12-9c91-46a2-a3be-cbe78bd24f1b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_cd6a23c36d0f97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0db27c61-04ec-4f97-95bb-969cfb287d7e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
