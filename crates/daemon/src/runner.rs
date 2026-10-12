@@ -813,7 +813,13 @@ async fn drain_embed(state: &AppState, shutdown: &mut watch::Receiver<Shutdown>)
                     }
                     Verdict::Retry => {
                         tracing::debug!(id, kind = EMBED, attempt, retrying = true, "{message}");
-                        match fs3_store::retry_job(&state.db, id, backoff(attempt), &message).await
+                        match settle_failure(
+                            &state.db,
+                            id,
+                            Settle::Retry(backoff(attempt)),
+                            &message,
+                        )
+                        .await
                         {
                             Ok(()) => {
                                 emit_failure(state, EMBED, subject, &message, attempt, false);
@@ -826,7 +832,13 @@ async fn drain_embed(state: &AppState, shutdown: &mut watch::Receiver<Shutdown>)
                     }
                     Verdict::Fail => {
                         tracing::debug!(id, kind = EMBED, attempt, retrying = false, "{message}");
-                        match fs3_store::fail_job(&state.db, id, &message, !failure.retryable).await
+                        match settle_failure(
+                            &state.db,
+                            id,
+                            Settle::Fail(!failure.retryable),
+                            &message,
+                        )
+                        .await
                         {
                             Ok(()) => {
                                 emit_failure(state, EMBED, subject, &message, attempt, true);
@@ -914,6 +926,41 @@ fn emit_failure(
         attempts: i64::from(attempts),
         terminal,
     });
+}
+
+/// What a failed attempt does to its row.
+#[derive(Clone, Copy)]
+enum Settle {
+    /// Back to `pending`, due again after the delay.
+    Retry(Duration),
+    /// Settled as failed; `true` means no run will ever succeed.
+    Fail(bool),
+}
+
+/// Record a failed attempt, so the claim never outlives it.
+///
+/// When the write is refused, the job's own message may be the cause (it is
+/// provider text), so the write is tried once more with a short plain message.
+/// A refused settle otherwise left the row `running` until a restart (DL-028).
+async fn settle_failure(
+    db: &PgPool,
+    id: i64,
+    settle: Settle,
+    message: &str,
+) -> Result<(), fs3_store::StoreError> {
+    let write = |message: String| async move {
+        match settle {
+            Settle::Retry(delay) => fs3_store::retry_job(db, id, delay, &message).await,
+            Settle::Fail(terminal) => fs3_store::fail_job(db, id, &message, terminal).await,
+        }
+    };
+    match write(message.to_string()).await {
+        Ok(()) => Ok(()),
+        Err(refused) => {
+            tracing::warn!(%refused, id, "recording the failure again without its message");
+            write(format!("the failure could not be recorded: {refused}")).await
+        }
+    }
 }
 
 /// Run one job and settle its row.
@@ -1007,7 +1054,9 @@ async fn settle(state: &AppState, job: Job) -> Drained {
                     } else {
                         tracing::warn!(id, %kind, %key, attempts, retrying = true, "{message}");
                     }
-                    match fs3_store::retry_job(&state.db, id, backoff(attempts), &message).await {
+                    match settle_failure(&state.db, id, Settle::Retry(backoff(attempts)), &message)
+                        .await
+                    {
                         Ok(()) => {
                             emit_failure(state, &kind, &subject, &message, attempts, false);
                         }
@@ -1029,7 +1078,9 @@ async fn settle(state: &AppState, job: Job) -> Drained {
                     // The store's terminal bit answers whether this work may
                     // revive after a fix. The event's terminal bit answers
                     // whether this run has stopped trying: every Fail is news.
-                    match fs3_store::fail_job(&state.db, id, &message, !failure.retryable).await {
+                    match settle_failure(&state.db, id, Settle::Fail(!failure.retryable), &message)
+                        .await
+                    {
                         Ok(()) => {
                             emit_failure(state, &kind, &subject, &message, attempts, true);
                         }

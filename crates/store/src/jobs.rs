@@ -465,7 +465,7 @@ pub async fn retry_job(
     )
     .bind(id)
     .bind(delay.as_secs_f64())
-    .bind(error)
+    .bind(bounded_error(error))
     .execute(pool)
     .await?;
     Ok(())
@@ -926,6 +926,31 @@ pub async fn last_failure(pool: &PgPool) -> Result<Option<LastFailure>, StoreErr
     .transpose()
 }
 
+/// The most of a failure message a job row keeps, in bytes.
+///
+/// `last_error` is carried in `jobs_live_dedupe_idx` so the live census stays
+/// an index-only scan, and a btree entry must fit in about 2.7 KB. A provider's
+/// error body can be longer than that, and Postgres then refuses the write that
+/// settles the job, which leaves the job `running` until a restart (DL-028:
+/// 1,125 refused settles on prod on 2026-10-11). Both writes of `last_error`
+/// pass through [`bounded_error`].
+pub const LAST_ERROR_MAX: usize = 1000;
+
+/// `error` as `last_error` stores it: at most [`LAST_ERROR_MAX`] bytes, cut on
+/// a character boundary and marked, with NUL removed (Postgres text refuses it).
+fn bounded_error(error: &str) -> String {
+    let error = error.replace('\0', "");
+    if error.len() <= LAST_ERROR_MAX {
+        return error;
+    }
+    let mark = format!(" … ({} bytes in all)", error.len());
+    let mut end = LAST_ERROR_MAX - mark.len();
+    while !error.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{}{mark}", &error[..end])
+}
+
 async fn settle(
     pool: &PgPool,
     id: i64,
@@ -940,11 +965,30 @@ async fn settle(
     )
     .bind(id)
     .bind(state)
-    .bind(error)
+    .bind(error.map(bounded_error))
     .bind(terminal)
     .execute(pool)
     .await?;
     Ok(())
+}
+
+#[cfg(test)]
+mod bounded_error_tests {
+    use super::*;
+
+    #[test]
+    fn a_short_error_is_kept_whole_and_nul_is_dropped() {
+        assert_eq!(bounded_error("429 slow\0 down"), "429 slow down");
+    }
+
+    #[test]
+    fn a_long_error_is_cut_on_a_character_boundary_and_says_so() {
+        let error = "é".repeat(LAST_ERROR_MAX);
+        let kept = bounded_error(&error);
+        assert!(kept.len() <= LAST_ERROR_MAX, "kept {} bytes", kept.len());
+        assert!(kept.starts_with("éé"));
+        assert!(kept.ends_with(&format!("({} bytes in all)", error.len())));
+    }
 }
 
 #[cfg(test)]
