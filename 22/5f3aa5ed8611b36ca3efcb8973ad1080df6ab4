@@ -1,0 +1,52 @@
+tools/conv-atlas/app/index.html
+  h_9e71e8b09f7cf2 6-13,15-21
+tools/conv-atlas/app/src/shell/App.tsx
+  h_9e71e8b09f7cf2 2-3,7-9,11-12,14-24,28-86,89,91-137,140-147,150,152-156,158-162
+tools/conv-atlas/app/src/shell/CommandPalette.tsx
+  h_9e71e8b09f7cf2 1-221
+tools/conv-atlas/app/src/shell/Detail.tsx
+  h_9e71e8b09f7cf2 1-239
+tools/conv-atlas/app/src/shell/FilterBar.tsx
+  h_9e71e8b09f7cf2 1-226
+tools/conv-atlas/app/src/shell/Insights.tsx
+  h_9e71e8b09f7cf2 1-320
+tools/conv-atlas/app/src/shell/Keys.tsx
+  h_9e71e8b09f7cf2 1-124
+tools/conv-atlas/app/src/shell/Popover.tsx
+  h_9e71e8b09f7cf2 1-71
+tools/conv-atlas/app/src/shell/Reader.tsx
+  h_9e71e8b09f7cf2 1-241
+tools/conv-atlas/app/src/shell/TopBar.tsx
+  h_9e71e8b09f7cf2 1-105
+tools/conv-atlas/app/src/shell/Transport.tsx
+  h_9e71e8b09f7cf2 1-286
+tools/conv-atlas/app/src/shell/copy.ts
+  h_9e71e8b09f7cf2 1-9
+tools/conv-atlas/app/src/shell/format.ts
+  h_9e71e8b09f7cf2 1-41
+tools/conv-atlas/app/src/shell/hashState.test.ts
+  h_9e71e8b09f7cf2 1-29
+tools/conv-atlas/app/src/shell/hashState.ts
+  h_9e71e8b09f7cf2 1-126
+tools/conv-atlas/app/src/shell/hooks.ts
+  h_9e71e8b09f7cf2 1-46
+tools/conv-atlas/app/src/shell/icons.tsx
+  h_9e71e8b09f7cf2 1-79
+tools/conv-atlas/app/src/shell/shell.css
+  h_9e71e8b09f7cf2 1-1094
+tools/conv-atlas/app/src/shell/ui.ts
+  h_9e71e8b09f7cf2 1-46
+tools/conv-atlas/app/src/shell/watcher.ts
+  h_9e71e8b09f7cf2 1-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "225f3aa5ed8611b36ca3efcb8973ad1080df6ab4",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
