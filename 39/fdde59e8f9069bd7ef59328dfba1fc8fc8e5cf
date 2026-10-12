@@ -1,0 +1,55 @@
+tools/conv-atlas/export/src/conv_atlas/commands.py
+  s_9749a3ee9e2592::t_30ee227db513c9 11,130-131,134-135,137-162
+tools/conv-atlas/export/src/conv_atlas/extract.py
+  s_cd6a23c36d0f97::t_b1a20e7c376087 6-8,14,48-84,184,194,203-210
+tools/conv-atlas/export/src/conv_atlas/insights.py
+  s_236b6ea430b3ea::t_f7d1e7dfcf24b6 20-21,24-32,80-82,84-86,113-155
+tools/conv-atlas/export/src/conv_atlas/model.py
+  s_236b6ea430b3ea::t_c4842dd4016d51 285-305,307-315,317,324,327-328,331-332,334-337,340-360,362-364,367,395,397,399-405,409,500,502,510-525,649-650,792,817
+tools/conv-atlas/export/tests/test_extract.py
+  s_cd6a23c36d0f97::t_15e37785b61002 1,6,23-58
+tools/conv-atlas/export/tests/test_insights.py
+  s_9749a3ee9e2592::t_6c4eb946637cb2 102-140
+tools/conv-atlas/export/tests/test_model.py
+  s_abd2ae2234354c::t_2340747ac2b87b 70,194,202,233-311,380-389
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "39fdde59e8f9069bd7ef59328dfba1fc8fc8e5cf",
+  "prompts": {},
+  "sessions": {
+    "s_236b6ea430b3ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8029f851-2223-4b78-b2d2-a52d73465917",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_9749a3ee9e2592": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c59bbcb2-b448-48f2-89bd-3b38c1b9e81a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_abd2ae2234354c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a426f20-831b-4988-a683-14c0bc5bdae7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_cd6a23c36d0f97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0db27c61-04ec-4f97-95bb-969cfb287d7e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
