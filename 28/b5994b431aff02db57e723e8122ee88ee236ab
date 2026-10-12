@@ -1,0 +1,16 @@
+tools/conv-atlas/app/src/shell/Insights.tsx
+  h_9e71e8b09f7cf2 9,30,47
+tools/conv-atlas/app/src/shell/Transport.tsx
+  h_9e71e8b09f7cf2 9,80,152-153,157,184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "28b5994b431aff02db57e723e8122ee88ee236ab",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
