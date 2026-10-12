@@ -1,0 +1,19 @@
+tools/conv-atlas/export/src/conv_atlas/extract.py
+  s_236b6ea430b3ea::t_a4772ac7a6605f 204,206-207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c2eac24761033da98229d6b602dc902be12c223a",
+  "prompts": {},
+  "sessions": {
+    "s_236b6ea430b3ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8029f851-2223-4b78-b2d2-a52d73465917",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
