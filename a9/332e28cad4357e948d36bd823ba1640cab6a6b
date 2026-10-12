@@ -1,0 +1,45 @@
+tools/conv-atlas/app/src/design/primitives/Legend.tsx
+  s_236b6ea430b3ea::t_54d25c84ce757e 1,22,28-30,56-60
+tools/conv-atlas/app/src/design/primitives/primitives.css
+  s_236b6ea430b3ea::t_641d69918db173 171,174,219-221,223,225-229
+tools/conv-atlas/app/src/views/atlas/galaxy/Galaxy.tsx
+  s_236b6ea430b3ea::t_6afa5272e09c18 10,30,51,69,71-77
+tools/conv-atlas/app/src/views/atlas/galaxy/engine.ts
+  s_236b6ea430b3ea::t_3841952dfdd320 478-479,669,692-696,698-702
+tools/conv-atlas/app/src/views/atlas/graph/SimilarityGraph.tsx
+  s_236b6ea430b3ea::t_2d1f63ba4bf7ef 10,21
+tools/conv-atlas/app/src/views/atlas/graph/engine.ts
+  s_236b6ea430b3ea::t_d7169edea92f8c 7-9,24,54-55,65-68,70,76-79,95,108-109,120,267,308-311,317-319,379-382,412
+tools/conv-atlas/app/src/views/atlas/index.ts
+  s_236b6ea430b3ea::t_44ebcb8a3c9f1b 1,3-7
+tools/conv-atlas/app/src/views/atlas/lib/graphModel.ts
+  s_236b6ea430b3ea::t_cb285fe533bb53 31-32,101-106,110
+tools/conv-atlas/app/src/views/atlas/lib/seatsModel.test.ts
+  s_236b6ea430b3ea::t_12c88cade60277 5-6,8-15,17-19,22,25-30,39-41,43-50,54,59-61,64-67
+tools/conv-atlas/app/src/views/atlas/lib/seatsModel.ts
+  s_236b6ea430b3ea::t_909891a8a5ba4b 5-6,13,24-26,28-29,34-35,39-43,46-50,54,58,63,68-70,72
+tools/conv-atlas/app/src/views/atlas/seats/Seats.tsx
+  s_236b6ea430b3ea::t_f1df3fab2bb404 12,24,45-49
+tools/conv-atlas/app/src/views/atlas/seats/engine.ts
+  s_236b6ea430b3ea::t_23c7fc74f92c01 22,31-32,65-66,96-97,110,142-145,159,214,231-241,338,421,432
+tools/conv-atlas/app/src/views/atlas/shared.tsx
+  s_236b6ea430b3ea::t_e67583cecb22b8 3,34-43
+tools/conv-atlas/app/src/views/atlas/sigmaTheme.ts
+  s_236b6ea430b3ea::t_42012f81810cbd 4-5,7,9,11,17-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a9332e28cad4357e948d36bd823ba1640cab6a6b",
+  "prompts": {},
+  "sessions": {
+    "s_236b6ea430b3ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8029f851-2223-4b78-b2d2-a52d73465917",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
