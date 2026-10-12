@@ -1,0 +1,22 @@
+tools/conv-atlas/app/src/core/colorSlots.ts
+  h_9e71e8b09f7cf2 12-42
+tools/conv-atlas/app/src/core/data.ts
+  h_9e71e8b09f7cf2 17,31-32,60-70,81
+tools/conv-atlas/app/src/core/semantics.test.ts
+  h_9e71e8b09f7cf2 3,33-35,37-39
+tools/conv-atlas/app/src/views/atlas/lib/testSnapshot.ts
+  h_9e71e8b09f7cf2 3,32-34,39,46-48
+tools/conv-atlas/app/src/views/chronos/testkit.ts
+  h_9e71e8b09f7cf2 2,38-40,42-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e93d90a37a717f2fa18cf1d7a34fa27ffb3d54a4",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
