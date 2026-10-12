@@ -1,0 +1,20 @@
+tools/conv-atlas/app/src/views/chronos/River.tsx
+  h_9e71e8b09f7cf2 1-411
+tools/conv-atlas/app/src/views/chronos/index.ts
+  h_9e71e8b09f7cf2 3,15-22
+tools/conv-atlas/app/src/views/chronos/transforms.test.ts
+  h_9e71e8b09f7cf2 4-14,93-140
+tools/conv-atlas/app/src/views/chronos/transforms.ts
+  h_9e71e8b09f7cf2 7,157-207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1f65247036318d8d8bd9248b248fe661a6813b5d",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
