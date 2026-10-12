@@ -1,0 +1,32 @@
+tools/conv-atlas/export/src/conv_atlas/commands.py
+  h_9e71e8b09f7cf2 10,14-120
+tools/conv-atlas/export/src/conv_atlas/export.py
+  h_9e71e8b09f7cf2 1-322
+tools/conv-atlas/export/src/conv_atlas/extract.py
+  h_9e71e8b09f7cf2 1-209
+tools/conv-atlas/export/src/conv_atlas/model.py
+  h_9e71e8b09f7cf2 1-687
+tools/conv-atlas/export/src/conv_atlas/sessions.py
+  h_9e71e8b09f7cf2 1-63
+tools/conv-atlas/export/tests/test_commands.py
+  h_9e71e8b09f7cf2 1-67
+tools/conv-atlas/export/tests/test_export.py
+  h_9e71e8b09f7cf2 1-159
+tools/conv-atlas/export/tests/test_extract.py
+  h_9e71e8b09f7cf2 1-21
+tools/conv-atlas/export/tests/test_model.py
+  h_9e71e8b09f7cf2 1-312
+tools/conv-atlas/export/tests/test_model_sessions.py
+  h_9e71e8b09f7cf2 1-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d5a25bf047e85a7803d9ddf19f41b62e6532e906",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
