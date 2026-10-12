@@ -1,0 +1,19 @@
+tools/conv-atlas/export/src/conv_atlas/contract.py
+  s_6cf91163d2d08b::t_4afe8919f11021 192-206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2544fcb02a7172fe484b28e451810c039f5596f1",
+  "prompts": {},
+  "sessions": {
+    "s_6cf91163d2d08b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e758ac12-9c91-46a2-a3be-cbe78bd24f1b",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
