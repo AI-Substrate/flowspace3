@@ -1,0 +1,409 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://flowspace3.local/conv-atlas/bundle.schema.json",
+  "title": "conv-atlas bundle, schema_version 1",
+  "description": "One schema per bundle file; select it with $defs/<file>. Times are UTC epoch milliseconds. Every cross-reference is an index into an array in the same snapshot.",
+  "$defs": {
+    "ms": { "type": "integer", "minimum": 0 },
+    "idx": { "type": "integer", "minimum": 0 },
+    "idxOrNull": { "oneOf": [{ "$ref": "#/$defs/idx" }, { "type": "null" }] },
+    "xy": {
+      "type": "array",
+      "prefixItems": [{ "type": "number" }, { "type": "number" }],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "xyOrNull": { "oneOf": [{ "$ref": "#/$defs/xy" }, { "type": "null" }] },
+    "tagList": { "type": "array", "items": { "type": "string" }, "maxItems": 12 },
+    "source": { "enum": ["prod", "synthetic"] },
+
+    "manifest": {
+      "type": "object",
+      "required": ["schema_version", "latest", "snapshots"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "const": 1 },
+        "latest": { "type": "string" },
+        "snapshots": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "created_ms", "source", "counts", "time_range"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^[0-9]{8}T[0-9]{6}Z$" },
+              "created_ms": { "$ref": "#/$defs/ms" },
+              "source": { "$ref": "#/$defs/source" },
+              "counts": {
+                "type": "object",
+                "required": ["conversations", "turns", "seats", "communities"],
+                "additionalProperties": false,
+                "properties": {
+                  "conversations": { "$ref": "#/$defs/idx" },
+                  "turns": { "$ref": "#/$defs/idx" },
+                  "seats": { "$ref": "#/$defs/idx" },
+                  "communities": { "$ref": "#/$defs/idx" }
+                }
+              },
+              "time_range": {
+                "type": "object",
+                "required": ["start_ms", "end_ms"],
+                "additionalProperties": false,
+                "properties": { "start_ms": { "$ref": "#/$defs/ms" }, "end_ms": { "$ref": "#/$defs/ms" } }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "meta": {
+      "type": "object",
+      "required": [
+        "schema_version", "id", "created_ms", "source", "day0_ms", "days", "start_ms", "end_ms",
+        "repos", "harnesses", "models", "seats", "communities", "layout", "stats"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "const": 1 },
+        "id": { "type": "string" },
+        "created_ms": { "$ref": "#/$defs/ms" },
+        "source": { "$ref": "#/$defs/source" },
+        "day0_ms": { "$ref": "#/$defs/ms", "description": "UTC midnight of day index 0" },
+        "days": { "type": "integer", "minimum": 1 },
+        "start_ms": { "$ref": "#/$defs/ms", "description": "Earliest conversation start (exact)" },
+        "end_ms": { "$ref": "#/$defs/ms", "description": "Newest turn (exact): the true end of the data; playback ends here" },
+        "repos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["key", "label"],
+            "additionalProperties": false,
+            "properties": { "key": { "type": "string" }, "label": { "type": "string" } }
+          }
+        },
+        "harnesses": { "type": "array", "items": { "type": "string" } },
+        "models": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["key", "label"],
+            "additionalProperties": false,
+            "properties": { "key": { "type": "string" }, "label": { "type": "string" } }
+          }
+        },
+        "seats": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "harness", "conversations", "first_ms", "last_ms"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string" },
+              "harness": { "$ref": "#/$defs/idxOrNull" },
+              "conversations": { "type": "array", "items": { "$ref": "#/$defs/idx" } },
+              "first_ms": { "$ref": "#/$defs/ms", "description": "Earliest evidence of the seat (seats.first_seen)" },
+              "last_ms": { "$ref": "#/$defs/ms", "description": "Latest evidence of the seat (seats.last_seen)" }
+            }
+          }
+        },
+        "communities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label", "blurb", "tags", "size", "centroid_xy"],
+            "additionalProperties": false,
+            "properties": {
+              "label": { "type": "string" },
+              "blurb": { "type": "string" },
+              "tags": { "$ref": "#/$defs/tagList" },
+              "size": { "$ref": "#/$defs/idx" },
+              "centroid_xy": { "$ref": "#/$defs/xy" }
+            }
+          }
+        },
+        "layout": {
+          "type": "object",
+          "required": ["method", "bounds"],
+          "additionalProperties": false,
+          "properties": {
+            "method": { "type": "string" },
+            "params": { "type": "object" },
+            "bounds": {
+              "type": "array",
+              "items": { "type": "number" },
+              "minItems": 4,
+              "maxItems": 4,
+              "description": "[min_x, min_y, max_x, max_y] over every non-null conversation xy"
+            }
+          }
+        },
+        "stats": {
+          "type": "object",
+          "additionalProperties": { "type": "number" },
+          "description": "Free-form numeric facts for an About panel (e.g. turns_total, work_turns, summary_coverage)."
+        }
+      }
+    },
+
+    "conversation": {
+      "type": "object",
+      "required": [
+        "guid", "kind", "label", "blurb", "repo", "harness", "seat", "models", "parent",
+        "community", "xy", "started_ms", "last_ms", "turns", "counts", "tags", "activity", "session_detail"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "guid": { "type": "string", "format": "uuid" },
+        "kind": { "enum": ["session", "subagent"] },
+        "label": { "type": "string", "description": "Human label derived from tags/summaries; never the stored 'session <uuid>' title" },
+        "blurb": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+        "repo": { "$ref": "#/$defs/idxOrNull" },
+        "harness": { "$ref": "#/$defs/idxOrNull" },
+        "seat": { "$ref": "#/$defs/idxOrNull" },
+        "models": { "type": "array", "items": { "$ref": "#/$defs/idx" } },
+        "parent": { "$ref": "#/$defs/idxOrNull" },
+        "community": { "$ref": "#/$defs/idxOrNull", "description": "null = unclustered (noise or too few work turns)" },
+        "xy": { "$ref": "#/$defs/xyOrNull", "description": "null = not embedded (too few work turns)" },
+        "started_ms": { "$ref": "#/$defs/ms" },
+        "last_ms": { "$ref": "#/$defs/ms" },
+        "turns": { "$ref": "#/$defs/idx" },
+        "counts": {
+          "type": "object",
+          "required": ["work", "tool_call", "tool_result", "retrieval", "human", "peer", "agent"],
+          "additionalProperties": false,
+          "properties": {
+            "work": { "$ref": "#/$defs/idx" },
+            "tool_call": { "$ref": "#/$defs/idx" },
+            "tool_result": { "$ref": "#/$defs/idx" },
+            "retrieval": { "$ref": "#/$defs/idx" },
+            "human": { "$ref": "#/$defs/idx", "description": "turns with source=human" },
+            "peer": { "$ref": "#/$defs/idx", "description": "turns with source=peer" },
+            "agent": { "$ref": "#/$defs/idx", "description": "turns with role=agent" }
+          }
+        },
+        "tags": { "$ref": "#/$defs/tagList" },
+        "activity": {
+          "type": "array",
+          "description": "Sparse daily turn counts, ascending by day index: [[day, turns], ...]",
+          "items": {
+            "type": "array",
+            "prefixItems": [{ "$ref": "#/$defs/idx" }, { "type": "integer", "minimum": 1 }],
+            "minItems": 2,
+            "maxItems": 2
+          }
+        },
+        "session_detail": { "type": "boolean", "description": "true = sessions/<guid>.json exists" }
+      }
+    },
+
+    "conversations": {
+      "type": "array",
+      "description": "Sorted ascending by started_ms. Array index is the conversation id within the snapshot.",
+      "items": { "$ref": "#/$defs/conversation" }
+    },
+
+    "edges": {
+      "type": "object",
+      "required": ["knn", "subagent", "messages"],
+      "additionalProperties": false,
+      "properties": {
+        "knn": {
+          "type": "object",
+          "required": ["k", "edges"],
+          "additionalProperties": false,
+          "properties": {
+            "k": { "type": "integer", "minimum": 1 },
+            "edges": {
+              "type": "array",
+              "description": "[a, b, weight, t_ms]: undirected, a < b, weight = mean-centred cosine, t_ms = max(started_ms) of the two ends",
+              "items": {
+                "type": "array",
+                "prefixItems": [{ "$ref": "#/$defs/idx" }, { "$ref": "#/$defs/idx" }, { "type": "number" }, { "$ref": "#/$defs/ms" }],
+                "minItems": 4,
+                "maxItems": 4
+              }
+            }
+          }
+        },
+        "subagent": {
+          "type": "array",
+          "description": "[parent, child, t_ms], where t_ms = child.started_ms",
+          "items": {
+            "type": "array",
+            "prefixItems": [{ "$ref": "#/$defs/idx" }, { "$ref": "#/$defs/idx" }, { "$ref": "#/$defs/ms" }],
+            "minItems": 3,
+            "maxItems": 3
+          }
+        },
+        "messages": {
+          "type": "array",
+          "description": "Peer messages aggregated per (from, to, to_conv, day). to_conv (the receiving conversation) is always set, so filters attribute a message through it; from/to are null when the sender/receiver seat is unknown.",
+          "items": {
+            "type": "object",
+            "required": ["from", "to", "to_conv", "day", "n"],
+            "additionalProperties": false,
+            "properties": {
+              "from": { "$ref": "#/$defs/idxOrNull", "description": "sender seat index; null = sender unknown" },
+              "to": { "$ref": "#/$defs/idxOrNull", "description": "receiver seat index; null = receiver seat unknown" },
+              "to_conv": { "$ref": "#/$defs/idx", "description": "receiving conversation index (always set)" },
+              "day": { "$ref": "#/$defs/idx" },
+              "n": { "type": "integer", "minimum": 1 }
+            }
+          }
+        }
+      }
+    },
+
+    "tagsFile": {
+      "type": "object",
+      "required": ["tags", "cooc"],
+      "additionalProperties": false,
+      "properties": {
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["tag", "n", "conversations"],
+            "additionalProperties": false,
+            "properties": {
+              "tag": { "type": "string" },
+              "n": { "type": "integer", "minimum": 1 },
+              "conversations": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        "cooc": {
+          "type": "array",
+          "description": "[i, j, n]: tag indices with i < j, n = conversations whose top tags contain both",
+          "items": {
+            "type": "array",
+            "prefixItems": [{ "$ref": "#/$defs/idx" }, { "$ref": "#/$defs/idx" }, { "type": "integer", "minimum": 1 }],
+            "minItems": 3,
+            "maxItems": 3
+          }
+        }
+      }
+    },
+
+    "session": {
+      "type": "object",
+      "required": ["guid", "turns", "novelty", "shifts"],
+      "additionalProperties": false,
+      "properties": {
+        "guid": { "type": "string", "format": "uuid" },
+        "turns": {
+          "type": "array",
+          "description": "Work-class turns only, ascending by n",
+          "items": {
+            "type": "object",
+            "required": ["n", "t_ms", "role", "source", "label", "tags", "xy"],
+            "additionalProperties": false,
+            "properties": {
+              "n": { "type": "integer", "minimum": 1, "description": "turn_no; address is conv:<guid>#t<n>" },
+              "t_ms": { "$ref": "#/$defs/ms" },
+              "role": { "enum": ["human", "agent"] },
+              "source": { "enum": ["human", "peer", "system"] },
+              "label": { "type": "string", "maxLength": 400, "description": "summary text, or the raw head when the turn is unsummarised" },
+              "tags": { "$ref": "#/$defs/tagList" },
+              "xy": { "$ref": "#/$defs/xyOrNull" }
+            }
+          }
+        },
+        "novelty": {
+          "type": "object",
+          "required": ["window", "series"],
+          "additionalProperties": false,
+          "properties": {
+            "window": { "type": "integer", "minimum": 1 },
+            "series": {
+              "type": "array",
+              "description": "[turn_index_into_turns, value in 0..2]",
+              "items": {
+                "type": "array",
+                "prefixItems": [{ "$ref": "#/$defs/idx" }, { "type": "number" }],
+                "minItems": 2,
+                "maxItems": 2
+              }
+            }
+          }
+        },
+        "shifts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["n", "t_ms", "score", "label", "tags"],
+            "additionalProperties": false,
+            "properties": {
+              "n": { "type": "integer", "minimum": 1 },
+              "t_ms": { "$ref": "#/$defs/ms" },
+              "score": { "type": "number" },
+              "label": { "type": "string" },
+              "tags": { "$ref": "#/$defs/tagList" }
+            }
+          }
+        }
+      }
+    },
+
+    "insight": {
+      "type": "object",
+      "description": "An agent-written finding stored under insights/<id>.json, outside any snapshot. Refs use stable keys so they survive re-export.",
+      "required": ["id", "title", "body_md", "author", "created_ms", "snapshot_id", "refs"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{2,79}$" },
+        "title": { "type": "string", "minLength": 3, "maxLength": 140 },
+        "body_md": { "type": "string", "maxLength": 20000 },
+        "author": { "type": "string", "description": "pij seat id, harness/session, or person" },
+        "created_ms": { "$ref": "#/$defs/ms" },
+        "snapshot_id": { "type": "string", "description": "Snapshot the analysis ran against" },
+        "kind": { "enum": ["finding", "question", "anomaly", "story"], "default": "finding" },
+        "refs": {
+          "type": "object",
+          "minProperties": 1,
+          "description": "At least one anchor: an insight the app cannot place is rejected",
+          "additionalProperties": false,
+          "properties": {
+            "guids": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" } },
+            "addresses": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^conv:[0-9a-f-]{36}(#t[0-9]+)?$" } },
+            "seats": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+            "repos": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+            "tags": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+            "time_range": {
+              "type": "object",
+              "required": ["start_ms", "end_ms"],
+              "additionalProperties": false,
+              "properties": { "start_ms": { "$ref": "#/$defs/ms" }, "end_ms": { "$ref": "#/$defs/ms" } }
+            }
+          }
+        }
+      }
+    },
+
+    "insightIndex": {
+      "type": "object",
+      "description": "insights/index.json: newest first; the app polls it next to the manifest",
+      "required": ["schema_version", "insights"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "const": 1 },
+        "insights": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "kind", "created_ms"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "kind": { "enum": ["finding", "question", "anomaly", "story"] },
+              "created_ms": { "$ref": "#/$defs/ms" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

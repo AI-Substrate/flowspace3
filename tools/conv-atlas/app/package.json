@@ -1,0 +1,39 @@
+{
+  "name": "conv-atlas-app",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p . --noEmit && vite build",
+    "typecheck": "tsc -p . --noEmit",
+    "test": "vitest run",
+    "preview": "vite preview",
+    "fixture": "rm -rf .fixture-home && uv run --project ../export conv-atlas fixture --home .fixture-home --id 20260801T000000Z",
+    "dev:fixture": "CONV_ATLAS_HOME=.fixture-home vite"
+  },
+  "dependencies": {
+    "@fontsource-variable/recursive": "^5.3.0",
+    "@tanstack/react-virtual": "^3.14.0",
+    "d3": "^7.9.0",
+    "gl-matrix": "~3.3.0",
+    "graphology": "^0.26.0",
+    "graphology-layout-forceatlas2": "^0.10.1",
+    "motion": "^14.0.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "regl-scatterplot": "^1.16.0",
+    "sigma": "3.0.3",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@types/d3": "^7.4.3",
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
+  }
+}

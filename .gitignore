@@ -24,3 +24,18 @@ scratch/
 
 # private agent tooling — never committed (standing ruling)
 .claude/
+
+# conv-atlas (tools/conv-atlas): bundles hold real conversation content and are
+# NEVER committed (public repo, o-prime ruling 2026-10-12). Default bundle home is
+# ~/.local/share/flowspace3/conv-atlas/bundles/, outside the repo; these entries
+# catch any accidental in-tree output.
+tools/conv-atlas/**/node_modules/
+tools/conv-atlas/app/dist/
+tools/conv-atlas/export/.venv/
+tools/conv-atlas/**/__pycache__/
+tools/conv-atlas/**/.pytest_cache/
+tools/conv-atlas/**/.ruff_cache/
+tools/conv-atlas/bundles/
+tools/conv-atlas/cache/
+tools/conv-atlas/**/.fixture-home/
+tools/conv-atlas/insights/

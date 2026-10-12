@@ -1,0 +1,197 @@
+/*
+ * conv-atlas design tokens. Dark first; [data-theme] is stamped by design/theme.ts.
+ * Chrome colours mirror CHROME in palette.ts (palette.test.ts keeps them equal):
+ * change both or neither. Data colours live only in palette.ts.
+ */
+
+:root,
+[data-theme="dark"] {
+  --bg: oklch(0.165 0 0);
+  --panel: oklch(0.198 0.005 270);
+  --raised: oklch(0.238 0.007 270);
+  --line: oklch(0.3 0.008 270);
+  --line-strong: oklch(0.4 0.01 270);
+  --ink: oklch(0.95 0.004 270);
+  --ink-2: oklch(0.8 0.008 270);
+  --muted: oklch(0.68 0.01 270);
+  --faint: oklch(0.5 0.01 270);
+  --accent: oklch(0.72 0.17 355);
+  --accent-strong: oklch(0.56 0.2 355);
+  --on-accent: oklch(1 0 0);
+  --ok: oklch(0.76 0.14 160);
+  --warn: oklch(0.84 0.14 85);
+  --danger: oklch(0.7 0.18 28);
+
+  --accent-soft: oklch(0.72 0.17 355 / 0.16);
+  --hover: oklch(1 0 0 / 0.05);
+  --press: oklch(1 0 0 / 0.09);
+  --scrim: oklch(0 0 0 / 0.55);
+  --shadow-pop: 0 6px 8px -4px oklch(0 0 0 / 0.5), 0 0 0 1px var(--line);
+
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --bg: oklch(1 0 0);
+  --panel: oklch(0.972 0.003 270);
+  --raised: oklch(0.945 0.005 270);
+  --line: oklch(0.9 0.006 270);
+  --line-strong: oklch(0.78 0.01 270);
+  --ink: oklch(0.22 0.012 270);
+  --ink-2: oklch(0.38 0.012 270);
+  --muted: oklch(0.5 0.012 270);
+  --faint: oklch(0.7 0.01 270);
+  --accent: oklch(0.54 0.2 355);
+  --accent-strong: oklch(0.5 0.2 355);
+  --on-accent: oklch(1 0 0);
+  --ok: oklch(0.52 0.13 160);
+  --warn: oklch(0.6 0.13 70);
+  --danger: oklch(0.55 0.2 28);
+
+  --accent-soft: oklch(0.54 0.2 355 / 0.1);
+  --hover: oklch(0.22 0.012 270 / 0.05);
+  --press: oklch(0.22 0.012 270 / 0.09);
+  --scrim: oklch(0.22 0.012 270 / 0.3);
+  --shadow-pop: 0 6px 8px -4px oklch(0.22 0.012 270 / 0.18), 0 0 0 1px var(--line);
+
+  color-scheme: light;
+}
+
+:root {
+  /* type: Recursive, one family, two voices. MONO 0 is the UI; MONO 1 is for values that are code. */
+  --font-sans: "Recursive Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Recursive Variable", ui-monospace, "SF Mono", Menlo, monospace;
+  --mono-off: "MONO" 0, "CASL" 0;
+  --mono-on: "MONO" 1, "CASL" 0;
+
+  /* fixed rem scale, ratio ≈1.125; 13px is the working size of the instrument */
+  --fs-2xs: 0.625rem; /* 10: axis ticks only */
+  --fs-xs: 0.6875rem; /* 11 */
+  --fs-sm: 0.75rem; /* 12 */
+  --fs-base: 0.8125rem; /* 13 */
+  --fs-md: 0.875rem; /* 14: reader prose */
+  --fs-lg: 1rem; /* 16 */
+  --fs-xl: 1.125rem; /* 18 */
+  --fs-2xl: 1.375rem; /* 22: drawer title */
+  --lh-tight: 1.2;
+  --lh-ui: 1.35;
+  --lh-prose: 1.55;
+  --fw-regular: 400;
+  --fw-medium: 520;
+  --fw-strong: 640;
+
+  /* 4px grid */
+  --sp-1: 2px;
+  --sp-2: 4px;
+  --sp-3: 6px;
+  --sp-4: 8px;
+  --sp-5: 12px;
+  --sp-6: 16px;
+  --sp-7: 20px;
+  --sp-8: 24px;
+  --sp-9: 32px;
+  --sp-10: 48px;
+
+  /* radii by hierarchy: controls are tighter than surfaces; chips are pills */
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 8px;
+  --r-pill: 999px;
+
+  /* layout */
+  --bar-h: 40px;
+  --transport-h: 64px;
+  --drawer-w: 380px;
+  --rail-w: 52px;
+
+  /* z scale */
+  --z-stage-overlay: 10;
+  --z-sticky: 20;
+  --z-drawer: 30;
+  --z-popover: 40;
+  --z-palette: 50;
+  --z-toast: 60;
+  --z-tooltip: 70;
+
+  /* motion: state change only */
+  --dur-instant: 80ms;
+  --dur-fast: 150ms;
+  --dur-base: 220ms;
+  --dur-slow: 420ms; /* snapshot swap tween */
+  --ease-out: cubic-bezier(0.25, 1, 0.5, 1); /* quart */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-instant: 0ms;
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-slow: 0ms;
+  }
+}
+
+/* ---------------------------------------------------------------- base */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-variation-settings: var(--mono-off);
+  font-size: var(--fs-base);
+  line-height: var(--lh-ui);
+  font-feature-settings: "tnum" 1, "ss01" 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  font-variation-settings: inherit;
+  color: inherit;
+}
+
+code,
+kbd,
+.mono {
+  font-family: var(--font-mono);
+  font-variation-settings: var(--mono-on);
+  font-size: 0.95em;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

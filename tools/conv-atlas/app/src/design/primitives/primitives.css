@@ -1,0 +1,390 @@
+/* Shared primitives. Tokens only; no raw colours here. */
+
+/* ---------------------------------------------------------------- swatch */
+.ca-swatch {
+  display: inline-block;
+  flex: none;
+}
+.ca-swatch--dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.ca-swatch--square {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.ca-swatch--line {
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+}
+[data-theme="light"] .ca-swatch--dot,
+[data-theme="light"] .ca-swatch--square {
+  box-shadow: inset 0 0 0 1px oklch(0 0 0 / 0.14);
+}
+
+/* ---------------------------------------------------------------- kbd */
+.ca-kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: var(--r-1);
+  background: var(--raised);
+  color: var(--ink-2);
+  font-size: var(--fs-xs);
+  line-height: 1;
+}
+.ca-kbd + .ca-kbd {
+  margin-left: 2px;
+}
+
+/* ---------------------------------------------------------------- chip */
+.ca-chip {
+  display: inline-flex;
+  align-items: stretch;
+  height: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--panel);
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.ca-chip[data-selected] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+.ca-chip[data-disabled] {
+  opacity: 0.5;
+}
+.ca-chip__main {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 0 var(--sp-5);
+  border: 0;
+  border-radius: inherit;
+  background: none;
+}
+button.ca-chip__main {
+  cursor: pointer;
+}
+button.ca-chip__main:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--ink);
+}
+button.ca-chip__main:active:not(:disabled) {
+  background: var(--press);
+}
+.ca-chip:has(.ca-chip__remove) .ca-chip__main {
+  padding-right: var(--sp-2);
+}
+.ca-chip__label {
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ca-chip__count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.ca-chip__remove {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  border: 0;
+  border-radius: 0 var(--r-pill) var(--r-pill) 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.ca-chip__remove:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+/* ---------------------------------------------------------------- segmented */
+.ca-seg {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border-radius: var(--r-2);
+  background: var(--raised);
+}
+.ca-seg__item {
+  height: 24px;
+  padding: 0 var(--sp-4);
+  border: 0;
+  border-radius: var(--r-1);
+  background: none;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.ca-seg--sm .ca-seg__item {
+  height: 20px;
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-xs);
+}
+.ca-seg__item:hover {
+  color: var(--ink);
+}
+.ca-seg__item[aria-checked="true"] {
+  background: var(--bg);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+/* ---------------------------------------------------------------- legend */
+.ca-legend {
+  min-width: 160px;
+  max-width: 240px;
+  padding: var(--sp-4) var(--sp-4) var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--panel);
+  font-size: var(--fs-sm);
+}
+.ca-legend__title {
+  margin: 0 0 var(--sp-3);
+  padding: 0 var(--sp-2);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+}
+.ca-legend__list {
+  max-height: 50vh;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.ca-legend__row,
+.ca-legend__row > button {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  width: 100%;
+  min-height: 22px;
+  padding: 0 var(--sp-2);
+  color: var(--ink-2);
+  text-align: left;
+}
+.ca-legend__row > button {
+  margin: 0 calc(-1 * var(--sp-2));
+  width: calc(100% + 2 * var(--sp-2));
+  border: 0;
+  border-radius: var(--r-1);
+  background: none;
+  cursor: pointer;
+}
+.ca-legend__row > button:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+.ca-legend__row[data-inactive] {
+  color: var(--faint);
+}
+.ca-legend__row[data-inactive] .ca-swatch {
+  opacity: 0.3;
+}
+.ca-legend__label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ca-legend__count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.ca-legend__more {
+  margin: var(--sp-2) 0 0;
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--r-1);
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+.ca-legend__more:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+/* ---------------------------------------------------------------- tooltip */
+.ca-tooltip {
+  position: fixed;
+  z-index: var(--z-tooltip);
+  max-width: 320px;
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--r-2);
+  background: var(--raised);
+  box-shadow: var(--shadow-pop);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-ui);
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------- empty state */
+.ca-empty {
+  display: grid;
+  place-content: center;
+  justify-items: start;
+  gap: var(--sp-4);
+  height: 100%;
+  max-width: 44ch;
+  margin: 0 auto;
+  padding: var(--sp-9);
+  color: var(--ink-2);
+}
+.ca-empty__title {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-medium);
+  text-wrap: balance;
+}
+.ca-empty[data-tone="error"] .ca-empty__title {
+  color: var(--danger);
+}
+.ca-empty__body {
+  line-height: var(--lh-prose);
+  text-wrap: pretty;
+}
+.ca-empty__body p {
+  margin: 0 0 var(--sp-4);
+}
+.ca-empty__action {
+  margin-top: var(--sp-2);
+}
+
+/* ---------------------------------------------------------------- view header */
+.ca-viewhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-6);
+  min-height: 44px;
+  padding: var(--sp-3) var(--sp-6);
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+.ca-viewhead__id {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-5);
+  min-width: 0;
+}
+.ca-viewhead__title {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-strong);
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+}
+.ca-viewhead__summary {
+  margin: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ca-viewhead__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  flex: none;
+}
+
+/* ---------------------------------------------------------------- button (shared by shell and views) */
+.ca-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  height: 28px;
+  padding: 0 var(--sp-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+  background: var(--panel);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+.ca-btn:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: var(--raised);
+}
+.ca-btn:active:not(:disabled) {
+  background: var(--press);
+}
+.ca-btn[data-variant="primary"] {
+  border-color: transparent;
+  background: var(--accent-strong);
+  color: var(--on-accent);
+}
+.ca-btn[data-variant="primary"]:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--accent-strong);
+  filter: brightness(1.08);
+}
+.ca-btn[data-variant="ghost"] {
+  border-color: transparent;
+  background: none;
+  color: var(--ink-2);
+}
+.ca-btn[data-variant="ghost"]:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--hover);
+  color: var(--ink);
+}
+.ca-btn[data-size="icon"] {
+  width: 28px;
+  padding: 0;
+}
+/* a pressed toggle (Loop, Insights) wears the selected-chip treatment: the accent edge is the
+   state cue at ≥3:1, so it does not rest on text lightness alone */
+.ca-btn[aria-pressed="true"],
+.ca-btn[aria-pressed="true"]:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+/* disabled comes last and outranks every variant and the pressed state: a dead button never wears accent */
+.ca-btn:disabled,
+.ca-btn[data-variant]:disabled,
+.ca-btn[aria-pressed="true"]:disabled {
+  color: var(--faint);
+  filter: none;
+  cursor: not-allowed;
+}
+.ca-btn[data-variant="primary"]:disabled,
+.ca-btn[aria-pressed="true"]:disabled {
+  border-color: var(--line);
+  background: var(--panel);
+}

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="conv-atlas: explore the flowspace3 conversation corpus over time" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='1' y='12' width='14' height='2' rx='1' fill='%23888'/%3E%3Crect x='9' y='1' width='2.5' height='14' rx='1' fill='%23d6429a'/%3E%3C/svg%3E"
+    />
+    <title>conv-atlas</title>
+    <script>
+      // stamp the theme before first paint (design/theme.ts takes over after load)
+      try {
+        var t = localStorage.getItem("conv-atlas.theme");
+        document.documentElement.dataset.theme = t === "light" || t === "dark" ? t : matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
