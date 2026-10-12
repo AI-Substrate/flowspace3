@@ -1,0 +1,29 @@
+tools/conv-atlas/app/src/views/chronos/Overview.tsx
+  s_cd6a23c36d0f97::t_07dc8f85910aea 16-18,26-36,150-151,161,201,203-204,227-229
+tools/conv-atlas/app/src/views/chronos/Timeline.tsx
+  s_236b6ea430b3ea::t_db566b0e0e6858 42-43,62-63,66-67,298-303,339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5c91ecf90d2dd0419c96d4a50270c78da9ea202a",
+  "prompts": {},
+  "sessions": {
+    "s_236b6ea430b3ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8029f851-2223-4b78-b2d2-a52d73465917",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_cd6a23c36d0f97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0db27c61-04ec-4f97-95bb-969cfb287d7e",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
