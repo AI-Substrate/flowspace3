@@ -1,0 +1,18 @@
+tools/conv-atlas/export/src/conv_atlas/bundle.py
+  h_9e71e8b09f7cf2 143
+tools/conv-atlas/export/src/conv_atlas/view.py
+  h_9e71e8b09f7cf2 312-336,338-341,344-345
+tools/conv-atlas/export/tests/test_bundle.py
+  h_9e71e8b09f7cf2 8,30-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6eb197c489063306fd8e6d85bb6d2b0824c32c0e",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
