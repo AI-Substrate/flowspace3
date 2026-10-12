@@ -1,0 +1,16 @@
+tools/conv-atlas/team/packet-critic.md
+  h_9e71e8b09f7cf2 3-10,43
+tools/conv-atlas/team/roster.md
+  h_9e71e8b09f7cf2 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "07c6070d966384c2707ec1c6c2d8c98193b0e289",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
