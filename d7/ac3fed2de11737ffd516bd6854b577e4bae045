@@ -1,0 +1,59 @@
+tools/conv-atlas/app/src/design/DESIGN.md
+  s_1ef31aa6bf178a::t_db3550dd8e723f 14,26
+tools/conv-atlas/app/src/design/palette.test.ts
+  s_285f51450317ed::t_0d9e5df9440b26 10,131-136
+tools/conv-atlas/app/src/design/palette.ts
+  s_285f51450317ed::t_e0a7e25ced3f0d 138-141,143
+tools/conv-atlas/app/src/design/primitives/primitives.css
+  s_236b6ea430b3ea::t_1953f77381a8e6 370-390
+tools/conv-atlas/app/src/shell/App.tsx
+  s_236b6ea430b3ea::t_d548e97dcb1bed 9,11,126-160,187
+tools/conv-atlas/app/src/shell/Detail.tsx
+  s_285f51450317ed::t_7a9390a6349f70 75,83-85,98,195,198
+tools/conv-atlas/app/src/shell/TopBar.tsx
+  s_cd6a23c36d0f97::t_6d6438f64d72af 36-43,45-46
+tools/conv-atlas/app/src/shell/format.ts
+  s_285f51450317ed::t_6ed74f160d9918 1,9-12,20-23
+tools/conv-atlas/app/src/shell/shell.css
+  s_285f51450317ed::t_8ebd5eed7432e2 175-179,219-221,269,272,1177-1178,1180,1186-1190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d7ac3fed2de11737ffd516bd6854b577e4bae045",
+  "prompts": {},
+  "sessions": {
+    "s_1ef31aa6bf178a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc2d2e8f-b8ca-4101-b706-075a4bf96be6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_236b6ea430b3ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8029f851-2223-4b78-b2d2-a52d73465917",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_285f51450317ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0bce4fdc-587f-4c46-82d7-0b1cdbc60145",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_cd6a23c36d0f97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0db27c61-04ec-4f97-95bb-969cfb287d7e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
