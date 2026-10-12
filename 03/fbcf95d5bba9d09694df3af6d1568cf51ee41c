@@ -1,0 +1,25 @@
+tools/conv-atlas/app/src/views/chronos/Composition.tsx
+  s_cd6a23c36d0f97::t_fdd725286842de 23,164-165,171,177,180
+tools/conv-atlas/app/src/views/chronos/index.ts
+  s_cd6a23c36d0f97::t_6e3d04c823b3f7 1,3-9
+tools/conv-atlas/app/src/views/chronos/transforms.test.ts
+  s_cd6a23c36d0f97::t_40c647b50b2fb0 24,260-272,325,333-334,337-341,347-348,356-366,369-377,380-396
+tools/conv-atlas/app/src/views/chronos/transforms.ts
+  s_cd6a23c36d0f97::t_bca019c640a2ff 8,35-45,311-317,320,483,485,496,498-499,510-512,526-527,553-557,559-562,566,571-572
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "03fbcf95d5bba9d09694df3af6d1568cf51ee41c",
+  "prompts": {},
+  "sessions": {
+    "s_cd6a23c36d0f97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0db27c61-04ec-4f97-95bb-969cfb287d7e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
