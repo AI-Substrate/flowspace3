@@ -1,0 +1,19 @@
+tools/conv-atlas/app/src/views/chronos/River.tsx
+  s_236b6ea430b3ea::t_18c3a8137fd951 379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b42e61331d13834569161b7ac6a0b9fa44463069",
+  "prompts": {},
+  "sessions": {
+    "s_236b6ea430b3ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8029f851-2223-4b78-b2d2-a52d73465917",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
