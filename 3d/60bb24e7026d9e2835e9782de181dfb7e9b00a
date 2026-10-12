@@ -1,0 +1,20 @@
+tools/conv-atlas/export/src/conv_atlas/labels/__init__.py
+  h_9e71e8b09f7cf2 10,19-22,29
+tools/conv-atlas/export/src/conv_atlas/labels/label.py
+  h_9e71e8b09f7cf2 1-333
+tools/conv-atlas/export/src/conv_atlas/labels/tag_map.py
+  h_9e71e8b09f7cf2 24,35
+tools/conv-atlas/export/tests/test_labels_label.py
+  h_9e71e8b09f7cf2 1-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3d60bb24e7026d9e2835e9782de181dfb7e9b00a",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
