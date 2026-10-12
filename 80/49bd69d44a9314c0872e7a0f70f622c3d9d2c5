@@ -1,0 +1,16 @@
+tools/conv-atlas/team/packet-sleuth.md
+  h_9e71e8b09f7cf2 1-59
+tools/conv-atlas/team/roster.md
+  h_9e71e8b09f7cf2 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8049bd69d44a9314c0872e7a0f70f622c3d9d2c5",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
