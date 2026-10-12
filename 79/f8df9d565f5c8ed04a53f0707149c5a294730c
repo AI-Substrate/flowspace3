@@ -1,0 +1,24 @@
+.gitignore
+  h_9e71e8b09f7cf2 41
+tools/conv-atlas/app/src/contract/types.ts
+  h_9e71e8b09f7cf2 43-46,57-60,110-112,114-115
+tools/conv-atlas/app/src/core/store.ts
+  h_9e71e8b09f7cf2 128-129
+tools/conv-atlas/contract/README.md
+  h_9e71e8b09f7cf2 32,38,41,45
+tools/conv-atlas/contract/bundle.schema.json
+  h_9e71e8b09f7cf2 64,75-76,100,105-107,242,248-250,365-366,369-373
+tools/conv-atlas/export/src/conv_atlas/view.py
+  h_9e71e8b09f7cf2 145-146,155-156,193-196,198-199,332-333,335-336,338-345,347
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "79f8df9d565f5c8ed04a53f0707149c5a294730c",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
