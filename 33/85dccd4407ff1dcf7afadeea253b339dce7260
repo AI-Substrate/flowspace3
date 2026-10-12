@@ -1,0 +1,21 @@
+tools/conv-atlas/app/src/views/atlas/graph/engine.ts
+  s_61dfe47e9838df::t_028f2d10b0e0cb 1-389
+tools/conv-atlas/app/src/views/atlas/lib/graphModel.test.ts
+  s_61dfe47e9838df::t_e59739007fdb33 1-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3385dccd4407ff1dcf7afadeea253b339dce7260",
+  "prompts": {},
+  "sessions": {
+    "s_61dfe47e9838df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cbe08128-4097-4473-9f99-71e9415824f6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
