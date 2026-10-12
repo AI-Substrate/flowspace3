@@ -1,0 +1,22 @@
+tools/conv-atlas/app/src/views/chronos/Overview.tsx
+  h_9e71e8b09f7cf2 11,13,106,123,135-139,201
+tools/conv-atlas/app/src/views/chronos/Timeline.tsx
+  h_9e71e8b09f7cf2 26,34,59-63,65,68,70,72,74,128,131-132
+tools/conv-atlas/app/src/views/chronos/testkit.ts
+  h_9e71e8b09f7cf2 40
+tools/conv-atlas/app/src/views/chronos/transforms.test.ts
+  h_9e71e8b09f7cf2 1-2,20,63,75,80-109
+tools/conv-atlas/app/src/views/chronos/transforms.ts
+  h_9e71e8b09f7cf2 6,11-39,47-48,70,72,75,77,80,82,88,133,319
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cd4319cb40f064eb00eeba94b685a661e4f75941",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
