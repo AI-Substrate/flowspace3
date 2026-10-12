@@ -1,0 +1,29 @@
+tools/conv-atlas/app/src/views/atlas/forceLayout.ts
+  s_cd6a23c36d0f97::t_461b6d32189367 1-48
+tools/conv-atlas/app/src/views/atlas/graph/engine.ts
+  s_236b6ea430b3ea::t_b46ca3fe50c931 20,61-70,85-87,217,247,285,292-293,297-309,331,338,341,346,352,367-368,375-377,383,398
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a9c1bad500c39977d5d155ec0a41d187074a9728",
+  "prompts": {},
+  "sessions": {
+    "s_236b6ea430b3ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8029f851-2223-4b78-b2d2-a52d73465917",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_cd6a23c36d0f97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0db27c61-04ec-4f97-95bb-969cfb287d7e",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
