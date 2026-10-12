@@ -1,0 +1,36 @@
+tools/conv-atlas/app/src/views/atlas/galaxy/Galaxy.tsx
+  h_9e71e8b09f7cf2 1-161
+tools/conv-atlas/app/src/views/atlas/galaxy/engine.ts
+  h_9e71e8b09f7cf2 1-709
+tools/conv-atlas/app/src/views/atlas/index.ts
+  h_9e71e8b09f7cf2 2,5-14
+tools/conv-atlas/app/src/views/atlas/lib/galaxyModel.test.ts
+  h_9e71e8b09f7cf2 1-102
+tools/conv-atlas/app/src/views/atlas/lib/galaxyModel.ts
+  h_9e71e8b09f7cf2 1-213
+tools/conv-atlas/app/src/views/atlas/lib/gate.test.ts
+  h_9e71e8b09f7cf2 1-55
+tools/conv-atlas/app/src/views/atlas/lib/gate.ts
+  h_9e71e8b09f7cf2 1-79
+tools/conv-atlas/app/src/views/atlas/lib/geometry.test.ts
+  h_9e71e8b09f7cf2 1-39
+tools/conv-atlas/app/src/views/atlas/lib/geometry.ts
+  h_9e71e8b09f7cf2 1-63
+tools/conv-atlas/app/src/views/atlas/lib/testSnapshot.ts
+  h_9e71e8b09f7cf2 1-53
+tools/conv-atlas/app/src/views/atlas/lib/tween.test.ts
+  h_9e71e8b09f7cf2 1-49
+tools/conv-atlas/app/src/views/atlas/lib/tween.ts
+  h_9e71e8b09f7cf2 1-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "477e02dc0d1119b8a87b88eaae811a55b82d101a",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
