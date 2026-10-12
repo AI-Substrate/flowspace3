@@ -1,0 +1,22 @@
+tools/conv-atlas/app/src/shell/CommandPalette.tsx
+  h_9e71e8b09f7cf2 50
+tools/conv-atlas/app/src/shell/Keys.tsx
+  h_9e71e8b09f7cf2 5-6,26,39-41,44-48,58-71,107-110,143-154
+tools/conv-atlas/app/src/shell/TopBar.tsx
+  h_9e71e8b09f7cf2 58,66-67,74-75,77-81
+tools/conv-atlas/app/src/shell/shell.css
+  h_9e71e8b09f7cf2 136-144,1047-1048,1065-1072
+tools/conv-atlas/app/src/shell/ui.ts
+  h_9e71e8b09f7cf2 19-20,27,38,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6c18674408bfb57196cddd79175b334e70f26b54",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
