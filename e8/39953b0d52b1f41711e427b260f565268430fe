@@ -1,0 +1,19 @@
+tools/conv-atlas/team/packet-oracle.md
+  s_9749a3ee9e2592::t_e41c45eb3683cb 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e839953b0d52b1f41711e427b260f565268430fe",
+  "prompts": {},
+  "sessions": {
+    "s_9749a3ee9e2592": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c59bbcb2-b448-48f2-89bd-3b38c1b9e81a",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
