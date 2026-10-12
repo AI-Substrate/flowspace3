@@ -1,0 +1,267 @@
+.gitignore
+  s_cd6a23c36d0f97::t_8b6d39c58232ce 27-41
+tools/conv-atlas/README.md
+  s_236b6ea430b3ea::t_44d664ddcb1605 1-49
+tools/conv-atlas/app/dataServer.ts
+  s_236b6ea430b3ea::t_78df7a27d658ee 1-53
+tools/conv-atlas/app/index.html
+  s_236b6ea430b3ea::t_4555cc3f663b6e 1-27
+tools/conv-atlas/app/package.json
+  s_236b6ea430b3ea::t_4efa42d1aa3997 1-39
+tools/conv-atlas/app/pnpm-lock.yaml
+  s_236b6ea430b3ea::t_b1106aa9cd56ec 1-1736
+tools/conv-atlas/app/src/contract/types.ts
+  s_236b6ea430b3ea::t_13c8ec48176d77 1-174
+tools/conv-atlas/app/src/core/colorSlots.test.ts
+  s_236b6ea430b3ea::t_b2b666dea3b27a 1-48
+tools/conv-atlas/app/src/core/colorSlots.ts
+  s_236b6ea430b3ea::t_c1b8f9566f7762 1-72
+tools/conv-atlas/app/src/core/data.ts
+  s_236b6ea430b3ea::t_477b80b5f271fe 1-116
+tools/conv-atlas/app/src/core/registry.ts
+  s_236b6ea430b3ea::t_47c469eea826b0 1-23
+tools/conv-atlas/app/src/core/runtime.ts
+  s_236b6ea430b3ea::t_11ecc29bc17b33 1-64
+tools/conv-atlas/app/src/core/semantics.test.ts
+  s_236b6ea430b3ea::t_825ffe92a2a442 1-73
+tools/conv-atlas/app/src/core/semantics.ts
+  s_236b6ea430b3ea::t_bd9443b6cc171e 1-113
+tools/conv-atlas/app/src/core/store.ts
+  s_236b6ea430b3ea::t_255cf32455ea23 1-155
+tools/conv-atlas/app/src/design/DESIGN.md
+  s_236b6ea430b3ea::t_134cf443a7defc 1-32
+tools/conv-atlas/app/src/design/palette.test.ts
+  s_236b6ea430b3ea::t_b9738a284d89a8 1-181
+tools/conv-atlas/app/src/design/palette.ts
+  s_236b6ea430b3ea::t_8ed126c0d7970a 1-307
+tools/conv-atlas/app/src/design/primitives/Chip.tsx
+  s_236b6ea430b3ea::t_79215cc4743678 1-52
+tools/conv-atlas/app/src/design/primitives/EmptyState.tsx
+  s_236b6ea430b3ea::t_a70de4ef1288c2 1-22
+tools/conv-atlas/app/src/design/primitives/Kbd.tsx
+  s_236b6ea430b3ea::t_383b84031a1621 1-4
+tools/conv-atlas/app/src/design/primitives/Legend.tsx
+  s_236b6ea430b3ea::t_e7e5b22597a83a 1-65
+tools/conv-atlas/app/src/design/primitives/SegmentedControl.tsx
+  s_236b6ea430b3ea::t_ecc2d0ab620bc7 1-53
+tools/conv-atlas/app/src/design/primitives/Swatch.tsx
+  s_236b6ea430b3ea::t_249ee1b4656abb 1-6
+tools/conv-atlas/app/src/design/primitives/Tooltip.tsx
+  s_236b6ea430b3ea::t_74fe8086616abf 1-41
+tools/conv-atlas/app/src/design/primitives/ViewHeader.tsx
+  s_236b6ea430b3ea::t_087aec791bc61a 1-22
+tools/conv-atlas/app/src/design/primitives/index.ts
+  s_236b6ea430b3ea::t_61d796c2cd0efc 1-14
+tools/conv-atlas/app/src/design/primitives/primitives.css
+  s_236b6ea430b3ea::t_39cc81759ab4b0 1-390
+tools/conv-atlas/app/src/design/theme.ts
+  s_236b6ea430b3ea::t_15562e0012114f 1-60
+tools/conv-atlas/app/src/design/tokens.css
+  s_236b6ea430b3ea::t_3af4cf308ee36b 1-197
+tools/conv-atlas/app/src/main.tsx
+  s_236b6ea430b3ea::t_8a5cba36adf25e 1-13
+tools/conv-atlas/app/src/shell/App.tsx
+  s_236b6ea430b3ea::t_8f44fdb485e1ea 1-208
+tools/conv-atlas/app/src/shell/CommandPalette.tsx
+  s_236b6ea430b3ea::t_a6c65376ef746e 1-224
+tools/conv-atlas/app/src/shell/Detail.tsx
+  s_236b6ea430b3ea::t_9df77b9ba47f4e 1-257
+tools/conv-atlas/app/src/shell/FilterBar.tsx
+  s_236b6ea430b3ea::t_2ea10a76c19cf4 1-226
+tools/conv-atlas/app/src/shell/Insights.tsx
+  s_236b6ea430b3ea::t_8ae9b9107c6bae 1-320
+tools/conv-atlas/app/src/shell/Keys.tsx
+  s_236b6ea430b3ea::t_a77bd020247977 1-158
+tools/conv-atlas/app/src/shell/Popover.tsx
+  s_236b6ea430b3ea::t_67980660ed67f9 1-71
+tools/conv-atlas/app/src/shell/Reader.tsx
+  s_236b6ea430b3ea::t_4427e85d752f2d 1-241
+tools/conv-atlas/app/src/shell/TopBar.tsx
+  s_236b6ea430b3ea::t_9dbd0ce3ed208d 1-120
+tools/conv-atlas/app/src/shell/Transport.tsx
+  s_236b6ea430b3ea::t_1a6d871cc4a06c 1-368
+tools/conv-atlas/app/src/shell/ViewFrame.tsx
+  s_236b6ea430b3ea::t_d27dd76d9eadc8 1-57
+tools/conv-atlas/app/src/shell/copy.ts
+  s_236b6ea430b3ea::t_8c29c6225ffa56 1-9
+tools/conv-atlas/app/src/shell/format.ts
+  s_236b6ea430b3ea::t_a8a2b3092d1b54 1-49
+tools/conv-atlas/app/src/shell/hashState.test.ts
+  s_236b6ea430b3ea::t_9fae293d4c6c5a 1-29
+tools/conv-atlas/app/src/shell/hashState.ts
+  s_236b6ea430b3ea::t_763e577494bde7 1-126
+tools/conv-atlas/app/src/shell/hooks.ts
+  s_236b6ea430b3ea::t_71514807ccb863 1-46
+tools/conv-atlas/app/src/shell/icons.tsx
+  s_236b6ea430b3ea::t_4c5cc87a39833d 1-79
+tools/conv-atlas/app/src/shell/shell.css
+  s_236b6ea430b3ea::t_c4edd8f9c9fadf 1-1207
+tools/conv-atlas/app/src/shell/ui.ts
+  s_236b6ea430b3ea::t_f11e6f9c1accc3 1-51
+tools/conv-atlas/app/src/shell/watcher.ts
+  s_236b6ea430b3ea::t_b050118c2da27d 1-34
+tools/conv-atlas/app/src/views/atlas/forceLayout.ts
+  s_236b6ea430b3ea::t_39ec2a5e6f704c 1-58
+tools/conv-atlas/app/src/views/atlas/galaxy/Galaxy.tsx
+  s_236b6ea430b3ea::t_45bf1a22d49d1b 1-129
+tools/conv-atlas/app/src/views/atlas/galaxy/engine.ts
+  s_236b6ea430b3ea::t_3bbf6cca9a3cc5 1-754
+tools/conv-atlas/app/src/views/atlas/graph/SimilarityGraph.tsx
+  s_236b6ea430b3ea::t_10446fcf774ee0 1-66
+tools/conv-atlas/app/src/views/atlas/graph/engine.ts
+  s_236b6ea430b3ea::t_8cc39d5beaefdd 1-441
+tools/conv-atlas/app/src/views/atlas/index.ts
+  s_236b6ea430b3ea::t_afe04ef920937d 1-35
+tools/conv-atlas/app/src/views/atlas/lib/coloring.ts
+  s_236b6ea430b3ea::t_ad65f85c502b5e 1-120
+tools/conv-atlas/app/src/views/atlas/lib/galaxyModel.test.ts
+  s_236b6ea430b3ea::t_07d3d3c24051fa 1-145
+tools/conv-atlas/app/src/views/atlas/lib/galaxyModel.ts
+  s_236b6ea430b3ea::t_e266291e7fee0e 1-147
+tools/conv-atlas/app/src/views/atlas/lib/gate.test.ts
+  s_236b6ea430b3ea::t_d135e041148f35 1-54
+tools/conv-atlas/app/src/views/atlas/lib/gate.ts
+  s_236b6ea430b3ea::t_d48223f5fa1d2c 1-89
+tools/conv-atlas/app/src/views/atlas/lib/geometry.test.ts
+  s_236b6ea430b3ea::t_2f301a81bf6c64 1-39
+tools/conv-atlas/app/src/views/atlas/lib/geometry.ts
+  s_236b6ea430b3ea::t_5408b4bb01e908 1-63
+tools/conv-atlas/app/src/views/atlas/lib/graphModel.test.ts
+  s_236b6ea430b3ea::t_e7a9489c67e2d6 1-50
+tools/conv-atlas/app/src/views/atlas/lib/graphModel.ts
+  s_236b6ea430b3ea::t_31fcf0c6095c84 1-113
+tools/conv-atlas/app/src/views/atlas/lib/seatsModel.test.ts
+  s_236b6ea430b3ea::t_aecdd63283da7f 1-71
+tools/conv-atlas/app/src/views/atlas/lib/seatsModel.ts
+  s_236b6ea430b3ea::t_469323777d3f3d 1-92
+tools/conv-atlas/app/src/views/atlas/lib/testSnapshot.ts
+  s_236b6ea430b3ea::t_402b62b04aa83d 1-49
+tools/conv-atlas/app/src/views/atlas/lib/tween.test.ts
+  s_236b6ea430b3ea::t_5bfb2ea4e9f15b 1-49
+tools/conv-atlas/app/src/views/atlas/lib/tween.ts
+  s_236b6ea430b3ea::t_01d3854f829bf7 1-94
+tools/conv-atlas/app/src/views/atlas/seats/Seats.tsx
+  s_236b6ea430b3ea::t_b1dd8606a0b1cd 1-119
+tools/conv-atlas/app/src/views/atlas/seats/engine.ts
+  s_236b6ea430b3ea::t_907ef8436390b7 1-457
+tools/conv-atlas/app/src/views/atlas/shared.tsx
+  s_236b6ea430b3ea::t_a9d150e50606bd 1-121
+tools/conv-atlas/app/src/views/atlas/sigmaTheme.ts
+  s_236b6ea430b3ea::t_7d210f915f9906 1-90
+tools/conv-atlas/app/src/views/chronos/Composition.tsx
+  s_236b6ea430b3ea::t_3ec0ea89a1f6cf 1-322
+tools/conv-atlas/app/src/views/chronos/Overview.tsx
+  s_236b6ea430b3ea::t_afaba982442477 1-344
+tools/conv-atlas/app/src/views/chronos/River.tsx
+  s_236b6ea430b3ea::t_aea2e5710fe6d4 1-542
+tools/conv-atlas/app/src/views/chronos/Tags.tsx
+  s_236b6ea430b3ea::t_0e5231221f000e 1-339
+tools/conv-atlas/app/src/views/chronos/Timeline.tsx
+  s_236b6ea430b3ea::t_3d9ccb49fff45a 1-484
+tools/conv-atlas/app/src/views/chronos/index.ts
+  s_236b6ea430b3ea::t_c48bcca910221f 1-53
+tools/conv-atlas/app/src/views/chronos/testkit.ts
+  s_236b6ea430b3ea::t_ef63fd67b930e4 1-45
+tools/conv-atlas/app/src/views/chronos/transforms.test.ts
+  s_236b6ea430b3ea::t_883370dd7c4c46 1-449
+tools/conv-atlas/app/src/views/chronos/transforms.ts
+  s_236b6ea430b3ea::t_7904320e7be855 1-645
+tools/conv-atlas/app/src/views/chronos/ui.tsx
+  s_236b6ea430b3ea::t_e8ded9adc51482 1-57
+tools/conv-atlas/app/src/vite-env.d.ts
+  s_236b6ea430b3ea::t_21cc4e63dc29cb 1-4
+tools/conv-atlas/app/tsconfig.json
+  s_236b6ea430b3ea::t_ab719cfb5c3f58 1-20
+tools/conv-atlas/app/vite.config.ts
+  s_236b6ea430b3ea::t_41de305a11d032 1-9
+tools/conv-atlas/check.sh
+  s_236b6ea430b3ea::t_94d45da826e54b 1-10
+tools/conv-atlas/contract/README.md
+  s_236b6ea430b3ea::t_131d3212c559b3 1-77
+tools/conv-atlas/contract/bundle.schema.json
+  s_236b6ea430b3ea::t_543a9bc32cb404 1-409
+tools/conv-atlas/export/pyproject.toml
+  s_236b6ea430b3ea::t_6be8af9ceb89ec 1-39
+tools/conv-atlas/export/src/conv_atlas/bundle.py
+  s_236b6ea430b3ea::t_fee0522c22503e 1-198
+tools/conv-atlas/export/src/conv_atlas/cli.py
+  s_236b6ea430b3ea::t_0ed51945ad4f60 1-137
+tools/conv-atlas/export/src/conv_atlas/commands.py
+  s_236b6ea430b3ea::t_396bf591f82fcb 1-162
+tools/conv-atlas/export/src/conv_atlas/contract.py
+  s_236b6ea430b3ea::t_9348b46ab299ee 1-338
+tools/conv-atlas/export/src/conv_atlas/export.py
+  s_236b6ea430b3ea::t_a26291e0763bef 1-327
+tools/conv-atlas/export/src/conv_atlas/extract.py
+  s_236b6ea430b3ea::t_f52185d527f62f 1-258
+tools/conv-atlas/export/src/conv_atlas/fixture.py
+  s_236b6ea430b3ea::t_a7ba818f000dfd 1-508
+tools/conv-atlas/export/src/conv_atlas/insights.py
+  s_236b6ea430b3ea::t_1bad2b34157def 1-160
+tools/conv-atlas/export/src/conv_atlas/labels/__init__.py
+  s_236b6ea430b3ea::t_4f3ed9e4c509de 1-29
+tools/conv-atlas/export/src/conv_atlas/labels/label.py
+  s_236b6ea430b3ea::t_b432d13cda0589 1-398
+tools/conv-atlas/export/src/conv_atlas/labels/normalize.py
+  s_236b6ea430b3ea::t_bc56776c177529 1-96
+tools/conv-atlas/export/src/conv_atlas/labels/tag_map.py
+  s_236b6ea430b3ea::t_e13ebe09021679 1-199
+tools/conv-atlas/export/src/conv_atlas/model.py
+  s_236b6ea430b3ea::t_bc3f237850627e 1-966
+tools/conv-atlas/export/src/conv_atlas/paths.py
+  s_236b6ea430b3ea::t_ef526f1e88b5fc 1-31
+tools/conv-atlas/export/src/conv_atlas/readme.py
+  s_236b6ea430b3ea::t_db95d52960765a 1-460
+tools/conv-atlas/export/src/conv_atlas/serve.py
+  s_236b6ea430b3ea::t_6b038486854f89 1-47
+tools/conv-atlas/export/src/conv_atlas/sessions.py
+  s_236b6ea430b3ea::t_dc99fcd2fbd875 1-63
+tools/conv-atlas/export/src/conv_atlas/view.py
+  s_236b6ea430b3ea::t_2e87c3ec139cac 1-347
+tools/conv-atlas/export/tests/test_bundle.py
+  s_236b6ea430b3ea::t_2bbb054154df7d 1-68
+tools/conv-atlas/export/tests/test_commands.py
+  s_236b6ea430b3ea::t_dc5319c173ef51 1-67
+tools/conv-atlas/export/tests/test_export.py
+  s_236b6ea430b3ea::t_1134d1be4914c9 1-161
+tools/conv-atlas/export/tests/test_extract.py
+  s_236b6ea430b3ea::t_ebf9a0227afed0 1-58
+tools/conv-atlas/export/tests/test_insights.py
+  s_236b6ea430b3ea::t_f83141d6285585 1-140
+tools/conv-atlas/export/tests/test_labels_label.py
+  s_236b6ea430b3ea::t_93a581891d759b 1-250
+tools/conv-atlas/export/tests/test_labels_normalize.py
+  s_236b6ea430b3ea::t_f9269516cfc5f2 1-145
+tools/conv-atlas/export/tests/test_model.py
+  s_236b6ea430b3ea::t_030c00b6621158 1-508
+tools/conv-atlas/export/tests/test_model_sessions.py
+  s_236b6ea430b3ea::t_c5e6cb36f009ed 1-42
+tools/conv-atlas/export/tests/test_readme.py
+  s_236b6ea430b3ea::t_2fd8ac7740d4ef 1-112
+tools/conv-atlas/export/uv.lock
+  s_236b6ea430b3ea::t_5d65e3818be55c 1-616
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e82708b476819cd14217ec6c7cb99010cdc682fc",
+  "prompts": {},
+  "sessions": {
+    "s_236b6ea430b3ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8029f851-2223-4b78-b2d2-a52d73465917",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_cd6a23c36d0f97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0db27c61-04ec-4f97-95bb-969cfb287d7e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
