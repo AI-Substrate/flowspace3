@@ -86,6 +86,23 @@ pub struct Hit {
     /// seat. Absent, including the key, on every other hit.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent: Option<crate::ConversationAgent>,
+    /// Hits from this one's conversation or file that ranked high enough for
+    /// this page but were moved below it, so one source cannot fill the page.
+    /// On the top hit of that conversation or file only; absent otherwise.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub balanced: Option<Balanced>,
+}
+
+/// What balancing moved down from one conversation or file.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Balanced {
+    /// `conversation` or `file`.
+    pub by: String,
+    /// Hits from it that ranked within this page or earlier and were moved
+    /// below. They are not dropped: later pages, or `see_all`, show them.
+    pub moved_down: usize,
+    /// The same search with balancing off: the raw ranking.
+    pub see_all: String,
 }
 
 /// Counts from the scored set before the caller's display limit is applied.

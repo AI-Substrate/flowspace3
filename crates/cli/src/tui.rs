@@ -1324,6 +1324,7 @@ mod tests {
             worktree: Some(worktree.to_string()),
             ddoc: None,
             agent: None,
+            balanced: None,
         }
     }
 

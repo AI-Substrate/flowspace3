@@ -112,6 +112,15 @@ vector (`smart`). Both compete internally, and `match_field` reports which won.
   the one that built the index** — that one looks exactly like a broken search,
   because vectors are only read under the `model_key` that wrote them.
   `flowspace3 doctor` names the active providers.
+- **One conversation or file cannot fill a page.** A page keeps at most two
+  hits per conversation and one per file, in rank order, and moves the rest
+  below; nothing is dropped, so later pages still reach them. The top kept hit
+  of a conversation or file that lost hits carries `balanced` (`by`,
+  `moved_down`, and `see_all`: this same page with `--no-balance`), and
+  `meta.balanced` totals them. An identifier-exact hit (score 1.0) never
+  moves. A search inside one conversation (`ask --conversation`) is never
+  balanced, nor is a page where only one conversation (or one file) answered.
+  `--no-balance` returns the raw ranking.
 - **A search answers even when the embedder does not.** The query is embedded
   within 5 seconds or not at all. When the embedder fails or does not answer
   (an expired login, an unreachable token endpoint), the search returns its

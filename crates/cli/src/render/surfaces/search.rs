@@ -74,6 +74,13 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
             {
                 element.push_str(&format!("\n{}", agent.magenta()));
             }
+            if let Some(balanced) = &hit.balanced {
+                let note = format!(
+                    "+{} more from this {} moved down for balance (--no-balance shows them)",
+                    balanced.moved_down, balanced.by
+                );
+                element.push_str(&format!("\n{}", note.yellow()));
+            }
             if let Some(blurb) = hit
                 .smart
                 .as_deref()
@@ -186,6 +193,23 @@ mod tests {
         let screen = anstream::adapter::strip_str(&render(&envelope, 120).unwrap()).to_string();
         assert!(screen.contains("both"), "{screen}");
         assert!(screen.contains("exact_name"), "{screen}");
+    }
+
+    #[test]
+    fn a_balanced_hit_says_what_moved_down() {
+        let envelope: Envelope<Value> = serde_json::from_str(
+            r#"{"ok":true,"command":"search","v":1,
+                "data":{"results":[{"address":"conv:6ba7b810-9dad-11d1-80b4-00c04fd430c8#t4",
+                    "score":0.7,"channel":"semantic","match_field":"","kind":"turn",
+                    "subkind":"agent","name":"t4","span":[4,4],"snippet":"the fix","smart":null,
+                    "tags":[],"repo":null,"path":null,"worktree":null,
+                    "balanced":{"by":"conversation","moved_down":3,
+                        "see_all":"flowspace3 search 'q' --limit 10 --offset 0 --no-balance"}}]}}"#,
+        )
+        .unwrap();
+        let screen = anstream::adapter::strip_str(&render(&envelope, 120).unwrap()).to_string();
+        assert!(screen.contains("+3 more from this conversation"), "{screen}");
+        assert!(screen.contains("--no-balance"), "{screen}");
     }
 
     #[test]

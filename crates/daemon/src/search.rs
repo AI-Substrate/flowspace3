@@ -92,7 +92,25 @@ pub struct SearchRequest {
     /// Hidden by default because they echo the query back at score 1.0.
     #[serde(default)]
     pub include_retrieval: bool,
+    /// Rank without balancing: let one conversation or file fill the page.
+    #[serde(default)]
+    pub no_balance: bool,
 }
+
+/// The CLI flag that turns balancing off.
+pub const NO_BALANCE_FLAG: &str = "--no-balance";
+
+/// Hits a page keeps from one conversation before the rest move down.
+///
+/// Measured on 60 rediscovery queries against prod on 2026-10-13 (`--repo all`):
+/// one conversation took 43% of a top 10 on average (57% under cwd scope),
+/// and a cap of two took that to 22% (5.5 to 7.2 distinct conversations), with
+/// the target conversation found in 52 of 60 top 10s rather than 49.
+const CONVERSATION_CAP: usize = 2;
+
+/// Hits a page keeps from one file before the rest move down. Same bench:
+/// 31 of 55 code top 5s repeated a file, and 2 of 55 with a cap of one.
+const FILE_CAP: usize = 1;
 
 /// The CLI flag that turns retrieval-turn hiding off.
 pub const INCLUDE_RETRIEVAL_FLAG: &str = "--include-retrieval";
@@ -644,6 +662,13 @@ async fn search_filtered(
         lexical_hits.iter().map(|hit| render_lexical(hit, query)),
         hits.iter().map(|hit| render(hit, query)),
     );
+    // Jordan's rule: never balance inside one transcript, and never when only
+    // one conversation answered (there is nothing to balance it against).
+    let ranked = if request.no_balance {
+        ranked
+    } else {
+        balance(ranked, conversation.is_none(), page_end_index)
+    };
     let composition = composition(&ranked);
     let outscored = match (&elsewhere, ranked.first()) {
         (Some(found), Some(top)) => found.best_score > top.score,
@@ -771,6 +796,97 @@ async fn semantic_leg(
             exact_scan: false,
         }),
     }
+}
+
+/// What a hit is balanced by: its conversation, or its file.
+#[derive(Clone, PartialEq, Eq, Hash)]
+enum Source {
+    Conversation(String),
+    File(Option<String>, String),
+}
+
+impl Source {
+    fn of(hit: &Hit) -> Self {
+        if hit.kind == "turn" {
+            let guid = hit.address.split('#').next().unwrap_or(&hit.address);
+            return Source::Conversation(guid.to_string());
+        }
+        let file = hit.path.clone().unwrap_or_else(|| {
+            hit.address
+                .split("::")
+                .next()
+                .unwrap_or(&hit.address)
+                .to_string()
+        });
+        Source::File(hit.repo.clone(), file)
+    }
+
+    fn cap(&self) -> usize {
+        match self {
+            Source::Conversation(_) => CONVERSATION_CAP,
+            Source::File(..) => FILE_CAP,
+        }
+    }
+
+    fn by(&self) -> &'static str {
+        match self {
+            Source::Conversation(_) => "conversation",
+            Source::File(..) => "file",
+        }
+    }
+}
+
+/// Keep at most [`CONVERSATION_CAP`] hits per conversation and [`FILE_CAP`]
+/// per file in rank order, and move the rest below, in their own order.
+///
+/// Nothing is dropped: a moved hit is on a later page. An identifier-exact
+/// hit (score 1.0) never moves. Conversations are balanced only when
+/// `across_conversations` (not a search inside one transcript) and more than
+/// one conversation answered; files only when more than one file answered. The top kept hit of each source that lost hits
+/// from within the first `page_end` ranks says how many, in `balanced`.
+fn balance(ranked: Vec<Hit>, across_conversations: bool, page_end: usize) -> Vec<Hit> {
+    let sources: std::collections::HashSet<Source> = ranked.iter().map(Source::of).collect();
+    let conversations = sources
+        .iter()
+        .filter(|source| matches!(source, Source::Conversation(_)))
+        .count();
+    let balance_conversations = across_conversations && conversations > 1;
+    let balance_files = sources.len() - conversations > 1;
+
+    let mut kept_per: std::collections::HashMap<Source, usize> = std::collections::HashMap::new();
+    let mut moved_per: std::collections::HashMap<Source, usize> = std::collections::HashMap::new();
+    let mut kept = Vec::with_capacity(ranked.len());
+    let mut moved = Vec::new();
+    for (rank, hit) in ranked.into_iter().enumerate() {
+        let source = Source::of(&hit);
+        let exempt = hit.score >= 1.0
+            || match source {
+                Source::Conversation(_) => !balance_conversations,
+                Source::File(..) => !balance_files,
+            };
+        let count = kept_per.entry(source.clone()).or_default();
+        if exempt || *count < source.cap() {
+            *count += 1;
+            kept.push(hit);
+        } else {
+            if rank < page_end {
+                *moved_per.entry(source).or_default() += 1;
+            }
+            moved.push(hit);
+        }
+    }
+    for hit in &mut kept {
+        let source = Source::of(hit);
+        if let Some(moved_down) = moved_per.remove(&source) {
+            hit.balanced = Some(fs3_core::views::search::Balanced {
+                by: source.by().to_string(),
+                moved_down,
+                see_all: String::new(),
+            });
+        }
+    }
+    kept.extend(moved);
+    kept
 }
 
 fn composition(hits: &[Hit]) -> SearchComposition {
@@ -1140,6 +1256,7 @@ fn render(hit: &SearchHit, query: &str) -> Hit {
             .map(|meta| ddoc_hit(meta, hit.path.as_deref())),
         // Filled for conversation turns once the page is known: see `attach_agents`.
         agent: None,
+        balanced: None,
     }
 }
 
@@ -1170,6 +1287,7 @@ fn render_lexical(hit: &LexicalHit, query: &str) -> Hit {
             .map(|meta| ddoc_hit(meta, hit.path.as_deref())),
         // Filled for conversation turns once the page is known: see `attach_agents`.
         agent: None,
+        balanced: None,
     }
 }
 
@@ -1424,6 +1542,7 @@ mod tests {
             worktree: None,
             ddoc: None,
             agent: None,
+            balanced: None,
         }
     }
 
@@ -1534,6 +1653,7 @@ mod tests {
             worktree: None,
             ddoc: None,
             agent: None,
+            balanced: None,
         }
     }
 
@@ -1904,5 +2024,117 @@ mod tests {
                 reason.detail
             );
         }
+    }
+
+    fn turn_hit(conversation: &str, turn: u32, score: f64) -> Hit {
+        Hit {
+            address: format!("conv:{conversation}#t{turn}"),
+            kind: "turn".to_string(),
+            ..ranked("turn", SearchChannel::Semantic, score)
+        }
+    }
+
+    fn code_hit(path: &str, name: &str, score: f64) -> Hit {
+        Hit {
+            address: format!("el:git:r/{path}::{name}"),
+            repo: Some("git:r".to_string()),
+            path: Some(path.to_string()),
+            ..ranked(name, SearchChannel::Semantic, score)
+        }
+    }
+
+    fn addresses(hits: &[Hit]) -> Vec<&str> {
+        hits.iter().map(|hit| hit.address.as_str()).collect()
+    }
+
+    #[test]
+    fn one_conversation_keeps_two_hits_and_its_top_hit_says_what_moved() {
+        let hits = vec![
+            turn_hit("a", 1, 0.9),
+            turn_hit("a", 2, 0.89),
+            turn_hit("a", 3, 0.88),
+            turn_hit("a", 4, 0.87),
+            turn_hit("b", 1, 0.5),
+            turn_hit("c", 1, 0.4),
+        ];
+        let balanced = balance(hits, true, 10);
+        assert_eq!(
+            addresses(&balanced),
+            [
+                "conv:a#t1", "conv:a#t2", "conv:b#t1", "conv:c#t1", "conv:a#t3", "conv:a#t4"
+            ],
+            "moved hits keep their order below, on a later page"
+        );
+        let note = balanced[0].balanced.as_ref().expect("the top hit discloses");
+        assert_eq!((note.by.as_str(), note.moved_down), ("conversation", 2));
+        assert!(balanced[1..].iter().all(|hit| hit.balanced.is_none()));
+    }
+
+    #[test]
+    fn only_what_ranked_within_the_page_counts_as_moved() {
+        let hits = vec![
+            turn_hit("a", 1, 0.9),
+            turn_hit("a", 2, 0.89),
+            turn_hit("a", 3, 0.88),
+            turn_hit("b", 1, 0.5),
+            turn_hit("a", 4, 0.1),
+        ];
+        let balanced = balance(hits, true, 3);
+        let note = balanced[0].balanced.as_ref().expect("discloses");
+        assert_eq!(note.moved_down, 1, "t4 ranked below the page anyway");
+    }
+
+    /// Jordan's rule: never balance inside one transcript, and never when only
+    /// one conversation answered.
+    #[test]
+    fn one_conversation_or_a_search_inside_one_is_never_balanced() {
+        let single: Vec<Hit> = (1..=5).map(|turn| turn_hit("a", turn, 0.9)).collect();
+        let kept = balance(single.clone(), true, 10);
+        assert_eq!(kept, single, "only one conversation answered");
+
+        let mixed = vec![
+            turn_hit("a", 1, 0.9),
+            turn_hit("a", 2, 0.8),
+            turn_hit("a", 3, 0.7),
+            turn_hit("b", 1, 0.6),
+        ];
+        assert_eq!(
+            balance(mixed.clone(), false, 10),
+            mixed,
+            "a search inside one transcript"
+        );
+    }
+
+    #[test]
+    fn code_keeps_one_hit_per_file_and_an_exact_identifier_never_moves() {
+        let mut exact = code_hit("src/a.rs", "needle", 1.0);
+        exact.channel = SearchChannel::Both;
+        let hits = vec![
+            code_hit("src/a.rs", "first", 0.9),
+            exact,
+            code_hit("src/a.rs", "third", 0.8),
+            code_hit("src/b.rs", "other", 0.5),
+        ];
+        let balanced = balance(hits, true, 10);
+        assert_eq!(
+            addresses(&balanced),
+            [
+                "el:git:r/src/a.rs::first",
+                "el:git:r/src/a.rs::needle",
+                "el:git:r/src/b.rs::other",
+                "el:git:r/src/a.rs::third"
+            ]
+        );
+        let note = balanced[0].balanced.as_ref().expect("discloses");
+        assert_eq!((note.by.as_str(), note.moved_down), ("file", 1));
+    }
+
+    #[test]
+    fn hits_from_one_file_are_not_balanced() {
+        let hits = vec![
+            code_hit("src/a.rs", "first", 0.9),
+            code_hit("src/a.rs", "second", 0.8),
+        ];
+        assert_eq!(balance(hits.clone(), true, 10), hits);
     }
 }

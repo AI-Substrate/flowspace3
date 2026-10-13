@@ -40,7 +40,7 @@ use crate::wiring::AppState;
 use fs3_core::views::read::{GetPayload, TreeResult};
 use fs3_core::views::remove::{GcCounts, RemoveReport};
 use fs3_core::views::roots::RootReport;
-use fs3_core::views::search::SearchResults;
+use fs3_core::views::search::{Hit, SearchResults};
 use fs3_core::views::status::StatusReport;
 
 /// What `GET /health` answers with.
@@ -690,8 +690,13 @@ async fn search(
                     clause
                 }
             });
+            let mut balanced_hits = outcome.results;
+            let moved = fill_balanced(&mut balanced_hits, &request, outcome.limit);
+            if let Some(moved) = &moved {
+                meta["balanced"] = serde_json::json!(moved);
+            }
             let results = SearchResults {
-                results: outcome.results,
+                results: balanced_hits,
                 offset: outcome.offset,
                 next_offset: outcome.next_offset,
                 composition: outcome.composition,
@@ -701,6 +706,10 @@ async fn search(
                     other_repo_hits: outcome.other_repo_hits,
                     outscored: outcome.outscored,
                 },
+            };
+            let next = match &moved {
+                Some(moved) => format!("{next}; {}", balanced_clause(moved)),
+                None => next,
             };
             let next = crate::scope::steer(&scope, &next);
             let next = if crate::ask_hint::looks_like_question(&request.q) {
@@ -850,7 +859,58 @@ fn widen_command(request: &SearchRequest) -> String {
         Some(false) => args.push("--gate-closed".to_string()),
         None => {}
     }
+    if request.no_balance {
+        args.push(crate::search::NO_BALANCE_FLAG.to_string());
+    }
     args.join(" ")
+}
+
+/// What balancing moved down across a page (`meta.balanced`).
+#[derive(Debug, Serialize)]
+struct MovedDown {
+    /// Hits moved below their conversation's top two.
+    conversations: usize,
+    /// Hits moved below their file's top one.
+    files: usize,
+    /// This page, ranked without balancing.
+    command: String,
+}
+
+/// Point every balanced hit at the raw ranking, and total what moved.
+fn fill_balanced(hits: &mut [Hit], request: &SearchRequest, limit: i64) -> Option<MovedDown> {
+    let command = no_balance_command(request, limit);
+    let mut moved = MovedDown {
+        conversations: 0,
+        files: 0,
+        command,
+    };
+    for balanced in hits.iter_mut().filter_map(|hit| hit.balanced.as_mut()) {
+        balanced.see_all.clone_from(&moved.command);
+        match balanced.by.as_str() {
+            "conversation" => moved.conversations += balanced.moved_down,
+            _ => moved.files += balanced.moved_down,
+        }
+    }
+    (moved.conversations + moved.files > 0).then_some(moved)
+}
+
+/// The steer for a balanced page.
+fn balanced_clause(moved: &MovedDown) -> String {
+    format!(
+        "{} hit(s) moved down for balance (at most two per conversation, one per file; each \
+         balanced hit says how many of its own): `{}` shows the raw ranking",
+        moved.conversations + moved.files,
+        moved.command
+    )
+}
+
+/// This same page, ranked without balancing.
+fn no_balance_command(request: &SearchRequest, limit: i64) -> String {
+    let raw = SearchRequest {
+        no_balance: true,
+        ..request.clone()
+    };
+    next_page_command(&raw, limit, request.offset.unwrap_or(0))
 }
 
 fn next_page_command(request: &SearchRequest, limit: i64, next_offset: i64) -> String {
@@ -886,6 +946,9 @@ fn next_page_command(request: &SearchRequest, limit: i64, next_offset: i64) -> S
     }
     if request.include_retrieval {
         args.push(crate::search::INCLUDE_RETRIEVAL_FLAG.to_string());
+    }
+    if request.no_balance {
+        args.push(crate::search::NO_BALANCE_FLAG.to_string());
     }
     args.join(" ")
 }
