@@ -866,7 +866,11 @@ pub async fn embed_items(
         match &result {
             Ok(_) => state.embedder_health.answered(),
             // Answers about the request, from an embedder that is answering.
-            Err(fs3_core::Error::InputTooLong { .. } | fs3_core::Error::RateLimited { .. }) => {}
+            Err(
+                fs3_core::Error::InputTooLong { .. }
+                | fs3_core::Error::RequestTooLarge { .. }
+                | fs3_core::Error::RateLimited { .. },
+            ) => {}
             Err(error) => state.embedder_health.failed(&error.to_string()),
         }
         match result {
