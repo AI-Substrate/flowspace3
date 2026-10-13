@@ -177,6 +177,18 @@ whichever slot the harness's store puts it in. omp delivers pij messages as a
 messages that carried them before, under either the `[pij from` or the
 `[pij-rs from` envelope.
 
+### Turns stored before 2026-10-13
+
+Turns are append-only, so these rules and the write-family path reach the
+turns stored before them through a restatement: the daemon re-derives each
+stored turn from what its row kept and writes back the ones that change, a
+window of turns at a time. A turn whose role or source alone changed keeps its
+text and its vectors; a write turn that held a file body gets the shorter text
+and is embedded (and, above the summary floor, summarised) again. It waits
+while more than 500 embed and summarize jobs are pending, so it never crowds
+out live work, and resumes where it stopped after a restart. `status` shows
+`restating stored turns: N conversations left` until it is done.
+
 ## The anchor is a pointer, not ownership
 
 A conversation records the repository, checkout and base commit it happened in.

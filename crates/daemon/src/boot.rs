@@ -841,6 +841,9 @@ async fn serve(
     reconcilers.push(Box::new(
         crate::turn_class_backfill::TurnClassBackfill::new(state.db.clone()),
     ));
+    reconcilers.push(Box::new(crate::intake_restate::IntakeRestate::new(
+        state.clone(),
+    )));
     if state.config.indexing.conversation_poll_ticks != 0 {
         let conversation_home = std::env::var_os("HOME")
             .map(std::path::PathBuf::from)
