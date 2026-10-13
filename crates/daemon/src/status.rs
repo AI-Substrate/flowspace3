@@ -74,17 +74,20 @@ pub async fn report(state: &AppState, history: bool) -> Result<StatusReport, Fai
         })
         .collect();
 
+    let mut conversations = state
+        .conversations
+        .read()
+        .await
+        .report(std::time::Instant::now());
+    conversations.restate_pending = fs3_store::conversations_to_restate(&state.db)
+        .await
+        .map_err(IntoFailure::into_failure)?;
+
     Ok(StatusReport {
         roots,
         queue,
         retention: Some(retention),
-        conversations: Some(
-            state
-                .conversations
-                .read()
-                .await
-                .report(std::time::Instant::now()),
-        ),
+        conversations: Some(conversations),
         last_error,
         inconsistencies,
         schema_ahead: crate::schema::ahead_of_us(&state.db).await,

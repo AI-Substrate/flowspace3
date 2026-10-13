@@ -1268,6 +1268,7 @@ mod tests {
             state_reason: Some("awaiting the first conversation poll".to_owned()),
             last_poll_at: None,
             harnesses: Vec::new(),
+            restate_pending: 0,
         };
         let row = conversations_row(Ok(&report), None, Instant::now());
         assert!(row.found.contains("flowing: awaiting"));

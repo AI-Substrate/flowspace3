@@ -83,6 +83,13 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
         if let Some(reason) = &conversations.state_reason {
             out.push_str(&format!("{}  {reason}\n", theme::GUTTER));
         }
+        if conversations.restate_pending > 0 {
+            out.push_str(&format!(
+                "{}  restating stored turns: {} conversations left\n",
+                theme::GUTTER,
+                conversations.restate_pending,
+            ));
+        }
         for harness in &conversations.harnesses {
             out.push_str(&format!(
                 "{}  {}: {} tracked · {} behind · {} unreadable · newest ingest {}\n",

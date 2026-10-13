@@ -69,6 +69,15 @@ pub struct ConversationsStatus {
     pub state_reason: Option<String>,
     pub last_poll_at: Option<String>,
     pub harnesses: Vec<ConversationHarnessStatus>,
+    /// Stored conversations the intake restatement (migration 0030) has still
+    /// to reach. Zero, and absent from the envelope, once it is done.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub restate_pending: i64,
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref)] // serde's skip predicate takes a reference
+fn is_zero(count: &i64) -> bool {
+    *count == 0
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

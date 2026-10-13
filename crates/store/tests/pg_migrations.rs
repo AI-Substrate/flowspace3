@@ -658,3 +658,51 @@ async fn migration_0027_supersedes_only_failures_a_retained_later_success_fixed(
 
     database.destroy(pool).await;
 }
+
+#[tokio::test]
+async fn migration_0030_queues_every_stored_conversation_for_restatement() {
+    let database = FreshDatabase::create().await;
+    let pool = database.pool().await;
+    apply_migrations(&pool, 1..=28).await;
+
+    sqlx::query(
+        "INSERT INTO conversations (guid, started_at)
+         VALUES ('0c0ffee0-0000-4000-8000-000000000001', now()),
+                ('0c0ffee0-0000-4000-8000-000000000002', now())",
+    )
+    .execute(&pool)
+    .await
+    .expect("seed pre-0030 conversations");
+
+    apply_migrations(&pool, 30..=30).await;
+
+    let cursors: Vec<Option<i32>> =
+        sqlx::query_scalar("SELECT restate_after FROM conversations ORDER BY guid")
+            .fetch_all(&pool)
+            .await
+            .expect("read cursors");
+    assert_eq!(
+        cursors,
+        [Some(0), Some(0)],
+        "every stored conversation is queued"
+    );
+
+    sqlx::query(
+        "INSERT INTO conversations (guid, started_at)
+         VALUES ('0c0ffee0-0000-4000-8000-000000000003', now())",
+    )
+    .execute(&pool)
+    .await
+    .expect("a conversation stored after the fix");
+    let queued: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM conversations WHERE restate_after IS NOT NULL")
+            .fetch_one(&pool)
+            .await
+            .expect("count");
+    assert_eq!(
+        queued, 2,
+        "a conversation stored after the fix is not queued"
+    );
+
+    database.destroy(pool).await;
+}

@@ -497,6 +497,217 @@ async fn classify_conversation(
     }
 }
 
+/// One window of one conversation's restatement.
+#[derive(Clone, Debug)]
+pub struct RestatedWindow {
+    /// The conversation the window belongs to.
+    pub conversation: ConversationId,
+    /// Its anchor: the identity its enrichment is charged to.
+    pub repo_identity: Option<String>,
+    /// Turns whose stored row changed.
+    pub restated: u64,
+    /// The new elements of turns whose TEXT changed. They have no vector or
+    /// summary yet; a turn whose role or source alone changed keeps its text,
+    /// its hash, and everything enriched from it.
+    pub replaced: Vec<Element>,
+    /// Whether the conversation is done.
+    pub finished: bool,
+}
+
+/// Restate the next window of turns of a conversation queued by migration
+/// 0030, writing back only the turns `restate` changes.
+///
+/// One window of at most [`BACKFILL_WINDOW`] turns, in one transaction, then
+/// the conversation's cursor moves past it: the work is bounded, a restart
+/// resumes at the cursor, and a window repeated after a crash finds its turns
+/// already right and writes nothing. A turn whose text changed gets a new
+/// element under its new hash, and the old element is deleted with it.
+///
+/// Returns `None` once no conversation is queued.
+///
+/// # Errors
+/// [`StoreError::Query`] when a read or write fails; [`StoreError::Corrupt`]
+/// when a stored turn cannot be decoded. Nothing of the window is written.
+pub async fn restate_next_window(
+    pool: &PgPool,
+    restate: impl Fn(Option<&str>, Turn) -> Turn,
+    enrich: impl Fn(&Element) -> bool,
+) -> Result<Option<RestatedWindow>, StoreError> {
+    let queued = sqlx::query(
+        "SELECT guid::text AS guid, agent_harness, repo_identity, restate_after
+           FROM conversations
+          WHERE restate_after IS NOT NULL
+          LIMIT 1",
+    )
+    .fetch_optional(pool)
+    .await?;
+    let Some(queued) = queued else {
+        return Ok(None);
+    };
+    let conversation =
+        ConversationId::new(queued.try_get::<String, _>("guid")?).map_err(corrupt)?;
+    let harness: Option<String> = queued.try_get("agent_harness")?;
+    let repo_identity: Option<String> = queued.try_get("repo_identity")?;
+    let after: i32 = queued.try_get("restate_after")?;
+
+    let mut tx = pool.begin().await?;
+    let rows = sqlx::query(&format!(
+        "SELECT turn_no, role, source, head_sha, body, items, blob_sha,
+                to_char(at AT TIME ZONE 'UTC', {AS_TEXT}) AS at
+           FROM turns
+          WHERE conversation_id = $1::uuid
+            AND turn_no > $2
+          ORDER BY turn_no
+          LIMIT $3"
+    ))
+    .bind(conversation.as_str())
+    .bind(after)
+    .bind(BACKFILL_WINDOW)
+    .fetch_all(&mut *tx)
+    .await?;
+
+    // Classified in sequence from the turn before the window, which an
+    // earlier window has already restated.
+    let mut classifier = match rows.first() {
+        Some(row) => {
+            let first = ordinal_from_row(row)?;
+            TurnClassifier::after(turn_before(&mut tx, &conversation, first).await?.as_ref())
+        }
+        None => TurnClassifier::new(),
+    };
+
+    let mut changed: Vec<Turn> = Vec::new();
+    let mut replaced: Vec<(Element, TurnClass, String)> = Vec::new();
+    for row in &rows {
+        let stored = turn_from_row(row)?;
+        let restated = restate(harness.as_deref(), stored.clone());
+        let class = classifier.classify(&restated);
+        if restated == stored {
+            continue;
+        }
+        let stored_blob: String = row.try_get("blob_sha")?;
+        let element = restated.element(&conversation);
+        if element.raw_hash() != stored_blob {
+            replaced.push((element, class, stored_blob));
+        }
+        changed.push(restated);
+    }
+
+    if !changed.is_empty() {
+        write_restated_turns(&mut tx, &conversation, &changed).await?;
+    }
+    if !replaced.is_empty() {
+        let addresses: Vec<&str> = replaced
+            .iter()
+            .map(|(element, _, _)| element.address.as_str())
+            .collect();
+        let stored_blobs: Vec<&str> = replaced.iter().map(|(_, _, blob)| blob.as_str()).collect();
+        sqlx::query(
+            "DELETE FROM elements e
+              USING unnest($1::text[], $2::text[]) AS old(address, blob_sha)
+              WHERE e.kind = 'turn'
+                AND e.address = old.address
+                AND e.blob_sha = old.blob_sha",
+        )
+        .bind(&addresses)
+        .bind(&stored_blobs)
+        .execute(&mut *tx)
+        .await?;
+        let elements: Vec<Element> = replaced
+            .iter()
+            .map(|(element, _, _)| element.clone())
+            .collect();
+        let classes: Vec<TurnClass> = replaced.iter().map(|(_, class, _)| *class).collect();
+        write_turn_elements(&mut tx, &elements, &classes, &enrich).await?;
+    }
+
+    // A short window is the end of the conversation: anything appended after
+    // it was stored by the fixed intake and needs nothing.
+    let finished = rows.len() < usize::try_from(BACKFILL_WINDOW).unwrap_or(usize::MAX);
+    let cursor = match rows.last() {
+        Some(row) => Some(row.try_get::<i32, _>("turn_no")?),
+        None => None,
+    };
+    sqlx::query("UPDATE conversations SET restate_after = $2 WHERE guid = $1::uuid")
+        .bind(conversation.as_str())
+        .bind(if finished { None } else { cursor })
+        .execute(&mut *tx)
+        .await?;
+    tx.commit().await?;
+
+    Ok(Some(RestatedWindow {
+        conversation,
+        repo_identity,
+        restated: changed.len() as u64,
+        replaced: replaced
+            .into_iter()
+            .map(|(element, _, _)| element)
+            .collect(),
+        finished,
+    }))
+}
+
+/// Write the restated rows of `turns` back over the stored ones.
+async fn write_restated_turns(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    conversation: &ConversationId,
+    turns: &[Turn],
+) -> Result<(), StoreError> {
+    let ordinals: Vec<i32> = turns
+        .iter()
+        .map(|turn| i32::try_from(turn.turn_no).unwrap_or(i32::MAX))
+        .collect();
+    let roles: Vec<&str> = turns.iter().map(|turn| turn.role.as_str()).collect();
+    let sources: Vec<&str> = turns.iter().map(|turn| turn.source.as_str()).collect();
+    let bodies: Vec<&str> = turns.iter().map(|turn| turn.body.as_str()).collect();
+    let items: Vec<String> = turns
+        .iter()
+        .map(|turn| {
+            serde_json::to_string(&turn.items).map_err(|error| {
+                StoreError::Corrupt(fs3_core::Error::InvalidConfig(format!(
+                    "turn {} items cannot be stored as json: {error}",
+                    turn.turn_no
+                )))
+            })
+        })
+        .collect::<Result<_, _>>()?;
+    let blobs: Vec<String> = turns
+        .iter()
+        .map(|turn| turn.element(conversation).raw_hash().to_string())
+        .collect();
+    sqlx::query(
+        "UPDATE turns t
+            SET role = c.role, source = c.source, body = c.body,
+                items = c.items::jsonb, blob_sha = c.blob_sha
+           FROM unnest($2::int[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[])
+             AS c(turn_no, role, source, body, items, blob_sha)
+          WHERE t.conversation_id = $1::uuid
+            AND t.turn_no = c.turn_no",
+    )
+    .bind(conversation.as_str())
+    .bind(&ordinals)
+    .bind(&roles)
+    .bind(&sources)
+    .bind(&bodies)
+    .bind(&items)
+    .bind(&blobs)
+    .execute(&mut **tx)
+    .await?;
+    Ok(())
+}
+
+/// How many conversations the restatement has still to reach.
+///
+/// # Errors
+/// [`StoreError::Query`] when the read fails.
+pub async fn conversations_to_restate(pool: &PgPool) -> Result<i64, StoreError> {
+    Ok(
+        sqlx::query_scalar("SELECT count(*) FROM conversations WHERE restate_after IS NOT NULL")
+            .fetch_one(pool)
+            .await?,
+    )
+}
+
 /// The stored turn immediately before `turn_no`, if there is one.
 async fn turn_before(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,

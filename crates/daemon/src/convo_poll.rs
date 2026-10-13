@@ -95,6 +95,7 @@ impl PollHealth {
                         newest_ingest: None,
                     })
                     .collect(),
+                restate_pending: 0,
             },
             observed: Instant::now(),
             cadence: Duration::from_secs(u64::from(every_ticks) * 5),
@@ -174,6 +175,7 @@ impl PollHealth {
             },
             last_poll_at: Some(crate::wiring::now()),
             harnesses: stats.harnesses.clone(),
+            restate_pending: 0,
         };
     }
 }
