@@ -1,0 +1,44 @@
+crates/daemon/tests/embed_request_cap.rs
+  s_7759b95b7c85f1::t_f593a6633232a3 1-169
+  s_7759b95b7c85f1::t_d8374067f31a30 170-172
+crates/daemon/src/batch.rs
+  s_7759b95b7c85f1::t_1596886d3615a5 36-47
+crates/daemon/src/enrich.rs
+  s_7759b95b7c85f1::t_e91d8dff006ac9 159-179,194-197,906,949-966
+crates/providers/src/openai.rs
+  s_236b6ea430b3ea::t_10efbfc7bdfbd0 91,146-154,163-169,181-189
+crates/providers/tests/azure_openai_stub.rs
+  s_7759b95b7c85f1::t_e2a6121fbad16a 377-405
+crates/core/src/error.rs
+  s_7759b95b7c85f1::t_0e4a05754aecad 43-56
+crates/daemon/src/answer.rs
+  s_7759b95b7c85f1::t_c0960775b7e9f5 111-113
+crates/providers/src/azure_openai.rs
+  s_7759b95b7c85f1::t_7d6980a17b5259 299
+crates/providers/src/openai_compat.rs
+  s_7759b95b7c85f1::t_fb6205bed240bd 200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5c0f4bafa4bd13828fe22c27be7724b80cf01e63",
+  "prompts": {},
+  "sessions": {
+    "s_236b6ea430b3ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8029f851-2223-4b78-b2d2-a52d73465917",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_7759b95b7c85f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dacb2e6c-5b32-4254-86f1-bceb29f6aa86",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
