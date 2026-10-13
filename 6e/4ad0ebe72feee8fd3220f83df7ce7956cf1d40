@@ -1,0 +1,49 @@
+crates/cli/docs/search.md
+  s_7759b95b7c85f1::t_098eca76b4e346 173-182
+crates/core/src/views/mod.rs
+  s_236b6ea430b3ea::t_ad65821218e566 150-155
+crates/core/src/views/search.rs
+  s_236b6ea430b3ea::t_1d32b1426867ef 116-140
+crates/daemon/src/http.rs
+  s_7759b95b7c85f1::t_8c55db456b2d1f 669-677,686-691,698-703,788-796,1183
+crates/daemon/src/scope.rs
+  s_236b6ea430b3ea::t_ba5e1e12ba1088 75-86
+crates/daemon/src/search.rs
+  s_1ef31aa6bf178a::t_542ea6c75ee277 253-259,286,290-291,313,319,335,594,605-606,648-652,677-678,704-705,723-724,751-752
+crates/daemon/tests/conversation_query.rs
+  s_7759b95b7c85f1::t_331e09fc5f11a5 373,382,393,1170-1221
+crates/daemon/tests/read_surface.rs
+  s_7759b95b7c85f1::t_e9536785e9b47a 1175-1182,1220-1226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6e4ad0ebe72feee8fd3220f83df7ce7956cf1d40",
+  "prompts": {},
+  "sessions": {
+    "s_1ef31aa6bf178a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc2d2e8f-b8ca-4101-b706-075a4bf96be6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_236b6ea430b3ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8029f851-2223-4b78-b2d2-a52d73465917",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_7759b95b7c85f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dacb2e6c-5b32-4254-86f1-bceb29f6aa86",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
