@@ -231,7 +231,10 @@ export default defineExtension({
             }
           }
 
-          const r = await ctx.exec(gate.cmd, gate.args, { timeoutMs: 600_000 });
+          // 20 min: the warm test suite alone takes about 8 min, and a cold
+          // worktree or a contended machine pushed it past the old 10 min cap,
+          // which killed green runs mid doc-tests (2026-10-13).
+          const r = await ctx.exec(gate.cmd, gate.args, { timeoutMs: 1_200_000 });
           const command = `${gate.cmd} ${gate.args.join(' ')}`;
           const verdict = gate.name === 'test' ? testGateVerdict(r) : null;
           const gateOk = verdict ? verdict.kind === 'pass' : r.ok;
