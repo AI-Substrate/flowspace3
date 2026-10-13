@@ -623,7 +623,10 @@ mod tests {
             },
         }]);
         let shaped = shape_turn(stored);
-        assert_eq!(elided(&shaped.items[0]), ("/w/src/lib.rs", text.len() as u64));
+        assert_eq!(
+            elided(&shaped.items[0]),
+            ("/w/src/lib.rs", text.len() as u64)
+        );
         assert_eq!(shape_turn(shaped.clone()), shaped, "and stays idempotent");
     }
 

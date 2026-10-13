@@ -306,10 +306,7 @@ fn assistant_blocks_merge_by_message_id_to_the_count_the_fixture_pins() {
         .as_u64()
         .expect("pinned");
 
-    let merged = records
-        .iter()
-        .filter(|record| is_assistant(record))
-        .count();
+    let merged = records.iter().filter(|record| is_assistant(record)).count();
 
     assert_eq!(assistant_records, 38, "the fixture's own arithmetic");
     assert_eq!(
@@ -853,20 +850,32 @@ fn harness_notices_are_system_peers_are_peers_and_tool_results_belong_to_the_age
         user_line(
             "u-peer",
             Some("peer"),
-            &text("Another Claude session sent a message:\n<cross-session-message from=\"uds:/tmp/a.sock\">go</cross-session-message>"),
+            &text(
+                "Another Claude session sent a message:\n<cross-session-message from=\"uds:/tmp/a.sock\">go</cross-session-message>",
+            ),
         ),
-        user_line("u-coord", Some("coordinator"), &text("The coordinator sent a message while you were working:\nThanks.")),
+        user_line(
+            "u-coord",
+            Some("coordinator"),
+            &text("The coordinator sent a message while you were working:\nThanks."),
+        ),
         user_line(
             "u-task",
             Some("task-notification"),
-            &text("<task-notification>\n<task-id>b1</task-id>\n<status>completed</status>\n</task-notification>"),
+            &text(
+                "<task-notification>\n<task-id>b1</task-id>\n<status>completed</status>\n</task-notification>",
+            ),
         ),
         user_line(
             "u-limit",
             Some("auto-continuation"),
             &text("Your claude.ai usage limit has reset. Continue the task you were working on."),
         ),
-        user_line("u-novel", Some("a-kind-not-seen-yet"), &text("something the harness says")),
+        user_line(
+            "u-novel",
+            Some("a-kind-not-seen-yet"),
+            &text("something the harness says"),
+        ),
         format!("{assistant}\n"),
         user_line("u-result", None, &result),
         user_line("u-typed", None, &text("thanks")),
