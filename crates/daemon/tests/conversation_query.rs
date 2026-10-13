@@ -370,6 +370,7 @@ async fn a_cwd_scoped_search_counts_what_other_repositories_hold() {
     assert_eq!(elsewhere.repos.len(), 1);
     assert_eq!(elsewhere.repos[0].repo, repo_b);
     assert_eq!(elsewhere.of_top, 20);
+    assert_eq!(mine.other_repo_hits, Some(1), "the count is data too");
 
     let named = search(&state, &ask("shared search topic", None), &scoped(repo_a))
         .await
@@ -378,6 +379,7 @@ async fn a_cwd_scoped_search_counts_what_other_repositories_hold() {
         named.elsewhere.is_none(),
         "--repo meant exactly that repository"
     );
+    assert_eq!(named.other_repo_hits, None, "not measured for a named repo");
 
     let mut later = ask("shared search topic", None);
     later.offset = Some(1);
@@ -387,6 +389,10 @@ async fn a_cwd_scoped_search_counts_what_other_repositories_hold() {
     assert!(
         page_two.elsewhere.is_none(),
         "only the first page carries the hint"
+    );
+    assert_eq!(
+        page_two.other_repo_hits, None,
+        "not measured on a later page"
     );
 
     let everything = search(
@@ -1163,4 +1169,64 @@ async fn a_page_of_only_echoes_says_so() {
     );
 
     drop(database);
+}
+
+/// A scoped page that other repositories outscore says so, as data: an
+/// analyst reading only `data` must not take a cwd-scoped miss for broken
+/// recall (2026-10-13: 3 of 30 found from the checkout, 29 of 30 from /tmp).
+#[tokio::test]
+async fn a_scoped_page_says_when_other_repositories_outscore_it() {
+    let (database, state) = stack("conv-query-outscored").await;
+    let repo_a = "git:github.com/fs3/outscored-a";
+    let repo_b = "git:github.com/fs3/outscored-b";
+    store_at(
+        &state,
+        GUID,
+        Some(repo_a),
+        None,
+        vec![
+            turn(1, "what is the weather doing"),
+            turn(2, "gearbox telemetry chatter about the weather"),
+        ],
+    )
+    .await;
+    store_at(
+        &state,
+        OTHER,
+        Some(repo_b),
+        None,
+        vec![
+            turn(1, "how did the batch go"),
+            turn(2, "quetzal ledger rebalancing finished overnight"),
+        ],
+    )
+    .await;
+    drain(&state).await;
+    let from = |repo: &str| Scope {
+        repo: Some(repo.to_string()),
+        source: ScopeSource::Cwd,
+        ..Scope::unscoped()
+    };
+
+    let missed = search(
+        &state,
+        &ask("quetzal ledger rebalancing", None),
+        &from(repo_a),
+    )
+    .await
+    .expect("search from the repository without the answer");
+    assert!(missed.outscored, "the answer elsewhere outscores this page");
+    assert!(missed.other_repo_hits.is_some_and(|hits| hits >= 1));
+
+    let found = search(
+        &state,
+        &ask("quetzal ledger rebalancing", None),
+        &from(repo_b),
+    )
+    .await
+    .expect("search from the repository with the answer");
+    assert!(!found.outscored, "nothing elsewhere beats the answer here");
+    assert!(found.other_repo_hits.is_some(), "measured all the same");
+
+    database.destroy(state.db).await;
 }

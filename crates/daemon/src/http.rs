@@ -666,6 +666,15 @@ async fn search(
                 meta["degraded"] = serde_json::json!(degraded);
             }
             let degraded = outcome.degraded.as_ref().map(degraded_clause);
+            if outcome.outscored
+                && let Some(found) = &outcome.elsewhere
+            {
+                let warning = serde_json::Value::from(outscored_warning(found));
+                match meta["scope"]["warnings"].as_array_mut() {
+                    Some(warnings) => warnings.push(warning),
+                    None => meta["scope"]["warnings"] = serde_json::json!([warning]),
+                }
+            }
             let elsewhere = outcome.elsewhere.as_ref().map(|found| {
                 let command = widen_command(&request);
                 meta["elsewhere"] = serde_json::json!({
@@ -674,13 +683,24 @@ async fn search(
                     "repos": found.repos,
                     "command": command,
                 });
-                elsewhere_clause(found, &command)
+                let clause = elsewhere_clause(found, &command);
+                if outcome.outscored {
+                    format!("{} — {clause}", outscored_warning(found))
+                } else {
+                    clause
+                }
             });
             let results = SearchResults {
                 results: outcome.results,
                 offset: outcome.offset,
                 next_offset: outcome.next_offset,
                 composition: outcome.composition,
+                scope: fs3_core::views::search::SearchScope {
+                    repo: scope.repo.clone(),
+                    applied: scope.source.applied().to_string(),
+                    other_repo_hits: outcome.other_repo_hits,
+                    outscored: outcome.outscored,
+                },
             };
             let next = crate::scope::steer(&scope, &next);
             let next = if crate::ask_hint::looks_like_question(&request.q) {
@@ -762,6 +782,15 @@ fn degraded_clause(degraded: &crate::search::Degraded) -> String {
          ranked by meaning; semantic results return once the embedder answers — `flowspace3 \
          doctor` shows the embedder",
         degraded.detail
+    )
+}
+
+/// The warning for a scoped page that other repositories outscore.
+fn outscored_warning(found: &crate::search::Elsewhere) -> String {
+    format!(
+        "hits in other repositories outscore this repository's best (top {:.2} elsewhere); \
+         the answer may not be here",
+        found.best_score
     )
 }
 
@@ -1154,6 +1183,7 @@ mod tests {
         );
         let found = Elsewhere {
             hits: 3,
+            best_score: 0.8,
             of_top: 5,
             repos: vec![
                 RepoHits {

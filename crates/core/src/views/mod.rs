@@ -147,6 +147,12 @@ mod tests {
             offset: 0,
             next_offset: None,
             composition: search::SearchComposition::default(),
+            scope: search::SearchScope {
+                repo: Some("git:github.com/AI-Substrate/flowspace3".to_string()),
+                applied: "cwd".to_string(),
+                other_repo_hits: Some(4),
+                outscored: true,
+            },
         });
         round_trip!(status::StatusReport {
             roots: Vec::new(),
