@@ -390,7 +390,10 @@ async fn a_cwd_scoped_search_counts_what_other_repositories_hold() {
         page_two.elsewhere.is_none(),
         "only the first page carries the hint"
     );
-    assert_eq!(page_two.other_repo_hits, None, "not measured on a later page");
+    assert_eq!(
+        page_two.other_repo_hits, None,
+        "not measured on a later page"
+    );
 
     let everything = search(
         &state,
@@ -1205,15 +1208,23 @@ async fn a_scoped_page_says_when_other_repositories_outscore_it() {
         ..Scope::unscoped()
     };
 
-    let missed = search(&state, &ask("quetzal ledger rebalancing", None), &from(repo_a))
-        .await
-        .expect("search from the repository without the answer");
+    let missed = search(
+        &state,
+        &ask("quetzal ledger rebalancing", None),
+        &from(repo_a),
+    )
+    .await
+    .expect("search from the repository without the answer");
     assert!(missed.outscored, "the answer elsewhere outscores this page");
     assert!(missed.other_repo_hits.is_some_and(|hits| hits >= 1));
 
-    let found = search(&state, &ask("quetzal ledger rebalancing", None), &from(repo_b))
-        .await
-        .expect("search from the repository with the answer");
+    let found = search(
+        &state,
+        &ask("quetzal ledger rebalancing", None),
+        &from(repo_b),
+    )
+    .await
+    .expect("search from the repository with the answer");
     assert!(!found.outscored, "nothing elsewhere beats the answer here");
     assert!(found.other_repo_hits.is_some(), "measured all the same");
 

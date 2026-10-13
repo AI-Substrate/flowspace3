@@ -1177,7 +1177,9 @@ async fn a_search_inside_a_registered_root_scopes_to_that_repository() {
     assert_eq!(in_data["applied"], "cwd");
     assert_eq!(in_data["repo"].as_str(), Some(repo));
     assert!(
-        in_data["other_repo_hits"].as_u64().is_some_and(|hits| hits > 0),
+        in_data["other_repo_hits"]
+            .as_u64()
+            .is_some_and(|hits| hits > 0),
         "the other fixture's hits are counted: {in_data}"
     );
 
