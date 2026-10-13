@@ -58,7 +58,8 @@ use super::tail;
 ///
 /// A HEURISTIC over a convention, not a store field. A user record that does
 /// not match falls through to a plain human turn rather than erroring.
-const PEER_PREFIX: &str = "[pij from";
+/// `[pij-rs from` is the same envelope from the rs transport.
+const PEER_PREFIXES: [&str; 2] = ["[pij from", "[pij-rs from"];
 
 /// How far into a user turn the peer marker is looked for, matching the oracle.
 const PEER_PREFIX_WINDOW: usize = 200;
@@ -363,7 +364,7 @@ pub fn is_peer_injected(body: &str) -> bool {
         .char_indices()
         .nth(PEER_PREFIX_WINDOW)
         .map_or(body.len(), |(index, _)| index)];
-    window.contains(PEER_PREFIX)
+    PEER_PREFIXES.iter().any(|prefix| window.contains(prefix))
 }
 
 fn text<'a>(value: &'a serde_json::Value, key: &str) -> Option<&'a str> {

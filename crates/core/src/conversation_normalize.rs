@@ -175,13 +175,21 @@ pub fn shape_turn(mut turn: Turn) -> Turn {
                 scrub_nul(tool);
                 match input {
                     ToolInput::Verbatim { text } => scrub_nul(text),
-                    ToolInput::Elided { path, .. } => scrub_nul(path),
+                    ToolInput::Elided { path, .. } => {
+                        scrub_nul(path);
+                        // Turns stored before the path was read out of JSON
+                        // inputs carry the whole input here; re-shaping them
+                        // is how they are corrected.
+                        if path.starts_with('{') {
+                            *path = elided_path(path).to_string();
+                        }
+                    }
                 }
                 if let ToolInput::Verbatim { text } = input
                     && is_write_family(tool)
                 {
                     *input = ToolInput::Elided {
-                        path: first_line(text).to_string(),
+                        path: elided_path(text).to_string(),
                         bytes: text.len() as u64,
                     };
                 }
@@ -284,6 +292,59 @@ fn starts_with_family(name: &str, family: &str) -> bool {
 /// The first line, which for a write-family call is where the path is.
 fn first_line(text: &str) -> &str {
     text.lines().next().unwrap_or("").trim()
+}
+
+/// Keys a write-family JSON input names its file under: claude's `file_path`,
+/// omp's `path`, and `filePath` from the camel-case harnesses.
+const PATH_KEYS: [&str; 3] = ["file_path", "path", "filePath"];
+
+/// The path a write-family input writes to, never its body.
+///
+/// claude and omp record tool inputs as single-line JSON
+/// (`{"file_path":…,"content":…}`), so the first line of one is the WHOLE
+/// input, body included. A JSON input gives its path key, or for omp's
+/// hashline `edit` (`{"input":"[path#HASH]\n…"}`) the bracketed target; a
+/// JSON input naming no path stores none. Anything else is text whose first
+/// line is the path.
+fn elided_path(text: &str) -> &str {
+    let trimmed = text.trim_start();
+    if !trimmed.starts_with('{') {
+        return first_line(text);
+    }
+    json_path(trimmed).unwrap_or_default()
+}
+
+/// The path inside a JSON tool input, read without building the whole value.
+///
+/// Located by key rather than parsed, so an input cut short or scrubbed of a
+/// NUL still yields its path; a path holding a JSON escape is not reproduced,
+/// and yields nothing rather than a mangled name.
+fn json_path(json: &str) -> Option<&str> {
+    PATH_KEYS
+        .iter()
+        .find_map(|key| json_string_after(json, &format!("\"{key}\":")))
+        .or_else(|| {
+            let input = json_string_after(json, "\"input\":")
+                .or_else(|| raw_string_after(json, "\"input\":"))?;
+            let target = input.strip_prefix('[')?;
+            let target = &target[..target.find([']', '\\'])?];
+            Some(target.rsplit_once('#').map_or(target, |(path, _)| path))
+        })
+        .map(str::trim)
+        .filter(|path| !path.is_empty())
+}
+
+/// The JSON string value after `key`, when it holds no escape.
+fn json_string_after<'a>(json: &'a str, key: &str) -> Option<&'a str> {
+    let value = raw_string_after(json, key)?;
+    let end = value.find(['"', '\\'])?;
+    (value.as_bytes()[end] == b'"').then(|| &value[..end])
+}
+
+/// Everything after the opening quote of the string value after `key`.
+fn raw_string_after<'a>(json: &'a str, key: &str) -> Option<&'a str> {
+    let rest = json[json.find(key)? + key.len()..].trim_start();
+    rest.strip_prefix('"')
 }
 
 /// The largest cut at or below `limit` that does not split a character.
@@ -480,6 +541,90 @@ mod tests {
             },
             "the body is the very next commit; storing it here doubles the bill"
         );
+    }
+
+    fn elided(item: &TurnItem) -> (&str, u64) {
+        let TurnItem::ToolCall {
+            input: ToolInput::Elided { path, bytes },
+            ..
+        } = item
+        else {
+            panic!("write-family input is elided: {item:?}");
+        };
+        (path, *bytes)
+    }
+
+    /// claude and omp record tool inputs as single-line JSON, in these shapes.
+    #[test]
+    fn a_json_write_input_keeps_its_path_and_never_its_body() {
+        let body = "fn main() {}\n".repeat(2_000);
+        let cases = [
+            (
+                "Write",
+                serde_json::json!({"file_path": "/w/src/lib.rs", "content": body}),
+                "/w/src/lib.rs",
+            ),
+            (
+                "Edit",
+                serde_json::json!({"file_path": "/w/src/a.rs", "old_string": "a",
+                                   "new_string": body, "replace_all": false}),
+                "/w/src/a.rs",
+            ),
+            (
+                "edit",
+                serde_json::json!({"i": "wire the status module",
+                                   "input": format!("[crates/sdk/src/lib.rs#A3F0]\nPUT 48.=50:\n+{body}")}),
+                "crates/sdk/src/lib.rs",
+            ),
+            (
+                "edit",
+                serde_json::json!({"i": "x", "path": "crates/a.rs", "old_string": "a",
+                                   "new_string": body, "replace_all": false}),
+                "crates/a.rs",
+            ),
+            (
+                "write",
+                serde_json::json!({"filePath": "src/b.ts", "content": body}),
+                "src/b.ts",
+            ),
+        ];
+        for (tool, input, path) in cases {
+            let text = input.to_string();
+            assert!(!text.contains('\n'), "the recorded shape is one line");
+            let shaped = shape_turn(turn_with(vec![call(tool, &text)]));
+            assert_eq!(
+                elided(&shaped.items[0]),
+                (path, text.len() as u64),
+                "{tool}: {text:.80}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_json_write_input_naming_no_path_stores_no_body_either() {
+        let text = serde_json::json!({"content": "secret body"}).to_string();
+        let shaped = shape_turn(turn_with(vec![call("write", &text)]));
+        assert_eq!(elided(&shaped.items[0]), ("", text.len() as u64));
+    }
+
+    /// Turns stored before the fix hold the whole JSON input as their path;
+    /// shaping them again is the backfill.
+    #[test]
+    fn a_stored_turn_whose_path_is_a_whole_json_input_is_corrected_by_shaping() {
+        let text = serde_json::json!({"file_path": "/w/src/lib.rs", "content": "body"}).to_string();
+        let stored = turn_with(vec![TurnItem::ToolCall {
+            tool: "Write".to_string(),
+            input: ToolInput::Elided {
+                path: text.clone(),
+                bytes: text.len() as u64,
+            },
+        }]);
+        let shaped = shape_turn(stored);
+        assert_eq!(
+            elided(&shaped.items[0]),
+            ("/w/src/lib.rs", text.len() as u64)
+        );
+        assert_eq!(shape_turn(shaped.clone()), shaped, "and stays idempotent");
     }
 
     #[test]
