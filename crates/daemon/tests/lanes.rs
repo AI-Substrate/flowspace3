@@ -788,6 +788,107 @@ async fn a_stuck_embed_call_does_not_stop_summaries() {
     database.destroy(state.db.clone()).await;
 }
 
+/// An embed provider that refuses every call with a long error body.
+#[derive(Debug, Default)]
+struct VerboseRefusal {
+    calls: AtomicUsize,
+}
+
+#[async_trait]
+impl Embedder for VerboseRefusal {
+    async fn embed(&self, _texts: &[String]) -> Result<Vec<Vec<f32>>> {
+        self.calls.fetch_add(1, Ordering::SeqCst);
+        // Hex noise, so Postgres cannot compress it into an index entry.
+        let mut seed: u64 = 0x9e37_79b9_7f4a_7c15;
+        let body: String = (0..4_000)
+            .map(|_| {
+                seed ^= seed << 13;
+                seed ^= seed >> 7;
+                seed ^= seed << 17;
+                char::from_digit((seed % 16) as u32, 16).expect("a hex digit")
+            })
+            .collect();
+        Err(fs3_core::Error::Provider(format!(
+            "400 maximum request size is 300000 tokens per request {body}"
+        )))
+    }
+
+    fn key(&self) -> String {
+        format!("verbose@{}", fs3_store::EMBEDDING_DIMENSIONS)
+    }
+
+    fn concurrency_ceiling(&self) -> usize {
+        usize::MAX
+    }
+
+    fn max_input_tokens(&self) -> usize {
+        usize::MAX
+    }
+}
+
+/// DL-028, measured on prod 2026-10-11: a provider error longer than a live
+/// index entry made Postgres refuse the settle, and the job stayed `running`
+/// until a restart. A failed attempt must always give up its claim.
+#[tokio::test]
+async fn a_failure_with_a_long_provider_error_gives_up_its_claim() {
+    let (database, mut state, _blocker) = blocked_runner("long-error", 0).await;
+    let refusing = Arc::new(VerboseRefusal::default());
+    state.embedder = refusing.clone();
+
+    let items = support::items(31_000..31_001);
+    support::hold(&state, "long-error-embed", &items).await;
+    let (hash, text) = &items[0];
+    fs3_store::enqueue_job(
+        &state.db,
+        "embed",
+        "embed:long-error:0",
+        &json!({"identity": "git:long-error", "source": "raw", "items": [[hash, text]]}),
+        Duration::ZERO,
+    )
+    .await
+    .expect("enqueues an embed job");
+
+    let (shutdown_tx, shutdown) = watch::channel(runner::Shutdown::Running);
+    let handle = tokio::spawn(runner::run_until_shutdown(state.clone(), 2, shutdown));
+
+    let settled = tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            let row: Option<(String, Option<String>)> = sqlx::query_as(
+                "SELECT state, last_error FROM jobs WHERE dedupe_key = 'embed:long-error:0'",
+            )
+            .fetch_optional(&state.db)
+            .await
+            .expect("reads the job");
+            if let Some((job_state, Some(error))) = row
+                && job_state != "running"
+            {
+                break (job_state, error);
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    })
+    .await;
+    shutdown_tx
+        .send(runner::Shutdown::Forced)
+        .expect("runner observes shutdown");
+    tokio::time::timeout(Duration::from_secs(10), handle)
+        .await
+        .expect("runner stops")
+        .expect("runner task succeeds");
+
+    let (job_state, error) = settled.expect("the failed attempt is recorded, not left running");
+    assert!(refusing.calls.load(Ordering::SeqCst) >= 1);
+    assert!(
+        ["pending", "failed"].contains(&job_state.as_str()),
+        "settled as {job_state}"
+    );
+    assert!(
+        error.contains("maximum request size"),
+        "the reason is kept: {error}"
+    );
+    database.destroy(state.db.clone()).await;
+}
+
 /// DL-023: a shutdown during a provider call that has not answered stops at
 /// once rather than waiting the call out, and the job it abandoned is resumed
 /// by the next start — claimable straight away, its attempt refunded, done
