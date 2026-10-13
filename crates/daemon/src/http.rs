@@ -1132,7 +1132,10 @@ mod tests {
         });
         assert!(clause.starts_with("keyword matches only"), "{clause}");
         assert!(clause.contains("did not answer within 5 s"), "{clause}");
-        assert!(clause.contains("failing since 2026-10-11T02:14:00.000Z"), "{clause}");
+        assert!(
+            clause.contains("failing since 2026-10-11T02:14:00.000Z"),
+            "{clause}"
+        );
         assert!(clause.contains("flowspace3 doctor"), "{clause}");
     }
 
