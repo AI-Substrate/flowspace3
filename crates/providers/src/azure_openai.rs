@@ -296,7 +296,7 @@ impl AzureOpenAiClient {
             let retry_after = retry::retry_after_of(&response);
             let detail = response.text().await.unwrap_or_default();
             let detail = detail.trim().to_string();
-            let error = crate::openai::embedding_input_too_long(route, status, &detail)
+            let error = crate::openai::embedding_cap_rejection(route, status, &detail)
                 .unwrap_or_else(|| self.failure(&url, status, &detail));
             return Err(PostFailure::Rejected(Rejection {
                 status,

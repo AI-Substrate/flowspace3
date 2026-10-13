@@ -33,6 +33,18 @@ use crate::enrich::EmbedJob;
 /// the per-input cap, for the same reason.
 pub const TOKEN_BUDGET: usize = 200_000;
 
+/// Bytes we allow in one embedding request, whatever the estimate says.
+///
+/// [`TOKEN_BUDGET`] is an estimate at three bytes a token, and dense text beats
+/// it. On 2026-10-12 Azure refused requests we estimated at 192k–200k tokens
+/// as over its 300k cap (raw conversation text, much of it one-line JSON with
+/// code), so that content ran under two bytes a token. A byte-level tokenizer
+/// never makes a token from less than one byte, so a request of this many bytes
+/// is at most this many tokens: a bound, not an estimate, 10% under Azure's
+/// 300k. The planner here groups jobs by estimate; the request each call
+/// actually sends is cut to this bound when it is prepared.
+pub const REQUEST_BYTES: usize = 270_000;
+
 /// Attempts at which a job stops being allowed to travel with others.
 ///
 /// The first attempt merges. A job that has already failed once is a suspect,

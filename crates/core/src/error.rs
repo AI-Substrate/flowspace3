@@ -40,6 +40,20 @@ pub enum Error {
         detail: String,
     },
 
+    /// A provider rejected a whole request because its inputs together exceed
+    /// the per-request token cap (Azure: "maximum request size is 300000
+    /// tokens per request").
+    ///
+    /// Distinct from [`Error::InputTooLong`] because no one input is at fault:
+    /// an embedding caller splits the request, never an input.
+    #[error("provider request exceeds the {max_tokens}-token request maximum: {detail}")]
+    RequestTooLarge {
+        /// The maximum request size reported by the provider.
+        max_tokens: usize,
+        /// The response body retained for diagnostics.
+        detail: String,
+    },
+
     /// A provider refused the work because we are asking too fast, and kept
     /// refusing after the adapter had retried its own way out.
     ///

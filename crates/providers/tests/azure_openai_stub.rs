@@ -374,6 +374,35 @@ async fn azure_cap_rejection_is_typed_with_input_index() {
     assert_eq!(returned, detail);
 }
 
+/// Azure's body for a request over its per-request cap, as prod logged it on
+/// 2026-10-12. It was untyped, so the daemon failed the whole batch.
+#[tokio::test]
+async fn azure_request_size_rejection_is_typed() {
+    let detail = r#"{
+  "error": {
+    "message": "Invalid 'input': maximum request size is 300000 tokens per request.",
+    "type": "invalid_request_error",
+    "param": null,
+    "code": null
+  }
+}"#;
+    let stub = StubServer::answering(StatusCode::BAD_REQUEST, detail).await;
+    let embedder = AzureOpenAiEmbedder::new(
+        config(&stub.endpoint, "d", AzureCredential::api_key("k")),
+        None,
+    );
+
+    let error = embedder
+        .embed(&texts())
+        .await
+        .expect_err("the provider rejects the request");
+
+    let Error::RequestTooLarge { max_tokens, .. } = error else {
+        panic!("a request-size rejection must be typed, got {error}");
+    };
+    assert_eq!(max_tokens, 300_000);
+}
+
 #[tokio::test]
 async fn azure_unrelated_400_is_not_a_cap_rejection() {
     let stub = StubServer::answering(

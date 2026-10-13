@@ -156,6 +156,27 @@ struct PreparedCall<'a> {
     estimated_tokens: usize,
 }
 
+impl PreparedCall<'_> {
+    fn bytes(&self) -> usize {
+        self.texts.iter().map(String::len).sum()
+    }
+}
+
+/// Put the two halves of a refused call back at the front of the queue.
+fn split_in_half<'a>(mut call: PreparedCall<'a>, pending: &mut VecDeque<PreparedCall<'a>>) {
+    let at = call.texts.len() / 2;
+    let right = PreparedCall {
+        chunks: call.chunks.split_off(at),
+        texts: call.texts.split_off(at),
+        estimated_tokens: 0,
+    };
+    let mut halves = budget_prepared(call.chunks, call.texts);
+    halves.extend(budget_prepared(right.chunks, right.texts));
+    while let Some(part) = halves.pop_back() {
+        pending.push_front(part);
+    }
+}
+
 fn budget_prepared<'a>(
     chunks: Vec<PreparedChunk<'a>>,
     texts: Vec<String>,
@@ -170,9 +191,10 @@ fn budget_prepared<'a>(
 
     for (chunk, text) in chunks.into_iter().zip(texts) {
         let cost = fs3_core::estimate_tokens(&text);
-        debug_assert!(cost <= crate::batch::TOKEN_BUDGET);
-        if !current.texts.is_empty() && current.estimated_tokens + cost > crate::batch::TOKEN_BUDGET
-        {
+        debug_assert!(text.len() <= crate::batch::REQUEST_BYTES);
+        let over_budget = current.estimated_tokens + cost > crate::batch::TOKEN_BUDGET
+            || current.bytes() + text.len() > crate::batch::REQUEST_BYTES;
+        if !current.texts.is_empty() && over_budget {
             calls.push_back(current);
             current = PreparedCall {
                 chunks: Vec::new(),
@@ -881,20 +903,7 @@ pub async fn embed_items(
                 let index = match input_index.filter(|index| *index < call.texts.len()) {
                     Some(index) => index,
                     None if call.texts.len() > 1 => {
-                        let at = call.texts.len() / 2;
-                        let right = PreparedCall {
-                            chunks: call.chunks.split_off(at),
-                            texts: call.texts.split_off(at),
-                            estimated_tokens: 0,
-                        };
-                        let mut halves = budget_prepared(call.chunks, call.texts);
-                        let mut right = budget_prepared(right.chunks, right.texts);
-                        while let Some(part) = right.pop_back() {
-                            pending.push_front(part);
-                        }
-                        while let Some(part) = halves.pop_back() {
-                            pending.push_front(part);
-                        }
+                        split_in_half(call, &mut pending);
                         continue;
                     }
                     None => 0,
@@ -936,6 +945,24 @@ pub async fn embed_items(
                 while let Some(part) = retry.pop_back() {
                     pending.push_front(part);
                 }
+            }
+            // The request as a whole was over the provider's cap, though the
+            // planner kept it under a bound no byte-level tokenizer can beat.
+            // Split it, down to single inputs if need be, rather than fail
+            // every job riding in it.
+            Err(fs3_core::Error::RequestTooLarge { max_tokens, .. }) if call.texts.len() > 1 => {
+                tracing::info!(
+                    kind = EMBED,
+                    source = source_kind.as_str(),
+                    items = call.texts.len(),
+                    tokens = call.estimated_tokens,
+                    bytes = call.bytes(),
+                    max_tokens,
+                    outcome = "split",
+                    ms = started.elapsed().as_millis() as u64,
+                    "embed: provider request-size rejection"
+                );
+                split_in_half(call, &mut pending);
             }
             Err(error) => {
                 tracing::info!(
