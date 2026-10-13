@@ -160,6 +160,11 @@ enum Command {
         /// Hidden by default because they echo the query back.
         #[arg(long)]
         include_retrieval: bool,
+        /// Rank without balancing. By default a page keeps at most two hits
+        /// per conversation and one per file, and moves the rest down; each
+        /// hit that lost some says how many.
+        #[arg(long)]
+        no_balance: bool,
         /// Override the daemon URL from configuration.
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
@@ -751,6 +756,7 @@ async fn run(command: Command) -> Result<ExitCode> {
             gate_closed,
             ddoc_schema,
             include_retrieval,
+            no_balance,
             daemon_url,
         } => {
             let client = client_for(daemon_url)?;
@@ -764,6 +770,9 @@ async fn run(command: Command) -> Result<ExitCode> {
             push_ddoc_search_filters(&mut params, id_kind, gate_open, gate_closed, ddoc_schema);
             if include_retrieval {
                 params.push(("include_retrieval".to_string(), "true".to_string()));
+            }
+            if no_balance {
+                params.push(("no_balance".to_string(), "true".to_string()));
             }
             push(&mut params, "cwd", here());
             emit(&client.search(&params).await)

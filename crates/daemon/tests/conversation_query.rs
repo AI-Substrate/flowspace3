@@ -1230,3 +1230,90 @@ async fn a_scoped_page_says_when_other_repositories_outscore_it() {
 
     database.destroy(state.db).await;
 }
+
+/// One long conversation that mentions a topic over and over must not fill
+/// the page (2026-10-13: 57% of a cwd-scoped top 10 came from one
+/// conversation). `--no-balance` is the ranking as it was.
+#[tokio::test]
+async fn a_page_is_balanced_across_conversations() {
+    let (database, state) = stack("conv-query-balance").await;
+    let repo = "git:github.com/fs3/balance";
+    store_at(
+        &state,
+        GUID,
+        Some(repo),
+        None,
+        (1..=8)
+            .map(|turn_no| {
+                turn(
+                    turn_no * 2,
+                    &format!("quetzal ledger rebalancing, attempt {turn_no}"),
+                )
+            })
+            .collect(),
+    )
+    .await;
+    store_at(
+        &state,
+        OTHER,
+        Some(repo),
+        None,
+        vec![turn(
+            2,
+            "notes: the quetzal ledger rebalancing fix was the batch window",
+        )],
+    )
+    .await;
+    drain(&state).await;
+
+    let mut raw = ask("quetzal ledger rebalancing", None);
+    raw.limit = Some(3);
+    raw.no_balance = true;
+    let unbalanced = search(&state, &raw, &scoped(repo)).await.expect("raw");
+    let guid_of = |hit: &fs3_core::views::search::Hit| {
+        hit.address
+            .split('#')
+            .next()
+            .unwrap_or_default()
+            .to_string()
+    };
+    assert!(
+        unbalanced
+            .results
+            .iter()
+            .all(|hit| guid_of(hit) == format!("conv:{GUID}")),
+        "the raw ranking is one conversation: {:?}",
+        unbalanced
+            .results
+            .iter()
+            .map(|hit| &hit.address)
+            .collect::<Vec<_>>()
+    );
+
+    let mut balanced_request = raw.clone();
+    balanced_request.no_balance = false;
+    let balanced = search(&state, &balanced_request, &scoped(repo))
+        .await
+        .expect("balanced");
+    let guids: Vec<String> = balanced.results.iter().map(guid_of).collect();
+    assert_eq!(
+        guids
+            .iter()
+            .filter(|guid| **guid == format!("conv:{GUID}"))
+            .count(),
+        2,
+        "two from the long conversation: {guids:?}"
+    );
+    assert!(
+        guids.contains(&format!("conv:{OTHER}")),
+        "and the other one: {guids:?}"
+    );
+    let note = balanced.results[0]
+        .balanced
+        .as_ref()
+        .expect("the top hit says what moved");
+    assert_eq!(note.by, "conversation");
+    assert!(note.moved_down >= 1);
+
+    database.destroy(state.db).await;
+}
