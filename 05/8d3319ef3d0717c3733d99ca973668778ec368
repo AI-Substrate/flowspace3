@@ -1,0 +1,19 @@
+crates/core/src/conversation_normalize.rs
+  s_c956856521bd6a::t_6fc543096d9ce4 314
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "058d3319ef3d0717c3733d99ca973668778ec368",
+  "prompts": {},
+  "sessions": {
+    "s_c956856521bd6a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e83b4b34-ede6-4d29-8260-e87fe12f1fdf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
