@@ -311,10 +311,7 @@ fn elided_path(text: &str) -> &str {
     if !trimmed.starts_with('{') {
         return first_line(text);
     }
-    match json_path(trimmed) {
-        Some(path) => path,
-        None => "",
-    }
+    json_path(trimmed).unwrap_or_default()
 }
 
 /// The path inside a JSON tool input, read without building the whole value.
