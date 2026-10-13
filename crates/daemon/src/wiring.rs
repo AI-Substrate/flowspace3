@@ -126,6 +126,57 @@ pub struct AppState {
     /// Recently embedded query vectors, so a repeated search skips the
     /// provider.
     query_vectors: Arc<std::sync::Mutex<QueryVectorCache>>,
+    /// Whether the embedder has been answering (see [`EmbedderHealth`]).
+    pub embedder_health: Arc<EmbedderHealth>,
+    /// How long a search waits for its query to be embedded before it answers
+    /// from keywords alone.
+    pub query_embed_bound: std::time::Duration,
+}
+
+/// How long a search waits for the embedder by default.
+///
+/// A query is one short text; a healthy provider answers in well under a
+/// second. On 2026-10-11 the provider could not authenticate (DNS for its
+/// token endpoint failed) and every search hung until the client gave up,
+/// with no word of why (DL-027).
+pub const QUERY_EMBED_BOUND: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// Whether the embedder has been answering, as searches and indexing find it.
+///
+/// A failure is remembered from the first one until the next answer, so status
+/// and doctor can say how long the embedder has been failing, and why.
+#[derive(Debug, Default)]
+pub struct EmbedderHealth(std::sync::Mutex<Option<fs3_core::views::status::EmbedderFailing>>);
+
+impl EmbedderHealth {
+    /// A call to the embedder failed.
+    pub fn failed(&self, error: &str) {
+        let mut failing = self.0.lock().expect("embedder health poisoned");
+        match failing.as_mut() {
+            Some(failing) => {
+                failing.failures += 1;
+                failing.last_error = error.to_string();
+            }
+            None => {
+                *failing = Some(fs3_core::views::status::EmbedderFailing {
+                    since: now(),
+                    last_error: error.to_string(),
+                    failures: 1,
+                });
+            }
+        }
+    }
+
+    /// A call to the embedder answered.
+    pub fn answered(&self) {
+        self.0.lock().expect("embedder health poisoned").take();
+    }
+
+    /// The current run of failures, if the embedder is failing.
+    #[must_use]
+    pub fn failing(&self) -> Option<fs3_core::views::status::EmbedderFailing> {
+        self.0.lock().expect("embedder health poisoned").clone()
+    }
 }
 
 impl std::fmt::Debug for AppState {
@@ -227,6 +278,8 @@ impl AppState {
             query_vectors: Arc::new(std::sync::Mutex::new(QueryVectorCache::new(
                 QUERY_CACHE_ENTRIES,
             ))),
+            embedder_health: Arc::new(EmbedderHealth::default()),
+            query_embed_bound: QUERY_EMBED_BOUND,
         })
     }
     /// Attach one live watcher to the daemon event fan-out.
@@ -285,10 +338,13 @@ impl AppState {
 
     /// Embed a search query for `repo`: from the cache when this exact text
     /// was embedded by this model recently, otherwise ahead of any background
-    /// embedding on the same instance.
+    /// embedding on the same instance, and never waiting longer than
+    /// [`Self::query_embed_bound`]. Each provider call's outcome is recorded in
+    /// [`Self::embedder_health`].
     ///
     /// # Errors
-    /// The provider's failure, or an empty response.
+    /// The provider's failure, no answer within the bound, or an empty
+    /// response.
     pub async fn embed_query(&self, repo: &str, query: &str) -> fs3_core::Result<Vec<f32>> {
         let model_key = self.embedder_key(repo);
         if let Some(vector) = self
@@ -300,17 +356,31 @@ impl AppState {
             return Ok(vector);
         }
         let governor = self.embed_governor_for(repo);
-        let vector = {
+        let answer = {
             let _right_of_way = governor.interactive();
-            self.embedder_for(repo)
-                .embed(&[query.to_string()])
-                .await?
-                .pop()
-                .ok_or_else(|| {
+            let texts = [query.to_string()];
+            let call = self.embedder_for(repo).embed(&texts);
+            match tokio::time::timeout(self.query_embed_bound, call).await {
+                Ok(answer) => answer,
+                Err(_) => Err(fs3_core::Error::Provider(format!(
+                    "the embedder did not answer within {} s",
+                    self.query_embed_bound.as_secs_f64()
+                ))),
+            }
+        };
+        let vector = match answer {
+            Ok(mut vectors) => {
+                self.embedder_health.answered();
+                vectors.pop().ok_or_else(|| {
                     fs3_core::Error::Provider(
                         "the embedder returned no vector for the query".to_string(),
                     )
                 })?
+            }
+            Err(error) => {
+                self.embedder_health.failed(&error.to_string());
+                return Err(error);
+            }
         };
         self.query_vectors
             .lock()

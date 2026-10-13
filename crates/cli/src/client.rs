@@ -102,6 +102,9 @@ pub struct HealthReport {
     /// Which summarizer arm the daemon wired.
     #[serde(default)]
     pub summarizer: String,
+    /// The embedder has failed every call since a given time.
+    #[serde(default)]
+    pub embedder_failing: Option<fs3_core::views::status::EmbedderFailing>,
 }
 
 impl HealthReport {

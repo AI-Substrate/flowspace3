@@ -112,6 +112,14 @@ vector (`smart`). Both compete internally, and `match_field` reports which won.
   the one that built the index** — that one looks exactly like a broken search,
   because vectors are only read under the `model_key` that wrote them.
   `flowspace3 doctor` names the active providers.
+- **A search answers even when the embedder does not.** The query is embedded
+  within 5 seconds or not at all. When the embedder fails or does not answer
+  (an expired login, an unreachable token endpoint), the search returns its
+  keyword matches only, says so in `meta.degraded_because`
+  (`embedder_unavailable`) and `meta.degraded` (`detail`, `since`), and leads
+  `next_action` with it. Nothing on that page was ranked by meaning, so an
+  absence there is not an answer. `flowspace3 status` and `flowspace3 doctor`
+  show how long the embedder has been failing.
 - **A small scope is searched exactly; a large one approximately.** When
   `--repo`, `--path`, a worktree or a conversation narrows the search to at
   most 5,000 distinct texts, fs3 compares the query with every vector in that

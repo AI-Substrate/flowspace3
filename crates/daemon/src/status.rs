@@ -88,5 +88,6 @@ pub async fn report(state: &AppState, history: bool) -> Result<StatusReport, Fai
         last_error,
         inconsistencies,
         schema_ahead: crate::schema::ahead_of_us(&state.db).await,
+        embedder_failing: state.embedder_health.failing(),
     })
 }

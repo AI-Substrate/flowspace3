@@ -247,6 +247,24 @@ pub struct SearchOutcome {
     /// was scoped by the caller's working directory. `None` when it was not, or
     /// when the unscoped top page holds nothing from elsewhere.
     pub elsewhere: Option<Elsewhere>,
+    /// Present when the search answered with less than it normally would:
+    /// keyword matches only, because the query could not be embedded.
+    pub degraded: Option<Degraded>,
+}
+
+/// A search that answered, but from fewer channels than it normally uses.
+///
+/// DL-027: when the embedder could not authenticate, searches hung until the
+/// client gave up. Keyword matches need no embedder, so the search answers
+/// with them and names what is missing rather than failing or hanging.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct Degraded {
+    /// Machine-readable cause: `embedder_unavailable`.
+    pub because: &'static str,
+    /// What the embedder said, or that it did not answer in time.
+    pub detail: String,
+    /// When the embedder started failing (UTC), from `embedder_health`.
+    pub since: Option<String>,
 }
 
 /// Hits from other repositories in the unscoped top page of a cwd-scoped search.
@@ -460,7 +478,26 @@ async fn search_filtered(
     let started = std::time::Instant::now();
     // Cached for a repeated query, and otherwise sent ahead of any background
     // embedding on the same provider instance (`crate::embed_governor`).
-    let vector = state.embed_query(&repo_key, query).await.map_err(fail)?;
+    // A query that cannot be embedded still has its keyword matches.
+    let vector = match state.embed_query(&repo_key, query).await {
+        Ok(vector) => Some(vector),
+        Err(error) => {
+            tracing::warn!(%error, "search answering from keywords only");
+            None
+        }
+    };
+    let degraded = vector.is_none().then(|| {
+        let failing = state.embedder_health.failing();
+        Degraded {
+            because: "embedder_unavailable",
+            detail: failing.as_ref().map_or_else(
+                || "the query could not be embedded".to_string(),
+                |failing| failing.last_error.clone(),
+            ),
+            since: failing.map(|failing| failing.since),
+        }
+    });
+    let vector = vector.as_deref();
 
     let embedded = started.elapsed();
 
@@ -500,7 +537,7 @@ async fn search_filtered(
     let wide_pass = async {
         let filters = wide_filters.as_ref()?;
         match tokio::try_join!(
-            fs3_store::search_elements(&state.db, &model_key, &vector, filters),
+            semantic_leg(state, &model_key, vector, filters),
             fs3_store::search_lexical_page(&state.db, query, filters),
         ) {
             Ok(found) => Some(found),
@@ -514,7 +551,7 @@ async fn search_filtered(
     let (scoped_pass, wide) = tokio::join!(
         async {
             tokio::try_join!(
-                fs3_store::search_elements(&state.db, &model_key, &vector, &filters),
+                semantic_leg(state, &model_key, vector, &filters),
                 fs3_store::search_lexical_page(&state.db, query, &filters),
             )
         },
@@ -616,6 +653,7 @@ async fn search_filtered(
             passes,
             filtered,
             elsewhere,
+            degraded,
         });
     }
 
@@ -640,6 +678,7 @@ async fn search_filtered(
             passes,
             filtered,
             elsewhere,
+            degraded,
         });
     }
 
@@ -656,6 +695,7 @@ async fn search_filtered(
             passes,
             filtered,
             elsewhere,
+            degraded,
         });
     }
 
@@ -681,7 +721,28 @@ async fn search_filtered(
         passes,
         filtered,
         elsewhere,
+        degraded,
     })
+}
+
+/// The vector channel of one pass, or an empty page when there is no query
+/// vector to rank with.
+async fn semantic_leg(
+    state: &AppState,
+    model_key: &str,
+    vector: Option<&[f32]>,
+    filters: &SearchFilters,
+) -> Result<fs3_store::SearchPage, fs3_store::StoreError> {
+    match vector {
+        Some(vector) => fs3_store::search_elements(&state.db, model_key, vector, filters).await,
+        None => Ok(fs3_store::SearchPage {
+            hits: Vec::new(),
+            passes: 0,
+            candidate_limit_exhausted: false,
+            hidden_turns: 0,
+            exact_scan: false,
+        }),
+    }
 }
 
 fn composition(hits: &[Hit]) -> SearchComposition {

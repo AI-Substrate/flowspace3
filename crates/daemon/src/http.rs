@@ -54,6 +54,9 @@ pub struct Health {
     pub embedder: String,
     /// Which summarizer arm the composition root selected.
     pub summarizer: String,
+    /// The embedder has failed every call since a given time.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub embedder_failing: Option<fs3_core::views::status::EmbedderFailing>,
 }
 
 impl Health {
@@ -502,6 +505,7 @@ async fn health(State(state): State<AppState>) -> Json<Health> {
         version: env!("CARGO_PKG_VERSION").to_string(),
         embedder: state.active_kind(Port::Embedder).to_string(),
         summarizer: state.active_kind(Port::Summarizer).to_string(),
+        embedder_failing: state.embedder_health.failing(),
     })
 }
 
@@ -569,12 +573,24 @@ async fn status(
     }
     match crate::status::report(&state, query.history).await {
         Ok(report) => {
+            let embedder = report.embedder_failing.as_ref().map(|failing| {
+                format!(
+                    "the embedder has failed {} call(s) since {} ({}): searches answer from \
+                     keywords only and embedding is not progressing until it answers — `flowspace3 \
+                     doctor`",
+                    failing.failures, failing.since, failing.last_error
+                )
+            });
             let next = if !report.inconsistencies.is_empty() {
                 "element-tree inconsistencies were reported — follow each row's `next_action` before trusting affected reads"
             } else if report.queue.iter().any(|row| row.state == "pending") {
                 "work is still queued — re-run `flowspace3 status` until it is empty, then search"
             } else {
                 "the queue is empty — `flowspace3 search \"<question>\"` will answer from the index"
+            };
+            let next = match embedder {
+                Some(embedder) => format!("{embedder} — then: {next}"),
+                None => next.to_string(),
             };
             ok(&state, COMMAND, report)
                 .await
@@ -645,6 +661,11 @@ async fn search(
             if weak_match {
                 meta["hint"] = serde_json::Value::String(WEAK_MATCH_HINT.to_string());
             }
+            if let Some(degraded) = &outcome.degraded {
+                meta["degraded_because"] = serde_json::Value::from(degraded.because);
+                meta["degraded"] = serde_json::json!(degraded);
+            }
+            let degraded = outcome.degraded.as_ref().map(degraded_clause);
             let elsewhere = outcome.elsewhere.as_ref().map(|found| {
                 let command = widen_command(&request);
                 meta["elsewhere"] = serde_json::json!({
@@ -675,6 +696,12 @@ async fn search(
             // Leads the steer: a consumer reading only `next_action` must still
             // learn that the answer may live in a repository it did not search.
             let next = match elsewhere {
+                Some(clause) => format!("{clause} — then: {next}"),
+                None => next,
+            };
+            // Leads everything: every hit below is a keyword match, and a
+            // reader who misses that will read an absence as an answer.
+            let next = match degraded {
                 Some(clause) => format!("{clause} — then: {next}"),
                 None => next,
             };
@@ -721,6 +748,21 @@ fn next_after_search(outcome: &SearchOutcome, request: &SearchRequest) -> String
     "read a hit in full with `flowspace3 get <address>`, browse its file with \
      `flowspace3 tree <address>`, or narrow with --path/--repo"
         .to_string()
+}
+
+/// The steer for a search that answered from keywords alone.
+fn degraded_clause(degraded: &crate::search::Degraded) -> String {
+    let since = degraded
+        .since
+        .as_deref()
+        .map(|since| format!(", failing since {since}"))
+        .unwrap_or_default();
+    format!(
+        "keyword matches only: the query could not be embedded ({}{since}), so nothing was \
+         ranked by meaning; semantic results return once the embedder answers — `flowspace3 \
+         doctor` shows the embedder",
+        degraded.detail
+    )
 }
 
 /// The steer for [`crate::search::Elsewhere`]: how many, where, and the command.
@@ -1080,6 +1122,19 @@ pub(crate) async fn serve_listener(
 mod tests {
     use super::*;
     use crate::search::{Elsewhere, RepoHits};
+
+    #[test]
+    fn the_degraded_steer_says_keywords_only_and_since_when() {
+        let clause = degraded_clause(&crate::search::Degraded {
+            because: "embedder_unavailable",
+            detail: "the embedder did not answer within 5 s".to_string(),
+            since: Some("2026-10-11T02:14:00.000Z".to_string()),
+        });
+        assert!(clause.starts_with("keyword matches only"), "{clause}");
+        assert!(clause.contains("did not answer within 5 s"), "{clause}");
+        assert!(clause.contains("failing since 2026-10-11T02:14:00.000Z"), "{clause}");
+        assert!(clause.contains("flowspace3 doctor"), "{clause}");
+    }
 
     #[test]
     fn the_elsewhere_steer_names_short_repos_and_the_widened_command() {
