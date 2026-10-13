@@ -51,9 +51,10 @@ fn function(name: &str, body: &str, line: u32) -> Element {
     )
 }
 
-#[tokio::test]
-async fn a_search_with_an_unanswering_embedder_returns_keyword_hits_within_the_bound() {
-    let database = support::FreshDatabase::create("embedder_down").await;
+/// A daemon state whose index holds one keyword hit for [`PHRASE`], with the
+/// given embedder answering queries.
+async fn seeded(label: &str, embedder: Arc<dyn Embedder>) -> (support::FreshDatabase, AppState) {
+    let database = support::FreshDatabase::create(label).await;
     let config = Config {
         database: DatabaseConfig {
             url: database.url(),
@@ -62,10 +63,10 @@ async fn a_search_with_an_unanswering_embedder_returns_keyword_hits_within_the_b
     };
     let mut state = AppState::from_config(config).expect("wires");
     fs3_store::migrate(&state.db).await.expect("migrates");
-    state.embedder = Arc::new(NeverAnswers);
+    state.embedder = embedder;
     state.query_embed_bound = Duration::from_millis(300);
 
-    let phrase = "quetzal retry ledger";
+    let phrase = PHRASE;
     let children = vec![
         function("ledger", &format!("fn ledger() {{ /* {phrase} */ }}"), 3),
         function("unrelated", "fn unrelated() {}", 7),
@@ -104,18 +105,26 @@ async fn a_search_with_an_unanswering_embedder_returns_keyword_hits_within_the_b
     .await
     .unwrap();
 
+    (database, state)
+}
+
+fn request() -> SearchRequest {
+    SearchRequest {
+        q: PHRASE.to_string(),
+        limit: Some(10),
+        ..SearchRequest::default()
+    }
+}
+
+const PHRASE: &str = "quetzal retry ledger";
+
+#[tokio::test]
+async fn a_search_with_an_unanswering_embedder_returns_keyword_hits_within_the_bound() {
+    let (database, state) = seeded("embedder_down", Arc::new(NeverAnswers)).await;
     let started = std::time::Instant::now();
     let outcome = tokio::time::timeout(
         Duration::from_secs(5),
-        search(
-            &state,
-            &SearchRequest {
-                q: phrase.to_string(),
-                limit: Some(10),
-                ..SearchRequest::default()
-            },
-            &Scope::unscoped(),
-        ),
+        search(&state, &request(), &Scope::unscoped()),
     )
     .await
     .expect("the search answers instead of waiting on the embedder")
@@ -159,4 +168,96 @@ async fn a_search_with_an_unanswering_embedder_returns_keyword_hits_within_the_b
     assert_eq!(report.embedder_failing, Some(failing));
 
     database.destroy(state.db.clone()).await;
+}
+
+/// An embedder slower than the bound (a cold credential: 15 s after a restart
+/// on 2026-10-13). The first search answers from keywords, and the call it
+/// started still finishes, so the next search is ranked by meaning.
+#[tokio::test]
+async fn a_slow_first_query_embed_warms_up_for_the_next_search() {
+    let (database, state) = seeded(
+        "embedder_slow",
+        Arc::new(AnswersAfter(Duration::from_millis(700))),
+    )
+    .await;
+
+    let first = search(&state, &request(), &Scope::unscoped())
+        .await
+        .expect("the first search answers");
+    assert!(first.degraded.is_some(), "the first search did not wait");
+
+    tokio::time::sleep(Duration::from_millis(1_000)).await;
+    assert!(
+        state.embedder_health.failing().is_none(),
+        "the late answer clears the failure"
+    );
+    let second = search(&state, &request(), &Scope::unscoped())
+        .await
+        .expect("the second search answers");
+    assert!(
+        second.degraded.is_none(),
+        "the late vector was kept: {:?}",
+        second.degraded
+    );
+
+    database.destroy(state.db.clone()).await;
+}
+
+/// While query embeds are piling up unanswered, a search stops adding to them
+/// and answers from keywords at once.
+#[tokio::test]
+async fn a_search_does_not_wait_while_query_embeds_are_piling_up() {
+    let (database, state) = seeded("embedder_piling", Arc::new(NeverAnswers)).await;
+    for n in 0..4 {
+        let mut request = request();
+        request.q = format!("{PHRASE} {n}");
+        search(&state, &request, &Scope::unscoped())
+            .await
+            .expect("answers from keywords");
+    }
+
+    let started = std::time::Instant::now();
+    let outcome = search(&state, &request(), &Scope::unscoped())
+        .await
+        .expect("answers from keywords");
+    assert!(
+        started.elapsed() < Duration::from_millis(250),
+        "did not wait out the bound again: {:?}",
+        started.elapsed()
+    );
+    let degraded = outcome.degraded.expect("still degraded");
+    assert!(
+        degraded.detail.contains("still unanswered"),
+        "{}",
+        degraded.detail
+    );
+
+    database.destroy(state.db.clone()).await;
+}
+
+/// An embedder that answers, but only after a delay.
+#[derive(Debug)]
+struct AnswersAfter(Duration);
+
+#[async_trait]
+impl Embedder for AnswersAfter {
+    async fn embed(&self, texts: &[String]) -> Result<Vec<Vec<f32>>> {
+        tokio::time::sleep(self.0).await;
+        Ok(texts
+            .iter()
+            .map(|_| vec![0.1; fs3_store::EMBEDDING_DIMENSIONS])
+            .collect())
+    }
+
+    fn key(&self) -> String {
+        format!("never@{}", fs3_store::EMBEDDING_DIMENSIONS)
+    }
+
+    fn concurrency_ceiling(&self) -> usize {
+        1
+    }
+
+    fn max_input_tokens(&self) -> usize {
+        8192
+    }
 }

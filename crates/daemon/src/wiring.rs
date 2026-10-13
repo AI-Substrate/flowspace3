@@ -131,7 +131,13 @@ pub struct AppState {
     /// How long a search waits for its query to be embedded before it answers
     /// from keywords alone.
     pub query_embed_bound: std::time::Duration,
+    /// Query embeds that outlived the bound and are still running.
+    query_embeds_waiting: Arc<std::sync::atomic::AtomicUsize>,
 }
+
+/// Query embeds that may still be waiting on the embedder before a search
+/// stops asking it, and answers from keywords at once.
+const QUERY_EMBEDS_WAITING_MAX: usize = 4;
 
 /// How long a search waits for the embedder by default.
 ///
@@ -280,6 +286,7 @@ impl AppState {
             ))),
             embedder_health: Arc::new(EmbedderHealth::default()),
             query_embed_bound: QUERY_EMBED_BOUND,
+            query_embeds_waiting: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
         })
     }
     /// Attach one live watcher to the daemon event fan-out.
@@ -355,37 +362,76 @@ impl AppState {
         {
             return Ok(vector);
         }
-        let governor = self.embed_governor_for(repo);
-        let answer = {
-            let _right_of_way = governor.interactive();
-            let texts = [query.to_string()];
-            let call = self.embedder_for(repo).embed(&texts);
-            match tokio::time::timeout(self.query_embed_bound, call).await {
-                Ok(answer) => answer,
-                Err(_) => Err(fs3_core::Error::Provider(format!(
-                    "the embedder did not answer within {} s",
+        // Too many query embeds still waiting means the embedder is not
+        // answering: answer from keywords now rather than queue another.
+        if self
+            .query_embeds_waiting
+            .load(std::sync::atomic::Ordering::Acquire)
+            >= QUERY_EMBEDS_WAITING_MAX
+        {
+            let error = format!(
+                "the embedder has {QUERY_EMBEDS_WAITING_MAX} query embeds still unanswered"
+            );
+            self.embedder_health.failed(&error);
+            return Err(fs3_core::Error::Provider(error));
+        }
+
+        // The call runs as its own task, so one that outlives the bound still
+        // finishes: a cold credential (the az token fetch took 15 s after a
+        // restart on 2026-10-13) is then warm for the next search, and its
+        // vector is cached, rather than abandoned and paid again every time.
+        let call = {
+            let embedder = Arc::clone(self.embedder_for(repo));
+            let governor = self.embed_governor_for(repo);
+            let health = Arc::clone(&self.embedder_health);
+            let cache = Arc::clone(&self.query_vectors);
+            let waiting = Arc::clone(&self.query_embeds_waiting);
+            let query = query.to_string();
+            waiting.fetch_add(1, std::sync::atomic::Ordering::AcqRel);
+            tokio::spawn(async move {
+                let answer = {
+                    let _right_of_way = governor.interactive();
+                    embedder.embed(std::slice::from_ref(&query)).await
+                };
+                waiting.fetch_sub(1, std::sync::atomic::Ordering::AcqRel);
+                let vector = match answer {
+                    Ok(mut vectors) => {
+                        health.answered();
+                        vectors.pop().ok_or_else(|| {
+                            fs3_core::Error::Provider(
+                                "the embedder returned no vector for the query".to_string(),
+                            )
+                        })?
+                    }
+                    Err(error) => {
+                        health.failed(&error.to_string());
+                        return Err(error);
+                    }
+                };
+                cache.lock().expect("query vector cache poisoned").put(
+                    &model_key,
+                    &query,
+                    vector.clone(),
+                );
+                Ok(vector)
+            })
+        };
+        let vector = match tokio::time::timeout(self.query_embed_bound, call).await {
+            Ok(Ok(answer)) => answer?,
+            Ok(Err(panicked)) => {
+                return Err(fs3_core::Error::Provider(format!(
+                    "the query embed task failed: {panicked}"
+                )));
+            }
+            Err(_) => {
+                let error = format!(
+                    "the embedder did not answer within {} s (still waiting in the background)",
                     self.query_embed_bound.as_secs_f64()
-                ))),
+                );
+                self.embedder_health.failed(&error);
+                return Err(fs3_core::Error::Provider(error));
             }
         };
-        let vector = match answer {
-            Ok(mut vectors) => {
-                self.embedder_health.answered();
-                vectors.pop().ok_or_else(|| {
-                    fs3_core::Error::Provider(
-                        "the embedder returned no vector for the query".to_string(),
-                    )
-                })?
-            }
-            Err(error) => {
-                self.embedder_health.failed(&error.to_string());
-                return Err(error);
-            }
-        };
-        self.query_vectors
-            .lock()
-            .expect("query vector cache poisoned")
-            .put(&model_key, query, vector.clone());
         Ok(vector)
     }
 
