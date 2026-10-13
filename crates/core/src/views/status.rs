@@ -29,6 +29,24 @@ pub struct StatusReport {
     /// nobody here expects, and it is the first thing to check when two daemons
     /// disagree.
     pub schema_ahead: Vec<i64>,
+    /// The embedder has stopped answering, from the first failure until the
+    /// next answer. Absent while it answers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub embedder_failing: Option<EmbedderFailing>,
+}
+
+/// The embedder has failed every call since `since` (DL-027).
+///
+/// Searches still answer from keywords meanwhile, and say so; this is where a
+/// reader learns how long that has been going on and why.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EmbedderFailing {
+    /// UTC time of the first failure with no answer since.
+    pub since: String,
+    /// The most recent failure, as the provider or the time bound reported it.
+    pub last_error: String,
+    /// Calls that have failed since `since`.
+    pub failures: u64,
 }
 
 /// The most recently completed done-job retention sweep.

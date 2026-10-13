@@ -113,7 +113,10 @@ async fn background_holds_while_a_query_is_in_flight() {
         hold_query: Some(("slow query".to_string(), release.clone())),
         ..Recorder::default()
     });
-    let state = offline(recorder, 0);
+    let mut state = offline(recorder, 0);
+    // The query is held on purpose, longer than a search would wait for it;
+    // what this proves is the governor's right of way, not the bound.
+    state.query_embed_bound = Duration::from_secs(60);
 
     let query = {
         let state = state.clone();

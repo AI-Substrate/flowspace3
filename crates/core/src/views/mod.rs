@@ -156,6 +156,11 @@ mod tests {
             last_error: None,
             inconsistencies: Vec::new(),
             schema_ahead: Vec::new(),
+            embedder_failing: Some(status::EmbedderFailing {
+                since: "2026-10-11T02:14:00.000Z".to_string(),
+                last_error: "the embedder did not answer within 5 s".to_string(),
+                failures: 3,
+            }),
         });
     }
 }

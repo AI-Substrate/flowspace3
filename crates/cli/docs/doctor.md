@@ -15,7 +15,7 @@ flowspace3 doctor
 | `stack` | Postgres is accepting connections | yes — runs `compose up -d` and WAITS for a real connection |
 | `database` | the configured database exists | yes — `CREATE DATABASE` |
 | `schema` | the database has every migration this binary carries | yes — applies the missing ones |
-| `daemon` | `GET /health` answers on `daemon.url` | no — see below |
+| `daemon` | `GET /health` answers on `daemon.url`; `warn` when it answers but its embedder has been failing (since when, and the last error) | no — see below |
 | `auth` | `daemon.key` is mode `0600` and the daemon accepts it | no — restart republishes a missing or stale key |
 
 Every row reports `found` (what it saw) and, when it acted, `action` (what it

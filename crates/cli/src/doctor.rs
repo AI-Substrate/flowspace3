@@ -606,17 +606,32 @@ async fn check_daemon(daemon_url: &str, config_dir: &std::path::Path) -> Step {
 
     match request.send().await {
         Ok(response) if response.status().is_success() => {
-            let version = response
-                .json::<crate::HealthReport>()
-                .await
-                .map(|health| health.version)
+            let health = response.json::<crate::HealthReport>().await.ok();
+            let version = health
+                .as_ref()
+                .map(|health| health.version.clone())
                 .unwrap_or_default();
             let found = if version.is_empty() {
                 format!("answering at {daemon_url}")
             } else {
                 format!("answering at {daemon_url} (version {version})")
             };
-            Step::ok("daemon", found, started)
+            match health.and_then(|health| health.embedder_failing) {
+                // DL-027: the daemon answers, but its embedder does not, so
+                // searches are keyword-only and embedding has stalled.
+                Some(failing) => Step::warn(
+                    "daemon",
+                    format!(
+                        "{found}, but its embedder has failed {} call(s) since {}: {}",
+                        failing.failures, failing.since, failing.last_error
+                    ),
+                    "searches answer from keywords only until the embedder answers: check the \
+                     embedder's credentials and network (for Azure, `az account get-access-token` \
+                     must succeed on this machine)",
+                    started,
+                ),
+                None => Step::ok("daemon", found, started),
+            }
         }
         Ok(response) if response.status() == reqwest::StatusCode::UNAUTHORIZED => Step::ok(
             "daemon",
