@@ -1,0 +1,85 @@
+crates/providers/tests/conversation_source_claude.rs
+  s_c956856521bd6a::t_55185aea85c35d 122-131,394
+  s_c956856521bd6a::t_3868219b836667 814-852,861,862-864,868-873,879-909
+  s_c956856521bd6a::t_e54e8b64fb5892 309,853-860,865-867,874-878
+  s_c956856521bd6a::t_d5932b498b7ecc 309,853-860,865-867,874-878
+crates/providers/src/conversation_sources/pij_ledger.rs
+  s_c956856521bd6a::t_49a1da98c3c053 61-62,367
+crates/cli/docs/conversations.md
+  s_c956856521bd6a::t_e29b569f245258 163-170
+  s_c956856521bd6a::t_645f7dd7d182ab 148,161-162,171-179
+  s_c956856521bd6a::t_b88ba0bcedc6c7 180-191
+crates/core/src/conversation_normalize.rs
+  s_c956856521bd6a::t_712bb1a5db166c 546-622,627-629
+  s_c956856521bd6a::t_962e691675ebb4 178-186,192,300-313,315-348
+  s_c956856521bd6a::t_9c4afb48c66334 297-299
+  s_c956856521bd6a::t_583f77986ef151 349
+  s_c956856521bd6a::t_94817be63c471c 623-626
+  s_c956856521bd6a::t_6fc543096d9ce4 314
+  s_c956856521bd6a::t_216ad56b2fa12c 623-626
+crates/providers/src/conversation_sources/claude.rs
+  s_c956856521bd6a::t_613488ca2314e1 502-503,514,516-522,528,534-536,538-540,542-544,546
+crates/providers/src/conversation_sources/omp.rs
+  s_c956856521bd6a::t_49a1da98c3c053 46-47,455
+  s_c956856521bd6a::t_4eca2aadb9e5d3 217-220,224,226-231
+  s_c956856521bd6a::t_3633214d30e836 761-811,813-827
+  s_c956856521bd6a::t_3286758aedfde7 221-223,225,441-447,812
+crates/store/src/lib.rs
+  s_c956856521bd6a::t_d10ae61ad58d9b 47-51
+crates/cli/src/doctor.rs
+  s_c956856521bd6a::t_fa87db93408fb8 1271
+crates/store/migrations/0030_restate_conversation_turns.sql
+  s_c956856521bd6a::t_85becd3c7d75ed 1-16
+crates/providers/src/conversation_sources/mod.rs
+  s_c956856521bd6a::t_c4445bebad099d 21
+crates/daemon/src/intake_restate.rs
+  s_c956856521bd6a::t_e3ebb0790fad6d 1-115
+crates/store/src/conversations.rs
+  s_c956856521bd6a::t_d10ae61ad58d9b 500-703,707-708
+  s_c956856521bd6a::t_ac555793d90656 704-706,709-710
+crates/daemon/tests/intake_restate.rs
+  s_c956856521bd6a::t_5c4eba2f363bd2 1-316
+  s_c956856521bd6a::t_f5f66548c8b3d1 317-335
+crates/store/tests/pg_migrations.rs
+  s_c956856521bd6a::t_6e8388577ad2b7 661-701
+  s_c956856521bd6a::t_ff892fe22a8175 702-708
+crates/providers/src/conversation_sources/restate.rs
+  s_c956856521bd6a::t_b2dba0f88979b8 1-248
+  s_c956856521bd6a::t_8439815dd47ba7 249-285
+crates/cli/src/render/surfaces/status.rs
+  s_236b6ea430b3ea::t_24eb9b3033a4c0 86-92
+crates/core/src/views/status.rs
+  s_236b6ea430b3ea::t_0288635359bd2d 72-80
+crates/daemon/src/boot.rs
+  s_c956856521bd6a::t_e8d57b515dd634 844-846
+crates/daemon/src/convo_poll.rs
+  s_236b6ea430b3ea::t_f5613376e51b53 98,178
+crates/daemon/src/lib.rs
+  s_c956856521bd6a::t_5331748d45878c 23
+crates/daemon/src/status.rs
+  s_236b6ea430b3ea::t_53ce805fb8d891 77-85,90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "16fa1b1f85669ae79f19541d9f3e3c7e8047b4cd",
+  "prompts": {},
+  "sessions": {
+    "s_236b6ea430b3ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8029f851-2223-4b78-b2d2-a52d73465917",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_c956856521bd6a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e83b4b34-ede6-4d29-8260-e87fe12f1fdf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
