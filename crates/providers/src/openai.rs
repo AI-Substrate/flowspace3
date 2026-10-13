@@ -88,7 +88,7 @@ impl OpenAiClient {
             let retry_after = retry::retry_after_of(&response);
             let detail = response.text().await.unwrap_or_default();
             let detail = detail.trim().to_string();
-            let error = embedding_input_too_long(route, status, &detail)
+            let error = embedding_cap_rejection(route, status, &detail)
                 .unwrap_or_else(|| Error::Provider(format!("POST {url}: {status}: {detail}")));
             return Err(PostFailure::Rejected(Rejection {
                 status,
@@ -143,8 +143,15 @@ impl OpenAiEmbedder {
     }
 }
 
-/// Classify only the hosted embeddings cap rejection the daemon can heal.
-pub(crate) fn embedding_input_too_long(
+/// Classify only the hosted embeddings cap rejections the daemon can heal.
+///
+/// Two caps, two shapes of 400:
+/// - one input over the per-input cap: `Invalid 'input[3]': maximum input
+///   length is 8192 tokens` ([`Error::InputTooLong`], the input is re-cut);
+/// - the request over the per-request cap: `Invalid 'input': maximum request
+///   size is 300000 tokens per request` ([`Error::RequestTooLarge`], the
+///   request is split).
+pub(crate) fn embedding_cap_rejection(
     route: &str,
     status: reqwest::StatusCode,
     detail: &str,
@@ -153,11 +160,13 @@ pub(crate) fn embedding_input_too_long(
         return None;
     }
 
-    let (_, cap_tail) = detail.split_once("maximum input length is ")?;
-    let digits = cap_tail
-        .find(|character: char| !character.is_ascii_digit())
-        .map_or(cap_tail, |end| &cap_tail[..end]);
-    let max_tokens = digits.parse().ok()?;
+    if let Some(max_tokens) = number_after(detail, "maximum request size is ") {
+        return Some(Error::RequestTooLarge {
+            max_tokens,
+            detail: detail.to_string(),
+        });
+    }
+    let max_tokens = number_after(detail, "maximum input length is ")?;
     let input_index = detail
         .split_once("input[")
         .and_then(|(_, tail)| tail.split_once(']'))
@@ -167,6 +176,15 @@ pub(crate) fn embedding_input_too_long(
         max_tokens,
         detail: detail.to_string(),
     })
+}
+
+/// The number that directly follows `phrase` in `detail`.
+fn number_after(detail: &str, phrase: &str) -> Option<usize> {
+    let (_, tail) = detail.split_once(phrase)?;
+    let digits = tail
+        .find(|character: char| !character.is_ascii_digit())
+        .map_or(tail, |end| &tail[..end]);
+    digits.parse().ok()
 }
 
 #[derive(Serialize)]
