@@ -1,0 +1,21 @@
+crates/daemon/tests/conversation_query.rs
+  s_7759b95b7c85f1::t_66ace49e536a16 393-396,1211-1217,1221-1227
+crates/daemon/tests/read_surface.rs
+  s_7759b95b7c85f1::t_a80721c274b969 1180-1182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "973ec86cb667754ac5d655f6bb551be7f059de19",
+  "prompts": {},
+  "sessions": {
+    "s_7759b95b7c85f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dacb2e6c-5b32-4254-86f1-bceb29f6aa86",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
