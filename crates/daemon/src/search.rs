@@ -250,6 +250,13 @@ pub struct SearchOutcome {
     /// Present when the search answered with less than it normally would:
     /// keyword matches only, because the query could not be embedded.
     pub degraded: Option<Degraded>,
+    /// Hits from other repositories in the unscoped top page of this query:
+    /// `Some(0)` when that page was ranked and held none, `None` when it was
+    /// not ranked (a named `--repo`, an unscoped search, or a later page).
+    pub other_repo_hits: Option<usize>,
+    /// An out-of-scope hit scored higher than the best hit this scope found
+    /// (or this scope found nothing and other repositories did).
+    pub outscored: bool,
 }
 
 /// A search that answered, but from fewer channels than it normally uses.
@@ -276,10 +283,12 @@ pub struct Degraded {
 /// steer offered only paging. Counting from ONE unscoped page, rather than
 /// triggering on a low scoped score, is deliberate: echo turns pin the top
 /// score near 1.0, so a score trigger would never fire when it matters.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Elsewhere {
     /// Hits from other repositories among the unscoped top page.
     pub hits: usize,
+    /// The best score among those hits.
+    pub best_score: f64,
     /// The size of the unscoped page they were counted in.
     pub of_top: i64,
     /// Per repository identity, most hits first.
@@ -301,11 +310,13 @@ pub struct RepoHits {
 fn tally_elsewhere(scoped: &str, ranked: &[Hit], limit: i64) -> Option<Elsewhere> {
     let page = usize::try_from(limit).unwrap_or(usize::MAX);
     let mut repos: Vec<RepoHits> = Vec::new();
+    let mut best_score = f64::NEG_INFINITY;
     for hit in ranked.iter().take(page) {
         let repo = hit.repo.as_deref().unwrap_or("(none)");
         if repo == scoped {
             continue;
         }
+        best_score = best_score.max(hit.score);
         match repos.iter_mut().find(|entry| entry.repo == repo) {
             Some(entry) => entry.hits += 1,
             None => repos.push(RepoHits {
@@ -321,6 +332,7 @@ fn tally_elsewhere(scoped: &str, ranked: &[Hit], limit: i64) -> Option<Elsewhere
     repos.sort_by(|a, b| b.hits.cmp(&a.hits).then_with(|| a.repo.cmp(&b.repo)));
     Some(Elsewhere {
         hits,
+        best_score,
         of_top: limit,
         repos,
     })
@@ -579,6 +591,7 @@ async fn search_filtered(
         include_flag: (!request.include_retrieval).then_some(INCLUDE_RETRIEVAL_FLAG),
     };
     let mut lexical_hits = lexical.hits;
+    let measured_elsewhere = wide.is_some();
     let elsewhere = wide.and_then(|(wide_semantic, wide_lexical)| {
         let ranked = fuse(
             wide_lexical
@@ -589,6 +602,8 @@ async fn search_filtered(
         );
         tally_elsewhere(scope.repo.as_deref()?, &ranked, limit)
     });
+    let other_repo_hits =
+        measured_elsewhere.then(|| elsewhere.as_ref().map_or(0, |found| found.hits));
     let scan_incomplete = semantic.candidate_limit_exhausted;
     let exact_scan = semantic.exact_scan;
     let passes = semantic.passes;
@@ -630,6 +645,11 @@ async fn search_filtered(
         hits.iter().map(|hit| render(hit, query)),
     );
     let composition = composition(&ranked);
+    let outscored = match (&elsewhere, ranked.first()) {
+        (Some(found), Some(top)) => found.best_score > top.score,
+        (Some(_), None) => true,
+        (None, _) => false,
+    };
     if !ranked.is_empty() {
         let truncated = ranked.len() > page_end_index;
         let results: Vec<_> = ranked
@@ -654,6 +674,8 @@ async fn search_filtered(
             filtered,
             elsewhere,
             degraded,
+            other_repo_hits,
+            outscored,
         });
     }
 
@@ -679,6 +701,8 @@ async fn search_filtered(
             filtered,
             elsewhere,
             degraded,
+            other_repo_hits,
+            outscored,
         });
     }
 
@@ -696,6 +720,8 @@ async fn search_filtered(
             filtered,
             elsewhere,
             degraded,
+            other_repo_hits,
+            outscored,
         });
     }
 
@@ -722,6 +748,8 @@ async fn search_filtered(
         filtered,
         elsewhere,
         degraded,
+        other_repo_hits,
+        outscored,
     })
 }
 

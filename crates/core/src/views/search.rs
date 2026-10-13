@@ -113,4 +113,29 @@ pub struct SearchResults {
     /// Source totals within the active score threshold, before top-k truncation.
     #[serde(default)]
     pub composition: SearchComposition,
+    /// Which repositories this page was drawn from.
+    #[serde(default)]
+    pub scope: SearchScope,
+}
+
+/// Which repositories a search page was drawn from, as data.
+///
+/// A bare search is scoped to the repository the caller stands in, and saying
+/// so only in `next_action` prose was not enough: on 2026-10-13 an analyst
+/// agent spent half an hour believing recall was broken, finding 3 of 30
+/// targets from the flowspace3 checkout against 29 of 30 from `/tmp`.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SearchScope {
+    /// The repository identity searched, or `None` for every repository.
+    pub repo: Option<String>,
+    /// How the scope was chosen: `cwd` (the caller's working directory, the
+    /// default), `explicit` (`--repo`), or `all`.
+    pub applied: String,
+    /// Hits from OTHER repositories in the top page of the same query across
+    /// every repository. `None` when that was not measured: only the first
+    /// page of a `cwd` scope is.
+    pub other_repo_hits: Option<usize>,
+    /// An out-of-scope hit scored higher than this scope's best hit (or this
+    /// scope found nothing and others did).
+    pub outscored: bool,
 }

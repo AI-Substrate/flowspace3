@@ -72,6 +72,18 @@ pub struct Scope {
     pub warnings: Vec<String>,
 }
 
+impl ScopeSource {
+    /// How `data.scope.applied` names this source: `explicit`, `cwd`, `all`.
+    #[must_use]
+    pub const fn applied(self) -> &'static str {
+        match self {
+            ScopeSource::Flag => "explicit",
+            ScopeSource::Cwd => "cwd",
+            ScopeSource::All => "all",
+        }
+    }
+}
+
 impl Scope {
     /// Every repository, with nothing to say about it — what a caller that
     /// named no repository and sent no working directory gets.

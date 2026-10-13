@@ -1172,6 +1172,14 @@ async fn a_search_inside_a_registered_root_scopes_to_that_repository() {
     let scope = &envelope.meta.as_ref().expect("meta carries the scope")["scope"];
     assert_eq!(scope["source"], "cwd", "scoped by where the caller stands");
     let repo = scope["repo"].as_str().expect("a repository");
+    // The same scope rides in data, where an analyst reading results looks.
+    let in_data = &data(&envelope)["scope"];
+    assert_eq!(in_data["applied"], "cwd");
+    assert_eq!(in_data["repo"].as_str(), Some(repo));
+    assert!(
+        in_data["other_repo_hits"].as_u64().is_some_and(|hits| hits > 0),
+        "the other fixture's hits are counted: {in_data}"
+    );
 
     for hit in data(&envelope)["results"].as_array().expect("results") {
         assert_eq!(
@@ -1209,6 +1217,13 @@ async fn repo_all_widens_back_to_every_repository() {
     let scope = &envelope.meta.as_ref().expect("meta")["scope"];
     assert_eq!(scope["source"], "all");
     assert!(scope["repo"].is_null());
+    let in_data = &data(&envelope)["scope"];
+    assert_eq!(in_data["applied"], "all");
+    assert!(in_data["repo"].is_null());
+    assert!(
+        in_data["other_repo_hits"].is_null(),
+        "nothing is out of scope, so nothing was measured"
+    );
 
     let repos: std::collections::BTreeSet<String> = data(&envelope)["results"]
         .as_array()

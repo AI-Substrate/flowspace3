@@ -170,6 +170,16 @@ repositories, `meta.elsewhere` counts them (`hits`, `of_top`, per-repository
 repositories include 6 from others (pij 5, chainglass 1)". A named `--repo`
 never carries it — that scope was asked for exactly.
 
+The scope is in `data` too, beside the results it shaped, so a reader of
+`data` alone cannot mistake a scoped miss for broken recall. `data.scope`
+carries `repo`, `applied` (`cwd`, `explicit` for `--repo`, or `all`),
+`other_repo_hits` (the count above; `null` when it was not measured: a named
+repository, an unscoped search, or a later page) and `outscored`. `outscored`
+is true when a hit in another repository scores higher than the best hit here,
+or when this scope found nothing and others did. Then `scope.warnings` and the
+front of `next_action` also say "hits in other repositories outscore this
+repository's best".
+
 ## Weak-match calibration
 
 The advisory floor is the named `WEAK_MATCH_SCORE_FLOOR` constant beside its
