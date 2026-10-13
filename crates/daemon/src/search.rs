@@ -2061,11 +2061,19 @@ mod tests {
         assert_eq!(
             addresses(&balanced),
             [
-                "conv:a#t1", "conv:a#t2", "conv:b#t1", "conv:c#t1", "conv:a#t3", "conv:a#t4"
+                "conv:a#t1",
+                "conv:a#t2",
+                "conv:b#t1",
+                "conv:c#t1",
+                "conv:a#t3",
+                "conv:a#t4"
             ],
             "moved hits keep their order below, on a later page"
         );
-        let note = balanced[0].balanced.as_ref().expect("the top hit discloses");
+        let note = balanced[0]
+            .balanced
+            .as_ref()
+            .expect("the top hit discloses");
         assert_eq!((note.by.as_str(), note.moved_down), ("conversation", 2));
         assert!(balanced[1..].iter().all(|hit| hit.balanced.is_none()));
     }

@@ -208,7 +208,10 @@ mod tests {
         )
         .unwrap();
         let screen = anstream::adapter::strip_str(&render(&envelope, 120).unwrap()).to_string();
-        assert!(screen.contains("+3 more from this conversation"), "{screen}");
+        assert!(
+            screen.contains("+3 more from this conversation"),
+            "{screen}"
+        );
         assert!(screen.contains("--no-balance"), "{screen}");
     }
 
