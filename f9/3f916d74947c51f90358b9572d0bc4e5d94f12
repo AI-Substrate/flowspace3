@@ -1,0 +1,19 @@
+crates/testkit/arch-allowlist.toml
+  s_17fceda3f4387d::t_09cdf513b49643 106-109,115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f93f916d74947c51f90358b9572d0bc4e5d94f12",
+  "prompts": {},
+  "sessions": {
+    "s_17fceda3f4387d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1496ee45-2013-4560-9e6d-b411f1163677",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
