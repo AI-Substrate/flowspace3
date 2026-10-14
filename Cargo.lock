@@ -1299,6 +1299,7 @@ dependencies = [
  "axum",
  "azure_core",
  "azure_identity",
+ "base64 0.22.1",
  "fastembed",
  "fs3-core",
  "fs3-testkit",

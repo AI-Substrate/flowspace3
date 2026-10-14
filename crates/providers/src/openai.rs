@@ -32,14 +32,14 @@ impl std::fmt::Debug for Secret {
 
 /// Shared HTTP plumbing: one client, one base, one key.
 #[derive(Debug, Clone)]
-struct OpenAiClient {
+pub(crate) struct OpenAiClient {
     http: reqwest::Client,
     api_base: String,
     api_key: Secret,
 }
 
 impl OpenAiClient {
-    fn new(api_base: Option<String>, api_key: String) -> Self {
+    pub(crate) fn new(api_base: Option<String>, api_key: String) -> Self {
         Self {
             http: reqwest::Client::new(),
             api_base: api_base.unwrap_or_else(|| DEFAULT_API_BASE.to_string()),
@@ -66,7 +66,7 @@ impl OpenAiClient {
     /// One attempt, keeping a rejection distinguishable from a transport
     /// failure so the retry loop and the structured-output downgrade can each
     /// decide whether the *request* was the problem.
-    async fn try_post<Req: Serialize, Res: for<'de> Deserialize<'de>>(
+    pub(crate) async fn try_post<Req: Serialize, Res: for<'de> Deserialize<'de>>(
         &self,
         route: &str,
         body: &Req,
