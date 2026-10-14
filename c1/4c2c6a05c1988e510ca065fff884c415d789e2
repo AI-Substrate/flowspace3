@@ -1,0 +1,55 @@
+Cargo.lock
+  s_236b6ea430b3ea::t_c4e3a4bb9a8a9a 1325
+crates/core/src/config.rs
+  s_236b6ea430b3ea::t_b062a6c8a4fc65 120-122,156-157,177,199,1256-1285,2650-2675
+crates/core/src/lib.rs
+  s_18a2277fcd4372::t_14e2c80c2411b7 55-58
+crates/daemon/src/boot.rs
+  s_236b6ea430b3ea::t_ef88d52f4dc6b7 654-678
+crates/daemon/src/search.rs
+  s_236b6ea430b3ea::t_4075c5966cfd84 558
+crates/daemon/src/wiring.rs
+  s_236b6ea430b3ea::t_2b5224428d87db 138-141,209-222,311
+crates/store/Cargo.toml
+  s_236b6ea430b3ea::t_888eb7ddf25863 19
+crates/store/src/embeddings.rs
+  s_236b6ea430b3ea::t_f16e327810c24c 511-514,563
+crates/store/src/lexical.rs
+  s_236b6ea430b3ea::t_8e6e78335226ec 33,189-203,483,498
+crates/store/src/lexical_bm25.rs
+  s_236b6ea430b3ea::t_a2894ae40b04e2 1-516
+crates/store/src/lib.rs
+  s_18a2277fcd4372::t_f41ea707df01de 33,80-83
+crates/store/tests/pg_lexical_bm25.rs
+  s_236b6ea430b3ea::t_e7fc04be8b2502 1-292
+crates/testkit/arch-allowlist.toml
+  s_236b6ea430b3ea::t_3984849f45c6c9 134-136,144
+docs/how/configuration.md
+  s_236b6ea430b3ea::t_04858345c0f56c 127-129,132-173
+docs/reference/configuration.md
+  s_236b6ea430b3ea::t_9359c254a5fbf1 194-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c14c2c6a05c1988e510ca065fff884c415d789e2",
+  "prompts": {},
+  "sessions": {
+    "s_18a2277fcd4372": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58f49f60-563c-4ca6-8031-2d960e7769c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_236b6ea430b3ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8029f851-2223-4b78-b2d2-a52d73465917",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
