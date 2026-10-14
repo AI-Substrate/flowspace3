@@ -43,3 +43,8 @@ tools/conv-atlas/insights/
 # Harness scratch (observation buffers, sync logs). Its own .gitignore is written at
 # runtime, so a fresh worktree would otherwise show these files as untracked.
 .harness/temp/
+
+# Local secrets (API keys) for dev tools and evals. Never commit them: this repo is public.
+.env
+.env.*
+!.env.example
