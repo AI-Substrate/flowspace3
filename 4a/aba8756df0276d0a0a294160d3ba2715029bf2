@@ -1,0 +1,29 @@
+crates/store/src/embeddings.rs
+  s_f915818cd311ae::t_5fe995f29be1c8 658,667-676,681-683,694,696,701-702
+crates/store/tests/pg_conversations.rs
+  s_236b6ea430b3ea::t_c226351e641a48 1135-1167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4aaba8756df0276d0a0a294160d3ba2715029bf2",
+  "prompts": {},
+  "sessions": {
+    "s_236b6ea430b3ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8029f851-2223-4b78-b2d2-a52d73465917",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_f915818cd311ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a555ba7c-d76a-4f90-88b8-7516d49df750",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
