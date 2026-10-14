@@ -1,0 +1,43 @@
+crates/cli/docs/config.md
+  s_3c550c5d071581::t_824a94482c08ec 59-63
+crates/cli/docs/decisions.md
+  s_3c550c5d071581::t_55092808c5a9bc 95-98,106-120,123-125
+crates/cli/src/decision.rs
+  s_f915818cd311ae::t_36cb08b05b953d 14,96-99,120-127,143-150,162,375-388,390-395,399,402,458-463,696-697,705-718
+crates/cli/src/main.rs
+  s_3c550c5d071581::t_c8373682d9b23a 366
+crates/cli/src/render/surfaces/decision.rs
+  s_3c550c5d071581::t_50a0fa1c6fa134 27-29,59-68,185-188,196,210-218
+crates/cli/tests/decision_cli.rs
+  s_3c550c5d071581::t_03bdbeab47e4b1 121-127,203
+crates/core/src/config.rs
+  s_3c550c5d071581::t_dc0ecde413682c 123-126,155-156,173,194,1304-1425,1981-2014
+crates/core/src/lib.rs
+  s_f915818cd311ae::t_63a24fc8d49c44 53-58
+docs/reference/configuration.md
+  s_3c550c5d071581::t_fdeba387771de7 208-236
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2dd40995db80b18ecd137b32a2d16f3879b43d94",
+  "prompts": {},
+  "sessions": {
+    "s_3c550c5d071581": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ebf73dfc-b5a4-4838-9c63-012c52efa42d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_f915818cd311ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a555ba7c-d76a-4f90-88b8-7516d49df750",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
