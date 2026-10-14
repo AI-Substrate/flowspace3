@@ -6,6 +6,7 @@
 
 pub mod client;
 pub mod conversation;
+pub mod decision;
 pub mod docs;
 pub mod doctor;
 pub mod github_copilot;

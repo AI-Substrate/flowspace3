@@ -103,11 +103,16 @@ internal = ["fs3-core", "fs3-testkit@dev"]
 # needs no libsqlite3 on the host. It lands HERE and not in `fs3-parsers`
 # because the readers are IO port impls (prime ruling SA1, 2026-08-28) and this
 # is the crate that already ships blocking, world-touching adapters.
+#
+# `base64` is the Decisions client's one new edge (packet decisions-verb): the
+# endpoint takes local images only as inline `data:` URLs, and the alternative
+# is hand-rolling an encoder. It was already in the lock through reqwest's tree.
 external = [
   "async-trait",
   "axum@dev",
   "azure_core",
   "azure_identity",
+  "base64",
   "fastembed",
   "reqwest",
   "rusqlite",

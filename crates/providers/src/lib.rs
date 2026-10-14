@@ -27,6 +27,7 @@
 mod azure_openai;
 mod chat;
 pub mod conversation_sources;
+mod decisions;
 mod github_copilot;
 mod local;
 mod openai;
@@ -40,6 +41,11 @@ pub use azure_openai::{
 pub use chat::{
     AzureOpenAiChatClient, ChatChoice, ChatCompletionRequest, ChatCompletionResponse,
     ChatFunctionCall, ChatMessage, ChatRole, ChatTool, ChatToolCall, ChatToolDefinition,
+};
+pub use decisions::{
+    Answer, ChoiceOption, ChoiceProbability, ChoiceValue, DECISIONS_DEFAULT_MODEL, Decision,
+    DecisionError, DecisionInput, DecisionRequest, DecisionsClient, ImageDetail, InputMessage,
+    InputPart, Question, ScoreLevel, ScoreProbability, Usage,
 };
 pub use github_copilot::{
     COPILOT_API_VERSION, COPILOT_USER_AGENT, CredentialSource, DEFAULT_BASE_URL, DeviceCode,

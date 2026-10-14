@@ -24,6 +24,8 @@ anyhow = "1"
 async-trait = "0.1"
 axum = "0.8"
 azure_core = "1"
+# Images ride to the Decisions API inline, as base64 data URLs.
+base64 = "0.22"
 # `tokio` turns on the process executor `AzureCliCredential` needs to shell out
 # to `az`; without it the developer-tools chain cannot see an `az login`.
 azure_identity = { version = "1", features = ["tokio"] }
