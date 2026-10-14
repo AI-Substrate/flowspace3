@@ -363,6 +363,15 @@ fn tally_elsewhere(scoped: &str, ranked: &[Hit], limit: i64) -> Option<Elsewhere
 /// A search slower than this logs where its time went (embed vs store).
 const SLOW_SEARCH: std::time::Duration = std::time::Duration::from_secs(5);
 
+/// How long an answer waits for the "other repositories" hint once its own
+/// legs are done. Unscoped legs usually finish first: on prod (2026-10-14) the
+/// wide vector leg's median was 1.0 s against the scoped one's 2.2 s.
+const WIDE_GRACE: std::time::Duration = std::time::Duration::from_millis(250);
+
+/// What one statement of the hint may cost the database, waited for or not,
+/// and the point past which its vector leg starts no further pass.
+const WIDE_BUDGET: std::time::Duration = std::time::Duration::from_secs(3);
+
 impl SearchOutcome {
     /// Whether the best available result falls below the calibrated floor.
     #[must_use]
@@ -566,31 +575,56 @@ async fn search_filtered(
     let wide_filters = widen.then(|| SearchFilters {
         repo: None,
         worktree: None,
+        budget: Some(WIDE_BUDGET),
         ..filters.clone()
     });
-    let wide_pass = async {
-        let filters = wide_filters.as_ref()?;
-        match tokio::try_join!(
-            timed(semantic_leg(state, &model_key, vector, filters)),
-            timed(fs3_store::search_lexical_page(&state.db, query, filters)),
-        ) {
-            Ok(found) => Some(found),
-            Err(error) => {
+    // The hint never slows the answer. It runs as a task of its own, the
+    // answer waits for it only [`WIDE_GRACE`] past the scoped legs, and its
+    // budget bounds what an unwaited hint can still cost the database. On
+    // 2026-10-14 a `--source code` hint took 49 s over five passes on prod,
+    // while the scoped answer it was advice for took 3 s.
+    let wide_task = wide_filters.map(|filters| {
+        let state = state.clone();
+        let model_key = model_key.clone();
+        let vector = vector.map(<[f32]>::to_vec);
+        let query = query.to_string();
+        tokio::spawn(async move {
+            tokio::try_join!(
+                timed(semantic_leg(
+                    &state,
+                    &model_key,
+                    vector.as_deref(),
+                    &filters
+                )),
+                timed(fs3_store::search_lexical_page(&state.db, &query, &filters)),
+            )
+        })
+    });
+    let scoped_pass = tokio::try_join!(
+        timed(semantic_leg(state, &model_key, vector, &filters)),
+        timed(fs3_store::search_lexical_page(&state.db, query, &filters)),
+    );
+    let mut wide_dropped = false;
+    let wide = match wide_task {
+        None => None,
+        Some(task) => match tokio::time::timeout(WIDE_GRACE, task).await {
+            Ok(Ok(Ok(found))) => Some(found),
+            Ok(Ok(Err(error))) => {
                 // The hint is advice; a failure here never fails the search.
                 tracing::warn!(%error, "unscoped hint pass failed; answering without it");
                 None
             }
-        }
-    };
-    let (scoped_pass, wide) = tokio::join!(
-        async {
-            tokio::try_join!(
-                timed(semantic_leg(state, &model_key, vector, &filters)),
-                timed(fs3_store::search_lexical_page(&state.db, query, &filters)),
-            )
+            Ok(Err(error)) => {
+                tracing::warn!(%error, "unscoped hint task failed; answering without it");
+                None
+            }
+            Err(_) => {
+                // Still running: it finishes (or meets its budget) on its own.
+                wide_dropped = true;
+                None
+            }
         },
-        wide_pass,
-    );
+    };
     let ((semantic, semantic_ms), (lexical, lexical_ms)) = scoped_pass.map_err(fail)?;
     let total = started.elapsed();
     let mut timing = SearchTiming {
@@ -605,6 +639,7 @@ async fn search_filtered(
         wide_semantic_ms: wide.as_ref().map(|((_, ms), _)| *ms),
         wide_lexical_ms: wide.as_ref().map(|(_, (_, ms))| *ms),
         wide_passes: wide.as_ref().map(|((page, _), _)| page.passes),
+        wide_dropped,
         ..SearchTiming::default()
     };
     if total >= SLOW_SEARCH {
@@ -619,6 +654,7 @@ async fn search_filtered(
             wide_semantic_ms = ?timing.wide_semantic_ms,
             wide_lexical_ms = ?timing.wide_lexical_ms,
             wide_passes = ?timing.wide_passes,
+            wide_dropped,
             passes = semantic.passes,
             widened = widen,
             repo = ?scope.repo,

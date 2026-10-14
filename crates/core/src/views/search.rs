@@ -177,6 +177,10 @@ pub struct SearchTiming {
     /// Candidate passes the unscoped vector leg took, when it ran.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wide_passes: Option<usize>,
+    /// The unscoped legs were still running when this answer was ready, and
+    /// it went without them: the hint is advice and never waits long.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub wide_dropped: bool,
     /// Fusing and balancing the two channels.
     pub rank_ms: u64,
     /// Attaching the agent that wrote each conversation hit.
