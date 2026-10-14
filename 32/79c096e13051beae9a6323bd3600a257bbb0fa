@@ -1,0 +1,21 @@
+crates/store/src/conversations.rs
+  s_f915818cd311ae::t_d5d966abd8f1a7 415-420,425
+crates/daemon/src/turn_class_backfill.rs
+  s_f915818cd311ae::t_0cec4a7d7aecb9 7-13,23-26,30-31,38,49-52,56,65-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3279c096e13051beae9a6323bd3600a257bbb0fa",
+  "prompts": {},
+  "sessions": {
+    "s_f915818cd311ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a555ba7c-d76a-4f90-88b8-7516d49df750",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
