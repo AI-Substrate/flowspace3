@@ -135,6 +135,56 @@ pub struct SearchResults {
     pub scope: SearchScope,
 }
 
+/// Where one search's time went, in whole milliseconds.
+///
+/// The store legs run concurrently, so `store_ms` is the wall time of the
+/// slowest of them, not their sum. The serial stages add up to about
+/// `total_ms`: guard, scope, embed, store, rank, agents and diagnose.
+///
+/// A search used to log its split only past five seconds, so a four-second
+/// search left no record at all (2026-10-14). Every search now carries this
+/// in `meta.timing`, and `status` keeps percentiles over the recent ones.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SearchTiming {
+    /// From the request arriving to the page being ready.
+    pub total_ms: u64,
+    /// The schema compatibility check.
+    pub guard_ms: u64,
+    /// Working out which repository the caller means.
+    pub scope_ms: u64,
+    /// Embedding the query, or finding it cached.
+    pub embed_ms: u64,
+    /// Every store leg, run concurrently: the slowest one's wall time.
+    pub store_ms: u64,
+    /// The scoped vector leg, connection wait included.
+    pub semantic_ms: u64,
+    /// The scoped vector leg's wait for a pooled connection.
+    pub semantic_acquire_ms: u64,
+    /// Each candidate pass of the scoped vector leg.
+    pub semantic_pass_ms: Vec<u64>,
+    /// The scoped vector leg's final candidate limit.
+    pub candidates: i64,
+    /// The scoped keyword leg, connection wait included.
+    pub lexical_ms: u64,
+    /// The scoped keyword leg's wait for a pooled connection.
+    pub lexical_acquire_ms: u64,
+    /// The unscoped vector leg behind the "other repositories" hint, when it ran.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wide_semantic_ms: Option<u64>,
+    /// The unscoped keyword leg, when it ran.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wide_lexical_ms: Option<u64>,
+    /// Candidate passes the unscoped vector leg took, when it ran.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wide_passes: Option<usize>,
+    /// Fusing and balancing the two channels.
+    pub rank_ms: u64,
+    /// Attaching the agent that wrote each conversation hit.
+    pub agents_ms: u64,
+    /// Working out why a page is empty, when it is.
+    pub diagnose_ms: u64,
+}
+
 /// Which repositories a search page was drawn from, as data.
 ///
 /// A bare search is scoped to the repository the caller stands in, and saying

@@ -32,6 +32,7 @@ pub mod scan;
 pub mod schema;
 pub mod scope;
 pub mod search;
+pub mod search_latency;
 pub mod skew;
 pub mod status;
 pub mod turn_class_backfill;

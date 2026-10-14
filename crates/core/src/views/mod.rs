@@ -167,6 +167,18 @@ mod tests {
                 last_error: "the embedder did not answer within 5 s".to_string(),
                 failures: 3,
             }),
+            search_latency: Some(status::SearchLatency {
+                searches: 2,
+                slow: 1,
+                slow_ms: 5_000,
+                slowest_stage: "semantic".to_string(),
+                stages: vec![status::StageLatency {
+                    stage: "total".to_string(),
+                    p50_ms: 310,
+                    p95_ms: 7_840,
+                    max_ms: 7_840,
+                }],
+            }),
         });
     }
 }

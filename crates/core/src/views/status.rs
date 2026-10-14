@@ -33,6 +33,42 @@ pub struct StatusReport {
     /// next answer. Absent while it answers.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub embedder_failing: Option<EmbedderFailing>,
+    /// How long recent searches took, by stage. Absent before the first
+    /// search since the daemon started.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub search_latency: Option<SearchLatency>,
+}
+
+/// Percentiles over the most recent searches this daemon answered.
+///
+/// Kept in memory, so it starts empty at every restart: a regression is
+/// visible here without running a bench, and the bench owns the long view.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SearchLatency {
+    /// Searches the percentiles are taken over (the most recent, bounded).
+    pub searches: usize,
+    /// Of those, how many took longer than `slow_ms`.
+    pub slow: usize,
+    /// The threshold `slow` counts against.
+    pub slow_ms: u64,
+    /// The stage with the highest p95, total and store excluded: where a slow
+    /// search's time usually goes.
+    pub slowest_stage: String,
+    /// One row per stage, `total` first.
+    pub stages: Vec<StageLatency>,
+}
+
+/// One stage's latency over [`SearchLatency::searches`].
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StageLatency {
+    /// The stage, named as in a search's `meta.timing` without `_ms`.
+    pub stage: String,
+    /// Median, in milliseconds.
+    pub p50_ms: u64,
+    /// 95th percentile, in milliseconds.
+    pub p95_ms: u64,
+    /// Slowest, in milliseconds.
+    pub max_ms: u64,
 }
 
 /// The embedder has failed every call since `since` (DL-027).

@@ -46,8 +46,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::runner::fail;
 use crate::scope::{Scope, ScopeSource};
+use crate::search_latency::{duration_ms, elapsed_ms};
 use crate::wiring::AppState;
-use fs3_core::views::search::{DdocHit, Hit, SearchChannel, SearchComposition};
+use fs3_core::views::search::{DdocHit, Hit, SearchChannel, SearchComposition, SearchTiming};
 
 /// What a caller asks for.
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
@@ -275,6 +276,9 @@ pub struct SearchOutcome {
     /// An out-of-scope hit scored higher than the best hit this scope found
     /// (or this scope found nothing and other repositories did).
     pub outscored: bool,
+    /// Where this search's time went. The handler fills in the stages it
+    /// runs before the search itself: guard, scope, total.
+    pub timing: SearchTiming,
 }
 
 /// A search that answered, but from fewer channels than it normally uses.
@@ -567,8 +571,8 @@ async fn search_filtered(
     let wide_pass = async {
         let filters = wide_filters.as_ref()?;
         match tokio::try_join!(
-            semantic_leg(state, &model_key, vector, filters),
-            fs3_store::search_lexical_page(&state.db, query, filters),
+            timed(semantic_leg(state, &model_key, vector, filters)),
+            timed(fs3_store::search_lexical_page(&state.db, query, filters)),
         ) {
             Ok(found) => Some(found),
             Err(error) => {
@@ -581,26 +585,47 @@ async fn search_filtered(
     let (scoped_pass, wide) = tokio::join!(
         async {
             tokio::try_join!(
-                semantic_leg(state, &model_key, vector, &filters),
-                fs3_store::search_lexical_page(&state.db, query, &filters),
+                timed(semantic_leg(state, &model_key, vector, &filters)),
+                timed(fs3_store::search_lexical_page(&state.db, query, &filters)),
             )
         },
         wide_pass,
     );
-    let (semantic, lexical) = scoped_pass.map_err(fail)?;
+    let ((semantic, semantic_ms), (lexical, lexical_ms)) = scoped_pass.map_err(fail)?;
     let total = started.elapsed();
+    let mut timing = SearchTiming {
+        embed_ms: duration_ms(embedded),
+        store_ms: duration_ms(total - embedded),
+        semantic_ms,
+        semantic_acquire_ms: semantic.acquire_ms,
+        semantic_pass_ms: semantic.pass_ms.clone(),
+        candidates: semantic.candidates,
+        lexical_ms,
+        lexical_acquire_ms: lexical.acquire_ms,
+        wide_semantic_ms: wide.as_ref().map(|((_, ms), _)| *ms),
+        wide_lexical_ms: wide.as_ref().map(|(_, (_, ms))| *ms),
+        wide_passes: wide.as_ref().map(|((page, _), _)| page.passes),
+        ..SearchTiming::default()
+    };
     if total >= SLOW_SEARCH {
         // An outlier is unexplainable after the fact without the split: a
         // 40 s `--repo all` search on 2026-10-09 logged nothing at all.
         tracing::warn!(
-            embed_ms = embedded.as_millis(),
-            store_ms = (total - embedded).as_millis(),
+            embed_ms = timing.embed_ms,
+            store_ms = timing.store_ms,
+            semantic_ms,
+            semantic_pass_ms = ?timing.semantic_pass_ms,
+            lexical_ms,
+            wide_semantic_ms = ?timing.wide_semantic_ms,
+            wide_lexical_ms = ?timing.wide_lexical_ms,
+            wide_passes = ?timing.wide_passes,
             passes = semantic.passes,
             widened = widen,
             repo = ?scope.repo,
             "slow search"
         );
     }
+    let ranking = std::time::Instant::now();
     // The two channels count different things (distinct contents vs matching
     // rows) over overlapping sets, so their sum would double-count; the larger
     // is a floor on what was hidden.
@@ -610,7 +635,7 @@ async fn search_filtered(
     };
     let mut lexical_hits = lexical.hits;
     let measured_elsewhere = wide.is_some();
-    let elsewhere = wide.and_then(|(wide_semantic, wide_lexical)| {
+    let elsewhere = wide.and_then(|((wide_semantic, _), (wide_lexical, _))| {
         let ranked = fuse(
             wide_lexical
                 .hits
@@ -675,6 +700,7 @@ async fn search_filtered(
         (Some(_), None) => true,
         (None, _) => false,
     };
+    timing.rank_ms = elapsed_ms(ranking);
     if !ranked.is_empty() {
         let truncated = ranked.len() > page_end_index;
         let results: Vec<_> = ranked
@@ -683,7 +709,9 @@ async fn search_filtered(
             .take(usize::try_from(limit).expect("validated positive limit fits usize"))
             .collect();
         let mut results = results;
+        let agents = std::time::Instant::now();
         attach_agents(state, &mut results).await;
+        timing.agents_ms = elapsed_ms(agents);
         let returned = i64::try_from(results.len()).expect("page length fits i64");
         let next_offset = (returned == limit).then_some(offset + returned);
         return Ok(SearchOutcome {
@@ -701,12 +729,15 @@ async fn search_filtered(
             degraded,
             other_repo_hits,
             outscored,
+            timing,
         });
     }
 
+    let diagnosing = std::time::Instant::now();
     // Everything that matched was the index looking at itself. Saying so is
     // the difference between "no answer" and "the answer is behind a flag".
     if let Some(clause) = filtered.clause() {
+        timing.diagnose_ms = elapsed_ms(diagnosing);
         return Ok(SearchOutcome {
             results: Vec::new(),
             composition: SearchComposition::default(),
@@ -728,10 +759,12 @@ async fn search_filtered(
             degraded,
             other_repo_hits,
             outscored,
+            timing,
         });
     }
 
     if let Some(reason) = path_unmatched(state, request, &filters, file_backed).await {
+        timing.diagnose_ms = elapsed_ms(diagnosing);
         return Ok(SearchOutcome {
             results: Vec::new(),
             composition: SearchComposition::default(),
@@ -747,6 +780,7 @@ async fn search_filtered(
             degraded,
             other_repo_hits,
             outscored,
+            timing,
         });
     }
 
@@ -760,10 +794,12 @@ async fn search_filtered(
         return Err(failure);
     }
 
+    let empty_because = empty_because(&filters, file_backed, scan_incomplete, exact_scan);
+    timing.diagnose_ms = elapsed_ms(diagnosing);
     Ok(SearchOutcome {
         results: Vec::new(),
         composition: SearchComposition::default(),
-        empty_because: empty_because(&filters, file_backed, scan_incomplete, exact_scan),
+        empty_because,
         limit,
         truncated: false,
         offset,
@@ -775,7 +811,16 @@ async fn search_filtered(
         degraded,
         other_repo_hits,
         outscored,
+        timing,
     })
+}
+
+/// Run one store leg and time it, so each leg's share of a search is known
+/// even though they run concurrently.
+async fn timed<T, E>(leg: impl Future<Output = Result<T, E>>) -> Result<(T, u64), E> {
+    let started = std::time::Instant::now();
+    let found = leg.await?;
+    Ok((found, elapsed_ms(started)))
 }
 
 /// The vector channel of one pass, or an empty page when there is no query
@@ -788,13 +833,7 @@ async fn semantic_leg(
 ) -> Result<fs3_store::SearchPage, fs3_store::StoreError> {
     match vector {
         Some(vector) => fs3_store::search_elements(&state.db, model_key, vector, filters).await,
-        None => Ok(fs3_store::SearchPage {
-            hits: Vec::new(),
-            passes: 0,
-            candidate_limit_exhausted: false,
-            hidden_turns: 0,
-            exact_scan: false,
-        }),
+        None => Ok(fs3_store::SearchPage::default()),
     }
 }
 

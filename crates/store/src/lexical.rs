@@ -93,6 +93,10 @@ pub struct LexicalPage {
     /// Matches left out because their turn class is hidden, counted within
     /// the window the page was cut from.
     pub hidden_turns: u64,
+    /// Milliseconds spent waiting for a pooled connection.
+    pub acquire_ms: u64,
+    /// Milliseconds the statement took, connection wait excluded.
+    pub query_ms: u64,
 }
 
 /// [`search_lexical`], also reporting how many matches the turn-class filter
@@ -286,11 +290,16 @@ pub async fn search_lexical_page(
         .bind(filters.conversation.as_deref())
         .bind(filters.hidden_turn_class_names())
         .bind(query.trim().to_lowercase());
+    let acquire_started = std::time::Instant::now();
+    let mut connection = pool.acquire().await?;
+    let acquire_ms = crate::elapsed_ms(acquire_started);
+    let query_started = std::time::Instant::now();
     let rows = terms
         .iter()
         .fold(bound, |bound, term| bound.bind(contains_pattern(term)))
-        .fetch_all(pool)
+        .fetch_all(&mut *connection)
         .await?;
+    let query_ms = crate::elapsed_ms(query_started);
 
     let hidden_turns = rows
         .first()
@@ -320,7 +329,12 @@ pub async fn search_lexical_page(
             })
         })
         .collect::<Result<Vec<_>, StoreError>>()?;
-    Ok(LexicalPage { hits, hidden_turns })
+    Ok(LexicalPage {
+        hits,
+        hidden_turns,
+        acquire_ms,
+        query_ms,
+    })
 }
 
 /// The query's terms worth matching: lowercased, stripped of surrounding

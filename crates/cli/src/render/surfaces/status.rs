@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use comfy_table::Cell;
 use fs3_core::{
     envelope::Envelope,
-    views::status::{QueueRow, StatusReport},
+    views::status::{QueueRow, SearchLatency, StatusReport},
 };
 use owo_colors::OwoColorize;
 use serde_json::Value;
@@ -104,6 +104,10 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
                 ),
             ));
         }
+    }
+
+    if let Some(latency) = &report.search_latency {
+        out.push_str(&format!("\n{}{}\n", theme::GUTTER, search_line(latency)));
     }
 
     if !report.queue.is_empty() {
@@ -212,6 +216,42 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
         out.push('\n');
     }
     Some(out)
+}
+
+/// One line for recent search latency: the total, and where it goes.
+fn search_line(latency: &SearchLatency) -> String {
+    let stage = |name: &str| latency.stages.iter().find(|row| row.stage == name);
+    let mut line = format!("search {} recent", latency.searches);
+    if let Some(total) = stage("total") {
+        line.push_str(&format!(
+            " · p50 {} · p95 {}",
+            millis(total.p50_ms),
+            millis(total.p95_ms)
+        ));
+    }
+    if latency.slow > 0 {
+        line.push_str(&format!(
+            " · {} over {}",
+            latency.slow,
+            millis(latency.slow_ms)
+        ));
+    }
+    if let Some(slowest) = stage(&latency.slowest_stage) {
+        line.push_str(&format!(
+            " · slowest stage {} (p95 {})",
+            slowest.stage,
+            millis(slowest.p95_ms)
+        ));
+    }
+    line
+}
+
+fn millis(ms: u64) -> String {
+    if ms < 1_000 {
+        format!("{ms}ms")
+    } else {
+        format!("{:.1}s", ms as f64 / 1_000.0)
+    }
 }
 
 /// The largest whole unit, so a two-week-old failure cannot pass for a live one.
@@ -386,6 +426,25 @@ mod tests {
             json!({"job": "scan:broken", "error": "FS3-E-QUEUE-JOB-FAILED"});
         let screen = plain(&render(&value, 100).unwrap());
         assert!(screen.contains("last error scan:broken\n"), "{screen}");
+    }
+
+    #[test]
+    fn search_latency_renders_the_total_and_the_slowest_stage() {
+        let mut value = envelope(json!([]));
+        value.data.as_mut().unwrap()["search_latency"] = json!({
+            "searches": 40, "slow": 3, "slow_ms": 5000, "slowest_stage": "semantic",
+            "stages": [
+                {"stage": "total", "p50_ms": 310, "p95_ms": 7840, "max_ms": 9100},
+                {"stage": "semantic", "p50_ms": 250, "p95_ms": 6200, "max_ms": 8800}
+            ]
+        });
+        let screen = plain(&render(&value, 120).unwrap());
+        assert!(
+            screen.contains(
+                "search 40 recent · p50 310ms · p95 7.8s · 3 over 5.0s · slowest stage semantic (p95 6.2s)"
+            ),
+            "{screen}"
+        );
     }
 
     #[test]

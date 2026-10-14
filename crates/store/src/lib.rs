@@ -201,6 +201,11 @@ impl From<sqlx::migrate::MigrateError> for StoreError {
     }
 }
 
+/// Whole milliseconds since `started`, for the timings a search reports.
+pub(crate) fn elapsed_ms(started: std::time::Instant) -> u64 {
+    u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX)
+}
+
 /// Connect eagerly, proving the store is reachable before anything else starts.
 ///
 /// # Errors

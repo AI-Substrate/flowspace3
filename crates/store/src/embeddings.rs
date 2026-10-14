@@ -562,7 +562,7 @@ pub struct SearchHit {
     pub path: Option<String>,
 }
 /// One completed search page and how the bounded expansion reached it.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct SearchPage {
     /// Caller-visible hits, nearest first.
     pub hits: Vec<SearchHit>,
@@ -578,6 +578,16 @@ pub struct SearchPage {
     /// the candidate window, so this page is complete: a short or empty one
     /// means the scope holds nothing more that matches.
     pub exact_scan: bool,
+    /// Milliseconds spent getting a pooled connection and opening the search
+    /// transaction. The pool is shared with every background worker, so a
+    /// slow search can be a queue for a connection rather than a slow query.
+    pub acquire_ms: u64,
+    /// Milliseconds each candidate pass took, in order. The scope is rebuilt
+    /// on every pass, so the passes, not one bad statement, are often what a
+    /// slow semantic leg is made of.
+    pub pass_ms: Vec<u64>,
+    /// The vector candidate limit of the last pass.
+    pub candidates: i64,
 }
 
 fn page_from_rows(
@@ -612,6 +622,7 @@ fn page_from_rows(
         candidate_limit_exhausted,
         hidden_turns,
         exact_scan,
+        ..SearchPage::default()
     })
 }
 
@@ -910,8 +921,11 @@ pub async fn search_elements(
         });
     }
 
+    let acquire_started = std::time::Instant::now();
     let mut tx = pool.begin().await?;
     configure_search_transaction(&mut tx).await?;
+    let acquire_ms = crate::elapsed_ms(acquire_started);
+    let mut pass_ms = Vec::new();
 
     // One statement text for every filter combination. Bind map: $1 vector,
     // $2 model, $3 element limit, $4 source, $5 distance, $6 repo, $7 path,
@@ -921,6 +935,7 @@ pub async fn search_elements(
     let mut candidate_limit = filters.limit.saturating_mul(INITIAL_CANDIDATE_MULTIPLIER);
     let mut previous_admitted = None;
     for expansion in 0..=MAX_CANDIDATE_EXPANSIONS {
+        let pass_started = std::time::Instant::now();
         let rows = sqlx::query(SEARCH_ELEMENTS_SQL)
             .bind(Vector::from(query.to_vec()))
             .bind(model_key)
@@ -945,6 +960,7 @@ pub async fn search_elements(
             .bind(EXACT_SCOPE_SOURCES)
             .fetch_all(&mut *tx)
             .await?;
+        pass_ms.push(crate::elapsed_ms(pass_started));
 
         let passes = expansion + 1;
         let exact = rows
@@ -977,7 +993,14 @@ pub async fn search_elements(
                 // Exact AND the window held the whole scope: nothing in it
                 // was left unranked, so a short page is complete.
                 let exact_scan = exact && scanned < candidate_limit;
-                return page_from_rows(&rows, passes, scan_incomplete, exact_scan);
+                return page_from_rows(&rows, passes, scan_incomplete, exact_scan).map(|page| {
+                    SearchPage {
+                        acquire_ms,
+                        pass_ms,
+                        candidates: candidate_limit,
+                        ..page
+                    }
+                });
             }
             ExpansionDecision::Continue => {}
         }
