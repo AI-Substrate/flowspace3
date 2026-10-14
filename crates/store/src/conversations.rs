@@ -412,10 +412,17 @@ pub async fn backfill_turn_classes(pool: &PgPool, conversations: u32) -> Result<
     let mut classified = 0_u64;
     for _ in 0..conversations {
         // One row through the partial index: the queue of unclassified turns.
+        // `ORDER BY id` is what keeps it there. Without it, a stale row
+        // estimate (300k unclassified, against 0 real) made a sequential scan
+        // look as cheap, and on prod this probe became the costliest statement
+        // in the database: 45k calls at 331 ms, 1.2 billion blocks read
+        // (2026-10-14). The partial index is ordered by `id`, so it answers
+        // this shape whatever the statistics say.
         let pending: Option<String> = sqlx::query_scalar(
             "SELECT substring(address FROM 6 FOR 36)
                FROM elements
               WHERE kind = 'turn' AND turn_class IS NULL
+              ORDER BY id
               LIMIT 1",
         )
         .fetch_optional(pool)
