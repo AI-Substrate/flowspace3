@@ -112,6 +112,12 @@ pub const TOPICS: &[Topic] = &[
         related: &["config", "search"],
     },
     Topic {
+        name: "decisions",
+        title: "decision: typed answers about text or images from OpenAI's Decisions API",
+        text: include_str!("../docs/decisions.md"),
+        related: &["providers", "config"],
+    },
+    Topic {
         name: "prompt-search",
         title: "fs3 prompts: a Claude Code hook that searches before the agent's turn",
         text: include_str!("../docs/prompt-search.md"),

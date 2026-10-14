@@ -1,4 +1,5 @@
 pub mod ask;
+pub mod decision;
 pub mod doctor;
 pub mod failure;
 pub mod hooks;

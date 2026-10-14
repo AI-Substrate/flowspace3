@@ -319,6 +319,61 @@ enum Command {
     /// the next operational step, so an agent that runs it lands pointed at
     /// `flowspace3 doctor` rather than at the topic list.
     AgentsStartHere,
+    /// Ask OpenAI's Decisions API a bounded question about text or images.
+    ///
+    /// The prompt is the question. With `--choice` it picks one of your
+    /// options, with `--level` it scores against your ordered levels, and with
+    /// neither it answers the probability that the statement is true. The
+    /// evidence is `--input` text and `--attach`ed files or image URLs; with
+    /// none, the prompt is judged on its own. A direct call: no daemon needed.
+    ///
+    /// `flowspace3 docs get decisions` has worked examples.
+    Decision {
+        /// The question. Optional only when `--questions` supplies them.
+        #[arg(required_unless_present = "questions")]
+        prompt: Option<String>,
+        /// A name for the prompt's question, echoed on its answer.
+        #[arg(long)]
+        name: Option<String>,
+        /// An option to choose from (repeat, 2-255). Makes it a choice.
+        #[arg(
+            long = "choice",
+            value_name = "VALUE[=DESCRIPTION]",
+            conflicts_with = "levels"
+        )]
+        choices: Vec<String>,
+        /// A level to score against, lowest first (repeat, 2-10). Makes it a score.
+        #[arg(long = "level", value_name = "LABEL[=DESCRIPTION]")]
+        levels: Vec<String>,
+        /// More questions, as JSON in the API's shape: one object or an array.
+        #[arg(long, value_name = "FILE|-")]
+        questions: Option<String>,
+        /// Text evidence (repeat). `-` reads stdin.
+        #[arg(long = "input", value_name = "TEXT|-")]
+        inputs: Vec<String>,
+        /// An image file, image URL, or text file to judge (repeat).
+        #[arg(long = "attach", value_name = "PATH|URL")]
+        attachments: Vec<String>,
+        /// How closely to look at attached images.
+        #[arg(long, value_enum)]
+        detail: Option<fs3_cli::decision::DetailArg>,
+        /// The decision model.
+        #[arg(long, default_value = fs3_daemon::decisions::DECISIONS_DEFAULT_MODEL)]
+        model: String,
+        /// Use a configured `openai` or `openai_compat` instance's base URL and key.
+        #[arg(long, value_name = "NAME")]
+        provider: Option<String>,
+        /// Read the API key from this variable instead (default OPENAI_API_KEY).
+        #[arg(long, value_name = "VAR")]
+        api_key_env: Option<String>,
+        /// A stable pseudonymous id for the end user, for OpenAI's abuse checks.
+        #[arg(long, value_name = "ID")]
+        safety_identifier: Option<String>,
+        /// Read this directory instead of `$FS3_CONFIG_DIR` or
+        /// `~/.config/flowspace3`.
+        #[arg(long, value_name = "DIR")]
+        config_dir: Option<PathBuf>,
+    },
     /// Read the documentation bundled into this binary.
     ///
     /// Answers offline, with no daemon and no network: an agent that has just
@@ -963,6 +1018,41 @@ async fn run(command: Command) -> Result<ExitCode> {
                 None => envelope,
             };
             emit(&envelope)
+        }
+        Command::Decision {
+            prompt,
+            name,
+            choices,
+            levels,
+            questions,
+            inputs,
+            attachments,
+            detail,
+            model,
+            provider,
+            api_key_env,
+            safety_identifier,
+            config_dir,
+        } => {
+            let dir = match config_dir {
+                Some(dir) => dir,
+                None => settings::config_dir()?,
+            };
+            let args = fs3_cli::decision::DecisionArgs {
+                prompt,
+                name,
+                choices,
+                levels,
+                questions,
+                inputs,
+                attachments,
+                detail,
+                model,
+                provider,
+                api_key_env,
+                safety_identifier,
+            };
+            emit(&fs3_cli::decision::run(args, &dir).await)
         }
         Command::Config {
             command: ConfigCommand::Show { config_dir },

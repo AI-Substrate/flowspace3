@@ -54,6 +54,7 @@ fn render_at_width(envelope: &Envelope<Value>, width: u16) -> Option<String> {
         "add" | "scan" => surfaces::roots::render(envelope, width),
         "get" => surfaces::read::get(envelope, width),
         "tree" => surfaces::read::tree(envelope, width),
+        "decision" => surfaces::decision::render(envelope, width),
         "remove" => surfaces::remove::remove(envelope, width),
         "gc" => surfaces::remove::gc(envelope, width),
         "hooks install" | "hooks uninstall" => surfaces::hooks::changes(envelope, width),
