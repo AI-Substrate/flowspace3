@@ -1,0 +1,35 @@
+crates/cli/src/doctor.rs
+  s_cd6a23c36d0f97::t_6d18b3b109b40a 192,582-661,1835-1878
+crates/daemon/src/boot.rs
+  s_cd6a23c36d0f97::t_96609c497eda3b 847-851
+crates/daemon/src/lib.rs
+  s_cd6a23c36d0f97::t_17e196a1538535 39
+crates/daemon/src/table_analyze.rs
+  s_cd6a23c36d0f97::t_38c19071969da8 1-99
+crates/store/migrations/0031_autovacuum_thresholds.sql
+  s_cd6a23c36d0f97::t_2f200462b78e4b 1-40
+crates/store/src/lib.rs
+  s_cd6a23c36d0f97::t_58ad4c246d4f3e 33,76
+crates/store/src/maintenance.rs
+  s_cd6a23c36d0f97::t_7e8b4c1ad8e596 1-99
+crates/store/tests/pg_maintenance.rs
+  s_cd6a23c36d0f97::t_86e1af491c6e73 1-52
+docs/services/table-maintenance.md
+  s_cd6a23c36d0f97::t_62ca8c706f9f50 1-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "07bf837c39ba25723f6f1137e9da890ed11d7446",
+  "prompts": {},
+  "sessions": {
+    "s_cd6a23c36d0f97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0db27c61-04ec-4f97-95bb-969cfb287d7e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
