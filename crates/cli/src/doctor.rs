@@ -34,7 +34,9 @@ use std::time::{Duration, Instant};
 
 use fs3_core::envelope::{Envelope, Failure};
 use fs3_core::views::doctor::{DoctorReport, Step};
-use fs3_core::views::status::{ConversationState, ConversationsStatus, StatusReport};
+use fs3_core::views::status::{
+    ConversationState, ConversationsStatus, SearchLatency, StatusReport,
+};
 use fs3_core::{Config, Effective, Port, ProviderInstance, catalog};
 
 /// Environment variable naming the container engine.
@@ -197,6 +199,7 @@ async fn walk(
     steps.push(check_auth(daemon_url, config_dir).await);
     let home = std::env::var_os("HOME").map(std::path::PathBuf::from);
     steps.push(check_conversations(daemon_url, config_dir, home.as_deref()).await);
+    steps.push(check_search(daemon_url, config_dir).await);
     steps.push(check_providers(config));
     // req-0054 / req-0059. Both read the store, so they walk after the schema
     // row that guarantees the tables exist, and after `daemon` and `providers`
@@ -774,38 +777,116 @@ async fn check_conversations(
 ) -> Step {
     let started = Instant::now();
     let metrics = home.and_then(fs3_daemon::convo_ingest::metrics_db_path);
-    let status = async {
-        let client = reqwest::Client::builder()
-            .timeout(DAEMON_PROBE_TIMEOUT)
-            .build()
-            .map_err(|error| error.to_string())?;
-        let mut request = client.get(format!("{}/status", daemon_url.trim_end_matches('/')));
-        if let Ok(key) = std::fs::read_to_string(fs3_core::daemon_key_path(config_dir)) {
-            request = request.bearer_auth(key.trim());
-        }
-        let envelope = request
-            .send()
-            .await
-            .map_err(|error| error.to_string())?
-            .error_for_status()
-            .map_err(|error| error.to_string())?
-            .json::<Envelope<StatusReport>>()
-            .await
-            .map_err(|error| error.to_string())?;
-        if !envelope.ok {
-            return Err(envelope
-                .error
-                .map_or_else(|| "status failed".to_owned(), |error| error.message));
-        }
-        envelope
-            .data
-            .and_then(|report| report.conversations)
-            .ok_or_else(|| "daemon does not report conversation polling health".to_owned())
-    }
-    .await;
+    let status = fetch_status(daemon_url, config_dir)
+        .await
+        .and_then(|report| {
+            report
+                .conversations
+                .ok_or_else(|| "daemon does not report conversation polling health".to_owned())
+        });
     conversations_row(
         status.as_ref().map_err(String::as_str),
         metrics.as_deref(),
+        started,
+    )
+}
+
+/// The daemon's `GET /status` report, or why it could not be read.
+async fn fetch_status(
+    daemon_url: &str,
+    config_dir: &std::path::Path,
+) -> Result<StatusReport, String> {
+    let client = reqwest::Client::builder()
+        .timeout(DAEMON_PROBE_TIMEOUT)
+        .build()
+        .map_err(|error| error.to_string())?;
+    let mut request = client.get(format!("{}/status", daemon_url.trim_end_matches('/')));
+    if let Ok(key) = std::fs::read_to_string(fs3_core::daemon_key_path(config_dir)) {
+        request = request.bearer_auth(key.trim());
+    }
+    let envelope = request
+        .send()
+        .await
+        .map_err(|error| error.to_string())?
+        .error_for_status()
+        .map_err(|error| error.to_string())?
+        .json::<Envelope<StatusReport>>()
+        .await
+        .map_err(|error| error.to_string())?;
+    if !envelope.ok {
+        return Err(envelope
+            .error
+            .map_or_else(|| "status failed".to_owned(), |error| error.message));
+    }
+    envelope
+        .data
+        .ok_or_else(|| "status answered without a report".to_owned())
+}
+
+/// How long recent searches took, as the daemon measured them.
+async fn check_search(daemon_url: &str, config_dir: &std::path::Path) -> Step {
+    let started = Instant::now();
+    let status = fetch_status(daemon_url, config_dir).await;
+    search_row(
+        status
+            .as_ref()
+            .map(|report| report.search_latency.as_ref())
+            .map_err(String::as_str),
+        started,
+    )
+}
+
+/// What to look at when one stage makes searches slow.
+fn slow_stage_action(stage: &str) -> &'static str {
+    match stage {
+        "semantic" | "wide" => {
+            "the vector index is being read from disk: give Postgres more memory \
+             (shared_buffers), and check `meta.timing.semantic_pass_ms` on a slow search \
+             for repeated candidate passes"
+        }
+        "lexical" => {
+            "keyword matching is rechecking many large rows: common words in the query cost \
+             the most; check the database's statistics are current (ANALYZE elements)"
+        }
+        "embed" => "the embedder is slow to answer: check the provider's latency and quota",
+        _ => "read `meta.timing` on a slow `flowspace3 search --json` to see where its time goes",
+    }
+}
+
+fn search_row(latency: Result<Option<&SearchLatency>, &str>, started: Instant) -> Step {
+    let latency = match latency {
+        Ok(Some(latency)) => latency,
+        Ok(None) => {
+            return Step::ok("search", "no searches since the daemon started", started);
+        }
+        Err(error) => {
+            return Step::info(
+                "search",
+                format!("search latency unavailable: {error}"),
+                "fix the daemon/auth rows, or restart the current daemon to report search latency",
+                started,
+            );
+        }
+    };
+    let stage = |name: &str| latency.stages.iter().find(|row| row.stage == name);
+    let Some(total) = stage("total") else {
+        return Step::ok("search", "no searches since the daemon started", started);
+    };
+    let found = format!(
+        "p50 {} ms, p95 {} ms over the last {} searches; {} took over {} ms",
+        total.p50_ms, total.p95_ms, latency.searches, latency.slow, latency.slow_ms
+    );
+    if total.p95_ms <= latency.slow_ms {
+        return Step::ok("search", found, started);
+    }
+    let slowest = stage(&latency.slowest_stage).map_or(0, |row| row.p95_ms);
+    Step::warn(
+        "search",
+        format!(
+            "{found}; the slowest stage is {} (p95 {slowest} ms)",
+            latency.slowest_stage
+        ),
+        slow_stage_action(&latency.slowest_stage),
         started,
     )
 }
@@ -1617,5 +1698,57 @@ mod tests {
         );
         assert_eq!(logged_in.outcome, "ok");
         assert!(logged_in.found.contains("logged in"), "{logged_in:?}");
+    }
+
+    fn latency(p95_total: u64, slow: usize) -> SearchLatency {
+        let row = |stage: &str, p95_ms: u64| fs3_core::views::status::StageLatency {
+            stage: stage.to_string(),
+            p50_ms: p95_ms / 4,
+            p95_ms,
+            max_ms: p95_ms,
+        };
+        SearchLatency {
+            searches: 40,
+            slow,
+            slow_ms: 5_000,
+            slowest_stage: "lexical".to_string(),
+            stages: vec![row("total", p95_total), row("lexical", p95_total - 100)],
+        }
+    }
+
+    #[test]
+    fn the_search_row_is_quiet_when_searches_are_fast() {
+        let fast = latency(900, 0);
+        let step = search_row(Ok(Some(&fast)), Instant::now());
+        assert_eq!(step.outcome, "ok");
+        assert!(step.found.contains("p95 900 ms"), "{step:?}");
+
+        let none = search_row(Ok(None), Instant::now());
+        assert_eq!(none.outcome, "ok");
+        assert!(none.found.contains("no searches"), "{none:?}");
+    }
+
+    #[test]
+    fn a_slow_search_row_names_the_stage_and_what_to_check() {
+        let slow = latency(7_800, 6);
+        let step = search_row(Ok(Some(&slow)), Instant::now());
+        assert_eq!(step.outcome, "warn");
+        assert!(
+            step.found
+                .contains("slowest stage is lexical (p95 7700 ms)"),
+            "{step:?}"
+        );
+        assert!(
+            step.action
+                .as_deref()
+                .is_some_and(|action| action.contains("ANALYZE")),
+            "{step:?}"
+        );
+    }
+
+    #[test]
+    fn an_unreadable_status_is_information_not_a_fault() {
+        let step = search_row(Err("connection refused"), Instant::now());
+        assert_eq!(step.outcome, "info");
     }
 }

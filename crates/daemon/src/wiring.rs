@@ -133,6 +133,8 @@ pub struct AppState {
     pub query_embed_bound: std::time::Duration,
     /// Query embeds that outlived the bound and are still running.
     query_embeds_waiting: Arc<std::sync::atomic::AtomicUsize>,
+    /// How long recent searches took, stage by stage, for status and doctor.
+    pub search_latencies: Arc<crate::search_latency::SearchLatencies>,
 }
 
 /// Query embeds that may still be waiting on the embedder before a search
@@ -287,6 +289,7 @@ impl AppState {
             embedder_health: Arc::new(EmbedderHealth::default()),
             query_embed_bound: QUERY_EMBED_BOUND,
             query_embeds_waiting: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+            search_latencies: Arc::default(),
         })
     }
     /// Attach one live watcher to the daemon event fan-out.

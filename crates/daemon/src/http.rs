@@ -611,19 +611,40 @@ async fn search(
     Query(request): Query<SearchRequest>,
 ) -> Answer<SearchResults> {
     const COMMAND: &str = "search";
+    let started = std::time::Instant::now();
     if let Err(failure) = crate::schema::guard(&state.db).await {
         return failed(&state, COMMAND, failure).await;
     }
+    let guard_ms = crate::search_latency::elapsed_ms(started);
 
     // Workshop 003 D6: a bare search is about the repository the caller is
     // standing in. The scope rides in `meta` on BOTH outcomes, because "no
     // index for the active model" and "the wrong repository answered" look
     // identical to a caller who cannot see which repository was asked.
+    let resolving = std::time::Instant::now();
     let scope =
         crate::scope::resolve(&state, request.repo.as_deref(), request.cwd.as_deref()).await;
+    let scope_ms = crate::search_latency::elapsed_ms(resolving);
 
     match crate::search::search(&state, &request, &scope).await {
-        Ok(outcome) => {
+        Ok(mut outcome) => {
+            outcome.timing.guard_ms = guard_ms;
+            outcome.timing.scope_ms = scope_ms;
+            outcome.timing.total_ms = crate::search_latency::elapsed_ms(started);
+            let timing = &outcome.timing;
+            tracing::info!(
+                total_ms = timing.total_ms,
+                embed_ms = timing.embed_ms,
+                store_ms = timing.store_ms,
+                semantic_ms = timing.semantic_ms,
+                lexical_ms = timing.lexical_ms,
+                wide_ms = ?timing.wide_semantic_ms.max(timing.wide_lexical_ms),
+                passes = outcome.passes,
+                candidates = timing.candidates,
+                repo = ?scope.repo,
+                "search timing"
+            );
+            state.search_latencies.record(timing.clone());
             let weak_match = outcome.is_weak_match();
             // The third cause is the one nobody guesses: vectors are only read
             // under the model_key that wrote them, so searching with a
@@ -657,6 +678,7 @@ async fn search(
                 "scan_incomplete": outcome.scan_incomplete,
                 "passes": outcome.passes,
                 "filtered": outcome.filtered,
+                "timing": outcome.timing,
             });
             if weak_match {
                 meta["hint"] = serde_json::Value::String(WEAK_MATCH_HINT.to_string());
