@@ -11,7 +11,7 @@ use std::path::Path;
 use std::time::Instant;
 
 use fs3_core::{
-    ProviderInstance, catalog,
+    CostEstimate, DecisionsConfig, Effective, ProviderInstance, catalog,
     envelope::{Envelope, Failure},
 };
 use fs3_daemon::decisions::{
@@ -93,6 +93,10 @@ pub struct DecisionReport {
     /// The API base that answered.
     pub endpoint: String,
     pub latency_ms: u64,
+    /// Usage times the `[decisions.prices]` table — an estimate, never a
+    /// bill. Absent when the model has no price or the service sent no usage.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cost: Option<CostEstimate>,
 }
 
 /// Run the verb. Every outcome is an envelope.
@@ -113,7 +117,14 @@ async fn decide(
     let mut stdin = Stdin::default();
     let questions = build_questions(&args, &mut stdin)?;
     let (input, summary) = build_input(&args, &mut stdin)?;
-    let endpoint = resolve_endpoint(&args, config_dir)?;
+    // A broken config only matters to `--provider`; prices fall back to the
+    // built-in table rather than failing a call that never needed config.
+    let effective = crate::settings::load_effective_from(config_dir);
+    let endpoint = resolve_endpoint(&args, effective.as_ref())?;
+    let prices = effective.as_ref().map_or_else(
+        |_| DecisionsConfig::default(),
+        |effective| effective.config.decisions.clone(),
+    );
 
     let request = DecisionRequest {
         model: args.model,
@@ -129,6 +140,14 @@ async fn decide(
         .map_err(|error| failure_of(&error, &endpoint.key_env))?;
     let latency_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
 
+    let cost = decision.usage.as_ref().and_then(|usage| {
+        prices
+            .prices
+            .get(&decision.model)
+            .or_else(|| prices.prices.get(&request.model))
+            .map(|price| price.estimate(usage.input_tokens, usage.output_tokens))
+    });
+
     let next = next_action(&decision.answers);
     Ok(Envelope::ok(
         COMMAND,
@@ -140,6 +159,7 @@ async fn decide(
             input: summary,
             endpoint: endpoint.api_base,
             latency_ms,
+            cost,
         },
     )
     .with_next_action(next))
@@ -352,17 +372,34 @@ struct Endpoint {
     key_env: String,
 }
 
+/// The key variables tried, in order, when nothing names one: the convention,
+/// then the spelling Jordan's `.env` uses.
+pub const DEFAULT_KEY_ENVS: &[&str] = &[ProviderInstance::DEFAULT_API_KEY_ENV, "OPEN_AI"];
+
+/// The first of [`DEFAULT_KEY_ENVS`] holding a non-blank value, or the
+/// conventional name when none does — so the "not set" message names it.
+fn default_key_env(lookup: impl Fn(&str) -> Option<String>) -> &'static str {
+    DEFAULT_KEY_ENVS
+        .iter()
+        .copied()
+        .find(|name| lookup(name).is_some_and(|value| !value.trim().is_empty()))
+        .unwrap_or(DEFAULT_KEY_ENVS[0])
+}
+
 /// `--provider` borrows a configured instance's base and key variable;
-/// without one, OpenAI itself and `OPENAI_API_KEY`. `--api-key-env` names a
-/// different variable either way.
-fn resolve_endpoint(args: &DecisionArgs, config_dir: &Path) -> Result<Endpoint, Failure> {
+/// without one, OpenAI itself and the first of [`DEFAULT_KEY_ENVS`] that is
+/// set. `--api-key-env` names a different variable either way.
+fn resolve_endpoint(
+    args: &DecisionArgs,
+    effective: Result<&Effective, &anyhow::Error>,
+) -> Result<Endpoint, Failure> {
     let (api_base, configured_env) = match &args.provider {
         None => (
             DEFAULT_API_BASE.to_string(),
-            Some(ProviderInstance::DEFAULT_API_KEY_ENV.to_string()),
+            Some(default_key_env(|name| std::env::var(name).ok()).to_string()),
         ),
         Some(name) => {
-            let effective = crate::settings::load_effective_from(config_dir)
+            let effective = effective
                 .map_err(|error| Failure::new(&catalog::CONFIG_INVALID, format!("{error:#}")))?;
             let instance = effective.config.provider(name).map_err(|error| {
                 Failure::new(&catalog::CONFIG_PROVIDER_UNKNOWN, error.to_string())
@@ -418,7 +455,12 @@ fn resolve_endpoint(args: &DecisionArgs, config_dir: &Path) -> Result<Endpoint, 
         )
         .with_fix(format!(
             "export {key_env}=<key>, or put `{key_env}=<key>` in secrets.env in the config \
-             directory; `--api-key-env <VAR>` reads a different variable"
+             directory; `--api-key-env <VAR>` reads a different variable{}",
+            if args.provider.is_none() && args.api_key_env.is_none() {
+                " (with neither flag, OPEN_AI is also tried)"
+            } else {
+                ""
+            }
         ))
         .with_detail("api_key_env", &key_env)
         .retryable(false));
@@ -651,12 +693,27 @@ mod tests {
         let mut args = args("?");
         args.api_key_env = Some("FS3_TEST_SURELY_UNSET_DECISIONS_KEY".into());
         let dir = tempfile::tempdir().unwrap();
-        let Err(failure) = resolve_endpoint(&args, dir.path()) else {
+        let effective = crate::settings::load_effective_from(dir.path());
+        let Err(failure) = resolve_endpoint(&args, effective.as_ref()) else {
             panic!("an unset variable cannot authenticate");
         };
         assert_eq!(failure.code, "FS3-E-PROVIDER-FAILED");
         assert!(failure.fix.contains("FS3_TEST_SURELY_UNSET_DECISIONS_KEY"));
         assert!(!failure.retryable);
+    }
+
+    #[test]
+    fn open_ai_is_the_fallback_key_variable() {
+        let only =
+            |set: &'static str| move |name: &str| (name == set).then(|| "sk-test".to_string());
+        assert_eq!(default_key_env(only("OPENAI_API_KEY")), "OPENAI_API_KEY");
+        assert_eq!(default_key_env(only("OPEN_AI")), "OPEN_AI");
+        assert_eq!(
+            default_key_env(|_| Some("sk-test".into())),
+            "OPENAI_API_KEY"
+        );
+        assert_eq!(default_key_env(|_| Some("  ".into())), "OPENAI_API_KEY");
+        assert_eq!(default_key_env(|_| None), "OPENAI_API_KEY");
     }
 
     #[test]

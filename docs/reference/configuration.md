@@ -205,6 +205,35 @@ command's envelope until you restart the daemon. See
 | `auto` | boolean | `true` | Check for, download and install newer releases without being asked. Off means the daemon never reaches the network for a release and never swaps a binary — `flowspace3 doctor upgrade` still works, because a human asking for an update is not the same thing as one happening unattended. | `FS3_UPDATE__AUTO` |
 | `check_interval_hours` | integer | `24` | How long the daemon waits between release checks. Honoured against a timestamp in Postgres rather than a timer, so a daemon restarted every ten minutes still checks once a day. Must be at least 1 when `auto` is on: GitHub's release endpoints are a shared, rate-limited resource. | `FS3_UPDATE__CHECK_INTERVAL_HOURS` |
 
+## `[decisions]`
+
+The price table `flowspace3 decision` uses to estimate what each call cost.
+The Decisions API reports token usage, never money, so `data.cost` is that usage
+multiplied by these prices. It is always labelled `source = "estimate"`: it
+cannot see regional-processing premiums, a negotiated rate, or a price change
+after `as_of`. gpt-6-luna's published price is built in; a table here corrects
+it or prices another model, and merges key by key over the built-in row.
+
+```toml
+[decisions.prices."gpt-6-luna"]
+input_usd_per_mtok = 0.10                # text AND image input tokens
+long_context_input_usd_per_mtok = 0.20   # once one request passes the threshold
+long_context_threshold_tokens = 272000
+output_usd_per_mtok = 0.0                # Decisions bills no output
+as_of = "2026-10-14"
+source = "https://developers.openai.com/api/docs/guides/decisions"
+```
+
+| Key | Type | Default | Effect | Env override |
+|---|---|---|---|---|
+| `prices` | table of model id → price | gpt-6-luna at the published rate | One row per model. A model with no row gets no `cost` in its envelope rather than a guess. | `FS3_DECISIONS__PRICES` cannot carry a table keyed by model id — set prices in `config.toml` |
+| `input_usd_per_mtok` | float, required in a new row | `0.10` | US dollars per million input tokens. There is no separate image rate: the API reports one `input_tokens` that already counts image tokens. | — |
+| `long_context_input_usd_per_mtok` | float | `0.20` | The input rate once a request's input passes `long_context_threshold_tokens`. | — |
+| `long_context_threshold_tokens` | integer | `272000` | Where the long-context rate starts. | — |
+| `output_usd_per_mtok` | float | `0.0` | Decisions bills no output; for a gateway that does. | — |
+| `as_of` | string | `2026-10-14` | When the price was read. Echoed as `cost.prices_as_of`. | — |
+| `source` | string | the Decisions guide URL | Where the price was read. Echoed as `cost.price_source`. | — |
+
 ## Not configuration
 
 Named here because people look for them in `config.toml` and they are not there:

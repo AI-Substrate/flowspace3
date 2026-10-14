@@ -92,7 +92,10 @@ A question whose wording depends on another's answer needs a second call.
     "usage": {"input_tokens": 443, "output_tokens": 0, "total_tokens": 443},
     "input": {"texts": 1, "images": 0},
     "endpoint": "https://api.openai.com/v1",
-    "latency_ms": 112 } }
+    "latency_ms": 112,
+    "cost": {"input_usd": 0.0000443, "output_usd": 0.0, "total_usd": 0.0000443,
+             "input_usd_per_mtok": 0.1, "long_context": false,
+             "prices_as_of": "2026-10-14", "price_source": "https://…", "source": "estimate"} } }
 ```
 
 - Branch on each answer's `type`. `answers[i]` answers `questions[i]`.
@@ -100,10 +103,26 @@ A question whose wording depends on another's answer needs a second call.
 - `confidence` under about 0.6 deserves a second look.
 - `refusal` means the model declined that one question; the others stand.
 
+## Cost
+
+`data.cost` (and `~$0.000044` on the human line) is an ESTIMATE: the service
+reports `usage.input_tokens`, and the CLI multiplies it by the
+`[decisions.prices]` table in `config.toml` — gpt-6-luna's published $0.10 per
+million input tokens is built in, rising to $0.20 past 272,000 input tokens.
+Image tokens are inside `input_tokens` and priced the same. Output is free.
+A model with no price row gets no `cost` rather than a guess;
+`flowspace3 docs get config` and the configuration reference show how to add one.
+
+What OpenAI actually billed is not available per call. Its organization Costs
+and Usage APIs need an ADMIN key and answer in time buckets across the whole
+organization, so they cannot attribute money to one decision — check the
+billing dashboard for the real figure.
+
 ## Keys and endpoints
 
-The key is read from `OPENAI_API_KEY` (the environment, or `secrets.env` in
-the config directory). `--api-key-env <VAR>` reads another variable.
+The key is read from `OPENAI_API_KEY`, or from `OPEN_AI` when that is unset
+(the environment, or `secrets.env` in the config directory). `--api-key-env
+<VAR>` reads another variable.
 `--provider <name>` borrows a configured `openai` or `openai_compat` instance's
 base URL and key variable — a gateway that serves `/decisions` works the same
 way. `--model` defaults to `gpt-6-luna`, the only Decisions model at public beta.

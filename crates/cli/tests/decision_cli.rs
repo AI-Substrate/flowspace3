@@ -118,6 +118,13 @@ fn a_choice_with_an_attachment_round_trips_through_the_provider() {
     assert_eq!(envelope["data"]["answers"][0]["choice"], "billing");
     assert_eq!(envelope["data"]["questions"][0]["type"], "choice");
     assert_eq!(envelope["data"]["input"]["images"], 1);
+    assert_eq!(envelope["data"]["cost"]["source"], "estimate");
+    assert!(
+        envelope["data"]["cost"]["total_usd"]
+            .as_f64()
+            .is_some_and(|usd| (usd - 0.000_008_8).abs() < 1e-12),
+        "88 input tokens at $0.10/1M: {envelope}"
+    );
     assert!(envelope["next_action"].is_string());
 
     let seen = request.recv().expect("the stub saw a request");
@@ -193,6 +200,7 @@ fn a_missing_key_fails_before_any_request_and_names_the_variable() {
 
     let output = flowspace3(config.path())
         .env_remove("OPENAI_API_KEY")
+        .env_remove("OPEN_AI")
         .args(["decision", "Is this fine?", "--json"])
         .output()
         .expect("the binary runs");
