@@ -120,6 +120,10 @@ pub const REDACTED: &str = "<redacted>";
 /// [update]
 /// auto = true
 /// check_interval_hours = 24
+///
+/// # Only to correct or add a price; gpt-6-luna is built in.
+/// [decisions.prices."gpt-6-luna"]
+/// input_usd_per_mtok = 0.10
 /// ```
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -148,6 +152,8 @@ pub struct Config {
     pub scan: ScanConfig,
     /// Whether — and how often — the daemon updates the installed binary.
     pub update: UpdateConfig,
+    /// What `flowspace3 decision` prices its calls at.
+    pub decisions: DecisionsConfig,
 }
 
 impl Default for Config {
@@ -164,6 +170,7 @@ impl Default for Config {
             indexing: IndexingConfig::default(),
             scan: ScanConfig::default(),
             update: UpdateConfig::default(),
+            decisions: DecisionsConfig::default(),
         }
     }
 }
@@ -184,6 +191,7 @@ pub const SECTIONS: &[&str] = &[
     "indexing",
     "scan",
     "update",
+    "decisions",
 ];
 
 impl Config {
@@ -1293,6 +1301,128 @@ impl Default for UpdateConfig {
     }
 }
 
+/// The price table `flowspace3 decision` estimates its cost from.
+///
+/// The Decisions API reports token usage, never money, so the CLI multiplies
+/// one by the other. The built-in row is the published price; a
+/// `[decisions.prices."<model>"]` table corrects it or adds a model, and is
+/// merged key by key over the built-in row of the same name.
+///
+/// ```toml
+/// [decisions.prices."gpt-6-luna"]
+/// input_usd_per_mtok = 0.10
+/// long_context_input_usd_per_mtok = 0.20
+/// long_context_threshold_tokens = 272000
+/// as_of = "2026-10-14"
+/// ```
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct DecisionsConfig {
+    /// Prices by model id.
+    pub prices: BTreeMap<String, DecisionPrice>,
+}
+
+impl Default for DecisionsConfig {
+    fn default() -> Self {
+        Self {
+            prices: BTreeMap::from([(
+                "gpt-6-luna".to_string(),
+                DecisionPrice {
+                    input_usd_per_mtok: 0.10,
+                    long_context_input_usd_per_mtok: Some(0.20),
+                    long_context_threshold_tokens: Some(272_000),
+                    output_usd_per_mtok: 0.0,
+                    as_of: Some("2026-10-14".into()),
+                    source: Some(DecisionPrice::PUBLISHED_SOURCE.into()),
+                },
+            )]),
+        }
+    }
+}
+
+/// One model's Decisions prices, in US dollars per million tokens.
+///
+/// There is no separate image rate: the API reports a single `input_tokens`
+/// that already counts image tokens, so there is nothing to multiply one by.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DecisionPrice {
+    /// Input — text and image tokens alike.
+    pub input_usd_per_mtok: f64,
+    /// The input rate once a request passes `long_context_threshold_tokens`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub long_context_input_usd_per_mtok: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub long_context_threshold_tokens: Option<u64>,
+    /// Zero for Decisions, which bills no output; here for a gateway that does.
+    #[serde(default)]
+    pub output_usd_per_mtok: f64,
+    /// When this price was published or last checked.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub as_of: Option<String>,
+    /// Where the price came from.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+}
+
+impl DecisionPrice {
+    /// The page the built-in price was read from.
+    pub const PUBLISHED_SOURCE: &'static str =
+        "https://developers.openai.com/api/docs/guides/decisions";
+
+    /// Usage times price. An ESTIMATE: it cannot see regional-processing
+    /// premiums, a negotiated rate, or a price change after `as_of`.
+    #[must_use]
+    pub fn estimate(&self, input_tokens: u64, output_tokens: u64) -> CostEstimate {
+        let long_context = self
+            .long_context_threshold_tokens
+            .is_some_and(|threshold| input_tokens > threshold);
+        let input_rate = match self.long_context_input_usd_per_mtok {
+            Some(rate) if long_context => rate,
+            _ => self.input_usd_per_mtok,
+        };
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "token counts are far below 2^52"
+        )]
+        let per_token = |tokens: u64, rate: f64| tokens as f64 * rate / 1_000_000.0;
+        let input_usd = per_token(input_tokens, input_rate);
+        let output_usd = per_token(output_tokens, self.output_usd_per_mtok);
+        CostEstimate {
+            input_usd,
+            output_usd,
+            total_usd: input_usd + output_usd,
+            input_usd_per_mtok: input_rate,
+            long_context,
+            prices_as_of: self.as_of.clone(),
+            price_source: self.source.clone(),
+            source: CostEstimate::SOURCE.into(),
+        }
+    }
+}
+
+/// What a decision call cost, by [`DecisionPrice::estimate`].
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CostEstimate {
+    pub input_usd: f64,
+    pub output_usd: f64,
+    pub total_usd: f64,
+    /// The input rate that was applied.
+    pub input_usd_per_mtok: f64,
+    /// Whether the long-context rate applied.
+    pub long_context: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prices_as_of: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub price_source: Option<String>,
+    /// Always `estimate`: this is usage times a price table, never a bill.
+    pub source: String,
+}
+
+impl CostEstimate {
+    pub const SOURCE: &'static str = "estimate";
+}
+
 /// Where a section's effective value came from — the debuggability anchor
 /// behind `flowspace3 config show`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -1846,6 +1976,40 @@ mod tests {
             file_text: Some(toml_text),
             env: &env,
         })
+    }
+
+    #[test]
+    fn a_decision_is_priced_at_the_published_input_rate() {
+        let price = &DecisionsConfig::default().prices["gpt-6-luna"];
+        let cost = price.estimate(161, 0);
+        assert!((cost.total_usd - 0.000_016_1).abs() < 1e-12, "{cost:?}");
+        assert!(!cost.long_context);
+        assert_eq!(cost.source, "estimate");
+        assert_eq!(cost.prices_as_of.as_deref(), Some("2026-10-14"));
+    }
+
+    #[test]
+    fn past_the_threshold_the_long_context_rate_applies() {
+        let price = &DecisionsConfig::default().prices["gpt-6-luna"];
+        let cost = price.estimate(300_000, 0);
+        assert!(cost.long_context);
+        assert!((cost.input_usd - 0.06).abs() < 1e-12, "{cost:?}");
+    }
+
+    /// An override corrects one field and keeps the rest of the built-in row,
+    /// and a new model needs only its input rate.
+    #[test]
+    fn a_price_override_merges_over_the_built_in_row() {
+        let config = Config::from_toml_str(
+            "[decisions.prices.\"gpt-6-luna\"]\ninput_usd_per_mtok = 0.25\n\n\
+             [decisions.prices.\"gateway-model\"]\ninput_usd_per_mtok = 0.5\noutput_usd_per_mtok = 2.0\n",
+        )
+        .expect("a valid override");
+        let luna = &config.decisions.prices["gpt-6-luna"];
+        assert!((luna.input_usd_per_mtok - 0.25).abs() < f64::EPSILON);
+        assert_eq!(luna.long_context_threshold_tokens, Some(272_000));
+        let gateway = config.decisions.prices["gateway-model"].estimate(1_000_000, 1_000_000);
+        assert!((gateway.total_usd - 2.5).abs() < 1e-12, "{gateway:?}");
     }
 
     #[test]

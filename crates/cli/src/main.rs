@@ -363,7 +363,7 @@ enum Command {
         /// Use a configured `openai` or `openai_compat` instance's base URL and key.
         #[arg(long, value_name = "NAME")]
         provider: Option<String>,
-        /// Read the API key from this variable instead (default OPENAI_API_KEY).
+        /// Read the API key from this variable (default OPENAI_API_KEY, then OPEN_AI).
         #[arg(long, value_name = "VAR")]
         api_key_env: Option<String>,
         /// A stable pseudonymous id for the end user, for OpenAI's abuse checks.

@@ -24,6 +24,9 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
     if let Some(usage) = &report.usage {
         summary.push_str(&format!(" · {} input tokens", usage.input_tokens));
     }
+    if let Some(cost) = &report.cost {
+        summary.push_str(&format!(" · ~{}", usd(cost.total_usd)));
+    }
     let mut out = theme::title("decision", &summary);
     out.push_str("\n\n");
 
@@ -51,6 +54,16 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
         out.push('\n');
     }
     Some(out)
+}
+
+/// Dollars to two significant figures: a decision costs fractions of a cent,
+/// and `$0.00` would say it was free.
+fn usd(amount: f64) -> String {
+    if amount <= 0.0 {
+        return "$0".into();
+    }
+    let decimals = (1 - amount.log10().floor() as i32).max(2) as usize;
+    format!("${amount:.decimals$}")
 }
 
 fn answer_lines(answer: &Answer) -> String {
@@ -169,7 +182,10 @@ mod tests {
                 "usage": {"input_tokens": 120, "output_tokens": 0, "total_tokens": 120},
                 "input": {"texts": 1, "images": 0},
                 "endpoint": "https://api.openai.com/v1",
-                "latency_ms": 111
+                "latency_ms": 111,
+                "cost": {"input_usd": 0.000012, "output_usd": 0.0, "total_usd": 0.000012,
+                         "input_usd_per_mtok": 0.1, "long_context": false,
+                         "prices_as_of": "2026-10-14", "source": "estimate"}
             },
             "next_action": "branch on type"
         }))
@@ -177,7 +193,7 @@ mod tests {
 
         let screen = plain(&render(&envelope, 100).expect("a covered payload renders"));
         assert!(
-            screen.contains("gpt-6-luna · 4 answers · 111 ms · 120 input tokens"),
+            screen.contains("gpt-6-luna · 4 answers · 111 ms · 120 input tokens · ~$0.000012"),
             "{screen}"
         );
         assert!(
@@ -189,6 +205,15 @@ mod tests {
         assert!(screen.contains("→ 0.90 high  confidence 0.80"), "{screen}");
         assert!(screen.contains("refused"), "{screen}");
         assert!(screen.contains("branch on type"), "{screen}");
+    }
+
+    #[test]
+    fn dollars_keep_two_significant_figures() {
+        assert_eq!(usd(0.0), "$0");
+        assert_eq!(usd(0.000_016_1), "$0.000016");
+        assert_eq!(usd(0.05), "$0.050");
+        assert_eq!(usd(1.5), "$1.50");
+        assert_eq!(usd(123.0), "$123.00");
     }
 
     #[test]

@@ -56,6 +56,11 @@ min_file_bytes = 1
 respect_gitignore = true
 include_hidden = false
 follow_symlinks = false
+
+# Only to correct or add a price: gpt-6-luna is built in. `flowspace3 decision`
+# multiplies reported tokens by this to estimate `data.cost`.
+[decisions.prices."gpt-6-luna"]
+input_usd_per_mtok = 0.10
 ```
 
 ## Secrets are a separate chain
