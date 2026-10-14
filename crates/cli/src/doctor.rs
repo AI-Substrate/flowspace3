@@ -189,6 +189,7 @@ async fn walk(
     admin.close().await;
 
     steps.push(check_schema(database_url).await?);
+    steps.push(check_tables(database_url).await);
 
     // The daemon is the one step doctor deliberately does NOT repair. Starting
     // a foreground server from a diagnostic command would leave a process the
@@ -576,6 +577,94 @@ async fn check_schema(database_url: &str) -> Result<Step, Failure> {
         format!("applied {missing}"),
         started,
     ))
+}
+
+/// A table is big enough to watch from this many live rows.
+const BIG_TABLE_ROWS: i64 = 100_000;
+/// Past this share of dead rows, or of rows changed since the last ANALYZE,
+/// a big table's maintenance has fallen behind.
+const TABLE_BEHIND_SHARE: f64 = 0.10;
+
+/// Are the big tables vacuumed and analyzed? Stale statistics are how a
+/// one-row probe became a sequential scan of `elements` (2026-10-14).
+async fn check_tables(database_url: &str) -> Step {
+    let started = Instant::now();
+    let health = async {
+        let pool = fs3_store::connect(database_url)
+            .await
+            .map_err(|error| error.to_string())?;
+        let health = fs3_store::table_health(&pool).await;
+        pool.close().await;
+        health.map_err(|error| error.to_string())
+    }
+    .await;
+    tables_row(health.as_deref().map_err(String::as_str), started)
+}
+
+fn tables_row(health: Result<&[fs3_store::TableHealth], &str>, started: Instant) -> Step {
+    let health = match health {
+        Ok(health) => health,
+        Err(error) => {
+            return Step::info(
+                "tables",
+                format!("table health unavailable: {error}"),
+                "fix the database rows above",
+                started,
+            );
+        }
+    };
+    let behind: Vec<String> = health
+        .iter()
+        .filter(|table| table.live_rows >= BIG_TABLE_ROWS)
+        .filter_map(|table| {
+            let mut why = Vec::new();
+            // Migration 0031 lets the vector table reach 10% dead before
+            // autovacuum (its vacuum also cleans the HNSW index), so only
+            // twice that means maintenance has fallen behind.
+            let dead_limit = if table.table == "embeddings_1024" {
+                2.0 * TABLE_BEHIND_SHARE
+            } else {
+                TABLE_BEHIND_SHARE
+            };
+            if table.dead_ratio() > dead_limit {
+                why.push(format!("{:.0}% dead rows", table.dead_ratio() * 100.0));
+            }
+            match table.analyzed_secs_ago {
+                None => why.push("never analyzed".to_string()),
+                Some(_) if table.stale_ratio() > TABLE_BEHIND_SHARE => why.push(format!(
+                    "{:.0}% changed since its last ANALYZE",
+                    table.stale_ratio() * 100.0
+                )),
+                Some(_) => {}
+            }
+            (!why.is_empty()).then(|| format!("{} ({})", table.table, why.join(", ")))
+        })
+        .collect();
+    let big = health
+        .iter()
+        .filter(|table| table.live_rows >= BIG_TABLE_ROWS)
+        .count();
+    if behind.is_empty() {
+        return Step::ok(
+            "tables",
+            format!("{big} big table(s) vacuumed and analyzed recently enough"),
+            started,
+        );
+    }
+    let names: Vec<&str> = behind
+        .iter()
+        .map(|entry| entry.split(' ').next().unwrap_or(entry))
+        .collect();
+    Step::warn(
+        "tables",
+        format!("maintenance has fallen behind on {}", behind.join("; ")),
+        format!(
+            "in a quiet moment run `VACUUM (ANALYZE) {}` against the store; stale statistics \
+             make the planner choose slow plans, and autovacuum keeps up on its own once caught up",
+            names.join(", ")
+        ),
+        started,
+    )
 }
 
 /// Step 4: is the daemon answering?
@@ -1750,5 +1839,57 @@ mod tests {
     fn an_unreadable_status_is_information_not_a_fault() {
         let step = search_row(Err("connection refused"), Instant::now());
         assert_eq!(step.outcome, "info");
+    }
+
+    fn table(name: &str, live_rows: i64, dead_rows: i64, changed: i64) -> fs3_store::TableHealth {
+        fs3_store::TableHealth {
+            table: name.to_string(),
+            live_rows,
+            dead_rows,
+            changed_since_analyze: changed,
+            analyzed_secs_ago: Some(3_600),
+            vacuumed_secs_ago: None,
+        }
+    }
+
+    #[test]
+    fn the_tables_row_names_each_big_table_that_fell_behind() {
+        let health = [
+            // prod on 2026-10-14, before E1
+            table("elements", 1_251_823, 244_826, 45_322),
+            table("turns", 757_483, 39_259, 35_314),
+            // small tables are autovacuum's business
+            table("worktrees", 160, 82, 160),
+        ];
+        let step = tables_row(Ok(&health), Instant::now());
+        assert_eq!(step.outcome, "warn");
+        assert!(step.found.contains("elements (20% dead rows)"), "{step:?}");
+        assert!(!step.found.contains("turns"), "{step:?}");
+        assert!(!step.found.contains("worktrees"), "{step:?}");
+        assert!(
+            step.action
+                .as_deref()
+                .is_some_and(|action| action.contains("VACUUM (ANALYZE) elements")),
+            "{step:?}"
+        );
+    }
+
+    #[test]
+    fn the_vector_table_may_reach_its_own_vacuum_threshold_quietly() {
+        let waiting = [table("embeddings_1024", 1_600_000, 170_000, 1_000)];
+        assert_eq!(tables_row(Ok(&waiting), Instant::now()).outcome, "ok");
+        let behind = [table("embeddings_1024", 1_600_000, 400_000, 1_000)];
+        assert_eq!(tables_row(Ok(&behind), Instant::now()).outcome, "warn");
+    }
+
+    #[test]
+    fn healthy_tables_are_quiet_and_never_analyzed_is_named() {
+        let healthy = [table("elements", 1_000_000, 1_000, 1_000)];
+        assert_eq!(tables_row(Ok(&healthy), Instant::now()).outcome, "ok");
+        let mut never = table("elements", 1_000_000, 0, 0);
+        never.analyzed_secs_ago = None;
+        let step = tables_row(Ok(std::slice::from_ref(&never)), Instant::now());
+        assert!(step.found.contains("never analyzed"), "{step:?}");
+        assert_eq!(tables_row(Err("down"), Instant::now()).outcome, "info");
     }
 }
