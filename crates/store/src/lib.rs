@@ -72,7 +72,10 @@ pub use jobs::{
     queue_depth_history, record_job_retention, release_running, requeue_failed, requeue_running,
     retire_empty_embed_jobs, retry_job, take_daemon_lock,
 };
-pub use lexical::{LexicalHit, LexicalMatch, LexicalPage, search_lexical, search_lexical_page};
+pub use lexical::{
+    LexicalHit, LexicalMatch, LexicalPage, search_lexical, search_lexical_page,
+    search_lexical_pages,
+};
 pub use maintenance::{TableHealth, WATCHED_TABLES, analyze_table, table_health};
 pub use messages::{ack_message, live_messages, sync_messages};
 pub use read::{

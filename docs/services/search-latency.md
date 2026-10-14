@@ -9,7 +9,8 @@ Every search records where its time went. Status and doctor keep percentiles ove
   - `store_ms` is the wall time of the four store legs. They run concurrently, so it is the slowest leg's time, not their sum. Each leg is also reported on its own:
     - `semantic_ms` is the scoped vector leg. It comes with `semantic_acquire_ms`, `semantic_pass_ms[]` (one entry per candidate pass) and `candidates` (the final candidate limit).
     - `lexical_ms` is the scoped keyword leg. It comes with `lexical_acquire_ms`.
-    - `wide_semantic_ms`, `wide_lexical_ms` and `wide_passes` are the unscoped legs behind the "other repositories" hint. They appear only when those legs ran.
+    - `wide_semantic_ms` and `wide_passes` are the unscoped vector leg behind the "other repositories" hint. They appear only when that leg ran and was waited for; `wide_dropped` says the answer went without it.
+    - The hint's keyword page comes from the scoped keyword leg's own pass (one trigram scan yields both pages), so its cost is part of `lexical_ms`. `wide_lexical_ms` is no longer reported.
 - **One `search timing` log line per search,** at info level: total, embed, store, semantic, lexical, wide, passes, candidates and repo. A search over 5 s also logs the `slow search` warning, which now carries the per-leg split.
 - **`status.search_latency`:** p50, p95 and max per stage over the last 1,024 searches, plus `slow` (the number over `slow_ms`, 5 s) and `slowest_stage` (the stage with the highest p95, excluding total and store). It is kept in memory, so it starts empty at every daemon restart.
 - **A `search` row in doctor:**
