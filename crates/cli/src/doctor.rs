@@ -618,7 +618,15 @@ fn tables_row(health: Result<&[fs3_store::TableHealth], &str>, started: Instant)
         .filter(|table| table.live_rows >= BIG_TABLE_ROWS)
         .filter_map(|table| {
             let mut why = Vec::new();
-            if table.dead_ratio() > TABLE_BEHIND_SHARE {
+            // Migration 0031 lets the vector table reach 10% dead before
+            // autovacuum (its vacuum also cleans the HNSW index), so only
+            // twice that means maintenance has fallen behind.
+            let dead_limit = if table.table == "embeddings_1024" {
+                2.0 * TABLE_BEHIND_SHARE
+            } else {
+                TABLE_BEHIND_SHARE
+            };
+            if table.dead_ratio() > dead_limit {
                 why.push(format!("{:.0}% dead rows", table.dead_ratio() * 100.0));
             }
             match table.analyzed_secs_ago {
@@ -1864,6 +1872,14 @@ mod tests {
                 .is_some_and(|action| action.contains("VACUUM (ANALYZE) elements")),
             "{step:?}"
         );
+    }
+
+    #[test]
+    fn the_vector_table_may_reach_its_own_vacuum_threshold_quietly() {
+        let waiting = [table("embeddings_1024", 1_600_000, 170_000, 1_000)];
+        assert_eq!(tables_row(Ok(&waiting), Instant::now()).outcome, "ok");
+        let behind = [table("embeddings_1024", 1_600_000, 400_000, 1_000)];
+        assert_eq!(tables_row(Ok(&behind), Instant::now()).outcome, "warn");
     }
 
     #[test]

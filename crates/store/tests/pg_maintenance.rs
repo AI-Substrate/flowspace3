@@ -18,11 +18,24 @@ async fn migration_0031_sets_autovacuum_thresholds_on_every_watched_table() {
         .fetch_all(&pool)
         .await
         .expect("reads reloptions");
+        // The vector table vacuums its HNSW index too, so it vacuums less
+        // often; every table analyzes at 1%.
+        let vacuum = if table == "embeddings_1024" {
+            "0.10"
+        } else {
+            "0.02"
+        };
         assert!(
-            options.contains(&"autovacuum_vacuum_scale_factor=0.02".to_string())
+            options.contains(&format!("autovacuum_vacuum_scale_factor={vacuum}"))
                 && options.contains(&"autovacuum_analyze_scale_factor=0.01".to_string()),
             "{table}: {options:?}"
         );
+        if table == "embeddings_1024" || table == "elements" {
+            assert!(
+                options.contains(&"autovacuum_vacuum_cost_delay=10".to_string()),
+                "{table} vacuums slowly: {options:?}"
+            );
+        }
     }
     database.destroy(pool).await;
 }
