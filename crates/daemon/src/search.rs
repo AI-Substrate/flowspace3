@@ -583,27 +583,32 @@ async fn search_filtered(
     // budget bounds what an unwaited hint can still cost the database. On
     // 2026-10-14 a `--source code` hint took 49 s over five passes on prod,
     // while the scoped answer it was advice for took 3 s.
-    // Only the vector leg runs apart: the keyword leg's wide page comes from
-    // the scoped leg's own pass over the trigram index.
+    //
+    // Both of the hint's legs run apart, keyword included. One pass yielding
+    // both keyword pages (#167) put the wide page's cost back on the answer:
+    // on prod, common-word searches got ~20% slower warm, and the combined
+    // statement read 2-4x the buffers of the scoped one it replaced, because
+    // its scope test ran per matched row in every repository (2026-10-14).
     let wide_task = wide_filters.map(|filters| {
         let state = state.clone();
         let model_key = model_key.clone();
         let vector = vector.map(<[f32]>::to_vec);
+        let query = query.to_string();
         tokio::spawn(async move {
-            timed(semantic_leg(
-                &state,
-                &model_key,
-                vector.as_deref(),
-                &filters,
-            ))
-            .await
+            tokio::try_join!(
+                timed(semantic_leg(
+                    &state,
+                    &model_key,
+                    vector.as_deref(),
+                    &filters
+                )),
+                timed(fs3_store::search_lexical_page(&state.db, &query, &filters)),
+            )
         })
     });
     let scoped_pass = tokio::try_join!(
         timed(semantic_leg(state, &model_key, vector, &filters)),
-        timed(fs3_store::search_lexical_pages(
-            &state.db, query, &filters, widen
-        )),
+        timed(fs3_store::search_lexical_page(&state.db, query, &filters)),
     );
     let mut wide_dropped = false;
     let wide = match wide_task {
@@ -626,11 +631,7 @@ async fn search_filtered(
             }
         },
     };
-    let ((semantic, semantic_ms), ((lexical, wide_lexical), lexical_ms)) =
-        scoped_pass.map_err(fail)?;
-    // The hint needs both channels: a page measured by keywords alone would
-    // count a different "top" than the scoped answer it is compared with.
-    let wide = wide.zip(wide_lexical);
+    let ((semantic, semantic_ms), (lexical, lexical_ms)) = scoped_pass.map_err(fail)?;
     let total = started.elapsed();
     let mut timing = SearchTiming {
         embed_ms: duration_ms(embedded),
@@ -642,6 +643,7 @@ async fn search_filtered(
         lexical_ms,
         lexical_acquire_ms: lexical.acquire_ms,
         wide_semantic_ms: wide.as_ref().map(|((_, ms), _)| *ms),
+        wide_lexical_ms: wide.as_ref().map(|(_, (_, ms))| *ms),
         wide_passes: wide.as_ref().map(|((page, _), _)| page.passes),
         wide_dropped,
         ..SearchTiming::default()
@@ -675,7 +677,7 @@ async fn search_filtered(
     };
     let mut lexical_hits = lexical.hits;
     let measured_elsewhere = wide.is_some();
-    let elsewhere = wide.and_then(|((wide_semantic, _), wide_lexical)| {
+    let elsewhere = wide.and_then(|((wide_semantic, _), (wide_lexical, _))| {
         let ranked = fuse(
             wide_lexical
                 .hits

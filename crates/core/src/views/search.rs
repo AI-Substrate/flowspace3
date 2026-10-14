@@ -171,9 +171,7 @@ pub struct SearchTiming {
     /// The unscoped vector leg behind the "other repositories" hint, when it ran.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wide_semantic_ms: Option<u64>,
-    /// The unscoped keyword leg, when it ran as a leg of its own. Since the
-    /// keyword leg returns both pages from one pass (2026-10-14) it never
-    /// does, and its cost is part of `lexical_ms`; kept for older readers.
+    /// The unscoped keyword leg, when it ran and was waited for.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wide_lexical_ms: Option<u64>,
     /// Candidate passes the unscoped vector leg took, when it ran.
