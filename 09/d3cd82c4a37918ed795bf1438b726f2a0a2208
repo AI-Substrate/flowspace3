@@ -1,0 +1,41 @@
+crates/daemon/src/scan.rs
+  s_6ae728de9fd399::t_e30028e1ab2c1e 258-261
+crates/daemon/tests/first_light.rs
+  s_9f3c8913a290e0::t_5060df3133f6e2 740-742,744-752
+crates/parsers/src/source.rs
+  s_17fceda3f4387d::t_2ca134c16239e9 8-15,38-51,98,106,109-111,117-258,429-719
+crates/parsers/tests/fixture_elements.rs
+  s_9f3c8913a290e0::t_5279c05acc7a4e 78-80,94-96,138-140,407
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "09d3cd82c4a37918ed795bf1438b726f2a0a2208",
+  "prompts": {},
+  "sessions": {
+    "s_17fceda3f4387d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1496ee45-2013-4560-9e6d-b411f1163677",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_6ae728de9fd399": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5cb971d6-1914-4938-9378-acbe80fedc7f",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_9f3c8913a290e0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73a1484d-9566-45c4-b9a5-35b884499350",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
