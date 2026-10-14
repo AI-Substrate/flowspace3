@@ -36,6 +36,7 @@ pub mod search;
 pub mod search_latency;
 pub mod skew;
 pub mod status;
+pub mod table_analyze;
 pub mod turn_class_backfill;
 pub mod update;
 pub mod watch;

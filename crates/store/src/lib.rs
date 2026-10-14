@@ -30,6 +30,7 @@ pub mod embeddings;
 pub mod ingest_cursors;
 pub mod jobs;
 pub mod lexical;
+pub mod maintenance;
 pub mod messages;
 pub mod read;
 pub mod refs;
@@ -72,6 +73,7 @@ pub use jobs::{
     retire_empty_embed_jobs, retry_job, take_daemon_lock,
 };
 pub use lexical::{LexicalHit, LexicalMatch, LexicalPage, search_lexical, search_lexical_page};
+pub use maintenance::{TableHealth, WATCHED_TABLES, analyze_table, table_health};
 pub use messages::{ack_message, live_messages, sync_messages};
 pub use read::{
     IndexedFile, count_files_under, files_at_path, files_under, latest_summary,

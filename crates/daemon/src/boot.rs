@@ -844,6 +844,11 @@ async fn serve(
     reconcilers.push(Box::new(crate::intake_restate::IntakeRestate::new(
         state.clone(),
     )));
+    // After bulk work, fresh statistics before autovacuum gets round to it
+    // (Jordan's DB maintenance ruling, 2026-10-14).
+    reconcilers.push(Box::new(crate::table_analyze::TableAnalyze::new(
+        state.db.clone(),
+    )));
     if state.config.indexing.conversation_poll_ticks != 0 {
         let conversation_home = std::env::var_os("HOME")
             .map(std::path::PathBuf::from)
