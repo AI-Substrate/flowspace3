@@ -272,6 +272,40 @@ pub async fn recover_enrichment_jobs(db: &fs3_store::PgPool) {
 /// is `git:github.com/o/r`, so `--repo` could not name both (DL-022). New
 /// headers are normalised on the way in; this reaches the rows already stored,
 /// with the same function. Idempotent, and a no-op once nothing is left.
+/// What a boot warm-up embeds. Cached like any query, so a restart costs one
+/// provider call per embedder.
+const WARM_UP_QUERY: &str = "flowspace3 embedder warm-up";
+
+/// Embed once through each distinct embedder, so the first search after a
+/// restart does not pay for a cold credential and connection.
+///
+/// After restarts on 2026-10-14 the first two searches each waited the whole
+/// query-embed bound (5 s) for a cold Azure token and answered from keywords
+/// alone. A warm-up that outlives the bound still finishes in the background
+/// (`AppState::embed_query`), so the token is warm either way.
+pub(crate) async fn warm_embedders(state: AppState) {
+    let mut warmed = std::collections::BTreeSet::new();
+    let repos = std::iter::once(String::new()).chain(state.config.repos.keys().cloned());
+    for repo in repos {
+        if !warmed.insert(state.embedder_key(&repo)) {
+            continue;
+        }
+        let started = std::time::Instant::now();
+        match state.embed_query(&repo, WARM_UP_QUERY).await {
+            Ok(_) => tracing::info!(
+                repo,
+                ms = started.elapsed().as_millis(),
+                "embedder warmed for the first search"
+            ),
+            Err(error) => tracing::warn!(
+                repo,
+                %error,
+                "embedder warm-up failed; the first search may answer from keywords"
+            ),
+        }
+    }
+}
+
 pub async fn normalise_conversation_identities(db: &fs3_store::PgPool) {
     match fs3_store::normalise_conversation_identities(db, fs3_core::RepoIdentity::normalise_key)
         .await
@@ -649,6 +683,9 @@ async fn serve(
     // itself. Best-effort as before: a worktree that cannot be probed is left
     // unprobed rather than recorded as absent.
     tokio::spawn(prefetch_ddoc_tooling(state.clone()));
+    // Credentials and a connection for each embedder before the first search
+    // needs them, off the boot path like the prefetch above.
+    tokio::spawn(warm_embedders(state.clone()));
 
     recover_enrichment_jobs(&state.db).await;
     normalise_conversation_identities(&state.db).await;
@@ -1070,6 +1107,30 @@ fn is_loopback(host: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{bind_address, refuse_undesignated_production_store, sandbox_configuration};
+
+    /// One provider call per distinct embedder, and none again: the warm-up's
+    /// vector is cached like any query's.
+    #[tokio::test]
+    async fn warming_calls_each_embedder_once() {
+        let config = fs3_core::Config {
+            database: fs3_core::DatabaseConfig {
+                url: "postgres://fs3:fs3@127.0.0.1:1/never".to_string(),
+            },
+            ..fs3_core::Config::default()
+        };
+        let mut state = crate::wiring::AppState::from_config(config).expect("wires");
+        let embedder = std::sync::Arc::new(fs3_testkit::fakes::FakeEmbedder {
+            dimensions: fs3_store::EMBEDDING_DIMENSIONS,
+            ..fs3_testkit::fakes::FakeEmbedder::default()
+        });
+        state.embedder = embedder.clone();
+
+        super::warm_embedders(state.clone()).await;
+        super::warm_embedders(state).await;
+
+        let calls = embedder.calls.lock().expect("calls").clone();
+        assert_eq!(calls, vec![vec![super::WARM_UP_QUERY.to_string()]]);
+    }
 
     #[test]
     fn bind_address_strips_scheme_and_path() {
