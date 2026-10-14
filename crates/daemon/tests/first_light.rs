@@ -737,9 +737,19 @@ async fn add_scan_enrich_and_search_answer_end_to_end() {
             .is_some_and(|address| address.contains("/src/auth.rs")),
         "the top-ranked hit identity must belong to the expected file"
     );
+    // The doc comment is part of the function's text (DL-042), so its words can
+    // win on the lexical side; what is pinned is that a real space is named and
+    // that the vectors took part in finding it.
     assert!(
-        matches!(best["match_field"].as_str(), Some("raw") | Some("smart")),
-        "match_field reports which space won"
+        matches!(
+            best["match_field"].as_str(),
+            Some("raw" | "smart" | "terms" | "exact_text")
+        ),
+        "match_field reports which space won: {best}"
+    );
+    assert!(
+        matches!(best["channel"].as_str(), Some("semantic" | "both")),
+        "the semantic channel must reach the session file: {best}"
     );
     assert!(
         best["kind"].as_str().is_some_and(|kind| kind != "file"),
