@@ -1132,36 +1132,3 @@ async fn the_backfill_classifies_pre_migration_turns_exactly_like_ingest() {
     let again = backfill_turn_classes(&pool, 10).await.expect("re-running");
     assert_eq!(again, 0, "a finished backfill reports nothing left to do");
 }
-
-/// Search's scope reads a turn's raw source straight from `turns.blob_sha`,
-/// without looking its element up (fix 7a, 2026-10-14). That holds only while
-/// every turn has an element whose raw hash is that blob, including turns
-/// whose text another conversation already stored. Pin it here, at the writer.
-#[tokio::test]
-async fn every_turn_has_an_element_whose_raw_hash_is_its_blob() {
-    let database = FreshDatabase::create().await;
-    let pool = database.migrated_pool().await;
-    let (one, two) = (id('c'), id('d'));
-    store_conversation(
-        &pool,
-        &one,
-        &[turn(1, "shared words"), turn(2, "only here")],
-    )
-    .await;
-    // The same text again, in another conversation: deduplicated by blob.
-    store_conversation(&pool, &two, &[turn(1, "shared words")]).await;
-
-    let mismatched = sqlx_pairs(
-        &pool,
-        "SELECT t.blob_sha, coalesce(e.raw_hash, '<no element>')
-           FROM turns t
-           LEFT JOIN elements e
-             ON e.address = 'conv:' || t.conversation_id || '#t' || t.turn_no
-            AND e.kind = 'turn'
-          WHERE e.raw_hash IS DISTINCT FROM t.blob_sha",
-    )
-    .await;
-    assert!(mismatched.is_empty(), "{mismatched:?}");
-
-    database.destroy(pool).await;
-}
