@@ -29,6 +29,40 @@ Every search records where its time went. Status and doctor keep percentiles ove
 - Scope preparation happens inside the vector statement, so it is not yet a stage of its own. It is part of each `semantic_pass_ms` entry.
 - Only searches that succeed through `/search` are recorded. `ask`'s inner searches and failed searches are not.
 
+## The bench (`search-bench`)
+
+The before/after gate for search-speed changes is an example of the daemon crate, so its database access stays a dev-only edge:
+
+```bash
+# A synthetic corpus shaped like prod (scale 1 ≈ 1.6M vectors), on the bench server only.
+cargo run --release -p fs3-daemon --example search-bench -- generate \
+    --server postgres://flowspace3:flowspace3@127.0.0.1:5435 --name bench_1x --scale 1
+
+# Cold and warm searches through the daemon's own search path, with per-stage p50/p95.
+cargo run --release -p fs3-daemon --example search-bench -- run \
+    --db postgres://flowspace3:flowspace3@127.0.0.1:5435/bench_1x \
+    --arm baseline --arm ef100:hnsw.ef_search=100 --out /tmp/bench.json
+
+# The installed CLI against its configured daemon (read-only), reading meta.timing.
+cargo run --release -p fs3-daemon --example search-bench -- e2e \
+    --queries crates/daemon/examples/search-bench/queries/code-questions.txt --cwd .
+```
+
+- **The corpus** is synthetic: no real text or vector.
+  - Its shape (repositories, worktrees, blobs, conversations, turns, elements per kind, text lengths and turn classes) and its vector similarity statistics come from in-database aggregates of the prod index.
+  - Scale `n` repeats the repositories `n` times under new identities: the index grows by more repositories, and each scope becomes a smaller share of it.
+- **Cold and warm:**
+  - every query text is new, so the bench embedder places it at a fresh point and the first search is cold;
+  - the immediate repeat is warm;
+  - arms (`name:setting=value,…`, applied as connection settings) take turns going first, so neither always pays for the cold cache, and each arm gets its own fresh queries;
+  - per-search buffer hits and reads come from `pg_stat_statements`.
+- **Stages** come from each search's `SearchTiming`, so the bench and prod's `status` measure the same thing.
+- **Limits** (o-prime, 2026-10-14):
+  - corpora live on the bench server `flowspace3-db-bench` (:5435, 10 GB memory cap);
+  - at least 120 GB must stay free in the Docker VM;
+  - float32 corpora go up to 3x only;
+  - drop a scale database when you are done with it.
+
 ## Verify
 
 ```bash

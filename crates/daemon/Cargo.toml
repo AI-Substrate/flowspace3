@@ -71,3 +71,12 @@ tokio = { workspace = true, features = ["test-util"] }
 name = "fs3-migration-guard"
 path = "src/bin/migration_guard.rs"
 
+# The search-speed bench: a synthetic corpus generator and a cold/warm per-stage
+# latency run through this crate's own search path. An example, so its `sqlx`
+# (COPY for the synthetic load) stays a dev edge and never ships.
+# `test = true` runs its unit tests with the suite.
+[[example]]
+name = "search-bench"
+path = "examples/search-bench/main.rs"
+test = true
+

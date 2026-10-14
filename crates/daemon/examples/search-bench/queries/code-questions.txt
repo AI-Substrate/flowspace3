@@ -1,0 +1,22 @@
+# Meaning-shaped questions about the flowspace3 code (A5 part B, 2026-10-13).
+# Run from a flowspace3 checkout so the default scope is that repository.
+where are failed job errors bounded before being stored
+what happens when recording a job failure is itself refused
+how is an embedding request the provider says is too big broken up
+how do we recognise azure saying a request has too many tokens
+largest request body we send to the embedding provider
+how long does a search wait for the query vector before giving up
+where do we remember that the embedder has been failing
+search falls back to keywords when there is no query vector
+doctor warns that the daemon's embedder is down
+how is the default repository scope worked out from the current directory
+stop one conversation filling a page of search results
+combining semantic and keyword hits into one ranking
+where is the file change debounce window
+how does a worker take the next pending job without two workers grabbing it
+where do database schema migrations get applied at startup
+how does the cli decide between json and human output
+how are agent transcripts read into conversation turns
+where is the next action text written when a search is degraded
+status report says the embedder is failing
+how are markdown documents split into sections for indexing

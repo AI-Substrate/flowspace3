@@ -1,0 +1,9 @@
+# Common-word and identifier queries that stress the keyword leg.
+copilot routing model
+search results page
+error handling retry
+the daemon status
+search_elements
+SLOW_SEARCH
+zzqx
+embed_query
