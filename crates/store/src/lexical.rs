@@ -123,11 +123,68 @@ pub async fn search_lexical_page(
     query: &str,
     filters: &SearchFilters,
 ) -> Result<LexicalPage, StoreError> {
+    Ok(search_lexical_pages(pool, query, filters, false).await?.0)
+}
+
+/// The ownership predicate: content held by a live path in the scope, or by
+/// a conversation anchored there. Every one of `$3` repo, `$4` path and `$6`
+/// worktree that is set must hold.
+const OWNED_SQL: &str = r#"($3::text IS NULL AND $4::text IS NULL AND $6::text IS NULL
+                     OR EXISTS (
+                          SELECT 1
+                            FROM worktree_files f
+                            JOIN worktrees w ON w.id = f.worktree_id
+                            JOIN repos r     ON r.id = w.repo_id
+                           WHERE f.blob_sha = el.blob_sha
+                             AND ($3::text IS NULL OR r.identity = $3)
+                             AND ($4::text IS NULL OR f.path LIKE $4)
+                             AND ($6::text IS NULL OR w.root_path = $6))
+                     OR EXISTS (
+                          SELECT 1
+                            FROM turns t
+                            JOIN conversations c ON c.guid = t.conversation_id
+                           WHERE t.blob_sha = el.blob_sha
+                             AND ($3::text IS NULL OR c.repo_identity = $3)
+                             AND ($4::text IS NULL OR c.worktree LIKE $4)
+                             AND ($6::text IS NULL OR c.worktree IS NULL OR c.worktree = $6)))"#;
+
+/// [`OWNED_SQL`] with the repository and worktree dropped: what the unscoped
+/// ("other repositories") page admits. Only a path filter still applies.
+const OWNED_ANYWHERE_SQL: &str = r#"($4::text IS NULL
+                     OR EXISTS (
+                          SELECT 1 FROM worktree_files f
+                           WHERE f.blob_sha = el.blob_sha AND f.path LIKE $4)
+                     OR EXISTS (
+                          SELECT 1
+                            FROM turns t
+                            JOIN conversations c ON c.guid = t.conversation_id
+                           WHERE t.blob_sha = el.blob_sha AND c.worktree LIKE $4))"#;
+
+/// The scoped page and, when `wide`, the same query's page across every
+/// repository, from ONE pass over the trigram index.
+///
+/// The two pages used to be two statements, and each rechecked every
+/// trigram candidate in the whole index, so a search paid for the keyword
+/// leg twice (prod, 2026-10-14: scoped and wide lexical each ~2.9 s p50).
+/// Admission to the scope is computed per candidate in the same pass, then
+/// each page is ranked and cut exactly as its own statement would have.
+///
+/// The wide page is what [`search_lexical_page`] returns for `filters` with
+/// `repo` and `worktree` cleared.
+///
+/// # Errors
+/// As [`search_lexical`].
+pub async fn search_lexical_pages(
+    pool: &PgPool,
+    query: &str,
+    filters: &SearchFilters,
+    wide: bool,
+) -> Result<(LexicalPage, Option<LexicalPage>), StoreError> {
     // pg_trgm cannot derive an index key below three characters. Skipping the
     // lexical leg keeps a tiny query from turning into a whole-table scan;
     // the semantic leg still answers it.
     if query.chars().take(3).count() < 3 {
-        return Ok(LexicalPage::default());
+        return Ok((LexicalPage::default(), wide.then(LexicalPage::default)));
     }
     let pattern = contains_pattern(query);
     let terms = query_terms(query);
@@ -157,13 +214,8 @@ pub async fn search_lexical_page(
         each("lc.n")
     };
 
-    // Bind map: $1 phrase pattern, $2 limit, $3 repo, $4 path, $5 kinds,
-    // $6 worktree, $7 id_kinds, $8 gate_open, $9 ddoc_schema,
-    // $10 conversation, $11 hidden turn classes, $12 the query lowercased,
-    // $13.. one pattern per term.
-    let statement = format!(
-        r#"WITH scoped AS (
-             SELECT el.id, el.blob_sha, el.parser_version, el.kind, el.subkind,
+    let columns = format!(
+        r#"SELECT el.id, el.blob_sha, el.parser_version, el.kind, el.subkind,
                     el.name, el.address, el.span_start, el.span_end,
                     el.sibling_order, el.raw_text, el.ddoc,
                     lc.n LIKE $1 ESCAPE '\' AS name_match,
@@ -175,8 +227,10 @@ pub async fn search_lexical_page(
                        WHEN {name_has_every_term} THEN 0.90 + {DENSITY_SQL}
                        WHEN {phrase} THEN 0.80 + {DENSITY_SQL}
                        ELSE 0.65 + {DENSITY_SQL}
-                     END)::float8 AS score
-               FROM elements el
+                     END)::float8 AS score"#
+    );
+    let from_where = format!(
+        r#"FROM elements el
               CROSS JOIN LATERAL (
                    SELECT lower(el.name || E'\n' || el.raw_text) AS t,
                           lower(el.name) AS n
@@ -204,55 +258,25 @@ pub async fn search_lexical_page(
                 -- Match semantic indexing: a file covered by child elements
                 -- is a container, not a duplicate answer for every child hit.
                 AND (el.kind <> 'file' OR NOT EXISTS (
-                     SELECT 1 FROM elements child WHERE child.parent_id = el.id))
-                AND ($3::text IS NULL AND $4::text IS NULL AND $6::text IS NULL
-                     OR EXISTS (
-                          SELECT 1
-                            FROM worktree_files f
-                            JOIN worktrees w ON w.id = f.worktree_id
-                            JOIN repos r     ON r.id = w.repo_id
-                           WHERE f.blob_sha = el.blob_sha
-                             AND ($3::text IS NULL OR r.identity = $3)
-                             AND ($4::text IS NULL OR f.path LIKE $4)
-                             AND ($6::text IS NULL OR w.root_path = $6))
-                     OR EXISTS (
-                          SELECT 1
-                            FROM turns t
-                            JOIN conversations c ON c.guid = t.conversation_id
-                           WHERE t.blob_sha = el.blob_sha
-                             AND ($3::text IS NULL OR c.repo_identity = $3)
-                             AND ($4::text IS NULL OR c.worktree LIKE $4)
-                             AND ($6::text IS NULL OR c.worktree IS NULL OR c.worktree = $6)))
-              ORDER BY score DESC, name_match DESC, length(el.raw_text), el.id
-              -- A window wider than the page, so hidden echoes cannot starve
-              -- it and the disclosure has something to count.
-              LIMIT $2 * 10
-         ),
-         candidates AS (
-             SELECT * FROM scoped WHERE NOT hidden
-              ORDER BY score DESC, name_match DESC, length(raw_text), id
-              LIMIT $2
-         ),
-         hidden_meta AS (
-             SELECT count(*)::bigint AS hidden_count FROM scoped WHERE hidden
-         )
-         -- Driven from the count, so a page whose every match was hidden
-         -- still reports how many: one row with a NULL candidate.
-         SELECT candidate.*, hidden.hidden_count,
-                COALESCE(live.identity, anchored.identity) AS identity,
-                COALESCE(live.root_path, anchored.root_path) AS root_path,
-                live.path
-           FROM hidden_meta hidden
-           LEFT JOIN candidates candidate ON TRUE
-           LEFT JOIN LATERAL (
+                     SELECT 1 FROM elements child WHERE child.parent_id = el.id))"#
+    );
+    // Where each hit lives. On the wide page the repository and worktree
+    // no longer constrain it, exactly as an unscoped statement would not.
+    let located = |page: &str| -> String {
+        let scoped = |predicate: &str| match page {
+            "" => format!("({predicate})"),
+            page => format!("({page} = 'wide' OR {predicate})"),
+        };
+        format!(
+            r#"LEFT JOIN LATERAL (
                 SELECT r.identity, w.root_path, f.path
                   FROM worktree_files f
                   JOIN worktrees w ON w.id = f.worktree_id
                   JOIN repos r     ON r.id = w.repo_id
                  WHERE f.blob_sha = candidate.blob_sha
-                   AND ($3::text IS NULL OR r.identity = $3)
+                   AND {repo}
                    AND ($4::text IS NULL OR f.path LIKE $4)
-                   AND ($6::text IS NULL OR w.root_path = $6)
+                   AND {root}
                  ORDER BY r.identity, w.root_path, f.path
                  LIMIT 1
            ) live ON TRUE
@@ -261,16 +285,102 @@ pub async fn search_lexical_page(
                   FROM turns t
                   JOIN conversations c ON c.guid = t.conversation_id
                  WHERE t.blob_sha = candidate.blob_sha
-                   AND ($3::text IS NULL OR c.repo_identity = $3)
+                   AND {conversation_repo}
                    AND ($4::text IS NULL OR c.worktree LIKE $4)
-                   AND ($6::text IS NULL OR c.worktree IS NULL OR c.worktree = $6)
+                   AND {conversation_root}
                    AND ($10::text IS NULL OR c.guid = $10::uuid)
                  ORDER BY c.repo_identity, c.worktree
                  LIMIT 1
-           ) anchored ON TRUE
+           ) anchored ON TRUE"#,
+            repo = scoped("$3::text IS NULL OR r.identity = $3"),
+            root = scoped("$6::text IS NULL OR w.root_path = $6"),
+            conversation_repo = scoped("$3::text IS NULL OR c.repo_identity = $3"),
+            conversation_root = scoped("$6::text IS NULL OR c.worktree IS NULL OR c.worktree = $6"),
+        )
+    };
+    const ORDER: &str = "score DESC, name_match DESC, length(raw_text), id";
+
+    // Bind map: $1 phrase pattern, $2 limit, $3 repo, $4 path, $5 kinds,
+    // $6 worktree, $7 id_kinds, $8 gate_open, $9 ddoc_schema,
+    // $10 conversation, $11 hidden turn classes, $12 the query lowercased,
+    // $13.. one pattern per term.
+    let statement = if wide {
+        format!(
+            r#"WITH matched AS MATERIALIZED (
+             {columns},
+                    {OWNED_SQL} AS in_scope,
+                    {OWNED_ANYWHERE_SQL} AS in_wide
+               {from_where}
+         ),
+         -- Each page's window, wider than the page, so hidden echoes cannot
+         -- starve it and the disclosure has something to count.
+         windows AS (
+             (SELECT 'scoped'::text AS page, m.* FROM matched m WHERE in_scope
+               ORDER BY {ORDER} LIMIT $2 * 10)
+             UNION ALL
+             (SELECT 'wide'::text AS page, m.* FROM matched m WHERE in_wide
+               ORDER BY {ORDER} LIMIT $2 * 10)
+         ),
+         candidates AS (
+             SELECT * FROM (
+                 SELECT w.*, row_number() OVER (PARTITION BY page ORDER BY {ORDER})
+                            AS page_rank
+                   FROM windows w WHERE NOT hidden) ranked
+              WHERE page_rank <= $2
+         ),
+         hidden_meta AS (
+             SELECT pages.page,
+                    (count(w.id) FILTER (WHERE w.hidden))::bigint AS hidden_count
+               FROM (VALUES ('scoped'::text), ('wide'::text)) pages(page)
+               LEFT JOIN windows w ON w.page = pages.page
+              GROUP BY pages.page
+         )
+         -- Driven from the counts, so a page whose every match was hidden
+         -- still reports how many: one row with a NULL candidate.
+         SELECT hidden.page AS result_page, candidate.*, hidden.hidden_count,
+                COALESCE(live.identity, anchored.identity) AS identity,
+                COALESCE(live.root_path, anchored.root_path) AS root_path,
+                live.path
+           FROM hidden_meta hidden
+           LEFT JOIN candidates candidate ON candidate.page = hidden.page
+           {located}
+          ORDER BY hidden.page, candidate.score DESC, candidate.name_match DESC,
+                   length(candidate.raw_text), candidate.id"#,
+            located = located("hidden.page"),
+        )
+    } else {
+        format!(
+            r#"WITH scoped AS (
+             {columns}
+               {from_where}
+                AND {OWNED_SQL}
+              ORDER BY score DESC, name_match DESC, length(el.raw_text), el.id
+              -- A window wider than the page, so hidden echoes cannot starve
+              -- it and the disclosure has something to count.
+              LIMIT $2 * 10
+         ),
+         candidates AS (
+             SELECT * FROM scoped WHERE NOT hidden
+              ORDER BY {ORDER}
+              LIMIT $2
+         ),
+         hidden_meta AS (
+             SELECT count(*)::bigint AS hidden_count FROM scoped WHERE hidden
+         )
+         -- Driven from the count, so a page whose every match was hidden
+         -- still reports how many: one row with a NULL candidate.
+         SELECT 'scoped'::text AS result_page, candidate.*, hidden.hidden_count,
+                COALESCE(live.identity, anchored.identity) AS identity,
+                COALESCE(live.root_path, anchored.root_path) AS root_path,
+                live.path
+           FROM hidden_meta hidden
+           LEFT JOIN candidates candidate ON TRUE
+           {located}
           ORDER BY candidate.score DESC, candidate.name_match DESC,
-                   length(candidate.raw_text), candidate.id"#
-    );
+                   length(candidate.raw_text), candidate.id"#,
+            located = located(""),
+        )
+    };
 
     let bound = sqlx::query(&statement)
         .bind(pattern)
@@ -303,40 +413,53 @@ pub async fn search_lexical_page(
     tx.commit().await?;
     let query_ms = crate::elapsed_ms(query_started);
 
-    let hidden_turns = rows
-        .first()
-        .map(|row| row.try_get::<i64, _>("hidden_count"))
-        .transpose()?
-        .map_or(0, |count| u64::try_from(count).unwrap_or(0));
-    let hits = rows
-        .iter()
-        .filter(|row| matches!(row.try_get::<Option<i64>, _>("id"), Ok(Some(_))))
-        .map(|row| {
-            let matched = if row.try_get("name_match")? {
-                LexicalMatch::Name
-            } else if row.try_get("phrase_match")? {
-                LexicalMatch::Text
-            } else {
-                LexicalMatch::Terms
-            };
-            Ok(LexicalHit {
-                element: crate::elements::element_from_row(row)?,
-                blob_sha: row.try_get("blob_sha")?,
-                parser_version: row.try_get("parser_version")?,
-                identity: row.try_get("identity")?,
-                root_path: row.try_get("root_path")?,
-                path: row.try_get("path")?,
-                matched,
-                score: row.try_get("score")?,
+    let page = |name: &str| -> Result<LexicalPage, StoreError> {
+        let rows: Vec<_> = rows
+            .iter()
+            .filter(|row| {
+                row.try_get::<String, _>("result_page")
+                    .is_ok_and(|p| p == name)
             })
+            .collect();
+        let hidden_turns = rows
+            .first()
+            .map(|row| row.try_get::<i64, _>("hidden_count"))
+            .transpose()?
+            .map_or(0, |count| u64::try_from(count).unwrap_or(0));
+        let hits = rows
+            .iter()
+            .filter(|row| matches!(row.try_get::<Option<i64>, _>("id"), Ok(Some(_))))
+            .map(|row| {
+                let matched = if row.try_get("name_match")? {
+                    LexicalMatch::Name
+                } else if row.try_get("phrase_match")? {
+                    LexicalMatch::Text
+                } else {
+                    LexicalMatch::Terms
+                };
+                Ok(LexicalHit {
+                    element: crate::elements::element_from_row(row)?,
+                    blob_sha: row.try_get("blob_sha")?,
+                    parser_version: row.try_get("parser_version")?,
+                    identity: row.try_get("identity")?,
+                    root_path: row.try_get("root_path")?,
+                    path: row.try_get("path")?,
+                    matched,
+                    score: row.try_get("score")?,
+                })
+            })
+            .collect::<Result<Vec<_>, StoreError>>()?;
+        Ok(LexicalPage {
+            hits,
+            hidden_turns,
+            acquire_ms,
+            query_ms,
         })
-        .collect::<Result<Vec<_>, StoreError>>()?;
-    Ok(LexicalPage {
-        hits,
-        hidden_turns,
-        acquire_ms,
-        query_ms,
-    })
+    };
+    Ok((
+        page("scoped")?,
+        if wide { Some(page("wide")?) } else { None },
+    ))
 }
 
 /// The query's terms worth matching: lowercased, stripped of surrounding

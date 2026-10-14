@@ -157,3 +157,112 @@ async fn selective_exact_text_uses_the_trigram_index_on_a_prod_shaped_population
 
     database.destroy(pool).await;
 }
+
+/// One pass, two pages: the combined statement must return exactly what the
+/// scoped and the unscoped statements return on their own, hit for hit, in
+/// order, with the same locations and hidden counts.
+#[tokio::test]
+async fn one_pass_returns_the_scoped_and_the_wide_page_exactly() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+    let phrase = "okapi single pass anchor";
+    let mut identities = Vec::new();
+    for (repo, functions) in [("/srv/lex-a", 4_u32), ("/srv/lex-b", 6)] {
+        let identity = RepoIdentity::from_path(Path::new(repo));
+        let worktree = register_worktree(&pool, &identity, repo, None)
+            .await
+            .unwrap();
+        // Bodies of different lengths, so the density bonus orders them.
+        let children = (0..functions)
+            .map(|i| {
+                function(
+                    &format!("f{i}"),
+                    &format!(
+                        "fn f{i}() {{ /* {phrase} {} */ }}",
+                        "x".repeat(i as usize * 40)
+                    ),
+                    3 + i * 4,
+                )
+            })
+            .collect();
+        let blob = unique_blob();
+        upsert_element_tree(
+            &pool,
+            &blob,
+            PARSER_VERSION,
+            &file("src/lib.rs", children),
+            |_| true,
+        )
+        .await
+        .unwrap();
+        sync_worktree_files(&pool, worktree, &[("src/lib.rs".to_string(), blob)])
+            .await
+            .unwrap();
+        identities.push(identity.key().to_string());
+    }
+
+    let shape = |page: &fs3_store::LexicalPage| {
+        page.hits
+            .iter()
+            .map(|hit| {
+                (
+                    hit.element.address.clone(),
+                    hit.score.to_bits(),
+                    hit.identity.clone(),
+                    hit.root_path.clone(),
+                    hit.path.clone(),
+                )
+            })
+            .collect::<Vec<_>>()
+    };
+    for (limit, path) in [(3, None), (10, None), (3, Some("src/%".to_string()))] {
+        let scoped = SearchFilters {
+            repo: Some(identities[0].clone()),
+            worktree: Some("/srv/lex-a".to_string()),
+            path: path.clone(),
+            limit,
+            ..SearchFilters::default()
+        };
+        let wide = SearchFilters {
+            repo: None,
+            worktree: None,
+            ..scoped.clone()
+        };
+        let (one_scoped, one_wide) = fs3_store::search_lexical_pages(&pool, phrase, &scoped, true)
+            .await
+            .unwrap();
+        let one_wide = one_wide.expect("asked for the wide page");
+        let alone_scoped = fs3_store::search_lexical_page(&pool, phrase, &scoped)
+            .await
+            .unwrap();
+        let alone_wide = fs3_store::search_lexical_page(&pool, phrase, &wide)
+            .await
+            .unwrap();
+
+        assert!(
+            !alone_scoped.hits.is_empty(),
+            "the fixture matches in scope"
+        );
+        assert_eq!(
+            shape(&one_scoped),
+            shape(&alone_scoped),
+            "scoped page, limit {limit}, path {path:?}"
+        );
+        assert_eq!(
+            shape(&one_wide),
+            shape(&alone_wide),
+            "wide page, limit {limit}, path {path:?}"
+        );
+        assert_eq!(one_scoped.hidden_turns, alone_scoped.hidden_turns);
+        assert_eq!(one_wide.hidden_turns, alone_wide.hidden_turns);
+        assert!(
+            one_wide
+                .hits
+                .iter()
+                .any(|hit| hit.identity.as_deref() == Some(&identities[1])),
+            "the wide page reaches the other repository"
+        );
+    }
+
+    database.destroy(pool).await;
+}
