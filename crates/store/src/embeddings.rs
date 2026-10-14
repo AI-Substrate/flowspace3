@@ -655,7 +655,7 @@ const ADMISSION_JOIN_SQL: &str = r#"JOIN page_admitted_sources admitted
         ON admitted.source_hash = candidate.source_hash
        AND admitted.source_kind = candidate.source_kind"#;
 
-const SEARCH_ELEMENTS_SQL: &str = r#"WITH scope_blobs AS MATERIALIZED (
+const SEARCH_ELEMENTS_SQL: &str = r#"WITH scope_file_blobs AS MATERIALIZED (
     SELECT f.blob_sha
       FROM worktree_files f
       JOIN worktrees w ON w.id = f.worktree_id
@@ -664,12 +664,23 @@ const SEARCH_ELEMENTS_SQL: &str = r#"WITH scope_blobs AS MATERIALIZED (
        AND ($6::text IS NULL OR r.identity = $6)
        AND ($7::text IS NULL OR f.path LIKE $7)
        AND ($9::text IS NULL OR w.root_path = $9)
-    UNION
-    SELECT t.blob_sha
+),
+-- A turn's element carries the turn's blob as its raw hash (one turn, one
+-- element: `write_turn_elements`), so a turn in scope IS a raw source, and
+-- looking each one up in `elements` only to read that hash back was most of
+-- what a scope cost: on prod (2026-10-14) 98% of the flowspace3 scope's
+-- blobs were turns, and the lookups were 380 ms of 858 ms warm. The filters
+-- an element lookup applied still hold: only when turns are an admitted kind,
+-- and never under a ddoc filter, which no turn carries.
+scope_turn_sources AS MATERIALIZED (
+    SELECT t.blob_sha AS raw_hash
       FROM turns t
       JOIN conversations c ON c.guid = t.conversation_id
      WHERE ($6::text IS NOT NULL OR $7::text IS NOT NULL
             OR $9::text IS NOT NULL OR $13::text IS NOT NULL)
+       AND ($8::text[] IS NULL OR 'turn' = ANY($8))
+       AND $10::text[] IS NULL
+       AND $12::text IS NULL
        AND ($6::text IS NULL OR c.repo_identity = $6)
        AND ($7::text IS NULL OR c.worktree LIKE $7)
        AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)
@@ -680,13 +691,15 @@ const SEARCH_ELEMENTS_SQL: &str = r#"WITH scope_blobs AS MATERIALIZED (
 -- conversations, searched with `--source doc`), and filtering only after the
 -- candidate LIMIT stalled the expansion before it reached content that matched.
 scope_representatives AS MATERIALIZED (
-    SELECT DISTINCT scoped.raw_hash
+    SELECT scoped.raw_hash
       FROM elements scoped
-      JOIN scope_blobs scope ON scope.blob_sha = scoped.blob_sha
+      JOIN scope_file_blobs scope ON scope.blob_sha = scoped.blob_sha
      WHERE ($13::text IS NULL OR strpos(scoped.address, 'conv:' || $13 || '#t') = 1)
        AND ($8::text[] IS NULL OR scoped.kind = ANY($8))
        AND ($10::text[] IS NULL OR scoped.ddoc->>'id_kind' = ANY($10))
        AND ($12::text IS NULL OR scoped.ddoc->>'schema' = $12)
+    UNION
+    SELECT raw_hash FROM scope_turn_sources
 ),
 admitted_sources AS MATERIALIZED (
     SELECT raw_hash AS source_hash, 'raw'::text AS source_kind
