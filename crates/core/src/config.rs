@@ -117,6 +117,9 @@ pub const REDACTED: &str = "<redacted>";
 /// [scan]
 /// max_file_bytes = 2000000
 ///
+/// [search]
+/// lexical_backend = "trigram"
+///
 /// [update]
 /// auto = true
 /// check_interval_hours = 24
@@ -150,6 +153,8 @@ pub struct Config {
     pub indexing: IndexingConfig,
     /// Knobs the filesystem scanner reads.
     pub scan: ScanConfig,
+    /// How searches are answered.
+    pub search: SearchConfig,
     /// Whether — and how often — the daemon updates the installed binary.
     pub update: UpdateConfig,
     /// What `flowspace3 decision` prices its calls at.
@@ -169,6 +174,7 @@ impl Default for Config {
             repos: BTreeMap::new(),
             indexing: IndexingConfig::default(),
             scan: ScanConfig::default(),
+            search: SearchConfig::default(),
             update: UpdateConfig::default(),
             decisions: DecisionsConfig::default(),
         }
@@ -190,6 +196,7 @@ pub const SECTIONS: &[&str] = &[
     "repos",
     "indexing",
     "scan",
+    "search",
     "update",
     "decisions",
 ];
@@ -1244,6 +1251,36 @@ impl Default for ScanConfig {
             standard_ignores: true,
         }
     }
+}
+
+/// How searches are answered.
+///
+/// ```toml
+/// [search]
+/// lexical_backend = "trigram"
+/// ```
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct SearchConfig {
+    /// Which index answers the keyword leg of a search.
+    pub lexical_backend: LexicalBackend,
+}
+
+/// Which index answers the keyword ("lexical") leg of a search.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LexicalBackend {
+    /// `pg_trgm`: every substring match found and rechecked. Works on every
+    /// install, and slows with the corpus (seconds per identifier at 1.25M
+    /// elements).
+    #[default]
+    Trigram,
+    /// pg_search BM25: the same hits found by an inverted index, in
+    /// milliseconds. Needs the ParadeDB Postgres image and the
+    /// `elements_bm25_idx` index; until both exist, the daemon says so at
+    /// boot and stays on trigram. A query with no word of three or more
+    /// characters still goes to trigram.
+    Bm25,
 }
 
 /// Whether the daemon keeps the installed binary current, and how often it
@@ -2608,6 +2645,32 @@ summary_min_lines = 0
         assert_eq!(effective.config.scan.max_file_bytes, 4096);
         assert!(!effective.config.scan.respect_gitignore);
         assert_eq!(effective.config.indexing.debounce_seconds, 2);
+    }
+
+    #[test]
+    fn the_keyword_backend_defaults_to_trigram_and_reads_from_file_or_env() {
+        let defaults = resolved("", &[]).unwrap();
+        assert_eq!(
+            defaults.config.search.lexical_backend,
+            LexicalBackend::Trigram
+        );
+
+        let from_file = resolved("[search]\nlexical_backend = \"bm25\"\n", &[]).unwrap();
+        assert_eq!(
+            from_file.config.search.lexical_backend,
+            LexicalBackend::Bm25
+        );
+        assert_eq!(from_file.layer("search"), Layer::File);
+
+        let from_env = resolved("", &[("FS3_SEARCH__LEXICAL_BACKEND", "bm25")]).unwrap();
+        assert_eq!(from_env.config.search.lexical_backend, LexicalBackend::Bm25);
+
+        let unknown = resolved("[search]\nlexical_backend = \"tantivy\"\n", &[]).unwrap_err();
+        assert!(
+            unknown.to_string().contains("lexical_backend")
+                || unknown.to_string().contains("tantivy"),
+            "{unknown}"
+        );
     }
 
     #[test]

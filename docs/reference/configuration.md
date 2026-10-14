@@ -191,6 +191,12 @@ config file. All three keys are optional; an absent one falls back to the port's
 | `follow_symlinks` | boolean | `false` | Follow symlinks. Off by default: a link loop is an infinite scan. | `FS3_SCAN__FOLLOW_SYMLINKS` |
 | `standard_ignores` | boolean | `true` | Skip `node_modules`, `target`, `dist` and kin as whole path components, **even when the repo has no `.gitignore`**. Off means a `.gitignore`-less clone indexes its dependencies. | `FS3_SCAN__STANDARD_IGNORES` |
 
+## `[search]`
+
+| Key | Type | Default | Effect | Env override |
+|---|---|---|---|---|
+| `lexical_backend` | `"trigram"` or `"bm25"` | `"trigram"` | Which index answers the keyword leg of `search` and `ask`. `"bm25"` needs the ParadeDB image and the `elements_bm25_idx` index; without them the daemon warns at boot and stays on `"trigram"`. See [the keyword index](../how/configuration.md#the-keyword-index-search-lexical_backend). | `FS3_SEARCH__LEXICAL_BACKEND` |
+
 ## `[update]`
 
 Auto-update is **on by default** (Jordan, 2026-08-27). The daemon checks GitHub

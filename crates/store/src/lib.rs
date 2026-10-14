@@ -30,6 +30,7 @@ pub mod embeddings;
 pub mod ingest_cursors;
 pub mod jobs;
 pub mod lexical;
+pub mod lexical_bm25;
 pub mod maintenance;
 pub mod messages;
 pub mod read;
@@ -75,6 +76,10 @@ pub use jobs::{
 pub use lexical::{
     LexicalHit, LexicalMatch, LexicalPage, search_lexical, search_lexical_page,
     search_lexical_pages,
+};
+pub use lexical_bm25::{
+    BM25_INDEX, LexicalBackend, bm25_can_answer, bm25_index_ready, search_bm25_page,
+    search_bm25_pages,
 };
 pub use maintenance::{TableHealth, WATCHED_TABLES, analyze_table, table_health};
 pub use messages::{ack_message, live_messages, sync_messages};

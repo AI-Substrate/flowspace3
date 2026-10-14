@@ -135,6 +135,10 @@ pub struct AppState {
     query_embeds_waiting: Arc<std::sync::atomic::AtomicUsize>,
     /// How long recent searches took, stage by stage, for status and doctor.
     pub search_latencies: Arc<crate::search_latency::SearchLatencies>,
+    /// Whether boot found the BM25 keyword index built and valid. Searches
+    /// use it only when `search.lexical_backend` asks for it as well: see
+    /// [`AppState::lexical_backend`].
+    pub bm25_ready: Arc<std::sync::atomic::AtomicBool>,
 }
 
 /// Query embeds that may still be waiting on the embedder before a search
@@ -202,6 +206,20 @@ impl std::fmt::Debug for AppState {
 }
 
 impl AppState {
+    /// The keyword backend a search runs on: BM25 when the configuration asks
+    /// for it AND boot found its index ready, trigram otherwise.
+    #[must_use]
+    pub fn lexical_backend(&self) -> fs3_core::LexicalBackend {
+        match self.config.search.lexical_backend {
+            fs3_core::LexicalBackend::Bm25
+                if self.bm25_ready.load(std::sync::atomic::Ordering::Relaxed) =>
+            {
+                fs3_core::LexicalBackend::Bm25
+            }
+            _ => fs3_core::LexicalBackend::Trigram,
+        }
+    }
+
     /// Wire the whole application from configuration.
     ///
     /// Must be called from inside a Tokio runtime: the connection pool owns a
@@ -290,6 +308,7 @@ impl AppState {
             query_embed_bound: QUERY_EMBED_BOUND,
             query_embeds_waiting: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
             search_latencies: Arc::default(),
+            bm25_ready: Arc::default(),
         })
     }
     /// Attach one live watcher to the daemon event fan-out.

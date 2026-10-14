@@ -555,6 +555,7 @@ async fn search_filtered(
         limit: fetch_limit,
         hidden_turn_classes: (!request.include_retrieval)
             .then(|| TurnClass::HIDDEN_BY_DEFAULT.to_vec()),
+        lexical_backend: state.lexical_backend(),
         ..SearchFilters::default()
     };
 
