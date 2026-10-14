@@ -1,0 +1,27 @@
+crates/store/src/embeddings.rs
+  s_18a2277fcd4372::t_41014f0925a393 511-514,563
+crates/store/src/lexical.rs
+  s_18a2277fcd4372::t_50324d2ee867de 189-195
+crates/store/src/lib.rs
+  s_18a2277fcd4372::t_dbfd4783c74025 79-82
+crates/store/src/lexical_bm25.rs
+  s_18a2277fcd4372::t_85e91e535f90f2 41,48-57,308-310,321-339,342,344-372,437,468-471,477-487
+crates/store/tests/pg_lexical_bm25.rs
+  s_18a2277fcd4372::t_796e0ee11a1271 17-19,89-93,194-226,235-239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "843e8f3763bbd70a2c607bf6b6fc7a5d5ef2564b",
+  "prompts": {},
+  "sessions": {
+    "s_18a2277fcd4372": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58f49f60-563c-4ca6-8031-2d960e7769c1",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
