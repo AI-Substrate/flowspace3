@@ -486,6 +486,48 @@ async fn an_exhausted_semantic_page_reports_scan_incomplete() {
     database.destroy(state.db).await;
 }
 
+/// A budgeted leg (the "other repositories" hint) answers with what it has
+/// once its time is spent, rather than starting another candidate pass.
+#[tokio::test]
+async fn a_spent_budget_stops_the_candidate_expansion() {
+    let (database, state) = stack("search-starvation-budget", &["fs3.exact_scope_limit = 0"]).await;
+    let base = question_vector().await;
+    let (identity, worktree) = repo(&state, TARGET_REPO).await;
+    seed(&state, worktree, "budget-target", 1_000, 0.2, &base).await;
+    pin_to_the_index_plan(&state).await;
+    let model_key = state.embedder_key("");
+    let filters = SearchFilters {
+        repo: Some(identity.to_string()),
+        gate_open: Some(true),
+        limit: 10,
+        ..SearchFilters::default()
+    };
+
+    let unbounded = fs3_store::search_elements(&state.db, &model_key, &base, &filters)
+        .await
+        .expect("unbounded search answers");
+    assert_eq!(unbounded.passes, 2, "the fixture needs a second pass");
+
+    let spent = fs3_store::search_elements(
+        &state.db,
+        &model_key,
+        &base,
+        &SearchFilters {
+            budget: Some(std::time::Duration::from_nanos(1)),
+            ..filters
+        },
+    )
+    .await
+    .expect("a spent budget is a short page, not a failure");
+    assert_eq!(spent.passes, 1);
+    assert!(
+        spent.candidate_limit_exhausted,
+        "reported as an incomplete scan"
+    );
+
+    database.destroy(state.db).await;
+}
+
 /// The original `llm` report table through the SEMANTIC leg alone.
 ///
 /// Each query gets its own crowded pair so its geometry is deterministic: 64

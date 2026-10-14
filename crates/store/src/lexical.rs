@@ -291,14 +291,16 @@ pub async fn search_lexical_page(
         .bind(filters.hidden_turn_class_names())
         .bind(query.trim().to_lowercase());
     let acquire_started = std::time::Instant::now();
-    let mut connection = pool.acquire().await?;
+    let mut tx = pool.begin().await?;
+    crate::embeddings::apply_budget(&mut tx, filters.budget).await?;
     let acquire_ms = crate::elapsed_ms(acquire_started);
     let query_started = std::time::Instant::now();
     let rows = terms
         .iter()
         .fold(bound, |bound, term| bound.bind(contains_pattern(term)))
-        .fetch_all(&mut *connection)
+        .fetch_all(&mut *tx)
         .await?;
+    tx.commit().await?;
     let query_ms = crate::elapsed_ms(query_started);
 
     let hidden_turns = rows

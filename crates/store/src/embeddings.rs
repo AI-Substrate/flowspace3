@@ -61,6 +61,23 @@ async fn configure_search_transaction(
     Ok(())
 }
 
+/// Bound every statement of this transaction to `budget`, when there is one.
+pub(crate) async fn apply_budget(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    budget: Option<std::time::Duration>,
+) -> Result<(), StoreError> {
+    if let Some(budget) = budget {
+        // Never under a second, so a budget that is nearly spent still lets
+        // the pass it starts finish; the expansion loop is what stops early.
+        // `SET` takes no bind parameters; the value is a whole number we made.
+        let ms = budget.as_millis().clamp(1_000, i32::MAX as u128);
+        sqlx::query(&format!("SET LOCAL statement_timeout = {ms}"))
+            .execute(&mut **tx)
+            .await?;
+    }
+    Ok(())
+}
+
 /// The largest scope, in distinct source texts, that search compares in full
 /// instead of through the HNSW index.
 ///
@@ -485,6 +502,12 @@ pub struct SearchFilters {
     pub hidden_turn_classes: Option<Vec<fs3_core::TurnClass>>,
     /// How many hits to return.
     pub limit: i64,
+    /// How long this leg may take, for a leg whose answer is advice rather
+    /// than the page (the "other repositories" hint).
+    ///
+    /// Each statement runs under this `statement_timeout`, and the vector leg
+    /// starts no further candidate pass once it is spent. `None` is no limit.
+    pub budget: Option<std::time::Duration>,
 }
 
 /// Ownership scope for [`anchor_has_vectors`].
@@ -532,6 +555,7 @@ impl Default for SearchFilters {
             ddoc_schema: None,
             hidden_turn_classes: None,
             limit: 10,
+            budget: None,
         }
     }
 }
@@ -924,6 +948,7 @@ pub async fn search_elements(
     let acquire_started = std::time::Instant::now();
     let mut tx = pool.begin().await?;
     configure_search_transaction(&mut tx).await?;
+    apply_budget(&mut tx, filters.budget).await?;
     let acquire_ms = crate::elapsed_ms(acquire_started);
     let mut pass_ms = Vec::new();
 
@@ -979,7 +1004,12 @@ pub async fn search_elements(
                 .map(|element_id| count + i64::from(element_id.is_some()))
                 .map_err(StoreError::from)
         })?;
-        match expansion_decision(
+        // A budgeted leg answers with what it has once its time is spent,
+        // reported as an incomplete scan rather than a failure.
+        let spent = filters
+            .budget
+            .is_some_and(|budget| acquire_started.elapsed() >= budget);
+        let decision = match expansion_decision(
             hit_count,
             filters.limit,
             scanned,
@@ -988,6 +1018,12 @@ pub async fn search_elements(
             previous_admitted,
             expansion,
         ) {
+            ExpansionDecision::Continue if spent => ExpansionDecision::Return {
+                scan_incomplete: true,
+            },
+            decision => decision,
+        };
+        match decision {
             ExpansionDecision::Return { scan_incomplete } => {
                 tx.commit().await?;
                 // Exact AND the window held the whole scope: nothing in it
