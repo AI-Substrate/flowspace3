@@ -1,0 +1,43 @@
+crates/daemon/Cargo.toml
+  s_9f3c8913a290e0::t_af0b8bab926ffe 74-82
+crates/daemon/examples/search-bench/generate.rs
+  s_f915818cd311ae::t_a82659832f113d 1-927
+crates/daemon/examples/search-bench/main.rs
+  s_f915818cd311ae::t_0846940d41c232 1-245
+crates/daemon/examples/search-bench/model.rs
+  s_f915818cd311ae::t_0f09617c053359 1-398
+crates/daemon/examples/search-bench/queries/code-questions.txt
+  s_9f3c8913a290e0::t_96dd87d42c4f06 1-22
+crates/daemon/examples/search-bench/queries/keyword-stress.txt
+  s_9f3c8913a290e0::t_6e58aae40dfa97 1-9
+crates/daemon/examples/search-bench/report.rs
+  s_f915818cd311ae::t_a9b19fbde572f3 1-182
+crates/daemon/examples/search-bench/run.rs
+  s_f915818cd311ae::t_5220748f3e9405 1-425
+docs/services/search-latency.md
+  s_9f3c8913a290e0::t_297eb2b4891cbc 32-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4c472490520a17867d5eabc5a45ef7a983e681db",
+  "prompts": {},
+  "sessions": {
+    "s_9f3c8913a290e0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73a1484d-9566-45c4-b9a5-35b884499350",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_f915818cd311ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a555ba7c-d76a-4f90-88b8-7516d49df750",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
