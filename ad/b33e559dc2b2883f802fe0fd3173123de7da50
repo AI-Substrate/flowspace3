@@ -1,0 +1,39 @@
+crates/daemon/tests/search_scope_starvation.rs
+  s_18a2277fcd4372::t_f5c8ca4e34d240 430-466
+crates/store/src/embeddings.rs
+  s_15d888f4b629c1::t_720a602cfdbc91 56-66,72,104-113,136-140,143-145,153-189,191,776-779,782-786,793-796,799,801-808,811-812,834-836,838-842,1007,1056-1061,1064,1089,1101-1111,1127,1129,1135-1146,1164-1167,1334-1343,1350-1422,1427-1453,1602,1873-1891
+docs/services/search-latency.md
+  s_f915818cd311ae::t_0dc693b3f89a50 25-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "adb33e559dc2b2883f802fe0fd3173123de7da50",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_18a2277fcd4372": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58f49f60-563c-4ca6-8031-2d960e7769c1",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_f915818cd311ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a555ba7c-d76a-4f90-88b8-7516d49df750",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
