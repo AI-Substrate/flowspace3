@@ -119,6 +119,7 @@ pub const REDACTED: &str = "<redacted>";
 ///
 /// [search]
 /// lexical_backend = "trigram"
+/// scope_cache = true
 ///
 /// [update]
 /// auto = true
@@ -1258,12 +1259,26 @@ impl Default for ScanConfig {
 /// ```toml
 /// [search]
 /// lexical_backend = "trigram"
+/// scope_cache = true
 /// ```
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct SearchConfig {
     /// Which index answers the keyword leg of a search.
     pub lexical_backend: LexicalBackend,
+    /// Keep each scoped search's sources between searches instead of
+    /// collecting them on every pass. On by default; `false` is the kill
+    /// switch, which collects every scope in full as before.
+    pub scope_cache: bool,
+}
+
+impl Default for SearchConfig {
+    fn default() -> Self {
+        Self {
+            lexical_backend: LexicalBackend::default(),
+            scope_cache: true,
+        }
+    }
 }
 
 /// Which index answers the keyword ("lexical") leg of a search.
@@ -2671,6 +2686,15 @@ summary_min_lines = 0
                 || unknown.to_string().contains("tantivy"),
             "{unknown}"
         );
+    }
+
+    #[test]
+    fn the_scope_cache_is_on_unless_switched_off() {
+        assert!(resolved("", &[]).unwrap().config.search.scope_cache);
+        let off = resolved("[search]\nscope_cache = false\n", &[]).unwrap();
+        assert!(!off.config.search.scope_cache);
+        let env = resolved("", &[("FS3_SEARCH__SCOPE_CACHE", "false")]).unwrap();
+        assert!(!env.config.search.scope_cache);
     }
 
     #[test]

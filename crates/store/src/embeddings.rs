@@ -592,6 +592,9 @@ pub struct SearchFilters {
     /// pending. Turns are written under the conversation parser and never have
     /// code-version rows, so they always pass. `None` applies no rule.
     pub parser_version: Option<String>,
+    /// Read the scope from the scope cache (`search.scope_cache`). Off by
+    /// default, so a caller opts in; see [`crate::scope_cache`].
+    pub scope_cache: bool,
 }
 
 /// Ownership scope for [`anchor_has_vectors`].
@@ -642,6 +645,7 @@ impl Default for SearchFilters {
             budget: None,
             lexical_backend: crate::LexicalBackend::Trigram,
             parser_version: None,
+            scope_cache: false,
         }
     }
 }
@@ -698,6 +702,12 @@ pub struct SearchPage {
     pub pass_ms: Vec<u64>,
     /// The vector candidate limit of the last pass.
     pub candidates: i64,
+    /// How the scope was come by: read from the cache, built into it, or
+    /// collected in full.
+    pub scope_cache: crate::ScopeCacheUse,
+    /// Milliseconds spent checking (and, on a miss, building) the cached
+    /// scope, before the first pass.
+    pub scope_cache_ms: u64,
 }
 
 fn page_from_rows(
@@ -741,7 +751,23 @@ const ADMISSION_JOIN_SQL: &str = r#"JOIN page_admitted_sources admitted
         ON admitted.source_hash = candidate.source_hash
        AND admitted.source_kind = candidate.source_kind"#;
 
-const SEARCH_ELEMENTS_SQL: &str = r#"WITH scope_file_blobs AS MATERIALIZED (
+/// The CTEs that collect a scope's admitted sources, ending in
+/// `admitted_sources`. Shared by [`SEARCH_ELEMENTS_SQL`] and the scope cache's
+/// build (`crate::scope_cache`), so the cache holds exactly what a search would
+/// have collected. `$19` names a cached scope and `$20` its cutoff; NULL, or a
+/// key with no `scope_cache` row, collects the scope in full.
+macro_rules! scope_ctes {
+    () => {
+        r#"scope_cached AS MATERIALIZED (
+    -- The cached scope ($19). No row (no key, or one dropped since the search
+    -- looked) collects the scope in full. Its delta reads rows stamped by the
+    -- transactions its build's snapshot could not see: xid $20 (that
+    -- snapshot's xmin) or later. Bound as a value, so a custom plan sees how
+    -- recent it is and starts each delta from its stamp index. An older cutoff
+    -- than the row's (a rebuild in between) only reads more.
+    SELECT 1 FROM scope_cache WHERE scope_key = $19
+),
+scope_file_blobs AS MATERIALIZED (
     SELECT f.blob_sha
       FROM worktree_files f
       JOIN worktrees w ON w.id = f.worktree_id
@@ -750,6 +776,13 @@ const SEARCH_ELEMENTS_SQL: &str = r#"WITH scope_file_blobs AS MATERIALIZED (
        AND ($6::text IS NULL OR r.identity = $6)
        AND ($7::text IS NULL OR f.path LIKE $7)
        AND ($9::text IS NULL OR w.root_path = $9)
+       -- With a cached scope, only what changed since its cutoff: a path
+       -- added or re-pointed, or a blob that gained elements.
+       AND (NOT EXISTS (SELECT 1 FROM scope_cached)
+            OR f.changed_xid >= $20::xid8
+            OR f.blob_sha IN (SELECT changed.blob_sha
+                                FROM elements changed
+                               WHERE changed.changed_xid >= $20::xid8))
 ),
 -- A turn's element carries the turn's blob as its raw hash (one turn, one
 -- element: `write_turn_elements`), so a turn in scope IS a raw source, and
@@ -771,6 +804,11 @@ scope_turn_sources AS MATERIALIZED (
        AND ($7::text IS NULL OR c.worktree LIKE $7)
        AND ($9::text IS NULL OR c.worktree IS NULL OR c.worktree = $9)
        AND ($13::text IS NULL OR c.guid = $13::uuid)
+       -- With a cached scope, only conversations stamped since its cutoff:
+       -- new turns (a deduped one too), a restatement, or a repository or
+       -- worktree set later. So the caller's own live session is always read.
+       AND (NOT EXISTS (SELECT 1 FROM scope_cached)
+            OR c.changed_xid >= $20::xid8)
 ),
 -- The content filters apply here as well as at admission. A scope's nearest
 -- vectors can all be of the wrong kind (a repository known mostly through
@@ -793,25 +831,67 @@ scope_representatives AS MATERIALIZED (
     UNION
     SELECT raw_hash FROM scope_turn_sources
 ),
+-- Distinct sources, so `scope_size` counts each once. The cached rows are
+-- distinct already (their key): they are appended whole, and only the small
+-- set collected beside them is deduplicated and checked against them, rather
+-- than hashing the whole cached scope again on every pass.
 admitted_sources AS MATERIALIZED (
-    SELECT raw_hash AS source_hash, 'raw'::text AS source_kind
-      FROM scope_representatives
-    UNION
-    SELECT smart.text_hash AS source_hash, 'smart'::text AS source_kind
-      FROM smart_content smart
-      JOIN scope_representatives scoped ON scoped.raw_hash = smart.raw_hash
-),
+    SELECT cached.source_hash, cached.source_kind
+      FROM scope_sources cached
+     WHERE cached.scope_key = $19
+       AND EXISTS (SELECT 1 FROM scope_cached)
+    UNION ALL
+    SELECT collected.source_hash, collected.source_kind
+      FROM (
+        SELECT raw_hash AS source_hash, 'raw'::text AS source_kind
+          FROM scope_representatives
+        UNION
+        SELECT smart.text_hash, 'smart'::text
+          FROM smart_content smart
+          JOIN scope_representatives scoped ON scoped.raw_hash = smart.raw_hash
+        -- Summaries written since the cutoff for a source the cache holds.
+        UNION
+        SELECT smart.text_hash, 'smart'::text
+          FROM smart_content smart
+         WHERE smart.changed_xid >= $20::xid8
+           AND EXISTS (SELECT 1
+                         FROM scope_sources cached
+                        WHERE cached.scope_key = $19
+                          AND cached.source_kind = 'raw'
+                          AND cached.source_hash = smart.raw_hash)
+      ) collected
+     -- Uncached, nothing to check against: the first test short-circuits.
+     WHERE NOT EXISTS (SELECT 1 FROM scope_cached)
+        OR NOT EXISTS (SELECT 1
+                         FROM scope_sources cached
+                        WHERE cached.scope_key = $19
+                          AND cached.source_kind = collected.source_kind
+                          AND cached.source_hash = collected.source_hash)
+)"#
+    };
+}
+pub(crate) use scope_ctes;
+
+const SEARCH_ELEMENTS_SQL: &str = concat!(
+    "WITH ",
+    scope_ctes!(),
+    r#",
 scope_size AS MATERIALIZED (
     -- $17 is the fallback ceiling: set only on a pass that follows an ANN
     -- page the scan budget cut short, which this scope is re-ranked exactly
     -- after when it is no larger than that. Unset, it must read false, not
     -- NULL: a NULL `exact` would pass neither arm and return nothing.
+    -- $21 is how many departed sources a cached scope may still carry
+    -- (`SCOPE_SHRINK_REBUILD`): its count can overstate the live scope by that
+    -- much, so a scope within it of a limit is ranked exactly - exact over a
+    -- superset is never worse than the live scope's own path.
     SELECT ($6::text IS NOT NULL OR $7::text IS NOT NULL
             OR $9::text IS NOT NULL OR $13::text IS NOT NULL)
            AND (count(*) <= COALESCE(
                     NULLIF(current_setting('fs3.exact_scope_limit', true), '')::bigint,
-                    $16)
-                OR ($17::bigint IS NOT NULL AND count(*) <= $17)) AS exact,
+                    $16) + COALESCE($21::bigint, 0)
+                OR ($17::bigint IS NOT NULL
+                    AND count(*) <= $17 + COALESCE($21::bigint, 0))) AS exact,
            count(*)::bigint AS sources
       FROM admitted_sources
 ),
@@ -1047,7 +1127,8 @@ SELECT h.source_kind, h.distance,
   CROSS JOIN admitted_meta admitted
   CROSS JOIN hidden_meta hidden
   LEFT JOIN final_hits h ON TRUE
- ORDER BY h.distance, h.element_id"#;
+ ORDER BY h.distance, h.element_id"#
+);
 
 /// The `limit` nearest elements to `query`, narrowed by `filters`, nearest first.
 ///
@@ -1078,6 +1159,12 @@ pub async fn search_elements(
         });
     }
 
+    let cache_started = std::time::Instant::now();
+    let (scope, scope_cache) = crate::cached_scope(pool, filters).await;
+    // A cached scope's count can include sources that have since left it.
+    let departed = scope.as_ref().map(|_| crate::SCOPE_SHRINK_REBUILD);
+    let scope_cache_ms = crate::elapsed_ms(cache_started);
+
     let acquire_started = std::time::Instant::now();
     let mut tx = pool.begin().await?;
     configure_search_transaction(&mut tx).await?;
@@ -1091,7 +1178,9 @@ pub async fn search_elements(
     // $13 conversation, $14 vector candidate limit, $15 hidden turn classes,
     // $16 the default exact-scan ceiling, $17 the fallback ceiling (only on a
     // pass after a short ANN page), $18 the parser version that answers for a
-    // blob that has it.
+    // blob that has it, $19 the cached scope's key and $20 its cutoff (NULL:
+    // the scope is collected in full), $21 the departed sources a cached
+    // scope may carry.
     let scoped = filters.repo.is_some()
         || filters.path.is_some()
         || filters.worktree.is_some()
@@ -1125,6 +1214,9 @@ pub async fn search_elements(
             .bind(EXACT_SCOPE_SOURCES)
             .bind(fallback)
             .bind(filters.parser_version.as_deref())
+            .bind(scope.as_ref().map(|cached| cached.key.as_str()))
+            .bind(scope.as_ref().map(|cached| cached.cutoff.as_str()))
+            .bind(departed)
             .fetch_all(&mut *tx)
             .await?;
         pass_ms.push(crate::elapsed_ms(pass_started));
@@ -1173,7 +1265,8 @@ pub async fn search_elements(
             exact,
             // One exact retry: its own page decides from there.
             scoped: scoped && fallback.is_none(),
-            scope_sources,
+            // Never count departed sources against the fallback ceiling.
+            scope_sources: scope_sources - departed.unwrap_or(0),
             scan_capped,
             floored: filters.max_distance.is_some(),
         }) {
@@ -1195,6 +1288,8 @@ pub async fn search_elements(
                         acquire_ms,
                         pass_ms,
                         candidates: candidate_limit,
+                        scope_cache,
+                        scope_cache_ms,
                         ..page
                     }
                 });
@@ -1640,6 +1735,9 @@ mod tests {
             .bind(Option::<i64>::None)
             // The daemon always names its parser; the corpus's is current.
             .bind(Some("search-plan@1"))
+            .bind(Option::<&str>::None)
+            .bind(Option::<&str>::None)
+            .bind(Option::<i64>::None)
             .fetch_one(&mut *connection)
             .await?;
         Ok(row.try_get::<Json<serde_json::Value>, _>(0)?.0)

@@ -650,6 +650,11 @@ async fn serve(
         )
     })?;
     tracing::info!(%database, "store schema is current");
+    // A migration can change what a scope holds, so no cached scope outlives
+    // a boot. Best effort: an empty cache only means each scope rebuilds.
+    if let Err(error) = fs3_store::reset_scope_cache(&state.db).await {
+        tracing::warn!(%error, "could not empty the scope cache; searches rebuild it");
+    }
 
     // BM25 answers the keyword leg only once its index exists. Asked for but
     // absent, the daemon says why and keeps every search on trigram, rather
