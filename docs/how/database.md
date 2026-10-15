@@ -99,12 +99,66 @@ database through store functions. The architecture check enforces this: adding
 ## Running it
 
 ```bash
-docker compose up -d          # pgvector/pgvector:pg16 on 127.0.0.1:5433
+docker compose up -d          # paradedb/paradedb:0.26.1-pg16 on 127.0.0.1:5433
 cargo run -p fs3-daemon       # migrates, then serves
 ```
 
 Store tests run against that same stack and **fail rather than skip** when it is
 down, naming the command. `FS3_TEST_DATABASE_URL` points them elsewhere.
+
+## Switching to the ParadeDB image
+
+`docker-compose.yml` runs `paradedb/paradedb:0.26.1-pg16`: Postgres 16 with
+pgvector and pg_search. pg_search is what the BM25 keyword index needs
+(`[search] lexical_backend = "bm25"`; see `docs/how/configuration.md`). A new
+install gets it from the first `docker compose up -d`. An install whose volume
+was created on `pgvector/pgvector:pg16` keeps working on trigram until it
+switches, and the switch keeps the volume: same Postgres major, same data
+directory, same user.
+
+1. **Back up.** Keep it until the switch has run cleanly for a while.
+
+   ```bash
+   docker exec flowspace3-db pg_dump -U flowspace3 -d flowspace3 -Fc > flowspace3.dump
+   docker exec -i flowspace3-db pg_restore --list < flowspace3.dump | head
+   ```
+
+2. **Stop the daemon**, then the database: `docker compose stop db`.
+3. **Change the image** in `docker-compose.yml` (pull the new file, or edit
+   two lines): `image: paradedb/paradedb:0.26.1-pg16`, and
+   `shared_preload_libraries=pg_stat_statements,pg_search,pg_cron`. Then
+   `docker compose up -d db`. Name the service: a bare `up -d` also recreates
+   every other service whose definition changed.
+4. **Record the new C library's collation version**, once per database:
+
+   ```bash
+   for db in flowspace3 postgres template1; do
+     docker exec flowspace3-db psql -U flowspace3 -d postgres \
+       -c "ALTER DATABASE $db REFRESH COLLATION VERSION"
+   done
+   ```
+
+   The image's C library is newer, so until then Postgres warns about a
+   collation version mismatch on every connection. The sort order of
+   `en_US.utf8` is the same in both (checked when this image was chosen, and
+   by `amcheck` on prod's text indexes), so no index needs rebuilding. Leave
+   pgvector's extension version alone for now: the image's newer library
+   serves it as is, and `ALTER EXTENSION vector UPDATE` is only safe once you
+   will not go back to the old image.
+5. **Start the daemon.** Everything still searches with trigram.
+6. **Build the index:** `flowspace3 doctor keyword-index`. It builds
+   `CONCURRENTLY`, beside the trigram index, at about 25 s per million
+   elements, while the daemon keeps indexing and searching.
+7. **Use it:** set `[search] lexical_backend = "bm25"` and restart the daemon.
+   `flowspace3 doctor` shows a `keyword-index` row: `ok` once the index is
+   built and valid.
+
+**Going back.** Set `lexical_backend = "trigram"` and restart the daemon: that
+alone puts search back. To leave the image as well: drop the extension
+(`DROP EXTENSION pg_search CASCADE` takes its index with it), stop the
+database, put the two lines from step 3 back, `docker compose up -d db`, and
+run step 4's loop again so the recorded collation version is the old
+library's. If that fails, restore the step-1 dump into a fresh volume.
 
 ## Hand-run daemon isolation
 

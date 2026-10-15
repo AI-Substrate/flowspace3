@@ -11,7 +11,13 @@
 
 services:
   db:
-    image: pgvector/pgvector:pg16
+    # ParadeDB = Postgres 16 + pgvector + pg_search, the BM25 index behind
+    # `[search] lexical_backend = "bm25"` (#172). Pinned: pg_search moves
+    # fast. Pulled from upstream as is; pg_search is AGPL and fs3 (MIT) only
+    # talks to it over SQL. Moving an existing volume over from
+    # pgvector/pgvector:pg16: docs/how/database.md, "Switching to the ParadeDB
+    # image".
+    image: paradedb/paradedb:0.26.1-pg16
     container_name: flowspace3-db
     restart: unless-stopped
     environment:
@@ -23,7 +29,10 @@ services:
     # buffer pool over every 5s and pinned WAL at the ceiling. These values are
     # ALSO applied via ALTER SYSTEM on the live volume; this block keeps a fresh
     # volume identical. pg_stat_statements is preloaded so a DB question can be
-    # answered without hand-rolling a sampler.
+    # answered without hand-rolling a sampler; pg_search because it needs it;
+    # pg_cron because this line replaces the image's own preload list, and the
+    # image's first-boot script (a fresh volume only) runs CREATE EXTENSION
+    # pg_cron, which fails and stops the container unless it is preloaded.
     command:
       - postgres
       - -c
@@ -45,7 +54,7 @@ services:
       - -c
       - track_io_timing=on
       - -c
-      - shared_preload_libraries=pg_stat_statements
+      - shared_preload_libraries=pg_stat_statements,pg_search,pg_cron
     ports:
       - "5433:5432"
     volumes:
