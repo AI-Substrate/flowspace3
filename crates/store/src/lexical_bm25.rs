@@ -171,7 +171,8 @@ const FILTERS_SQL: &str = r#"
 /// The statement for `terms.len()` terms, and which of them need their
 /// lowercase spelling too. Bind map: $1-$12 as `search_lexical_page`, $13
 /// the trimmed query, then per term `i`: $14+3i its `LIKE` pattern, $15+3i
-/// its cased spelling, $16+3i its lowercase spelling.
+/// its cased spelling, $16+3i its lowercase spelling; last, the parser
+/// version that answers for a blob that has it.
 fn statement(terms: &[(String, String)], phrase_window: bool) -> String {
     let pattern = |i: usize| 14 + 3 * i;
     let every = |field: &str| -> String {
@@ -188,10 +189,13 @@ fn statement(terms: &[(String, String)], phrase_window: bool) -> String {
             .collect::<Vec<_>>()
             .join(" AND ")
     };
+    // After the term binds, so their numbering stays put.
+    let one_parse = crate::lexical::one_parse_per_blob("el", 14 + 3 * terms.len());
     let window = |matches: String| {
         format!(
             "(SELECT el.id FROM elements el
                WHERE {matches}{FILTERS_SQL}
+                {one_parse}
                ORDER BY pdb.score(el.id) DESC
                LIMIT $2 * 10)"
         )
@@ -391,6 +395,7 @@ async fn page_on(
             .bind(cased.clone())
             .bind(lower.clone());
     }
+    bound = bound.bind(filters.parser_version.as_deref());
     let query_started = std::time::Instant::now();
     let rows = bound.fetch_all(&mut *connection).await?;
     let query_ms = crate::elapsed_ms(query_started);

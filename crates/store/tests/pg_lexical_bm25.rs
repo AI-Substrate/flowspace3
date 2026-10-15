@@ -341,3 +341,73 @@ async fn doctor_s_build_creates_the_index_repairs_an_invalid_one_and_is_a_no_op_
 
     database.destroy(pool).await;
 }
+
+/// One parse per blob on the BM25 leg too: a reparsed blob's superseded row
+/// of a declaration does not answer beside its current one (DL-042).
+#[tokio::test]
+async fn bm25_answers_a_reparsed_blob_once_from_its_current_parse() {
+    const CURRENT: &str = "test-parser@2";
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+    let identity = RepoIdentity::from_path(Path::new("/srv/reparsed"));
+    let worktree = register_worktree(&pool, &identity, "/srv/reparsed", None)
+        .await
+        .unwrap();
+    let blob = unique_blob();
+    let old = file(
+        "src/lib.rs",
+        vec![function("settle_outcome", "fn settle_outcome() {}", 2)],
+    );
+    let current = file(
+        "src/lib.rs",
+        vec![function(
+            "settle_outcome",
+            "/// Records the outcome.\nfn settle_outcome() {}",
+            1,
+        )],
+    );
+    upsert_element_tree(&pool, &blob, PARSER_VERSION, &old, |_| true)
+        .await
+        .unwrap();
+    upsert_element_tree(&pool, &blob, CURRENT, &current, |_| true)
+        .await
+        .unwrap();
+    sync_worktree_files(&pool, worktree, &[("src/lib.rs".to_string(), blob)])
+        .await
+        .unwrap();
+    if !bm25_available(&pool).await {
+        database.destroy(pool).await;
+        return;
+    }
+
+    let filters = SearchFilters {
+        repo: Some(identity.key().to_string()),
+        limit: 10,
+        parser_version: Some(CURRENT.to_string()),
+        ..SearchFilters::default()
+    };
+    let lines = |page: fs3_store::LexicalPage| {
+        let mut lines: Vec<u32> = page
+            .hits
+            .iter()
+            .filter(|hit| hit.element.kind == ElementKind::Function)
+            .map(|hit| hit.element.span.start_line)
+            .collect();
+        lines.sort_unstable();
+        lines
+    };
+    let current_only = search_bm25_page(&pool, "settle_outcome", &filters)
+        .await
+        .unwrap();
+    assert_eq!(lines(current_only), [1]);
+    let unruled = SearchFilters {
+        parser_version: None,
+        ..filters
+    };
+    let both = search_bm25_page(&pool, "settle_outcome", &unruled)
+        .await
+        .unwrap();
+    assert_eq!(lines(both), [1, 2]);
+
+    database.destroy(pool).await;
+}

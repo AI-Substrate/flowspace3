@@ -9,8 +9,8 @@ use fs3_core::{
 };
 use fs3_store::{
     EMBEDDING_DIMENSIONS, NewEmbedding, PgPool, SearchFilters, SourceKind, append_turns,
-    put_embeddings, put_smart_content, register_worktree, search_elements, sync_worktree_files,
-    upsert_conversation, upsert_element_tree,
+    put_embeddings, put_smart_content, register_worktree, search_elements, search_lexical,
+    sync_worktree_files, upsert_conversation, upsert_element_tree,
 };
 use fs3_testkit::FreshDatabase;
 use serde_json::{Map, Value, json};
@@ -484,6 +484,149 @@ async fn seed_geometry(
         })
         .collect::<Vec<_>>();
     put_embeddings(pool, EMBEDDER, &embeddings).await.unwrap();
+}
+
+/// Stores `children` as `blob`'s parse under `parser_version`.
+async fn store_parse(pool: &PgPool, blob: &BlobRef, parser_version: &str, children: Vec<Element>) {
+    let root = Element::new(
+        ElementKind::File,
+        "rust",
+        "src/reparsed.rs",
+        "src/reparsed.rs",
+        Span::new(1, 3),
+        "file",
+    )
+    .with_children(children);
+    upsert_element_tree(pool, blob, parser_version, &root, |element| {
+        element.kind != ElementKind::File
+    })
+    .await
+    .unwrap();
+}
+
+fn reparsed_function(name: &str, span: Span, body: &str) -> Element {
+    Element::new(
+        ElementKind::Function,
+        "function_item",
+        name,
+        format!("src/reparsed.rs::{name}"),
+        span,
+        body,
+    )
+}
+
+/// A blob keeps every parser version's rows. After a bump that moved a
+/// declaration's span (DL-042 took the doc comment above it in), the old and
+/// new rows of one declaration both matched and came back as two hits. Search
+/// answers from one parse per blob, the rule `get` follows: the current
+/// version when the blob has it, and otherwise whatever it has.
+#[tokio::test]
+async fn a_reparsed_blob_answers_once_from_its_current_parse() {
+    const OLD: &str = "test-parser@1";
+    const CURRENT: &str = "test-parser@2";
+    let database = FreshDatabase::create_from(&fs3_testkit::test_database_url(), "search-reparse")
+        .await
+        .expect("create migrated reparse database");
+    let pool = database.pool().await;
+    let identity =
+        RepoIdentity::from_remote_parts(Some("github.com"), "fixtures/reparsed").unwrap();
+    let worktree = register_worktree(&pool, &identity, "/fixtures/reparsed", Some("main"))
+        .await
+        .unwrap();
+
+    // Reparsed: the old parse started at the `fn`, the current one at its doc.
+    let reparsed = unique_blob();
+    let old = reparsed_function("settle", Span::new(2, 3), "fn settle() { record(); }");
+    let current = reparsed_function(
+        "settle",
+        Span::new(1, 3),
+        "/// Records the outcome.\nfn settle() { record(); }",
+    );
+    // Not reparsed yet: its only parse is the old one, and it must still answer.
+    let pending_blob = unique_blob();
+    let pending = reparsed_function("pending", Span::new(1, 1), "fn pending() { record(); }");
+    let sources = [&old, &current, &pending].map(|element| element.raw_hash().to_string());
+    store_parse(&pool, &reparsed, OLD, vec![old]).await;
+    store_parse(&pool, &reparsed, CURRENT, vec![current]).await;
+    store_parse(&pool, &pending_blob, OLD, vec![pending]).await;
+    sync_worktree_files(
+        &pool,
+        worktree,
+        &[
+            ("src/reparsed.rs".to_string(), reparsed.clone()),
+            ("src/pending.rs".to_string(), pending_blob.clone()),
+        ],
+    )
+    .await
+    .unwrap();
+    let query = vector(0.0);
+    let embeddings = sources
+        .iter()
+        .map(|source_hash| NewEmbedding {
+            chunk_no: 0,
+            source_hash,
+            source_kind: SourceKind::Raw,
+            vector: &query,
+            truncated: false,
+        })
+        .collect::<Vec<_>>();
+    put_embeddings(&pool, EMBEDDER, &embeddings).await.unwrap();
+
+    let expected = vec![
+        ("src/reparsed.rs::pending".to_string(), 1),
+        ("src/reparsed.rs::settle".to_string(), 1),
+    ];
+    let both_parses = vec![
+        ("src/reparsed.rs::pending".to_string(), 1),
+        ("src/reparsed.rs::settle".to_string(), 1),
+        ("src/reparsed.rs::settle".to_string(), 2),
+    ];
+    let shape = |mut hits: Vec<(String, u32)>| {
+        hits.sort();
+        hits
+    };
+    for repo in [Some(identity.key().to_string()), None] {
+        for (parser_version, want) in [(Some(CURRENT), &expected), (None, &both_parses)] {
+            let filters = SearchFilters {
+                repo: repo.clone(),
+                source: Some(SourceKind::Raw),
+                limit: 10,
+                parser_version: parser_version.map(str::to_string),
+                ..SearchFilters::default()
+            };
+            let semantic = search_elements(&pool, EMBEDDER, &query, &filters)
+                .await
+                .unwrap();
+            assert_eq!(
+                shape(
+                    semantic
+                        .hits
+                        .iter()
+                        .map(|hit| {
+                            let element = &hit.similar.element;
+                            (element.address.clone(), element.span.start_line)
+                        })
+                        .collect()
+                ),
+                *want,
+                "semantic, repo {repo:?}, parser version {parser_version:?}"
+            );
+            let lexical = search_lexical(&pool, "record", &filters).await.unwrap();
+            assert_eq!(
+                shape(
+                    lexical
+                        .iter()
+                        .filter(|hit| hit.element.kind != ElementKind::File)
+                        .map(|hit| (hit.element.address.clone(), hit.element.span.start_line))
+                        .collect()
+                ),
+                *want,
+                "keyword, repo {repo:?}, parser version {parser_version:?}"
+            );
+        }
+    }
+
+    database.destroy(pool).await;
 }
 
 #[tokio::test]

@@ -578,6 +578,9 @@ async fn search_filtered(
         hidden_turn_classes: (!request.include_retrieval)
             .then(|| TurnClass::HIDDEN_BY_DEFAULT.to_vec()),
         lexical_backend: state.lexical_backend(),
+        // One parse per blob, as `get` reads it: superseded rows of a blob
+        // already reparsed would answer the same declaration twice.
+        parser_version: Some(crate::scan::PARSER_VERSION.to_string()),
         ..SearchFilters::default()
     };
 
