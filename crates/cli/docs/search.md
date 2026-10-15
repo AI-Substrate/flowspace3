@@ -4,8 +4,10 @@
 flowspace3 search "how does the queue avoid two workers taking the same job"
 ```
 
-Search runs two legs together: indexed verbatim text and vector similarity.
-Exact text hits are pinned first; semantic hits follow in similarity order.
+Search runs two legs together: a keyword leg over element names and source text,
+and vector similarity. Both feed one ranking by score, highest first. Verbatim
+matches in code and documents score 1.0, so they lead; every other hit, from
+either leg, takes its place by its own score.
 
 ## Output shape
 
@@ -53,14 +55,24 @@ excludes them; `--path` with `--source conversation` is contradictory.
 - `path` + `span` is what you open; `span` is inclusive, 1-based.
 - `worktree` names the registered checkout that supplied the hit. It is the
   absolute root; `path` is relative to it.
-- `score` is channel-native. Semantic rows use `1 - cosine distance`. Exact
-  lexical rows use `1.0` because the substring is identical, not because a
-  vector was identical.
-- `channel` is `lexical`, `semantic`, or `both`. A `both` row keeps lexical
-  placement and score; the values are never averaged.
-- `match_field` explains the winning evidence: `raw`/`smart` for semantic,
-  `exact_name`/`exact_text` for lexical. A `smart` hit found the answer by
+- `score` is channel-native. Semantic rows use `1 - cosine distance`. Lexical
+  rows are graded: `1.0` when the whole query occurs verbatim in a code or
+  document element (its name or its text), about 0.9 when the declaration's
+  name holds every term, about 0.8 for the whole phrase in a conversation
+  turn, and about 0.65 when every term occurs but not as one phrase. A 1.0
+  means the text is identical, not that a vector was.
+- `channel` is `lexical`, `semantic`, or `both`. A `both` row scores the
+  stronger of its two scores plus a tenth of the weaker, capped at 1.0:
+  corroboration only ever adds.
+- `match_field` explains the winning evidence. Semantic: `raw` (the element's
+  own text) or `smart` (its LLM summary). Lexical: `exact_name` (the query,
+  verbatim, in the declaration's name), `exact_text` (verbatim in the source),
+  or `terms` (every term, not as one phrase). A `smart` hit found the answer by
   meaning, so the words you typed may appear nowhere in the code.
+- Keyword matching is case-insensitive and needs every term. Where a term may
+  match depends on `search.lexical_backend`: `trigram` (the default) matches a
+  substring anywhere; `bm25`, when configured, matches at token starts (`job`
+  finds `jobs`; `ounded` does not find `bounded`).
 - `snippet` is the first few lines only. Search returns lean rows on purpose.
 
 ## Every source, one ranking
@@ -94,15 +106,22 @@ vector (`smart`). Both compete internally, and `match_field` reports which won.
   rather than asking a question." The hint never filters or reorders results.
   Zero results keep their existing diagnostic steer.
 - **Empty results are a real answer — but the surface will tell you when they
-  are not.** `meta.empty_because` carries the reason whenever one is known:
+  are not.** `meta.empty_because` is on every page — `null` when no reason is
+  known — and carries the reason whenever one is:
   `below_floor` means rows were found and your `--min-score` rejected them, and
   names the floor; `scope_unmatched` means the scope was small enough to
   compare every one of its vectors and nothing in it matched your content
-  filters (`--source`, `--kind`, `--schema`): an answer about that scope, not
-  a scan that gave up; `scan_incomplete` means content IS indexed under this
-  scope and the approximate ranking stopped before reaching it, which only a
-  large scope can still hit; `path_unmatched` means the requested `--path` glob
-  matches zero indexed paths in the scope. That last reason includes a `hint`
+  filters (`--source`, `--id-kind`, `--gate-open`/`--gate-closed`,
+  `--ddoc-schema`): an answer about that scope, not a scan that gave up — drop
+  the filters, or widen the scope; `scan_incomplete` means content IS indexed
+  under this scope and the approximate ranking stopped before reaching it,
+  which only a scope above `fs3.exact_scope_limit` (150,000 texts) can hit —
+  narrow with `--path` so the scope is ranked exactly, or drop the scope (an
+  unscoped search never reports it as the reason: there is no scope to say
+  the content is in); `retrieval_hidden` means every match was fs3's own
+  retrieval traffic (`--include-retrieval` shows it); `path_unmatched` means
+  the requested `--path` glob matches zero indexed paths in the scope. That
+  last reason includes a `hint`
   naming indexed top-level entries so the glob can be corrected without
   treating an unsatisfiable filter as code absence. A scope holding nothing at
   all is an error (`FS3-E-QUERY-NO-INDEX`) naming the anchor and pointing at
@@ -138,14 +157,15 @@ vector (`smart`). Both compete internally, and `match_field` reports which won.
   `hnsw.max_scan_tuples`, 20,000 by default) and keeps scanning until your
   `--limit` is filled. The ordering there is nearest-so-far, not provably the
   global nearest, and an approximate page that comes back short reports
-  `scan_incomplete` rather than claiming the scope ran out. The cut-off is
+  `scan_incomplete` rather than claiming the scope ran out. `meta.scan_incomplete`
+  (a boolean) and `meta.passes` ride on every page, empty or not. The cut-off is
   `fs3.exact_scope_limit`, settable per database
   (`ALTER DATABASE … SET fs3.exact_scope_limit = N`); under a lower one, a
   scope whose approximate page comes back short is ranked exactly anyway, up
   to 150,000.
 - **Content filters narrow the scope before ranking.** In a scoped search,
-  `--source`, `--kind` and the ddoc id-kind and schema filters choose which of
-  the scope's texts are candidates at all, so a doc search in a repository
+  `--source`, `--id-kind`, `--gate-open`/`--gate-closed` and `--ddoc-schema`
+  choose which of the scope's texts are candidates at all, so a doc search in a repository
   whose nearest content is conversation or code still reaches its docs. The
   same filters on an unscoped search are applied to the nearest candidates,
   which is why a narrow filter over the whole index can still come back short.

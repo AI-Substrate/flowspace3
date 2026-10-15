@@ -44,7 +44,22 @@ pub enum LexicalMatch {
 }
 
 impl LexicalMatch {
-    /// Stable wire spelling used by the daemon's `match_field`.
+    /// Every variant. The bundled agent skill's `match_field` table is checked
+    /// against this (`crates/cli/tests/skill_accuracy.rs`), so a new variant
+    /// belongs here as well.
+    pub const ALL: [Self; 3] = [Self::Name, Self::Text, Self::Terms];
+
+    /// The daemon's `match_field` for a hit this match won: `exact_name`,
+    /// `exact_text`, or `terms`.
+    pub const fn match_field(self) -> &'static str {
+        match self {
+            Self::Name => "exact_name",
+            Self::Text => "exact_text",
+            Self::Terms => "terms",
+        }
+    }
+
+    /// Stable short spelling of the match.
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Name => "name",
