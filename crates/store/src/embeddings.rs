@@ -53,11 +53,23 @@ const ITERATIVE_SCAN: &str = "SET LOCAL hnsw.iterative_scan = strict_order";
 /// startup cost cannot amortize before the query returns.
 const DISABLE_SEARCH_JIT: &str = "SET LOCAL jit = off";
 
+/// Plan the search for the values it is given, every time.
+///
+/// sqlx prepares this statement once per pooled connection. After five runs
+/// Postgres may switch to a generic plan, which cannot see the scope and on
+/// prod (2026-10-15) replaced the HNSW arm with a sequential scan of every
+/// vector: an accidental brute-force rank on a scoped search, and a sort of
+/// 1.65M distances on an unscoped one. So the plan, the recall and the
+/// latency depended on how old the connection was. Planning it fresh costs
+/// 1 to 4 ms.
+const CUSTOM_SEARCH_PLAN: &str = "SET LOCAL plan_cache_mode = force_custom_plan";
+
 async fn configure_search_transaction(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
 ) -> Result<(), StoreError> {
     sqlx::query(ITERATIVE_SCAN).execute(&mut **tx).await?;
     sqlx::query(DISABLE_SEARCH_JIT).execute(&mut **tx).await?;
+    sqlx::query(CUSTOM_SEARCH_PLAN).execute(&mut **tx).await?;
     Ok(())
 }
 
@@ -89,6 +101,16 @@ pub(crate) async fn apply_budget(
 /// `fs3.exact_scope_limit`.
 pub const EXACT_SCOPE_SOURCES: i64 = 5_000;
 
+/// The largest scope re-ranked exactly after its ANN page came back short.
+///
+/// The iterative scan stopping at `hnsw.max_scan_tuples` with the candidate
+/// window unfilled says the scope sits beyond what the scan visits, not that
+/// it ran out. Its few hits are then not the scope's nearest: on prod
+/// (2026-10-14) a 12,053-source code scope matched 3 to 43 of 101 hits, and
+/// recall@10 against exact was 0.14. A larger scope reports the page as
+/// incomplete instead of paying for an exact pass.
+pub const EXACT_FALLBACK_SOURCES: i64 = 100_000;
+
 /// Start with enough vectors for ordinary two- or three-chunk elements while
 /// keeping the common ANN scan small.
 const INITIAL_CANDIDATE_MULTIPLIER: i64 = 4;
@@ -111,10 +133,16 @@ fn candidate_count(rows: &[sqlx::postgres::PgRow]) -> Result<i64, StoreError> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ExpansionDecision {
     Continue,
-    Return { scan_incomplete: bool },
+    /// Run the same window again, ranking the scope exactly.
+    RankExactly,
+    Return {
+        scan_incomplete: bool,
+    },
 }
 
-fn expansion_decision(
+/// What one candidate pass found, as [`expansion_decision`] reads it.
+#[derive(Clone, Copy, Debug, Default)]
+struct Pass {
     hit_count: i64,
     requested: i64,
     scanned: i64,
@@ -122,15 +150,45 @@ fn expansion_decision(
     admitted: i64,
     previous_admitted: Option<i64>,
     expansion: usize,
-) -> ExpansionDecision {
-    let admitted_stalled = previous_admitted == Some(admitted);
-    let candidate_scan_exhausted = scanned < candidate_limit;
-    let expansion_exhausted = admitted_stalled || expansion == MAX_CANDIDATE_EXPANSIONS;
-    if hit_count >= requested || candidate_scan_exhausted || expansion_exhausted {
+    /// The scope was ranked exactly.
+    exact: bool,
+    /// The search names a scope, so it can be ranked exactly.
+    scoped: bool,
+    /// Distinct sources the scope admits.
+    scope_sources: i64,
+    /// The index holds more vectors than the ANN scan may visit.
+    scan_capped: bool,
+    /// A distance floor is set, which can shorten a page on its own.
+    floored: bool,
+}
+
+fn expansion_decision(pass: Pass) -> ExpansionDecision {
+    let admitted_stalled = pass.previous_admitted == Some(pass.admitted);
+    let short = pass.scanned < pass.candidate_limit;
+    let expansion_exhausted = admitted_stalled || pass.expansion == MAX_CANDIDATE_EXPANSIONS;
+    // A short ANN page is the scan budget running out, not the scope, unless
+    // the scan could visit the whole index.
+    let starved = short && !pass.exact && pass.scan_capped;
+    if pass.hit_count >= pass.requested {
         ExpansionDecision::Return {
-            scan_incomplete: hit_count < requested
-                && expansion_exhausted
-                && !candidate_scan_exhausted,
+            scan_incomplete: false,
+        }
+    } else if starved {
+        // The retry is a pass of its own, so the last pass cannot take it.
+        if pass.scoped
+            && pass.scope_sources <= EXACT_FALLBACK_SOURCES
+            && pass.expansion < MAX_CANDIDATE_EXPANSIONS
+        {
+            ExpansionDecision::RankExactly
+        } else {
+            // Under a floor, the floor is the likelier cut and is reported.
+            ExpansionDecision::Return {
+                scan_incomplete: !pass.floored,
+            }
+        }
+    } else if short || expansion_exhausted {
+        ExpansionDecision::Return {
+            scan_incomplete: expansion_exhausted && !short,
         }
     } else {
         ExpansionDecision::Continue
@@ -710,30 +768,43 @@ admitted_sources AS MATERIALIZED (
       JOIN scope_representatives scoped ON scoped.raw_hash = smart.raw_hash
 ),
 scope_size AS MATERIALIZED (
+    -- $17 is the fallback ceiling: set only on a pass that follows an ANN
+    -- page the scan budget cut short, which this scope is re-ranked exactly
+    -- after when it is no larger than that. Unset, it must read false, not
+    -- NULL: a NULL `exact` would pass neither arm and return nothing.
     SELECT ($6::text IS NOT NULL OR $7::text IS NOT NULL
             OR $9::text IS NOT NULL OR $13::text IS NOT NULL)
-           AND count(*) <= COALESCE(
-                   NULLIF(current_setting('fs3.exact_scope_limit', true), '')::bigint,
-                   $16) AS exact
+           AND (count(*) <= COALESCE(
+                    NULLIF(current_setting('fs3.exact_scope_limit', true), '')::bigint,
+                    $16)
+                OR ($17::bigint IS NOT NULL AND count(*) <= $17)) AS exact,
+           count(*)::bigint AS sources
       FROM admitted_sources
 ),
 candidate_vectors AS MATERIALIZED (
     -- A small scope is ranked exactly: every one of its vectors is compared,
     -- and the true nearest $14 are kept. The ANN scan below gives up after
     -- `hnsw.max_scan_tuples`, and a scope that is a small share of the index
-    -- can sit past that. `+ 0` keeps the planner off the HNSW index here.
+    -- can sit past that. Each scope source is one primary-key lookup:
+    -- `OFFSET 0` keeps the lateral from being flattened into a join, which a
+    -- custom plan ran as a merge join over the whole key (1.65M entries for a
+    -- 12,784-source scope, 4 s instead of 0.3 s on prod, 2026-10-15).
     -- Exactly one arm runs, so the outer LIMIT only tells the planner that.
     SELECT * FROM (
-    (SELECT e.source_hash, e.source_kind, e.chunk_no,
-           e.vector <=> $1 AS distance
+    (SELECT e.source_hash, e.source_kind, e.chunk_no, e.distance
       FROM admitted_sources a
-      JOIN embeddings_1024 e
-        ON e.source_hash = a.source_hash AND e.source_kind = a.source_kind
+      CROSS JOIN LATERAL (
+           SELECT v.source_hash, v.source_kind, v.chunk_no,
+                  v.vector <=> $1 AS distance
+             FROM embeddings_1024 v
+            WHERE v.source_hash = a.source_hash
+              AND v.source_kind = a.source_kind
+              AND v.model_key = $2
+           OFFSET 0) e
      WHERE (SELECT exact FROM scope_size)
-       AND e.model_key = $2
        AND ($4::text IS NULL OR e.source_kind = $4)
-       AND ($5::float8 IS NULL OR (e.vector <=> $1) <= $5)
-     ORDER BY (e.vector <=> $1) + 0
+       AND ($5::float8 IS NULL OR e.distance <= $5)
+     ORDER BY e.distance
      LIMIT $14)
     UNION ALL
     (SELECT e.source_hash, e.source_kind, e.chunk_no,
@@ -755,8 +826,15 @@ candidate_vectors AS MATERIALIZED (
     LIMIT $14
 ),
 candidate_meta AS (
+    -- `scan_capped`: the index holds more vectors than the iterative ANN scan
+    -- may visit, so a short ANN page can mean the scan stopped, not that the
+    -- scope ran out. A table never analyzed reads -1 and counts as small.
     SELECT count(*)::bigint AS candidate_count,
-           (SELECT exact FROM scope_size) AS exact_scan
+           (SELECT exact FROM scope_size) AS exact_scan,
+           (SELECT sources FROM scope_size) AS scope_sources,
+           (SELECT reltuples FROM pg_class WHERE oid = 'embeddings_1024'::regclass)
+               > COALESCE(NULLIF(current_setting('hnsw.max_scan_tuples', true), '')::float8,
+                          20000) AS scan_capped
       FROM candidate_vectors
 ),
 candidate_raw_hashes AS MATERIALIZED (
@@ -921,6 +999,7 @@ SELECT h.source_kind, h.distance,
        h.address, h.span_start, h.span_end, h.sibling_order, h.raw_text,
        h.ddoc, h.identity, h.root_path, h.path,
        candidate.candidate_count, candidate.exact_scan,
+       candidate.scope_sources, candidate.scan_capped,
        admitted.admitted_count, hidden.hidden_count,
        h.element_id
   FROM candidate_meta candidate
@@ -969,9 +1048,15 @@ pub async fn search_elements(
     // $2 model, $3 element limit, $4 source, $5 distance, $6 repo, $7 path,
     // $8 kinds, $9 worktree, $10 id_kinds, $11 gate_open, $12 ddoc_schema,
     // $13 conversation, $14 vector candidate limit, $15 hidden turn classes,
-    // $16 the default exact-scan ceiling.
+    // $16 the default exact-scan ceiling, $17 the fallback ceiling (only on a
+    // pass after a short ANN page).
+    let scoped = filters.repo.is_some()
+        || filters.path.is_some()
+        || filters.worktree.is_some()
+        || filters.conversation.is_some();
     let mut candidate_limit = filters.limit.saturating_mul(INITIAL_CANDIDATE_MULTIPLIER);
     let mut previous_admitted = None;
+    let mut fallback = None;
     for expansion in 0..=MAX_CANDIDATE_EXPANSIONS {
         let pass_started = std::time::Instant::now();
         let rows = sqlx::query(SEARCH_ELEMENTS_SQL)
@@ -996,6 +1081,7 @@ pub async fn search_elements(
             .bind(candidate_limit)
             .bind(filters.hidden_turn_class_names())
             .bind(EXACT_SCOPE_SOURCES)
+            .bind(fallback)
             .fetch_all(&mut *tx)
             .await?;
         pass_ms.push(crate::elapsed_ms(pass_started));
@@ -1007,6 +1093,17 @@ pub async fn search_elements(
             .transpose()?
             .unwrap_or(false);
         let scanned = candidate_count(&rows)?;
+        let scope_sources: i64 = rows
+            .first()
+            .map(|row| row.try_get("scope_sources"))
+            .transpose()?
+            .unwrap_or(0);
+        let scan_capped: bool = rows
+            .first()
+            .map(|row| row.try_get::<Option<bool>, _>("scan_capped"))
+            .transpose()?
+            .flatten()
+            .unwrap_or(false);
         let admitted: i64 = rows
             .first()
             .map(|row| row.try_get("admitted_count"))
@@ -1022,18 +1119,26 @@ pub async fn search_elements(
         let spent = filters
             .budget
             .is_some_and(|budget| acquire_started.elapsed() >= budget);
-        let decision = match expansion_decision(
+        let decision = match expansion_decision(Pass {
             hit_count,
-            filters.limit,
+            requested: filters.limit,
             scanned,
             candidate_limit,
             admitted,
             previous_admitted,
             expansion,
-        ) {
-            ExpansionDecision::Continue if spent => ExpansionDecision::Return {
-                scan_incomplete: true,
-            },
+            exact,
+            // One exact retry: its own page decides from there.
+            scoped: scoped && fallback.is_none(),
+            scope_sources,
+            scan_capped,
+            floored: filters.max_distance.is_some(),
+        }) {
+            ExpansionDecision::Continue | ExpansionDecision::RankExactly if spent => {
+                ExpansionDecision::Return {
+                    scan_incomplete: true,
+                }
+            }
             decision => decision,
         };
         match decision {
@@ -1050,6 +1155,10 @@ pub async fn search_elements(
                         ..page
                     }
                 });
+            }
+            ExpansionDecision::RankExactly => {
+                fallback = Some(EXACT_FALLBACK_SOURCES);
+                continue;
             }
             ExpansionDecision::Continue => {}
         }
@@ -1217,18 +1326,126 @@ mod tests {
     #[test]
     fn filtered_search_returns_a_short_page_at_the_expansion_bound() {
         assert_eq!(
-            expansion_decision(1, 10, 10_240, 10_240, 9, Some(8), MAX_CANDIDATE_EXPANSIONS,),
+            expansion_decision(Pass {
+                hit_count: 1,
+                requested: 10,
+                scanned: 10_240,
+                candidate_limit: 10_240,
+                admitted: 9,
+                previous_admitted: Some(8),
+                expansion: MAX_CANDIDATE_EXPANSIONS,
+                ..Pass::default()
+            }),
             ExpansionDecision::Return {
                 scan_incomplete: true,
             }
         );
 
         assert_eq!(
-            expansion_decision(1, 10, 100, 160, 5, Some(5), 3),
+            expansion_decision(Pass {
+                hit_count: 1,
+                requested: 10,
+                scanned: 100,
+                candidate_limit: 160,
+                admitted: 5,
+                previous_admitted: Some(5),
+                expansion: 3,
+                ..Pass::default()
+            }),
             ExpansionDecision::Return {
                 scan_incomplete: false,
             }
         );
+    }
+
+    /// prod, 2026-10-14: a 12,053-source scope's ANN page held 3 to 43 of
+    /// 101 hits in one pass, and was reported complete.
+    #[test]
+    fn a_short_ann_page_on_a_capped_index_is_never_complete() {
+        let starved = Pass {
+            hit_count: 12,
+            requested: 101,
+            scanned: 30,
+            candidate_limit: 404,
+            admitted: 12,
+            expansion: 0,
+            scoped: true,
+            scope_sources: 12_053,
+            scan_capped: true,
+            ..Pass::default()
+        };
+        assert_eq!(
+            expansion_decision(starved),
+            ExpansionDecision::RankExactly,
+            "a small scope is ranked exactly instead"
+        );
+        assert_eq!(
+            expansion_decision(Pass {
+                scope_sources: EXACT_FALLBACK_SOURCES + 1,
+                ..starved
+            }),
+            ExpansionDecision::Return {
+                scan_incomplete: true,
+            },
+            "a scope too large to rank exactly says the scan stopped"
+        );
+        assert_eq!(
+            expansion_decision(Pass {
+                scoped: false,
+                ..starved
+            }),
+            ExpansionDecision::Return {
+                scan_incomplete: true,
+            },
+            "an unscoped page cut short says so too"
+        );
+        assert_eq!(
+            expansion_decision(Pass {
+                expansion: MAX_CANDIDATE_EXPANSIONS,
+                ..starved
+            }),
+            ExpansionDecision::Return {
+                scan_incomplete: true,
+            },
+            "the last pass has no retry left"
+        );
+        // The exact pass's own short page is the scope running out.
+        assert_eq!(
+            expansion_decision(Pass {
+                exact: true,
+                ..starved
+            }),
+            ExpansionDecision::Return {
+                scan_incomplete: false,
+            }
+        );
+        assert_eq!(
+            expansion_decision(Pass {
+                floored: true,
+                ..starved
+            }),
+            ExpansionDecision::RankExactly,
+            "a floor does not stop a small scope being ranked exactly"
+        );
+        // An index the scan visits in full, or a floor, shortens a page honestly.
+        for honest in [
+            Pass {
+                scan_capped: false,
+                ..starved
+            },
+            Pass {
+                floored: true,
+                scoped: false,
+                ..starved
+            },
+        ] {
+            assert_eq!(
+                expansion_decision(honest),
+                ExpansionDecision::Return {
+                    scan_incomplete: false,
+                }
+            );
+        }
     }
 
     const SHAPE_MODEL: &str = "search-plan-shape@1024";
@@ -1377,6 +1594,7 @@ mod tests {
                     .collect::<Vec<_>>(),
             ))
             .bind(EXACT_SCOPE_SOURCES)
+            .bind(Option::<i64>::None)
             .fetch_one(&mut *connection)
             .await?;
         Ok(row.try_get::<Json<serde_json::Value>, _>(0)?.0)
@@ -1645,6 +1863,25 @@ mod tests {
         .await;
         cleanup_shape_database(&name, pool, admin).await;
         assert_eq!(verdict.unwrap(), "off");
+    }
+
+    /// A cached generic plan replaced the HNSW arm with a scan of every
+    /// vector once a pooled connection had run the search five times.
+    #[tokio::test]
+    async fn shipped_search_transaction_plans_every_search_for_its_values() {
+        let (name, pool, admin) = shape_database().await;
+        let verdict: Result<String, StoreError> = async {
+            let mut transaction = pool.begin().await?;
+            configure_search_transaction(&mut transaction).await?;
+            let mode: String = sqlx::query_scalar("SHOW plan_cache_mode")
+                .fetch_one(&mut *transaction)
+                .await?;
+            transaction.rollback().await?;
+            Ok(mode)
+        }
+        .await;
+        cleanup_shape_database(&name, pool, admin).await;
+        assert_eq!(verdict.unwrap(), "force_custom_plan");
     }
 
     #[tokio::test]

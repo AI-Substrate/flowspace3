@@ -427,6 +427,43 @@ async fn a_scoped_search_is_not_starved_by_a_crowded_neighbour_repository() {
     database.destroy(state.db).await;
 }
 
+/// prod, 2026-10-14: a 12,053-source scope sat beyond the iterative scan's
+/// tuple budget, so its ANN page came back with 3 to 43 of 101 hits and was
+/// reported complete. A short ANN page on an index larger than the scan may
+/// visit is the budget running out, not the scope, so the scope is ranked
+/// exactly instead.
+#[tokio::test]
+async fn a_scope_beyond_the_ann_scan_budget_is_ranked_exactly() {
+    // Exact ranking off, so the first pass is the ANN scan; a budget of 100
+    // tuples reaches only decoys, which sit on top of the question.
+    let (database, state, identity) = crowded_with(
+        "search-starvation-capped",
+        &["fs3.exact_scope_limit = 0", "hnsw.max_scan_tuples = 100"],
+    )
+    .await;
+
+    let outcome = search(&state, &ask(Some(&identity), None, 10), &scoped(&identity))
+        .await
+        .expect("a populated index answers");
+
+    assert_eq!(
+        outcome.results.len(),
+        10,
+        "the ANN scan stopped among decoys; the scope still holds {TARGET_ELEMENTS}"
+    );
+    assert!(
+        outcome.results.iter().all(|hit| hit
+            .path
+            .as_deref()
+            .is_some_and(|path| path.starts_with("src/target_"))),
+        "every hit comes from the repository asked about"
+    );
+    assert!(!outcome.scan_incomplete, "the exact pass is complete");
+    assert_eq!(outcome.passes, 2, "one ANN pass, then the exact one");
+
+    database.destroy(state.db).await;
+}
+
 #[tokio::test]
 async fn an_exhausted_semantic_page_reports_scan_incomplete() {
     // The ANN path's own report. This scope is small enough for the exact
