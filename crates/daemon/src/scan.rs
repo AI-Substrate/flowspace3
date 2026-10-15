@@ -255,7 +255,10 @@ pub async fn run(state: &AppState, value: serde_json::Value) -> Result<(), Failu
 /// Bumped to @2 by workshop 008: the ddoc grammar produces row elements that a
 /// @1 parse never emitted, so an existing corpus must be re-minted to gain them.
 /// Bumped to @3 by plan 015: grammar set changed: +typescript,+tsx.
-pub const PARSER_VERSION: &str = "fs3-parsers@3";
+/// Bumped to @4 by DL-042: a declaration's text now starts at the doc comments,
+/// comments and attributes directly above it, so its own documentation is
+/// embedded and summarised with it.
+pub const PARSER_VERSION: &str = "fs3-parsers@4";
 
 #[cfg(test)]
 mod tests {

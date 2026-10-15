@@ -75,9 +75,9 @@ fn rust_fixture_yields_the_expected_tree() {
             "file rust parsers/fixtures/sample.rs #0 1-42",
             // A module is a container element AND the parent of what it holds.
             "  container mod_item parsers/fixtures/sample.rs::geometry #0 3-30",
-            // Line spans are the declaration's own extent — the doc comment on
-            // `Rect` is a sibling node, so the struct starts at 5, not 4.
-            "    container struct_item parsers/fixtures/sample.rs::geometry::Rect #0 5-8",
+            // A span starts at the declaration's leading documentation (DL-042):
+            // the doc comment on `Rect` is a sibling node, taken in, so 4, not 5.
+            "    container struct_item parsers/fixtures/sample.rs::geometry::Rect #0 4-8",
             // `impl Rect` shares the struct's address on purpose: it is the same
             // logical entity, seen in another piece. An address identifies a
             // thing, not a node — `(address, span)` identifies a node.
@@ -91,8 +91,9 @@ fn rust_fixture_yields_the_expected_tree() {
             "      function function_signature_item parsers/fixtures/sample.rs::geometry::Shape::area #0 23-23",
             "    container enum_item parsers/fixtures/sample.rs::geometry::Kind #3 26-29",
             "  function function_item parsers/fixtures/sample.rs::main_entry #1 34-42",
-            // A fn inside a fn belongs to that fn, not to the file.
-            "    function function_item parsers/fixtures/sample.rs::main_entry::half #0 37-39",
+            // A fn inside a fn belongs to that fn, not to the file. The comment
+            // directly above it is its documentation by placement.
+            "    function function_item parsers/fixtures/sample.rs::main_entry::half #0 35-39",
         ],
     );
 }
@@ -134,9 +135,9 @@ fn python_fixture_yields_the_expected_tree() {
             "    container class_definition parsers/fixtures/sample.py::Rect::Kind #2 30-31",
             // `@trace` wraps the def in a `decorated_definition`. That wrapper is
             // spliced through rather than promoted, so the function appears once
-            // — and its span is the `def`, matching how a Rust doc comment sits
-            // outside the declaration it documents.
-            "  function function_definition parsers/fixtures/sample.py::main_entry #2 35-36",
+            // — and its span starts at the decorator, as a Rust item's starts at
+            // its doc comment and attributes.
+            "  function function_definition parsers/fixtures/sample.py::main_entry #2 34-36",
         ],
     );
 }
@@ -403,7 +404,7 @@ fn a_one_character_edit_rehashes_only_the_elements_containing_it() {
     // Named explicitly, because "the sibling did not change" is the property
     // that makes incremental indexing worth having.
     for untouched in [
-        ("parsers/fixtures/sample.rs::geometry::Rect".to_string(), 5),
+        ("parsers/fixtures/sample.rs::geometry::Rect".to_string(), 4),
         (
             "parsers/fixtures/sample.rs::geometry::Rect::new".to_string(),
             11,
