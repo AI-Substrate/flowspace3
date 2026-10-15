@@ -1,0 +1,19 @@
+crates/store/src/embeddings.rs
+  s_9f3c8913a290e0::t_92fb614fb91b50 1641-1642
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1b4c1d60d5dbe5dcd7dc116817cb7e6701cbbc54",
+  "prompts": {},
+  "sessions": {
+    "s_9f3c8913a290e0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73a1484d-9566-45c4-b9a5-35b884499350",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}

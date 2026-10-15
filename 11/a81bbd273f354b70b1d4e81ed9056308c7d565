@@ -1,0 +1,37 @@
+crates/daemon/src/search.rs
+  s_9f3c8913a290e0::t_02b7fbb15373c7 581-583
+crates/store/src/embeddings.rs
+  s_9f3c8913a290e0::t_4985d4eb8567a8 585-594,644,787-792,904-910,1093-1094,1127
+crates/store/src/lexical.rs
+  s_9f3c8913a290e0::t_6e29623ba570a0 221-222,293-295,340-341,446,501-515
+crates/store/src/lexical_bm25.rs
+  s_9f3c8913a290e0::t_7750203834346a 174-175,192-193,198,398
+crates/store/tests/pg_lexical_bm25.rs
+  s_9f3c8913a290e0::t_43dce4d7a4cb1c 293,345-413
+crates/store/tests/search_admission.rs
+  s_18a2277fcd4372::t_24edd51a33baa3 12-13,489-631
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "11a81bbd273f354b70b1d4e81ed9056308c7d565",
+  "prompts": {},
+  "sessions": {
+    "s_18a2277fcd4372": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58f49f60-563c-4ca6-8031-2d960e7769c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_9f3c8913a290e0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73a1484d-9566-45c4-b9a5-35b884499350",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
