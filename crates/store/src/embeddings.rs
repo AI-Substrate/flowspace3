@@ -582,6 +582,16 @@ pub struct SearchFilters {
     /// [`crate::bm25_index_ready`] said the index can serve; a query BM25
     /// cannot answer still goes to trigram (see [`crate::bm25_can_answer`]).
     pub lexical_backend: crate::LexicalBackend,
+    /// The parser version that answers for a blob that has rows under it.
+    ///
+    /// A blob keeps every parser version's rows, so without this rule both
+    /// versions of one declaration are candidates, and after a bump that moved
+    /// its span (DL-042) they surface as two hits. This is the rule `get` and
+    /// `tree` already follow: the current version when the blob has it, and
+    /// otherwise whatever it has, so nothing goes dark while a reparse is
+    /// pending. Turns are written under the conversation parser and never have
+    /// code-version rows, so they always pass. `None` applies no rule.
+    pub parser_version: Option<String>,
 }
 
 /// Ownership scope for [`anchor_has_vectors`].
@@ -631,6 +641,7 @@ impl Default for SearchFilters {
             limit: 10,
             budget: None,
             lexical_backend: crate::LexicalBackend::Trigram,
+            parser_version: None,
         }
     }
 }
@@ -773,6 +784,12 @@ scope_representatives AS MATERIALIZED (
        AND ($8::text[] IS NULL OR scoped.kind = ANY($8))
        AND ($10::text[] IS NULL OR scoped.ddoc->>'id_kind' = ANY($10))
        AND ($12::text IS NULL OR scoped.ddoc->>'schema' = $12)
+       -- One parser version per blob ($18): the current one when the blob
+       -- has it, else whatever it has (the rule `get` follows).
+       AND ($18::text IS NULL OR scoped.parser_version = $18
+            OR NOT EXISTS (SELECT 1 FROM elements current_parse
+                            WHERE current_parse.blob_sha = scoped.blob_sha
+                              AND current_parse.parser_version = $18))
     UNION
     SELECT raw_hash FROM scope_turn_sources
 ),
@@ -884,6 +901,13 @@ admitted_scoped AS MATERIALIZED (
                 END = NOT $11))
        AND ($12::text IS NULL OR admitted.ddoc->>'schema' = $12)
        AND ($13::text IS NULL OR strpos(admitted.address, 'conv:' || $13 || '#t') = 1)
+       -- Repeated here, not only at scope collection: an unscoped search has
+       -- no scope CTE, and a raw hash admitted through another blob must not
+       -- resolve to this blob's superseded row.
+       AND ($18::text IS NULL OR admitted.parser_version = $18
+            OR NOT EXISTS (SELECT 1 FROM elements current_parse
+                            WHERE current_parse.blob_sha = admitted.blob_sha
+                              AND current_parse.parser_version = $18))
        AND ($6::text IS NULL AND $7::text IS NULL AND $9::text IS NULL
             OR EXISTS (
                  SELECT 1
@@ -1066,7 +1090,8 @@ pub async fn search_elements(
     // $8 kinds, $9 worktree, $10 id_kinds, $11 gate_open, $12 ddoc_schema,
     // $13 conversation, $14 vector candidate limit, $15 hidden turn classes,
     // $16 the default exact-scan ceiling, $17 the fallback ceiling (only on a
-    // pass after a short ANN page).
+    // pass after a short ANN page), $18 the parser version that answers for a
+    // blob that has it.
     let scoped = filters.repo.is_some()
         || filters.path.is_some()
         || filters.worktree.is_some()
@@ -1099,6 +1124,7 @@ pub async fn search_elements(
             .bind(filters.hidden_turn_class_names())
             .bind(EXACT_SCOPE_SOURCES)
             .bind(fallback)
+            .bind(filters.parser_version.as_deref())
             .fetch_all(&mut *tx)
             .await?;
         pass_ms.push(crate::elapsed_ms(pass_started));
@@ -1612,6 +1638,8 @@ mod tests {
             ))
             .bind(EXACT_SCOPE_SOURCES)
             .bind(Option::<i64>::None)
+            // The daemon always names its parser; the corpus's is current.
+            .bind(Some("search-plan@1"))
             .fetch_one(&mut *connection)
             .await?;
         Ok(row.try_get::<Json<serde_json::Value>, _>(0)?.0)

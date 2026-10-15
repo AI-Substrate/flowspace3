@@ -218,6 +218,8 @@ pub async fn search_lexical_pages(
     }
     let pattern = contains_pattern(query);
     let terms = query_terms(query);
+    // After the term patterns, so their numbering stays put.
+    let current_parse = 13 + terms.len();
 
     // The WHERE clause must use the indexed expression byte for byte; the
     // score reads the same text lowered ONCE per row (`lc`), because the
@@ -288,7 +290,9 @@ pub async fn search_lexical_pages(
                 -- Match semantic indexing: a file covered by child elements
                 -- is a container, not a duplicate answer for every child hit.
                 AND (el.kind <> 'file' OR NOT EXISTS (
-                     SELECT 1 FROM elements child WHERE child.parent_id = el.id))"#
+                     SELECT 1 FROM elements child WHERE child.parent_id = el.id))
+                {one_parse}"#,
+        one_parse = one_parse_per_blob("el", current_parse)
     );
     // Where each hit lives. On the wide page the repository and worktree
     // no longer constrain it, exactly as an unscoped statement would not.
@@ -333,7 +337,8 @@ pub async fn search_lexical_pages(
     // Bind map: $1 phrase pattern, $2 limit, $3 repo, $4 path, $5 kinds,
     // $6 worktree, $7 id_kinds, $8 gate_open, $9 ddoc_schema,
     // $10 conversation, $11 hidden turn classes, $12 the query lowercased,
-    // $13.. one pattern per term.
+    // $13.. one pattern per term, then the parser version that answers for a
+    // blob that has it.
     let statement = if wide {
         format!(
             r#"WITH matched AS MATERIALIZED (
@@ -438,6 +443,7 @@ pub async fn search_lexical_pages(
     let rows = terms
         .iter()
         .fold(bound, |bound, term| bound.bind(contains_pattern(term)))
+        .bind(filters.parser_version.as_deref())
         .fetch_all(&mut *tx)
         .await?;
     tx.commit().await?;
@@ -490,6 +496,21 @@ pub async fn search_lexical_pages(
         page("scoped")?,
         if wide { Some(page("wide")?) } else { None },
     ))
+}
+
+/// `alias` is an element of the parser version that answers for its blob:
+/// the one bound at `$param` when the blob has rows under it, otherwise any.
+///
+/// A blob keeps every parser version's rows, and a bump that moved a span
+/// (DL-042) would otherwise answer one declaration twice. This is the rule
+/// `get` and `tree` follow. A NULL bind applies no rule.
+pub(crate) fn one_parse_per_blob(alias: &str, param: usize) -> String {
+    format!(
+        "AND (${param}::text IS NULL OR {alias}.parser_version = ${param}
+                     OR NOT EXISTS (SELECT 1 FROM elements current_parse
+                                     WHERE current_parse.blob_sha = {alias}.blob_sha
+                                       AND current_parse.parser_version = ${param}))"
+    )
 }
 
 /// The query's terms worth matching: lowercased, stripped of surrounding
