@@ -218,14 +218,36 @@ fn weak_match_score(best: Option<f64>) -> bool {
 /// and only one of them is an answer.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct EmptyBecause {
-    /// The machine-readable cause: `below_floor`, `scan_incomplete`, `path_unmatched`,
-    /// or `retrieval_hidden`.
+    /// The machine-readable cause: one of [`EmptyBecause::REASONS`].
     pub reason: &'static str,
     /// One sentence stating what is actually known, for a human or an agent.
     pub detail: String,
     /// A concrete correction when the index can expose one.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hint: Option<String>,
+}
+
+impl EmptyBecause {
+    /// `--min-score` rejected what was found.
+    pub const BELOW_FLOOR: &'static str = "below_floor";
+    /// A scope small enough to compare in full held nothing the content filters admit.
+    pub const SCOPE_UNMATCHED: &'static str = "scope_unmatched";
+    /// The approximate ranking stopped before reaching content this scope holds.
+    pub const SCAN_INCOMPLETE: &'static str = "scan_incomplete";
+    /// The `--path` glob matches no indexed path in the scope.
+    pub const PATH_UNMATCHED: &'static str = "path_unmatched";
+    /// Every match was fs3's own retrieval traffic, hidden by default.
+    pub const RETRIEVAL_HIDDEN: &'static str = "retrieval_hidden";
+    /// Every reason this surface emits. The bundled agent skill's
+    /// `empty_because` table is checked against it
+    /// (`crates/cli/tests/skill_accuracy.rs`).
+    pub const REASONS: [&'static str; 5] = [
+        Self::BELOW_FLOOR,
+        Self::SCOPE_UNMATCHED,
+        Self::SCAN_INCOMPLETE,
+        Self::PATH_UNMATCHED,
+        Self::RETRIEVAL_HIDDEN,
+    ];
 }
 
 /// A search's answer, plus the truth about it being empty when it is.
@@ -785,7 +807,7 @@ async fn search_filtered(
             results: Vec::new(),
             composition: SearchComposition::default(),
             empty_because: Some(EmptyBecause {
-                reason: "retrieval_hidden",
+                reason: EmptyBecause::RETRIEVAL_HIDDEN,
                 detail: format!("every match was fs3 retrieval traffic: {clause}"),
                 hint: Some(format!(
                     "rerun with `{INCLUDE_RETRIEVAL_FLAG}` to see those turns"
@@ -1018,7 +1040,7 @@ fn empty_because(
         && distance < 1.0
     {
         return Some(EmptyBecause {
-            reason: "below_floor",
+            reason: EmptyBecause::BELOW_FLOOR,
             detail: format!(
                 "the active model has an index, but nothing in it scored at or above \
                  --min-score {:.3}",
@@ -1037,12 +1059,12 @@ fn empty_because(
     if exact_scan {
         let anchor = scope_anchor(filters)?;
         return Some(EmptyBecause {
-            reason: "scope_unmatched",
+            reason: EmptyBecause::SCOPE_UNMATCHED,
             detail: format!(
                 "every indexed vector under {anchor} was compared (the scope is small enough \
                  for an exact scan), and none of it matched the content filters \
-                 (--source/--kind/--schema). This is an absence of matches in that scope, not \
-                 a scan that stopped early"
+                 (--source/--id-kind/--gate-open/--gate-closed/--ddoc-schema). This is an absence \
+                 of matches in that scope, not a scan that stopped early"
             ),
             hint: Some(
                 "drop the content filters to see what the scope does hold, or drop --repo/--path \
@@ -1064,7 +1086,7 @@ fn empty_because(
     let anchor = scope_anchor(filters)?;
 
     Some(EmptyBecause {
-        reason: "scan_incomplete",
+        reason: EmptyBecause::SCAN_INCOMPLETE,
         detail: format!(
             "content IS indexed under {anchor} and no score floor was set, so this empty result \
              is not an absence of matches: the approximate nearest-neighbour scan stopped before \
@@ -1138,7 +1160,7 @@ pub(crate) fn path_unmatched_reason(
     }
 
     Some(EmptyBecause {
-        reason: "path_unmatched",
+        reason: EmptyBecause::PATH_UNMATCHED,
         detail: format!(
             "the --path filter {requested:?} matches zero indexed paths in this scope; this says \
              nothing about whether the requested code exists elsewhere in the indexed layout"
@@ -1349,10 +1371,7 @@ fn render_lexical(hit: &LexicalHit, query: &str) -> Hit {
         // Graded by the store (see `fs3_store::search_lexical_page`); not cosine.
         score: damp_restated_question(hit.score, element, query),
         channel: SearchChannel::Lexical,
-        match_field: match hit.matched {
-            fs3_store::LexicalMatch::Terms => "terms".to_string(),
-            matched => format!("exact_{}", matched.as_str()),
-        },
+        match_field: hit.matched.match_field().to_string(),
         kind: element.kind.as_str().to_string(),
         subkind: element.subkind.clone(),
         name: element.name.clone(),

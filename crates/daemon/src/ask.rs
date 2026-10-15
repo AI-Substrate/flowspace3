@@ -311,7 +311,7 @@ pub async fn resolve_corpus(
             if !probe.matches {
                 let reason = crate::search::path_unmatched_reason(glob, probe.clone())
                     .unwrap_or_else(|| crate::search::EmptyBecause {
-                        reason: "path_unmatched",
+                        reason: crate::search::EmptyBecause::PATH_UNMATCHED,
                         detail: format!(
                             "the --path filter {glob:?} matches zero indexed paths in this scope; no indexed file paths are available to answer from"
                         ),
@@ -525,7 +525,7 @@ impl<'a> IndexTools<'a> {
         .map_err(|failure| provider_error(&format!("[{}] {}", failure.code, failure.message)))?;
 
         if let Some(reason) = &results.empty_because
-            && reason.reason == "path_unmatched"
+            && reason.reason == crate::search::EmptyBecause::PATH_UNMATCHED
         {
             let hint = reason
                 .hint

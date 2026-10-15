@@ -1,35 +1,37 @@
 ---
 name: flowspace
-description: Use flowspace3 as a semantic search tool over the central code index — detect it, search by meaning, read the JSON envelope, follow up on el: addresses, and use `flowspace3 ask` when a question needs an ANSWER assembled across several places rather than a list of hits. Use when locating where something happens by meaning rather than exact text, when asking how or why something works, or when asked to search the flowspace index.
+description: Use flowspace3 to search the central code index by meaning and by keyword — detect it, search, read the JSON envelope, follow up on el: and conv: addresses, and use `flowspace3 ask` when a question needs an ANSWER assembled across several places rather than a list of hits. Use when locating where something happens by meaning rather than exact text, when asking how or why something works, or when asked to search the flowspace index.
 ---
 
 # flowspace — search code by meaning
 
 `flowspace3` splits codebases into elements (functions, types, markdown sections),
-summarises and embeds them, and answers questions by meaning across every indexed
-repo at once. This skill is the pointer layer: the binary's bundled docs are the
-authoritative guides and outlive this page — where the two disagree, the binary wins.
+summarises and embeds them, indexes their text, and answers across every indexed repo
+and agent conversation. This skill is the pointer layer: the binary's bundled docs are
+authoritative and outlive this page — where the two disagree, the binary wins.
 
 ## Output contract for agents
 
-A real TTY (terminal) gets human-readable output. A pipe, file, CI capture, or agent
-subprocess keeps receiving the JSON envelope with no flag. `--json` forces JSON
-anywhere. A harness running inside a PTY such as tmux looks human to a terminal
-probe, so export `FS3_OUTPUT=json` once to pin the machine shape.
+A real TTY gets human-readable output. A pipe, file, CI capture, or agent subprocess
+gets the JSON envelope with no flag. `--json` forces JSON anywhere. A harness inside a
+PTY such as tmux looks human to a terminal probe: export `FS3_OUTPUT=json` once.
 
 ## 1. Detect
 
 ```bash
 command -v flowspace3     # installed at all?
-flowspace3 doctor         # stack health; verdict ok|degraded
+flowspace3 doctor         # stack health, one row per check
 flowspace3 status         # registered roots + queue state
 ```
 
 - `status` `roots` answers "is THIS repo indexed?" — your repo's git identity must be
-  present. A non-empty `queue` means indexing is still draining: poll until empty
-  before concluding a search "found nothing".
-- `doctor`'s verdict `degraded` (rather than `ok`) names a stack running on
-  stand-in providers — search works, but scores do not mean what they look like (§4).
+  present. `queue` rows carry a `state`: only `pending`/`running` mean indexing is still
+  draining (wait for them before concluding a search "found nothing"). `failed` rows are
+  jobs that gave up — a separate problem (`last_error`), not a backlog.
+- `doctor`'s `verdict` is `degraded` when ANY row is `warn` or `down` — a slow `search`
+  row is enough. Read the rows, not the verdict; `healthy` (a separate field) is true
+  when the walk completed. If the `providers` row names the offline `fake` embedder,
+  semantic scores are deterministic noise.
 
 ## 2. Install
 
@@ -40,23 +42,20 @@ curl -fsSL https://raw.githubusercontent.com/AI-Substrate/flowspace3/main/instal
 ```
 
 then `flowspace3 doctor` — it repairs the whole stack as it goes; there is no second
-setup command. The full agent-onboarding funnel lives in the repo README (Install
-section) and `flowspace3 docs get install`; this skill deliberately does not restate it.
+setup command. The full onboarding funnel is `flowspace3 docs get install`.
 
 ## 3. Learn
 
-The binary carries its own guides, offline and version-locked to the binary:
+The binary carries its own guides, offline and version-locked to it:
 
 ```bash
-flowspace3 docs list           # every bundled topic
-flowspace3 docs get agents     # the operating guide: the loop, the envelope, the gotchas
-flowspace3 docs get search     # the query surface: flags, hit shape, ranking
-flowspace3 docs get read       # get/tree: addresses, depth, and what scoping means
-flowspace3 docs get providers  # registering a real model, from scratch
+flowspace3 agents-start-here   # the front door: the agents guide, steered to your next step
+flowspace3 docs list           # every topic: agents, install, doctor, daemon, search, ddocs,
+                               # read, conversations, config, providers, decisions, prompt-search
+flowspace3 docs get search     # flags, hit shape, ranking, every empty/degraded case
 ```
 
-Read `agents` once before anything else; `search` before any non-trivial query;
-`providers` before interpreting scores. These pages teach what this skill only points at.
+Read `agents` once before anything else and `search` before any non-trivial query.
 
 ## 4. Search — the heart
 
@@ -64,80 +63,119 @@ Read `agents` once before anything else; `search` before any non-trivial query;
 flowspace3 search "how does the queue avoid two workers taking the same job"
 ```
 
-The query is embedded with the model that embedded the index; the nearest elements
-come back ranked. Filters narrow candidates **in SQL, beside the index** — a filter
-matching nothing returns nothing, not a padded list:
+Every search runs two legs together — **keyword** (names and source text) and
+**meaning** (embeddings) — and returns one ranking by score. Filters narrow candidates
+**in SQL, beside the index**: a filter matching nothing returns nothing, not padding.
 
 | flag | effect |
 |---|---|
-| `--repo <identity>` | one repository, e.g. `git:github.com/org/repo` |
+| `--repo <identity>` | one repository (`git:github.com/org/repo`, or its remote URL); `all` widens to every one |
 | `--path <glob>` | paths matching a glob (`crates/store/*`) |
-| `--limit N` | how many hits (1–100, default 10) |
-| `--min-score S` | similarity floor, 0.0–1.0 |
-| `--source code\|doc\|conversation\|all` | narrow the corpus; absent/`all` searches every source |
+| `--limit N` / `--offset N` | page size (1–100, default 10) and page start |
+| `--min-score S` | score floor, 0.0–1.0 |
+| `--source code\|doc\|conversation\|all` | narrow the corpus; absent/`all` ranks every source together |
+| `--no-balance` | the raw ranking, without per-file/per-conversation balancing |
+| `--include-retrieval` | also show turns that are only fs3 search calls and their output |
+| `--id-kind`, `--gate-open`/`--gate-closed`, `--ddoc-schema` | deterministic-document rows only (`docs get ddocs`) |
 
-Default search ranks code, document, and conversation rows together. The
-`data.composition` counts come from the same `--min-score`-filtered scored set
-before top-k truncation, so a conversation below the returned limit is still
-visible without changing ranking. Narrow only when the question requires it.
-
-A real answer, trimmed:
+A synthetic answer, trimmed:
 
 ```json
 { "ok": true, "command": "search", "v": 1,
   "data": { "results": [
-    { "address": "el:git:github.com/AI-Substrate/flowspace3/crates/store/tests/pg_store_flows.rs::a_job_is_claimed_once_and_completing_it_frees_its_key",
-      "kind": "function", "match_field": "smart",
-      "path": "crates/store/tests/pg_store_flows.rs", "score": 0.55,
-      "smart": "Integration test verifies that a queued job is claimed exactly once…",
-      "snippet": "async fn a_job_is_claimed_once_and_completing_it_frees_its_key() {…",
-      "span": [351, 398], "subkind": "function_item",
-      "tags": ["job claiming", "deduplication", "completion"] } ] },
-  "next_action": "open a hit at its path and span, or narrow with --path/--repo" }
+    { "address": "el:git:github.com/org/repo/src/jobs.rs::Queue::claim_next",
+      "score": 0.61, "channel": "semantic", "match_field": "smart",
+      "kind": "function", "path": "src/jobs.rs", "span": [118, 152],
+      "smart": "Claims the oldest pending job under a row lock…",
+      "snippet": "/// Take one job, or none.\npub async fn claim_next(…",
+      "tags": ["job claiming"] } ],
+    "offset": 0, "next_offset": 10,
+    "scope": { "repo": "git:github.com/org/repo", "applied": "cwd",
+               "other_repo_hits": 0, "outscored": false } },
+  "meta": { "empty_because": null, "scan_incomplete": false, "passes": 1,
+            "truncation": { "limit": 10, "truncated": true },
+            "filtered": { "retrieval_turns": 2 }, "timing": { "total_ms": 412 } },
+  "next_action": "next page: `flowspace3 search '…' --limit 10 --offset 10`; …" }
 ```
 
-Reading it:
+Reading a hit:
 
-- Branch on `ok` only. `path` + `span` (inclusive, 1-based) is what you open;
-  `snippet` is the first few lines only — search returns lean rows on purpose, so
-  read the file for the rest.
-- `score` = 1 − cosine distance, higher is better. Its meaning depends on the active
-  embedder: under the default offline `fake` provider scores are deterministic but
-  not semantic — treat them as noise until `doctor` names a real embedder.
-- `match_field`: `raw` matched the code; `smart` matched an LLM summary — the answer
-  was found by MEANING, your words may appear nowhere in the code. `tags` ride along
-  on smart elements.
-- `address` (`el:<repo>/<path>::<name>`) is stable across re-parses — the currency
-  for follow-ups, and what `get`/`tree` take.
+- Branch on `ok` only. Open `path` + `span` (inclusive, 1-based). A span can start
+  above the declaration line: doc comments and attributes are indexed with it.
+  `snippet` is the first few lines only — read the rest with `get`.
+- `address` is `el:<repo>/<path>::<name>`, with containers nested
+  (`::Queue::claim_next`); conversation turns are `conv:<guid>#t<n>` and carry `agent`
+  (harness, models, seat). Addresses are stable — the currency for `get`/`tree`.
+- `score` is channel-native, higher is better; `channel` is `lexical`, `semantic`, or
+  `both` (stronger score plus a tenth of the weaker, capped at 1.0):
+
+| `match_field` | channel | what matched | score |
+|---|---|---|---|
+| `raw` | semantic | the element's own text, by meaning | cosine similarity |
+| `smart` | semantic | its LLM summary — your words may appear nowhere in the code | cosine similarity |
+| `exact_name` | lexical | the query, verbatim, in the declaration's name | 1.0 in code/docs |
+| `exact_text` | lexical | the query, verbatim, in the source | 1.0 in code/docs, ~0.8 in a turn |
+| `terms` | lexical | every term, not as one phrase | ~0.65 (~0.9 if all in the name) |
+
+Keyword matching is case-insensitive and needs every term. Where a term may match
+depends on `search.lexical_backend`: `trigram` (default) matches a substring anywhere;
+`bm25`, when configured, matches at token starts (`job` finds `jobs`, but `ounded`
+does not find `bounded`).
+
+Reading the page:
+
 - **A bare search is about the repository you are standing in.** `meta.scope` says
-  which one answered; `--repo all` widens. If your directory is not indexed, the
-  warning leads `next_action` and names `flowspace3 add <path>` — do not treat hits
-  from another repository as yours.
-- Empty results are `ok: true` with `"results": []`. **Read `meta.empty_because`
-  before rephrasing.** When it is present the surface knows why the list is empty and
-  says so: `below_floor` (rows were found and your `--min-score` rejected them),
-  `scan_incomplete` (content IS indexed in this scope and the approximate
-  nearest-neighbour scan stopped before reaching it — widen with `--repo all`), or
-  `path_unmatched` (the glob matches zero indexed paths; read its `hint` for the
-  indexed top-level layout and correct `--path`). When it is absent, the `next_action`
-  steer names the boring causes instead. A repository with nothing indexed under the
-  active model is an ERROR (`FS3-E-QUERY-NO-INDEX`) naming the anchor, not an empty
-  answer. Low scores under a real embedder are the same answer with numbers attached.
+  which one answered. When other repositories rank in the unscoped top page,
+  `meta.elsewhere` counts them and gives the `command` to see them;
+  `data.scope.outscored: true` means one of them beat this repository's best hit. Not
+  indexed here? `next_action` leads with `flowspace3 add <path>` — do not treat hits
+  from elsewhere as yours.
+- **Balancing:** by default a page keeps at most one hit per file and two per
+  conversation, moving the rest down (never dropped; a 1.0 hit never moves). The kept
+  hit says so in `balanced` (`moved_down`, `see_all`); `--no-balance` shows the raw ranking.
+- **Keyword-only pages:** `meta.degraded_because: embedder_unavailable` means the
+  embedder did not answer and nothing on the page was ranked by meaning — an absence
+  there is NOT an answer. `doctor`/`status` show how long it has failed.
+- **Paging:** `data.next_offset` appears only when the page filled `--limit`, and
+  `next_action` then names the next-page command. `meta.truncation.truncated` says
+  whether more ranked hits exist.
+- **Hidden turns:** turns that are only fs3 retrieval calls are hidden by default;
+  `meta.filtered.retrieval_turns` counts them, `--include-retrieval` shows them.
+- **Weak matches:** `meta.hint` appears when the best score is low — describe the
+  component in its own vocabulary instead of asking a question.
+- `meta.timing` splits where the time went; doctor's `search` row gives p50/p95.
 
-## 4b. Get and tree — read what you found
+**Empty results are `ok: true`, `"results": []`. Read `meta.empty_because` before
+rephrasing.** The field is always present (`null` when no reason is known — then
+`next_action` names the boring causes: indexing still running, or an active embedder
+other than the one that built the index):
+
+| `empty_because` | means | move |
+|---|---|---|
+| `below_floor` | rows were found; your `--min-score` rejected them | lower or drop the floor |
+| `scope_unmatched` | the scope was compared in full; nothing passed the content filters | drop the filters, or widen the scope |
+| `scan_incomplete` | content IS indexed here, but approximate ranking stopped before it — only scopes above `fs3.exact_scope_limit` (150k texts) | narrow with `--path` so the scope is ranked exactly, or drop the scope |
+| `path_unmatched` | the `--path` glob matches no indexed path | read `hint` for the real top-level layout; fix the glob |
+| `retrieval_hidden` | every match was fs3 retrieval traffic | `--include-retrieval` |
+
+`meta.scan_incomplete` (bool) and `meta.passes` ride on every page. A repository with
+nothing indexed under the active model is an ERROR (`FS3-E-QUERY-NO-INDEX`), not an
+empty answer.
+
+## 4b. Get, tree, refs — read what you found
 
 ```bash
-flowspace3 get el:<repo>/<path>::<name>   # that element, in full, with its children outlined
-flowspace3 get el:<repo>/<path>           # the whole file, as indexed
-flowspace3 tree el:<repo>/<path>          # what that file declares
-flowspace3 tree                            # where you are standing, or the index
+flowspace3 get el:<repo>/<path>::<name>       # that element in full, children outlined
+flowspace3 get el:<repo>/<path>               # the whole file, as indexed
+flowspace3 get conv:<guid>#t42 --before 5 --after 20   # a window of turns around one
+flowspace3 tree el:<repo>/<path>              # what that file declares
+flowspace3 refs src/auth.rs                   # ddoc rows that cite a source file
 ```
 
-**Search then get, not search then `cat`.** The hit's `address` reads back as real
-content out of the index, so you never guess which checkout on disk it came from.
-`--depth N` controls the children outline; `--span <line>` picks one element when an
-address matches several (`struct Rect` and `impl Rect` share one address by design —
-the error lists the candidates and the span to pass).
+**Search then get, not search then `cat`** — the address reads back from the index.
+`--depth N` sizes the outline; `--span <line>` picks one element when several share
+an address (the error lists candidates).
+For a turn, what happened NEXT is usually the point: `--after` defaults to 20.
 
 ## 4c. Ask — when you want an answer, not hits
 
@@ -145,109 +183,67 @@ the error lists the candidates and the span to pass).
 flowspace3 ask "how does the watcher decide what to rescan?"
 ```
 
-`search` hands you ranked places to look. `ask` runs a bounded agent loop that does
-the looking for you: it searches, reads the addresses that matter, and returns a
-written answer citing what it read — or says plainly that it could not find it.
-
-**It is not a faster search. It is a slower, dearer one that thinks.** A search is
-one embedding and a query; an ask is many model calls, typically 15–30 seconds and
-real tokens. Reach for it when the answer lives in several places at once and you
-would otherwise read five files to assemble it. For "where is X handled", search.
-
-### Scope it, or you pay to read the world
-
-**A bare ask is about the repository you are standing in**, exactly like search.
-That default is usually right and always cheap.
+`ask` runs a bounded agent loop: it searches, reads the addresses that matter, and
+returns a written answer citing what it read — or says plainly it could not find it.
+**It is not a faster search; it is a slower, dearer one that thinks** (many model
+calls, 15–30 s). Use it when the answer lives in several places at once.
 
 | flag | effect |
 |---|---|
-| *(none)* | the repository you are standing in |
-| `--repo <identity>` | one named repository |
-| `--repo all` | EVERY indexed repository — more searching, more tokens, slower |
-| `--path <glob>` | hard-bound code/document paths for every search, read, and citation |
-| `--source code\|doc\|conversation\|all` | one content source; absent/`all` is the default |
-| `--conversation <guid>` | exactly one transcript; incompatible with `--path` |
-
-Use `--repo all` deliberately, when the answer genuinely crosses repositories
-("compare how A and B each do X"), not as a default. Widening multiplies the work on
-a many-repo index, and a question whose answer is local gets no better for it.
-
-Use `--path` when the answer must come from one code/document subtree. The caller's
-glob overrides every model-supplied path for the whole run, and `get` refuses any
-resolved element outside it before recording a citation. Conversations carry no
-file path: absent/`all` excludes them with an explicit coverage reason, while
-`--source conversation` is refused. Use `--conversation` or `--repo` for discussion.
-
-### Reading the report
+| *(none)* | the repository you are standing in — usually right, always cheapest |
+| `--repo <identity>` / `--repo all` | one named repository / EVERY one (more tokens, slower) |
+| `--path <glob>` | hard-bounds every search, read and citation; conversations are excluded |
+| `--source code\|doc\|conversation\|all` | one content source |
+| `--conversation <guid>` | exactly one transcript; refused with `--path` or `--source code\|doc` |
 
 ```json
 { "ok": true, "command": "ask", "v": 1,
-  "data": {
-    "answer": "The watcher rescans at directory granularity…",
+  "data": { "answer": "The watcher rescans at directory granularity…",
     "grounded": true,
-    "citations": ["el:git:github.com/org/repo/crates/daemon/src/watch.rs::relist"],
+    "citations": ["el:git:github.com/org/repo/src/watch.rs::Watcher::relist"],
     "trace": [ { "iteration": 1, "tool": "search", "failed": false, "evidence": true } ],
-    "coverage": { "iterations_used": 5, "iteration_limit": 8,
-                  "retrieval_top_k": [6], "exhaustive": false },
-    "stopped": "answered", "iterations": 5, "tokens_used": null,
-    "model": "gpt-4o" } }
+    "coverage": { "iterations_used": 5, "iteration_limit": 8, "retrieval_top_k": [6],
+                  "corpus": { "source": "all" }, "exhaustive": false },
+    "stopped": "answered", "tokens_used": null } }
 ```
 
-- **`citations` is what the loop actually READ**, recorded by the tool layer — not
-  the model's own "Sources:" list, which is prose and can be wrong. Verify any claim
-  by running `get` on one.
-- **`grounded: false` means the answer rests on nothing the loop read.** The loop
-  pushes back once and demands evidence before allowing it, so a `false` here is a
-  model that insisted. Treat that answer as a guess.
-- **Only `ok: true` + `stopped: answered` carries an answer, and that answer is
-  always non-empty.** `max_iterations`, `token_budget`, and a provider failure
-  after useful reads are `ok: false` terminals with no success `data`. Their
-  `error.details.evidence` is explicitly labelled partial and preserves citations
-  plus one finding per completed iteration. Use it to narrow a follow-up; never
-  present it as the missing answer. For a bound, ask a narrower question or raise
-  the matching `[agent]` bound (`token_budget` defaults to 80,000 and is configurable).
-- **`coverage` names the probe's finite reach.** `retrieval_top_k` records each search
-  cap and `exhaustive` is always false. A path-scoped run adds the immutable glob,
-  matching element count, and—only for absent/`all` source—the reason conversations
-  were excluded. No `--path` means no path field, preserving the old envelope.
-  Enumerations are findings from that bounded probe, never proof that the listed
-  items are the only ones.
-- **`trace[].evidence`** distinguishes a call that WORKED AND FOUND NOTHING
-  (`failed: false, evidence: false`) from one that BROKE (`failed: true`). Both are
-  survivable — bad tool calls are fed back to the model, which corrects itself.
-- **"I could not find it" is a correct answer**, not a failure. The verb is built to
-  prefer an honest not-found over a plausible invention, because a confident wrong
-  answer about your own codebase is worse than no answer: you cannot tell it from a
-  right one.
-- `tokens_used: null` means the provider reported no usage. Null is not zero.
+- **`citations` is what the loop actually READ**, recorded by the tool layer — not the
+  model's prose. Verify a claim by running `get` on one.
+- **`grounded: false`** — the answer rests on nothing the loop read. Treat it as a guess.
+- **Only `ok: true` + `stopped: answered` carries an answer.** `max_iterations`,
+  `token_budget` and provider failures are `ok: false`; `error.details.evidence` holds
+  labelled partial findings — use them to narrow a follow-up, never as the answer.
+- **`coverage`** is the probe's finite reach: `iteration_limit` is `[agent]
+  max_iterations` (default 8), `exhaustive` is always false, and a `--path` run adds
+  `corpus.path` (glob, element count, why conversations were excluded). An enumeration
+  is a finding, never proof the list is complete.
+- `trace[]`: `evidence: false` worked and found nothing; `failed: true` broke. "I could
+  not find it" is a correct answer. `tokens_used: null` means unreported, not zero.
 
-## 5. Why semantic — the judgment
+## 5. Choosing the tool
 
-- **The index** answers meaning-shaped questions — "where do we handle X", "how does
-  Y work" — and unfamiliar codebases where you cannot name the identifiers yet.
-  Use `--source code`, `doc`, or `conversation` only when the question requires one
-  corpus; absent/`all` lets relevance rank every source together.
-- **Your own grep/ripgrep** answers exact-identifier lookups: a symbol, an error
-  string, a literal. Exact text matching is grep's job; do not ask the index to do it.
-- **`ask`** answers questions that need assembling — "how does X work", "why is Y
-  done this way", "compare how A and B do Z" — where the reply you want is prose with
-  citations rather than a list of places. It costs model calls and tens of seconds,
-  so it earns its keep on synthesis, not on lookup.
-- The question decides: if you already hold an exact string, grep. If you can phrase
-  it without knowing any identifier and you want somewhere to look, search. If you
-  want the answer itself and it spans several places, ask. When one side comes back
-  empty or weak, try the other — that loop, not a rule, is the judgment.
+- **search** — "where do we handle X", unfamiliar code whose identifiers you cannot name
+  yet, and identifiers or error strings too: the keyword leg ranks verbatim matches at
+  the top. Narrow `--source` only when the question needs one corpus.
+- **grep/ripgrep** — an exhaustive list of EVERY occurrence of a literal in a checkout.
+  Search returns a ranked, balanced page, not a complete list.
+- **ask** — "how does X work", "why is Y done this way", "compare A and B": prose with
+  citations, at the cost of model calls.
+- **`flowspace3 decision`** — not search: a bounded choice/score/probability judgment on
+  text or images. It calls a paid OpenAI model (`docs get decisions`).
+- When one comes back empty or weak, try another — that loop is the judgment.
 
 ## 6. Failure paths
 
-Every error envelope carries `fix` — the command or config change that resolves it,
-not a restatement of what went wrong. **Trust the fix field.**
+Every error envelope carries `fix` — the command or config change that resolves it.
+**Trust the fix field.**
 
 | symptom | first move |
 |---|---|
-| Empty results although the index looks full | the active embedder may not be the one that built the index — vectors are only read under the model key that wrote them. Check what is active (`doctor`); if they disagree, re-index: `flowspace3 add .` |
+| Empty results although the index looks full | the active embedder may not be the one that built the index — vectors are read only under the model that wrote them. Compare with `doctor`'s `providers` row; re-index with `flowspace3 add .` if they disagree |
+| `degraded_because: embedder_unavailable` | keyword-only page; fix the embedder (`doctor`), then search again before trusting an absence |
 | Daemon down | `FS3-E-DAEMON-UNAVAILABLE` → `flowspace3 daemon &` (doctor diagnoses but never starts one) |
 | Repo not indexed | `status` shows no root for it → `flowspace3 add /abs/path` |
-| `ask` returned `grounded: false` | it answered without reading anything — treat it as a guess. Check `status` in case nothing is indexed here, then re-ask more narrowly |
-| `ask` stopped at a bound | The envelope is `ok:false`; inspect labelled `error.details.evidence`, then ask a narrower question or raise the matching `[agent] max_iterations` / `token_budget` setting. |
+| `ask` returned `grounded: false` | a guess; check `status` in case nothing is indexed here, then re-ask more narrowly |
+| `ask` stopped at a bound | `ok: false`; inspect `error.details.evidence`, ask narrower, or raise `[agent] max_iterations` / `token_budget` |
 | Anything else | `ok: false` → run the `fix`; `retryable: false` means stop and fix something, do not loop |

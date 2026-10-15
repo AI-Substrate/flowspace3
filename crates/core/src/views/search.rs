@@ -56,7 +56,8 @@ pub struct Hit {
     /// Which retrieval leg found this hit.
     #[serde(default)]
     pub channel: SearchChannel,
-    /// Which vector space won this hit: `raw` or `smart`.
+    /// What won this hit: `raw` or `smart` (semantic), `exact_name`,
+    /// `exact_text` or `terms` (lexical).
     pub match_field: String,
     /// The element's universal category.
     pub kind: String,

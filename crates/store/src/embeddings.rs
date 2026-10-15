@@ -219,6 +219,11 @@ pub enum SourceKind {
 }
 
 impl SourceKind {
+    /// Every variant. Its spelling is also a semantic hit's `match_field`, which
+    /// the bundled agent skill is checked against
+    /// (`crates/cli/tests/skill_accuracy.rs`).
+    pub const ALL: [Self; 2] = [SourceKind::Raw, SourceKind::Smart];
+
     /// The spelling stored in the `source_kind` column.
     pub const fn as_str(self) -> &'static str {
         match self {
