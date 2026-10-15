@@ -1,0 +1,39 @@
+crates/store/migrations/0032_scope_cache.sql
+  s_f915818cd311ae::t_61f4e09486e05e 10,12-19,21-25,27-49,52,56-57,59-65,70,73,77,80,86,91-116,119-122,126,128-129,131,136-149,154,156-157,159-239,254
+  s_f915818cd311ae::t_a66e2b9f9477ba 241-242,252-253,256-261
+crates/store/src/scope_cache.rs
+  s_f915818cd311ae::t_3bbf3ebff77132 9,13-19,21-25,31,34-51,63,65-66,87,92-93,130-143,145-146,175-181,185,206,208-209,222-232,274-275,280-281,302-311
+  s_f915818cd311ae::t_b7652820f6d694 312-313
+crates/daemon/src/boot.rs
+  s_f915818cd311ae::t_19bb27fb78402b 653-657
+crates/daemon/tests/search_scope_starvation.rs
+  s_f915818cd311ae::t_5e7e8a699e5ed2 111-115
+crates/daemon/tests/search_timing.rs
+  s_f915818cd311ae::t_16ef089e039ac3 144-192
+crates/store/src/embeddings.rs
+  s_f915818cd311ae::t_4c289cf99fc68b 752-756,771,774,800,839,867-870,875-877,1140-1141,1157-1158,1193,1242-1243,1712
+crates/store/src/lib.rs
+  s_f915818cd311ae::t_b46f903c60bf25 100-103
+crates/store/tests/pg_scope_cache.rs
+  s_f915818cd311ae::t_d099bebb6ee95a 12-15,21-28,148-152,156-167,227-233,244-257,329,462-501,555,584,617,629-778
+docs/reference/configuration.md
+  s_f915818cd311ae::t_e9bec4158fdbe0 199
+docs/services/scope-cache.md
+  s_f915818cd311ae::t_766c318721a1ea 31-46,51-55,57,62-63,67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "49f7aa25da87e22011d6949d75c92c0526a202b4",
+  "prompts": {},
+  "sessions": {
+    "s_f915818cd311ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a555ba7c-d76a-4f90-88b8-7516d49df750",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
