@@ -1,0 +1,25 @@
+crates/store/migrations/0032_scope_cache.sql
+  s_f915818cd311ae::t_49ec756724584d 103-105,109-110
+crates/store/src/embeddings.rs
+  s_f915818cd311ae::t_7cec84994ce63b 885-886,888-893,902-903,1199
+crates/store/src/scope_cache.rs
+  s_f915818cd311ae::t_4fccf677feb512 42,176,185,190,210,216,315-324,326-327,329-334
+crates/store/tests/pg_scope_cache.rs
+  s_f915818cd311ae::t_319f24b0e7c1d3 917-948
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0e89a17c42779d3f30f23ba8aef95385d00a47e0",
+  "prompts": {},
+  "sessions": {
+    "s_f915818cd311ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a555ba7c-d76a-4f90-88b8-7516d49df750",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
