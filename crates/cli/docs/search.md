@@ -131,14 +131,18 @@ vector (`smart`). Both compete internally, and `match_field` reports which won.
   show how long the embedder has been failing.
 - **A small scope is searched exactly; a large one approximately.** When
   `--repo`, `--path`, a worktree or a conversation narrows the search to at
-  most 5,000 distinct texts, fs3 compares the query with every vector in that
+  most 150,000 distinct texts, fs3 compares the query with every vector in that
   scope: the hits are the true nearest, and an empty page means the scope holds
   no match (`meta.passes` is 1). A larger scope, and an unscoped search, use
   the HNSW index, which examines a bounded candidate set (pgvector's
   `hnsw.max_scan_tuples`, 20,000 by default) and keeps scanning until your
   `--limit` is filled. The ordering there is nearest-so-far, not provably the
-  global nearest. The cut-off is `fs3.exact_scope_limit`, settable per
-  database (`ALTER DATABASE … SET fs3.exact_scope_limit = N`).
+  global nearest, and an approximate page that comes back short reports
+  `scan_incomplete` rather than claiming the scope ran out. The cut-off is
+  `fs3.exact_scope_limit`, settable per database
+  (`ALTER DATABASE … SET fs3.exact_scope_limit = N`); under a lower one, a
+  scope whose approximate page comes back short is ranked exactly anyway, up
+  to 150,000.
 - **Content filters narrow the scope before ranking.** In a scoped search,
   `--source`, `--kind` and the ddoc id-kind and schema filters choose which of
   the scope's texts are candidates at all, so a doc search in a repository

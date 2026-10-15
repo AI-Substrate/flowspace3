@@ -97,9 +97,14 @@ pub(crate) async fn apply_budget(
 /// complete. The iterative ANN scan stops after `hnsw.max_scan_tuples` (20,000
 /// by default) whatever it has found, so a scope that is a small share of the
 /// index can sit entirely beyond it. That got worse as the index grew.
-/// Measured in the PR that added this; override per database or session with
+///
+/// Measured on prod (2026-10-15, 1.65M vectors, 19 scopes): the filtered ANN
+/// scan's recall@10 against exact was 0.1 to 0.3 on code scopes and 0.3 to
+/// 0.77 on 90k to 300k-source scopes, even on full pages. Exact cost 18 to 31
+/// µs per source warm (about 1.7 s at 100k, 3 s at 150k). Ruled (Jordan): no
+/// missed results up to 150k. Override per database or session with
 /// `fs3.exact_scope_limit`.
-pub const EXACT_SCOPE_SOURCES: i64 = 5_000;
+pub const EXACT_SCOPE_SOURCES: i64 = 150_000;
 
 /// The largest scope re-ranked exactly after its ANN page came back short.
 ///
@@ -108,8 +113,10 @@ pub const EXACT_SCOPE_SOURCES: i64 = 5_000;
 /// it ran out. Its few hits are then not the scope's nearest: on prod
 /// (2026-10-14) a 12,053-source code scope matched 3 to 43 of 101 hits, and
 /// recall@10 against exact was 0.14. A larger scope reports the page as
-/// incomplete instead of paying for an exact pass.
-pub const EXACT_FALLBACK_SOURCES: i64 = 100_000;
+/// incomplete instead of paying for an exact pass. The same ceiling as
+/// [`EXACT_SCOPE_SOURCES`], so it only acts where `fs3.exact_scope_limit`
+/// sets a lower one.
+pub const EXACT_FALLBACK_SOURCES: i64 = EXACT_SCOPE_SOURCES;
 
 /// Start with enough vectors for ordinary two- or three-chunk elements while
 /// keeping the common ANN scan small.
