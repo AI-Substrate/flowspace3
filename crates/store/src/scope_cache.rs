@@ -39,7 +39,7 @@ pub const SCOPE_CACHE_MAX_AGE: Duration = Duration::from_secs(600);
 /// cached page could need a pass more than the collected one. And it counts
 /// toward the scope's size, which picks exact or approximate ranking: so a
 /// search of a cached scope ranks exactly anything within this many sources
-/// above a limit (the departures since its cutoff, `$21` in the search
+/// above a limit (the departures since its cutoff, summed by the search
 /// statement, plus any late summary of a departed source), where the true
 /// count may be under it. Departures are logged as upper bounds - a raw hash
 /// and every summary it has - so the cache never carries more than they say.
@@ -108,9 +108,6 @@ pub struct CachedScope {
     /// Rows stamped by this transaction or a later one are read on top of
     /// the cached set.
     pub cutoff: String,
-    /// Sources logged as departed from it since its cutoff: its count can
-    /// overstate the live scope by this many.
-    pub departed: i64,
 }
 
 /// The cache key for `filters`' scope, or `None` when the cache does not
@@ -176,14 +173,7 @@ pub async fn cached_scope(
         return (None, ScopeCacheUse::Bypassed);
     };
     match fresh_or_build(pool, &key, filters).await {
-        Ok((used, Some((cutoff, departed)))) => (
-            Some(CachedScope {
-                key,
-                cutoff,
-                departed,
-            }),
-            used,
-        ),
+        Ok((used, Some(cutoff))) => (Some(CachedScope { key, cutoff }), used),
         Ok((used, None)) => (None, used),
         Err(error) => {
             tracing::warn!(%error, "scope cache unavailable; collecting the scope in full");
@@ -192,13 +182,12 @@ pub async fn cached_scope(
     }
 }
 
-/// How the scope is come by and, when cached, the cutoff to read it with and
-/// the sources logged as departed since.
+/// How the scope is come by and, when cached, the cutoff to read it with.
 async fn fresh_or_build(
     pool: &PgPool,
     key: &str,
     filters: &SearchFilters,
-) -> Result<(ScopeCacheUse, Option<(String, i64)>), StoreError> {
+) -> Result<(ScopeCacheUse, Option<String>), StoreError> {
     // (cutoff, departed since, young enough, built within the cooldown)
     let cached: Option<(String, i64, bool, bool)> = sqlx::query_as(
         "SELECT c.cutoff::text,
@@ -218,13 +207,13 @@ async fn fresh_or_build(
     .await?;
     match cached {
         Some((cutoff, departed, true, _)) if departed < SCOPE_SHRINK_REBUILD => {
-            return Ok((ScopeCacheUse::Hit, Some((cutoff, departed))));
+            return Ok((ScopeCacheUse::Hit, Some(cutoff)));
         }
         Some((_, _, true, true)) => return Ok((ScopeCacheUse::Cooling, None)),
         _ => {}
     }
     Ok(match build(pool, key, filters).await? {
-        Some(cutoff) => (ScopeCacheUse::Built, Some((cutoff, 0))),
+        Some(cutoff) => (ScopeCacheUse::Built, Some(cutoff)),
         None => (ScopeCacheUse::Busy, None),
     })
 }
@@ -323,15 +312,26 @@ async fn build(
     .bind(SCOPE_CACHE_IDLE.as_secs_f64())
     .execute(&mut *tx)
     .await?;
-    // Departures every key has passed: no cutoff reads them again.
-    sqlx::query(
-        "DELETE FROM scope_shrinks
-          WHERE xid < (SELECT min(cutoff) FROM scope_cache)",
-    )
-    .execute(&mut *tx)
-    .await?;
-
     tx.commit().await?;
+
+    // After the commit and in a statement of its own, so that two builds
+    // overlapping never conflict over the same entries (a serialisation
+    // failure would throw a whole build away). Only entries older than any
+    // key may live are pruned, and only those every committed key has passed:
+    // a build still in flight with an earlier cutoff is invisible here, but
+    // the entries it could miss are younger than this. A failed prune is
+    // retried by the next build.
+    if let Err(error) = sqlx::query(
+        "DELETE FROM scope_shrinks
+          WHERE logged_at < now() - make_interval(secs => $1)
+            AND xid < (SELECT min(cutoff) FROM scope_cache)",
+    )
+    .bind(SCOPE_CACHE_MAX_AGE.as_secs_f64())
+    .execute(pool)
+    .await
+    {
+        tracing::warn!(%error, "could not prune the scope departure log");
+    }
     Ok(Some(cutoff))
 }
 

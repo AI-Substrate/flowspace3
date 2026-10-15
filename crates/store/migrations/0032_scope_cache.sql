@@ -100,12 +100,14 @@ CREATE TRIGGER conversations_stamp_anchor BEFORE UPDATE OF repo_identity, worktr
 -- An append-only log, not a counter per repository: a counter row would be
 -- locked from one departure to its transaction's commit, serialising every
 -- writer to that repository (a watcher sync is one long transaction) or, for
--- '*', every reparse. `fs3_store::scope_cache` sums the entries since a key's
--- cutoff and prunes those every key has passed.
+-- '*', every reparse. A search sums the entries since its key's cutoff;
+-- `fs3_store::scope_cache` prunes, after each build, those every key has
+-- passed that are older than any key may live.
 CREATE UNLOGGED TABLE scope_shrinks (
     identity text NOT NULL,
     removed  bigint NOT NULL,
-    xid      xid8 NOT NULL DEFAULT pg_current_xact_id()
+    xid      xid8 NOT NULL DEFAULT pg_current_xact_id(),
+    logged_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX scope_shrinks_identity_xid_idx ON scope_shrinks (identity, xid);
 

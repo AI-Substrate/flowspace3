@@ -882,8 +882,15 @@ const SEARCH_ELEMENTS_SQL: &str = concat!(
     "WITH ",
     scope_ctes!(),
     r#",
+-- Summed here rather than when the key was checked, so a departure that
+-- commits in between is counted too.
 scope_departed AS MATERIALIZED (
-    SELECT COALESCE($21::bigint, 0)
+    SELECT (SELECT COALESCE(sum(s.removed), 0)::bigint
+              FROM scope_cache c
+              JOIN scope_shrinks s
+                ON (c.watch IS NULL OR s.identity = ANY(c.watch))
+               AND s.xid >= c.cutoff
+             WHERE c.scope_key = $19)
            + (SELECT count(*) FROM scope_late_summaries) AS departed
 ),
 scope_size AS MATERIALIZED (
@@ -892,8 +899,8 @@ scope_size AS MATERIALIZED (
     -- after when it is no larger than that. Unset, it must read false, not
     -- NULL: a NULL `exact` would pass neither arm and return nothing.
     -- A cached scope's count can overstate the live one by its departed
-    -- sources: the departures logged since its cutoff ($21) and any late
-    -- summary of a raw source that has left. So a scope within that many of
+    -- sources: the departures logged since its cutoff and any late summary
+    -- of a raw source that has left (`scope_departed`). So a scope within that many of
     -- a limit is ranked exactly - exact over a superset is never worse than
     -- the live scope's own path.
     SELECT ($6::text IS NOT NULL OR $7::text IS NOT NULL
@@ -1173,8 +1180,6 @@ pub async fn search_elements(
 
     let cache_started = std::time::Instant::now();
     let (scope, scope_cache) = crate::cached_scope(pool, filters).await;
-    // How many departed sources a cached scope is known to carry.
-    let departed = scope.as_ref().map(|cached| cached.departed);
     let scope_cache_ms = crate::elapsed_ms(cache_started);
 
     let acquire_started = std::time::Instant::now();
@@ -1191,8 +1196,7 @@ pub async fn search_elements(
     // $16 the default exact-scan ceiling, $17 the fallback ceiling (only on a
     // pass after a short ANN page), $18 the parser version that answers for a
     // blob that has it, $19 the cached scope's key and $20 its cutoff (NULL:
-    // the scope is collected in full), $21 the departures logged since that
-    // cutoff.
+    // the scope is collected in full).
     let scoped = filters.repo.is_some()
         || filters.path.is_some()
         || filters.worktree.is_some()
@@ -1228,7 +1232,6 @@ pub async fn search_elements(
             .bind(filters.parser_version.as_deref())
             .bind(scope.as_ref().map(|cached| cached.key.as_str()))
             .bind(scope.as_ref().map(|cached| cached.cutoff.as_str()))
-            .bind(departed)
             .fetch_all(&mut *tx)
             .await?;
         pass_ms.push(crate::elapsed_ms(pass_started));
@@ -1754,7 +1757,6 @@ mod tests {
             .bind(Some("search-plan@1"))
             .bind(Option::<&str>::None)
             .bind(Option::<&str>::None)
-            .bind(Option::<i64>::None)
             .fetch_one(&mut *connection)
             .await?;
         Ok(row.try_get::<Json<serde_json::Value>, _>(0)?.0)

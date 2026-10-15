@@ -914,3 +914,35 @@ async fn departures_from_one_repository_do_not_serialise_writers() {
 
     fixture.destroy().await;
 }
+
+/// A build prunes the departure log after it commits, and only entries older
+/// than any key may live: a recent entry stays even when every committed key
+/// has passed it, since a build still in flight may need it.
+#[tokio::test]
+async fn a_build_prunes_only_departures_no_key_can_still_read() {
+    let _serial = SERIAL.lock().await;
+    let fixture = Fixture::new("scope-cache-prune").await;
+    let pool = fixture.pool.clone();
+    for (identity, age_secs) in [("old", 3_600.0), ("recent", 0.0)] {
+        sqlx::query(
+            "INSERT INTO scope_shrinks (identity, removed, logged_at)
+             VALUES ($1, 1, now() - make_interval(secs => $2))",
+        )
+        .bind(identity)
+        .bind(age_secs)
+        .execute(&pool)
+        .await
+        .unwrap();
+    }
+
+    fixture.rebuild().await;
+    let left: Vec<String> = sqlx::query_scalar(
+        "SELECT identity FROM scope_shrinks WHERE identity IN ('old', 'recent')",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(left, vec!["recent".to_string()]);
+
+    fixture.destroy().await;
+}
