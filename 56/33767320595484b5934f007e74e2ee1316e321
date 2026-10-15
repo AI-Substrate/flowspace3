@@ -1,0 +1,35 @@
+crates/store/migrations/0032_scope_cache.sql
+  s_1ef31aa6bf178a::t_ca28acefa57962 93-104,106-108,110,114,118-124,127-128,133,150-151,160-161,226-227,243-247,275,302,304
+crates/store/src/embeddings.rs
+  s_1ef31aa6bf178a::t_920f929b8c91f6 838-851,867,885-888,894-898,903,905,960,1135,1176-1177,1194-1195,1248-1252,1286
+crates/store/src/scope_cache.rs
+  s_1ef31aa6bf178a::t_5e4dfdfcedae85 42-45,111-113,179-186,195-196,201-203,205,207-210,220-223,227,258-261,304-305,326-332
+crates/store/tests/pg_scope_cache.rs
+  s_f915818cd311ae::t_87a83605b56bf2 406-407,409,700-710,717-730,765-766,768,785,845-916
+docs/services/scope-cache.md
+  s_f915818cd311ae::t_e1d0d2bbfd86d2 43-44,57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5633767320595484b5934f007e74e2ee1316e321",
+  "prompts": {},
+  "sessions": {
+    "s_1ef31aa6bf178a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc2d2e8f-b8ca-4101-b706-075a4bf96be6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_f915818cd311ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a555ba7c-d76a-4f90-88b8-7516d49df750",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
