@@ -655,19 +655,25 @@ async fn serve(
     // absent, the daemon says why and keeps every search on trigram, rather
     // than failing each one.
     if state.config.search.lexical_backend == fs3_core::LexicalBackend::Bm25 {
-        match fs3_store::bm25_index_ready(&state.db).await {
-            Ok(true) => {
+        match fs3_store::bm25_index_state(&state.db).await {
+            Ok(fs3_store::Bm25IndexState::Ready) => {
                 state
                     .bm25_ready
                     .store(true, std::sync::atomic::Ordering::Relaxed);
                 tracing::info!(%database, "keyword search uses the BM25 index");
             }
-            Ok(false) => tracing::warn!(
+            Ok(fs3_store::Bm25IndexState::NoExtension) => tracing::warn!(
+                %database,
+                "search.lexical_backend is \"bm25\" but this Postgres has no pg_search; keyword \
+                 search stays on trigram. Switch the database to the ParadeDB image: see \
+                 docs/how/database.md"
+            ),
+            Ok(_) => tracing::warn!(
                 %database,
                 index = fs3_store::BM25_INDEX,
                 "search.lexical_backend is \"bm25\" but its index is not built and valid; keyword \
-                 search stays on trigram. It needs the pg_search extension (the ParadeDB image) and \
-                 the index: see docs/how/configuration.md, [search]"
+                 search stays on trigram. Run `flowspace3 doctor keyword-index`, then restart \
+                 the daemon"
             ),
             Err(error) => tracing::warn!(
                 %database, %error,

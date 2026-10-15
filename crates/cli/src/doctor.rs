@@ -190,6 +190,7 @@ async fn walk(
 
     steps.push(check_schema(database_url).await?);
     steps.push(check_tables(database_url).await);
+    steps.push(check_keyword_index(database_url, config).await);
 
     // The daemon is the one step doctor deliberately does NOT repair. Starting
     // a foreground server from a diagnostic command would leave a process the
@@ -665,6 +666,180 @@ fn tables_row(health: Result<&[fs3_store::TableHealth], &str>, started: Instant)
         ),
         started,
     )
+}
+
+/// Where the steps to put an existing install on the ParadeDB image live.
+const PARADEDB_SWAP_DOC: &str = "https://github.com/AI-Substrate/flowspace3/blob/main/docs/how/\
+                                 database.md#switching-to-the-paradedb-image";
+
+/// Can the configured keyword backend answer? Only `bm25` needs anything:
+/// pg_search (the ParadeDB image) and its index.
+async fn check_keyword_index(database_url: &str, config: &Config) -> Step {
+    let started = Instant::now();
+    let state = async {
+        let pool = fs3_store::connect(database_url)
+            .await
+            .map_err(|error| error.to_string())?;
+        let state = fs3_store::bm25_index_state(&pool).await;
+        pool.close().await;
+        state.map_err(|error| error.to_string())
+    }
+    .await;
+    keyword_index_row(
+        config.search.lexical_backend,
+        state.as_ref().copied().map_err(String::as_str),
+        started,
+    )
+}
+
+fn keyword_index_row(
+    backend: fs3_core::LexicalBackend,
+    state: Result<fs3_store::Bm25IndexState, &str>,
+    started: Instant,
+) -> Step {
+    use fs3_core::LexicalBackend::{Bm25, Trigram};
+    use fs3_store::Bm25IndexState::{Invalid, Missing, NoExtension, Ready};
+    const CHECK: &str = "keyword-index";
+    match (backend, state) {
+        (Trigram, Ok(Ready)) => Step::info(
+            CHECK,
+            format!(
+                "the BM25 index {} is built, and keyword search uses trigram",
+                fs3_store::BM25_INDEX
+            ),
+            "to search with it, set `[search] lexical_backend = \"bm25\"` and restart the daemon",
+            started,
+        ),
+        (Trigram, _) => Step::ok(CHECK, "keyword search uses trigram (the default)", started),
+        (Bm25, Err(error)) => Step::info(
+            CHECK,
+            format!("keyword index unavailable: {error}"),
+            "fix the database rows above",
+            started,
+        ),
+        (Bm25, Ok(Ready)) => Step::ok(
+            CHECK,
+            format!(
+                "the BM25 index {} is built and valid",
+                fs3_store::BM25_INDEX
+            ),
+            started,
+        ),
+        (Bm25, Ok(NoExtension)) => Step::warn(
+            CHECK,
+            "search.lexical_backend is \"bm25\" but this Postgres has no pg_search, so keyword \
+             search runs on trigram",
+            format!(
+                "switch the database to the ParadeDB image ({PARADEDB_SWAP_DOC}), or set \
+                 `lexical_backend = \"trigram\"`"
+            ),
+            started,
+        ),
+        (Bm25, Ok(missing)) => Step::warn(
+            CHECK,
+            format!(
+                "search.lexical_backend is \"bm25\" but the index {} is {}, so keyword search \
+                 runs on trigram",
+                fs3_store::BM25_INDEX,
+                if missing == Invalid {
+                    "invalid (an interrupted build)"
+                } else {
+                    debug_assert_eq!(missing, Missing);
+                    "not built"
+                }
+            ),
+            "run `flowspace3 doctor keyword-index` to build it, then restart the daemon",
+            started,
+        ),
+    }
+}
+
+/// What `flowspace3 doctor keyword-index` answers with.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct KeywordIndexReport {
+    /// The index's name.
+    pub index: String,
+    /// `built`, `ready` (it already was), or `unavailable` (no pg_search).
+    pub state: String,
+    /// The index's size on disk, once it exists.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bytes: Option<i64>,
+    /// How long the build took, when this run built it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub build_ms: Option<u64>,
+}
+
+/// Builds the BM25 keyword index, explicitly: the walk only reports it.
+///
+/// `CONCURRENTLY`, beside the trigram index, so the daemon can keep indexing
+/// and searching on trigram while it builds. A Postgres without pg_search is
+/// an answer (`unavailable`, naming the image swap), not an error.
+pub async fn keyword_index(config: &Config) -> Envelope<KeywordIndexReport> {
+    const COMMAND: &str = "doctor keyword-index";
+    let index = fs3_store::BM25_INDEX.to_string();
+    let pool = match fs3_store::connect(config.database.url.as_str()).await {
+        Ok(pool) => pool,
+        Err(error) => return Envelope::failed(COMMAND, map_store(error)),
+    };
+    let outcome = async {
+        let state = fs3_store::bm25_index_state(&pool).await?;
+        if state == fs3_store::Bm25IndexState::NoExtension {
+            return Ok((
+                KeywordIndexReport {
+                    index: index.clone(),
+                    state: "unavailable".to_string(),
+                    bytes: None,
+                    build_ms: None,
+                },
+                format!(
+                    "this Postgres has no pg_search: switch the database to the ParadeDB image \
+                     ({PARADEDB_SWAP_DOC}), then run this again"
+                ),
+            ));
+        }
+        if state == fs3_store::Bm25IndexState::Ready {
+            // A no-op on a valid index: it only reads the size.
+            let bytes = fs3_store::build_bm25_index(&pool).await?;
+            return Ok((
+                KeywordIndexReport {
+                    index: index.clone(),
+                    state: "ready".to_string(),
+                    bytes: Some(bytes),
+                    build_ms: None,
+                },
+                use_it(config),
+            ));
+        }
+        let started = Instant::now();
+        let bytes = fs3_store::build_bm25_index(&pool).await?;
+        Ok::<_, fs3_store::StoreError>((
+            KeywordIndexReport {
+                index: index.clone(),
+                state: "built".to_string(),
+                bytes: Some(bytes),
+                build_ms: Some(u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX)),
+            },
+            use_it(config),
+        ))
+    }
+    .await;
+    pool.close().await;
+    match outcome {
+        Ok((report, next)) => Envelope::ok(COMMAND, report).with_next_action(next),
+        Err(error) => Envelope::failed(COMMAND, map_store(error)),
+    }
+}
+
+/// The step after a valid index: the daemon reads it only at boot.
+fn use_it(config: &Config) -> String {
+    match config.search.lexical_backend {
+        fs3_core::LexicalBackend::Bm25 => {
+            "restart the daemon: it picks the index up at boot".to_string()
+        }
+        fs3_core::LexicalBackend::Trigram => "set `[search] lexical_backend = \"bm25\"` and \
+                                              restart the daemon to search with it"
+            .to_string(),
+    }
 }
 
 /// Step 4: is the daemon answering?
@@ -1891,5 +2066,41 @@ mod tests {
         let step = tables_row(Ok(std::slice::from_ref(&never)), Instant::now());
         assert!(step.found.contains("never analyzed"), "{step:?}");
         assert_eq!(tables_row(Err("down"), Instant::now()).outcome, "info");
+    }
+
+    #[test]
+    fn the_keyword_index_row_names_the_swap_or_the_build_only_when_bm25_is_asked_for() {
+        use fs3_core::LexicalBackend::{Bm25, Trigram};
+        use fs3_store::Bm25IndexState::{Invalid, Missing, NoExtension, Ready};
+        let row = |backend, state| keyword_index_row(backend, state, Instant::now());
+
+        // trigram never needs anything; a built index it does not use is news.
+        for state in [Ok(NoExtension), Ok(Missing), Ok(Invalid), Err("down")] {
+            assert_eq!(row(Trigram, state).outcome, "ok");
+        }
+        let unused = row(Trigram, Ok(Ready));
+        assert_eq!(unused.outcome, "info");
+        assert!(
+            unused
+                .action
+                .unwrap()
+                .contains("lexical_backend = \"bm25\"")
+        );
+
+        assert_eq!(row(Bm25, Ok(Ready)).outcome, "ok");
+        let no_extension = row(Bm25, Ok(NoExtension));
+        assert_eq!(no_extension.outcome, "warn");
+        assert!(no_extension.action.unwrap().contains("ParadeDB image"));
+        for state in [Missing, Invalid] {
+            let step = row(Bm25, Ok(state));
+            assert_eq!(step.outcome, "warn");
+            assert!(
+                step.action
+                    .unwrap()
+                    .contains("flowspace3 doctor keyword-index")
+            );
+        }
+        assert!(row(Bm25, Ok(Invalid)).found.contains("invalid"));
+        assert_eq!(row(Bm25, Err("down")).outcome, "info");
     }
 }

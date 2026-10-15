@@ -14,9 +14,9 @@ use std::path::Path;
 use fs3_core::{Element, ElementKind, RepoIdentity, Span};
 use fs3_store::lexical_bm25::BM25_INDEX_DDL;
 use fs3_store::{
-    LexicalBackend, PgPool, SearchFilters, bm25_can_answer, bm25_index_ready, register_worktree,
-    search_bm25_page, search_bm25_pages, search_lexical_page, search_lexical_pages,
-    sync_worktree_files, upsert_element_tree,
+    Bm25IndexState, LexicalBackend, PgPool, SearchFilters, bm25_can_answer, bm25_index_ready,
+    bm25_index_state, build_bm25_index, register_worktree, search_bm25_page, search_bm25_pages,
+    search_lexical_page, search_lexical_pages, sync_worktree_files, upsert_element_tree,
 };
 use support::{FreshDatabase, PARSER_VERSION, unique_blob};
 
@@ -287,6 +287,57 @@ async fn a_bm25_failure_answers_from_trigram_instead_of_failing() {
         .expect("a BM25 failure must not fail the search");
     assert_eq!(answered.hits, expected.hits);
     assert_eq!(answered.hits.len(), 1);
+
+    database.destroy(pool).await;
+}
+
+#[tokio::test]
+async fn doctor_s_build_creates_the_index_repairs_an_invalid_one_and_is_a_no_op_after() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+    let state = bm25_index_state(&pool).await.unwrap();
+    let available: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'pg_search')",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    if !available {
+        assert_eq!(state, Bm25IndexState::NoExtension);
+        // The same SKIPPED / FS3_REQUIRE_BM25 verdict as the parity test.
+        assert!(!bm25_available(&pool).await);
+        database.destroy(pool).await;
+        return;
+    }
+    assert_eq!(state, Bm25IndexState::Missing);
+
+    let bytes = build_bm25_index(&pool).await.unwrap();
+    assert!(bytes > 0);
+    assert_eq!(
+        bm25_index_state(&pool).await.unwrap(),
+        Bm25IndexState::Ready
+    );
+    // Run again: nothing to build, the same index answers.
+    assert_eq!(build_bm25_index(&pool).await.unwrap(), bytes);
+
+    // What an interrupted CONCURRENTLY build leaves behind.
+    sqlx::query(
+        "UPDATE pg_index SET indisvalid = false
+          WHERE indexrelid = 'elements_bm25_idx'::regclass",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        bm25_index_state(&pool).await.unwrap(),
+        Bm25IndexState::Invalid
+    );
+    assert!(!bm25_index_ready(&pool).await.unwrap());
+    build_bm25_index(&pool).await.unwrap();
+    assert_eq!(
+        bm25_index_state(&pool).await.unwrap(),
+        Bm25IndexState::Ready
+    );
 
     database.destroy(pool).await;
 }

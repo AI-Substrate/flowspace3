@@ -15,6 +15,7 @@ flowspace3 doctor
 | `stack` | Postgres is accepting connections | yes — runs `compose up -d` and WAITS for a real connection |
 | `database` | the configured database exists | yes — `CREATE DATABASE` |
 | `schema` | the database has every migration this binary carries | yes — applies the missing ones |
+| `keyword-index` | with `[search] lexical_backend = "bm25"`: this Postgres has pg_search and the BM25 index is built and valid | no — names the image swap, or `doctor keyword-index` |
 | `daemon` | `GET /health` answers on `daemon.url`; `warn` when it answers but its embedder has been failing (since when, and the last error) | no — see below |
 | `auth` | `daemon.key` is mode `0600` and the daemon accepts it | no — restart republishes a missing or stale key |
 
@@ -74,3 +75,14 @@ installs, and nothing writes those files silently or by force.
 The walk's last row (`skills`) reports where installed copies stand — current,
 stale, or missing — naming the install command when they do not. It is an
 `info` row: it asks without degrading the verdict, and doctor never installs.
+
+## `keyword-index`
+
+`flowspace3 doctor keyword-index` builds the BM25 keyword index that
+`[search] lexical_backend = "bm25"` searches with: `CREATE EXTENSION pg_search`,
+then the index, `CONCURRENTLY`, beside the trigram index, so the daemon keeps
+indexing and searching while it builds. Run again, it changes nothing; after an
+interrupted build it drops the invalid index and builds it again. On a Postgres
+without pg_search it answers `unavailable` and names the switch to the ParadeDB
+image (`docs/how/database.md`). Restart the daemon afterwards: it looks for the
+index at boot.

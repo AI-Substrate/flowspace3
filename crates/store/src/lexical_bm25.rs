@@ -449,6 +449,79 @@ pub async fn bm25_index_ready(pool: &PgPool) -> Result<bool, StoreError> {
     Ok(ready.unwrap_or(false))
 }
 
+/// Where this database stands on the BM25 keyword index, from "this
+/// Postgres cannot have one" to "ready".
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Bm25IndexState {
+    /// The server has no `pg_search`: it runs an image without it.
+    NoExtension,
+    /// `pg_search` is available, and [`BM25_INDEX`] does not exist.
+    Missing,
+    /// [`BM25_INDEX`] exists but is not valid: a `CONCURRENTLY` build that
+    /// failed or was interrupted leaves one behind.
+    Invalid,
+    /// Built and valid: [`search_bm25_page`] can answer.
+    Ready,
+}
+
+/// Reads [`Bm25IndexState`] without changing anything.
+///
+/// # Errors
+/// [`StoreError::Query`] on database failure.
+pub async fn bm25_index_state(pool: &PgPool) -> Result<Bm25IndexState, StoreError> {
+    let available: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'pg_search')",
+    )
+    .fetch_one(pool)
+    .await?;
+    if !available {
+        return Ok(Bm25IndexState::NoExtension);
+    }
+    let valid: Option<bool> = sqlx::query_scalar(
+        "SELECT i.indisvalid AND i.indisready
+           FROM pg_index i
+           JOIN pg_class c ON c.oid = i.indexrelid
+          WHERE c.relname = $1",
+    )
+    .bind(BM25_INDEX)
+    .fetch_optional(pool)
+    .await?;
+    Ok(match valid {
+        None => Bm25IndexState::Missing,
+        Some(false) => Bm25IndexState::Invalid,
+        Some(true) => Bm25IndexState::Ready,
+    })
+}
+
+/// Creates `pg_search` and builds [`BM25_INDEX`] beside the trigram index,
+/// `CONCURRENTLY`, so writes and trigram searches carry on while it builds.
+/// An invalid index left by an earlier failed build is dropped first, since
+/// `IF NOT EXISTS` would otherwise keep it. On a valid index it changes
+/// nothing. Returns the index's size in bytes.
+///
+/// Not a migration: migrations run at boot inside a transaction, which
+/// `CONCURRENTLY` cannot, and must not fail on a Postgres without pg_search.
+///
+/// # Errors
+/// [`StoreError::Query`] when the extension or the build fails, including on
+/// a Postgres without `pg_search` (check [`bm25_index_state`] first).
+pub async fn build_bm25_index(pool: &PgPool) -> Result<i64, StoreError> {
+    sqlx::query("CREATE EXTENSION IF NOT EXISTS pg_search")
+        .execute(pool)
+        .await?;
+    if bm25_index_state(pool).await? == Bm25IndexState::Invalid {
+        sqlx::query(&format!("DROP INDEX CONCURRENTLY IF EXISTS {BM25_INDEX}"))
+            .execute(pool)
+            .await?;
+    }
+    sqlx::query(BM25_INDEX_DDL).execute(pool).await?;
+    let bytes: i64 = sqlx::query_scalar("SELECT pg_relation_size($1::regclass)")
+        .bind(BM25_INDEX)
+        .fetch_one(pool)
+        .await?;
+    Ok(bytes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{bm25_can_answer, cased_terms, source_code_tokens, statement};

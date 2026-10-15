@@ -146,11 +146,14 @@ scores:
 
 `bm25` needs two things the daemon will not create for you:
 
-1. **The ParadeDB Postgres image** (`paradedb/paradedb:<version>-pg16`, which
-   bundles pgvector and pg_search) in place of `pgvector/pgvector:pg16`, with
-   `pg_search` added to `shared_preload_libraries`.
-2. **The index**, built once (about 25 s per million elements, beside the
-   trigram index, without blocking writes):
+1. **The ParadeDB Postgres image** (`paradedb/paradedb:0.26.1-pg16`, which
+   bundles pgvector and pg_search, with `pg_search` and `pg_cron` in
+   `shared_preload_libraries`). `docker-compose.yml` ships it. An install
+   created on `pgvector/pgvector:pg16` switches by following
+   `docs/how/database.md`, "Switching to the ParadeDB image".
+2. **The index**, built once by `flowspace3 doctor keyword-index` (about 25 s
+   per million elements, beside the trigram index, without blocking writes).
+   It runs:
 
    ```sql
    CREATE EXTENSION IF NOT EXISTS pg_search;
@@ -164,7 +167,8 @@ scores:
    ```
 
 At boot the daemon checks for the index. With `lexical_backend = "bm25"` and no
-valid index, it logs a WARN saying so and keeps every search on trigram. If the
+valid index, it logs a WARN naming the missing piece and keeps every search on
+trigram; `flowspace3 doctor` names it too, in its `keyword-index` row. If the
 index or the extension disappears while the daemon runs, each search logs a WARN
 and answers from trigram; it never fails because of it. `ask` searches the same
 way, so it uses the same backend.

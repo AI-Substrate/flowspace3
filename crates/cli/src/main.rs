@@ -629,6 +629,13 @@ enum DoctorCommand {
     /// is the force-it-now path, and the one to reach for when the automatic
     /// one reported that it could not write the install path.
     Upgrade,
+
+    /// Build the BM25 keyword index (`[search] lexical_backend = "bm25"`).
+    ///
+    /// Explicit, like `install-skill`: it needs pg_search (the ParadeDB
+    /// image), it builds `CONCURRENTLY` beside the trigram index, and the walk
+    /// only ever reports it. Restart the daemon afterwards.
+    KeywordIndex,
 }
 
 /// Exit codes, per workshop 004: 0 ok, 1 error, 2 usage.
@@ -991,6 +998,17 @@ async fn run(command: Command) -> Result<ExitCode> {
             };
             let effective = settings::load_effective_from(&dir)?;
             emit(&fs3_cli::upgrade::upgrade(&effective.config).await)
+        }
+        Command::Doctor {
+            config_dir,
+            command: Some(DoctorCommand::KeywordIndex),
+        } => {
+            let dir = match config_dir {
+                Some(dir) => dir,
+                None => settings::config_dir()?,
+            };
+            let effective = settings::load_effective_from(&dir)?;
+            emit(&doctor::keyword_index(&effective.config).await)
         }
         Command::Doctor {
             config_dir,
