@@ -132,7 +132,8 @@ pub enum StoreError {
          The compose stack is probably not running. Start it with:\n    {COMPOSE_UP}"
     )]
     Unreachable {
-        /// The connection URL that was tried.
+        /// The connection URL that was tried, its password masked: this
+        /// message reaches envelopes, logs and agent transcripts.
         url: String,
         /// The underlying sqlx failure.
         source: sqlx::Error,
@@ -226,10 +227,7 @@ pub async fn connect(url: &str) -> Result<PgPool, StoreError> {
         .acquire_timeout(CONNECT_TIMEOUT)
         .connect(url)
         .await
-        .map_err(|source| StoreError::Unreachable {
-            url: url.to_string(),
-            source,
-        })
+        .map_err(|source| unreachable(url, source))
 }
 
 /// Build a pool without touching the network.
@@ -248,10 +246,16 @@ pub fn connect_lazy(url: &str) -> Result<PgPool, StoreError> {
         .max_connections(8)
         .acquire_timeout(CONNECT_TIMEOUT)
         .connect_lazy(url)
-        .map_err(|source| StoreError::Unreachable {
-            url: url.to_string(),
-            source,
-        })
+        .map_err(|source| unreachable(url, source))
+}
+
+/// The one way to build [`StoreError::Unreachable`]: with the password
+/// masked, since its message reaches envelopes, logs and transcripts.
+fn unreachable(url: &str, source: sqlx::Error) -> StoreError {
+    StoreError::Unreachable {
+        url: fs3_core::redact_url_password(url),
+        source,
+    }
 }
 
 /// Apply all pending migrations.
@@ -274,6 +278,22 @@ mod tests {
             source: sqlx::Error::PoolClosed,
         };
         assert!(error.to_string().contains("docker compose up -d"));
+    }
+
+    #[test]
+    fn unreachable_never_prints_the_password() {
+        let error = unreachable(
+            "postgres://flowspace3:s3cret-pw@127.0.0.1:5433/flowspace3",
+            sqlx::Error::PoolTimedOut,
+        );
+        for message in [error.to_string(), format!("{error:?}")] {
+            assert!(!message.contains("s3cret-pw"), "{message}");
+        }
+        assert!(
+            error
+                .to_string()
+                .contains("postgres://flowspace3:<redacted>@127.0.0.1:5433/flowspace3")
+        );
     }
 
     #[test]
