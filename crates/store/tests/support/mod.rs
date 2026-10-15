@@ -112,6 +112,22 @@ impl FreshDatabase {
             .unwrap_or_else(|error| panic!("connecting to {}: {error}", self.name))
     }
 
+    /// A pool of ONE connection onto the throwaway database whose sessions
+    /// start with `settings` (runtime parameters), so a test can repeat a
+    /// statement on the same connection under a chosen server default.
+    pub async fn single_connection_with(&self, settings: &[(&str, &str)]) -> PgPool {
+        let options = PgConnectOptions::from_str(&database_url())
+            .expect("the configured database URL should parse")
+            .database(&self.name)
+            .options(settings.iter().copied());
+        PgPoolOptions::new()
+            .max_connections(1)
+            .acquire_timeout(fs3_store::CONNECT_TIMEOUT)
+            .connect_with(options)
+            .await
+            .unwrap_or_else(|error| panic!("connecting to {}: {error}", self.name))
+    }
+
     /// A migrated pool — the usual starting point.
     pub async fn migrated_pool(&self) -> PgPool {
         let pool = self.pool().await;

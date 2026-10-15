@@ -467,6 +467,7 @@ pub async fn search_lexical_pages(
         .bind(query.trim().to_lowercase());
     let acquire_started = std::time::Instant::now();
     let mut tx = pool.begin().await?;
+    crate::embeddings::plan_each_search(&mut tx).await?;
     crate::embeddings::apply_budget(&mut tx, filters.budget).await?;
     let acquire_ms = crate::elapsed_ms(acquire_started);
     let query_started = std::time::Instant::now();

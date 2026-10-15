@@ -62,6 +62,11 @@ const DISABLE_SEARCH_JIT: &str = "SET LOCAL jit = off";
 /// 1.65M distances on an unscoped one. So the plan, the recall and the
 /// latency depended on how old the connection was. Planning it fresh costs
 /// 1 to 4 ms.
+///
+/// The keyword leg takes the same setting ([`plan_each_search`]): a generic
+/// plan of a BM25 statement cannot route its operators through the ParadeDB
+/// scan, seq-scans `elements`, and fails on `pdb.score` (prod, read-only,
+/// 2026-10-15).
 const CUSTOM_SEARCH_PLAN: &str = "SET LOCAL plan_cache_mode = force_custom_plan";
 
 async fn configure_search_transaction(
@@ -69,6 +74,14 @@ async fn configure_search_transaction(
 ) -> Result<(), StoreError> {
     sqlx::query(ITERATIVE_SCAN).execute(&mut **tx).await?;
     sqlx::query(DISABLE_SEARCH_JIT).execute(&mut **tx).await?;
+    plan_each_search(tx).await
+}
+
+/// Plan every statement of this search transaction for the values it is
+/// given ([`CUSTOM_SEARCH_PLAN`]).
+pub(crate) async fn plan_each_search(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+) -> Result<(), StoreError> {
     sqlx::query(CUSTOM_SEARCH_PLAN).execute(&mut **tx).await?;
     Ok(())
 }

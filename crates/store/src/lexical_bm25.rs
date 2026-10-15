@@ -363,6 +363,10 @@ pub async fn search_bm25_pages(
     }
     let acquire_started = std::time::Instant::now();
     let mut tx = pool.begin().await?;
+    // A generic plan of this statement fails outright (see
+    // `CUSTOM_SEARCH_PLAN`), and #172's fallback would then answer every
+    // search on that connection from trigram, seconds slower, with a warning.
+    crate::embeddings::plan_each_search(&mut tx).await?;
     crate::embeddings::apply_budget(&mut tx, filters.budget).await?;
     let acquire_ms = crate::elapsed_ms(acquire_started);
 
