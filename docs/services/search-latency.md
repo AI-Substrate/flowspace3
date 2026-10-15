@@ -22,6 +22,8 @@ Every search records where its time went. Status and doctor keep percentiles ove
 
 - **Acquire time is measured apart from query time.** The pool has 8 connections, shared with every background worker, and one search holds up to 4 of them at once. So a slow leg can be waiting for a connection rather than running a slow query, and the split shows which.
 - **Per-pass times:** the scoped vector statement rebuilds its scope on every candidate pass, so a slow semantic leg is often several medium passes rather than one bad one.
+- **An exact retry is a pass:** when the approximate (HNSW) scan comes back short on an index larger than it may visit (`hnsw.max_scan_tuples`), a scope of up to `EXACT_FALLBACK_SOURCES` sources is ranked again exactly, at the same window, and that shows as one more `semantic_pass_ms` entry. A larger scope reports `scan_incomplete` instead.
+- **Plans are fixed per search:** the search transaction sets `plan_cache_mode = force_custom_plan`. A pooled connection's cached generic plan once swapped the HNSW scan for a scan of every vector, so latency and recall depended on how old the connection was.
 - **`meta`, not `data`:** timing is a fact about this answer, like `passes`, and not a result.
 - **In memory, not in the database:** the record is cheap and has no write path or schema. The long view belongs to the search bench.
 
