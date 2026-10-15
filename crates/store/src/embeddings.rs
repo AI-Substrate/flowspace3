@@ -1638,6 +1638,8 @@ mod tests {
             ))
             .bind(EXACT_SCOPE_SOURCES)
             .bind(Option::<i64>::None)
+            // The daemon always names its parser; the corpus's is current.
+            .bind(Some("search-plan@1"))
             .fetch_one(&mut *connection)
             .await?;
         Ok(row.try_get::<Json<serde_json::Value>, _>(0)?.0)
