@@ -1,0 +1,55 @@
+crates/store/src/lexical_bm25.rs
+  s_18a2277fcd4372::t_956ae26629a917 452-523
+  s_18a2277fcd4372::t_6272b1a5979d2c 524
+crates/cli/src/doctor.rs
+  s_18a2277fcd4372::t_ab11250bb5e070 671-844
+  s_15d888f4b629c1::t_93f91b4a433726 193,2070-2105
+crates/daemon/src/boot.rs
+  s_18a2277fcd4372::t_dccf5e1dc91106 658-659,665-671,675-676
+crates/cli/docs/doctor.md
+  s_18a2277fcd4372::t_cbf3062a058749 18,78-88
+crates/cli/src/main.rs
+  s_18a2277fcd4372::t_95d4a321a75686 632-638,1002-1012
+crates/store/src/lib.rs
+  s_61dfe47e9838df::t_3c2dce5a47a655 81-82
+crates/store/tests/pg_lexical_bm25.rs
+  s_61dfe47e9838df::t_c2a1278174d00a 17-19,293-343
+docker-compose.yml
+  s_18a2277fcd4372::t_0fb3c2e01824e1 14-20,32-35,57
+docs/how/configuration.md
+  s_18a2277fcd4372::t_2a7c0a7043d165 149-156,170-171
+docs/how/database.md
+  s_18a2277fcd4372::t_34053f3689c35d 102,109-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "bd9fb568a222d8d2ca3959af3a0db07af0de93a2",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_18a2277fcd4372": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58f49f60-563c-4ca6-8031-2d960e7769c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_61dfe47e9838df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cbe08128-4097-4473-9f99-71e9415824f6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
