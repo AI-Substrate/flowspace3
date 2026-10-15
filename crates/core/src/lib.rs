@@ -52,10 +52,10 @@ pub use classify::{category_hint, classify, is_declaration_shaped};
 pub use config::{
     CONFIG_DIR_ENV, CONFIG_FILE_NAME, Config, CostEstimate, DAEMON_KEY_FILE_NAME,
     DEFAULT_CONFIG_SUBDIR, DEFAULT_PROVIDER, DaemonConfig, DatabaseConfig, DecisionPrice,
-    DecisionsConfig, ENV_NESTING, ENV_PREFIX, Effective, IndexingConfig, Layer, Origin, Port,
-    PortSelection, Problem, ProviderInstance, REDACTED, RepoSelection, SECRETS_FILE_NAME, SECTIONS,
-    ScanConfig, Sources, UpdateConfig, daemon_key_path, env_overrides, parse_env_file,
-    redact_url_password, resolve, resolve_config_dir,
+    DecisionsConfig, ENV_NESTING, ENV_PREFIX, Effective, IndexingConfig, Layer, LexicalBackend,
+    Origin, Port, PortSelection, Problem, ProviderInstance, REDACTED, RepoSelection,
+    SECRETS_FILE_NAME, SECTIONS, ScanConfig, SearchConfig, Sources, UpdateConfig, daemon_key_path,
+    env_overrides, parse_env_file, redact_url_password, resolve, resolve_config_dir,
 };
 pub use conversation::{
     Conversation, ConversationAgent, ConversationId, ToolInput, Turn, TurnItem, TurnRole,

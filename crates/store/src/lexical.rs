@@ -30,7 +30,7 @@ const MAX_TERMS: usize = 8;
 
 /// A small bonus for dense, short matches: under 0.04, so it orders hits
 /// WITHIN a score band and can never lift one into the band above.
-const DENSITY_SQL: &str = "(0.04 / (1.0 + ln(1.0 + length(el.raw_text) / 2000.0)))";
+pub(crate) const DENSITY_SQL: &str = "(0.04 / (1.0 + ln(1.0 + length(el.raw_text) / 2000.0)))";
 
 /// Why an exact lexical hit outranked another exact lexical hit.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -185,6 +185,21 @@ pub async fn search_lexical_pages(
     // the semantic leg still answers it.
     if query.chars().take(3).count() < 3 {
         return Ok((LexicalPage::default(), wide.then(LexicalPage::default)));
+    }
+    // The BM25 index answers when the caller chose it and the query has a
+    // token to look up; anything else is a substring only trigram can find.
+    // A BM25 failure (the index dropped or invalid, the extension gone since
+    // boot) costs this search the fast path, never its answer.
+    if filters.lexical_backend == crate::LexicalBackend::Bm25
+        && crate::lexical_bm25::bm25_can_answer(query)
+    {
+        match crate::lexical_bm25::search_bm25_pages(pool, query, filters, wide).await {
+            Ok(pages) => return Ok(pages),
+            Err(error) => tracing::warn!(
+                %error,
+                "the BM25 keyword leg failed; answering this search from trigram"
+            ),
+        }
     }
     let pattern = contains_pattern(query);
     let terms = query_terms(query);
@@ -465,7 +480,7 @@ pub async fn search_lexical_pages(
 /// The query's terms worth matching: lowercased, stripped of surrounding
 /// punctuation, at least three characters (the trigram index's floor),
 /// de-duplicated, longest first, at most [`MAX_TERMS`].
-fn query_terms(query: &str) -> Vec<String> {
+pub(crate) fn query_terms(query: &str) -> Vec<String> {
     let mut terms: Vec<String> = Vec::new();
     for word in query.split_whitespace() {
         let term = word
@@ -480,7 +495,7 @@ fn query_terms(query: &str) -> Vec<String> {
     terms
 }
 
-fn contains_pattern(query: &str) -> String {
+pub(crate) fn contains_pattern(query: &str) -> String {
     let mut pattern = String::with_capacity(query.len() + 2);
     pattern.push('%');
     for ch in query.chars().flat_map(char::to_lowercase) {

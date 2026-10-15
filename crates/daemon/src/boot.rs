@@ -651,6 +651,31 @@ async fn serve(
     })?;
     tracing::info!(%database, "store schema is current");
 
+    // BM25 answers the keyword leg only once its index exists. Asked for but
+    // absent, the daemon says why and keeps every search on trigram, rather
+    // than failing each one.
+    if state.config.search.lexical_backend == fs3_core::LexicalBackend::Bm25 {
+        match fs3_store::bm25_index_ready(&state.db).await {
+            Ok(true) => {
+                state
+                    .bm25_ready
+                    .store(true, std::sync::atomic::Ordering::Relaxed);
+                tracing::info!(%database, "keyword search uses the BM25 index");
+            }
+            Ok(false) => tracing::warn!(
+                %database,
+                index = fs3_store::BM25_INDEX,
+                "search.lexical_backend is \"bm25\" but its index is not built and valid; keyword \
+                 search stays on trigram. It needs the pg_search extension (the ParadeDB image) and \
+                 the index: see docs/how/configuration.md, [search]"
+            ),
+            Err(error) => tracing::warn!(
+                %database, %error,
+                "cannot check the BM25 index; keyword search stays on trigram"
+            ),
+        }
+    }
+
     // Recover anything a previous process died holding, BEFORE the runner can
     // claim. A row left `running` has no lease and no heartbeat, so nothing
     // else would ever move it — and because `scan_file` dedupes on

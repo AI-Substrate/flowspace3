@@ -131,6 +131,9 @@ internal = ["fs3-core", "fs3-testkit@dev"]
 # Plan 012 ships Tokio in fs3-store because the process-wide CREATE/DROP
 # semaphore is store runtime behaviour. SQLx's Tokio runtime already ships in
 # this binary, so the edge changes kind without adding runtime machinery.
+# `tracing`: the keyword leg falls back from BM25 to trigram when the BM25
+# index fails mid-run, and that must not be silent. The store has no other way
+# to say so without failing the search; the daemon already ships tracing.
 external = [
   "anyhow@dev",
   "pgvector",
@@ -138,6 +141,7 @@ external = [
   "sqlx",
   "thiserror",
   "tokio",
+  "tracing",
 ]
 
 # The git front door (PRD reqs 5, 35, 41). Concrete infrastructure, the same

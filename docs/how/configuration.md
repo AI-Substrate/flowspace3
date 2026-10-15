@@ -124,7 +124,52 @@ min_file_bytes = 1                 # skip empty files
 respect_gitignore = true
 include_hidden = false
 follow_symlinks = false            # a link loop is an infinite scan
+
+[search]
+lexical_backend = "trigram"        # or "bm25": see "The keyword index" below
 ```
+
+### The keyword index (`[search] lexical_backend`)
+
+Every search has a keyword leg beside the semantic one: exact identifiers,
+phrases and error codes. Two indexes can answer it, with the same hits and
+scores:
+
+- **`trigram`** (the default) works on every install. It finds every
+  substring and rechecks each match, so it slows with the corpus: at 1.25M
+  elements an identifier takes about 1-4 s and a common word up to 13 s.
+- **`bm25`** answers the same query from a pg_search inverted index: a p95 of
+  0.5 s at 1.25M elements, and about 1 s at 3.8M. A term matches where a word
+  STARTS (`job` finds "jobs", `lexical_page` finds `search_lexical_page`), not
+  in the middle of one (`ounded` does not find `bounded`). A query with no
+  word of three or more characters (`E'\n'`) still goes to trigram.
+
+`bm25` needs two things the daemon will not create for you:
+
+1. **The ParadeDB Postgres image** (`paradedb/paradedb:<version>-pg16`, which
+   bundles pgvector and pg_search) in place of `pgvector/pgvector:pg16`, with
+   `pg_search` added to `shared_preload_libraries`.
+2. **The index**, built once (about 25 s per million elements, beside the
+   trigram index, without blocking writes):
+
+   ```sql
+   CREATE EXTENSION IF NOT EXISTS pg_search;
+   CREATE INDEX CONCURRENTLY IF NOT EXISTS elements_bm25_idx ON elements USING bm25 (
+       id,
+       ((name || E'\n' || raw_text)::pdb.source_code('alias=body')),
+       (name::pdb.source_code),
+       (kind::pdb.literal),
+       (turn_class::pdb.literal)
+   );
+   ```
+
+At boot the daemon checks for the index. With `lexical_backend = "bm25"` and no
+valid index, it logs a WARN saying so and keeps every search on trigram. If the
+index or the extension disappears while the daemon runs, each search logs a WARN
+and answers from trigram; it never fails because of it. `ask` searches the same
+way, so it uses the same backend.
+Setting `trigram` again and restarting is the whole rollback; the trigram
+index is untouched.
 
 ### Providers are a registry, not a shape per port
 

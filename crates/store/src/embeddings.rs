@@ -508,6 +508,10 @@ pub struct SearchFilters {
     /// Each statement runs under this `statement_timeout`, and the vector leg
     /// starts no further candidate pass once it is spent. `None` is no limit.
     pub budget: Option<std::time::Duration>,
+    /// Which index answers the keyword leg. The daemon chooses BM25 only once
+    /// [`crate::bm25_index_ready`] said the index can serve; a query BM25
+    /// cannot answer still goes to trigram (see [`crate::bm25_can_answer`]).
+    pub lexical_backend: crate::LexicalBackend,
 }
 
 /// Ownership scope for [`anchor_has_vectors`].
@@ -556,6 +560,7 @@ impl Default for SearchFilters {
             hidden_turn_classes: None,
             limit: 10,
             budget: None,
+            lexical_backend: crate::LexicalBackend::Trigram,
         }
     }
 }
