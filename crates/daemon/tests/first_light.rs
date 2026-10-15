@@ -1013,6 +1013,92 @@ async fn a_parser_version_change_reindexes_unchanged_blobs_then_settles() {
     stack.destroy().await;
 }
 
+/// A parser bump reaches every root with nobody running `scan`, and leaves one
+/// parse per blob.
+///
+/// Before the reparse supervisor, only `/scan`, `/roots` and new worktrees
+/// rescanned a root, so the @4 bump reached 2,214 of 29,821 live blobs on prod
+/// (2026-10-15) while blobs kept every version's rows, and one declaration came
+/// back from search twice.
+#[tokio::test]
+async fn a_parser_bump_reparses_every_root_unasked_and_leaves_one_parse() {
+    use fs3_daemon::reconcile::Reconcile;
+    const PREVIOUS: &str = "fs3-parsers@test-previous";
+
+    let fixture = Fixture::create("reparse");
+    let stack = Stack::create("reparse").await;
+    let path = fixture.path().to_string_lossy().to_string();
+    call(
+        &stack.state,
+        "POST",
+        "/roots",
+        Some(serde_json::json!({ "path": path })),
+    )
+    .await;
+    stack.drain().await;
+    let rows = |version: &'static str| {
+        let db = stack.state.db.clone();
+        async move {
+            sqlx::query_scalar::<_, i64>("SELECT count(*) FROM elements WHERE parser_version = $1")
+                .bind(version)
+                .fetch_one(&db)
+                .await
+                .expect("count rows by parser version")
+        }
+    };
+    let current_rows = rows(fs3_daemon::scan::PARSER_VERSION).await;
+    assert!(current_rows > 0, "the fixture was parsed");
+
+    // Rows a parse from before pruning left beside the current one.
+    sqlx::query(
+        "INSERT INTO elements
+             (blob_sha, parser_version, kind, subkind, name, address,
+              span_start, span_end, sibling_order, raw_text, raw_hash, enrich)
+         SELECT blob_sha, $1, kind, subkind, name, address,
+                span_start, span_end, sibling_order, raw_text, raw_hash, enrich
+           FROM elements WHERE parser_version = $2",
+    )
+    .bind(PREVIOUS)
+    .bind(fs3_daemon::scan::PARSER_VERSION)
+    .execute(&stack.state.db)
+    .await
+    .expect("copy the parse under a previous version");
+    let mut supervisor = fs3_daemon::reparse::ReparseSupervisor::new(stack.state.clone());
+    let swept = supervisor.reconcile().await.expect("a prune pass");
+    assert!(swept.changed > 0, "the superseded rows were pruned");
+    assert_eq!(rows(PREVIOUS).await, 0);
+    assert_eq!(rows(fs3_daemon::scan::PARSER_VERSION).await, current_rows);
+    let settled = supervisor.reconcile().await.expect("a settled pass");
+    assert_eq!(settled.changed, 0, "nothing left to prune or rescan");
+
+    // The bump itself: every row is the previous parser's, and nobody scans.
+    sqlx::query("UPDATE elements SET parser_version = $1 WHERE parser_version = $2")
+        .bind(PREVIOUS)
+        .bind(fs3_daemon::scan::PARSER_VERSION)
+        .execute(&stack.state.db)
+        .await
+        .expect("relabel the parse as the previous parser's");
+    let mut supervisor = fs3_daemon::reparse::ReparseSupervisor::new(stack.state.clone());
+    let rescanned = supervisor.reconcile().await.expect("a rescan pass");
+    assert_eq!(rescanned.changed, 1, "the root was rescanned");
+    stack.drain().await;
+    assert_eq!(
+        rows(fs3_daemon::scan::PARSER_VERSION).await,
+        current_rows,
+        "every blob was re-parsed by the current parser"
+    );
+    assert_eq!(
+        rows(PREVIOUS).await,
+        0,
+        "each scan pruned the parse it replaced"
+    );
+    let settled = supervisor.reconcile().await.expect("a settled pass");
+    assert_eq!(settled.changed, 0, "a current root is not rescanned again");
+    assert_eq!(stack.drain().await.total(), 0, "and no work was queued");
+
+    stack.destroy().await;
+}
+
 /// The other half of idempotence: a real edit MUST cost something, and only for
 /// what changed. A test that only proves "nothing re-runs" would pass on a
 /// pipeline that had stopped working entirely.

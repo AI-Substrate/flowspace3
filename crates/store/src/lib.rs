@@ -57,7 +57,8 @@ pub use ddoc::{
 };
 pub use elements::{
     ElementTreeInconsistency, ElementTreeRead, ElementTreeWrite, blobs_with_parser_version,
-    element_tree_inconsistencies, get_elements, upsert_element_tree,
+    element_tree_inconsistencies, get_elements, prune_superseded_batch, prune_superseded_parses,
+    roots_parsed_by_an_older_parser, upsert_element_tree,
 };
 pub use embeddings::{
     AnchorScope, EMBEDDING_DIMENSIONS, NewEmbedding, PathFilterProbe, SearchFilters, SearchHit,

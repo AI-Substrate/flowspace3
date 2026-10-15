@@ -127,6 +127,20 @@ async fn persist_tree(
     Ok(written)
 }
 
+/// Drop the blob's rows from older parser versions now that this one's exist.
+///
+/// A blob keeps a parse per parser version until this runs. Nothing reads a
+/// superseded one (`get`, `tree` and search all take the current version), and
+/// leaving it was how one declaration came back as two hits after DL-042 moved
+/// its span. Done on every scan that finds or writes the current parse, so a
+/// reparse after a bump leaves one parse behind.
+async fn prune_superseded(state: &AppState, blob: &BlobRef) -> Result<(), Failure> {
+    fs3_store::prune_superseded_parses(&state.db, blob.as_str(), PARSER_VERSION)
+        .await
+        .map_err(fail)?;
+    Ok(())
+}
+
 /// Parse one file and record it.
 ///
 /// # Errors
@@ -209,6 +223,7 @@ pub async fn run(state: &AppState, value: serde_json::Value) -> Result<(), Failu
         .map_err(fail)?
         .tree
     {
+        prune_superseded(state, &blob).await?;
         if is_ddoc && !tooling.is_absent() {
             // A presented ddoc consumes the whole current snapshot. Trying to
             // enumerate schema, graph, validation, or producer changes here
@@ -234,6 +249,7 @@ pub async fn run(state: &AppState, value: serde_json::Value) -> Result<(), Failu
     }
 
     persist_tree(state, &blob, &mut tree, tooling, is_ddoc, &enrich_policy).await?;
+    prune_superseded(state, &blob).await?;
 
     // Every element gets a raw-content vector; only enrich-marked ones get a
     // summary. Both are queued rather than done inline, so a slow provider
@@ -247,10 +263,13 @@ pub async fn run(state: &AppState, value: serde_json::Value) -> Result<(), Failu
 ///
 /// A literal rather than a crate version: what invalidates a parse is a change
 /// in the GRAMMARS or the extraction walk, not a patch release of the daemon.
-/// After a bump, the next root scan re-enqueues every blob without rows for
-/// this version and re-mints its element tree. That scan and parse work is not
-/// free. Enrichment remains keyed by `raw_hash`, so unchanged text pays for no
-/// new provider calls (workshop 002, decision D2).
+/// After a bump, [`crate::reparse::ReparseSupervisor`] rescans every root
+/// holding a blob an older parser parsed, a root scan re-enqueues each such
+/// blob, and the scan re-mints its element tree and prunes the superseded one.
+/// Nothing else rescans a registered root, so without it a bump reached only
+/// files edited afterwards (2026-10-15: 2,214 of 29,821 live blobs). That scan
+/// and parse work is not free. Enrichment remains keyed by `raw_hash`, so
+/// unchanged text pays for no new provider calls (workshop 002, decision D2).
 ///
 /// Bumped to @2 by workshop 008: the ddoc grammar produces row elements that a
 /// @1 parse never emitted, so an existing corpus must be re-minted to gain them.

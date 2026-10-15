@@ -902,6 +902,11 @@ async fn serve(
     // the trait a per-loop cadence — the same shape the update supervisor's
     // clock takes, for the same reason (req-0057).
     reconcilers.push(Box::new(crate::gc::GcSupervisor::new(state.db.clone())));
+    // Nothing else rescans a registered root, so without it a parser bump
+    // reaches only the files edited afterwards (2026-10-15).
+    reconcilers.push(Box::new(crate::reparse::ReparseSupervisor::new(
+        state.clone(),
+    )));
     reconcilers.push(Box::new(crate::retention::RetentionSupervisor::new(
         state.db.clone(),
         state.config.indexing.job_retention_days,
