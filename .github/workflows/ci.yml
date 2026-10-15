@@ -122,3 +122,45 @@ jobs:
 
       - name: arch drift
         run: cargo run --quiet -p fs3-testkit --bin fs3-arch-check
+
+  # The BM25 keyword leg needs pg_search, which only the ParadeDB image has
+  # (prod has run it since 2026-10-15). The gate above stays on plain pgvector:
+  # it is what every existing install runs, and the "pg_search is missing, so
+  # answer from trigram" tests need it. The tests that need the extension run
+  # here instead, where FS3_REQUIRE_BM25 makes a missing extension a failure
+  # rather than a skip. Until this job, nothing set it, and every BM25 test
+  # skipped in CI.
+  bm25:
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: paradedb/paradedb:0.26.1-pg16
+        env:
+          POSTGRES_USER: flowspace3
+          POSTGRES_PASSWORD: flowspace3
+          POSTGRES_DB: flowspace3
+        ports:
+          - 5433:5432
+
+    env:
+      FS3_REQUIRE_BM25: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for postgres
+        run: |
+          timeout 60 bash -c 'until printf "" >> /dev/tcp/127.0.0.1/5433; do sleep 1; done'
+          echo "postgres accepting connections on 127.0.0.1:5433"
+
+      # cache:false for the reason given in the gate job above.
+      - name: Install pinned toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache: false
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: BM25 tests (pg_search required)
+        run: cargo test -p fs3-store --test pg_lexical_bm25
