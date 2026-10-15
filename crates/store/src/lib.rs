@@ -27,6 +27,7 @@ pub mod conversations;
 pub mod ddoc;
 pub mod elements;
 pub mod embeddings;
+pub mod exact_index;
 pub mod ingest_cursors;
 pub mod jobs;
 pub mod lexical;
@@ -65,6 +66,10 @@ pub use embeddings::{
     SearchPage, SimilarElement, SourceKind, anchor_has_vectors, embedding_models,
     existing_embedding_hashes, path_filter_probe, put_embeddings, query_embeddings,
     search_elements,
+};
+pub use exact_index::{
+    EXACT_INDEX_TABLE, ExactIndexBuild, ExactIndexState, ModelCoverage, build_exact_index,
+    exact_index_coverage, exact_index_state, exact_rank_setting,
 };
 pub use jobs::{
     DaemonLock, IngestJobOutcome, JOB_PRIORITY_DEFAULT, JOB_PRIORITY_NEW_WORKTREE_SCAN, Job,

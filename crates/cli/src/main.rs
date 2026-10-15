@@ -636,6 +636,13 @@ enum DoctorCommand {
     /// image), it builds `CONCURRENTLY` beside the trigram index, and the walk
     /// only ever reports it. Restart the daemon afterwards.
     KeywordIndex,
+
+    /// Fill the binary copy of the vectors that exact ranking can read
+    /// (`fs3.exact_rank = compact`).
+    ///
+    /// Explicit, like `keyword-index`: it reads every vector once, a heavy
+    /// job, safe beside a running daemon, and the walk only ever reports it.
+    ExactIndex,
 }
 
 /// Exit codes, per workshop 004: 0 ok, 1 error, 2 usage.
@@ -1009,6 +1016,17 @@ async fn run(command: Command) -> Result<ExitCode> {
             };
             let effective = settings::load_effective_from(&dir)?;
             emit(&doctor::keyword_index(&effective.config).await)
+        }
+        Command::Doctor {
+            config_dir,
+            command: Some(DoctorCommand::ExactIndex),
+        } => {
+            let dir = match config_dir {
+                Some(dir) => dir,
+                None => settings::config_dir()?,
+            };
+            let effective = settings::load_effective_from(&dir)?;
+            emit(&doctor::exact_index(&effective.config).await)
         }
         Command::Doctor {
             config_dir,
