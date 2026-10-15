@@ -90,34 +90,47 @@ CREATE TRIGGER conversations_stamp_anchor BEFORE UPDATE OF repo_identity, worktr
           OR OLD.worktree IS DISTINCT FROM NEW.worktree)
     EXECUTE FUNCTION fs3_stamp_changed();
 
--- How much has left each repository's scopes, in sources (a raw hash or a
--- summary), counted per repository identity ('' for conversations with none,
--- '*' for departures no repository can be named for). Bumped in the removing
--- transaction. Counts are upper bounds - two sources per element (its raw
--- hash and a summary) - so a cached scope never carries more departed
--- sources than its count says; `fs3_store::scope_cache` rebuilds a key before
--- that reaches `SCOPE_SHRINK_REBUILD`.
+-- What has left each repository's scopes, in sources (a raw hash or one of
+-- its summaries), logged per repository identity ('' for conversations with
+-- none, '*' for departures no repository can be named for) by the removing
+-- transaction. Counts are upper bounds - a raw hash and every summary it has,
+-- one per summarising model - so a cached scope never carries more departed
+-- sources than the entries since its cutoff say.
+--
+-- An append-only log, not a counter per repository: a counter row would be
+-- locked from one departure to its transaction's commit, serialising every
+-- writer to that repository (a watcher sync is one long transaction) or, for
+-- '*', every reparse. `fs3_store::scope_cache` sums the entries since a key's
+-- cutoff and prunes those every key has passed.
 CREATE UNLOGGED TABLE scope_shrinks (
-    identity text PRIMARY KEY,
-    removed  bigint NOT NULL
+    identity text NOT NULL,
+    removed  bigint NOT NULL,
+    xid      xid8 NOT NULL DEFAULT pg_current_xact_id()
 );
+CREATE INDEX scope_shrinks_identity_xid_idx ON scope_shrinks (identity, xid);
 
 CREATE FUNCTION fs3_count_shrink(departed_identity text, departed bigint) RETURNS void
     LANGUAGE sql AS $$
-    INSERT INTO scope_shrinks AS s (identity, removed)
+    INSERT INTO scope_shrinks (identity, removed)
     SELECT departed_identity, departed WHERE departed > 0
-    ON CONFLICT (identity) DO UPDATE SET removed = s.removed + EXCLUDED.removed
 $$;
 
--- Sources a blob carries at most: each element's raw hash and a summary.
+-- The sources one raw hash stands for: itself and each of its summaries.
+CREATE FUNCTION fs3_raw_sources(raw text) RETURNS bigint
+    LANGUAGE sql STABLE AS $$
+    SELECT 1 + count(*) FROM smart_content WHERE raw_hash = raw
+$$;
+
+-- The sources a blob stands for: each element's raw hash and its summaries.
 CREATE FUNCTION fs3_blob_sources(blob text) RETURNS bigint
     LANGUAGE sql STABLE AS $$
-    SELECT 2 * count(*) FROM elements WHERE blob_sha = blob
+    SELECT COALESCE(sum(fs3_raw_sources(raw_hash)), 0)::bigint
+      FROM elements WHERE blob_sha = blob
 $$;
 
 -- A turn appended (a deduped one included: its element already existed) or
 -- restated: its conversation is stamped, once per statement. A restated or
--- deleted turn takes its old blob (two sources at most) out of its
+-- deleted turn takes its old blob (its raw hash and summaries) out of its
 -- repository's scopes.
 CREATE FUNCTION fs3_turns_changed() RETURNS trigger
     LANGUAGE plpgsql AS $$
@@ -134,7 +147,8 @@ BEGIN
                                AND o.turn_no = n.turn_no
                 WHERE o.blob_sha IS DISTINCT FROM n.blob_sha);
         PERFORM fs3_count_shrink(departed.identity, departed.sources)
-           FROM (SELECT COALESCE(c.repo_identity, '') AS identity, 2 * count(*) AS sources
+           FROM (SELECT COALESCE(c.repo_identity, '') AS identity,
+                        sum(fs3_raw_sources(o.blob_sha))::bigint AS sources
                    FROM added n
                    JOIN removed o ON o.conversation_id = n.conversation_id
                                  AND o.turn_no = n.turn_no
@@ -143,7 +157,8 @@ BEGIN
                   GROUP BY 1) departed;
     ELSE
         PERFORM fs3_count_shrink(departed.identity, departed.sources)
-           FROM (SELECT COALESCE(c.repo_identity, '') AS identity, 2 * count(*) AS sources
+           FROM (SELECT COALESCE(c.repo_identity, '') AS identity,
+                        sum(fs3_raw_sources(o.blob_sha))::bigint AS sources
                    FROM removed o
                    LEFT JOIN conversations c ON c.guid = o.conversation_id
                   GROUP BY 1) departed;
@@ -208,7 +223,8 @@ CREATE FUNCTION fs3_conversation_moved() RETURNS trigger
 BEGIN
     PERFORM fs3_count_shrink(
         COALESCE(OLD.repo_identity, ''),
-        2 * (SELECT count(*) FROM turns WHERE conversation_id = OLD.guid));
+        (SELECT COALESCE(sum(fs3_raw_sources(t.blob_sha)), 0)::bigint
+           FROM turns t WHERE t.conversation_id = OLD.guid));
     RETURN NULL;
 END $$;
 
@@ -224,7 +240,11 @@ CREATE TRIGGER conversations_shrunk_anchor AFTER UPDATE OF repo_identity, worktr
 CREATE FUNCTION fs3_global_shrunk() RETURNS trigger
     LANGUAGE plpgsql AS $$
 BEGIN
-    PERFORM fs3_count_shrink('*', CASE TG_TABLE_NAME WHEN 'elements' THEN 2 ELSE 1 END);
+    IF TG_TABLE_NAME = 'elements' THEN
+        PERFORM fs3_count_shrink('*', fs3_raw_sources(OLD.raw_hash));
+    ELSE
+        PERFORM fs3_count_shrink('*', 1);
+    END IF;
     RETURN NULL;
 END $$;
 
@@ -252,7 +272,7 @@ BEGIN
                     WHERE same.blob_sha = NEW.blob_sha
                       AND same.parser_version = NEW.parser_version
                       AND same.id <> NEW.id) THEN
-        PERFORM fs3_count_shrink('*', 2 * count(*))
+        PERFORM fs3_count_shrink('*', COALESCE(sum(fs3_raw_sources(superseded.raw_hash)), 0)::bigint)
            FROM elements superseded
           WHERE superseded.blob_sha = NEW.blob_sha
             AND superseded.parser_version <> NEW.parser_version;
@@ -279,9 +299,7 @@ CREATE UNLOGGED TABLE scope_cache (
     cutoff    xid8 NOT NULL,
     built_at  timestamptz NOT NULL,
     sources   bigint NOT NULL,
-    -- The repositories whose removals make it stale (`scope_shrinks`), with
+    -- The repositories whose departures make it stale (`scope_shrinks`), with
     -- '*' always among them; NULL watches every repository.
-    watch     text[],
-    -- Their removal count when it was built.
-    removed   bigint NOT NULL
+    watch     text[]
 );

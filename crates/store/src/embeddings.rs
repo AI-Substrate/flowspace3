@@ -835,6 +835,20 @@ scope_representatives AS MATERIALIZED (
 -- distinct already (their key): they are appended whole, and only the small
 -- set collected beside them is deduplicated and checked against them, rather
 -- than hashing the whole cached scope again on every pass.
+--
+-- Summaries written since the cutoff for a raw source the cache holds are
+-- their own CTE: that raw source may have left the scope since, so each one
+-- may be departed, and `scope_size` counts them as such.
+scope_late_summaries AS MATERIALIZED (
+    SELECT smart.text_hash AS source_hash
+      FROM smart_content smart
+     WHERE smart.changed_xid >= $20::xid8
+       AND EXISTS (SELECT 1
+                     FROM scope_sources cached
+                    WHERE cached.scope_key = $19
+                      AND cached.source_kind = 'raw'
+                      AND cached.source_hash = smart.raw_hash)
+),
 admitted_sources AS MATERIALIZED (
     SELECT cached.source_hash, cached.source_kind
       FROM scope_sources cached
@@ -849,16 +863,8 @@ admitted_sources AS MATERIALIZED (
         SELECT smart.text_hash, 'smart'::text
           FROM smart_content smart
           JOIN scope_representatives scoped ON scoped.raw_hash = smart.raw_hash
-        -- Summaries written since the cutoff for a source the cache holds.
         UNION
-        SELECT smart.text_hash, 'smart'::text
-          FROM smart_content smart
-         WHERE smart.changed_xid >= $20::xid8
-           AND EXISTS (SELECT 1
-                         FROM scope_sources cached
-                        WHERE cached.scope_key = $19
-                          AND cached.source_kind = 'raw'
-                          AND cached.source_hash = smart.raw_hash)
+        SELECT source_hash, 'smart'::text FROM scope_late_summaries
       ) collected
      -- Uncached, nothing to check against: the first test short-circuits.
      WHERE NOT EXISTS (SELECT 1 FROM scope_cached)
@@ -876,22 +882,27 @@ const SEARCH_ELEMENTS_SQL: &str = concat!(
     "WITH ",
     scope_ctes!(),
     r#",
+scope_departed AS MATERIALIZED (
+    SELECT COALESCE($21::bigint, 0)
+           + (SELECT count(*) FROM scope_late_summaries) AS departed
+),
 scope_size AS MATERIALIZED (
     -- $17 is the fallback ceiling: set only on a pass that follows an ANN
     -- page the scan budget cut short, which this scope is re-ranked exactly
     -- after when it is no larger than that. Unset, it must read false, not
     -- NULL: a NULL `exact` would pass neither arm and return nothing.
-    -- $21 is how many departed sources a cached scope may still carry
-    -- (`SCOPE_SHRINK_REBUILD`): its count can overstate the live scope by that
-    -- much, so a scope within it of a limit is ranked exactly - exact over a
-    -- superset is never worse than the live scope's own path.
+    -- A cached scope's count can overstate the live one by its departed
+    -- sources: the departures logged since its cutoff ($21) and any late
+    -- summary of a raw source that has left. So a scope within that many of
+    -- a limit is ranked exactly - exact over a superset is never worse than
+    -- the live scope's own path.
     SELECT ($6::text IS NOT NULL OR $7::text IS NOT NULL
             OR $9::text IS NOT NULL OR $13::text IS NOT NULL)
            AND (count(*) <= COALESCE(
                     NULLIF(current_setting('fs3.exact_scope_limit', true), '')::bigint,
-                    $16) + COALESCE($21::bigint, 0)
+                    $16) + (SELECT departed FROM scope_departed)
                 OR ($17::bigint IS NOT NULL
-                    AND count(*) <= $17 + COALESCE($21::bigint, 0))) AS exact,
+                    AND count(*) <= $17 + (SELECT departed FROM scope_departed))) AS exact,
            count(*)::bigint AS sources
       FROM admitted_sources
 ),
@@ -946,6 +957,7 @@ candidate_meta AS (
     SELECT count(*)::bigint AS candidate_count,
            (SELECT exact FROM scope_size) AS exact_scan,
            (SELECT sources FROM scope_size) AS scope_sources,
+           (SELECT departed FROM scope_departed) AS scope_departed,
            (SELECT reltuples FROM pg_class WHERE oid = 'embeddings_1024'::regclass)
                > COALESCE(NULLIF(current_setting('hnsw.max_scan_tuples', true), '')::float8,
                           20000) AS scan_capped
@@ -1120,7 +1132,7 @@ SELECT h.source_kind, h.distance,
        h.address, h.span_start, h.span_end, h.sibling_order, h.raw_text,
        h.ddoc, h.identity, h.root_path, h.path,
        candidate.candidate_count, candidate.exact_scan,
-       candidate.scope_sources, candidate.scan_capped,
+       candidate.scope_sources, candidate.scope_departed, candidate.scan_capped,
        admitted.admitted_count, hidden.hidden_count,
        h.element_id
   FROM candidate_meta candidate
@@ -1161,8 +1173,8 @@ pub async fn search_elements(
 
     let cache_started = std::time::Instant::now();
     let (scope, scope_cache) = crate::cached_scope(pool, filters).await;
-    // A cached scope's count can include sources that have since left it.
-    let departed = scope.as_ref().map(|_| crate::SCOPE_SHRINK_REBUILD);
+    // How many departed sources a cached scope is known to carry.
+    let departed = scope.as_ref().map(|cached| cached.departed);
     let scope_cache_ms = crate::elapsed_ms(cache_started);
 
     let acquire_started = std::time::Instant::now();
@@ -1179,8 +1191,8 @@ pub async fn search_elements(
     // $16 the default exact-scan ceiling, $17 the fallback ceiling (only on a
     // pass after a short ANN page), $18 the parser version that answers for a
     // blob that has it, $19 the cached scope's key and $20 its cutoff (NULL:
-    // the scope is collected in full), $21 the departed sources a cached
-    // scope may carry.
+    // the scope is collected in full), $21 the departures logged since that
+    // cutoff.
     let scoped = filters.repo.is_some()
         || filters.path.is_some()
         || filters.worktree.is_some()
@@ -1233,6 +1245,11 @@ pub async fn search_elements(
             .map(|row| row.try_get("scope_sources"))
             .transpose()?
             .unwrap_or(0);
+        let scope_departed: i64 = rows
+            .first()
+            .map(|row| row.try_get("scope_departed"))
+            .transpose()?
+            .unwrap_or(0);
         let scan_capped: bool = rows
             .first()
             .map(|row| row.try_get::<Option<bool>, _>("scan_capped"))
@@ -1266,7 +1283,7 @@ pub async fn search_elements(
             // One exact retry: its own page decides from there.
             scoped: scoped && fallback.is_none(),
             // Never count departed sources against the fallback ceiling.
-            scope_sources: scope_sources - departed.unwrap_or(0),
+            scope_sources: scope_sources - scope_departed,
             scan_capped,
             floored: filters.max_distance.is_some(),
         }) {

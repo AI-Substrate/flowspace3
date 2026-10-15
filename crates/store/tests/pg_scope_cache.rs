@@ -403,9 +403,10 @@ async fn a_cached_scope_answers_like_a_collected_one_after_every_kind_of_growth(
     upsert_element_tree(&pool, &reparsed, REPARSED, &root, |_| false)
         .await
         .unwrap();
-    // The blob's two older rows are superseded: four sources, counted.
+    // The blob's two older rows (one raw hash each, no summaries) are
+    // superseded: two sources, counted.
     assert!(
-        departed(&pool).await >= departed_before + 4,
+        departed(&pool).await >= departed_before + 2,
         "a reparse counts the sources it supersedes"
     );
     embed(&pool, child.raw_hash(), SourceKind::Raw, 0.0).await;
@@ -696,13 +697,37 @@ async fn a_cached_scope_over_the_limit_only_by_departed_sources_still_ranks_exac
     fixture.warm().await;
 
     // One file leaves (still cached, admission drops it) and another arrives:
-    // the live scope holds two, the cached one three.
+    // the live scope holds two, the cached one three. Then the departed
+    // file's text is summarised by two models: late summaries of a source
+    // that has left, which only the late-summary count keeps inside the band
+    // (cached 5 against a limit of 2 and 2 logged departures).
+    let gone: String = sqlx::query_scalar(
+        "SELECT raw_hash FROM elements WHERE blob_sha = $1 AND kind = 'function'",
+    )
+    .bind(fixture.alpha_files[1].1.as_str())
+    .fetch_one(&pool)
+    .await
+    .unwrap();
     fixture.alpha_files.pop();
     let (fresh, _) = blob(&pool, "alpha_four", 0.0).await;
     fixture
         .alpha_files
         .push(("src/alpha_four.rs".to_string(), fresh));
     fixture.sync().await;
+    for model in [SUMMARIZER, "scope-cache-summary@v2"] {
+        put_smart_content(
+            &pool,
+            &gone,
+            model,
+            &Summary {
+                text: format!("a late summary by {model}"),
+                tags: vec!["late".to_string()],
+                ..Summary::default()
+            },
+        )
+        .await
+        .unwrap();
+    }
 
     let uncached = fixture.page(&code, false).await;
     let cached = fixture.page(&code, true).await;
@@ -737,10 +762,10 @@ async fn a_scope_that_lost_more_than_the_bound_is_rebuilt_first() {
     let mut fixture = Fixture::new("scope-cache-shrink").await;
     let pool = fixture.pool.clone();
 
-    // One file of a thousand declarations: removing it departs over 2,000
-    // sources (two per element).
+    // One file of 2,100 declarations: removing it departs more than 2,000
+    // sources (one raw hash per element; none is summarised).
     let big = unique_blob();
-    let children = (0..1_000)
+    let children = (0..2_100)
         .map(|index| {
             Element::new(
                 ElementKind::Function,
@@ -757,7 +782,7 @@ async fn a_scope_that_lost_more_than_the_bound_is_rebuilt_first() {
         "fixture",
         "big.rs",
         "big.rs",
-        Span::new(1, 1_000),
+        Span::new(1, 2_100),
         "the big file",
     )
     .with_children(children);
@@ -814,6 +839,78 @@ async fn a_scope_that_lost_more_than_the_bound_is_rebuilt_first() {
         .unwrap();
     fixture.warm().await;
     fixture.assert_parity("after the rebuild").await;
+
+    fixture.destroy().await;
+}
+
+/// A departing source counts with every summary it has: one raw text can be
+/// summarised by several models, each a source of its own.
+#[tokio::test]
+async fn a_departure_counts_every_summary_of_its_sources() {
+    let _serial = SERIAL.lock().await;
+    let mut fixture = Fixture::new("scope-cache-summaries").await;
+    let pool = fixture.pool.clone();
+    let raw: String = sqlx::query_scalar(
+        "SELECT raw_hash FROM elements WHERE blob_sha = $1 AND kind = 'function'",
+    )
+    .bind(fixture.alpha_files[0].1.as_str())
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    for model in [SUMMARIZER, "scope-cache-summary@v2"] {
+        put_smart_content(
+            &pool,
+            &raw,
+            model,
+            &Summary {
+                text: format!("a summary by {model}"),
+                tags: vec!["summary".to_string()],
+                ..Summary::default()
+            },
+        )
+        .await
+        .unwrap();
+    }
+
+    let before = departed(&pool).await;
+    fixture.alpha_files.remove(0);
+    fixture.sync().await;
+    // Two elements share that raw text (the file and its one function): each
+    // is the raw hash and its two summaries.
+    assert_eq!(departed(&pool).await - before, 6);
+
+    fixture.destroy().await;
+}
+
+/// Departures are appended, not added to a shared row: two transactions
+/// removing paths of the same repository do not wait on each other.
+#[tokio::test]
+async fn departures_from_one_repository_do_not_serialise_writers() {
+    let _serial = SERIAL.lock().await;
+    let fixture = Fixture::new("scope-cache-no-lock").await;
+    let pool = fixture.pool.clone();
+
+    let mut first = pool.begin().await.unwrap();
+    sqlx::query("DELETE FROM worktree_files WHERE worktree_id = $1 AND path = $2")
+        .bind(fixture.alpha_worktree)
+        .bind(&fixture.alpha_files[0].0)
+        .execute(&mut *first)
+        .await
+        .unwrap();
+
+    let mut second = pool.begin().await.unwrap();
+    sqlx::query("SET LOCAL lock_timeout = '2s'")
+        .execute(&mut *second)
+        .await
+        .unwrap();
+    sqlx::query("DELETE FROM worktree_files WHERE worktree_id = $1 AND path = $2")
+        .bind(fixture.alpha_worktree)
+        .bind(&fixture.alpha_files[1].0)
+        .execute(&mut *second)
+        .await
+        .expect("a second departure from the same repository does not wait on the first");
+    second.commit().await.unwrap();
+    first.commit().await.unwrap();
 
     fixture.destroy().await;
 }

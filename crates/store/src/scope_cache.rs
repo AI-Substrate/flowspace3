@@ -39,9 +39,10 @@ pub const SCOPE_CACHE_MAX_AGE: Duration = Duration::from_secs(600);
 /// cached page could need a pass more than the collected one. And it counts
 /// toward the scope's size, which picks exact or approximate ranking: so a
 /// search of a cached scope ranks exactly anything within this many sources
-/// above a limit (`$21` in the search statement), where the true count may be
-/// under it. Departures are counted as upper bounds - two sources per element
-/// of a removed blob or turn - so the cache never carries more than this.
+/// above a limit (the departures since its cutoff, `$21` in the search
+/// statement, plus any late summary of a departed source), where the true
+/// count may be under it. Departures are logged as upper bounds - a raw hash
+/// and every summary it has - so the cache never carries more than they say.
 ///
 /// 2,000 lets ordinary editing run: a saved file's old blob is a few dozen
 /// sources, so a key is rebuilt every fifty or so saves rather than on each,
@@ -107,6 +108,9 @@ pub struct CachedScope {
     /// Rows stamped by this transaction or a later one are read on top of
     /// the cached set.
     pub cutoff: String,
+    /// Sources logged as departed from it since its cutoff: its count can
+    /// overstate the live scope by this many.
+    pub departed: i64,
 }
 
 /// The cache key for `filters`' scope, or `None` when the cache does not
@@ -172,7 +176,14 @@ pub async fn cached_scope(
         return (None, ScopeCacheUse::Bypassed);
     };
     match fresh_or_build(pool, &key, filters).await {
-        Ok((used, Some(cutoff))) => (Some(CachedScope { key, cutoff }), used),
+        Ok((used, Some((cutoff, departed)))) => (
+            Some(CachedScope {
+                key,
+                cutoff,
+                departed,
+            }),
+            used,
+        ),
         Ok((used, None)) => (None, used),
         Err(error) => {
             tracing::warn!(%error, "scope cache unavailable; collecting the scope in full");
@@ -181,36 +192,39 @@ pub async fn cached_scope(
     }
 }
 
-/// How the scope is come by, and the cutoff to read it with when cached.
+/// How the scope is come by and, when cached, the cutoff to read it with and
+/// the sources logged as departed since.
 async fn fresh_or_build(
     pool: &PgPool,
     key: &str,
     filters: &SearchFilters,
-) -> Result<(ScopeCacheUse, Option<String>), StoreError> {
-    // (cutoff, young enough, little enough left it, built within the cooldown)
-    let cached: Option<(String, bool, bool, bool)> = sqlx::query_as(
+) -> Result<(ScopeCacheUse, Option<(String, i64)>), StoreError> {
+    // (cutoff, departed since, young enough, built within the cooldown)
+    let cached: Option<(String, i64, bool, bool)> = sqlx::query_as(
         "SELECT c.cutoff::text,
-                c.built_at > now() - make_interval(secs => $2),
-                (SELECT COALESCE(sum(s.removed), 0)
+                (SELECT COALESCE(sum(s.removed), 0)::bigint
                    FROM scope_shrinks s
-                  WHERE c.watch IS NULL OR s.identity = ANY(c.watch)) - c.removed < $3,
-                c.built_at > now() - make_interval(secs => $4)
+                  WHERE (c.watch IS NULL OR s.identity = ANY(c.watch))
+                    AND s.xid >= c.cutoff),
+                c.built_at > now() - make_interval(secs => $2),
+                c.built_at > now() - make_interval(secs => $3)
            FROM scope_cache c
           WHERE c.scope_key = $1",
     )
     .bind(key)
     .bind(SCOPE_CACHE_MAX_AGE.as_secs_f64())
-    .bind(SCOPE_SHRINK_REBUILD)
     .bind(SCOPE_REBUILD_COOLDOWN.as_secs_f64())
     .fetch_optional(pool)
     .await?;
     match cached {
-        Some((cutoff, true, true, _)) => return Ok((ScopeCacheUse::Hit, Some(cutoff))),
-        Some((_, true, false, true)) => return Ok((ScopeCacheUse::Cooling, None)),
+        Some((cutoff, departed, true, _)) if departed < SCOPE_SHRINK_REBUILD => {
+            return Ok((ScopeCacheUse::Hit, Some((cutoff, departed))));
+        }
+        Some((_, _, true, true)) => return Ok((ScopeCacheUse::Cooling, None)),
         _ => {}
     }
     Ok(match build(pool, key, filters).await? {
-        Some(cutoff) => (ScopeCacheUse::Built, Some(cutoff)),
+        Some(cutoff) => (ScopeCacheUse::Built, Some((cutoff, 0))),
         None => (ScopeCacheUse::Busy, None),
     })
 }
@@ -241,16 +255,10 @@ async fn build(
         return Ok(None);
     }
     // The oldest transaction this snapshot could not see: everything it
-    // missed was written by that one or a later one.
-    let (cutoff, removed): (String, i64) = sqlx::query_as(
-        "SELECT pg_snapshot_xmin(pg_current_snapshot())::text,
-                (SELECT COALESCE(sum(removed), 0)::bigint
-                   FROM scope_shrinks
-                  WHERE $1::text[] IS NULL OR identity = ANY($1))",
-    )
-    .bind(watch.as_deref())
-    .fetch_one(&mut *tx)
-    .await?;
+    // missed was written by that one or a later one, departures included.
+    let cutoff: String = sqlx::query_scalar("SELECT pg_snapshot_xmin(pg_current_snapshot())::text")
+        .fetch_one(&mut *tx)
+        .await?;
 
     // Gone first, so the collection below sees no cached scope for this key
     // and collects it in full.
@@ -293,14 +301,13 @@ async fn build(
         .await?
         .rows_affected();
     sqlx::query(
-        "INSERT INTO scope_cache (scope_key, cutoff, built_at, sources, watch, removed)
-         VALUES ($1, $2::xid8, now(), $3, $4, $5)",
+        "INSERT INTO scope_cache (scope_key, cutoff, built_at, sources, watch)
+         VALUES ($1, $2::xid8, now(), $3, $4)",
     )
     .bind(key)
     .bind(&cutoff)
     .bind(i64::try_from(sources).unwrap_or(i64::MAX))
     .bind(watch.as_deref())
-    .bind(removed)
     .execute(&mut *tx)
     .await?;
 
@@ -314,6 +321,13 @@ async fn build(
          DELETE FROM scope_sources s USING idle WHERE s.scope_key = idle.scope_key",
     )
     .bind(SCOPE_CACHE_IDLE.as_secs_f64())
+    .execute(&mut *tx)
+    .await?;
+    // Departures every key has passed: no cutoff reads them again.
+    sqlx::query(
+        "DELETE FROM scope_shrinks
+          WHERE xid < (SELECT min(cutoff) FROM scope_cache)",
+    )
     .execute(&mut *tx)
     .await?;
 

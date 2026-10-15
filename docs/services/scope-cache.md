@@ -40,8 +40,8 @@ A source missing from a scope is content the search can't find. So the cache is 
    - A key's cutoff is the xmin of the snapshot it was built from. Its delta reads every row stamped by that transaction or a later one, which is every transaction the build couldn't see.
    - There's no clock, so a write in flight, or not yet begun, is always read.
 3. **Shrinking is bounded, not immediate.**
-   - Sources leave a scope when a path is removed or re-pointed, a turn is restated or deleted, a conversation moves, or an element or summary is rewritten in place. Each departure is counted per repository in `scope_shrinks`, as an upper bound: two sources per element of the departing blob, two per turn.
-   - A key rebuilds before its repositories' count reaches `SCOPE_SHRINK_REBUILD` (2,000) since its build, or after 10 minutes.
+   - Sources leave a scope when a path is removed or re-pointed, a turn is restated or deleted, a conversation moves, or an element or summary is rewritten in place. Each departure is appended to `scope_shrinks` by the removing transaction, per repository, as an upper bound: each departing raw hash and every summary it has (one per summarising model). It's an append-only log, not a counter row, so concurrent writers to one repository never wait on each other.
+   - A key sums the entries logged at or after its cutoff. It rebuilds once they reach `SCOPE_SHRINK_REBUILD` (2,000), or after 10 minutes, and at most once a minute (`SCOPE_REBUILD_COOLDOWN`; a stale key inside that minute is collected in full). Builds prune the entries every key has passed.
    - Admission re-checks every candidate against live provenance. Because a cached count can overstate the live scope by up to that bound, a cached scope within 2,000 above an exact-ranking limit is ranked exactly, which is never worse than the live scope's own path.
 4. **Boot empties the cache after migrating**, so no cached scope outlives a schema change.
 
@@ -54,7 +54,7 @@ A source missing from a scope is content the search can't find. So the cache is 
   - xid stamps against the snapshot xmin have neither problem. The independent review of #174 caught this.
 - **Update-side triggers must be row triggers guarded by the columns that matter.** A statement trigger with transition tables copies every updated row, which would be all 175k paths of each watcher sync.
 - **`upsert_conversation` anchors a conversation to whichever repository owns its worktree root.** A test fixture that gave every conversation one root silently put every repository's turns in one scope.
-- **The migration waits at most 5 s for a lock** (`lock_timeout`). A boot behind a pg_dump or an open psql fails with that error instead of hanging.
+- **The migration waits at most 5 s to acquire a lock** (`lock_timeout`). A boot behind a pg_dump or an open psql fails with that error instead of hanging. Once acquired, ADD COLUMN's ACCESS EXCLUSIVE locks are held until the migration commits (about 5–10 s, mostly the index builds), so every reader of those four tables waits for that long. The daemon isn't serving during its own migration, but an outside psql or pg_dump would.
 
 ## Verify
 
