@@ -69,7 +69,9 @@ excludes them; `--path` with `--source conversation` is contradictory.
   verbatim, in the declaration's name), `exact_text` (verbatim in the source),
   or `terms` (every term, not as one phrase). A `smart` hit found the answer by
   meaning, so the words you typed may appear nowhere in the code.
-- Keyword matching is case-insensitive and needs every term. Where a term may
+- Keyword matching is case-insensitive and needs every term. Question words
+  (`how`, `why`, `did`, `where`, ...) are the exception: a hit without them
+  still counts, at about 0.60 instead of 0.65. Where a term may
   match depends on `search.lexical_backend`: `trigram` (the default) matches a
   substring anywhere; `bm25`, when configured, matches at token starts (`job`
   finds `jobs`; `ounded` does not find `bounded`).
