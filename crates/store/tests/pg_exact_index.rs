@@ -7,7 +7,8 @@ mod support;
 use fs3_core::RepoIdentity;
 use fs3_store::{
     EMBEDDING_DIMENSIONS, ExactIndexState, NewEmbedding, PgPool, SearchFilters, SourceKind,
-    build_exact_index, exact_index_state, put_embeddings, register_worktree, search_elements,
+    build_exact_index, exact_index_state, guard_exact_index, put_embeddings, register_worktree,
+    search_elements,
 };
 use fs3_testkit::FreshDatabase;
 use support::PARSER_VERSION;
@@ -158,11 +159,29 @@ async fn the_trigger_keeps_the_binary_copy_in_step_with_every_write() {
         "a re-embedded vector rewrites its copy"
     );
 
+    // No writer moves a vector to another key, but if one does the copy
+    // moves with it.
+    sqlx::query("UPDATE embeddings_1024 SET source_hash = 'moved-raw'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert_eq!(bits().await, [true], "a moved key moves its copy");
+    assert_eq!(copies(&pool).await, 1, "and leaves no orphan behind");
+
     sqlx::query("DELETE FROM embeddings_1024")
         .execute(&pool)
         .await
         .unwrap();
     assert_eq!(copies(&pool).await, 0, "a delete removes the copy");
+
+    // TRUNCATE fires no row trigger; its statement trigger empties the copy.
+    put_embeddings(&pool, EMBEDDER, &embeddings).await.unwrap();
+    assert_eq!(copies(&pool).await, 1);
+    sqlx::query("TRUNCATE embeddings_1024")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert_eq!(copies(&pool).await, 0, "a truncate empties the copy");
     database.destroy(pool).await;
 }
 
@@ -220,6 +239,21 @@ async fn the_build_fills_vectors_that_predate_the_trigger_and_records_the_copy_c
         exact_index_state(&pool).await.unwrap(),
         ExactIndexState::Drifted { .. }
     ));
+    // ... which the guard clears on sight, so search stops reading it.
+    let cleared = guard_exact_index(&pool).await.unwrap();
+    assert!(
+        cleared.is_some_and(|coverage| coverage[0].missing == 1),
+        "the guard names what it found missing"
+    );
+    assert!(matches!(
+        exact_index_state(&pool).await.unwrap(),
+        ExactIndexState::NotBuilt { .. }
+    ));
+    assert_eq!(
+        guard_exact_index(&pool).await.unwrap(),
+        None,
+        "nothing marked, nothing to clear"
+    );
     database.destroy(pool).await;
 }
 
@@ -279,6 +313,18 @@ async fn compact_exact_ranking_returns_the_float_top_ten() {
         .unwrap();
     assert!(compact.exact_ranked && compact.compact_scan);
     assert_eq!(top(&compact), top(&float), "compact == float, top ten");
+    // A copy that lost rows behind the trigger's back stops being read once
+    // the guard sees it: never compact on a copy known to be incomplete.
+    sqlx::query("DELETE FROM embeddings_1024_bq WHERE source_hash = 'bq-raw-1'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(guard_exact_index(&pool).await.unwrap().is_some());
+    let guarded = search_elements(&pool, EMBEDDER, &query, &filters)
+        .await
+        .unwrap();
+    assert!(!guarded.compact_scan, "a cleared mark falls back to float");
+    assert_eq!(top(&guarded), top(&float));
     for (compact_hit, float_hit) in compact.hits.iter().zip(&float.hits) {
         assert!(
             (compact_hit.similar.distance - float_hit.similar.distance).abs() < 1e-6,

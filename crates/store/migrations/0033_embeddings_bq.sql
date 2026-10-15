@@ -16,7 +16,10 @@
 -- filled by `flowspace3 doctor exact-index`, never at boot (a full pass over
 -- the vectors is a heavy job), which then records the table as complete in
 -- `search_index_ready`. Search reads it only when `fs3.exact_rank` is
--- `compact` AND that row exists.
+-- `compact` AND that row exists. The mark is re-checked, by doctor and by the
+-- daemon every ten minutes, and cleared the moment any vector lacks its copy
+-- (a table-only restore, a manual delete, triggers disabled): compact never
+-- ranks on a copy known to be incomplete.
 --
 -- Locks: the table is new and empty, and its key is built empty, so nothing
 -- is built here. The triggers take SHARE ROW EXCLUSIVE on embeddings_1024
@@ -58,6 +61,16 @@ CREATE TABLE search_index_ready (
 CREATE FUNCTION fs3_embeddings_bq_write() RETURNS trigger
     LANGUAGE plpgsql AS $$
 BEGIN
+    -- No writer moves a vector to another key today; if one ever does, the
+    -- copy moves with it rather than being orphaned under the old key.
+    IF TG_OP = 'UPDATE'
+       AND (OLD.source_hash, OLD.source_kind, OLD.model_key, OLD.chunk_no)
+           IS DISTINCT FROM (NEW.source_hash, NEW.source_kind, NEW.model_key, NEW.chunk_no)
+    THEN
+        DELETE FROM embeddings_1024_bq
+         WHERE source_hash = OLD.source_hash AND source_kind = OLD.source_kind
+           AND model_key = OLD.model_key AND chunk_no = OLD.chunk_no;
+    END IF;
     INSERT INTO embeddings_1024_bq (source_hash, source_kind, model_key, chunk_no, bq)
     VALUES (NEW.source_hash, NEW.source_kind, NEW.model_key, NEW.chunk_no,
             binary_quantize(NEW.vector)::bit(1024))
@@ -75,8 +88,21 @@ BEGIN
     RETURN NULL;
 END $$;
 
+-- TRUNCATE fires no row trigger. Emptying both tables keeps the copy
+-- complete (nothing lacks one), so its ready mark stays true.
+CREATE FUNCTION fs3_embeddings_bq_truncate() RETURNS trigger
+    LANGUAGE plpgsql AS $$
+BEGIN
+    TRUNCATE embeddings_1024_bq;
+    RETURN NULL;
+END $$;
+
 -- `put_embeddings` upserts, so a re-embedded vector arrives as an UPDATE.
-CREATE TRIGGER embeddings_1024_bq_write AFTER INSERT OR UPDATE OF vector ON embeddings_1024
+CREATE TRIGGER embeddings_1024_bq_write
+    AFTER INSERT OR UPDATE OF vector, source_hash, source_kind, model_key, chunk_no
+    ON embeddings_1024
     FOR EACH ROW EXECUTE FUNCTION fs3_embeddings_bq_write();
 CREATE TRIGGER embeddings_1024_bq_delete AFTER DELETE ON embeddings_1024
     FOR EACH ROW EXECUTE FUNCTION fs3_embeddings_bq_delete();
+CREATE TRIGGER embeddings_1024_bq_truncate AFTER TRUNCATE ON embeddings_1024
+    FOR EACH STATEMENT EXECUTE FUNCTION fs3_embeddings_bq_truncate();

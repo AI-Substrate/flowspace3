@@ -852,10 +852,13 @@ async fn check_exact_index(database_url: &str) -> Step {
             .await
             .map_err(|error| error.to_string())?;
         let read = async {
-            Ok::<_, fs3_store::StoreError>((
-                fs3_store::exact_rank_setting(&pool).await?,
-                fs3_store::exact_index_state(&pool).await?,
-            ))
+            let state = fs3_store::exact_index_state(&pool).await?;
+            // Never leave search ranking on a copy known to be incomplete:
+            // the walk clears a drifted mark the moment it sees one.
+            if matches!(state, fs3_store::ExactIndexState::Drifted { .. }) {
+                fs3_store::clear_exact_index_ready(&pool).await?;
+            }
+            Ok::<_, fs3_store::StoreError>((fs3_store::exact_rank_setting(&pool).await?, state))
         }
         .await;
         pool.close().await;
@@ -926,15 +929,16 @@ fn exact_index_row(
             started,
         ),
         // Recorded complete, yet vectors lack a copy: something wrote around
-        // the trigger (a restore with triggers off). While compact, search
-        // misses those sources, so it is a fault either way.
+        // the trigger (a restore with triggers off). The walk has cleared the
+        // mark, so search no longer reads it; it still needs refilling.
         (_, Drifted { .. }) => Step::warn(
             CHECK,
             format!(
-                "{} vectors lack their binary copy although it was recorded complete{}",
+                "{} vectors lacked their binary copy although it was recorded complete; the mark \
+                 is cleared{}",
                 missing_copies(state),
                 if compact {
-                    ", so exact ranking misses those sources"
+                    ", so exact ranking reads full vectors until it is refilled"
                 } else {
                     ""
                 }
@@ -2332,7 +2336,7 @@ mod tests {
         assert!(
             row("compact", &drifted)
                 .found
-                .contains("misses those sources")
+                .contains("the mark is cleared")
         );
         assert_eq!(exact_index_row(Err("down"), Instant::now()).outcome, "info");
     }

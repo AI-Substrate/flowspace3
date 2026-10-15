@@ -69,7 +69,8 @@ pub use embeddings::{
 };
 pub use exact_index::{
     EXACT_INDEX_TABLE, ExactIndexBuild, ExactIndexState, ModelCoverage, build_exact_index,
-    exact_index_coverage, exact_index_state, exact_rank_setting,
+    clear_exact_index_ready, exact_index_coverage, exact_index_state, exact_rank_setting,
+    guard_exact_index,
 };
 pub use jobs::{
     DaemonLock, IngestJobOutcome, JOB_PRIORITY_DEFAULT, JOB_PRIORITY_NEW_WORKTREE_SCAN, Job,

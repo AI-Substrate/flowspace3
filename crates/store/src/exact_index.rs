@@ -44,7 +44,8 @@ pub enum ExactIndexState {
     /// Recorded complete, and every vector of every model has its copy.
     Ready { coverage: Vec<ModelCoverage> },
     /// Recorded complete, yet some vector lacks its copy: something wrote
-    /// around the trigger. Search would miss those sources until rebuilt.
+    /// around the trigger. Search would miss those sources, so
+    /// [`guard_exact_index`] clears the mark on sight.
     Drifted { coverage: Vec<ModelCoverage> },
 }
 
@@ -120,6 +121,44 @@ pub async fn exact_rank_setting(pool: &PgPool) -> Result<String, StoreError> {
             .fetch_one(pool)
             .await?;
     Ok(setting.unwrap_or_else(|| "float".to_string()))
+}
+
+/// Removes the copy's ready mark, so search ranks exact scopes on the full
+/// vectors until [`build_exact_index`] completes it again.
+///
+/// # Errors
+/// [`StoreError::Query`] on database failure.
+pub async fn clear_exact_index_ready(pool: &PgPool) -> Result<(), StoreError> {
+    sqlx::query("DELETE FROM search_index_ready WHERE name = $1")
+        .bind(READY_NAME)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+/// Keeps the ready mark honest: when the copy is marked complete but some
+/// vector lacks its copy (a restore of `embeddings_1024` alone, a manual
+/// delete, a load with triggers off), clears the mark and returns the
+/// coverage that failed. Cheap when the copy is not marked complete: one
+/// lookup, no count.
+///
+/// # Errors
+/// [`StoreError::Query`] on database failure.
+pub async fn guard_exact_index(pool: &PgPool) -> Result<Option<Vec<ModelCoverage>>, StoreError> {
+    let marked: bool =
+        sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM search_index_ready WHERE name = $1)")
+            .bind(READY_NAME)
+            .fetch_one(pool)
+            .await?;
+    if !marked {
+        return Ok(None);
+    }
+    let coverage = exact_index_coverage(pool).await?;
+    if coverage.iter().all(|model| model.missing == 0) {
+        return Ok(None);
+    }
+    clear_exact_index_ready(pool).await?;
+    Ok(Some(coverage))
 }
 
 /// What [`build_exact_index`] did.
