@@ -1,5 +1,48 @@
 # Changelog
 
+## [0.8.0](https://github.com/AI-Substrate/flowspace3/compare/v0.7.0...v0.8.0) (2026-10-17)
+
+
+### Features
+
+* **conv-atlas:** conversation atlas: read-only snapshot export + long-lived exploration app with playback ([#147](https://github.com/AI-Substrate/flowspace3/issues/147)) ([f86b563](https://github.com/AI-Substrate/flowspace3/commit/f86b5632c2fd1ba84940b6d51a78ddb986b381e0))
+* **daemon:** warm each embedder at boot so the first search does not wait for a cold token ([#170](https://github.com/AI-Substrate/flowspace3/issues/170)) ([15fe255](https://github.com/AI-Substrate/flowspace3/commit/15fe25528a7f9685ecfa3e41b6f86e1a89dc290c))
+* **db:** run the ParadeDB image and build the BM25 index with doctor keyword-index ([#175](https://github.com/AI-Substrate/flowspace3/issues/175)) ([cc74928](https://github.com/AI-Substrate/flowspace3/commit/cc74928ced74b651a8a7e2cb6b0ccd9159a61278))
+* **decision:** estimate each call's cost from a configurable price table ([#165](https://github.com/AI-Substrate/flowspace3/issues/165)) ([ff99fd5](https://github.com/AI-Substrate/flowspace3/commit/ff99fd5c92522fd02ffa04872b5cb3efb2549fb1))
+* flowspace3 decision — typed answers about text or images via OpenAI's Decisions API ([#160](https://github.com/AI-Substrate/flowspace3/issues/160)) ([4eef369](https://github.com/AI-Substrate/flowspace3/commit/4eef36930960afcf6657dc6bdd55ef6609d7c8e5))
+* **search:** answer the keyword leg from a pg_search BM25 index, behind search.lexical_backend ([#172](https://github.com/AI-Substrate/flowspace3/issues/172)) ([dd9b1a8](https://github.com/AI-Substrate/flowspace3/commit/dd9b1a86f3c42346ff6ce9b9ef3458479648bbb0))
+* **search:** balance a page so one conversation or file cannot fill it ([#155](https://github.com/AI-Substrate/flowspace3/issues/155)) ([28f78eb](https://github.com/AI-Substrate/flowspace3/commit/28f78ebc7f0360466970cf06e8f6e7e04f386049))
+* **search:** put the search scope in data, and warn when other repositories outscore it ([#154](https://github.com/AI-Substrate/flowspace3/issues/154)) ([f42555d](https://github.com/AI-Substrate/flowspace3/commit/f42555d2772ad49af7bb78dee01e5c35034934f3))
+* **search:** record where every search's time goes, and keep percentiles in status and doctor ([#158](https://github.com/AI-Substrate/flowspace3/issues/158)) ([155df2c](https://github.com/AI-Substrate/flowspace3/commit/155df2cb338721595ac4e8a1943f60cf5232c70c))
+* **store:** keep the big tables vacuumed and analyzed ([#164](https://github.com/AI-Substrate/flowspace3/issues/164)) ([7abe1ad](https://github.com/AI-Substrate/flowspace3/commit/7abe1ad4b69eb07b3c783548b3b57b9f805bd52d))
+
+
+### Bug Fixes
+
+* **convo:** restate the turns stored before the intake fixes ([#156](https://github.com/AI-Substrate/flowspace3/issues/156)) ([f259e56](https://github.com/AI-Substrate/flowspace3/commit/f259e56a9849a3b1a91d9f0d219e35a9ba30cad0))
+* **convo:** stop the finished turn-class backfill from scanning elements every 5 s ([#159](https://github.com/AI-Substrate/flowspace3/issues/159)) ([ded3ffd](https://github.com/AI-Substrate/flowspace3/commit/ded3ffd4817f7ab17e96f2c7aead3006be9acb83))
+* **convo:** store write paths not bodies, and record who each turn speaks for ([#150](https://github.com/AI-Substrate/flowspace3/issues/150)) ([ffd45e7](https://github.com/AI-Substrate/flowspace3/commit/ffd45e79f44566f79ab1eeb4645ecc61c2e2d6c8))
+* **embed:** keep embed requests under the provider's request cap, and split a refused request ([#152](https://github.com/AI-Substrate/flowspace3/issues/152)) ([db3fa76](https://github.com/AI-Substrate/flowspace3/commit/db3fa760459230aeae1063b027925d15ce1ec8bf))
+* **harness:** give each checks gate 20 minutes, since the test suite outgrew 10 ([#151](https://github.com/AI-Substrate/flowspace3/issues/151)) ([99d6455](https://github.com/AI-Substrate/flowspace3/commit/99d64558547d85d2695a1345774680866c327bef))
+* **jobs:** a failed job settles however long its error is, and a refused settle gives up its claim ([#149](https://github.com/AI-Substrate/flowspace3/issues/149)) ([143ffa2](https://github.com/AI-Substrate/flowspace3/commit/143ffa2b393ed2081c9dee70456abac26cd4d164))
+* **parsers:** index the doc comments and attributes above a declaration with it ([#166](https://github.com/AI-Substrate/flowspace3/issues/166)) ([4d36e8c](https://github.com/AI-Substrate/flowspace3/commit/4d36e8c8c54f2964fb79e186ea036b8bfffeffcf))
+* **repo:** ignore .env so a local API key can never be committed to this public repo ([#163](https://github.com/AI-Substrate/flowspace3/issues/163)) ([c78db7d](https://github.com/AI-Substrate/flowspace3/commit/c78db7d7eb24a51b3859fd559f53503f120a0af5))
+* **search:** answer from keywords when the embedder does not, and say since when it has failed ([#153](https://github.com/AI-Substrate/flowspace3/issues/153)) ([5adc3d0](https://github.com/AI-Substrate/flowspace3/commit/5adc3d0336c6c4df228e08b260bad1047f9e3ee6))
+* **search:** answer from one parse per blob, so a reparsed declaration is one hit ([#177](https://github.com/AI-Substrate/flowspace3/issues/177)) ([6e66a5d](https://github.com/AI-Substrate/flowspace3/commit/6e66a5d3f71e11cc8972a4db7d37ebba81a2e363))
+* **search:** exact ranking up to 150k sources, fixed plans, no starved page called complete ([#173](https://github.com/AI-Substrate/flowspace3/issues/173)) ([83889ee](https://github.com/AI-Substrate/flowspace3/commit/83889eeaea6e917bdd1df79e93a4d8a30b42f41d))
+* **search:** plan every keyword search for its own values, and run the BM25 tests in CI ([#181](https://github.com/AI-Substrate/flowspace3/issues/181)) ([80604da](https://github.com/AI-Substrate/flowspace3/commit/80604dac790b6cbf9f014f567f63ae2aee4bc6b6))
+* **search:** run the other-repositories keyword page beside the answer again ([#169](https://github.com/AI-Substrate/flowspace3/issues/169)) ([9e576af](https://github.com/AI-Substrate/flowspace3/commit/9e576af024ebaa6e37e89121027164982e0ce3ba))
+* **search:** score question words in the keyword leg instead of requiring them ([#179](https://github.com/AI-Substrate/flowspace3/issues/179)) ([1b96d40](https://github.com/AI-Substrate/flowspace3/commit/1b96d40e0a79c941d613d4558b6c9ecd89617c5d))
+* **store:** mask the database password in the cannot-reach-Postgres error ([#178](https://github.com/AI-Substrate/flowspace3/issues/178)) ([a779299](https://github.com/AI-Substrate/flowspace3/commit/a779299941d25c659ff89b349d5feb86a8470eae))
+
+
+### Performance Improvements
+
+* **search:** keep each scope's sources between searches (scope cache, fix 7) ([#174](https://github.com/AI-Substrate/flowspace3/issues/174)) ([7a1ad78](https://github.com/AI-Substrate/flowspace3/commit/7a1ad78e7cececc5ea5d08778db6c360e0d78287))
+* **search:** never let the other-repositories hint slow the answer ([#162](https://github.com/AI-Substrate/flowspace3/issues/162)) ([6d1153d](https://github.com/AI-Substrate/flowspace3/commit/6d1153d5c929aa1e38720d0ada552b08ae2cecc7))
+* **search:** one keyword pass for the scoped and the other-repositories page ([#167](https://github.com/AI-Substrate/flowspace3/issues/167)) ([d1bc9a1](https://github.com/AI-Substrate/flowspace3/commit/d1bc9a19b18accc3af6c8fecdd16aeff84cb7568))
+* **search:** read a turn's raw source from its blob instead of looking it up ([#168](https://github.com/AI-Substrate/flowspace3/issues/168)) ([56716de](https://github.com/AI-Substrate/flowspace3/commit/56716deaeceb3842f70306489f196dd23ff2d44b))
+
 ## [0.7.0](https://github.com/AI-Substrate/flowspace3/compare/v0.6.0...v0.7.0) (2026-10-09)
 
 
