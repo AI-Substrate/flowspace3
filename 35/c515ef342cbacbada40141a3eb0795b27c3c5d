@@ -1,0 +1,41 @@
+crates/cli/src/doctor.rs
+  s_0b1fc8a956f6af::t_be0d03556a1a75 855-861,932-933,937-938,941,2339
+crates/daemon/src/boot.rs
+  s_0b1fc8a956f6af::t_4fe4d2d2d4dbf8 925-929
+crates/daemon/src/exact_index_guard.rs
+  s_0b1fc8a956f6af::t_d6fcd896ca8653 1-62
+crates/daemon/src/lib.rs
+  s_64bddefb25e16a::t_7a323bc4fd4ba6 21
+crates/store/migrations/0033_embeddings_bq.sql
+  s_0b1fc8a956f6af::t_fdce7693c43fc2 19-22,64-73,91-99,101-103,107-108
+crates/store/src/exact_index.rs
+  s_0b1fc8a956f6af::t_2ee7ca87a9fd3a 47-48,126-163
+crates/store/src/lib.rs
+  s_0b1fc8a956f6af::t_e88cb101270adc 72-73
+crates/store/tests/pg_exact_index.rs
+  s_0b1fc8a956f6af::t_536bee3d340b67 10-11,162-170,176-184,242-256,316-327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "35c515ef342cbacbada40141a3eb0795b27c3c5d",
+  "prompts": {},
+  "sessions": {
+    "s_0b1fc8a956f6af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "985a1bfe-600e-4154-a4b0-2f3bbf6f7b0c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_64bddefb25e16a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56206875-f7f5-44a6-8617-82b9804f76c7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
