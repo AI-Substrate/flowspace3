@@ -641,6 +641,8 @@ async fn search(
                 wide_ms = ?timing.wide_semantic_ms.max(timing.wide_lexical_ms),
                 passes = outcome.passes,
                 candidates = timing.candidates,
+                scope_cache = ?timing.scope_cache,
+                scope_cache_ms = timing.scope_cache_ms,
                 repo = ?scope.repo,
                 "search timing"
             );

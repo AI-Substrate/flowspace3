@@ -7,7 +7,7 @@ Every search records where its time went. Status and doctor keep percentiles ove
 - **`meta.timing` on every `/search` envelope** (`SearchTiming` in `crates/core/src/views/search.rs`). All values are whole milliseconds.
   - The serial stages are `guard`, `scope`, `embed`, `store`, `rank`, `agents` and `diagnose`. They add up to roughly `total_ms`.
   - `store_ms` is the wall time of the four store legs. They run concurrently, so it is the slowest leg's time, not their sum. Each leg is also reported on its own:
-    - `semantic_ms` is the scoped vector leg. It comes with `semantic_acquire_ms`, `semantic_pass_ms[]` (one entry per candidate pass) and `candidates` (the final candidate limit).
+    - `semantic_ms` is the scoped vector leg. It comes with `semantic_acquire_ms`, `semantic_pass_ms[]` (one entry per candidate pass), `candidates` (the final candidate limit), and `scope_cache` / `scope_cache_ms` (how the scope was come by, and what checking or building the [scope cache](scope-cache.md) cost).
     - `lexical_ms` is the scoped keyword leg. It comes with `lexical_acquire_ms`.
     - `wide_semantic_ms`, `wide_lexical_ms` and `wide_passes` are the unscoped legs behind the "other repositories" hint. They run as a task of their own and appear only when the answer waited for them; `wide_dropped` says it went without them.
     - Both keyword pages from one pass (#167) was tried and reverted: it put the wide page's cost back on the answer and read 2–4x the buffers of the scoped statement. `fs3_store::search_lexical_pages` remains for a backend that can do it cheaply.

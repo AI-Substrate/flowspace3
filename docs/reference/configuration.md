@@ -196,6 +196,7 @@ config file. All three keys are optional; an absent one falls back to the port's
 | Key | Type | Default | Effect | Env override |
 |---|---|---|---|---|
 | `lexical_backend` | `"trigram"` or `"bm25"` | `"trigram"` | Which index answers the keyword leg of `search` and `ask`. `"bm25"` needs the ParadeDB image and the `elements_bm25_idx` index; without them the daemon warns at boot and stays on `"trigram"`. See [the keyword index](../how/configuration.md#the-keyword-index-search-lexical_backend). | `FS3_SEARCH__LEXICAL_BACKEND` |
+| `scope_cache` | bool | `true` | Keep each scoped search's sources between searches instead of collecting them on every candidate pass. Growth is read at once through change stamps; shrinkage within 10 minutes or 2,000 departed sources, whichever comes first. `false` is the kill switch: every scope is collected in full. See [the scope cache](../services/scope-cache.md). | `FS3_SEARCH__SCOPE_CACHE` |
 
 ## `[update]`
 
