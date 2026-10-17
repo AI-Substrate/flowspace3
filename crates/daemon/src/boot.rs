@@ -922,6 +922,11 @@ async fn serve(
     reconcilers.push(Box::new(crate::table_analyze::TableAnalyze::new(
         state.db.clone(),
     )));
+    // Exact ranking reads the binary copy only while it is complete; this
+    // clears its mark if anything went around the trigger (migration 0033).
+    reconcilers.push(Box::new(crate::exact_index_guard::ExactIndexGuard::new(
+        state.db.clone(),
+    )));
     if state.config.indexing.conversation_poll_ticks != 0 {
         let conversation_home = std::env::var_os("HOME")
             .map(std::path::PathBuf::from)

@@ -176,6 +176,11 @@ pub struct SearchTiming {
     /// `semantic_ms`, before the first pass.
     #[serde(default)]
     pub scope_cache_ms: u64,
+    /// How the scoped vector leg ranked its last pass: `ann` (the HNSW
+    /// index), `exact` (every scope vector in full) or `compact` (every scope
+    /// vector's binary copy, the nearest re-ranked in full).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub semantic_rank: Option<String>,
     /// The scoped keyword leg, connection wait included.
     pub lexical_ms: u64,
     /// The scoped keyword leg's wait for a pooled connection.

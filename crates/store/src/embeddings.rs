@@ -119,6 +119,18 @@ pub(crate) async fn apply_budget(
 /// `fs3.exact_scope_limit`.
 pub const EXACT_SCOPE_SOURCES: i64 = 150_000;
 
+/// How many candidate windows a compact exact ranking keeps for the full
+/// vectors to re-rank (`fs3.exact_rank = compact`, migration 0033).
+///
+/// Each kept candidate costs one full-vector read, which on prod is a TOAST
+/// page from disk (~0.14 ms), so depth is the price of recall. On prod's real
+/// vectors (H1, 2026-10-15) eight windows held mean recall@10 at >= 0.998 and
+/// recall@100 at >= 0.987 at every scope from 14k to 303k sources: about one
+/// query in sixty lost one hit, a near-tie among weak matches. Four lost
+/// twice as many; sixteen doubled the reads for little more.
+/// Override per database or session with `fs3.exact_rerank`.
+pub const EXACT_RERANK_WINDOWS: i64 = 8;
+
 /// The largest scope re-ranked exactly after its ANN page came back short.
 ///
 /// The iterative scan stopping at `hnsw.max_scan_tuples` with the candidate
@@ -705,6 +717,12 @@ pub struct SearchPage {
     /// the candidate window, so this page is complete: a short or empty one
     /// means the scope holds nothing more that matches.
     pub exact_scan: bool,
+    /// The last pass ranked the scope exactly (complete or not; see
+    /// `exact_scan` for complete).
+    pub exact_ranked: bool,
+    /// ... on the binary copies of its vectors, re-ranked by the full ones
+    /// (`fs3.exact_rank = compact`).
+    pub compact_scan: bool,
     /// Milliseconds spent getting a pooled connection and opening the search
     /// transaction. The pool is shared with every background worker, so a
     /// slow search can be a queue for a connection rather than a slow query.
@@ -923,8 +941,39 @@ scope_size AS MATERIALIZED (
                     $16) + (SELECT departed FROM scope_departed)
                 OR ($17::bigint IS NOT NULL
                     AND count(*) <= $17 + (SELECT departed FROM scope_departed))) AS exact,
-           count(*)::bigint AS sources
+           count(*)::bigint AS sources,
+           -- An exact scope is ranked on the binary copies (migration 0033)
+           -- when the database asks for it AND `doctor exact-index` recorded
+           -- the copy complete: a half-filled copy would drop sources.
+           COALESCE(NULLIF(current_setting('fs3.exact_rank', true), ''), 'float') = 'compact'
+           AND EXISTS (SELECT 1 FROM search_index_ready
+                        WHERE name = 'embeddings_1024_bq') AS compact,
+           -- How many candidate windows the binary ranking keeps for the full
+           -- vectors to re-rank; $21 is the shipped default.
+           GREATEST(COALESCE(NULLIF(current_setting('fs3.exact_rerank', true), '')::bigint,
+                             $21), 1) AS rerank
       FROM admitted_sources
+),
+-- An exact scope ranked on the binary copies (`compact`): every scope
+-- source's 128-byte copy is compared by Hamming distance, read index-only
+-- from its key, and the nearest `rerank` windows go on to be re-ranked by the
+-- full vector. On prod's vectors the top ten matches the float arm (mean
+-- recall@10 >= 0.998, 14k-303k sources) at a third of the page reads. Empty,
+-- and never scanned, unless that path runs.
+compact_shortlist AS MATERIALIZED (
+    SELECT b.source_hash, b.source_kind, b.chunk_no
+      FROM admitted_sources a
+      CROSS JOIN LATERAL (
+           SELECT q.source_hash, q.source_kind, q.chunk_no, q.bq
+             FROM embeddings_1024_bq q
+            WHERE q.source_hash = a.source_hash
+              AND q.source_kind = a.source_kind
+              AND q.model_key = $2
+           OFFSET 0) b
+     WHERE (SELECT exact AND compact FROM scope_size)
+       AND ($4::text IS NULL OR b.source_kind = $4)
+     ORDER BY b.bq <~> (SELECT binary_quantize($1)::bit(1024))
+     LIMIT $14 * (SELECT rerank FROM scope_size)
 ),
 candidate_vectors AS MATERIALIZED (
     -- A small scope is ranked exactly: every one of its vectors is compared,
@@ -947,9 +996,27 @@ candidate_vectors AS MATERIALIZED (
               AND v.model_key = $2
            OFFSET 0) e
      WHERE (SELECT exact FROM scope_size)
+       AND NOT (SELECT compact FROM scope_size)
        AND ($4::text IS NULL OR e.source_kind = $4)
        AND ($5::float8 IS NULL OR e.distance <= $5)
      ORDER BY e.distance
+     LIMIT $14)
+    UNION ALL
+    -- The same exact ranking on the binary copies: the shortlist below,
+    -- re-ranked by the full vector.
+    (SELECT r.source_hash, r.source_kind, r.chunk_no, r.distance
+      FROM compact_shortlist shortlist
+      CROSS JOIN LATERAL (
+           SELECT v.source_hash, v.source_kind, v.chunk_no,
+                  v.vector <=> $1 AS distance
+             FROM embeddings_1024 v
+            WHERE v.source_hash = shortlist.source_hash
+              AND v.source_kind = shortlist.source_kind
+              AND v.chunk_no = shortlist.chunk_no
+              AND v.model_key = $2
+           OFFSET 0) r
+     WHERE ($5::float8 IS NULL OR r.distance <= $5)
+     ORDER BY r.distance
      LIMIT $14)
     UNION ALL
     (SELECT e.source_hash, e.source_kind, e.chunk_no,
@@ -976,6 +1043,11 @@ candidate_meta AS (
     -- scope ran out. A table never analyzed reads -1 and counts as small.
     SELECT count(*)::bigint AS candidate_count,
            (SELECT exact FROM scope_size) AS exact_scan,
+           (SELECT exact AND compact FROM scope_size) AS compact_scan,
+           -- The binary shortlist held every scope vector, so nothing was cut
+           -- before the full-vector re-rank and a short page is still complete.
+           (SELECT count(*) FROM compact_shortlist)
+               < $14 * (SELECT rerank FROM scope_size) AS compact_whole,
            (SELECT sources FROM scope_size) AS scope_sources,
            (SELECT departed FROM scope_departed) AS scope_departed,
            (SELECT reltuples FROM pg_class WHERE oid = 'embeddings_1024'::regclass)
@@ -1152,6 +1224,7 @@ SELECT h.source_kind, h.distance,
        h.address, h.span_start, h.span_end, h.sibling_order, h.raw_text,
        h.ddoc, h.identity, h.root_path, h.path,
        candidate.candidate_count, candidate.exact_scan,
+       candidate.compact_scan, candidate.compact_whole,
        candidate.scope_sources, candidate.scope_departed, candidate.scan_capped,
        admitted.admitted_count, hidden.hidden_count,
        h.element_id
@@ -1209,7 +1282,7 @@ pub async fn search_elements(
     // $16 the default exact-scan ceiling, $17 the fallback ceiling (only on a
     // pass after a short ANN page), $18 the parser version that answers for a
     // blob that has it, $19 the cached scope's key and $20 its cutoff (NULL:
-    // the scope is collected in full).
+    // the scope is collected in full), $21 the default binary re-rank depth.
     let scoped = filters.repo.is_some()
         || filters.path.is_some()
         || filters.worktree.is_some()
@@ -1245,6 +1318,7 @@ pub async fn search_elements(
             .bind(filters.parser_version.as_deref())
             .bind(scope.as_ref().map(|cached| cached.key.as_str()))
             .bind(scope.as_ref().map(|cached| cached.cutoff.as_str()))
+            .bind(EXACT_RERANK_WINDOWS)
             .fetch_all(&mut *tx)
             .await?;
         pass_ms.push(crate::elapsed_ms(pass_started));
@@ -1254,6 +1328,18 @@ pub async fn search_elements(
             .first()
             .map(|row| row.try_get::<bool, _>("exact_scan"))
             .transpose()?
+            .unwrap_or(false);
+        let compact: bool = rows
+            .first()
+            .map(|row| row.try_get::<Option<bool>, _>("compact_scan"))
+            .transpose()?
+            .flatten()
+            .unwrap_or(false);
+        let compact_whole: bool = rows
+            .first()
+            .map(|row| row.try_get::<Option<bool>, _>("compact_whole"))
+            .transpose()?
+            .flatten()
             .unwrap_or(false);
         let scanned = candidate_count(&rows)?;
         let scope_sources: i64 = rows
@@ -1314,13 +1400,18 @@ pub async fn search_elements(
             ExpansionDecision::Return { scan_incomplete } => {
                 tx.commit().await?;
                 // Exact AND the window held the whole scope: nothing in it
-                // was left unranked, so a short page is complete.
-                let exact_scan = exact && scanned < candidate_limit;
+                // was left unranked, so a short page is complete. Ranked on
+                // the binary copies, the shortlist must have held it too: a
+                // distance filter can shorten the page while vectors past the
+                // shortlist went unread.
+                let exact_scan = exact && scanned < candidate_limit && (!compact || compact_whole);
                 return page_from_rows(&rows, passes, scan_incomplete, exact_scan).map(|page| {
                     SearchPage {
                         acquire_ms,
                         pass_ms,
                         candidates: candidate_limit,
+                        exact_ranked: exact,
+                        compact_scan: exact && compact,
                         scope_cache,
                         scope_cache_ms,
                         ..page
@@ -1770,6 +1861,7 @@ mod tests {
             .bind(Some("search-plan@1"))
             .bind(Option::<&str>::None)
             .bind(Option::<&str>::None)
+            .bind(EXACT_RERANK_WINDOWS)
             .fetch_one(&mut *connection)
             .await?;
         Ok(row.try_get::<Json<serde_json::Value>, _>(0)?.0)

@@ -11,9 +11,10 @@ use sqlx::Row;
 use crate::{PgPool, StoreError};
 
 /// The tables search and indexing live on, the ones worth watching.
-pub const WATCHED_TABLES: [&str; 6] = [
+pub const WATCHED_TABLES: [&str; 7] = [
     "elements",
     "embeddings_1024",
+    "embeddings_1024_bq",
     "turns",
     "smart_content",
     "worktree_files",
