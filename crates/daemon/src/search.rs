@@ -581,6 +581,7 @@ async fn search_filtered(
         // One parse per blob, as `get` reads it: superseded rows of a blob
         // already reparsed would answer the same declaration twice.
         parser_version: Some(crate::scan::PARSER_VERSION.to_string()),
+        scope_cache: state.config.search.scope_cache,
         ..SearchFilters::default()
     };
 
@@ -666,6 +667,16 @@ async fn search_filtered(
         semantic_acquire_ms: semantic.acquire_ms,
         semantic_pass_ms: semantic.pass_ms.clone(),
         candidates: semantic.candidates,
+        scope_cache: Some(semantic.scope_cache.as_str().to_string()),
+        scope_cache_ms: semantic.scope_cache_ms,
+        semantic_rank: Some(
+            match (semantic.exact_ranked, semantic.compact_scan) {
+                (_, true) => "compact",
+                (true, false) => "exact",
+                (false, false) => "ann",
+            }
+            .to_string(),
+        ),
         lexical_ms,
         lexical_acquire_ms: lexical.acquire_ms,
         wide_semantic_ms: wide.as_ref().map(|((_, ms), _)| *ms),
@@ -682,6 +693,9 @@ async fn search_filtered(
             store_ms = timing.store_ms,
             semantic_ms,
             semantic_pass_ms = ?timing.semantic_pass_ms,
+            scope_cache = ?timing.scope_cache,
+            scope_cache_ms = timing.scope_cache_ms,
+            semantic_rank = ?timing.semantic_rank,
             lexical_ms,
             wide_semantic_ms = ?timing.wide_semantic_ms,
             wide_lexical_ms = ?timing.wide_lexical_ms,

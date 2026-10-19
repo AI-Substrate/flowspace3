@@ -650,6 +650,11 @@ async fn serve(
         )
     })?;
     tracing::info!(%database, "store schema is current");
+    // A migration can change what a scope holds, so no cached scope outlives
+    // a boot. Best effort: an empty cache only means each scope rebuilds.
+    if let Err(error) = fs3_store::reset_scope_cache(&state.db).await {
+        tracing::warn!(%error, "could not empty the scope cache; searches rebuild it");
+    }
 
     // BM25 answers the keyword leg only once its index exists. Asked for but
     // absent, the daemon says why and keeps every search on trigram, rather
@@ -920,6 +925,11 @@ async fn serve(
     // After bulk work, fresh statistics before autovacuum gets round to it
     // (Jordan's DB maintenance ruling, 2026-10-14).
     reconcilers.push(Box::new(crate::table_analyze::TableAnalyze::new(
+        state.db.clone(),
+    )));
+    // Exact ranking reads the binary copy only while it is complete; this
+    // clears its mark if anything went around the trigger (migration 0033).
+    reconcilers.push(Box::new(crate::exact_index_guard::ExactIndexGuard::new(
         state.db.clone(),
     )));
     if state.config.indexing.conversation_poll_ticks != 0 {

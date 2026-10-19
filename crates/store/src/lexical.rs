@@ -13,6 +13,8 @@
 //! flat 1.0 — a turn that merely quoted the question tied with the answer, and
 //! won on recency. Now every term must occur (each its own `LIKE`, so the same
 //! trigram index ANDs them in one bitmap scan) and the score is graded.
+//! Question words (`how`, `did`, ...) are scored but not required: see
+//! `QUESTION_WORDS` (2026-10-15).
 //!
 //! Full-text search was measured and set aside for this: on 1.21M elements a
 //! tsvector index is a further 1–2 GB, and ranking needs either a stored
@@ -27,6 +29,25 @@ use crate::{PgPool, SearchFilters, StoreError};
 
 /// The most query terms matched. Longest first, so the most selective survive.
 const MAX_TERMS: usize = 8;
+
+/// Question and auxiliary words a question is phrased with, not what it asks
+/// about. They are scored but not required: "how is a git worktree detected
+/// and registered" must not need a "how" in the answer. Trigram found one
+/// anyway, inside "show"; BM25 matches only where a word starts, and so
+/// dropped a document that had every content word (2026-10-15).
+///
+/// A hit that also holds the question words scores exactly as before; one
+/// that lacks one lands in a tier just below (0.60, see `terms_tier_sql`),
+/// so it can join a page but never displace a hit that holds every term.
+///
+/// Only words of three or more characters, since shorter ones are never
+/// terms. Common content-free words that DO occur as words in any long text
+/// ("the", "and", "for") stay required: dropping them would widen every
+/// match set and move pages that were fine.
+const QUESTION_WORDS: &[&str] = &[
+    "how", "why", "what", "when", "where", "which", "who", "whom", "whose", "did", "does", "are",
+    "was", "were", "has", "have", "had", "can", "could", "would", "should", "will",
+];
 
 /// A small bonus for dense, short matches: under 0.04, so it orders hits
 /// WITHIN a score band and can never lift one into the band above.
@@ -125,6 +146,7 @@ pub struct LexicalPage {
 /// | the name contains every term | 0.90 + density |
 /// | a conversation turn containing the whole phrase | 0.80 + density |
 /// | every term, scattered | 0.65 + density |
+/// | every term but a question word ([`QUESTION_WORDS`]) | 0.60 + density |
 ///
 /// Verbatim identity in CODE stays a pinned 1.0, the ruled lexical anchor for
 /// identifiers and error codes. Conversation turns are graded instead, because
@@ -227,24 +249,32 @@ pub async fn search_lexical_pages(
     // LIKE doubled the cost of a common-word query.
     let text = "lower(el.name || E'\\n' || el.raw_text)";
     let phrase = "lc.t LIKE $1 ESCAPE '\\'".to_string();
-    let each = |column: &str| -> String {
-        (0..terms.len())
+    let required = required_terms(&terms);
+    let these = |column: &str, which: &dyn Fn(usize) -> bool| -> String {
+        let clauses: Vec<String> = (0..terms.len())
+            .filter(|&i| which(i))
             .map(|i| format!("{column} LIKE ${} ESCAPE '\\'", 13 + i))
-            .collect::<Vec<_>>()
-            .join(" AND ")
+            .collect();
+        if clauses.is_empty() {
+            "TRUE".to_string()
+        } else {
+            clauses.join(" AND ")
+        }
     };
-    // Every term must occur. With no term long enough to index, the phrase
+    // Every required term must occur; a question word only scores (see
+    // [`QUESTION_WORDS`]). With no term long enough to index, the phrase
     // alone decides, exactly as before.
     let matches = if terms.is_empty() {
         format!("{text} LIKE $1 ESCAPE '\\'")
     } else {
-        each(text)
+        these(text, &|i| required[i])
     };
     let name_has_every_term = if terms.is_empty() {
         "FALSE".to_string()
     } else {
-        each("lc.n")
+        these("lc.n", &|_| true)
     };
+    let terms_tier = terms_tier_sql(&these("lc.t", &|i| !required[i]));
 
     let columns = format!(
         r#"SELECT el.id, el.blob_sha, el.parser_version, el.kind, el.subkind,
@@ -258,7 +288,7 @@ pub async fn search_lexical_pages(
                          THEN 1.0
                        WHEN {name_has_every_term} THEN 0.90 + {DENSITY_SQL}
                        WHEN {phrase} THEN 0.80 + {DENSITY_SQL}
-                       ELSE 0.65 + {DENSITY_SQL}
+                       {terms_tier}
                      END)::float8 AS score"#
     );
     let from_where = format!(
@@ -437,6 +467,7 @@ pub async fn search_lexical_pages(
         .bind(query.trim().to_lowercase());
     let acquire_started = std::time::Instant::now();
     let mut tx = pool.begin().await?;
+    crate::embeddings::plan_each_search(&mut tx).await?;
     crate::embeddings::apply_budget(&mut tx, filters.budget).await?;
     let acquire_ms = crate::elapsed_ms(acquire_started);
     let query_started = std::time::Instant::now();
@@ -515,7 +546,8 @@ pub(crate) fn one_parse_per_blob(alias: &str, param: usize) -> String {
 
 /// The query's terms worth matching: lowercased, stripped of surrounding
 /// punctuation, at least three characters (the trigram index's floor),
-/// de-duplicated, longest first, at most [`MAX_TERMS`].
+/// de-duplicated, longest first, at most [`MAX_TERMS`]. [`required_terms`]
+/// says which of them a match must contain.
 pub(crate) fn query_terms(query: &str) -> Vec<String> {
     let mut terms: Vec<String> = Vec::new();
     for word in query.split_whitespace() {
@@ -529,6 +561,25 @@ pub(crate) fn query_terms(query: &str) -> Vec<String> {
     terms.sort_by_key(|term| std::cmp::Reverse(term.chars().count()));
     terms.truncate(MAX_TERMS);
     terms
+}
+
+/// For each of [`query_terms`], whether a match must contain it: every term
+/// but the [`QUESTION_WORDS`], unless those are all the query has.
+pub(crate) fn required_terms(terms: &[String]) -> Vec<bool> {
+    let content = |term: &String| !QUESTION_WORDS.contains(&term.as_str());
+    if terms.iter().any(content) {
+        terms.iter().map(content).collect()
+    } else {
+        vec![true; terms.len()]
+    }
+}
+
+/// The score tiers a keyword hit can land in below the phrase tiers, as SQL:
+/// 0.65 when it holds every term, 0.60 when it lacks a question word. 0.60 +
+/// density stays under 0.65, so a hit that holds every term always outranks
+/// one that does not, exactly as when every term was required.
+pub(crate) fn terms_tier_sql(every_optional_term: &str) -> String {
+    format!("WHEN {every_optional_term} THEN 0.65 + {DENSITY_SQL} ELSE 0.60 + {DENSITY_SQL}")
 }
 
 pub(crate) fn contains_pattern(query: &str) -> String {
@@ -546,7 +597,7 @@ pub(crate) fn contains_pattern(query: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{contains_pattern, query_terms};
+    use super::{contains_pattern, query_terms, required_terms};
 
     #[test]
     fn substring_patterns_keep_like_metacharacters_literal() {
@@ -574,5 +625,40 @@ mod tests {
             query_terms("one two three four five six seven eight nine").len(),
             8
         );
+    }
+
+    #[test]
+    fn question_words_are_scored_but_not_required_unless_they_are_the_whole_query() {
+        let required = |query: &str| {
+            let terms = query_terms(query);
+            terms
+                .iter()
+                .zip(required_terms(&terms))
+                .filter(|(_, required)| *required)
+                .map(|(term, _)| term.clone())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            query_terms("how is a git worktree detected and registered"),
+            ["registered", "worktree", "detected", "how", "git", "and"],
+            "every term is still matched and scored"
+        );
+        assert_eq!(
+            required("how is a git worktree detected and registered"),
+            ["registered", "worktree", "detected", "git", "and"]
+        );
+        assert_eq!(
+            required("why did the daemon target directory disappear"),
+            ["directory", "disappear", "daemon", "target", "the"]
+        );
+        // Content-free words that occur as words in any long text stay.
+        assert_eq!(
+            required("test the search results"),
+            ["results", "search", "test", "the"]
+        );
+        // A query of nothing else keeps them: something has to match.
+        assert_eq!(required("how did"), ["how", "did"]);
+        // Only whole words: `however` and `didn't` are terms like any other.
+        assert_eq!(required("however didn't"), ["however", "didn't"]);
     }
 }

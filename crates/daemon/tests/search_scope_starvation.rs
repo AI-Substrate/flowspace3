@@ -108,6 +108,11 @@ async fn stack(label: &str, extra: &[&str]) -> (support::FreshDatabase, AppState
         ..Config::default()
     };
     let mut state = AppState::from_config(config).expect("wires");
+    // These tests pin the approximate (HNSW) path, several with an exact
+    // limit of 0. A cached scope ranks exactly within SCOPE_SHRINK_REBUILD
+    // sources of any limit - it may carry departed ones - so the cache would
+    // rank every fixture here exactly and test nothing about the index.
+    state.config.search.scope_cache = false;
     fs3_store::migrate(&state.db).await.expect("migrates");
     state.embedder = Arc::new(FakeEmbedder {
         dimensions: DIMS,

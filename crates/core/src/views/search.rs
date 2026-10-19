@@ -165,6 +165,22 @@ pub struct SearchTiming {
     pub semantic_pass_ms: Vec<u64>,
     /// The scoped vector leg's final candidate limit.
     pub candidates: i64,
+    /// How the scoped vector leg came by its scope: `hit` (read from the
+    /// scope cache), `built` (collected into it), `busy` (another search was
+    /// building it), `cooling` (too much left it since a build under a minute
+    /// ago, so collected in full rather than rebuilt) or `bypassed`
+    /// (collected in full).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope_cache: Option<String>,
+    /// Checking the scope cache, and building it on a miss; part of
+    /// `semantic_ms`, before the first pass.
+    #[serde(default)]
+    pub scope_cache_ms: u64,
+    /// How the scoped vector leg ranked its last pass: `ann` (the HNSW
+    /// index), `exact` (every scope vector in full) or `compact` (every scope
+    /// vector's binary copy, the nearest re-ranked in full).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub semantic_rank: Option<String>,
     /// The scoped keyword leg, connection wait included.
     pub lexical_ms: u64,
     /// The scoped keyword leg's wait for a pooled connection.

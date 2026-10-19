@@ -69,7 +69,9 @@ excludes them; `--path` with `--source conversation` is contradictory.
   verbatim, in the declaration's name), `exact_text` (verbatim in the source),
   or `terms` (every term, not as one phrase). A `smart` hit found the answer by
   meaning, so the words you typed may appear nowhere in the code.
-- Keyword matching is case-insensitive and needs every term. Where a term may
+- Keyword matching is case-insensitive and needs every term. Question words
+  (`how`, `why`, `did`, `where`, ...) are the exception: a hit without them
+  still counts, at about 0.60 instead of 0.65. Where a term may
   match depends on `search.lexical_backend`: `trigram` (the default) matches a
   substring anywhere; `bm25`, when configured, matches at token starts (`job`
   finds `jobs`; `ounded` does not find `bounded`).
@@ -163,6 +165,13 @@ vector (`smart`). Both compete internally, and `match_field` reports which won.
   (`ALTER DATABASE … SET fs3.exact_scope_limit = N`); under a lower one, a
   scope whose approximate page comes back short is ranked exactly anyway, up
   to 150,000.
+  An exact ranking reads every scope vector in full by default. With
+  `fs3.exact_rank = 'compact'` (per database, after `flowspace3 doctor
+  exact-index` has filled the copy) it ranks the scope on each vector's
+  128-byte binary copy and re-ranks the nearest few windows by the full vector
+  (`fs3.exact_rerank`, default 8): the same top ten in measured practice, at a
+  third of the reads. `meta.timing.semantic_rank` says which ranking ran:
+  `ann`, `exact` or `compact`.
 - **Content filters narrow the scope before ranking.** In a scoped search,
   `--source`, `--id-kind`, `--gate-open`/`--gate-closed` and `--ddoc-schema`
   choose which of the scope's texts are candidates at all, so a doc search in a repository

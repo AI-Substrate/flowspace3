@@ -4,8 +4,9 @@
 //!
 //! Needs a Postgres with the `pg_search` extension (the ParadeDB image). On
 //! a plain pgvector image the test says so and skips, unless
-//! `FS3_REQUIRE_BM25` is set: CI sets it, so a missing extension fails the
-//! gate there instead of passing it silently.
+//! `FS3_REQUIRE_BM25` is set: CI's `bm25` job sets it and runs this file on
+//! the ParadeDB image, so a missing extension fails there instead of passing
+//! silently. (The main gate stays on plain pgvector, where these skip.)
 
 mod support;
 
@@ -409,5 +410,61 @@ async fn bm25_answers_a_reparsed_blob_once_from_its_current_parse() {
         .unwrap();
     assert_eq!(lines(both), [1, 2]);
 
+    database.destroy(pool).await;
+}
+
+/// A generic plan of a BM25 statement cannot route its operators through the
+/// ParadeDB scan, so it seq-scans `elements` and fails on `pdb.score` (prod,
+/// read-only, 2026-10-15). sqlx prepares the statement once per connection,
+/// and after five runs Postgres may switch it to that plan; #172's fallback
+/// would then answer every later search on the connection from trigram,
+/// seconds slower. So every keyword search plans for its own values, even on
+/// a connection whose server default prefers the generic plan.
+#[tokio::test]
+async fn a_bm25_page_never_runs_on_a_generic_plan() {
+    let database = FreshDatabase::create().await;
+    let pool = database.migrated_pool().await;
+    if !bm25_available(&pool).await {
+        database.destroy(pool).await;
+        return;
+    }
+    let identity = RepoIdentity::from_path(Path::new("/srv/bm25-plan"));
+    let worktree = register_worktree(&pool, &identity, "/srv/bm25-plan", None)
+        .await
+        .unwrap();
+    let root = file(
+        "src/lib.rs",
+        vec![function(
+            "bounded_error",
+            "fn bounded_error(e: &str) -> String { e.into() }",
+            3,
+        )],
+    );
+    let blob = unique_blob();
+    upsert_element_tree(&pool, &blob, PARSER_VERSION, &root, |_| true)
+        .await
+        .unwrap();
+    sync_worktree_files(&pool, worktree, &[("src/lib.rs".to_string(), blob)])
+        .await
+        .unwrap();
+
+    let generic = database
+        .single_connection_with(&[("plan_cache_mode", "force_generic_plan")])
+        .await;
+    let filters = SearchFilters {
+        repo: Some(identity.key().to_string()),
+        limit: 10,
+        ..SearchFilters::default()
+    };
+    // More than the five custom runs after which Postgres would consider a
+    // generic plan, all on the one connection that holds the statement.
+    for run in 0..8 {
+        let (page, _) = search_bm25_pages(&generic, "bounded_error", &filters, false)
+            .await
+            .unwrap_or_else(|error| panic!("run {run} failed on a generic-plan default: {error}"));
+        assert!(!page.hits.is_empty(), "run {run} found the identifier");
+    }
+
+    generic.close().await;
     database.destroy(pool).await;
 }

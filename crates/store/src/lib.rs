@@ -27,6 +27,7 @@ pub mod conversations;
 pub mod ddoc;
 pub mod elements;
 pub mod embeddings;
+pub mod exact_index;
 pub mod ingest_cursors;
 pub mod jobs;
 pub mod lexical;
@@ -36,6 +37,7 @@ pub mod messages;
 pub mod read;
 pub mod refs;
 pub mod roots;
+pub mod scope_cache;
 pub mod smart;
 pub mod updates;
 
@@ -65,6 +67,11 @@ pub use embeddings::{
     SearchPage, SimilarElement, SourceKind, anchor_has_vectors, embedding_models,
     existing_embedding_hashes, path_filter_probe, put_embeddings, query_embeddings,
     search_elements,
+};
+pub use exact_index::{
+    EXACT_INDEX_TABLE, ExactIndexBuild, ExactIndexState, ModelCoverage, build_exact_index,
+    clear_exact_index_ready, exact_index_coverage, exact_index_state, exact_rank_setting,
+    guard_exact_index,
 };
 pub use jobs::{
     DaemonLock, IngestJobOutcome, JOB_PRIORITY_DEFAULT, JOB_PRIORITY_NEW_WORKTREE_SCAN, Job,
@@ -96,6 +103,10 @@ pub use refs::{
 pub use roots::{
     Reclaimed, Removal, collect_garbage, raw_hash_is_referenced, reclaimable,
     referenced_source_hashes, remove_root, worktree_exists,
+};
+pub use scope_cache::{
+    CachedScope, SCOPE_CACHE_MAX_AGE, SCOPE_REBUILD_COOLDOWN, SCOPE_SHRINK_REBUILD, ScopeCacheUse,
+    cached_scope, reset_scope_cache, scope_key,
 };
 pub use smart::{
     MissingEnrichment, MissingVector, get_smart_content, missing_embeddings, missing_enrichment,

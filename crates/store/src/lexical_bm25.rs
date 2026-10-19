@@ -11,7 +11,7 @@
 //!
 //! # Candidates
 //!
-//! The UNION of three windows, each the top `limit * 10` by BM25 within the
+//! The UNION of three windows (four for a question), each the top `limit * 10` by BM25 within the
 //! caller's scope, so a tier-defining hit cannot fall out of one shared
 //! window behind thousands of common-word matches:
 //!
@@ -20,6 +20,7 @@
 //! | terms | every term in name or text | 0.65 |
 //! | name | every term in the declaration's name | 0.90, and 1.0 for an exact name |
 //! | phrase | the whole query, in order | 1.0 in code, 0.80 in a turn |
+//! | content terms | every term but the question words, when the query has any | 0.65, or 0.60 without a question word |
 //!
 //! # Matching at token starts
 //!
@@ -42,6 +43,7 @@ use sqlx::{PgConnection, Row};
 
 use crate::lexical::{
     DENSITY_SQL, LexicalHit, LexicalMatch, LexicalPage, contains_pattern, query_terms,
+    required_terms, terms_tier_sql,
 };
 use crate::{PgPool, SearchFilters, StoreError};
 
@@ -175,10 +177,17 @@ const FILTERS_SQL: &str = r#"
 /// version that answers for a blob that has it.
 fn statement(terms: &[(String, String)], phrase_window: bool) -> String {
     let pattern = |i: usize| 14 + 3 * i;
-    let every = |field: &str| -> String {
+    let required = required_terms(
+        &terms
+            .iter()
+            .map(|(lower, _)| lower.clone())
+            .collect::<Vec<_>>(),
+    );
+    let every = |field: &str, which: &dyn Fn(usize) -> bool| -> String {
         terms
             .iter()
             .enumerate()
+            .filter(|&(i, _)| which(i))
             .map(|(i, (lower, cased))| {
                 let mut clause = token_match(field, pattern(i) + 1);
                 if lower != cased {
@@ -202,20 +211,35 @@ fn statement(terms: &[(String, String)], phrase_window: bool) -> String {
     };
     let mut windows = Vec::new();
     if !terms.is_empty() {
-        windows.push(window(every(BODY)));
-        windows.push(window(every("el.name")));
+        windows.push(window(every(BODY, &|_| true)));
+        windows.push(window(every("el.name", &|_| true)));
+        // A question word is not required: a fourth window, without them,
+        // finds what the first missed for want of one. The first stays, so
+        // every hit that holds them is still a candidate, as before.
+        if required.contains(&false) {
+            windows.push(window(every(BODY, &|i| required[i])));
+        }
     }
     if phrase_window || terms.is_empty() {
         windows.push(window(format!("({})", token_match(BODY, 13))));
     }
+    let like_each = |column: &str, which: &dyn Fn(usize) -> bool| -> String {
+        let clauses: Vec<String> = (0..terms.len())
+            .filter(|&i| which(i))
+            .map(|i| format!("{column} LIKE ${} ESCAPE '\\'", pattern(i)))
+            .collect();
+        if clauses.is_empty() {
+            "TRUE".to_string()
+        } else {
+            clauses.join(" AND ")
+        }
+    };
     let verbatim = if terms.is_empty() {
         "lc.t LIKE $1 ESCAPE '\\'".to_string()
     } else {
-        (0..terms.len())
-            .map(|i| format!("lc.t LIKE ${} ESCAPE '\\'", pattern(i)))
-            .collect::<Vec<_>>()
-            .join(" AND ")
+        like_each("lc.t", &|i| required[i])
     };
+    let terms_tier = terms_tier_sql(&like_each("lc.t", &|i| !required[i]));
     let name_has_every_term = if terms.is_empty() {
         "FALSE".to_string()
     } else {
@@ -241,7 +265,7 @@ fn statement(terms: &[(String, String)], phrase_window: bool) -> String {
                          THEN 1.0
                        WHEN {name_has_every_term} THEN 0.90 + {DENSITY_SQL}
                        WHEN {phrase} THEN 0.80 + {DENSITY_SQL}
-                       ELSE 0.65 + {DENSITY_SQL}
+                       {terms_tier}
                      END)::float8 AS score
                FROM hits
                JOIN elements el ON el.id = hits.id
@@ -339,6 +363,10 @@ pub async fn search_bm25_pages(
     }
     let acquire_started = std::time::Instant::now();
     let mut tx = pool.begin().await?;
+    // A generic plan of this statement fails outright (see
+    // `CUSTOM_SEARCH_PLAN`), and #172's fallback would then answer every
+    // search on that connection from trigram, seconds slower, with a warning.
+    crate::embeddings::plan_each_search(&mut tx).await?;
     crate::embeddings::apply_budget(&mut tx, filters.budget).await?;
     let acquire_ms = crate::elapsed_ms(acquire_started);
 
@@ -584,6 +612,21 @@ mod tests {
         // Three windows: terms, name, and the whole phrase ($13).
         assert_eq!(sql.matches("ORDER BY pdb.score(el.id) DESC").count(), 3);
         assert!(sql.contains("$13::text"));
+    }
+
+    #[test]
+    fn a_question_adds_a_window_without_its_question_words() {
+        let terms = cased_terms("how is a git worktree detected and registered");
+        let sql = statement(&terms, true);
+        // terms, name, content terms, phrase.
+        assert_eq!(sql.matches("pdb.score").count(), 4);
+        // "how" is scored (0.65 with it, 0.60 without), not required.
+        assert!(
+            sql.contains("THEN 0.65 +") && sql.contains("ELSE 0.60 +"),
+            "{sql}"
+        );
+        let plain = statement(&cased_terms("git worktree"), true);
+        assert_eq!(plain.matches("pdb.score").count(), 3);
     }
 
     #[test]

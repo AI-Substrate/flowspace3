@@ -141,3 +141,52 @@ async fn a_search_carries_its_timing_and_status_reports_percentiles() {
 
     database.destroy(state.db).await;
 }
+
+/// `search.scope_cache` reaches a scoped search from config: on by default,
+/// the first search builds the scope and the next reads it; switched off,
+/// every scope is collected in full.
+#[tokio::test]
+async fn the_scope_cache_setting_reaches_a_scoped_search() {
+    for (enabled, expected) in [(true, ["built", "hit"]), (false, ["bypassed", "bypassed"])] {
+        let (database, mut state) = seeded(&format!("search-timing-cache-{enabled}")).await;
+        state.config.search.scope_cache = enabled;
+        let identity =
+            fs3_core::RepoIdentity::from_remote_parts(Some("github.com"), "fixtures/timing")
+                .unwrap();
+        let worktree = fs3_store::register_worktree(&state.db, &identity, "/fixtures/timing", None)
+            .await
+            .unwrap();
+        fs3_store::sync_worktree_files(
+            &state.db,
+            worktree,
+            &[(
+                "src/lib.rs".to_string(),
+                fs3_core::BlobRef::new("c".repeat(40)).unwrap(),
+            )],
+        )
+        .await
+        .unwrap();
+
+        let auth = support::auth("search-timing-cache");
+        let base = support::spawn(fs3_daemon::http::router(state.clone(), auth.auth)).await;
+        for want in expected {
+            let envelope: serde_json::Value = reqwest::Client::new()
+                .get(format!("{base}/search"))
+                .bearer_auth(&auth.key)
+                .query(&[("q", PHRASE), ("limit", "5"), ("repo", identity.key())])
+                .send()
+                .await
+                .expect("the daemon answers")
+                .json()
+                .await
+                .expect("an envelope");
+            assert_eq!(envelope["ok"], true, "{envelope}");
+            assert_eq!(
+                envelope["meta"]["timing"]["scope_cache"], want,
+                "scope_cache = {enabled}: {}",
+                envelope["meta"]["timing"]
+            );
+        }
+        database.destroy(state.db).await;
+    }
+}

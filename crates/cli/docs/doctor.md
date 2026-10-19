@@ -16,6 +16,7 @@ flowspace3 doctor
 | `database` | the configured database exists | yes — `CREATE DATABASE` |
 | `schema` | the database has every migration this binary carries | yes — applies the missing ones |
 | `keyword-index` | with `[search] lexical_backend = "bm25"`: this Postgres has pg_search and the BM25 index is built and valid | no — names the image swap, or `doctor keyword-index` |
+| `exact-index` | with `fs3.exact_rank = 'compact'`: every vector has its binary copy (`embeddings_1024_bq`), recorded complete; `warn` when vectors lack one | no — names `doctor exact-index` |
 | `daemon` | `GET /health` answers on `daemon.url`; `warn` when it answers but its embedder has been failing (since when, and the last error) | no — see below |
 | `auth` | `daemon.key` is mode `0600` and the daemon accepts it | no — restart republishes a missing or stale key |
 
@@ -86,3 +87,22 @@ interrupted build it drops the invalid index and builds it again. On a Postgres
 without pg_search it answers `unavailable` and names the switch to the ParadeDB
 image (`docs/how/database.md`). Restart the daemon afterwards: it looks for the
 index at boot.
+
+## `exact-index`
+
+`flowspace3 doctor exact-index` fills the binary copy of every vector
+(`binary_quantize(vector)`, 128 bytes, table `embeddings_1024_bq`) that a scope
+ranked exactly can be ranked on: the copies are compared first, and the nearest
+are re-ranked by the full vectors (`fs3.exact_rank = 'compact'`, see
+`flowspace3 docs get search`). A trigger writes the copy of every vector stored
+after migration 0033, so the command only fills the ones from before it, in
+batches that each commit on their own; it is safe beside a running daemon and an
+interrupted run resumes. It then refreshes the table's visibility map (so the
+copies are read from the index alone) and records the copy complete, which is
+what lets search use it. Run again, it only re-checks. It reads every vector
+once: a heavy job on a big index, so pick a quiet moment.
+
+The report gives `state` (`built`, `ready` or `incomplete`), `filled`, `bytes`,
+the vectors per embedding model, and the database's `exact_rank`. To rank on
+it: `ALTER DATABASE … SET fs3.exact_rank = 'compact'`, then restart the daemon
+(pooled connections keep the setting they opened with).

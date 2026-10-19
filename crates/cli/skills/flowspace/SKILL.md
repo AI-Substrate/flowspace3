@@ -117,7 +117,9 @@ Reading a hit:
 | `exact_text` | lexical | the query, verbatim, in the source | 1.0 in code/docs, ~0.8 in a turn |
 | `terms` | lexical | every term, not as one phrase | ~0.65 (~0.9 if all in the name) |
 
-Keyword matching is case-insensitive and needs every term. Where a term may match
+Keyword matching is case-insensitive and needs every term. Question words (`how`, `why`,
+`did`, `where`, ...) are the exception: a hit without them still counts, at ~0.60
+instead of ~0.65. Where a term may match
 depends on `search.lexical_backend`: `trigram` (default) matches a substring anywhere;
 `bm25`, when configured, matches at token starts (`job` finds `jobs`, but `ounded`
 does not find `bounded`).
