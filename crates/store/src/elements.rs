@@ -225,6 +225,100 @@ pub async fn blobs_with_parser_version(
         .collect()
 }
 
+/// Delete `blob`'s rows from every parser version but `current`, once
+/// `current` has rows for it. Returns how many rows were deleted outright
+/// (children go with their root by `ON DELETE CASCADE` and are not counted).
+///
+/// Nothing reads a superseded parse once the current one exists: `get` and
+/// `tree` take the current version, and so does search. Kept, they only
+/// answered the same declaration twice after a bump that moved its span
+/// (DL-042). Turn elements are written under the conversation parser and are
+/// never touched. Nothing else holds an element id across a parse: `parent_id`
+/// and `ddoc_file_refs.element_id` cascade within one parse, and enrichment is
+/// keyed by hash, so a superseded hash's summaries and vectors are left for
+/// [`crate::collect_garbage`] once no element points at them.
+///
+/// # Errors
+/// [`StoreError::Query`] when the delete fails.
+pub async fn prune_superseded_parses(
+    pool: &PgPool,
+    blob: &str,
+    current: &str,
+) -> Result<u64, StoreError> {
+    Ok(sqlx::query(
+        "DELETE FROM elements
+          WHERE blob_sha = $1 AND parser_version <> $2 AND kind <> 'turn'
+            AND EXISTS (SELECT 1 FROM elements current_parse
+                         WHERE current_parse.blob_sha = $1
+                           AND current_parse.parser_version = $2)",
+    )
+    .bind(blob)
+    .bind(current)
+    .execute(pool)
+    .await?
+    .rows_affected())
+}
+
+/// [`prune_superseded_parses`] across every blob that has a `current` parse,
+/// at most `limit` rows a call. Returns how many rows were deleted outright;
+/// `0` means none are left.
+///
+/// For rows left by a parse that landed before pruning existed. A call that
+/// finds nothing reads every row of the table, so a caller runs it until it
+/// returns `0` and then stops, rather than on a cadence.
+///
+/// # Errors
+/// [`StoreError::Query`] when the delete fails.
+pub async fn prune_superseded_batch(
+    pool: &PgPool,
+    current: &str,
+    limit: i64,
+) -> Result<u64, StoreError> {
+    Ok(sqlx::query(
+        "DELETE FROM elements
+          WHERE id IN (
+                SELECT superseded.id
+                  FROM elements superseded
+                 WHERE superseded.parser_version <> $1 AND superseded.kind <> 'turn'
+                   AND EXISTS (SELECT 1 FROM elements current_parse
+                                WHERE current_parse.blob_sha = superseded.blob_sha
+                                  AND current_parse.parser_version = $1)
+                 LIMIT $2)",
+    )
+    .bind(current)
+    .bind(limit)
+    .execute(pool)
+    .await?
+    .rows_affected())
+}
+
+/// Registered worktree roots holding a live blob that an older parser parsed
+/// and `current` has not. A blob with no rows at all is not counted: it is a
+/// first scan still in the queue, not one a parser bump left behind.
+///
+/// # Errors
+/// [`StoreError::Query`] when the lookup fails.
+pub async fn roots_parsed_by_an_older_parser(
+    pool: &PgPool,
+    current: &str,
+) -> Result<Vec<String>, StoreError> {
+    let rows = sqlx::query(
+        "SELECT DISTINCT w.root_path
+           FROM worktree_files f
+           JOIN worktrees w ON w.id = f.worktree_id
+          WHERE EXISTS (SELECT 1 FROM elements e WHERE e.blob_sha = f.blob_sha)
+            AND NOT EXISTS (SELECT 1 FROM elements e
+                             WHERE e.blob_sha = f.blob_sha AND e.parser_version = $1)
+          ORDER BY w.root_path",
+    )
+    .bind(current)
+    .fetch_all(pool)
+    .await?;
+    rows.iter()
+        .map(|row| Ok(row.try_get("root_path")?))
+        .collect()
+}
+
 /// Read one shared element tree and preserve any root-count inconsistency.
 ///
 /// Dirty historical data is still readable: the lowest-id file root is the
