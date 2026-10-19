@@ -191,6 +191,7 @@ async fn walk(
     steps.push(check_schema(database_url).await?);
     steps.push(check_tables(database_url).await);
     steps.push(check_keyword_index(database_url, config).await);
+    steps.push(check_exact_index(database_url).await);
 
     // The daemon is the one step doctor deliberately does NOT repair. Starting
     // a foreground server from a diagnostic command would leave a process the
@@ -839,6 +840,187 @@ fn use_it(config: &Config) -> String {
         fs3_core::LexicalBackend::Trigram => "set `[search] lexical_backend = \"bm25\"` and \
                                               restart the daemon to search with it"
             .to_string(),
+    }
+}
+
+/// Can exact ranking read the binary copy of the vectors (migration 0033)?
+/// Only `fs3.exact_rank = compact` needs it complete.
+async fn check_exact_index(database_url: &str) -> Step {
+    let started = Instant::now();
+    let read = async {
+        let pool = fs3_store::connect(database_url)
+            .await
+            .map_err(|error| error.to_string())?;
+        let read = async {
+            let state = fs3_store::exact_index_state(&pool).await?;
+            // Never leave search ranking on a copy known to be incomplete:
+            // the walk clears a drifted mark the moment it sees one.
+            if matches!(state, fs3_store::ExactIndexState::Drifted { .. }) {
+                fs3_store::clear_exact_index_ready(&pool).await?;
+            }
+            Ok::<_, fs3_store::StoreError>((fs3_store::exact_rank_setting(&pool).await?, state))
+        }
+        .await;
+        pool.close().await;
+        read.map_err(|error| error.to_string())
+    }
+    .await;
+    exact_index_row(
+        read.as_ref()
+            .map(|(setting, state)| (setting.as_str(), state))
+            .map_err(String::as_str),
+        started,
+    )
+}
+
+/// Vectors lacking their binary copy, summed over every model.
+fn missing_copies(state: &fs3_store::ExactIndexState) -> i64 {
+    state.coverage().iter().map(|model| model.missing).sum()
+}
+
+fn exact_index_row(
+    read: Result<(&str, &fs3_store::ExactIndexState), &str>,
+    started: Instant,
+) -> Step {
+    use fs3_store::ExactIndexState::{Drifted, NotBuilt, Ready};
+    const CHECK: &str = "exact-index";
+    const BUILD: &str = "run `flowspace3 doctor exact-index` to fill it";
+    let (setting, state) = match read {
+        Ok(read) => read,
+        Err(error) => {
+            return Step::info(
+                CHECK,
+                format!("exact-ranking copy unavailable: {error}"),
+                "fix the database rows above",
+                started,
+            );
+        }
+    };
+    let compact = setting == "compact";
+    match (compact, state) {
+        (false, NotBuilt { .. }) => Step::ok(
+            CHECK,
+            "exact ranking reads full vectors (fs3.exact_rank = float, the default)",
+            started,
+        ),
+        (false, Ready { .. }) => Step::info(
+            CHECK,
+            "the binary copy is complete, and exact ranking reads full vectors",
+            "to rank on it, `ALTER DATABASE … SET fs3.exact_rank = 'compact'` and restart the \
+             daemon (pooled connections keep the old setting)",
+            started,
+        ),
+        (true, Ready { coverage }) => Step::ok(
+            CHECK,
+            format!(
+                "exact ranking reads the binary copy, complete for {} vectors",
+                coverage.iter().map(|model| model.vectors).sum::<i64>()
+            ),
+            started,
+        ),
+        (true, NotBuilt { .. }) => Step::warn(
+            CHECK,
+            format!(
+                "fs3.exact_rank is \"compact\" but the binary copy was never completed ({} \
+                 vectors lack one), so exact ranking reads full vectors",
+                missing_copies(state)
+            ),
+            BUILD,
+            started,
+        ),
+        // Recorded complete, yet vectors lack a copy: something wrote around
+        // the trigger (a restore with triggers off). The walk has cleared the
+        // mark, so search no longer reads it; it still needs refilling.
+        (_, Drifted { .. }) => Step::warn(
+            CHECK,
+            format!(
+                "{} vectors lacked their binary copy although it was recorded complete; the mark \
+                 is cleared{}",
+                missing_copies(state),
+                if compact {
+                    ", so exact ranking reads full vectors until it is refilled"
+                } else {
+                    ""
+                }
+            ),
+            BUILD,
+            started,
+        ),
+    }
+}
+
+/// What `flowspace3 doctor exact-index` answers with.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ExactIndexReport {
+    /// The binary copy's table.
+    pub table: String,
+    /// `built` (this run completed it), `ready` (it already was) or
+    /// `incomplete` (vectors still lack a copy after the fill).
+    pub state: String,
+    /// Copies this run wrote.
+    pub filled: i64,
+    /// The copy's size on disk, table and key.
+    pub bytes: i64,
+    /// Vectors per embedding model.
+    pub vectors: std::collections::BTreeMap<String, i64>,
+    /// How long the fill took.
+    pub build_ms: u64,
+    /// The database's `fs3.exact_rank`.
+    pub exact_rank: String,
+}
+
+/// Fills the binary copy of the vectors that exact ranking reads, explicitly:
+/// it reads every vector once, a heavy job, so the walk only reports it.
+///
+/// Safe beside a running daemon: the trigger covers every vector written
+/// meanwhile, and an interrupted run resumes where it stopped.
+pub async fn exact_index(config: &Config) -> Envelope<ExactIndexReport> {
+    const COMMAND: &str = "doctor exact-index";
+    let pool = match fs3_store::connect(config.database.url.as_str()).await {
+        Ok(pool) => pool,
+        Err(error) => return Envelope::failed(COMMAND, map_store(error)),
+    };
+    let outcome = async {
+        let before = fs3_store::exact_index_state(&pool).await?;
+        let started = Instant::now();
+        let build = fs3_store::build_exact_index(&pool).await?;
+        let exact_rank = fs3_store::exact_rank_setting(&pool).await?;
+        Ok::<_, fs3_store::StoreError>((before, build, started.elapsed(), exact_rank))
+    }
+    .await;
+    pool.close().await;
+    match outcome {
+        Ok((before, build, elapsed, exact_rank)) => {
+            let state = match (build.ready, before) {
+                (false, _) => "incomplete",
+                (true, fs3_store::ExactIndexState::Ready { .. }) if build.filled == 0 => "ready",
+                (true, _) => "built",
+            };
+            let next = match (build.ready, exact_rank.as_str()) {
+                (false, _) => "vectors still lack a copy: run this again, and check that the \
+                               embeddings_1024_bq triggers exist"
+                    .to_string(),
+                (true, "compact") => "exact ranking already reads it".to_string(),
+                (true, _) => "to rank on it, `ALTER DATABASE … SET fs3.exact_rank = 'compact'` \
+                              and restart the daemon"
+                    .to_string(),
+            };
+            let report = ExactIndexReport {
+                table: fs3_store::EXACT_INDEX_TABLE.to_string(),
+                state: state.to_string(),
+                filled: build.filled,
+                bytes: build.bytes,
+                vectors: build
+                    .coverage
+                    .iter()
+                    .map(|model| (model.model_key.clone(), model.vectors))
+                    .collect(),
+                build_ms: u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX),
+                exact_rank,
+            };
+            Envelope::ok(COMMAND, report).with_next_action(next)
+        }
+        Err(error) => Envelope::failed(COMMAND, map_store(error)),
     }
 }
 
@@ -2102,5 +2284,60 @@ mod tests {
         }
         assert!(row(Bm25, Ok(Invalid)).found.contains("invalid"));
         assert_eq!(row(Bm25, Err("down")).outcome, "info");
+    }
+
+    #[test]
+    fn the_exact_index_row_asks_for_the_build_only_when_compact_needs_it() {
+        use fs3_store::ExactIndexState::{Drifted, NotBuilt, Ready};
+        use fs3_store::ModelCoverage;
+        let coverage = |missing| {
+            vec![ModelCoverage {
+                model_key: "m@1024".to_string(),
+                vectors: 100,
+                missing,
+            }]
+        };
+        let row = |setting, state: &fs3_store::ExactIndexState| {
+            exact_index_row(Ok((setting, state)), Instant::now())
+        };
+        let not_built = NotBuilt {
+            coverage: coverage(40),
+        };
+        let ready = Ready {
+            coverage: coverage(0),
+        };
+        let drifted = Drifted {
+            coverage: coverage(3),
+        };
+
+        // float (the default) never needs the copy; a complete one is news.
+        assert_eq!(row("float", &not_built).outcome, "ok");
+        let unused = row("float", &ready);
+        assert_eq!(unused.outcome, "info");
+        assert!(
+            unused
+                .action
+                .unwrap()
+                .contains("fs3.exact_rank = 'compact'")
+        );
+
+        assert_eq!(row("compact", &ready).outcome, "ok");
+        let unbuilt = row("compact", &not_built);
+        assert_eq!(unbuilt.outcome, "warn");
+        assert!(unbuilt.found.contains("40 vectors lack one"));
+        assert!(
+            unbuilt
+                .action
+                .unwrap()
+                .contains("flowspace3 doctor exact-index")
+        );
+        // Drift is a fault either way, and says what compact loses.
+        assert_eq!(row("float", &drifted).outcome, "warn");
+        assert!(
+            row("compact", &drifted)
+                .found
+                .contains("the mark is cleared")
+        );
+        assert_eq!(exact_index_row(Err("down"), Instant::now()).outcome, "info");
     }
 }

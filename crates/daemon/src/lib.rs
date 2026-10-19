@@ -18,6 +18,7 @@ pub mod debounce;
 pub mod decisions;
 pub mod embed_governor;
 pub mod enrich;
+pub mod exact_index_guard;
 pub mod gc;
 pub mod github_copilot;
 pub mod http;
