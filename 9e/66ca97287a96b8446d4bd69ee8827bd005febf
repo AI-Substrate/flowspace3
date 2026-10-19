@@ -1,0 +1,41 @@
+crates/store/migrations/0034_embeddings_compact.sql
+  s_0b1fc8a956f6af::t_9e233d19e7b91e 1-89
+crates/cli/docs/doctor.md
+  s_0b1fc8a956f6af::t_b74b44e250235e 19,93-101,107-111
+crates/cli/docs/search.md
+  s_0b1fc8a956f6af::t_77ba13392cd91f 171-176
+crates/core/src/views/search.rs
+  s_0b1fc8a956f6af::t_8e527a06ad3bc1 180-183
+crates/daemon/src/exact_index_guard.rs
+  s_0b1fc8a956f6af::t_c52582ba717ff6 3-4,51-62
+crates/store/src/embeddings.rs
+  s_0b1fc8a956f6af::t_d07ab2a6bd9df2 134-142,735-737,957-961,964-970,972-976,995,1000-1025,1053-1054,1056-1058,1097-1105,1282,1340-1341,1378,1395-1400,1478,1929
+crates/store/src/exact_index.rs
+  s_0b1fc8a956f6af::t_e6dbc0c7b0a0da 1-2,4-7,9-17,25-46,48-58,104-109,113,118-119,137-142,164,168-183,185,191,193-194,199-212,214,231,239-243,274-276,283-284,304,307,314,319
+crates/store/src/maintenance.rs
+  s_0b1fc8a956f6af::t_5f80d1468e451e 14,18
+crates/cli/src/doctor.rs
+  s_0b1fc8a956f6af::t_5275be802380c7 846-848,858-868,875,878-887,890,894,905-929,934,936,941,944,949-950,953-954,959,962-963,968-975,982,999-1000,1012-1013,1015,1030,1038,2320-2321,2329-2333,2335-2336,2339,2343-2348,2357-2362,2364,2369-2379,2381,2383,2385
+crates/daemon/src/search.rs
+  s_0b1fc8a956f6af::t_1d204b80a509ee 673-681
+crates/store/src/lib.rs
+  s_0b1fc8a956f6af::t_baae607dccd3be 72-74
+crates/store/tests/pg_exact_index.rs
+  s_0b1fc8a956f6af::t_d664ad94e3859d 1-4,10-12,106,108-114,128,142,146-147,149-151,179,189,219,224-226,233-235,240-242,247-253,256,261-263,269-272,275-277,280-281,287-292,294,305-311,342-359,362-370,373-385,390,394
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9e66ca97287a96b8446d4bd69ee8827bd005febf",
+  "prompts": {},
+  "sessions": {
+    "s_0b1fc8a956f6af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "985a1bfe-600e-4154-a4b0-2f3bbf6f7b0c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
