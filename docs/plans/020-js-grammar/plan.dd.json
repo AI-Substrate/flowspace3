@@ -110,7 +110,7 @@
             "dodo-gogo real-usage receipt"
           ],
           "key_risks": "grammar link failure (T001 gates); cross-language golden drift (AC-0004 gates).",
-          "receipt": "T001-T007 checked with build, goldens, mutations, non-regression, docs, real-usage probe, gate, commits and handoff evidence"
+          "receipt": "Approved by PM pij-capable-lizard 2026-11-14: cross-model review pij-southern-bovid (claude-opus-5.5) APPROVE 089cf2f (F001 MED, F002-F004 LOW) → fix round 1 → APPROVE 4d49d57 (Dim-0 RED→GREEN each round; rider 0 removed golden lines); harness checks 11/11 at 4d49d57 (isolated db :5444); PM re-ran cargo test -p fs3-parsers green. Reviews: assets/tasks/phase-1/reviews/."
         }
       ]
     },
