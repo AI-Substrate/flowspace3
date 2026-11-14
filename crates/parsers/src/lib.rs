@@ -7,11 +7,11 @@
 //! check refuses tokio and sqlx in this crate — and it is what lets the scanner
 //! be tested with a `&str` and reused from any caller, sync or async.
 //!
-//! Five grammars ship as the exemplar set: **Rust**, **Python**, **TypeScript**,
-//! **TSX** (code), and **Markdown** (documents). Anything else still scans: a file fs3 has no
-//! grammar for yields a one-element tree — the file itself, `language()` of
-//! `unknown`. A missing grammar is an observable outcome (PRD req 43), never an
-//! error and never a silent skip.
+//! Six grammars ship as the exemplar set: **Rust**, **Python**, **JavaScript**,
+//! **TypeScript**, **TSX** (code), and **Markdown** (documents). Anything else
+//! still scans: a file fs3 has no grammar for yields a one-element tree — the
+//! file itself, `language()` of `unknown`. A missing grammar is an observable
+//! outcome (PRD req 43), never an error and never a silent skip.
 
 /// Pure parsing and classification helpers for deterministic documents.
 pub mod ddoc;
@@ -34,6 +34,8 @@ pub enum Language {
     Rust,
     /// `tree-sitter-python`.
     Python,
+    /// `tree-sitter-javascript`, including JSX.
+    JavaScript,
     /// `tree-sitter-md`. Headings become sections (PRD req 22).
     Markdown,
     /// `tree-sitter-typescript` using its TypeScript grammar.
@@ -67,6 +69,7 @@ impl Language {
         match extension.to_ascii_lowercase().as_str() {
             "rs" => Some(Language::Rust),
             "py" | "pyi" => Some(Language::Python),
+            "js" | "mjs" | "cjs" | "jsx" => Some(Language::JavaScript),
             "md" | "markdown" => Some(Language::Markdown),
             "ts" | "mts" | "cts" => Some(Language::TypeScript),
             "tsx" => Some(Language::Tsx),
@@ -84,6 +87,7 @@ impl Language {
         match self {
             Language::Rust => "rust",
             Language::Python => "python",
+            Language::JavaScript => "javascript",
             Language::Markdown => "markdown",
             Language::TypeScript => "typescript",
             Language::Tsx => "tsx",
@@ -95,6 +99,7 @@ impl Language {
         match self {
             Language::Rust => tree_sitter_rust::LANGUAGE.into(),
             Language::Python => tree_sitter_python::LANGUAGE.into(),
+            Language::JavaScript => tree_sitter_javascript::LANGUAGE.into(),
             Language::Markdown => tree_sitter_md::LANGUAGE.into(),
             Language::TypeScript => tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into(),
             Language::Tsx => tree_sitter_typescript::LANGUAGE_TSX.into(),
@@ -165,9 +170,11 @@ pub fn scan(path: &Path, bytes: &[u8]) -> Result<ElementTree, ScanError> {
 
     let children = match language {
         Language::Markdown => markdown::sections(root_node, source, &display),
-        Language::Rust | Language::Python | Language::TypeScript | Language::Tsx => {
-            source::declarations(root_node, source, &display)
-        }
+        Language::Rust
+        | Language::Python
+        | Language::JavaScript
+        | Language::TypeScript
+        | Language::Tsx => source::declarations(root_node, source, &display),
     };
 
     Ok(ElementTree {
@@ -218,6 +225,10 @@ mod tests {
         assert_eq!(Language::for_extension("rs"), Some(Language::Rust));
         assert_eq!(Language::for_extension("MD"), Some(Language::Markdown));
         assert_eq!(Language::for_extension("py"), Some(Language::Python));
+        assert_eq!(Language::for_extension("js"), Some(Language::JavaScript));
+        assert_eq!(Language::for_extension("MJS"), Some(Language::JavaScript));
+        assert_eq!(Language::for_extension("cjs"), Some(Language::JavaScript));
+        assert_eq!(Language::for_extension("jsx"), Some(Language::JavaScript));
         assert_eq!(Language::for_extension("ts"), Some(Language::TypeScript));
         assert_eq!(Language::for_extension("MTS"), Some(Language::TypeScript));
         assert_eq!(Language::for_extension("cts"), Some(Language::TypeScript));
