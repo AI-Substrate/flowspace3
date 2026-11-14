@@ -1,0 +1,382 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "020 — JavaScript + JSX grammar",
+        "slug": "js-grammar",
+        "ordinal": 20,
+        "status": "ready",
+        "complexity": "CS-2",
+        "mode": "Simple",
+        "plan_version": "1.0.0",
+        "created": "2026-11-14",
+        "summary": "Wire tree-sitter-javascript into fs3-parsers so .js/.mjs/.cjs/.jsx files stop indexing as one bare `unknown` file element (verified live 2026-11-14: `flowspace3 search` returns dodo-gogo game/impact/lib/game/classes/branch-pool.js as kind=file, subkind=unknown). The twin of plan 015 (whose non-goals",
+        "backpressure": "assets/backpressure.dd.json#rows"
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Wire tree-sitter-javascript into fs3-parsers so .js/.mjs/.cjs/.jsx files stop indexing as one bare `unknown` file element (verified live 2026-11-14: `flowspace3 search` returns dodo-gogo game/impact/lib/game/classes/branch-pool.js as kind=file, subkind=unknown). The twin of plan 015 (whose non-goals named JS/JSX as 'separate packet; tree-sitter-javascript is a different crate'). The packet is: the grammar crate and one Language::JavaScript entry, a widening of the generic value-shape rule so pre-ES6 callables (object-literal `key: function(){}` pairs, function-valued assignments `exports.x = () => {}`, JS class fields) become Function elements named by their binding, golden whole-tree fixtures with mutation receipts, the PARSER_VERSION bump, docs + add-language skill drift fix, and a real-usage receipt against a read-only copy of ~/GitHub/dodo-gogo (ImpactJS)."
+    },
+    {
+      "name": "goals",
+      "value": [
+        "`.js`/`.mjs`/`.cjs`/`.jsx` → Language::JavaScript (one grammar; JSX lives in tree-sitter-javascript); the file element's subkind reports `javascript`",
+        "function / generator / async function declarations, classes (declaration and named class expressions), methods (incl. getters/setters, static, private `#m`, object-literal method shorthand) become named elements with correct addresses and 1-based spans",
+        "callables bound by value become Function elements named by their binding via the existing generic value-shape rule, widened language-agnostically: `const f = () => {}`, `let g = function(){}`, JS class-field arrows (`field_definition`), object-literal pairs (`init: function(){}`), and function-valued assignments (`exports.h = async () => {}`, `Foo.prototype.bar = function(){}` named `bar`)",
+        "a real ImpactJS file (dodo-gogo game/impact/lib/game/main.js and peers) yields function-level elements (init/update/draw…) instead of one bare file element",
+        "golden whole-tree fixtures + invents-nothing negatives + mutation receipts for every decision; Rust/Python/TypeScript/TSX goldens byte-unchanged"
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "treating `X = Base.extend({...})` (ImpactJS/Backbone-style class factories) as Container elements — a framework call-pattern heuristic would be a per-pattern special case (o-prime ruling 3, 2026-11-14); their methods still surface as file-scoped Functions",
+        "Flow / JSDoc type semantics, CommonJS `require` resolution, or any cross-file reference work",
+        "routing JS through the TypeScript grammar (rejected — see key findings)",
+        "changing ElementKind, the store schema, embeddings, discovery candidacy, or any CLI envelope",
+        "augmented assignments (`x ||= function(){}`), destructuring patterns, computed property keys (`[k]: fn`) as elements — nameless or ambiguous, spliced through",
+        "opening an upstream issue or the PR, or re-ingesting any live daemon — Vaughan's go via the o-prime; the live 0.7.0 daemon (:7373/:5433) is never touched"
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-0001",
+          "state": "unchecked",
+          "claim": "`Language::for_extension` maps js|mjs|cjs|jsx (any case) → JavaScript and `as_str()` = \"javascript\"; `sample.js` and `sample.jsx` fixtures scan to trees whose language is javascript and whose whole forest matches a checked-in golden (functions, generators, async, classes, class expressions, methods incl. get/set/static/#private, nested functions, export default) with correct addresses and 1-based spans; the JSX fixture parses without ScanError::Unparseable"
+        },
+        {
+          "id": "ac-0002",
+          "state": "unchecked",
+          "claim": "the generic value-shape rule in source.rs (no `Language::` branch) promotes function-valued `field_definition`, `pair` and `assignment_expression` to Function elements named by their binding's own short name (member left side → its property; quoted key → unquoted); computed keys, destructuring and non-function values are not elements; deleting each widening turns the JS golden red (mutation receipt per rule)"
+        },
+        {
+          "id": "ac-0003",
+          "state": "unchecked",
+          "claim": "invents-nothing: grep-traps in the fixtures (\"function\"/\"class\" inside strings, comments and template literals; callback arrows passed as arguments; IIFEs; `const n = 42`; `this.x = 5`; anonymous default-export class) yield no element, and no element has an empty name or address"
+        },
+        {
+          "id": "ac-0004",
+          "state": "unchecked",
+          "claim": "no regression: the Rust, Python, TypeScript and TSX whole-tree expectation tables in crates/parsers/tests/fixture_elements.rs are byte-unchanged vs origin/main (diff shows additions only) and green; any changed row would be listed with its reason (o-prime rider 3); `harness checks` (fmt, clippy -D warnings, test, arch drift) green in the stream worktree"
+        },
+        {
+          "id": "ac-0005",
+          "state": "unchecked",
+          "claim": "PARSER_VERSION is bumped fs3-parsers@4 → @5 with a history line naming plan 020, and the PR body names the one-off consequence: since #180 a bump makes every daemon reparse every registered root on next boot (o-prime ruling 1)"
+        },
+        {
+          "id": "ac-0006",
+          "state": "unchecked",
+          "claim": "real usage: a throwaway scratch probe (never shipped) scanning every .js file of a read-only copy of ~/GitHub/dodo-gogo through fs3-parsers reports elements-per-file before (origin/main: exactly 1, language unknown) vs after (N>1 for every file that declares anything; 0 scan errors), and game/impact/lib/game/main.js yields Function elements for MyGame's init/update(/draw) methods"
+        },
+        {
+          "id": "ac-0007",
+          "state": "unchecked",
+          "claim": "docs: scanner.md names JavaScript in the grammar set and the widened value-shape rule; add-language SKILL.md lists the PARSER_VERSION bump as a recipe step"
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-e4ba",
+          "title": "Phase 1: JavaScript + JSX grammar",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks",
+          "brief": "One coder, top to bottom. T001 proves the build before anything else. Fixtures + goldens go RED before the source.rs widening turns them GREEN; every widening gets a mutation receipt. Stop-and-ask the PM on anything outside the fence.",
+          "objective": "JS/JSX files scan into function/container element trees through the generic walk, with zero change to the other grammars' goldens.",
+          "delivers": [
+            "Language::JavaScript wired (dep, allowlist, extension map, grammar)",
+            "sample.js + sample.jsx goldens and negatives",
+            "widened generic value-shape rule",
+            "PARSER_VERSION @5",
+            "docs + skill fix",
+            "dodo-gogo real-usage receipt"
+          ],
+          "key_risks": "grammar link failure (T001 gates); cross-language golden drift (AC-0004 gates)."
+        }
+      ]
+    },
+    {
+      "name": "research_context",
+      "value": "No research dossier: the ask was clear (Graph: clear → plan). The read-only preamble survey (.harness/temp/s020-js-grammar/00-preamble.md, scratch) stands in: lib.rs:62-70 maps ts|mts|cts|tsx only; discovery.rs:128-133 already lists js/jsx/mjs/cjs as SOURCE_EXTENSIONS (candidacy, no change needed); source.rs:26-46 holds the generic NAME_FIELDS / FUNCTION_BINDINGS / FUNCTION_VALUES / WRAPPERS tables; tree-sitter-javascript 0.25.0 (latest) depends on tree-sitter-language ^0.1 and its node-types.json was read from the crate source (scratch copy). Prior art: plan 015 (ts-grammar), .agents/skills/add-language, docs/services/scanner.md § Adding a language."
+    },
+    {
+      "name": "testing_strategy",
+      "value": {
+        "approach": "TDD with whole-tree golden fixtures (the repo's established parser contract) + mutation receipts (RED→restore→GREEN) for each generic rule.",
+        "rationale": "scanner.md: 'The whole tree is the assertion' — a classifier regression shows up as an extra row, a parenting regression as rows at the wrong depth; spot checks catch neither. CONTRIBUTING: a behavioural change needs a test that fails without it.",
+        "focus_areas": "new JS/JSX goldens; widened value-shape rule (pair, field_definition, assignment_expression) incl. naming of member/string keys; nameless/computed negatives; cross-language non-regression of the existing 4 code goldens; ImpactJS real file.",
+        "excluded": "store/daemon round-trips (no schema change); live prod re-ingest (o-prime, post-merge).",
+        "mock_usage": "None — fs3-parsers::scan is pure; tests feed &str/bytes. Workspace rule 5 bans mock crates."
+      }
+    },
+    {
+      "name": "documentation_strategy",
+      "value": {
+        "location": "docs/services/scanner.md (language set + value-shape rule note), crates/parsers/src/lib.rs module doc, crates/daemon/src/scan.rs PARSER_VERSION history comment, .agents/skills/add-language/SKILL.md (add the missing PARSER_VERSION step).",
+        "rationale": "CONTRIBUTING: update docs/services/ when a subsystem's behaviour changes; the skill omitted a recipe step scanner.md requires (drift found at preamble; o-prime ruling 5)."
+      }
+    },
+    {
+      "name": "clarifications",
+      "value": [
+        {
+          "session": "2026-11-14",
+          "question": "Workflow mode?",
+          "answer": "Simple — one phase, one coder. Recipe-shaped change (plan 015 shipped the same shape in one phase). Decided by the PM (context owner) from repo precedent."
+        },
+        {
+          "session": "2026-11-14",
+          "question": "Testing strategy / mocks?",
+          "answer": "TDD with whole-tree goldens + mutation receipts; no mocks (repo rule 5: fakes over mocks; scan is pure). Forced by CONTRIBUTING + scanner.md, not a preference."
+        },
+        {
+          "session": "2026-11-14",
+          "question": "Documentation strategy?",
+          "answer": "Update existing pages only: scanner.md, lib.rs doc, scan.rs version history, add-language SKILL.md. No new docs."
+        },
+        {
+          "session": "2026-11-14",
+          "question": "Bump PARSER_VERSION (crates/daemon/src/scan.rs, outside the brief's fence)?",
+          "answer": "o-prime ruling 1: accepted, fence updated; name the one-off reparse consequence in the PR body."
+        },
+        {
+          "session": "2026-11-14",
+          "question": "Open an upstream issue first (CONTRIBUTING: 'for anything substantial')?",
+          "answer": "o-prime ruling 2: not substantial (recipe-shaped, 015 precedent). Open nothing; o-prime raises it with Vaughan at ship."
+        },
+        {
+          "session": "2026-11-14",
+          "question": "ImpactJS scope?",
+          "answer": "o-prime ruling 3: pair + function-valued assignment IN; `.extend()` containers OUT (non-goal). Rider: prove TS/TSX (and Python/Rust) goldens byte-unchanged or list each changed row with why."
+        },
+        {
+          "session": "2026-11-14",
+          "question": "Fix the add-language skill drift in this PR?",
+          "answer": "o-prime ruling 5: yes."
+        }
+      ]
+    },
+    {
+      "name": "workshop_opportunities",
+      "value": []
+    },
+    {
+      "name": "planning_seam",
+      "value": [
+        {
+          "artifact": "research-dossier.md",
+          "present": "n",
+          "effect": "replaced by the read-only preamble survey (scratch 00-preamble.md) — findings carried into key_findings"
+        },
+        {
+          "artifact": "workshops/*.md",
+          "present": "n",
+          "effect": "none needed — no open design shape; the one design call (dedicated grammar vs TS grammar) is recorded in key_findings"
+        },
+        {
+          "artifact": "plan 015 (prior art)",
+          "present": "y",
+          "effect": "same shape: grammar wiring → goldens → value-shape rule → regression → real-usage receipt"
+        }
+      ]
+    },
+    {
+      "name": "gate_matrix",
+      "value": [
+        {
+          "gate": "G1",
+          "check": "Clarify",
+          "status": "PASS",
+          "notes": "no [NEEDS CLARIFICATION] markers; 7 clarifications recorded"
+        },
+        {
+          "gate": "G2",
+          "check": "Constitution",
+          "status": "N/A",
+          "notes": "no docs/project-rules/constitution.md"
+        },
+        {
+          "gate": "G3",
+          "check": "Architecture",
+          "status": "PASS",
+          "notes": "docs/rules-idioms-architecture/fs3-architecture.md: new external dep only in fs3-parsers, mirrored in crates/testkit/arch-allowlist.toml (arch drift check is in harness checks); scan stays pure (no tokio/sqlx)"
+        },
+        {
+          "gate": "G4",
+          "check": "ADR Compliance",
+          "status": "N/A",
+          "notes": "no docs/adr/"
+        },
+        {
+          "gate": "G5",
+          "check": "Structure",
+          "status": "PASS",
+          "notes": "all required sections present"
+        },
+        {
+          "gate": "G6",
+          "check": "Testing Alignment",
+          "status": "PASS",
+          "notes": "every behavioural task carries a golden or mutation receipt"
+        },
+        {
+          "gate": "G7",
+          "check": "Domain Completeness",
+          "status": "N/A",
+          "notes": "domain mode off"
+        }
+      ]
+    },
+    {
+      "name": "implementation_summary",
+      "value": "One phase, one coder. Prove tree-sitter-javascript 0.25 builds against the workspace's tree-sitter 0.26 first; wire Language::JavaScript; write sample.js/sample.jsx goldens (RED); widen the generic value-shape rule (binding kinds + value/name fields) until green, with a mutation receipt per widening; prove the four existing code goldens are untouched; bump PARSER_VERSION; update docs + skill; finish with a scratch real-usage probe over a read-only dodo-gogo copy. Expected: every JS file in dodo-gogo gains function-level elements, zero behavioural change for Rust/Python/TS/TSX fixtures."
+    },
+    {
+      "name": "key_findings",
+      "value": [
+        {
+          "impact": "Critical",
+          "finding": "tree-sitter-javascript 0.25.0 is the latest crate; it depends on tree-sitter-language ^0.1 (the same ABI shim tree-sitter-typescript 0.23.2 uses under the workspace's tree-sitter 0.26), so it should link — but 015 found build resolution worth proving first.",
+          "action": "T001 proves `cargo build -p fs3-parsers` resolves before any other work; on failure stop and report (do not bump tree-sitter)."
+        },
+        {
+          "impact": "High",
+          "finding": "Design call: dedicated grammar vs routing JS through tree-sitter-typescript. TS grammar mis-parses valid JS (`a < b > (c)` generic-call ambiguity; `<T>x` casts vs JSX in .js) and would make the file subkind lie (`typescript` for a .js file).",
+          "action": "Dedicated `tree-sitter-javascript` crate, one Language::JavaScript for js|mjs|cjs|jsx (JSX is in the JS grammar; no separate Jsx variant needed because there is no TS-style grammar split)."
+        },
+        {
+          "impact": "High",
+          "finding": "JS names its nodes differently from TS: class fields are `field_definition` with the name in `property` (TS: `public_field_definition`/`name`); object-literal pairs carry `key`/`value`; assignments carry `left`/`right`. The current rule reads only `value` and NAME_FIELDS lacks key/property/left.",
+          "action": "Widen source.rs generically: FUNCTION_BINDINGS += field_definition, pair, assignment_expression; the value field becomes a small ordered list (value, right); naming covers key/property/left with a member_expression left resolving to its own `property` (short name, per the scanner model) and a string key unquoted. Keep `type` last in NAME_FIELDS (L3)."
+        },
+        {
+          "impact": "High",
+          "finding": "`pair` and `assignment_expression` also exist in tree-sitter-typescript (and Python has a dictionary `pair`), so the widening changes behaviour beyond JS. sample.ts/sample.tsx contain no function-valued pair/assignment, and Python `pair` values are never arrow/function_expression kinds — so existing goldens should be byte-unchanged; TS code in the wild gains object-literal/assignment methods (an intended, generic improvement).",
+          "action": "AC-0004 diff check; one source.rs unit test shows the same rule firing on a .ts snippet (proves no Language branch); call the TS gain out in the PR body."
+        },
+        {
+          "impact": "Medium",
+          "finding": "Classification needs no classify.rs change: function_declaration/generator_function_declaration/method_definition/class_declaration classify today; `class` (class expression) is a BARE_DECL; field_definition/lexical_declaration/variable_declaration have decl suffixes but no category hint → None; function_expression/arrow_function are not declaration-shaped.",
+          "action": "Do not touch crates/core/src/classify.rs; a parsers-side test enumerates the JS node-kind decisions (incl. deliberate non-elements) via fs3_core::classify."
+        },
+        {
+          "impact": "Medium",
+          "finding": "PARSER_VERSION bump (recipe step) + #180 means every daemon reparses every root on next boot after upgrade; enrichment is keyed by raw_hash, so only NEW JS elements cost provider calls (summaries/embeddings) on repos with JS.",
+          "action": "Bump @4→@5 with history line; PR body names the consequence (o-prime ruling 1)."
+        }
+      ]
+    },
+    {
+      "name": "acceptance_coverage",
+      "value": [
+        {
+          "ac": "ac-0001",
+          "covered_by": [
+            "T001",
+            "T002",
+            "T004"
+          ],
+          "verified_in": "fixture_elements javascript/jsx goldens"
+        },
+        {
+          "ac": "ac-0002",
+          "covered_by": [
+            "T003",
+            "T004"
+          ],
+          "verified_in": "golden + per-rule mutation receipts"
+        },
+        {
+          "ac": "ac-0003",
+          "covered_by": [
+            "T002",
+            "T004"
+          ],
+          "verified_in": "javascript_fixtures_invent_nothing test"
+        },
+        {
+          "ac": "ac-0004",
+          "covered_by": [
+            "T004",
+            "T007"
+          ],
+          "verified_in": "git diff origin/main fixture_elements.rs + harness checks"
+        },
+        {
+          "ac": "ac-0005",
+          "covered_by": [
+            "T005"
+          ],
+          "verified_in": "scan.rs diff + PR body draft"
+        },
+        {
+          "ac": "ac-0006",
+          "covered_by": [
+            "T006"
+          ],
+          "verified_in": "scratch probe table in execution log"
+        },
+        {
+          "ac": "ac-0007",
+          "covered_by": [
+            "T005"
+          ],
+          "verified_in": "docs diff"
+        }
+      ]
+    },
+    {
+      "name": "risks",
+      "value": [
+        {
+          "risk": "grammar crate fails to link with tree-sitter 0.26",
+          "likelihood": "Low",
+          "impact": "High",
+          "mitigation": "T001 first; stop-and-report, never bump tree-sitter in this plan"
+        },
+        {
+          "risk": "widened NAME_FIELDS/value fields change a node in another grammar that already classifies",
+          "likelihood": "Low",
+          "impact": "Medium",
+          "mitigation": "existing goldens must stay byte-identical (AC-0004); fields appended before `type`, only consulted for nodes with no earlier name field"
+        },
+        {
+          "risk": "assignment rule over-promotes (`module.exports = function(){}` → element named `exports`)",
+          "likelihood": "Medium",
+          "impact": "Low",
+          "mitigation": "accepted: addresses are non-unique by design and the element is still a real callable; pinned in the golden so the behaviour is deliberate"
+        },
+        {
+          "risk": "live-daemon interference from test builds",
+          "likelihood": "Low",
+          "impact": "High",
+          "mitigation": "fence: never touch :7373/:5433; tests use the repo's test compose service; probe is a pure scan, no daemon"
+        }
+      ]
+    },
+    {
+      "name": "execution_guardrails",
+      "value": [
+        "Stay inside the fence: crates/parsers/**, Cargo.toml, Cargo.lock, crates/testkit/arch-allowlist.toml, crates/daemon/src/scan.rs (PARSER_VERSION only), docs/services/scanner.md, .agents/skills/add-language/SKILL.md, docs/plans/020-js-grammar/**, scratch .harness/temp/s020-js-grammar/**. crates/core/src/classify.rs only if a test proves it necessary — stop and report first.",
+        "Never stop/restart/reconfigure the live flowspace3 daemon (:7373) or its db (:5433); never use ~/.local/bin/flowspace3 for test work; ~/GitHub/dodo-gogo is read-only (copy it to scratch for the probe).",
+        "No `Language::` branch in source.rs (PRD req 21); fixture + expectation land in the same commit as the wiring.",
+        "Commits via `harness commit` with conventional subjects (feat(parsers): …, docs: …); never stage the-flow.json/the-flow.md by hand-edit, target/, or .harness/temp/.",
+        "Heavy cargo runs niced (C12) with a wall-clock cap: perl -e 'alarm shift @ARGV; exec @ARGV' 1800 nice -n 19 <cmd>."
+      ]
+    },
+    {
+      "name": "open_questions",
+      "value": []
+    }
+  ]
+}

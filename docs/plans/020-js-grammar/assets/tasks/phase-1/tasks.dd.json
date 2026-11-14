@@ -1,0 +1,172 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: JavaScript + JSX grammar",
+        "slug": "phase-1",
+        "status": "ready",
+        "summary": "Wire tree-sitter-javascript, widen the generic value-shape rule, prove with goldens + mutation receipts + a dodo-gogo probe."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Work top to bottom; RED before GREEN for T002→T003. Stop and ask the PM (pij-capable-lizard) on anything outside the fence (plan execution_guardrails). Every task closes with its receipt (command + result) written to the execution log."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "T001",
+          "title": "Wire tree-sitter-javascript: workspace dep, parsers dep, arch-allowlist line, Language::JavaScript (js|mjs|cjs|jsx), as_str \"javascript\", grammar(), scan() arm, lib.rs doc, extensions test",
+          "success": "`tree-sitter-javascript = \"0.25\"` resolves and compiles against tree-sitter 0.26 (prove FIRST with cargo build -p fs3-parsers; on failure stop and report); extensions_map_to_grammars asserts js/MJS/cjs/jsx → JavaScript; arch drift green",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ],
+          "notes": "Paths: Cargo.toml, Cargo.lock, crates/parsers/Cargo.toml, crates/testkit/arch-allowlist.toml, crates/parsers/src/lib.rs",
+          "state": "unchecked",
+          "done": "#done_when/T001"
+        },
+        {
+          "id": "T002",
+          "title": "Fixtures sample.js + sample.jsx with nesting, every binding shape, the ImpactJS pattern and grep-traps; RED goldens + invents-nothing test in fixture_elements.rs",
+          "success": "sample.js covers: function/generator/async declarations, nested function, class decl with constructor/method/static/get+set/#private, class-field arrow, named + anonymous class expression, const/let arrow + function expression bindings, export default function, export const arrow, object-literal shorthand method, `key: function(){}` pairs, `'quoted': () => {}` pair, computed `[k]: fn` (non-element), `exports.h = async () => {}`, `Foo.prototype.bar = function(){}`, `module.exports = function(){}`, ImpactJS `ig.module(...).requires(...).defines(function(){ MyGame = ig.Game.extend({ init: function(){ this.parent(); }, update: function(){} }); })`, and traps (\"function\"/\"class\" in strings, comments, template literals; callback arrows as arguments; IIFE; `const n = 42`; `this.x = 5`; destructuring). sample.jsx: function component, arrow component, class component with render, JSX-heavy body. Expected-tree tables written from the intended contract (not from output) fail before T003",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ],
+          "notes": "Paths: crates/parsers/fixtures/sample.js, sample.jsx, crates/parsers/tests/fixture_elements.rs (ADD tests only; existing tables untouched)",
+          "state": "unchecked",
+          "done": "#done_when/T002"
+        },
+        {
+          "id": "T003",
+          "title": "Widen the generic value-shape rule in source.rs: FUNCTION_BINDINGS += field_definition, pair, assignment_expression; value read from an ordered field list (value, right); naming via key/property/left with member_expression → its `property` and string keys unquoted; `type` stays last in NAME_FIELDS",
+          "success": "T002 goldens GREEN; no `Language::` branch in source.rs; mutation receipt per widening (field_definition, pair, assignment_expression, `right`, member→property, unquote): each removal turns a named golden row red, restored green; a source.rs unit test shows the same rule promoting a pair/assignment in a .ts snippet (generic, not JS-only)",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002"
+          ],
+          "notes": "Path: crates/parsers/src/source.rs. Do not touch crates/core/src/classify.rs; add a parsers-side test enumerating JS node-kind classify() decisions incl. non-elements (lexical_declaration, variable_declaration, export_statement, import_statement, field_definition, function_expression, arrow_function, jsx_element)",
+          "state": "unchecked",
+          "done": "#done_when/T003"
+        },
+        {
+          "id": "T004",
+          "title": "Cross-language non-regression: prove Rust/Python/TS/TSX goldens byte-unchanged and the full parser suite green",
+          "success": "`git diff origin/main -- crates/parsers/tests/fixture_elements.rs` has no removed lines; cargo test -p fs3-parsers green; if any existing row had to change, STOP and report it to the PM with the reason (o-prime rider) — never edit an existing expectation silently",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ],
+          "notes": "",
+          "state": "unchecked",
+          "done": "#done_when/T004"
+        },
+        {
+          "id": "T005",
+          "title": "PARSER_VERSION @4→@5 + docs: scan.rs history line (plan 020: +javascript, widened value-shape rule), scanner.md (grammar set + value-shape rule), lib.rs module doc (six grammars), add-language SKILL.md gains the PARSER_VERSION step",
+          "success": "grep 'fs3-parsers@5' crates/daemon/src/scan.rs; no other code reads the literal (checked); docs diff names JavaScript and the version step; harness checks docs-links green",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005",
+            "../../../plan.dd.json#acceptance_criteria/ac-0007"
+          ],
+          "notes": "Paths: crates/daemon/src/scan.rs (constant + comment only), docs/services/scanner.md, crates/parsers/src/lib.rs, .agents/skills/add-language/SKILL.md",
+          "state": "unchecked",
+          "done": "#done_when/T005"
+        },
+        {
+          "id": "T006",
+          "title": "Real-usage receipt: scratch probe over a read-only copy of ~/GitHub/dodo-gogo",
+          "success": "cp -R dodo-gogo JS tree into .harness/temp/s020-js-grammar/dodo-copy; a throwaway cargo bin in .harness/temp/s020-js-grammar/probe (path dep on crates/parsers, own CARGO_TARGET_DIR) prints per-file elements/language for origin/main (git worktree at b7774df) vs branch HEAD; table + totals in the execution log; 0 scan errors; main.js shows init/update Functions. Probe code is never committed",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0006"
+          ],
+          "notes": "No daemon, no db, no ~/.local/bin/flowspace3",
+          "state": "unchecked",
+          "done": "#done_when/T006"
+        },
+        {
+          "id": "T007",
+          "title": "Gate + handoff: harness checks green in the worktree, commits via harness commit (conventional), push branch to fork, done report to PM",
+          "success": "harness checks verdict green (niced, capped); commits feat(parsers)/docs scoped; `git push fork s020/js-grammar`; done report (C10) names shas, gates, mutation receipts, probe table path. No PR, no issue",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ],
+          "notes": "",
+          "state": "unchecked",
+          "done": "#done_when/T007"
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {
+        "T001": [
+          {
+            "id": "dw-0101",
+            "assertion": "cargo build -p fs3-parsers resolves tree-sitter-javascript 0.25 with tree-sitter 0.26",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+          },
+          {
+            "id": "dw-0102",
+            "assertion": "extension test covers js/mjs/cjs/jsx (mixed case)",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          }
+        ],
+        "T002": [
+          {
+            "id": "dw-0201",
+            "assertion": "javascript + jsx goldens and invents-nothing test exist and were RED before T003",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          }
+        ],
+        "T003": [
+          {
+            "id": "dw-0301",
+            "assertion": "goldens GREEN; one mutation receipt per widening recorded",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          }
+        ],
+        "T004": [
+          {
+            "id": "dw-0401",
+            "assertion": "existing four code goldens byte-unchanged vs origin/main",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+          }
+        ],
+        "T005": [
+          {
+            "id": "dw-0501",
+            "assertion": "PARSER_VERSION @5 with history line; docs + skill updated",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0007"
+          }
+        ],
+        "T006": [
+          {
+            "id": "dw-0601",
+            "assertion": "dodo-gogo probe table before/after recorded, 0 scan errors",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0006"
+          }
+        ],
+        "T007": [
+          {
+            "id": "dw-0701",
+            "assertion": "harness checks green on the pushed HEAD",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+          }
+        ]
+      }
+    }
+  ]
+}

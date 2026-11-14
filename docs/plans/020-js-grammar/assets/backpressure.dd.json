@@ -1,0 +1,109 @@
+{
+  "dd": {
+    "schema": "builder/backpressure"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Backpressure - js-grammar",
+        "plan": "../plan.dd.json#meta",
+        "certainty": "Confident"
+      }
+    },
+    {
+      "name": "rows",
+      "value": [
+        {
+          "id": "bp-0001",
+          "criterion": "js/jsx fixtures produce the golden element forest; jsx parses",
+          "phase": "1",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "cargo test -p fs3-parsers --test fixture_elements javascript — golden per fixture; mutation: drop the jsx/js extension arm → bare file element → red; restore",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0002",
+          "criterion": "widened value-shape rule promotes field_definition / pair / assignment_expression callables by binding name",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "same golden; mutation per widening (remove field_definition, pair, assignment_expression, the `right` value field, the member→property naming) → named rows vanish → red; restore",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0003",
+          "criterion": "grep-traps and nameless/computed constructs invent no element; no blank name/address",
+          "phase": "1",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "cargo test -p fs3-parsers --test fixture_elements javascript_fixtures_invent_nothing",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0004",
+          "criterion": "Rust/Python/TS/TSX goldens byte-unchanged",
+          "phase": "1",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "git diff origin/main -- crates/parsers/tests/fixture_elements.rs | grep '^-[^-]' → empty; cargo test -p fs3-parsers green",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0005",
+          "criterion": "workspace gate green (fmt, clippy -D warnings, tests, arch drift for the new dep)",
+          "phase": "1",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "harness checks (niced, C12)",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0006",
+          "criterion": "real ImpactJS files gain function-level elements",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "scratch probe (.harness/temp/s020-js-grammar/probe, path-dep on crates/parsers) over a read-only copy of dodo-gogo: per-file element counts before (origin/main) vs after, 0 scan errors; never shipped",
+          "state": "unchecked"
+        },
+        {
+          "id": "bp-0007",
+          "criterion": "PARSER_VERSION bumped; docs + skill name JS and the version step",
+          "phase": "1",
+          "mode": "EXISTS",
+          "tier": "human-judgement",
+          "proof": "reviewer reads the scan.rs/scanner.md/SKILL.md diff; grep 'fs3-parsers@5' crates/daemon/src/scan.rs",
+          "state": "unchecked"
+        }
+      ]
+    },
+    {
+      "name": "sensors",
+      "value": [
+        {
+          "id": "sn-0001",
+          "name": "harness checks",
+          "command": "harness checks",
+          "dimension": "correctness",
+          "found_in": "repo harness (.harness/extensions/checks)"
+        },
+        {
+          "id": "sn-0002",
+          "name": "parser goldens",
+          "command": "cargo test -p fs3-parsers",
+          "dimension": "correctness",
+          "found_in": "crates/parsers/tests/fixture_elements.rs"
+        },
+        {
+          "id": "sn-0003",
+          "name": "arch drift",
+          "command": "cargo run -p fs3-testkit --bin fs3-arch-check",
+          "dimension": "architecture",
+          "found_in": "crates/testkit (inside harness checks)"
+        }
+      ]
+    }
+  ]
+}
