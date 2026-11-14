@@ -203,4 +203,6 @@ One phase, one coder. Prove tree-sitter-javascript 0.25 builds against the works
 
 ## Open Questions
 
-_No entries._
+| question | state | note |
+| --- | --- | --- |
+| Follow-up (pre-existing on main, out of scope; reviewer N2 at 4d49d57): TS `declare module "a::b"` keeps its quoted name via first_identifier_text, so a `::` inside the string can enter an address. Candidate upstream issue later — o-prime ruling 2026-11-14: record only, no issue yet. | [x] na | follow-up |
