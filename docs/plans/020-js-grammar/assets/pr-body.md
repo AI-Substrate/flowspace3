@@ -42,8 +42,8 @@ elements on JS repositories require new summaries and embeddings.
 - Parser suite: 45 unit and 61 integration tests passed.
 - Mutation receipts: removing each of `field_definition`, `pair`,
   `assignment_expression`, `right`, member-property naming, string unquoting,
-  and the left-kind guard produced its named RED; each restoration returned
-  GREEN.
+  the left-kind guard, and the address-separator guard produced its named RED;
+  each restoration returned GREEN.
 - Existing Rust, Python, TypeScript, TSX, and Markdown fixtures are byte
   unchanged from `b7774df`; the fixture-test diff removes no lines.
 - dodo-gogo probe: 84/84 JavaScript files accepted, 84 `unknown` file elements
@@ -62,5 +62,12 @@ The complete per-file table and mutation assertions are in
   declaration.
 - No Flow/JSDoc type semantics, module resolution, store schema, or live
   re-ingest.
+
+## Known limitations
+
+- Escaped quotes in string keys are kept raw, so a key such as `'it\'s'`
+  retains its escape sequence in the element name.
+- `module.exports = fn` is named `exports`. This is contract-correct; addresses
+  are non-unique by design.
 
 Closes nothing - no issue opened.

@@ -13,6 +13,8 @@ export function* generatedTop() {
 
 export default function defaulted() {}
 
+export default class { m() {} }
+
 export class Service {
   constructor() {}
   method() {}
@@ -37,6 +39,7 @@ const object = {
   shorthand() {},
   key: function () {},
   'quoted': () => {},
+  "x::y": () => {},
   [computed]: function () {},
 };
 

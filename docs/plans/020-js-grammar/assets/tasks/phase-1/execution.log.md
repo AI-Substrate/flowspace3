@@ -238,6 +238,45 @@ Pre-close gate verdict:
   `.harness/temp/s020-js-grammar/harness-checks-final.json`.
 - PR body draft: `docs/plans/020-js-grammar/assets/pr-body.md`.
 
+## Fix round 1 — reviewer findings
+
+F001 now refuses quoted binding keys whose unquoted value contains
+`fs3_core::ADDRESS_SEGMENT`. The fixture trap `"x::y": () => {}` is therefore
+nameless and spliced instead of forging the address
+`parsers/fixtures/sample.js::x::y`.
+
+Evidence:
+- Before the guard, both the JavaScript whole-tree golden and
+  `javascript_fixtures_invent_nothing_and_never_emit_blank_identity` failed on
+  the invented `function pair ...::x::y` row.
+- With the guard, both targeted tests passed.
+- Mutation receipt: removing only the separator guard made
+  `javascript_fixtures_invent_nothing_and_never_emit_blank_identity` fail with
+  `trap x::y must not become an element`; restoring it returned GREEN.
+
+F002 adds `export default class { m() {} }`. The nameless class is spliced and
+its method appears at file scope as
+`function method_definition parsers/fixtures/sample.js::m #4 16-16`.
+
+F003/F004 are documented as known limitations in the PR body: escaped quotes
+in string keys remain raw, and `module.exports = fn` is contract-correctly
+named `exports` under the non-unique-address contract.
+
+Proof:
+- `cargo test -p fs3-parsers -j 4 -- --test-threads 8`: 45 unit tests and 61
+  integration tests passed.
+- `cargo run -p fs3-testkit --bin fs3-arch-check -j 4`: 8 crates, 98 direct
+  edges, 0 violations.
+- The fixture-test diff still removes no lines relative to `b7774df`; existing
+  Rust, Python, TypeScript, TSX, and Markdown fixtures remain byte-identical.
+- `harness checks`: `status=ok`, 11/11 gates passed at
+  `2026-11-14T04:02:41.587Z` against the isolated `fs3-s020` database on
+  `127.0.0.1:5444`.
+- Gate output:
+  `.harness/temp/s020-js-grammar/harness-checks-fix-1-precommit.json`.
+- `docker compose -p fs3-s020 down -v` removed the isolated container,
+  network, and volume and released port 5444.
+
 ## Phase-complete summary
 
 T001-T007 delivered the dedicated JavaScript/JSX grammar, additive whole-tree

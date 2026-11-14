@@ -328,7 +328,7 @@ fn binding_name(field: &str, node: Node<'_>, source: &str) -> Option<String> {
     }
 }
 
-/// Identifier-shaped keys keep their text; quoted keys lose only their quotes.
+/// Identifier-shaped keys keep their text; safe quoted keys lose only their quotes.
 fn identifier_or_string(node: Node<'_>, source: &str) -> Option<String> {
     if node.kind().contains("identifier") {
         return first_identifier_text(node, source);
@@ -344,7 +344,8 @@ fn identifier_or_string(node: Node<'_>, source: &str) -> Option<String> {
             text.strip_prefix('\'')
                 .and_then(|value| value.strip_suffix('\''))
         })?;
-    (!unquoted.trim().is_empty()).then(|| unquoted.to_string())
+    (!unquoted.trim().is_empty() && !unquoted.contains(ADDRESS_SEGMENT))
+        .then(|| unquoted.to_string())
 }
 
 /// Take a name node's text, descending to the first identifier when the node is
