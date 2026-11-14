@@ -27,14 +27,14 @@
             "../../../plan.dd.json#acceptance_criteria/ac-0001",
             "../../../plan.dd.json#acceptance_criteria/ac-0004"
           ],
-          "notes": "Paths: Cargo.toml, Cargo.lock, crates/parsers/Cargo.toml, crates/testkit/arch-allowlist.toml, crates/parsers/src/lib.rs",
+          "notes": "Paths: Cargo.toml, Cargo.lock, crates/parsers/Cargo.toml, crates/testkit/arch-allowlist.toml, crates/parsers/src/lib.rs, crates/parsers/src/discovery.rs (exhaustive Language match ~line 170, compiler-forced)",
           "state": "unchecked",
           "done": "#done_when/T001"
         },
         {
           "id": "T002",
           "title": "Fixtures sample.js + sample.jsx with nesting, every binding shape, the ImpactJS pattern and grep-traps; RED goldens + invents-nothing test in fixture_elements.rs",
-          "success": "sample.js covers: function/generator/async declarations, nested function, class decl with constructor/method/static/get+set/#private, class-field arrow, named + anonymous class expression, const/let arrow + function expression bindings, export default function, export const arrow, object-literal shorthand method, `key: function(){}` pairs, `'quoted': () => {}` pair, computed `[k]: fn` (non-element), `exports.h = async () => {}`, `Foo.prototype.bar = function(){}`, `module.exports = function(){}`, ImpactJS `ig.module(...).requires(...).defines(function(){ MyGame = ig.Game.extend({ init: function(){ this.parent(); }, update: function(){} }); })`, and traps (\"function\"/\"class\" in strings, comments, template literals; callback arrows as arguments; IIFE; `const n = 42`; `this.x = 5`; destructuring). sample.jsx: function component, arrow component, class component with render, JSX-heavy body. Expected-tree tables written from the intended contract (not from output) fail before T003",
+          "success": "sample.js covers: function/generator/async declarations, nested function, class decl with constructor/method/static/get+set/#private, class-field arrow, named + anonymous class expression, const/let arrow + function expression bindings, export default function, export const arrow, object-literal shorthand method, `key: function(){}` pairs, `'quoted': () => {}` pair, computed `[k]: fn` (non-element), `exports.h = async () => {}`, `Foo.prototype.bar = function(){}`, `module.exports = function(){}`, ImpactJS `ig.module(...).requires(...).defines(function(){ MyGame = ig.Game.extend({ init: function(){ this.parent(); }, update: function(){} }); })`, and traps (\"function\"/\"class\" in strings, comments, template literals; callback arrows as arguments; IIFE; `const n = 42`; `this.x = 5`; destructuring; `handlers[k] = function(){}`; `exports['x'] = () => {}` (subscript left → non-element); `[k]: fn`). sample.jsx: function component, arrow component, class component with render, JSX-heavy body. Expected-tree tables written from the intended contract (not from output) fail before T003; assert tree.has_error == false for both fixtures",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001",
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
@@ -45,8 +45,8 @@
         },
         {
           "id": "T003",
-          "title": "Widen the generic value-shape rule in source.rs: FUNCTION_BINDINGS += field_definition, pair, assignment_expression; value read from an ordered field list (value, right); naming via key/property/left with member_expression → its `property` and string keys unquoted; `type` stays last in NAME_FIELDS",
-          "success": "T002 goldens GREEN; no `Language::` branch in source.rs; mutation receipt per widening (field_definition, pair, assignment_expression, `right`, member→property, unquote): each removal turns a named golden row red, restored green; a source.rs unit test shows the same rule promoting a pair/assignment in a .ts snippet (generic, not JS-only)",
+          "title": "Widen the generic value-shape rule in source.rs: FUNCTION_BINDINGS += field_definition, pair, assignment_expression; value read from an ordered field list (value, right); naming via key/property/left behind a kind guard (left: identifier | member_expression→property; key/property: identifier-kinds | string, unquoted here only); `type` stays last in NAME_FIELDS",
+          "success": "T002 goldens GREEN; no `Language::` branch in source.rs; mutation receipt per widening (field_definition, pair, assignment_expression, `right`, member→property, unquote, the left-kind guard): each removal turns a named golden row red, restored green; a source.rs unit test shows the same rule promoting a pair/assignment in a .ts snippet (generic, not JS-only)",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0002"
           ],
@@ -57,7 +57,7 @@
         {
           "id": "T004",
           "title": "Cross-language non-regression: prove Rust/Python/TS/TSX goldens byte-unchanged and the full parser suite green",
-          "success": "`git diff origin/main -- crates/parsers/tests/fixture_elements.rs` has no removed lines; cargo test -p fs3-parsers green; if any existing row had to change, STOP and report it to the PM with the reason (o-prime rider) — never edit an existing expectation silently",
+          "success": "`git diff b7774df...HEAD -- crates/parsers/tests/fixture_elements.rs` has no removed lines and `git diff b7774df...HEAD -- crates/parsers/fixtures/sample.{rs,py,ts,tsx,md}` is empty; cargo test -p fs3-parsers green; if any existing row had to change, STOP and report it to the PM with the reason (o-prime rider) — never edit an existing expectation silently",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0004"
           ],
@@ -80,7 +80,7 @@
         {
           "id": "T006",
           "title": "Real-usage receipt: scratch probe over a read-only copy of ~/GitHub/dodo-gogo",
-          "success": "cp -R dodo-gogo JS tree into .harness/temp/s020-js-grammar/dodo-copy; a throwaway cargo bin in .harness/temp/s020-js-grammar/probe (path dep on crates/parsers, own CARGO_TARGET_DIR) prints per-file elements/language for origin/main (git worktree at b7774df) vs branch HEAD; table + totals in the execution log; 0 scan errors; main.js shows init/update Functions. Probe code is never committed",
+          "success": "cp -R the dodo-gogo tree into .harness/temp/s020-js-grammar/dodo-copy (read-only source); a throwaway cargo bin in .harness/temp/s020-js-grammar/probe (path dep on crates/parsers, own CARGO_TARGET_DIR) prints per .js file: language, elements at b7774df (git worktree) vs HEAD, and the callable-node count defined in ac-0006; table + totals in the execution log; 0 scan errors; every file meets the ac-0006 rule or is listed with reason; main.js shows init/update/draw Functions. Probe code is never committed",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0006"
           ],
@@ -90,8 +90,8 @@
         },
         {
           "id": "T007",
-          "title": "Gate + handoff: harness checks green in the worktree, commits via harness commit (conventional), push branch to fork, done report to PM",
-          "success": "harness checks verdict green (niced, capped); commits feat(parsers)/docs scoped; `git push fork s020/js-grammar`; done report (C10) names shas, gates, mutation receipts, probe table path. No PR, no issue",
+          "title": "Gate + handoff: harness checks green, commits via harness commit (conventional), PR-body draft, push branch to fork, done report to PM",
+          "success": "harness checks verdict green (niced, capped); commits feat(parsers)/docs scoped; assets/pr-body.md drafted (problem, change, design call, TS gain, #180 reparse consequence, mutation receipts, dodo-gogo table, 'Closes nothing — no issue opened'); `git push fork s020/js-grammar`; done report (C10) names shas, gates, receipts, probe table path. No PR opened, no issue",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0004"
           ],
@@ -124,6 +124,12 @@
             "assertion": "javascript + jsx goldens and invents-nothing test exist and were RED before T003",
             "state": "unchecked",
             "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          },
+          {
+            "id": "dw-0202",
+            "assertion": "sample.js and sample.jsx scan with has_error == false",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
           }
         ],
         "T003": [
@@ -164,6 +170,12 @@
             "assertion": "harness checks green on the pushed HEAD",
             "state": "unchecked",
             "pressure": "../../backpressure.dd.json#rows/bp-0005"
+          },
+          {
+            "id": "dw-0702",
+            "assertion": "assets/pr-body.md names the #180 reparse consequence and the TS pair/assignment gain",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0007"
           }
         ]
       }

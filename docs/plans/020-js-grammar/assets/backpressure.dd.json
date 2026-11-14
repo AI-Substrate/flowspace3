@@ -29,7 +29,7 @@
           "phase": "1",
           "mode": "BUILD",
           "tier": "computational",
-          "proof": "same golden; mutation per widening (remove field_definition, pair, assignment_expression, the `right` value field, the member→property naming) → named rows vanish → red; restore",
+          "proof": "same golden; mutation per widening (remove field_definition, pair, assignment_expression, the `right` value field, the member→property naming) → named rows vanish → red; restore; guard mutation: drop the left-kind guard → `handlers[k]` trap becomes an element → invents-nothing red; restore",
           "state": "unchecked"
         },
         {
@@ -47,7 +47,7 @@
           "phase": "1",
           "mode": "EXISTS",
           "tier": "computational",
-          "proof": "git diff origin/main -- crates/parsers/tests/fixture_elements.rs | grep '^-[^-]' → empty; cargo test -p fs3-parsers green",
+          "proof": "git diff b7774df...HEAD -- crates/parsers/tests/fixture_elements.rs | grep '^-[^-]' → empty; git diff b7774df...HEAD -- crates/parsers/fixtures/sample.{rs,py,ts,tsx,md} → empty; cargo test -p fs3-parsers green",
           "state": "unchecked"
         },
         {
@@ -65,12 +65,12 @@
           "phase": "1",
           "mode": "BUILD",
           "tier": "computational",
-          "proof": "scratch probe (.harness/temp/s020-js-grammar/probe, path-dep on crates/parsers) over a read-only copy of dodo-gogo: per-file element counts before (origin/main) vs after, 0 scan errors; never shipped",
+          "proof": "scratch probe (.harness/temp/s020-js-grammar/probe, path-dep on crates/parsers) over a read-only copy of dodo-gogo: per-file language, elements b7774df vs HEAD, callable-node count (ac-0006 rule); 0 scan errors; main.js init/update/draw; never shipped",
           "state": "unchecked"
         },
         {
           "id": "bp-0007",
-          "criterion": "PARSER_VERSION bumped; docs + skill name JS and the version step",
+          "criterion": "PARSER_VERSION bumped; docs + skill name JS and the version step; pr-body draft names the reparse consequence + TS gain",
           "phase": "1",
           "mode": "EXISTS",
           "tier": "human-judgement",
