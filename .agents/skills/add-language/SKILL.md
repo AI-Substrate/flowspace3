@@ -5,15 +5,16 @@ description: Add one tree-sitter language to the fs3 scanner — grammar wiring,
 
 # add-language — extend the fs3 scanner by one language
 
-Extraction is generic — **there is no step 6**. The full write-up with worked examples lives at the end of `docs/services/scanner.md` (read it first); this is the packet form. Authored from the scanner build (worker mollusk, 2026-08-26).
+Extraction is generic — **there is no seventh extraction step**. The full write-up with worked examples lives at the end of `docs/services/scanner.md` (read it first); this is the packet form. Authored from the scanner build (worker mollusk, 2026-08-26).
 
-## The 5 steps
+## The 6 steps
 
 1. Grammar crate → workspace deps + `crates/parsers/Cargo.toml`.
 2. ONE line in `[crates.fs3-parsers].external` of `crates/testkit/arch-allowlist.toml` — or the drift check bites.
 3. Extension + grammar registered in `Language::for_extension` / `grammar` (crates/parsers).
-4. A fixture file with real NESTING **and** a construct a naive substring classifier would wrongly turn into an element (the grep-trap).
-5. A whole-tree expectation test (kind/subkind/address/sibling_order/span as one table) plus an `invents_nothing` negative.
+4. Bump `PARSER_VERSION` in `crates/daemon/src/scan.rs` whenever the grammar set or extraction result changes, so stored blobs are re-parsed.
+5. A fixture file with real NESTING **and** a construct a naive substring classifier would wrongly turn into an element (the grep-trap).
+6. A whole-tree expectation test (kind/subkind/address/sibling_order/span as one table) plus an `invents_nothing` negative.
 
 Touch `core/src/classify.rs` ONLY when the grammar's declaration kinds are shaped unlike every other's: a bare-word declaration earns a `BARE_DECLS` entry, a new suffix earns a `DECL_SUFFIXES` entry — **a per-language branch never**.
 

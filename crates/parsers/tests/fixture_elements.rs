@@ -19,12 +19,16 @@ use fs3_parsers::scan;
 const RUST_FIXTURE: &str = include_str!("../fixtures/sample.rs");
 const PYTHON_FIXTURE: &str = include_str!("../fixtures/sample.py");
 const MARKDOWN_FIXTURE: &str = include_str!("../fixtures/sample.md");
+const JAVASCRIPT_FIXTURE: &str = include_str!("../fixtures/sample.js");
+const JSX_FIXTURE: &str = include_str!("../fixtures/sample.jsx");
 const TYPESCRIPT_FIXTURE: &str = include_str!("../fixtures/sample.ts");
 const TSX_FIXTURE: &str = include_str!("../fixtures/sample.tsx");
 
 const RUST_PATH: &str = "parsers/fixtures/sample.rs";
 const PYTHON_PATH: &str = "parsers/fixtures/sample.py";
 const MARKDOWN_PATH: &str = "parsers/fixtures/sample.md";
+const JAVASCRIPT_PATH: &str = "parsers/fixtures/sample.js";
+const JSX_PATH: &str = "parsers/fixtures/sample.jsx";
 const TYPESCRIPT_PATH: &str = "parsers/fixtures/sample.ts";
 const TSX_PATH: &str = "parsers/fixtures/sample.tsx";
 
@@ -171,6 +175,126 @@ fn python_fixture_invents_nothing() {
         1,
         "a decorated def must appear exactly once"
     );
+}
+
+#[test]
+fn javascript_fixture_yields_the_expected_tree() {
+    let tree = tree(JAVASCRIPT_PATH, JAVASCRIPT_FIXTURE);
+    assert!(!tree.has_error, "the JavaScript fixture must parse cleanly");
+    expect(
+        &tree,
+        &[
+            "file javascript parsers/fixtures/sample.js #0 1-71",
+            "  function function_declaration parsers/fixtures/sample.js::top #0 1-6",
+            "    function function_declaration parsers/fixtures/sample.js::top::nested #0 2-4",
+            "  function function_declaration parsers/fixtures/sample.js::asyncTop #1 8-8",
+            "  function generator_function_declaration parsers/fixtures/sample.js::generatedTop #2 10-12",
+            "  function function_declaration parsers/fixtures/sample.js::defaulted #3 14-14",
+            "  function method_definition parsers/fixtures/sample.js::m #4 16-16",
+            "  container class_declaration parsers/fixtures/sample.js::Service #5 18-26",
+            "    function method_definition parsers/fixtures/sample.js::Service::constructor #0 19-19",
+            "    function method_definition parsers/fixtures/sample.js::Service::method #1 20-20",
+            "    function method_definition parsers/fixtures/sample.js::Service::create #2 21-21",
+            "    function method_definition parsers/fixtures/sample.js::Service::current #3 22-22",
+            "    function method_definition parsers/fixtures/sample.js::Service::current #4 23-23",
+            "    function method_definition parsers/fixtures/sample.js::Service::#private #5 24-24",
+            "    function field_definition parsers/fixtures/sample.js::Service::field #6 25-25",
+            "  container class parsers/fixtures/sample.js::InnerClass #6 28-30",
+            "    function method_definition parsers/fixtures/sample.js::InnerClass::inside #0 29-29",
+            "  function variable_declarator parsers/fixtures/sample.js::arrow #7 34-34",
+            "  function variable_declarator parsers/fixtures/sample.js::expression #8 35-35",
+            "  function variable_declarator parsers/fixtures/sample.js::exportedArrow #9 36-36",
+            "  function method_definition parsers/fixtures/sample.js::shorthand #10 39-39",
+            "  function pair parsers/fixtures/sample.js::key #11 40-40",
+            "  function pair parsers/fixtures/sample.js::quoted #12 41-41",
+            "  function assignment_expression parsers/fixtures/sample.js::h #13 46-46",
+            "  function assignment_expression parsers/fixtures/sample.js::bar #14 47-47",
+            "  function assignment_expression parsers/fixtures/sample.js::exports #15 48-48",
+            "  function pair parsers/fixtures/sample.js::init #16 54-54",
+            "  function pair parsers/fixtures/sample.js::update #17 55-55",
+            "  function pair parsers/fixtures/sample.js::draw #18 56-56",
+        ],
+    );
+}
+
+#[test]
+fn jsx_fixture_yields_the_expected_tree() {
+    let tree = tree(JSX_PATH, JSX_FIXTURE);
+    assert!(!tree.has_error, "the JSX fixture must parse cleanly");
+    expect(
+        &tree,
+        &[
+            "file javascript parsers/fixtures/sample.jsx #0 1-19",
+            "  function function_declaration parsers/fixtures/sample.jsx::FunctionComponent #0 1-3",
+            "  function variable_declarator parsers/fixtures/sample.jsx::ArrowComponent #1 5-7",
+            "  container class_declaration parsers/fixtures/sample.jsx::ClassComponent #2 9-19",
+            "    function field_definition parsers/fixtures/sample.jsx::ClassComponent::handleClick #0 10-10",
+            "    function method_definition parsers/fixtures/sample.jsx::ClassComponent::render #1 11-18",
+        ],
+    );
+}
+
+#[test]
+fn javascript_fixtures_invent_nothing_and_never_emit_blank_identity() {
+    let javascript = tree(JAVASCRIPT_PATH, JAVASCRIPT_FIXTURE);
+    let jsx = tree(JSX_PATH, JSX_FIXTURE);
+    assert!(!javascript.has_error);
+    assert!(!jsx.has_error);
+
+    let subkinds = subkinds(&javascript);
+    for refused in [
+        "lexical_declaration",
+        "variable_declaration",
+        "export_statement",
+        "function_expression",
+        "arrow_function",
+        "jsx_element",
+    ] {
+        assert!(
+            !subkinds.contains(&refused),
+            "{refused} must not become an element; got {subkinds:?}"
+        );
+    }
+
+    for refused in [
+        "AnonymousExpression",
+        "computed",
+        "destructured",
+        "n",
+        "x",
+        "x::y",
+        "fake",
+        "Fake",
+    ] {
+        assert!(
+            javascript
+                .find(&format!("{JAVASCRIPT_PATH}::{refused}"))
+                .is_none(),
+            "trap {refused} must not become an element"
+        );
+    }
+    for refused in ["handlers[computed]", "exports['x']"] {
+        assert!(
+            javascript.iter().all(|element| element.name != refused),
+            "subscript binding {refused} must not become an element"
+        );
+    }
+
+    for element in javascript.iter().chain(jsx.iter()) {
+        assert!(
+            !element.name.trim().is_empty(),
+            "{} has an empty name",
+            element.subkind
+        );
+        assert!(
+            !element.address.trim().is_empty()
+                && !element.address.contains("::<anonymous>")
+                && !element.address.contains("::::"),
+            "{} has an invalid address {:?}",
+            element.subkind,
+            element.address
+        );
+    }
 }
 
 #[test]

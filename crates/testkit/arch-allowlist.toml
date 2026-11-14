@@ -73,6 +73,7 @@ external = [
   "serde_json",
   "thiserror",
   "tree-sitter",
+  "tree-sitter-javascript",
   "tree-sitter-md",
   "tree-sitter-python",
   "tree-sitter-rust",
