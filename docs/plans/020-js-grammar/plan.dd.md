@@ -137,7 +137,7 @@ _No entries._
 
 | gate | check | status | notes |
 | --- | --- | --- | --- |
-| G1 | Clarify | PASS | no [NEEDS CLARIFICATION] markers; 7 clarifications recorded |
+| G1 | Clarify | PASS | no [NEEDS CLARIFICATION] markers; 8 clarifications recorded |
 | G2 | Constitution | N/A | no docs/project-rules/constitution.md |
 | G3 | Architecture | PASS | docs/rules-idioms-architecture/fs3-architecture.md: new external dep only in fs3-parsers, mirrored in crates/testkit/arch-allowlist.toml (arch drift check is in harness checks); scan stays pure (no tokio/sqlx) |
 | G4 | ADR Compliance | N/A | no docs/adr/ |
