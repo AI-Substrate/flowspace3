@@ -1,0 +1,35 @@
+crates/core/src/config.rs
+  s_15d888f4b629c1::t_a7dbb9ed930976 1000,1005-1010,1194
+crates/daemon/src/boot.rs
+  s_15d888f4b629c1::t_d81e2a8204661a 939-942
+crates/daemon/src/convo_ingest.rs
+  s_15d888f4b629c1::t_7bae39bbd66084 498,500,505,511-520,556,679-709,773-781,2027-2038
+crates/daemon/src/convo_poll.rs
+  s_15d888f4b629c1::t_254e0963efe7c4 779-784
+crates/providers/src/conversation_sources/claude.rs
+  s_104557b1a9b06a::t_a8eceddefef879 161-163,170-189,222-224,272,769-793
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6d334d2c14b7c19cd72a99c36c4f669b6e152df9",
+  "prompts": {},
+  "sessions": {
+    "s_104557b1a9b06a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cbf85747-703c-4905-94cb-5f0293a3d963",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
