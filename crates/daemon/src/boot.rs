@@ -936,6 +936,10 @@ async fn serve(
         let conversation_home = std::env::var_os("HOME")
             .map(std::path::PathBuf::from)
             .context("HOME is required to locate native conversation stores")?;
+        crate::convo_ingest::set_extra_claude_dirs(
+            &state.config.indexing.claude_config_dirs,
+            &conversation_home,
+        );
         // Seats for conversations no poll will touch again: a finished
         // session's header predates agent recording and would otherwise never
         // learn which pij seat had it. Once per start, off the boot path.
