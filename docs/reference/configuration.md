@@ -179,6 +179,7 @@ config file. All three keys are optional; an absent one falls back to the port's
 | `summarize_lane` | integer | `32` | How many `summarize` jobs may be in flight. Its own number because a summarize is one chat call per element. Clamped per instance by the summarizer's own concurrency ceiling. Must be at least 1. | `FS3_INDEXING__SUMMARIZE_LANE` |
 | `embed_lane` | integer | `10` | How many merged `embed` BATCHES may be in flight — batches, not items. Clamped per instance by the embedder's ceiling; the local ONNX embedder declares 1, because its session is behind a mutex. Must be at least 1. | `FS3_INDEXING__EMBED_LANE` |
 | `embed_tokens_per_minute` | integer | `4000000` | Tokens per minute that BACKGROUND embedding may send to one embedder instance; `0` turns pacing off. Searches are never paced: their query embed skips this budget, and background work pauses while one is in flight. The budget halves on a rate-limit response and recovers on success. The default is about 60% of a measured Azure deployment limit (6.85M TPM). | `FS3_INDEXING__EMBED_TOKENS_PER_MINUTE` |
+| `claude_config_dirs` | list of strings | `[]` | Extra Claude Code config directories whose `projects/` folders are indexed as conversations, beside `~/.claude`. Use it for a second profile such as `["~/.claude-alt"]`; which ones exist differs per machine. A leading `~/` is your home directory and a missing directory is skipped. Read once at daemon start, so restart after changing it. | `FS3_INDEXING__CLAUDE_CONFIG_DIRS` |
 
 ## `[scan]`
 
