@@ -1,0 +1,19 @@
+crates/daemon/src/convo_ingest.rs
+  s_15d888f4b629c1::t_579044bb6d7afe 679-681,684-694,1963-1979
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5e7bddd32a85831267953ebb94d43c45a9a6d249",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
