@@ -495,20 +495,29 @@ fn native_session_file(
     session_id: &str,
     home: &Path,
 ) -> Result<Option<PathBuf>, Failure> {
-    let (root, expected, exact) = match harness {
+    let (roots, expected, exact) = match harness {
         Harness::Claude => (
-            home.join(".claude/projects"),
+            claude_project_roots(home),
             format!("{session_id}.jsonl"),
             true,
         ),
         Harness::Omp => (
-            home.join(".omp/agent/sessions"),
+            vec![home.join(".omp/agent/sessions")],
             format!("_{session_id}.jsonl"),
             false,
         ),
         Harness::PijLedger | Harness::MetricsDb => return Ok(None),
     };
-    let directories = match std::fs::read_dir(&root) {
+    for root in roots {
+        if let Some(found) = find_session_in(&root, &expected, exact)? {
+            return Ok(Some(found));
+        }
+    }
+    Ok(None)
+}
+
+fn find_session_in(root: &Path, expected: &str, exact: bool) -> Result<Option<PathBuf>, Failure> {
+    let directories = match std::fs::read_dir(root) {
         Ok(entries) => entries,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(error) => {
@@ -544,7 +553,7 @@ fn native_session_file(
             if if exact {
                 name == expected
             } else {
-                name.ends_with(&expected)
+                name.ends_with(expected)
             } {
                 let path = entry.path();
                 let metadata = std::fs::metadata(&path).map_err(|error| {
@@ -667,6 +676,37 @@ pub fn conversation_guid(harness: Harness, session_id: &str) -> ConversationId {
     ConversationId::new(text).expect("a hex digest laid out as 8-4-4-4-12 is a conversation id")
 }
 
+static EXTRA_CLAUDE_DIRS: std::sync::OnceLock<Vec<PathBuf>> = std::sync::OnceLock::new();
+
+/// Record the configured extra Claude config dirs (`indexing.claude_config_dirs`),
+/// once, at daemon start. `~/` expands against `home`.
+pub fn set_extra_claude_dirs(dirs: &[String], home: &Path) {
+    let _ = EXTRA_CLAUDE_DIRS.set(expand_claude_dirs(dirs, home));
+}
+
+fn expand_claude_dirs(dirs: &[String], home: &Path) -> Vec<PathBuf> {
+    dirs.iter()
+        .map(|dir| match dir.strip_prefix("~/") {
+            Some(rest) => home.join(rest),
+            None => PathBuf::from(dir),
+        })
+        .collect()
+}
+
+/// Every Claude `projects/` root: `~/.claude` first, then each configured extra.
+#[must_use]
+pub fn claude_project_roots(home: &Path) -> Vec<PathBuf> {
+    let mut roots = vec![home.join(".claude/projects")];
+    roots.extend(
+        EXTRA_CLAUDE_DIRS
+            .get()
+            .into_iter()
+            .flatten()
+            .map(|dir| dir.join("projects")),
+    );
+    roots
+}
+
 /// The workspace-slug directory name a store uses for `folder`.
 ///
 /// Claude keeps its absolute-path convention. OMP delegates to the provider's
@@ -730,10 +770,15 @@ fn source_for(
     omp_session_dir: Option<&Path>,
 ) -> Result<Box<dyn ConversationSource>, Failure> {
     Ok(match harness {
-        Harness::Claude => Box::new(ClaudeSource::new(
-            home.join(".claude/projects")
-                .join(workspace_slug(Harness::Claude, folder, home)),
-        )),
+        Harness::Claude => {
+            let slug = workspace_slug(Harness::Claude, folder, home);
+            Box::new(ClaudeSource::from_roots(
+                claude_project_roots(home)
+                    .into_iter()
+                    .map(|root| root.join(&slug))
+                    .collect(),
+            ))
+        }
         Harness::Omp => {
             let source = OmpSource::from_home(home);
             Box::new(match omp_session_dir {
@@ -1976,6 +2021,18 @@ mod tests {
                 home
             ),
             "-Users-jordanknight--config-x-y"
+        );
+    }
+
+    #[test]
+    fn configured_claude_dirs_expand_tilde_against_home() {
+        let home = Path::new("/Users/jordanknight");
+        assert_eq!(
+            expand_claude_dirs(&["~/.claude-alt".into(), "/opt/claude".into()], home),
+            vec![
+                PathBuf::from("/Users/jordanknight/.claude-alt"),
+                PathBuf::from("/opt/claude")
+            ]
         );
     }
 

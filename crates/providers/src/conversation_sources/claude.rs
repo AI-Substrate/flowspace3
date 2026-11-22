@@ -158,14 +158,35 @@ use super::tail;
 /// the reader testable against a directory that is not under `$HOME`.
 #[derive(Clone, Debug)]
 pub struct ClaudeSource {
-    root: PathBuf,
+    /// Candidate project directories, in priority order. A session lives in
+    /// exactly one; the first that holds its file answers.
+    roots: Vec<PathBuf>,
 }
 
 impl ClaudeSource {
     /// A reader over one Claude Code project directory.
     #[must_use]
     pub fn new(root: impl Into<PathBuf>) -> Self {
-        Self { root: root.into() }
+        Self {
+            roots: vec![root.into()],
+        }
+    }
+
+    /// A reader over the same workspace's directory in several Claude config
+    /// dirs (`~/.claude`, `~/.claude-alt`, …).
+    #[must_use]
+    pub fn from_roots(roots: Vec<PathBuf>) -> Self {
+        Self { roots }
+    }
+
+    /// The directory that holds `session_id`'s file, else the first root so the
+    /// "no session file" error names a real path.
+    fn root_for(&self, session_id: &str) -> &PathBuf {
+        let name = format!("{session_id}.jsonl");
+        self.roots
+            .iter()
+            .find(|root| root.join(&name).is_file())
+            .unwrap_or_else(|| self.roots.first().expect("a reader has at least one root"))
     }
 
     /// The session id this input names, refusing anything this store cannot
@@ -198,7 +219,9 @@ impl ConversationSource for ClaudeSource {
 
     fn resolve(&self, input: &IngestInput) -> Result<Vec<SessionFile>> {
         let session_id = self.session_id(input)?;
-        let main = self.root.join(format!("{session_id}.jsonl"));
+        let main = self
+            .root_for(session_id)
+            .join(format!("{session_id}.jsonl"));
         if !main.is_file() {
             return Err(Error::Provider(format!(
                 "claude: no session file at {}",
@@ -246,7 +269,7 @@ impl ClaudeSource {
     /// A missing `subagents/` directory is the normal case — most sessions
     /// spawn no subagent — so it yields nothing rather than an error.
     fn sidecars(&self, session_id: &str) -> Result<Vec<SessionFile>> {
-        let directory = self.root.join(session_id).join("subagents");
+        let directory = self.root_for(session_id).join(session_id).join("subagents");
         let entries = match std::fs::read_dir(&directory) {
             Ok(entries) => entries,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
@@ -741,5 +764,30 @@ fn record(
             .message
             .as_ref()
             .and_then(|message| message.model.clone()),
+    }
+}
+
+#[cfg(test)]
+mod root_tests {
+    use super::*;
+
+    #[test]
+    fn a_session_is_found_in_whichever_root_holds_it() {
+        let base = std::env::temp_dir().join(format!("fs3-claude-roots-{}", std::process::id()));
+        let first = base.join("a");
+        let second = base.join("b");
+        std::fs::create_dir_all(&first).unwrap();
+        std::fs::create_dir_all(&second).unwrap();
+        std::fs::write(second.join("abc.jsonl"), "").unwrap();
+        let source = ClaudeSource::from_roots(vec![first, second.clone()]);
+        let files = source
+            .resolve(&IngestInput::Native {
+                session_id: "abc".into(),
+                harness: Harness::Claude,
+                folder: PathBuf::new(),
+            })
+            .unwrap();
+        assert_eq!(files[0].path, second.join("abc.jsonl"));
+        std::fs::remove_dir_all(&base).unwrap();
     }
 }

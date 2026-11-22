@@ -997,10 +997,17 @@ fn unknown_instance(
 /// summarize_lane = 32
 /// embed_lane = 10
 /// embed_tokens_per_minute = 4000000
+/// claude_config_dirs = ["~/.claude-alt"]
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct IndexingConfig {
+    /// Extra Claude Code config directories whose `projects/` folders hold
+    /// sessions to index, beside `~/.claude`. Which ones exist differs per
+    /// machine (a second account, an alt profile), so they are config, not code.
+    /// A leading `~/` is the home directory; a missing directory is skipped.
+    pub claude_config_dirs: Vec<String>,
+
     /// Size floor for per-element LLM summaries, in lines (PRD req 32).
     pub summary_min_lines: u32,
 
@@ -1184,6 +1191,7 @@ impl Default for IndexingConfig {
             summarize_lane: 32,
             embed_lane: 10,
             embed_tokens_per_minute: 4_000_000,
+            claude_config_dirs: Vec::new(),
         }
     }
 }

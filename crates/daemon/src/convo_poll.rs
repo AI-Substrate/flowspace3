@@ -776,10 +776,12 @@ fn entries(path: &Path) -> Result<Vec<std::fs::DirEntry>> {
 
 fn discover(home: &Path) -> Result<Vec<Session>> {
     let mut sessions = Vec::new();
-    for (harness, root) in [
-        (Harness::Claude, home.join(".claude/projects")),
-        (Harness::Omp, home.join(".omp/agent/sessions")),
-    ] {
+    let mut stores: Vec<(Harness, PathBuf)> = crate::convo_ingest::claude_project_roots(home)
+        .into_iter()
+        .map(|root| (Harness::Claude, root))
+        .collect();
+    stores.push((Harness::Omp, home.join(".omp/agent/sessions")));
+    for (harness, root) in stores {
         for directory in entries(&root)? {
             if !directory.file_type()?.is_dir() {
                 continue;
