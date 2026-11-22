@@ -1,0 +1,19 @@
+docs/reference/configuration.md
+  s_085f49aa21f7f1::t_fed02e81a6758a 182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "dc2c80dc91d9eecafb95926bb51568111bfd0171",
+  "prompts": {},
+  "sessions": {
+    "s_085f49aa21f7f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df692f49-c29e-4327-8ad7-0390a61a99de",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
