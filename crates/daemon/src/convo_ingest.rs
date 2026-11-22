@@ -676,9 +676,22 @@ pub fn workspace_slug(harness: Harness, folder: &Path, home: &Path) -> String {
     if harness == Harness::Omp {
         return fs3_providers::conversation_sources::omp::session_slug(folder, home);
     }
+    // Claude writes a folder's slug by turning every character outside
+    // `[A-Za-z0-9-]` into `-` — `_` and `.` included, not just `/`. A path like
+    // `.../osk_central` therefore lives under `...-osk-central`.
     let text = folder.to_string_lossy();
     let trimmed = text.trim_start_matches('/');
-    format!("-{}", trimmed.replace('/', "-"))
+    let slug: String = trimmed
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' {
+                c
+            } else {
+                '-'
+            }
+        })
+        .collect();
+    format!("-{slug}")
 }
 
 /// Resolve the git-ai store read-only, without creating or modifying anything.
@@ -1946,6 +1959,23 @@ mod tests {
         assert_eq!(
             workspace_slug(Harness::Claude, folder, home),
             "-Users-jordanknight-substrate-flowspace-flowspace3"
+        );
+        // Underscores and dots slug to `-` too (the OSK worktrees, ~/.config).
+        assert_eq!(
+            workspace_slug(
+                Harness::Claude,
+                Path::new("/Users/jordanknight/osk/osk_central-worktrees/coder-sd-15"),
+                home
+            ),
+            "-Users-jordanknight-osk-osk-central-worktrees-coder-sd-15"
+        );
+        assert_eq!(
+            workspace_slug(
+                Harness::Claude,
+                Path::new("/Users/jordanknight/.config/x.y"),
+                home
+            ),
+            "-Users-jordanknight--config-x-y"
         );
     }
 
