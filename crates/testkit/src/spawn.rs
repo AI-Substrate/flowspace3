@@ -167,10 +167,21 @@ fn assert_fixture_names_a_database(config_dir: &Path) {
 /// When the binary is absent, naming the build that produces it.
 #[must_use]
 pub fn flowspace3_binary() -> PathBuf {
-    let mut directory = std::env::current_exe().expect("the test binary has a path");
-    directory.pop(); // the test executable itself
-    directory.pop(); // deps/
-    let candidate = directory.join(format!("flowspace3{}", std::env::consts::EXE_SUFFIX));
+    let exe = std::env::current_exe().expect("the test binary has a path");
+    let name = format!("flowspace3{}", std::env::consts::EXE_SUFFIX);
+    // The classic layout puts the test executable in `target/<profile>/deps/`;
+    // newer Cargo puts it in `target/<profile>/build/<pkg>/<hash>/`. In both the
+    // CLI sits in `target/<profile>/`, so look in each ancestor.
+    let found = exe
+        .ancestors()
+        .skip(1)
+        .map(|directory| directory.join(&name))
+        .find(|candidate| candidate.is_file());
+    let candidate = found.unwrap_or_else(|| {
+        exe.parent()
+            .and_then(std::path::Path::parent)
+            .map_or_else(|| PathBuf::from(&name), |directory| directory.join(&name))
+    });
     assert!(
         candidate.is_file(),
         "{} is missing. This test drives the real CLI, so build the workspace \
