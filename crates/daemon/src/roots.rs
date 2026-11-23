@@ -33,7 +33,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::wiring::AppState;
 use fs3_core::EventKind;
-use fs3_core::views::roots::{PrunedDirectoryRow, RootReport, SkipCount};
+use fs3_core::views::roots::{PrunedDirectoryRow, RootReport, SKIP_SAMPLE_LIMIT, SkipCount};
 
 /// The job kind a file scan is queued under.
 pub const SCAN_FILE: &str = "scan_file";
@@ -354,23 +354,28 @@ fn needs_scan_job(
 /// on a real repository; the counts are what a human reads, and the per-file
 /// detail stays available from discovery itself.
 fn skip_counts(discovery: &discovery::Discovery) -> Vec<SkipCount> {
-    let mut counts: std::collections::BTreeMap<&'static str, usize> =
+    let mut counts: std::collections::BTreeMap<&'static str, SkipCount> =
         std::collections::BTreeMap::new();
+    let mut tally = |reason: &'static str, sample: Option<&str>| {
+        let row = counts.entry(reason).or_insert_with(|| SkipCount {
+            reason: reason.to_string(),
+            count: 0,
+            samples: Vec::new(),
+        });
+        row.count += 1;
+        if let Some(path) = sample.filter(|_| row.samples.len() < SKIP_SAMPLE_LIMIT) {
+            row.samples.push(path.to_string());
+        }
+    };
     for skipped in &discovery.skipped {
-        *counts.entry(skipped.reason.as_str()).or_default() += 1;
+        tally(skipped.reason.as_str(), Some(&skipped.path));
     }
     for pruned in &discovery.pruned {
         if pruned.reason == discovery::PruneReason::Hidden {
-            *counts.entry(pruned.reason.as_str()).or_default() += 1;
+            tally(pruned.reason.as_str(), None);
         }
     }
-    counts
-        .into_iter()
-        .map(|(reason, count)| SkipCount {
-            reason: reason.to_string(),
-            count,
-        })
-        .collect()
+    counts.into_values().collect()
 }
 
 /// Name every directory discovery refused to walk — **not** aggregated.

@@ -33,7 +33,15 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
         ));
         let mut skipped = theme::plain_table(width);
         for row in report.skipped {
-            skipped.add_row([Cell::new(row.reason), theme::right(row.count)]);
+            if row.samples.is_empty() {
+                skipped.add_row([Cell::new(row.reason), theme::right(row.count)]);
+            } else {
+                skipped.add_row([
+                    Cell::new(row.reason),
+                    theme::right(row.count),
+                    Cell::new(format!("e.g. {}", row.samples.join(", ")).bright_black()),
+                ]);
+            }
         }
         out.push_str(&theme::block(&skipped));
     }
