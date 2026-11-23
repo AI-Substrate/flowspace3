@@ -45,7 +45,15 @@ pub struct SkipCount {
     pub reason: String,
     /// How many files.
     pub count: usize,
+    /// Up to [`SKIP_SAMPLE_LIMIT`] of the skipped paths, relative to the root
+    /// and sorted, so "what was skipped" needs no second command. Absent when
+    /// the reason names directories or the report predates samples.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub samples: Vec<String>,
 }
+
+/// How many example paths a [`SkipCount`] carries.
+pub const SKIP_SAMPLE_LIMIT: usize = 5;
 
 /// One directory discovery never walked.
 ///

@@ -275,6 +275,7 @@ impl From<&ScanConfig> for DiscoverySettings {
             respect_gitignore: scan.respect_gitignore,
             include_hidden: scan.include_hidden,
             follow_symlinks: scan.follow_symlinks,
+            index_config_formats: scan.index_config_formats,
             standard_ignores: if scan.standard_ignores {
                 STANDARD_IGNORES
                     .iter()
@@ -731,7 +732,7 @@ fn verdict(
     // watcher subtree path share this verdict.
     if !crate::is_ddoc_source(relative)
         && family == LanguageFamily::Config
-        && !settings.index_config_formats
+        && (!settings.index_config_formats || is_lockfile_or_generated_config(relative))
     {
         return Err(SkipReason::ConfigFormat);
     }
@@ -748,6 +749,20 @@ fn verdict(
         return Err(SkipReason::TooSmall);
     }
     Ok(family)
+}
+
+/// Lockfiles and minified JSON stay skipped even with `index_config_formats`
+/// on: they are machine-written, huge, and would flood the index.
+fn is_lockfile_or_generated_config(relative: &Path) -> bool {
+    let Some(name) = relative.file_name().and_then(|n| n.to_str()) else {
+        return false;
+    };
+    let name = name.to_ascii_lowercase();
+    matches!(
+        name.as_str(),
+        "package-lock.json" | "npm-shrinkwrap.json" | "pnpm-lock.yaml"
+    ) || name.ends_with(".lock")
+        || name.ends_with(".min.json")
 }
 
 /// Visit every file under `root`, handing back `(absolute, relative, size)`.
@@ -1034,6 +1049,50 @@ mod tests {
     }
 
     #[test]
+    fn lockfiles_and_minified_json_stay_skipped_when_config_formats_index() {
+        let settings = DiscoverySettings {
+            index_config_formats: true,
+            ..DiscoverySettings::default()
+        };
+        for path in [
+            "package-lock.json",
+            "web/npm-shrinkwrap.json",
+            "pnpm-lock.yaml",
+            "yarn.lock",
+            "Cargo.lock",
+            "composer.lock",
+            "poetry.lock",
+            "dist/data.min.json",
+        ] {
+            assert_eq!(
+                verdict_of(path, 40, &settings),
+                Err(SkipReason::ConfigFormat),
+                "{path}",
+            );
+        }
+        assert_eq!(
+            verdict_of("package.json", 40, &settings),
+            Ok(LanguageFamily::Config),
+        );
+    }
+
+    #[test]
+    fn scan_config_index_config_formats_reaches_discovery() {
+        let settings = DiscoverySettings::from(&ScanConfig {
+            index_config_formats: true,
+            ..ScanConfig::default()
+        });
+        assert_eq!(
+            verdict_of("gates.yaml", 40, &settings),
+            Ok(LanguageFamily::Config),
+        );
+        assert_eq!(
+            verdict_of("package-lock.json", 40, &settings),
+            Err(SkipReason::ConfigFormat),
+        );
+    }
+
+    #[test]
     fn the_size_window_is_inclusive_at_both_ends() {
         let settings = DiscoverySettings {
             max_file_bytes: 100,
@@ -1064,6 +1123,7 @@ mod tests {
             include_hidden: true,
             follow_symlinks: true,
             standard_ignores: true,
+            index_config_formats: false,
         };
         let settings = DiscoverySettings::from(&scan);
         assert_eq!(settings.max_file_bytes, 4_096);

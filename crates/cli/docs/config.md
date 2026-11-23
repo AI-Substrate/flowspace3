@@ -56,6 +56,8 @@ min_file_bytes = 1
 respect_gitignore = true
 include_hidden = false
 follow_symlinks = false
+# Index YAML/JSON/TOML (lockfiles and *.min.json stay skipped).
+index_config_formats = false
 
 # Only to correct or add a price: gpt-6-luna is built in. `flowspace3 decision`
 # multiplies reported tokens by this to estimate `data.cost`.

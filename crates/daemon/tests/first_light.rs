@@ -566,6 +566,16 @@ async fn add_scan_enrich_and_search_answer_end_to_end() {
             .any(|row| row["reason"] == "config-format" && row["count"] == 1),
         "settings.toml must be REFUSED and said so, got {skipped:?}"
     );
+    let config_row = skipped
+        .iter()
+        .find(|row| row["reason"] == "config-format")
+        .expect("a config-format row");
+    assert!(
+        config_row["samples"].as_array().is_some_and(|s| s
+            .iter()
+            .any(|p| p.as_str().is_some_and(|p| p.ends_with("settings.toml")))),
+        "the row must NAME an example of what it skipped, got {config_row:?}"
+    );
     assert!(
         !skipped.iter().any(|row| row["reason"] == "gitignored"),
         "a git-ignored FILE is out of scope, not refused: it is in neither file \
