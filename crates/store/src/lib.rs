@@ -97,7 +97,8 @@ pub use read::{
 };
 pub use refs::{
     RegisteredWorktree, WorktreePath, find_worktree, list_worktrees, register_worktree,
-    set_worktree_include_hidden, sync_worktree_files, worktree_file_map, worktree_include_hidden,
+    set_worktree_include_hidden, set_worktree_index_config_formats, sync_worktree_files,
+    worktree_file_map, worktree_include_hidden, worktree_index_config_formats,
     worktree_paths_for_blob,
 };
 pub use roots::{

@@ -291,6 +291,7 @@ mod tests {
             root_path: root.display().to_string(),
             ref_name: None,
             include_hidden: false,
+            index_config_formats: false,
             file_count: 0,
         }
     }

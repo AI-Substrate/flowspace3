@@ -48,6 +48,7 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
             theme::header("repo"),
             theme::header("root"),
             theme::header("hidden"),
+            theme::header("config"),
             theme::header("files"),
         ]);
         for root in &report.roots {
@@ -55,6 +56,11 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
                 Cell::new(format!("{}", root.identity.bright_white())),
                 Cell::new(format!("{}", root.root_path.bright_black())),
                 Cell::new(if root.include_hidden { "yes" } else { "no" }),
+                Cell::new(if root.index_config_formats {
+                    "yes"
+                } else {
+                    "no"
+                }),
                 theme::right(theme::count(root.files)),
             ]);
         }
@@ -322,6 +328,7 @@ mod tests {
                     "identity": "git:example/repo",
                     "root_path": "/srv/repo",
                     "include_hidden": true,
+                    "index_config_formats": true,
                     "files": 2
                 }],
                 "queue": [],
@@ -334,6 +341,7 @@ mod tests {
         .unwrap();
         let screen = plain(&render(&value, 100).unwrap());
         assert!(screen.contains("hidden"), "{screen}");
+        assert!(screen.contains("config"), "{screen}");
         assert!(screen.contains("yes"), "{screen}");
     }
 

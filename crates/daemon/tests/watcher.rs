@@ -301,6 +301,103 @@ async fn watcher_rescans_follow_the_current_per_root_hidden_policy() {
     stack.destroy().await;
 }
 
+/// Config formats are a per-root opt-in that sticks: later adds without the
+/// flag, rescans and the watcher all keep it, and only an explicit `false`
+/// turns it off. Lockfiles stay skipped while it is on.
+#[tokio::test]
+async fn config_formats_follow_the_remembered_per_root_policy() {
+    let stack = Stack::create("watch-config-formats").await;
+    stack.write("src/a.rs", "/// A.\npub fn a() -> u8 { 1 }\n");
+    stack.write("tooling/gates.yaml", "gates:\n  - name: build\n");
+    stack.write("package-lock.json", "{\"lockfileVersion\": 3}\n");
+
+    let plain = roots::add_root(&stack.state, &stack.root, None)
+        .await
+        .expect("a default add");
+    assert!(!plain.index_config_formats);
+    assert!(
+        !stack
+            .mapped_paths()
+            .await
+            .contains(&"tooling/gates.yaml".to_string())
+    );
+
+    let on = roots::add_root_with_options(
+        &stack.state,
+        &stack.root,
+        roots::RootOptions {
+            index_config_formats: Some(true),
+            ..roots::RootOptions::default()
+        },
+    )
+    .await
+    .expect("opting the root in");
+    assert!(on.index_config_formats);
+    assert!(on.enqueued >= 1, "the previously skipped yaml is new work");
+    stack.drain().await;
+    let mapped = stack.mapped_paths().await;
+    assert!(
+        mapped.contains(&"tooling/gates.yaml".to_string()),
+        "{mapped:?}"
+    );
+    assert!(
+        !mapped.contains(&"package-lock.json".to_string()),
+        "{mapped:?}"
+    );
+
+    let again = roots::add_root(&stack.state, &stack.root, None)
+        .await
+        .expect("a flagless re-add");
+    assert!(
+        again.index_config_formats,
+        "a flagless add must keep the opt-in"
+    );
+    let rescanned = roots::rescan_root(&stack.state, &stack.root)
+        .await
+        .expect("a rescan");
+    assert!(rescanned.index_config_formats);
+    assert!(
+        stack
+            .mapped_paths()
+            .await
+            .contains(&"tooling/gates.yaml".to_string())
+    );
+
+    let mut supervisor = WatcherSupervisor::new(stack.state.clone());
+    supervisor.reconcile().await.expect("the boot pass");
+    stack.write("tooling/manifest.yaml", "name: live\n");
+    let saw_yaml = reconcile_until(&mut supervisor, PATIENCE, async || {
+        stack
+            .queued_scan_paths()
+            .await
+            .contains(&"tooling/manifest.yaml".to_string())
+    })
+    .await;
+    assert!(saw_yaml, "the opted-in watcher skipped a yaml file");
+    stack.drain().await;
+
+    let off = roots::add_root_with_options(
+        &stack.state,
+        &stack.root,
+        roots::RootOptions {
+            index_config_formats: Some(false),
+            ..roots::RootOptions::default()
+        },
+    )
+    .await
+    .expect("opting the root out");
+    assert!(!off.index_config_formats);
+    assert!(
+        !stack
+            .mapped_paths()
+            .await
+            .contains(&"tooling/gates.yaml".to_string()),
+        "opting out must drop the config files from the root"
+    );
+
+    stack.destroy().await;
+}
+
 /// The other half of Jordan's ask: a root added while the daemon is already
 /// running starts being watched, with no restart and no special case.
 ///

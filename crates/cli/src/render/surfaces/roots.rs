@@ -24,6 +24,9 @@ pub fn render(envelope: &Envelope<Value>, width: u16) -> Option<String> {
     facts.add_row([Cell::new("root"), Cell::new(report.root_path)]);
     facts.add_row([Cell::new("identity"), Cell::new(report.identity_source)]);
     facts.add_row([Cell::new("removed"), Cell::new(report.removed)]);
+    if report.index_config_formats {
+        facts.add_row([Cell::new("config formats"), Cell::new("indexed")]);
+    }
     out.push_str(&theme::block(&facts));
     if !report.skipped.is_empty() {
         out.push_str(&format!(

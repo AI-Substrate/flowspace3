@@ -135,6 +135,7 @@ mod tests {
             root_path: "/srv/api".to_string(),
             worktree_id: 1,
             include_hidden: false,
+            index_config_formats: false,
             files: 0,
             skipped: Vec::new(),
             pruned: Vec::new(),

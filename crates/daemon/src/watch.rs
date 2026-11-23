@@ -279,6 +279,11 @@ impl WatcherSupervisor {
                 .unwrap_or(false);
         let mut settings = DiscoverySettings::from(&self.state.config.scan);
         settings.include_hidden |= root_include_hidden;
+        settings.index_config_formats =
+            fs3_store::worktree_index_config_formats(&self.state.db, watched.worktree_id)
+                .await
+                .context("reading the worktree's config-format policy")?
+                .unwrap_or(false);
         let discovered =
             match discovery::discover_subtree(&settled.root, &settled.directory, &settings) {
                 Ok(Some(discovered)) => discovered,

@@ -517,10 +517,13 @@ async fn add_root(
     if let Err(failure) = crate::schema::guard(&state.db).await {
         return failed(&state, COMMAND, failure).await;
     }
-    match crate::roots::add_root(
+    match crate::roots::add_root_with_options(
         &state,
         std::path::Path::new(&request.path),
-        request.include_hidden,
+        crate::roots::RootOptions {
+            include_hidden: request.include_hidden,
+            index_config_formats: request.index_config_formats,
+        },
     )
     .await
     {
