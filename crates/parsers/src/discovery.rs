@@ -222,7 +222,9 @@ pub struct DiscoverySettings {
     pub include_hidden: bool,
     /// Follow symlinks. Off by default: a link loop is an infinite scan.
     pub follow_symlinks: bool,
-    /// Index YAML/JSON/TOML/HCL and kin. Off by default (PRD req 43).
+    /// Index YAML/JSON/TOML/HCL and kin. Off by default (PRD req 43); set per
+    /// root by `flowspace3 add --index-config-formats`, never machine-wide.
+    /// Lockfiles and `*.min.json` stay skipped either way.
     pub index_config_formats: bool,
     /// Gitignore-syntax globs, relative to the root, naming paths to index
     /// **even when git ignores them** (PRD req 41: "a gitignored folder you do
@@ -275,7 +277,6 @@ impl From<&ScanConfig> for DiscoverySettings {
             respect_gitignore: scan.respect_gitignore,
             include_hidden: scan.include_hidden,
             follow_symlinks: scan.follow_symlinks,
-            index_config_formats: scan.index_config_formats,
             standard_ignores: if scan.standard_ignores {
                 STANDARD_IGNORES
                     .iter()
@@ -1077,11 +1078,11 @@ mod tests {
     }
 
     #[test]
-    fn scan_config_index_config_formats_reaches_discovery() {
-        let settings = DiscoverySettings::from(&ScanConfig {
+    fn a_config_format_root_indexes_gates_but_not_lockfiles() {
+        let settings = DiscoverySettings {
             index_config_formats: true,
-            ..ScanConfig::default()
-        });
+            ..DiscoverySettings::default()
+        };
         assert_eq!(
             verdict_of("gates.yaml", 40, &settings),
             Ok(LanguageFamily::Config),
@@ -1123,7 +1124,6 @@ mod tests {
             include_hidden: true,
             follow_symlinks: true,
             standard_ignores: true,
-            index_config_formats: false,
         };
         let settings = DiscoverySettings::from(&scan);
         assert_eq!(settings.max_file_bytes, 4_096);

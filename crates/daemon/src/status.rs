@@ -22,6 +22,7 @@ pub async fn report(state: &AppState, history: bool) -> Result<StatusReport, Fai
             identity: worktree.identity,
             root_path: worktree.root_path,
             include_hidden: worktree.include_hidden,
+            index_config_formats: worktree.index_config_formats,
             files: worktree.file_count,
         })
         .collect();

@@ -203,11 +203,20 @@ impl DaemonClient {
             .with_context(|| format!("{url} did not return a health report"))
     }
 
-    /// Register a root, optionally changing its hidden-directory policy.
-    pub async fn add(&self, path: &str, include_hidden: Option<bool>) -> Envelope {
+    /// Register a root, optionally changing its remembered per-root
+    /// hidden-directory and config-format policies.
+    pub async fn add(
+        &self,
+        path: &str,
+        include_hidden: Option<bool>,
+        index_config_formats: Option<bool>,
+    ) -> Envelope {
         let mut request = serde_json::json!({ "path": path });
         if let Some(include_hidden) = include_hidden {
             request["include_hidden"] = include_hidden.into();
+        }
+        if let Some(index_config_formats) = index_config_formats {
+            request["index_config_formats"] = index_config_formats.into();
         }
         self.post("add", "/roots", &request).await
     }

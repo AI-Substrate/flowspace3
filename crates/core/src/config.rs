@@ -1206,7 +1206,6 @@ impl Default for IndexingConfig {
 /// include_hidden = false
 /// follow_symlinks = false
 /// standard_ignores = true
-/// index_config_formats = false
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -1227,10 +1226,6 @@ pub struct ScanConfig {
     /// path components, **even when the repo has no `.gitignore`**. Off means
     /// a `.gitignore`-less clone indexes its dependencies.
     pub standard_ignores: bool,
-    /// Index YAML/JSON/TOML/HCL files. Off by default; turn on for repos where
-    /// the config *is* the substance. Lockfiles (`*.lock`, `package-lock.json`,
-    /// `pnpm-lock.yaml`, `npm-shrinkwrap.json`) and `*.min.json` stay skipped.
-    pub index_config_formats: bool,
 }
 
 impl ScanConfig {
@@ -1263,7 +1258,6 @@ impl Default for ScanConfig {
             include_hidden: false,
             follow_symlinks: false,
             standard_ignores: true,
-            index_config_formats: false,
         }
     }
 }

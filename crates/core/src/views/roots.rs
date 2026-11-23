@@ -16,6 +16,10 @@ pub struct RootReport {
     /// Whether dot-prefixed directories are enabled for this root.
     #[serde(default)]
     pub include_hidden: bool,
+    /// Whether YAML/JSON/TOML are indexed for this root (`add
+    /// --index-config-formats`, remembered per root).
+    #[serde(default)]
+    pub index_config_formats: bool,
     /// Files discovery accepted.
     pub files: usize,
     /// Files discovery saw and refused, by reason (PRD req 43: never a silent

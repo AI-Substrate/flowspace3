@@ -1,0 +1,2 @@
+ALTER TABLE worktrees
+ADD COLUMN index_config_formats BOOLEAN NOT NULL DEFAULT FALSE;

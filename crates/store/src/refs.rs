@@ -40,6 +40,8 @@ pub struct RegisteredWorktree {
     pub ref_name: Option<String>,
     /// Whether discovery includes dot-prefixed directories for this root.
     pub include_hidden: bool,
+    /// Whether discovery indexes YAML/JSON/TOML for this root.
+    pub index_config_formats: bool,
     /// How many files this worktree currently maps.
     pub file_count: i64,
 }
@@ -134,6 +136,41 @@ pub async fn worktree_include_hidden(
 ) -> Result<Option<bool>, StoreError> {
     Ok(
         sqlx::query_scalar("SELECT include_hidden FROM worktrees WHERE id = $1")
+            .bind(worktree_id)
+            .fetch_optional(pool)
+            .await?,
+    )
+}
+
+/// Set whether discovery indexes config formats (YAML/JSON/TOML) for a
+/// worktree. Like [`set_worktree_include_hidden`], only an explicit `add` flag
+/// calls this.
+///
+/// # Errors
+/// [`StoreError::Query`] when the update fails.
+pub async fn set_worktree_index_config_formats(
+    pool: &PgPool,
+    worktree_id: i64,
+    index_config_formats: bool,
+) -> Result<(), StoreError> {
+    sqlx::query("UPDATE worktrees SET index_config_formats = $2 WHERE id = $1")
+        .bind(worktree_id)
+        .bind(index_config_formats)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+/// Read one worktree's config-format policy without loading every root.
+///
+/// # Errors
+/// [`StoreError::Query`] when the read fails.
+pub async fn worktree_index_config_formats(
+    pool: &PgPool,
+    worktree_id: i64,
+) -> Result<Option<bool>, StoreError> {
+    Ok(
+        sqlx::query_scalar("SELECT index_config_formats FROM worktrees WHERE id = $1")
             .bind(worktree_id)
             .fetch_optional(pool)
             .await?,
@@ -269,7 +306,7 @@ pub async fn worktree_paths_for_blob(
 /// [`StoreError::Query`] when the read fails.
 pub async fn list_worktrees(pool: &PgPool) -> Result<Vec<RegisteredWorktree>, StoreError> {
     let rows = sqlx::query(
-        "SELECT w.id, r.identity, w.root_path, w.ref_name, w.include_hidden,
+        "SELECT w.id, r.identity, w.root_path, w.ref_name, w.include_hidden, w.index_config_formats,
                 (SELECT count(*) FROM worktree_files f WHERE f.worktree_id = w.id) AS file_count
            FROM worktrees w
            JOIN repos r ON r.id = w.repo_id
@@ -286,6 +323,7 @@ pub async fn list_worktrees(pool: &PgPool) -> Result<Vec<RegisteredWorktree>, St
                 root_path: row.try_get("root_path")?,
                 ref_name: row.try_get("ref_name")?,
                 include_hidden: row.try_get("include_hidden")?,
+                index_config_formats: row.try_get("index_config_formats")?,
                 file_count: row.try_get("file_count")?,
             })
         })
