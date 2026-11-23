@@ -65,6 +65,14 @@ enum Command {
         /// Disable dot-prefixed directories for this root.
         #[arg(long, conflicts_with = "include_hidden")]
         no_include_hidden: bool,
+        /// Index YAML/JSON/TOML for this root. Remembered: later add, scan and
+        /// watcher pick-ups keep it until `--no-index-config-formats`.
+        /// Lockfiles and `*.min.json` stay skipped.
+        #[arg(long, conflicts_with = "no_index_config_formats")]
+        index_config_formats: bool,
+        /// Stop indexing YAML/JSON/TOML for this root (the default).
+        #[arg(long, conflicts_with = "index_config_formats")]
+        no_index_config_formats: bool,
         /// Override the daemon URL from configuration.
         #[arg(long, value_name = "URL")]
         daemon_url: Option<String>,
@@ -750,27 +758,33 @@ async fn run(command: Command) -> Result<ExitCode> {
             path,
             include_hidden,
             no_include_hidden,
+            index_config_formats,
+            no_index_config_formats,
             daemon_url,
         } => {
             let client = client_for(daemon_url)?;
             let path = display(&path);
-            let include_hidden = if include_hidden {
-                Some(true)
-            } else if no_include_hidden {
-                Some(false)
-            } else {
-                None
+            let tri = |on: bool, off: bool| match (on, off) {
+                (true, _) => Some(true),
+                (_, true) => Some(false),
+                _ => None,
             };
+            let include_hidden = tri(include_hidden, no_include_hidden);
+            let index_config_formats = tri(index_config_formats, no_index_config_formats);
             let envelope = match output_mode() {
                 OutputMode::Human => {
                     render::progress::while_pending(
                         &client,
                         &path,
-                        client.add(&path, include_hidden),
+                        client.add(&path, include_hidden, index_config_formats),
                     )
                     .await
                 }
-                OutputMode::Json => client.add(&path, include_hidden).await,
+                OutputMode::Json => {
+                    client
+                        .add(&path, include_hidden, index_config_formats)
+                        .await
+                }
             };
             emit(&envelope)
         }

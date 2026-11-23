@@ -223,7 +223,7 @@ pub async fn worktree_containing(
     path: &str,
 ) -> Result<Option<crate::refs::RegisteredWorktree>, StoreError> {
     let row = sqlx::query(
-        "SELECT w.id, r.identity, w.root_path, w.ref_name, w.include_hidden,
+        "SELECT w.id, r.identity, w.root_path, w.ref_name, w.include_hidden, w.index_config_formats,
                 (SELECT count(*) FROM worktree_files f WHERE f.worktree_id = w.id) AS file_count
            FROM worktrees w
            JOIN repos r ON r.id = w.repo_id
@@ -243,6 +243,7 @@ pub async fn worktree_containing(
             root_path: row.try_get("root_path")?,
             ref_name: row.try_get("ref_name")?,
             include_hidden: row.try_get("include_hidden")?,
+            index_config_formats: row.try_get("index_config_formats")?,
             file_count: row.try_get("file_count")?,
         })
     })

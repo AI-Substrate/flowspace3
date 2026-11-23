@@ -106,6 +106,20 @@ pub struct RootRequest {
     /// Explicit per-root hidden-directory choice; absent preserves stored state.
     #[serde(default)]
     pub include_hidden: Option<bool>,
+    /// Explicit per-root config-format (YAML/JSON/TOML) choice; absent
+    /// preserves stored state. There is deliberately no machine-wide switch.
+    #[serde(default)]
+    pub index_config_formats: Option<bool>,
+}
+
+/// Explicit per-root discovery choices an `add` may carry. `None` keeps
+/// whatever the root already stores (false for a new root).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct RootOptions {
+    /// See [`RootRequest::include_hidden`].
+    pub include_hidden: Option<bool>,
+    /// See [`RootRequest::index_config_formats`].
+    pub index_config_formats: Option<bool>,
 }
 
 /// What one `scan_file` job needs to do its work.
@@ -155,10 +169,30 @@ pub async fn add_root(
     root: &Path,
     include_hidden: Option<bool>,
 ) -> Result<RootReport, RootError> {
+    add_root_with_options(
+        state,
+        root,
+        RootOptions {
+            include_hidden,
+            ..RootOptions::default()
+        },
+    )
+    .await
+}
+
+/// [`add_root`] with every per-root choice, as `POST /roots` carries them.
+///
+/// # Errors
+/// As [`add_root`].
+pub async fn add_root_with_options(
+    state: &AppState,
+    root: &Path,
+    options: RootOptions,
+) -> Result<RootReport, RootError> {
     scan_root(
         state,
         root,
-        include_hidden,
+        options,
         "added",
         fs3_store::JOB_PRIORITY_DEFAULT,
     )
@@ -174,13 +208,13 @@ pub(crate) async fn add_root_with_priority(
     root: &Path,
     priority: fs3_store::JobPriority,
 ) -> Result<RootReport, RootError> {
-    scan_root(state, root, None, "added", priority).await
+    scan_root(state, root, RootOptions::default(), "added", priority).await
 }
 
 async fn scan_root(
     state: &AppState,
     root: &Path,
-    requested_include_hidden: Option<bool>,
+    requested: RootOptions,
     change: &'static str,
     priority: fs3_store::JobPriority,
 ) -> Result<RootReport, RootError> {
@@ -189,13 +223,23 @@ async fn scan_root(
     let root_path = root.to_string_lossy().to_string();
     let identity_key = identity.key().to_string();
     let existing = fs3_store::find_worktree(&state.db, &root_path).await?;
-    let root_include_hidden = requested_include_hidden
+    let root_include_hidden = requested
+        .include_hidden
         .or_else(|| existing.as_ref().map(|worktree| worktree.include_hidden))
+        .unwrap_or(false);
+    let root_index_config_formats = requested
+        .index_config_formats
+        .or_else(|| {
+            existing
+                .as_ref()
+                .map(|worktree| worktree.index_config_formats)
+        })
         .unwrap_or(false);
 
     // Discovery decides what is worth indexing; git decides what the bytes are.
     let mut settings = DiscoverySettings::from(&state.config.scan);
     settings.include_hidden |= root_include_hidden;
+    settings.index_config_formats = root_index_config_formats;
     let discovery = discovery::discover(&root, &settings)?;
     let mut progress = ScanProgress::new(identity_key.clone(), root_path.clone());
 
@@ -203,8 +247,12 @@ async fn scan_root(
     let worktree_id =
         fs3_store::register_worktree(&state.db, &identity, &root_path, ref_name(&root).as_deref())
             .await?;
-    if let Some(include_hidden) = requested_include_hidden {
+    if let Some(include_hidden) = requested.include_hidden {
         fs3_store::set_worktree_include_hidden(&state.db, worktree_id, include_hidden).await?;
+    }
+    if let Some(index_config_formats) = requested.index_config_formats {
+        fs3_store::set_worktree_index_config_formats(&state.db, worktree_id, index_config_formats)
+            .await?;
     }
 
     // Hash every accepted file, then write the map in one call. Hashing first
@@ -279,6 +327,7 @@ async fn scan_root(
         root_path: root_path.clone(),
         worktree_id,
         include_hidden: root_include_hidden,
+        index_config_formats: root_index_config_formats,
         files: files.len(),
         skipped: skip_counts(&discovery),
         pruned: pruned_rows(&discovery),
@@ -314,7 +363,7 @@ pub async fn rescan_root(state: &AppState, root: &Path) -> Result<RootReport, Ro
     scan_root(
         state,
         &root,
-        None,
+        RootOptions::default(),
         "rescanned",
         fs3_store::JOB_PRIORITY_DEFAULT,
     )

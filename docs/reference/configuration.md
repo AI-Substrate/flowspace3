@@ -191,7 +191,14 @@ config file. All three keys are optional; an absent one falls back to the port's
 | `include_hidden` | boolean | `false` | Walk dot-files and dot-directories. | `FS3_SCAN__INCLUDE_HIDDEN` |
 | `follow_symlinks` | boolean | `false` | Follow symlinks. Off by default: a link loop is an infinite scan. | `FS3_SCAN__FOLLOW_SYMLINKS` |
 | `standard_ignores` | boolean | `true` | Skip `node_modules`, `target`, `dist` and kin as whole path components, **even when the repo has no `.gitignore`**. Off means a `.gitignore`-less clone indexes its dependencies. | `FS3_SCAN__STANDARD_IGNORES` |
-| `index_config_formats` | boolean | `false` | Index YAML, JSON, TOML and HCL files. Off by default; turn it on when config files are the substance of the repo (gate definitions, manifests, schemas, pipelines). Lockfiles (`*.lock`, `package-lock.json`, `npm-shrinkwrap.json`, `pnpm-lock.yaml`) and `*.min.json` stay skipped as `config-format`. | `FS3_SCAN__INDEX_CONFIG_FORMATS` |
+
+YAML, JSON, TOML and HCL files are skipped as `config-format` by default. There is
+deliberately **no machine-wide key** for them: turn them on per root with
+`flowspace3 add <root> --index-config-formats`. The choice is stored on the root and
+reused by every later `add`, `scan` and watcher pick-up until
+`flowspace3 add <root> --no-index-config-formats`; `flowspace3 status` shows it in the
+`config` column. Lockfiles (`*.lock`, `package-lock.json`, `npm-shrinkwrap.json`,
+`pnpm-lock.yaml`) and `*.min.json` stay skipped even when it is on.
 
 ## `[search]`
 

@@ -211,6 +211,9 @@ pub struct Root {
     /// Whether dot-prefixed directories are enabled for this root.
     #[serde(default)]
     pub include_hidden: bool,
+    /// Whether YAML/JSON/TOML are indexed for this root.
+    #[serde(default)]
+    pub index_config_formats: bool,
     /// How many files fs3 currently maps for it.
     pub files: i64,
 }
