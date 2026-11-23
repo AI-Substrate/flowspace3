@@ -1,0 +1,58 @@
+crates/cli/src/main.rs
+  s_dd5fb4e435d646::t_4d41ec03a70bb0 68-75,761-762,767-770,772-773,779,783-787
+crates/daemon/src/roots.rs
+  s_dd5fb4e435d646::t_0431832f3e9cad 109-122,171-190,195,211,217,226-227,230-231,237,242,250,253-256,330,366
+  s_dd5fb4e435d646::t_4d41ec03a70bb0 232-236
+crates/daemon/src/watch.rs
+  s_dd5fb4e435d646::t_0431832f3e9cad 282-286
+crates/daemon/src/status.rs
+  s_dd5fb4e435d646::t_4d41ec03a70bb0 25
+crates/store/src/refs.rs
+  s_dd5fb4e435d646::t_0431832f3e9cad 43-44,145-179,309,326
+crates/parsers/src/discovery.rs
+  s_dd5fb4e435d646::t_0431832f3e9cad 225-227,1081-1082,1084-1085
+crates/store/migrations/0034_worktree_index_config_formats.sql
+  s_dd5fb4e435d646::t_0431832f3e9cad 1-2
+crates/store/src/read.rs
+  s_dd5fb4e435d646::t_0431832f3e9cad 226,246
+crates/cli/src/client.rs
+  s_dd5fb4e435d646::t_4d41ec03a70bb0 206-213,218-219
+  s_dd5fb4e435d646::t_a2065d773777f2 220
+crates/store/src/lib.rs
+  s_dd5fb4e435d646::t_4d41ec03a70bb0 100-101
+crates/core/src/views/status.rs
+  s_dd5fb4e435d646::t_4d41ec03a70bb0 214-216
+docs/reference/configuration.md
+  s_dd5fb4e435d646::t_1415e84d39a9c8 195-201
+  s_dd5fb4e435d646::t_a5afaff2bbb5c6 194
+crates/daemon/src/http.rs
+  s_dd5fb4e435d646::t_0431832f3e9cad 520,523-526
+crates/daemon/tests/watcher.rs
+  s_dd5fb4e435d646::t_1415e84d39a9c8 304-400
+crates/core/src/views/roots.rs
+  s_dd5fb4e435d646::t_0431832f3e9cad 19-22
+crates/cli/src/render/surfaces/status.rs
+  s_dd5fb4e435d646::t_4d41ec03a70bb0 51,59-63,331,344
+crates/core/src/views/mod.rs
+  s_dd5fb4e435d646::t_4d41ec03a70bb0 138
+crates/daemon/src/worktrees.rs
+  s_dd5fb4e435d646::t_0431832f3e9cad 294
+crates/cli/src/render/surfaces/roots.rs
+  s_dd5fb4e435d646::t_1415e84d39a9c8 27-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ed104d452cec462ef029fa29c9c60d1303c40f61",
+  "prompts": {},
+  "sessions": {
+    "s_dd5fb4e435d646": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "10b16cf5-8cdb-49b4-992b-9a897cdccaca",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
