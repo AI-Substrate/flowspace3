@@ -1,0 +1,35 @@
+crates/core/src/config.rs
+  s_dd5fb4e435d646::t_86817c4f9ed73d 1209,1230-1233,1266
+crates/daemon/tests/first_light.rs
+  s_dd5fb4e435d646::t_e1c7849eb467f4 569-578
+crates/daemon/src/roots.rs
+  s_dd5fb4e435d646::t_61ae12ce0f99f6 36
+  s_dd5fb4e435d646::t_72bf8c63affb1b 357,359-369,371,375,378
+crates/parsers/src/discovery.rs
+  s_dd5fb4e435d646::t_86817c4f9ed73d 278,735,754-767,1051-1094,1126
+crates/cli/docs/config.md
+  s_dd5fb4e435d646::t_9f202e485ebbec 59-60
+crates/cli/src/render/surfaces/roots.rs
+  s_dd5fb4e435d646::t_72bf8c63affb1b 36-44
+docs/reference/configuration.md
+  s_dd5fb4e435d646::t_9f202e485ebbec 194
+crates/core/src/views/roots.rs
+  s_dd5fb4e435d646::t_72bf8c63affb1b 48-52,55-56
+  s_dd5fb4e435d646::t_a7dea39e98b50c 57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7ca198cce410a98f7fb73f9b1d1990b0497868d4",
+  "prompts": {},
+  "sessions": {
+    "s_dd5fb4e435d646": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "10b16cf5-8cdb-49b4-992b-9a897cdccaca",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
