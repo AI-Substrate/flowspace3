@@ -88,6 +88,8 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 rusqlite = { version = "0.32", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# DEV only (fs3-cli): proves the embedded compose file is valid YAML.
+serde_yaml = "0.9"
 # The one hash in fs3: element `raw_hash` (the dirtiness key) and the content
 # key for a folder with no git to ask.
 sha2 = "0.10"

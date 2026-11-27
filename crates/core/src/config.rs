@@ -362,7 +362,8 @@ pub struct DaemonConfig {
     /// Filesystem root allowed to own the shipped production database.
     ///
     /// A daemon started outside this tree must opt in explicitly with
-    /// `FS3_PROD_OWNER=1`; `None` designates no working directory.
+    /// `FS3_PROD_OWNER=1`. `None` (the default, every installed user) enforces
+    /// no designation: the daemon may start from any directory.
     pub owner_root: Option<std::path::PathBuf>,
     /// Directory the daemon writes its rolling log files into.
     ///

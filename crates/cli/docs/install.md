@@ -24,8 +24,9 @@ flowspace3 search "how does the queue work"
 ```
 
 `doctor` walks engine -> stack -> database -> schema and REPAIRS what it can as
-it goes. You do not run `docker compose` yourself, and there is no second
-command to apply migrations.
+it goes. You do not run `docker compose` yourself — doctor writes and starts
+its own compose file (`~/.config/flowspace3/compose.yml`) from whatever
+directory you are in — and there is no second command to apply migrations.
 
 No configuration is required. The default provider is `fake`: a deterministic,
 offline, keyless embedder and summarizer that produces real vectors, so the

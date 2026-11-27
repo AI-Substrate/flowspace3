@@ -1,0 +1,42 @@
+# The flowspace3 database, as `flowspace3 doctor` starts it for an installed
+# user. Embedded in the binary and written to <config_dir>/compose.yml on every
+# run that needs it; edits there are overwritten. The repository's own
+# docker-compose.yml is the developer stack (bigger tuning, a test postmaster).
+#
+#   docker compose -f ~/.config/flowspace3/compose.yml -p flowspace3 ps
+#   docker compose -f ~/.config/flowspace3/compose.yml -p flowspace3 down
+#
+# Host port 5433 by default, deliberately off 5432 so a machine-local Postgres
+# is never shadowed. Set FS3_DB_PORT to move it, and point database.url (or
+# FS3_DATABASE__URL) at the same port.
+
+services:
+  db:
+    # ParadeDB = Postgres 16 + pgvector + pg_search. Same pin as the repo stack.
+    image: paradedb/paradedb:0.26.1-pg16
+    container_name: flowspace3-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: flowspace3
+      POSTGRES_PASSWORD: flowspace3
+      POSTGRES_DB: flowspace3
+    # This line replaces the image's own preload list: pg_search needs it, and
+    # the image's first-boot script runs CREATE EXTENSION pg_cron, which fails
+    # and stops the container unless pg_cron is preloaded too.
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements,pg_search,pg_cron
+    ports:
+      - "${FS3_DB_PORT:-5433}:5432"
+    volumes:
+      - flowspace3-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flowspace3 -d flowspace3"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+volumes:
+  flowspace3-pgdata:

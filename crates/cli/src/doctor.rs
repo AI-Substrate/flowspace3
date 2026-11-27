@@ -6,7 +6,7 @@
 //!
 //! ```text
 //! engine   → is there a docker/podman to talk to?     (cannot fix: report)
-//! stack    → is the database container running?       (fix: compose up -d)
+//! stack    → is the database container running?       (fix: start it, or compose up -d)
 //! database → does the configured database exist?      (fix: CREATE DATABASE)
 //! schema   → is it current with this binary?          (fix: apply migrations)
 //! ```
@@ -29,6 +29,7 @@
 //! implementation of "is the schema current" living here is exactly the drift
 //! the split refuses.
 
+use std::ffi::OsString;
 use std::process::Stdio;
 use std::time::{Duration, Instant};
 
@@ -182,7 +183,7 @@ async fn walk(
         )
     })?;
 
-    steps.push(check_stack(&maintenance).await?);
+    steps.push(check_stack(&maintenance, config_dir).await?);
 
     let admin = fs3_store::connect(&maintenance).await.map_err(map_store)?;
     steps.push(check_database(&admin, &name).await?);
@@ -219,6 +220,10 @@ async fn walk(
     // right: a reader with no daemon running is told to start one before being
     // told where it would have written its logs.
     steps.push(check_logs(config));
+    // Optional tooling: fs3 works without `ddocs`, so a missing one warns
+    // rather than fails, and walks after the local rows so it never outranks
+    // a daemon or store steer.
+    steps.push(check_ddocs().await);
     // One row per harness this user has: is the fs3 prompt hook wired in?
     // Informational like the skills row — doctor never installs it.
     steps.extend(check_hooks());
@@ -442,12 +447,39 @@ fn check_engine() -> Result<Step, Failure> {
     }
 }
 
+/// The user's database stack, embedded so an installed binary needs no
+/// checkout: doctor writes it to `<config_dir>/compose.yml` and drives that.
+const COMPOSE_FILE: &str = include_str!("../assets/compose.yml");
+
+/// The compose project name. Pinned so the stack is the same project whatever
+/// directory doctor runs from.
+const COMPOSE_PROJECT: &str = "flowspace3";
+
+/// The container both the embedded and the repository compose files name.
+const DB_CONTAINER: &str = "flowspace3-db";
+
+/// Environment variable the embedded compose file reads for the host port.
+pub const DB_PORT_ENV: &str = "FS3_DB_PORT";
+
+/// The host port when [`DB_PORT_ENV`] is unset.
+const DEFAULT_DB_PORT: &str = "5433";
+
+/// How many failing lines of engine stderr make it into a failure message.
+const ERROR_TAIL_LINES: usize = 3;
+
 /// Step 1: is the stack running? Start it if not.
 ///
 /// The probe is a real connection rather than `compose ps`: a container that is
 /// up but not yet accepting connections is indistinguishable from a healthy one
 /// by `ps`, and this is exactly the window a freshly-started stack sits in.
-async fn check_stack(maintenance_url: &str) -> Result<Step, Failure> {
+///
+/// Never depends on the working directory. An existing `flowspace3-db`
+/// container — the repository's dev stack, or one doctor made earlier — is
+/// started as it is rather than recomposed: recreating it from the embedded
+/// file would silently swap a developer's tuning for the installed defaults.
+/// Only when there is no such container does doctor write and `up` its own
+/// compose file.
+async fn check_stack(maintenance_url: &str, config_dir: &std::path::Path) -> Result<Step, Failure> {
     let started = Instant::now();
 
     if let Ok(pool) = fs3_store::connect(maintenance_url).await {
@@ -460,28 +492,51 @@ async fn check_stack(maintenance_url: &str) -> Result<Step, Failure> {
     }
 
     let engine = engine();
+    let existing = std::process::Command::new(&engine)
+        .args(["container", "inspect", DB_CONTAINER])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_ok_and(|status| status.success());
+
+    let (args, ran) = if existing {
+        let args = vec![OsString::from("start"), OsString::from(DB_CONTAINER)];
+        (args, format!("`{engine} start {DB_CONTAINER}`"))
+    } else {
+        let file = write_compose(config_dir).map_err(|error| {
+            Failure::new(
+                &catalog::STORE_UNAVAILABLE,
+                format!(
+                    "could not write the compose file {}: {error}",
+                    compose_path(config_dir).display()
+                ),
+            )
+            .with_fix(
+                "make the flowspace3 config directory writable, then rerun `flowspace3 doctor`",
+            )
+        })?;
+        let args = compose_up_args(&file);
+        let shown = format!("`{engine} {}`", display_args(&args));
+        (args, shown)
+    };
+
     let output = std::process::Command::new(&engine)
-        .args(["compose", "up", "-d"])
+        .args(&args)
         .output()
         .map_err(|error| {
             Failure::new(
                 &catalog::STORE_UNAVAILABLE,
-                format!("`{engine} compose up -d` could not be run: {error}"),
+                format!("{ran} could not be run: {error}"),
             )
         })?;
 
     if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(Failure::new(
             &catalog::STORE_UNAVAILABLE,
-            format!(
-                "`{engine} compose up -d` failed: {}",
-                String::from_utf8_lossy(&output.stderr).trim()
-            ),
+            format!("{ran} failed: {}", compose_error_tail(&stderr)),
         )
-        .with_fix(
-            "run it by hand from the repository root to see the whole output; a missing \
-             docker-compose.yml means the command was run from the wrong directory",
-        ));
+        .with_fix(stack_failure_fix(&stderr, &ran, existing)));
     }
 
     // Started is not ready. Postgres accepts TCP before it accepts queries, so
@@ -493,7 +548,7 @@ async fn check_stack(maintenance_url: &str) -> Result<Step, Failure> {
             return Ok(Step::repaired(
                 "stack",
                 "the database container was not accepting connections",
-                format!("ran `{engine} compose up -d` and waited for it to answer"),
+                format!("ran {ran} and waited for it to answer"),
                 started,
             ));
         }
@@ -503,13 +558,100 @@ async fn check_stack(maintenance_url: &str) -> Result<Step, Failure> {
     Err(Failure::new(
         &catalog::STORE_UNAVAILABLE,
         format!(
-            "the stack was started but did not answer within {}s",
+            "ran {ran} but {maintenance_url} did not answer within {}s",
             STACK_READY_TIMEOUT.as_secs()
         ),
     )
     .with_fix(format!(
-        "check the container's own logs: `{engine} compose logs db`"
+        "check the container's own logs: `{engine} logs {DB_CONTAINER}`. Inside a container \
+         (a devcontainer, CI job), 127.0.0.1 is that container, not the host running the \
+         database: set database.url (or FS3_DATABASE__URL) to \
+         postgres://flowspace3:flowspace3@host.docker.internal:{port}/flowspace3",
+        port = db_port()
     )))
+}
+
+fn compose_path(config_dir: &std::path::Path) -> std::path::PathBuf {
+    config_dir.join("compose.yml")
+}
+
+/// Materialise the embedded compose file, rewriting it only when it differs
+/// so an unchanged file keeps its mtime.
+fn write_compose(config_dir: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
+    let path = compose_path(config_dir);
+    if std::fs::read_to_string(&path).ok().as_deref() != Some(COMPOSE_FILE) {
+        std::fs::create_dir_all(config_dir)?;
+        std::fs::write(&path, COMPOSE_FILE)?;
+    }
+    Ok(path)
+}
+
+/// `compose -f <file> -p flowspace3 up -d`, as engine arguments.
+fn compose_up_args(file: &std::path::Path) -> Vec<OsString> {
+    let mut args: Vec<OsString> = vec!["compose".into(), "-f".into(), file.into()];
+    args.extend(["-p", COMPOSE_PROJECT, "up", "-d"].map(OsString::from));
+    args
+}
+
+fn display_args(args: &[OsString]) -> String {
+    args.iter()
+        .map(|arg| arg.to_string_lossy())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// The line(s) of engine stderr that say what failed, not the pull progress
+/// that precedes them: the last few lines naming an error, else the last line.
+fn compose_error_tail(stderr: &str) -> String {
+    let lines: Vec<&str> = stderr
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect();
+    let errors: Vec<&str> = lines
+        .iter()
+        .copied()
+        .filter(|line| line.to_ascii_lowercase().contains("error"))
+        .collect();
+    let chosen = if errors.is_empty() {
+        lines.last().map(|line| vec![*line]).unwrap_or_default()
+    } else {
+        errors[errors.len().saturating_sub(ERROR_TAIL_LINES)..].to_vec()
+    };
+    if chosen.is_empty() {
+        "no error output".to_string()
+    } else {
+        chosen.join("\n")
+    }
+}
+
+fn port_in_use(stderr: &str) -> bool {
+    stderr.contains("port is already allocated") || stderr.contains("address already in use")
+}
+
+fn db_port() -> String {
+    std::env::var(DB_PORT_ENV)
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| DEFAULT_DB_PORT.to_string())
+}
+
+fn stack_failure_fix(stderr: &str, ran: &str, existing: bool) -> String {
+    let port = db_port();
+    match (port_in_use(stderr), existing) {
+        (true, false) => format!(
+            "host port {port} is already in use by something else — pick a free port, then \
+             `export {DB_PORT_ENV}=<port>` and set database.url (or FS3_DATABASE__URL) to \
+             postgres://flowspace3:flowspace3@127.0.0.1:<port>/flowspace3, and rerun \
+             `flowspace3 doctor`"
+        ),
+        (true, true) => format!(
+            "the existing {DB_CONTAINER} container's host port is already in use by something \
+             else — stop that, or point database.url at where your database really is, and \
+             rerun `flowspace3 doctor`"
+        ),
+        (false, _) => format!("rerun {ran} by hand to see the engine's whole output"),
+    }
 }
 
 /// Step 2: does the database exist? Create it if not.
@@ -1743,6 +1885,40 @@ fn check_logs(config: &Config) -> Step {
     Step::ok("logs", found, started)
 }
 
+/// Where an agent learns what ddocs is and how to install it: the
+/// `ddocs agents-start-here` document, on GitHub because the binary that would
+/// print it is the thing missing.
+const DDOCS_START_HERE_URL: &str = "https://raw.githubusercontent.com/AI-Substrate/dd/main/src/docs/content/deterministic-documents.md";
+
+/// The ddocs install instructions.
+const DDOCS_INSTALL_URL: &str = "https://raw.githubusercontent.com/AI-Substrate/dd/main/README.md";
+
+/// Is the `ddocs` CLI on PATH? Asked through the daemon's own ddoc probe so
+/// doctor and the indexer cannot disagree about what "installed" means.
+async fn check_ddocs() -> Step {
+    let started = Instant::now();
+    let version = fs3_daemon::ddoc::installed_version(&std::env::temp_dir()).await;
+    ddocs_row(version.as_deref(), started)
+}
+
+fn ddocs_row(version: Option<&str>, started: Instant) -> Step {
+    match version {
+        Some(version) => Step::ok("ddocs", format!("ddocs {version} on PATH"), started),
+        None => Step::warn(
+            "ddocs",
+            "ddocs not installed — deterministic-document enrichment is off",
+            format!(
+                "read {DDOCS_START_HERE_URL} for what ddocs is, install it per {DDOCS_INSTALL_URL}, \
+                 then restart the fs3 daemon"
+            ),
+            started,
+        )
+        .with_steer(format!(
+            "install ddocs for deterministic-document enrichment — start at {DDOCS_START_HERE_URL}"
+        )),
+    }
+}
+
 /// Prove a directory is writable by writing in it, then clean up.
 ///
 /// A permissions bit is not proof — a directory can be mode 755 and owned by
@@ -2339,5 +2515,102 @@ mod tests {
                 .contains("the mark is cleared")
         );
         assert_eq!(exact_index_row(Err("down"), Instant::now()).outcome, "info");
+    }
+
+    #[test]
+    fn the_embedded_compose_file_is_the_db_service_alone_with_its_preloads() {
+        let compose: serde_yaml::Value = serde_yaml::from_str(COMPOSE_FILE).unwrap();
+        let services = compose["services"].as_mapping().unwrap();
+        assert_eq!(services.len(), 1);
+        let db = &compose["services"]["db"];
+        assert_eq!(db["image"], "paradedb/paradedb:0.26.1-pg16");
+        assert_eq!(db["container_name"], DB_CONTAINER);
+        let command: Vec<&str> = db["command"]
+            .as_sequence()
+            .unwrap()
+            .iter()
+            .map(|arg| arg.as_str().unwrap())
+            .collect();
+        assert!(command.contains(&"shared_preload_libraries=pg_stat_statements,pg_search,pg_cron"));
+        assert!(!command.iter().any(|arg| arg.starts_with("shared_buffers")));
+        assert_eq!(db["ports"][0], "${FS3_DB_PORT:-5433}:5432");
+        assert!(compose["services"].get("db-test").is_none());
+    }
+
+    #[test]
+    fn the_stack_is_composed_from_the_config_dir_never_the_cwd() {
+        let config_dir = tempfile::tempdir().unwrap();
+        let file = write_compose(config_dir.path()).unwrap();
+        assert_eq!(file, config_dir.path().join("compose.yml"));
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), COMPOSE_FILE);
+
+        let args = compose_up_args(&file);
+        let expected: Vec<OsString> = vec![
+            "compose".into(),
+            "-f".into(),
+            file.clone().into(),
+            "-p".into(),
+            "flowspace3".into(),
+            "up".into(),
+            "-d".into(),
+        ];
+        assert_eq!(args, expected);
+
+        // A stale copy is replaced with the embedded one.
+        std::fs::write(&file, "services: {}\n").unwrap();
+        write_compose(config_dir.path()).unwrap();
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), COMPOSE_FILE);
+    }
+
+    #[test]
+    fn a_compose_failure_keeps_the_failing_line_and_names_a_busy_port() {
+        let mut stderr = String::new();
+        for layer in 0..200 {
+            stderr.push_str(&format!(" {layer:04x} Pulling fs layer\n"));
+        }
+        stderr.push_str(" Container flowspace3-db  Starting\n");
+        stderr.push_str(
+            "Error response from daemon: driver failed programming external connectivity on \
+             endpoint flowspace3-db: Bind for 0.0.0.0:5433 failed: port is already allocated\n",
+        );
+        let tail = compose_error_tail(&stderr);
+        assert!(tail.starts_with("Error response from daemon"));
+        assert!(!tail.contains("Pulling"));
+
+        let fix = stack_failure_fix(&stderr, "`docker compose up -d`", false);
+        assert!(fix.contains("is already in use"));
+        assert!(fix.contains(DB_PORT_ENV));
+        assert!(fix.contains("database.url"));
+        assert!(!fix.contains("wrong directory"));
+
+        let other = stack_failure_fix("no such image", "`docker compose up -d`", false);
+        assert!(other.contains("rerun `docker compose up -d` by hand"));
+        assert_eq!(compose_error_tail("just one line\n"), "just one line");
+    }
+
+    #[test]
+    fn the_ddocs_row_warns_with_the_start_here_url_when_absent() {
+        let present = ddocs_row(Some("0.1.0"), Instant::now());
+        assert_eq!(present.outcome, "ok");
+        assert!(present.found.contains("0.1.0"));
+        assert!(present.steer.is_none());
+
+        let absent = ddocs_row(None, Instant::now());
+        assert_eq!(absent.outcome, "warn");
+        assert_eq!(
+            absent.found,
+            "ddocs not installed — deterministic-document enrichment is off"
+        );
+        assert!(absent.action.unwrap().contains(DDOCS_START_HERE_URL));
+        assert!(absent.steer.unwrap().contains(DDOCS_START_HERE_URL));
+    }
+
+    #[test]
+    fn a_missing_ddocs_never_outranks_the_daemon_steer() {
+        let steps = vec![
+            Step::down("daemon", "not running", Instant::now()).with_steer(DAEMON_DOWN_STEER),
+            ddocs_row(None, Instant::now()),
+        ];
+        assert_eq!(next_action(&steps), DAEMON_DOWN_STEER);
     }
 }
