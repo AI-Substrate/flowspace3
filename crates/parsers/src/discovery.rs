@@ -126,14 +126,73 @@ pub enum LanguageFamily {
 /// worth indexing today (as a file element) and gains elements the day the
 /// grammar lands, with no change here.
 const SOURCE_EXTENSIONS: &[&str] = &[
-    "bash", "c", "cc", "cjs", "cpp", "cs", "css", "cxx", "dart", "erl", "ex", "exs", "go", "h",
-    "hh", "hpp", "hs", "htm", "html", "java", "js", "jsx", "kt", "kts", "lua", "m", "mjs", "mm",
-    "php", "pl", "pm", "proto", "ps1", "psm1", "py", "pyi", "r", "rb", "rs", "scala", "scss", "sh",
-    "sql", "svelte", "swift", "ts", "tsx", "vue", "zig", "zsh",
+    "bash",
+    "bicep",
+    "c",
+    "cc",
+    "cjs",
+    "cpp",
+    "cs",
+    "csproj",
+    "css",
+    "cxx",
+    "dart",
+    "dockerfile",
+    "erl",
+    "ex",
+    "exs",
+    "fsproj",
+    "go",
+    "h",
+    "hh",
+    "hpp",
+    "hs",
+    "htm",
+    "html",
+    "java",
+    "js",
+    "jsx",
+    "kt",
+    "kts",
+    "lua",
+    "m",
+    "mjs",
+    "mm",
+    "php",
+    "pl",
+    "pm",
+    "props",
+    "proto",
+    "ps1",
+    "psm1",
+    "py",
+    "pyi",
+    "r",
+    "rb",
+    "rs",
+    "scala",
+    "scss",
+    "sh",
+    "sql",
+    "svelte",
+    "swift",
+    "targets",
+    "ts",
+    "tsx",
+    "vbproj",
+    "vue",
+    "zig",
+    "zsh",
 ];
 
-/// Prose extensions.
-const DOCUMENT_EXTENSIONS: &[&str] = &["adoc", "markdown", "md", "mdx", "org", "rst", "txt"];
+/// Prose extensions — and two deliberate non-prose members. `jsonl` is
+/// usually eval datasets and transcripts that repos want searched, so it
+/// indexes unconditionally here rather than sitting in [`CONFIG_EXTENSIONS`]
+/// behind `--index-config-formats`. `drawio` is XML architecture diagrams;
+/// both still face the size ceiling and the binary sniff like any file.
+const DOCUMENT_EXTENSIONS: &[&str] = &[
+    "adoc", "drawio", "jsonl", "markdown", "md", "mdx", "org", "rst", "txt",
+];
 
 /// Data/config extensions — the PRD req 43 exclusion set.
 const CONFIG_EXTENSIONS: &[&str] = &[
@@ -184,15 +243,39 @@ impl LanguageFamily {
         }
     }
 
-    /// Classify a path by its extension. Extensionless files are
-    /// [`LanguageFamily::Unknown`] — `Makefile` and `LICENSE` are not v1 index
-    /// material, and guessing by filename is the name-matching PRD req 42
-    /// refuses elsewhere.
+    /// Classify a path: a short, exact-match list of well-known file names
+    /// first, then the extension. Other extensionless files are
+    /// [`LanguageFamily::Unknown`] — `Makefile` and `LICENSE` are not index
+    /// material, and the name list stays explicit rather than a guess.
     pub fn for_path(path: &Path) -> Self {
+        if let Some(family) = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .and_then(Self::for_file_name)
+        {
+            return family;
+        }
         match path.extension().and_then(|e| e.to_str()) {
             Some(extension) => Self::for_extension(extension),
             None => LanguageFamily::Unknown,
         }
+    }
+
+    /// Families decided by file name, case-sensitive: `Dockerfile`,
+    /// `Containerfile` and their `Dockerfile.dev` form are code; `CODEOWNERS`
+    /// is a document. (`*.dockerfile` is handled by the extension table.)
+    fn for_file_name(name: &str) -> Option<Self> {
+        if name == "CODEOWNERS" {
+            return Some(LanguageFamily::Document);
+        }
+        let is_container_file = ["Dockerfile", "Containerfile"].iter().any(|stem| {
+            name == *stem
+                || name
+                    .strip_prefix(stem)
+                    .and_then(|rest| rest.strip_prefix('.'))
+                    .is_some_and(|suffix| !suffix.is_empty())
+        });
+        is_container_file.then_some(LanguageFamily::Source)
     }
 
     /// The name used in reports and skip ledgers.
@@ -1004,6 +1087,61 @@ mod tests {
             LanguageFamily::for_path(Path::new("a/b/logo.png")),
             LanguageFamily::Unknown,
         );
+    }
+
+    #[test]
+    fn infra_build_and_dataset_files_have_a_family() {
+        for (path, family) in [
+            ("infra/main.bicep", LanguageFamily::Source),
+            ("Dockerfile", LanguageFamily::Source),
+            ("api/Dockerfile.dev", LanguageFamily::Source),
+            ("Containerfile", LanguageFamily::Source),
+            ("web/app.dockerfile", LanguageFamily::Source),
+            (".github/CODEOWNERS", LanguageFamily::Document),
+            ("CODEOWNERS", LanguageFamily::Document),
+            ("src/App.csproj", LanguageFamily::Source),
+            ("src/App.fsproj", LanguageFamily::Source),
+            ("Directory.Build.props", LanguageFamily::Source),
+            ("docs/arch.drawio", LanguageFamily::Document),
+            ("evals/set.jsonl", LanguageFamily::Document),
+        ] {
+            assert_eq!(LanguageFamily::for_path(Path::new(path)), family, "{path}");
+        }
+    }
+
+    #[test]
+    fn name_rules_are_exact_and_leave_lookalikes_alone() {
+        for (path, family) in [
+            ("NotDockerfile.txt", LanguageFamily::Document),
+            ("codeowners.md", LanguageFamily::Document),
+            ("codeowners", LanguageFamily::Unknown),
+            ("Dockerfile.", LanguageFamily::Unknown),
+            ("Dockerfiles", LanguageFamily::Unknown),
+        ] {
+            assert_eq!(LanguageFamily::for_path(Path::new(path)), family, "{path}");
+        }
+    }
+
+    #[test]
+    fn new_types_index_without_config_formats_and_still_face_the_ceiling() {
+        let settings = DiscoverySettings {
+            max_file_bytes: 100,
+            ..DiscoverySettings::default()
+        };
+        assert!(!settings.index_config_formats);
+        for path in [
+            "evals/set.jsonl",
+            "src/App.csproj",
+            "docs/arch.drawio",
+            "Dockerfile",
+        ] {
+            assert!(verdict_of(path, 50, &settings).is_ok(), "{path}");
+            assert_eq!(
+                verdict_of(path, 5_000, &settings),
+                Err(SkipReason::TooLarge),
+                "{path}",
+            );
+        }
     }
 
     fn verdict_of(

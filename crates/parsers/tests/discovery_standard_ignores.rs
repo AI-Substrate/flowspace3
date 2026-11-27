@@ -494,3 +494,40 @@ fn hidden_directory_prunes_name_the_effective_rule() {
 
     fs::remove_dir_all(tree).expect("cleanup");
 }
+
+/// Infra, build and dataset files survive the real walk — including the
+/// binary sniff, which a compressed `.drawio` payload (base64 text) and a
+/// `.jsonl` dataset must pass — with config formats left off.
+#[test]
+fn infra_build_and_dataset_files_survive_the_walk() {
+    let tree = temp_tree(
+        "more-types",
+        &[
+            ("infra/main.bicep", "param location string\n"),
+            ("Dockerfile", "FROM rust:1\n"),
+            ("api/Dockerfile.dev", "FROM node:22\n"),
+            ("docs/CODEOWNERS", "* @team\n"),
+            ("src/App.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\" />\n"),
+            (
+                "docs/arch.drawio",
+                "<mxfile><diagram id=\"a\">7VxbU+M2FP41eUzGlyQkj0lg2c6UlpK2u/vI2EqiYlseWSFhf32PbMmWbEMSsLeU2RlmsI6uR+c731</diagram></mxfile>\n",
+            ),
+            ("evals/set.jsonl", "{\"q\":\"a\"}\n{\"q\":\"b\"}\n"),
+        ],
+    );
+    let discovery = discover(&tree, &ungoverned()).expect("walks");
+    let _ = fs::remove_dir_all(&tree);
+    assert_eq!(
+        kept(&discovery),
+        [
+            "Dockerfile",
+            "api/Dockerfile.dev",
+            "docs/CODEOWNERS",
+            "docs/arch.drawio",
+            "evals/set.jsonl",
+            "infra/main.bicep",
+            "src/App.csproj",
+        ],
+    );
+    assert!(discovery.skipped.is_empty(), "{:?}", discovery.skipped);
+}
