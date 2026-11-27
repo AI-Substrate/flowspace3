@@ -200,6 +200,12 @@ reused by every later `add`, `scan` and watcher pick-up until
 `config` column. Lockfiles (`*.lock`, `package-lock.json`, `npm-shrinkwrap.json`,
 `pnpm-lock.yaml`) and `*.min.json` stay skipped even when it is on.
 
+Some data-shaped files index **unconditionally**, without that flag: `.jsonl`
+datasets, `.drawio` diagrams and `CODEOWNERS` as documents; `.bicep`, MSBuild
+projects (`.csproj`, `.fsproj`, `.vbproj`, `.props`, `.targets`), and
+`Dockerfile` / `Containerfile` (also `Dockerfile.dev`, `*.dockerfile`) as code.
+They still face `max_file_bytes` and the binary sniff.
+
 ## `[search]`
 
 | Key | Type | Default | Effect | Env override |
