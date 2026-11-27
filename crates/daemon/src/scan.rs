@@ -277,7 +277,10 @@ pub async fn run(state: &AppState, value: serde_json::Value) -> Result<(), Failu
 /// Bumped to @4 by DL-042: a declaration's text now starts at the doc comments,
 /// comments and attributes directly above it, so its own documentation is
 /// embedded and summarised with it.
-pub const PARSER_VERSION: &str = "fs3-parsers@4";
+/// Bumped to @5 by plan 020: grammar set changed: +javascript
+/// (js/mjs/cjs/jsx); value-shape rule widened to
+/// field_definition/pair/assignment_expression.
+pub const PARSER_VERSION: &str = "fs3-parsers@5";
 
 #[cfg(test)]
 mod tests {

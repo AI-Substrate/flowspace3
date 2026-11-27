@@ -23,10 +23,32 @@ use tree_sitter::Node;
 /// is the target type for a Rust `impl_item`, but the *return* type in C and
 /// C++, where trying it early produces elements literally named `void` and
 /// `bool`.
-const NAME_FIELDS: &[&str] = &["name", "declarator", "path", "pattern", "type"];
+const NAME_FIELDS: &[&str] = &[
+    "name",
+    "declarator",
+    "path",
+    "pattern",
+    "key",
+    "property",
+    "left",
+    "type",
+];
 
-/// Binding nodes whose `value` field may declare a callable.
-const FUNCTION_BINDINGS: &[&str] = &["variable_declarator", "public_field_definition"];
+/// Binding nodes whose value field may declare a callable.
+const FUNCTION_BINDINGS: &[&str] = &[
+    "variable_declarator",
+    "public_field_definition",
+    "field_definition",
+    "pair",
+    "assignment_expression",
+];
+
+/// Value fields checked in priority order for a function-shaped value.
+const FUNCTION_VALUE_FIELDS: &[&str] = &["value", "right"];
+
+/// Name fields that require binding-shape validation rather than generic
+/// identifier descent.
+const BINDING_NAME_FIELDS: &[&str] = &["key", "property", "left"];
 
 /// Function-shaped values promoted under their binding's name.
 const FUNCTION_VALUES: &[&str] = &[
@@ -261,7 +283,9 @@ fn function_binding_kind(node: Node<'_>) -> Option<ElementKind> {
     if !FUNCTION_BINDINGS.contains(&node.kind()) {
         return None;
     }
-    let value = node.child_by_field_name("value")?;
+    let value = FUNCTION_VALUE_FIELDS
+        .iter()
+        .find_map(|field| node.child_by_field_name(field))?;
     FUNCTION_VALUES
         .contains(&value.kind())
         .then_some(ElementKind::Function)
@@ -277,10 +301,51 @@ fn ordered(mut elements: Vec<Element>) -> Vec<Element> {
 
 /// Derive a node's own name from its fields, in [`NAME_FIELDS`] priority order.
 fn node_name(node: Node<'_>, source: &str) -> Option<String> {
-    NAME_FIELDS
-        .iter()
-        .find_map(|field| node.child_by_field_name(field))
-        .and_then(|named| first_identifier_text(named, source))
+    NAME_FIELDS.iter().find_map(|field| {
+        let named = node.child_by_field_name(field)?;
+        if BINDING_NAME_FIELDS.contains(field) {
+            return FUNCTION_BINDINGS
+                .contains(&node.kind())
+                .then(|| binding_name(field, named, source))
+                .flatten();
+        }
+        first_identifier_text(named, source)
+    })
+}
+
+/// A binding's own short name, refusing computed, subscript and pattern shapes.
+fn binding_name(field: &str, node: Node<'_>, source: &str) -> Option<String> {
+    match field {
+        "key" | "property" => identifier_or_string(node, source),
+        "left" => match node.kind() {
+            "identifier" => first_identifier_text(node, source),
+            "member_expression" => node
+                .child_by_field_name("property")
+                .and_then(|property| identifier_or_string(property, source)),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// Identifier-shaped keys keep their text; safe quoted keys lose only their quotes.
+fn identifier_or_string(node: Node<'_>, source: &str) -> Option<String> {
+    if node.kind().contains("identifier") {
+        return first_identifier_text(node, source);
+    }
+    if node.kind() != "string" {
+        return None;
+    }
+    let text = node_text(node, source);
+    let unquoted = text
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+        .or_else(|| {
+            text.strip_prefix('\'')
+                .and_then(|value| value.strip_suffix('\''))
+        })?;
+    (!unquoted.trim().is_empty() && !unquoted.contains(ADDRESS_SEGMENT))
+        .then(|| unquoted.to_string())
 }
 
 /// Take a name node's text, descending to the first identifier when the node is
@@ -319,7 +384,7 @@ fn node_text(node: Node<'_>, source: &str) -> String {
 mod tests {
     use std::path::Path;
 
-    use fs3_core::{ADDRESS_SEGMENT, ElementKind, ElementTree};
+    use fs3_core::{ADDRESS_SEGMENT, ElementKind, ElementTree, classify};
 
     use crate::scan;
 
@@ -425,6 +490,57 @@ mod tests {
         assert_eq!(area.name, "area", "the name is the declaration's own");
         assert_eq!(area.subkind, "function_item");
         assert_eq!(area.kind, ElementKind::Function);
+    }
+
+    #[test]
+    fn javascript_classification_decisions_use_the_generic_classifier() {
+        for callable in [
+            "function_declaration",
+            "generator_function_declaration",
+            "method_definition",
+        ] {
+            assert_eq!(
+                classify(callable),
+                Some(ElementKind::Function),
+                "{callable}"
+            );
+        }
+        assert_eq!(classify("class_declaration"), Some(ElementKind::Container));
+        assert_eq!(classify("class"), Some(ElementKind::Container));
+        for spliced_or_value_shaped in [
+            "lexical_declaration",
+            "variable_declaration",
+            "export_statement",
+            "import_statement",
+            "field_definition",
+            "function_expression",
+            "arrow_function",
+            "jsx_element",
+        ] {
+            assert_eq!(
+                classify(spliced_or_value_shaped),
+                None,
+                "{spliced_or_value_shaped} is spliced or promoted by value shape"
+            );
+        }
+    }
+
+    #[test]
+    fn typescript_uses_the_same_pair_and_assignment_binding_rule() {
+        let tree = scan(
+            Path::new("parsers/src/probe.ts"),
+            b"const methods = { pair: function () {} };\nexports.assigned = () => {};\n",
+        )
+        .expect("TypeScript parses");
+        let addresses = addresses(&tree);
+        assert!(
+            addresses.contains(&"parsers/src/probe.ts::pair".to_string()),
+            "{addresses:?}"
+        );
+        assert!(
+            addresses.contains(&"parsers/src/probe.ts::assigned".to_string()),
+            "{addresses:?}"
+        );
     }
 
     /// Leading documentation (DL-042): the comments and attributes above a
