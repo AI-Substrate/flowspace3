@@ -530,30 +530,29 @@ fn refuse_a_defaulted_store_under_test(configuration: &fs3_core::Effective) -> R
 /// Snap-in recipe: set `[daemon].owner_root` to the absolute checkout root used
 /// by the long-running daemon. A deliberate launch elsewhere must set
 /// `FS3_PROD_OWNER=1`; tests use `FS3_TEST_DATABASE_URL` on port 5434 instead.
+///
+/// Opt-in: with no `owner_root` configured there is no designation to enforce,
+/// and the daemon boots from any directory. That is every installed user — the
+/// default URL is THEIR only database, and a guard that refused it from every
+/// cwd made `flowspace3 daemon` unusable outside a configured checkout. Test
+/// daemons on the default store are still refused, by
+/// [`refuse_a_defaulted_store_under_test`].
 fn refuse_undesignated_production_store(
     configuration: &Config,
     current_dir: &std::path::Path,
     explicitly_designated: bool,
 ) -> Result<()> {
+    let Some(owner_root) = configuration.daemon.owner_root.as_deref() else {
+        return Ok(());
+    };
     if configuration.database.url.trim() != fs3_core::DatabaseConfig::DEFAULT_URL
         || explicitly_designated
+        || path_is_within(current_dir, owner_root)
     {
         return Ok(());
     }
 
-    let designated_by_root = configuration
-        .daemon
-        .owner_root
-        .as_deref()
-        .is_some_and(|root| path_is_within(current_dir, root));
-    if designated_by_root {
-        return Ok(());
-    }
-
-    let configured_root = configuration.daemon.owner_root.as_deref().map_or_else(
-        || "<not configured>".to_string(),
-        |root| root.display().to_string(),
-    );
+    let configured_root = owner_root.display().to_string();
     bail!(
         "FS3-E-PROD-NOT-DESIGNATED: refusing to boot against the production database at \
          127.0.0.1:5433/flowspace3 from cwd {}. This process is not designated to own it \
@@ -1218,11 +1217,11 @@ mod tests {
     }
 
     #[test]
-    fn production_store_requires_an_owner_root_or_explicit_designation() {
+    fn production_store_is_guarded_only_once_an_owner_root_is_configured() {
         let owner = tempfile::tempdir().expect("an owner root");
         let foreign = tempfile::tempdir().expect("a foreign cwd");
         refuse_undesignated_production_store(&fs3_core::Config::default(), foreign.path(), false)
-            .expect_err("an unset owner_root must fail closed outside an owner tree");
+            .expect("an installed user with no owner_root boots from any directory");
         let mut configuration = fs3_core::Config::default();
         configuration.daemon.owner_root = Some(owner.path().to_path_buf());
 

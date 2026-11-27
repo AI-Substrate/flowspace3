@@ -12,13 +12,14 @@ flowspace3 doctor
 | step | checks | repairs |
 |---|---|---|
 | `engine` | a container engine is on PATH (`FS3_ENGINE`, default `docker`) | no — installing a runtime is not a CLI's job |
-| `stack` | Postgres is accepting connections | yes — runs `compose up -d` and WAITS for a real connection |
+| `stack` | Postgres is accepting connections | yes — starts an existing `flowspace3-db` container, else writes its embedded compose file to `<config_dir>/compose.yml` and runs `compose -f <that> up -d` under the pinned project name `flowspace3`, from any directory; WAITS for a real connection. Port busy: `export FS3_DB_PORT=<port>` and point `database.url` at it |
 | `database` | the configured database exists | yes — `CREATE DATABASE` |
 | `schema` | the database has every migration this binary carries | yes — applies the missing ones |
 | `keyword-index` | with `[search] lexical_backend = "bm25"`: this Postgres has pg_search and the BM25 index is built and valid | no — names the image swap, or `doctor keyword-index` |
 | `exact-index` | with `fs3.exact_rank = 'compact'`: every vector has its binary copy (`embeddings_1024_bq`), recorded complete; `warn` when vectors lack one | no — names `doctor exact-index` |
 | `daemon` | `GET /health` answers on `daemon.url`; `warn` when it answers but its embedder has been failing (since when, and the last error) | no — see below |
 | `auth` | `daemon.key` is mode `0600` and the daemon accepts it | no — restart republishes a missing or stale key |
+| `ddocs` | the optional `ddocs` CLI is on PATH (version); `warn` when it is missing — deterministic-document enrichment is off, everything else works | no — the action links the ddocs agents-start-here doc and install README on GitHub |
 
 Every row reports `found` (what it saw) and, when it acted, `action` (what it
 did). A row that only says "ok" would be a row you cannot verify.

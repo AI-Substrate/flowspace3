@@ -276,4 +276,6 @@ external = [
   # DEV only: throwaway config and log directories for the daemon log-file
   # test, so it can never write to the user's real ones.
   "tempfile@dev",
+  # DEV only: proves doctor's embedded compose file parses as YAML.
+  "serde_yaml@dev",
 ]

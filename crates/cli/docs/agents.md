@@ -51,9 +51,11 @@ ranking. `data.composition` names how many threshold-matching rows came from
 each source even when top-k truncation hides one source; use `--source
 code|doc|conversation` only when the question itself requires narrowing.
 
-`doctor` is repair-as-it-goes: it starts the container stack, creates the
-database and applies migrations. There is no separate setup step, and you never
-need to run `docker compose` yourself.
+`doctor` is repair-as-it-goes: it starts the container stack (from its own
+embedded compose file, so no checkout and no particular directory is needed),
+creates the database and applies migrations. There is no separate setup step,
+and you never need to run `docker compose` yourself. A `ddocs` row that warns
+means the optional `ddocs` CLI is missing; its action names where to install it.
 
 `daemon` runs in the foreground. It serves HTTP on `daemon.url`, migrates the
 store at boot, and drains the job queue. `doctor` reports whether it is running

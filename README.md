@@ -52,8 +52,11 @@ answers.
 
 ```bash
 # 1. Set up the world. `doctor` walks engine -> stack -> database -> schema
-#    and REPAIRS as it goes: it starts the Docker compose stack, creates the
-#    database, applies migrations. There is no second setup command.
+#    and REPAIRS as it goes: it writes its own compose file to
+#    ~/.config/flowspace3/compose.yml and starts it (no checkout needed, any
+#    directory works), creates the database, applies migrations. There is no
+#    second setup command. Port 5433 taken? `export FS3_DB_PORT=<port>` and
+#    point `database.url` at it.
 flowspace3 doctor
 
 # 2. Start the background daemon (indexing worker + HTTP API).
@@ -96,7 +99,8 @@ Re-running `add` on an unchanged tree costs nothing: enrichment is keyed by the
 hash of the text it describes, so a re-scan enqueues zero LLM work. That is not
 a cache — it is the same answer by construction.
 
-Stop the stack with `docker compose down` (add `-v` to delete the data volume).
+Stop the stack with `docker compose -f ~/.config/flowspace3/compose.yml -p flowspace3 down`
+(add `-v` to delete the data volume). In a clone, `docker compose down` from the repo root.
 
 How the pipeline fits together:
 [`docs/services/first-light.md`](docs/services/first-light.md).

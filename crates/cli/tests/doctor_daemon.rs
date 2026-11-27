@@ -182,13 +182,14 @@ async fn doctor_reports_ok_when_the_daemon_answers() {
     // machine with a newer release published, or an install path that cannot be
     // written, has a legitimate finding there. Including it would make this
     // test pass or fail on whether somebody had shipped a release that morning
-    // (req-0054, w-auto-update).
+    // (req-0054, w-auto-update). `ddocs` likewise reports whether this host
+    // has the optional `ddocs` CLI on PATH, which CI does not.
     let unhappy: Vec<&str> = data
         .steps
         .iter()
         .filter(|step| step.outcome == "down" || step.outcome == "warn")
         .map(|step| step.check.as_str())
-        .filter(|check| *check != "update")
+        .filter(|check| *check != "update" && *check != "ddocs")
         .collect();
     assert_eq!(
         unhappy,

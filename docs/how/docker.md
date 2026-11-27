@@ -17,6 +17,14 @@ harness docker status
 harness docker down      # never deletes volumes
 ```
 
+An installed user has no checkout and needs none: `flowspace3 doctor` embeds a
+db-only compose file (`crates/cli/assets/compose.yml` — same image, preloads,
+port, volume; none of the dev tuning, no `db-test`), writes it to
+`<config_dir>/compose.yml` and runs `<engine> compose -f <that> -p flowspace3 up
+-d`. If a `flowspace3-db` container already exists (this repo's stack, say),
+doctor runs `<engine> start flowspace3-db` instead and never recomposes it. The
+host port is `${FS3_DB_PORT:-5433}`.
+
 ## Cross-platform builds
 
 ```bash

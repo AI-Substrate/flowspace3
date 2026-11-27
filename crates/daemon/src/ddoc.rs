@@ -87,11 +87,20 @@ pub async fn probe(root: &Path) -> DdocTooling {
     probe_with_binary(root, OsStr::new("ddocs")).await
 }
 
+/// The first step of [`probe`] alone: the version of the `ddocs` binary on
+/// `PATH`, or `None` when there is no usable one. `doctor` asks this without
+/// paying for a whole-corpus graph.
+pub async fn installed_version(root: &Path) -> Option<String> {
+    version_with_binary(root, OsStr::new("ddocs")).await
+}
+
+async fn version_with_binary(root: &Path, binary: &OsStr) -> Option<String> {
+    let version_json = run(binary, root, &["--json", "version"]).await?;
+    parse_version(&version_json).ok()
+}
+
 async fn probe_with_binary(root: &Path, binary: &OsStr) -> DdocTooling {
-    let Some(version_json) = run(binary, root, &["--json", "version"]).await else {
-        return DdocTooling::absent();
-    };
-    let Ok(version) = parse_version(&version_json) else {
+    let Some(version) = version_with_binary(root, binary).await else {
         return DdocTooling::absent();
     };
     let Some(graph_json) = run(binary, root, &["--json", "graph"]).await else {
